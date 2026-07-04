@@ -401,7 +401,6 @@ onBeforeUnmount(() => {
   window.removeEventListener('dragleave', onWindowDragLeave, true);
   if (runtimeConfig.public.e2eTest) {
     const e2eWindow = window as Window & FastcatE2eTimelineWindow;
-    delete e2eWindow.__fastcatE2eAdvancePlayheadBy;
     delete e2eWindow.__fastcatE2eSplitClipAtPlayhead;
     delete e2eWindow.__fastcatE2eSelectTimelineItems;
     delete e2eWindow.__fastcatE2eDeleteSelectedItems;
@@ -430,10 +429,6 @@ onMounted(() => {
       // through the canonical save path so specs assert against a settled OTIO
       // file instead of the crash-recovery sidecar timing.
       await timelineStore.saveTimeline();
-    };
-
-    e2eWindow.__fastcatE2eAdvancePlayheadBy = async ({ deltaUs }) => {
-      timelineStore.setCurrentTimeUs(timelineStore.currentTime + deltaUs);
     };
 
     e2eWindow.__fastcatE2eSplitClipAtPlayhead = async () => {
@@ -742,7 +737,6 @@ async function dropInternalPayloadAtPoint(params: {
   clearDragPreview();
 }
 
-type FastcatE2eAdvancePlayheadBy = (params: { deltaUs: number }) => Promise<void>;
 type FastcatE2eSplitClipAtPlayhead = () => Promise<void>;
 type FastcatE2eSelectTimelineItems = (params: { itemIds: string[] }) => Promise<void>;
 type FastcatE2eDeleteSelectedItems = () => Promise<void>;
@@ -772,7 +766,6 @@ type FastcatE2eGetTimelineDocInfo = () => {
 };
 
 interface FastcatE2eTimelineWindow {
-  __fastcatE2eAdvancePlayheadBy?: FastcatE2eAdvancePlayheadBy;
   __fastcatE2eSplitClipAtPlayhead?: FastcatE2eSplitClipAtPlayhead;
   __fastcatE2eSelectTimelineItems?: FastcatE2eSelectTimelineItems;
   __fastcatE2eDeleteSelectedItems?: FastcatE2eDeleteSelectedItems;

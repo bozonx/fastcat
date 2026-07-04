@@ -2,10 +2,21 @@
 
 End-to-end coverage of the **desktop web** editor for **base functionality only**
 — nothing behind premium or in-development feature flags. These are true e2e
-tests: they drive the real UI (pointer, drag-and-drop, file input, transport)
-and verify the **persisted OTIO document** the user would reopen, not Vue store
-internals. If a check can be made without the browser, it belongs in a unit test
-(`*.test.ts`), not here.
+tests: they run the real app in a real browser and verify the **persisted OTIO
+document** the user would reopen (or, for export/render, the actual decoded
+output/pixels), not Vue store internals. If a check can be made without the
+browser, it belongs in a unit test (`*.test.ts`), not here.
+
+Import, delete, and multi-select are driven through real pointer/file-input
+interactions. Timeline editing (move/trim/split/select-by-id/add-to-track) and
+file-manager rename/move/create-folder-as-precondition go through test-only
+`__fastcatE2e*` hooks that call the same command/store path a pointer drag or
+inline-edit would — real drags on small clips and trim handles are unreliable,
+and inline-rename/DnD-tree-move are timing-sensitive enough that driving them
+via pointer buys little extra confidence for a lot of flakiness. What makes
+these e2e rather than unit tests is that they assert on the persisted OTIO/OPFS
+state after a real save, not the input method. See `test/utils/e2e/timeline.ts`
+and `test/utils/e2e/file-manager.ts` for the exact split.
 
 Cross-engine rendering parity tests live in `test/golden/` because they test the
 video engine output, not user workflows.
@@ -61,8 +72,10 @@ test/utils/e2e/
   specs must not re-run import just to get a clip.
 - **Assert on the persisted doc** via `readTimelineDoc` / `waitForTimelineDoc`.
   UI locators confirm the action happened; the `.otio` file confirms it stuck.
-- **Prefer deterministic input over pixel drag** where the app allows it. Pixel
-  drags go through the shared helpers so geometry math is not copy-pasted.
+- **Prefer deterministic input over pixel drag** where the app allows it.
+  Timeline move/trim/split go through the `__fastcatE2e*` hooks in
+  `timeline.ts` rather than mouse-based dragging, which is unreliable for
+  small clips and trim handles at default zoom.
 - **Base scope only** — do not add specs for premium presets, native/Tauri
   fallbacks, conversion, transcription, captions, proxies, transitions, remote
   browser, or anything gated by feature flags.

@@ -19,6 +19,20 @@ import { opfsEntryExists, writeFileToOpfs } from './virtual-fs';
  *    verify. `setInputFiles` triggers the app's own `change` handler, so the
  *    genuine ingest/copy path runs.
  *
+ * The same split applies to folders: `createFolder` is a fast hook-based
+ * precondition; `createFolderInCurrentDirectory` drives the real toolbar +
+ * name-modal flow and is what a spec verifying folder creation should use.
+ *
+ * `renameEntry`/`moveEntry`/`deleteEntry` go through test-only hooks rather
+ * than the app's inline-rename input or drag-and-drop tree move — those UI
+ * paths are timing-sensitive enough (rename commit on blur/Enter, DnD hit-
+ * testing against tree nodes) that driving them via pointer would trade a
+ * large flakiness cost for no extra coverage: the hooks call the same
+ * command/store path the UI does, and specs still assert against the
+ * persisted OPFS state, not store internals. Single-file deletion is stable
+ * enough to drive directly, so `file-manager.spec.ts` exercises it through
+ * the real right-click-menu instead of `deleteEntry`.
+ *
  * File entries are addressable through the app's existing `data-entry-path`
  * attribute; the toolbar carries `file-create-folder`, `file-view-grid`,
  * `file-view-list` test ids, and the upload input carries `file-upload-input`.
@@ -211,8 +225,11 @@ export async function setViewMode(page: Page, mode: 'grid' | 'list'): Promise<vo
 }
 
 /**
- * Creates a folder through the toolbar action + name modal. The modal is a plain
- * text input + confirm button; located by role to stay resilient to markup.
+ * Fast precondition for specs that need a folder to exist but are not testing
+ * folder creation itself (rename/move/delete targets) — same rationale as
+ * `seedProjectMedia`. Goes through a test-only hook instead of the toolbar +
+ * name-modal flow. Specs that verify folder creation should drive the real UI
+ * via `createFolderInCurrentDirectory` instead.
  */
 export async function createFolder(page: Page, name: string): Promise<void> {
   await openProjectFilesTab(page);

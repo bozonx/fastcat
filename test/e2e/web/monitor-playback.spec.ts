@@ -4,7 +4,6 @@ import { seedProjectMedia } from '../../utils/e2e/file-manager';
 import { addFileToTrack, clipIds, trackIds } from '../../utils/e2e/timeline';
 import { waitForTimelineDoc } from '../../utils/e2e/otio';
 import {
-  expectPlayheadAdvances,
   getMonitorAudioState,
   playheadX,
   seekMonitorToFraction,
@@ -27,11 +26,6 @@ test.describe('Web monitor playback controls', () => {
     const videoTrackId = (await trackIds(page))[0];
     await addFileToTrack(page, uiPath, videoTrackId);
     await waitForTimelineDoc(page, e2eProject, (d) => d.allClips.length === 1);
-  });
-
-  test('expectPlayheadAdvances helper starts and stops playback', async ({ page }) => {
-    const delta = await expectPlayheadAdvances(page, { forMs: 700 });
-    expect(delta).toBeGreaterThan(0);
   });
 
   test('clicking the monitor seekbar moves the playhead forward', async ({ page }) => {

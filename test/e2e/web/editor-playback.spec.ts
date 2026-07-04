@@ -26,10 +26,11 @@ test.describe('Web editor playback', () => {
   test('play advances the playhead and pause stops it', async ({ page }) => {
     await expectPlayheadAdvances(page, { forMs: 700 });
 
-    // After pause the playhead should hold position.
+    // After pause the playhead should hold position (allow a couple px of
+    // sub-pixel rounding, not a real "still playing" drift).
     const settled = await playheadX(page);
     await page.waitForTimeout(300);
-    expect(Math.abs((await playheadX(page)) - settled)).toBeLessThan(2);
+    expect(Math.abs((await playheadX(page)) - settled)).toBeLessThanOrEqual(3);
   });
 
   test('seeking on the ruler moves the playhead', async ({ page }) => {

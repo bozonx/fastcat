@@ -9,11 +9,16 @@ import { expect, type Locator, type Page } from '@playwright/test';
  *   - each track lane carries `data-track-id="<trackId>"`
  *   - trim handles carry `data-testid="clip-trim-start|clip-trim-end"`
  *
- * Geometry is measured from real bounding boxes rather than recomputed from the
- * store zoom, so drags stay correct regardless of the current timeline scale.
- * That is the deliberate difference from the unit tests: here we move real
- * pixels through the real pointer/DnD pipeline and then assert on the persisted
- * OTIO document (see ./otio.ts).
+ * `selectClip` and shift-click multi-select drive real pointer clicks on those
+ * clip roots. Move/trim/split/select-by-id/delete/add-to-track go through
+ * test-only `__fastcatE2e*` hooks instead of pixel drags: real drags on clips
+ * a few pixels wide (default zoom) are unreliable, and dragging small trim
+ * handles doubly so (see `fitTimelineZoom`, added only as setup before pointer
+ * gestures that do need real geometry, e.g. clip selection). Each hook calls
+ * the same `applyTimeline`/command path a real drag would dispatch, and every
+ * spec still asserts against the persisted OTIO document (see ./otio.ts)
+ * rather than store internals — that's what keeps these e2e rather than unit
+ * tests, not the input method.
  */
 
 export function timelineContainer(page: Page): Locator {

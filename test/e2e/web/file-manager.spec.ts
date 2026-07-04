@@ -2,6 +2,7 @@ import { test, expect } from '../fixtures/workspace';
 import { MEDIA_FIXTURES } from '../../fixtures/media';
 import {
   createFolder,
+  createFolderInCurrentDirectory,
   deleteEntry,
   entry,
   entryByPath,
@@ -21,7 +22,7 @@ import { opfsEntryExists, writeFileToOpfs } from '../../utils/e2e/virtual-fs';
 test.describe('Web file manager', () => {
   test('creates a folder that survives reload', async ({ page, e2eProject }) => {
     const folderName = `Folder ${Date.now().toString(36)}`;
-    await createFolder(page, folderName);
+    await createFolderInCurrentDirectory(page, folderName);
 
     await expect(entry(page, folderName)).toBeVisible();
     await page.goto(`/editor/${e2eProject.encodedName}`);
@@ -179,22 +180,5 @@ test.describe('Web file manager', () => {
 
     await setViewMode(page, 'grid');
     await expect(page.locator(`div[data-entry-path="${uiPath}"]`)).toBeVisible();
-  });
-
-  test('opens the files tab controls', async ({ page, e2eProject: _e2eProject }) => {
-    await openProjectFilesTab(page);
-    await expect(page.getByTestId('file-upload-input').first()).toBeAttached();
-    await expect
-      .poll(() =>
-        page.evaluate(
-          () =>
-            typeof (
-              window as Window & {
-                __fastcatE2eCreateRootFolder?: (params: { name: string }) => Promise<void>;
-              }
-            ).__fastcatE2eCreateRootFolder === 'function',
-        ),
-      )
-      .toBe(true);
   });
 });

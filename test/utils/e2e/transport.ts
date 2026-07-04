@@ -3,11 +3,18 @@ import { expect, type Locator, type Page } from '@playwright/test';
 /**
  * Playback-transport + export primitives for web e2e specs.
  *
- * Transport is driven through the monitor's real controls (`data-monitor-play`)
- * and observed through the timeline playhead (`data-testid="timeline-playhead"`)
- * and ruler (`data-testid="timeline-ruler"`). Playhead progress is read from the
- * live DOM transform, so specs assert on what the user actually sees moving
- * rather than on store internals.
+ * Transport is driven through the monitor's real controls (`data-monitor-play`,
+ * the ruler, the monitor seekbar) and observed through the timeline playhead
+ * (`data-testid="timeline-playhead"`). Playhead progress is read from the live
+ * DOM transform, so specs assert on what the user actually sees moving rather
+ * than on store internals — playback itself is never faked or fast-forwarded.
+ *
+ * Mute/volume are the one exception: `MonitorAudioControl` renders its slider
+ * behind a hover-triggered popup in compact mode (timer-based open/close), so
+ * driving it via pointer is disproportionately flaky for what it verifies.
+ * `getMonitorAudioState`/`toggleMonitorMute`/`setMonitorVolume` go through a
+ * test-only hook instead, exercising the same store path the real control
+ * calls.
  */
 
 export function playButton(page: Page): Locator {
@@ -31,16 +38,6 @@ export async function playheadX(page: Page): Promise<number> {
 
 export async function play(page: Page): Promise<void> {
   await playButton(page).click();
-  await page
-    .evaluate(async () => {
-      const advancePlayheadBy = (
-        window as Window & {
-          __fastcatE2eAdvancePlayheadBy?: (params: { deltaUs: number }) => Promise<void>;
-        }
-      ).__fastcatE2eAdvancePlayheadBy;
-      await advancePlayheadBy?.({ deltaUs: 300_000 });
-    })
-    .catch(() => undefined);
 }
 
 export async function pause(page: Page): Promise<void> {
@@ -48,7 +45,14 @@ export async function pause(page: Page): Promise<void> {
   await playButton(page).click();
 }
 
-/** Asserts the playhead advances while playing, then returns the delta in px. */
+/**
+ * Asserts the playhead advances while playing, then returns the delta in px.
+ * The poll budget is generous beyond `forMs`: a real cold decoder start
+ * (first play after project load) can take a few seconds in a
+ * software-rasterizer test environment, so a tight budget here is flaky
+ * rather than meaningful — same rationale as the multi-second timeouts on
+ * import/export.
+ */
 export async function expectPlayheadAdvances(
   page: Page,
   options: { forMs?: number } = {},
@@ -57,7 +61,7 @@ export async function expectPlayheadAdvances(
   const before = await playheadX(page);
   await play(page);
   await expect
-    .poll(async () => (await playheadX(page)) - before, { timeout: forMs + 2_000 })
+    .poll(async () => (await playheadX(page)) - before, { timeout: forMs + 8_000 })
     .toBeGreaterThan(1);
   const after = await playheadX(page);
   await pause(page);
