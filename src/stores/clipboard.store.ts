@@ -106,6 +106,22 @@ export const useClipboardStore = defineStore('clipboard', () => {
     draggedItems.value = [];
   }
 
+  /**
+   * Reset every field that describes an in-flight file-manager drag. Used by the
+   * drag sources' own cleanup AND by the native-flow completion path (Tauri
+   * `onDragDropEvent`), which must clear the same state the sources set eagerly
+   * on pointerdown — the pointer-DnD engine deliberately skips its `onEnd` when
+   * WebKitGTK promotes the press to a native OS drag, so this is the only place
+   * that runs when that native flow ends.
+   */
+  function clearFileManagerDragState() {
+    currentDragOperation.value = null;
+    dragSourceFileManagerInstanceId.value = null;
+    dragTargetFileManagerInstanceId.value = null;
+    dragSourceVfs.value = null;
+    draggedItems.value = [];
+  }
+
   function registerFileManagerVfs(instanceId: string, vfs: IFileSystemAdapter) {
     const current = fileManagerVfsRegistry.value[instanceId];
     fileManagerVfsRegistry.value = {
@@ -160,6 +176,7 @@ export const useClipboardStore = defineStore('clipboard', () => {
     setDragSourceVfs,
     setDraggedItems,
     clearDraggedItems,
+    clearFileManagerDragState,
     registerFileManagerVfs,
     unregisterFileManagerVfs,
     getFileManagerVfs,

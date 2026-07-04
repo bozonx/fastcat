@@ -4,17 +4,26 @@ import { mount, flushPromises } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useGlobalDragAndDrop } from '~/composables/editor/useGlobalDragAndDrop';
 
-const { draggedFileRef, handleFilesMock, onDragDropEventMock, uiStoreMock, toastAddMock } =
-  vi.hoisted(() => ({
-    draggedFileRef: { value: null as unknown },
-    handleFilesMock: vi.fn(),
-    onDragDropEventMock: vi.fn(),
-    uiStoreMock: {
-      isFileManagerDragging: false,
-      isGlobalDragging: false,
-    },
-    toastAddMock: vi.fn(),
-  }));
+const {
+  draggedFileRef,
+  handleFilesMock,
+  onDragDropEventMock,
+  uiStoreMock,
+  toastAddMock,
+  clearDraggedFileMock,
+  clearFileManagerDragStateMock,
+} = vi.hoisted(() => ({
+  draggedFileRef: { value: null as unknown },
+  handleFilesMock: vi.fn(),
+  onDragDropEventMock: vi.fn(),
+  uiStoreMock: {
+    isFileManagerDragging: false,
+    isGlobalDragging: false,
+  },
+  toastAddMock: vi.fn(),
+  clearDraggedFileMock: vi.fn(),
+  clearFileManagerDragStateMock: vi.fn(),
+}));
 
 vi.mock('#ui/composables/useToast', () => ({
   useToast: () => ({
@@ -57,6 +66,13 @@ vi.mock('~/composables/file-manager/useFileManager', () => ({
 vi.mock('~/composables/useDraggedFile', () => ({
   useDraggedFile: () => ({
     draggedFile: draggedFileRef,
+    clearDraggedFile: clearDraggedFileMock,
+  }),
+}));
+
+vi.mock('~/composables/useAppClipboard', () => ({
+  useAppClipboard: () => ({
+    clearFileManagerDragState: clearFileManagerDragStateMock,
   }),
 }));
 
@@ -103,6 +119,11 @@ describe('useGlobalDragAndDrop', () => {
     uiStoreMock.isGlobalDragging = false;
     handleFilesMock.mockReset();
     onDragDropEventMock.mockReset();
+    clearFileManagerDragStateMock.mockReset();
+    // Mirror the real behaviour so tests can assert the composite cleanup.
+    clearDraggedFileMock.mockReset().mockImplementation(() => {
+      draggedFileRef.value = null;
+    });
     onDragDropEventMock.mockResolvedValue(vi.fn());
     toastAddMock.mockReset();
   });
@@ -148,7 +169,87 @@ describe('useGlobalDragAndDrop', () => {
         },
       }),
     );
+    // The native flow is complete: the source's eagerly-set drag state, kept
+    // alive across the WebKitGTK takeover, must now be cleared — otherwise the
+    // OS-file upload overlay never appears again.
+    expect(clearFileManagerDragStateMock).toHaveBeenCalledTimes(1);
+    expect(clearDraggedFileMock).toHaveBeenCalledTimes(1);
+    expect(uiStoreMock.isFileManagerDragging).toBe(false);
     window.removeEventListener('fastcat:tauri-internal-file-drop', dropListener);
+    wrapper.unmount();
+  });
+
+  it('clears internal drag state when a native takeover leaves the window without dropping', async () => {
+    const wrapper = mount(
+      defineComponent({
+        setup() {
+          useGlobalDragAndDrop();
+          return () => null;
+        },
+      }),
+    );
+    await flushPromises();
+    const callback = onDragDropEventMock.mock.calls[0]?.[0];
+
+    uiStoreMock.isFileManagerDragging = true;
+    draggedFileRef.value = { name: 'clip.mp4', kind: 'file', path: '_video/clip.mp4' };
+
+    await callback({ payload: { type: 'over' } });
+    await callback({ payload: { type: 'leave' } });
+    await nextTick();
+
+    expect(clearFileManagerDragStateMock).toHaveBeenCalledTimes(1);
+    expect(uiStoreMock.isFileManagerDragging).toBe(false);
+    expect(draggedFileRef.value).toBeNull();
+    wrapper.unmount();
+  });
+
+  it('clears leaked internal drag state when the window regains focus (alt-tab safety net)', async () => {
+    const wrapper = mount(
+      defineComponent({
+        setup() {
+          useGlobalDragAndDrop();
+          return () => null;
+        },
+      }),
+    );
+    await flushPromises();
+
+    // Simulate the engine's onWindowBlur having persisted internal-drag state
+    // (native takeover) with no subsequent onDragDropEvent — a pure alt-tab.
+    uiStoreMock.isFileManagerDragging = true;
+    draggedFileRef.value = { name: 'clip.mp4', kind: 'file', path: '_video/clip.mp4' };
+
+    window.dispatchEvent(new Event('focus'));
+    await nextTick();
+
+    expect(clearFileManagerDragStateMock).toHaveBeenCalledTimes(1);
+    expect(uiStoreMock.isFileManagerDragging).toBe(false);
+    expect(draggedFileRef.value).toBeNull();
+    wrapper.unmount();
+  });
+
+  it('does not clear an active OS-file drag on window focus', async () => {
+    const wrapper = mount(
+      defineComponent({
+        setup() {
+          useGlobalDragAndDrop();
+          return () => null;
+        },
+      }),
+    );
+    await flushPromises();
+
+    // OS drag overlay is showing → a real external drag is in progress; a focus
+    // event must not wipe state (there is no internal drag to clean up).
+    uiStoreMock.isGlobalDragging = true;
+    uiStoreMock.isFileManagerDragging = false;
+    draggedFileRef.value = null;
+
+    window.dispatchEvent(new Event('focus'));
+    await nextTick();
+
+    expect(clearFileManagerDragStateMock).not.toHaveBeenCalled();
     wrapper.unmount();
   });
 

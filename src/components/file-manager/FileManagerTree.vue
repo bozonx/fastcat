@@ -365,11 +365,7 @@ function clearTreeDragState() {
   isDragOver.value = null;
   dragOperation.value = null;
   uiStore.isFileManagerDragging = false;
-  appClipboard.setCurrentDragOperation(null);
-  appClipboard.setDragSourceFileManagerInstanceId(null);
-  appClipboard.setDragTargetFileManagerInstanceId(null);
-  appClipboard.setDragSourceVfs(null);
-  appClipboard.clearDraggedItems();
+  appClipboard.clearFileManagerDragState();
 }
 
 // --- drop zone (root instance only; covers nested levels via hit-test) -----

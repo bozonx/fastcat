@@ -9,6 +9,7 @@ import { isCommandMatched } from '~/utils/hotkeys/runtime';
 import { LARGE_UPLOAD_BACKGROUND_THRESHOLD_BYTES } from '~/file-manager/application/fileManagerCommands';
 import { isTauriRuntime } from '~/utils/runtime';
 import { useDraggedFile } from '~/composables/useDraggedFile';
+import { useAppClipboard } from '~/composables/useAppClipboard';
 import { useUploadProgress } from '~/composables/useUploadProgress';
 import { getDevicePixelRatio, dispatchWindowEvent, elementFromPoint } from '~/utils/browser-api';
 import {
@@ -29,8 +30,23 @@ export function useGlobalDragAndDrop() {
   const projectStore = useProjectStore();
   const fm = useFileManager();
   const { t } = useI18n();
-  const { draggedFile } = useDraggedFile();
+  const { draggedFile, clearDraggedFile } = useDraggedFile();
+  const appClipboard = useAppClipboard();
   const toast = useToast();
+
+  /**
+   * Reset the eagerly-set internal-drag state after a native (WebKitGTK) drag
+   * flow ends. The pointer-DnD engine deliberately skips its `onEnd` when the
+   * press is promoted to a native OS drag (so `onDragDropEvent` can recognise
+   * the drag as internal), which means the source's own cleanup never runs.
+   * Without this, `isFileManagerDragging` / `draggedFile` stay stuck `true` and
+   * the OS-file upload overlay never appears again.
+   */
+  function clearInternalDragState() {
+    uiStore.isFileManagerDragging = false;
+    clearDraggedFile();
+    appClipboard.clearFileManagerDragState();
+  }
 
   const { hotkeyLookup, defaultHotkeyLookup } = useEffectiveHotkeys();
   const {
@@ -216,10 +232,23 @@ export function useGlobalDragAndDrop() {
     );
   }
 
+  // Tauri-only safety net for a native takeover that never completes via an
+  // `onDragDropEvent` drop/leave — e.g. the user alt-tabs (or otherwise blurs
+  // the window) mid-drag. The engine kept the internal-drag state alive on that
+  // blur; when the window regains focus with no OS drag in progress, clear it so
+  // it can't leak. Guarded so a genuine native drag round-tripping over another
+  // app (which keeps `isTauriNativeInternalDrag`) is never cleared prematurely.
+  function onWindowRefocus() {
+    if (uiStore.isGlobalDragging || isTauriNativeInternalDrag) return;
+    if (!uiStore.isFileManagerDragging && !draggedFile.value) return;
+    clearInternalDragState();
+  }
+
   onMounted(async () => {
     window.addEventListener('keydown', onGlobalKeyDown, { capture: true });
 
     if (isTauriRuntime()) {
+      window.addEventListener('focus', onWindowRefocus);
       try {
         const { getCurrentWebview } = await import('@tauri-apps/api/webview');
         unlistenTauriDrop = await getCurrentWebview().onDragDropEvent(async (event) => {
@@ -239,6 +268,13 @@ export function useGlobalDragAndDrop() {
           } else if (event.payload.type === 'leave') {
             scheduleGlobalDragOverlayHide();
             dispatchTauriDragLeave();
+            // The OS drag left the window without dropping. If it was our own
+            // internal drag (promoted to native by WebKitGTK), its source state
+            // was intentionally kept alive for this handler — clear it now so it
+            // doesn't leak past the cancelled drag.
+            if (isTauriNativeInternalDrag || hasActiveInternalDrag) {
+              clearInternalDragState();
+            }
             isTauriNativeInternalDrag = false;
             tauriNativeInternalDragPayload = null;
           } else if (event.payload.type === 'drop') {
@@ -249,6 +285,10 @@ export function useGlobalDragAndDrop() {
               dispatchTauriInternalFileDrop(event.payload.position);
               isTauriNativeInternalDrag = false;
               tauriNativeInternalDragPayload = null;
+              // The native flow is now complete; the pointer-DnD engine skipped
+              // its `onEnd`, so this is the only place that clears the source's
+              // eagerly-set drag state. Runs after the drop is dispatched above.
+              clearInternalDragState();
               return;
             }
 
@@ -413,6 +453,7 @@ export function useGlobalDragAndDrop() {
   onUnmounted(() => {
     cancelGlobalDragLeaveTimeout();
     window.removeEventListener('keydown', onGlobalKeyDown, { capture: true });
+    window.removeEventListener('focus', onWindowRefocus);
 
     if (unlistenTauriDrop) {
       unlistenTauriDrop();

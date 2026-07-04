@@ -207,7 +207,9 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
     // to a native OS drag before our movement threshold, so `onStart` may never
     // fire; `isFileManagerDragging` / `draggedFile` must already be set by then so
     // Tauri's `onDragDropEvent` treats it as an internal drag and hides the OS drop
-    // overlay. Cleared in `clearDragState` (the engine's onEnd, committed drags only).
+    // overlay. Cleared in `clearDragState` — via the engine's `onEnd` for every
+    // gesture that ends inside the webview, or via the native-flow completion
+    // path in `useGlobalDragAndDrop` when WebKitGTK promotes it to an OS drag.
     appClipboard.setDragSourceFileManagerInstanceId(options.fileManagerInstanceId ?? null);
     appClipboard.setDragSourceVfs(options.vfs);
     appClipboard.setDragTargetFileManagerInstanceId(options.fileManagerInstanceId ?? null);
@@ -251,11 +253,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
     dragOverEntryPath.value = null;
     uiStore.isFileManagerDragging = false;
     clearDraggedFile();
-    appClipboard.setCurrentDragOperation(null);
-    appClipboard.setDragSourceFileManagerInstanceId(null);
-    appClipboard.setDragTargetFileManagerInstanceId(null);
-    appClipboard.setDragSourceVfs(null);
-    appClipboard.clearDraggedItems();
+    appClipboard.clearFileManagerDragState();
   }
 
   // --- drop zone (entry / folder / panel / root unified by hit-test) ----------
