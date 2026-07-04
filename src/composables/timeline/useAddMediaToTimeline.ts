@@ -5,6 +5,7 @@ import { useMediaStore } from '~/stores/media.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { secondsToUs } from '~/utils/time';
 import { withFileIoSlot } from '~/utils/io/io-governor';
+import { checkFileTimelineCompatibility } from '~/utils/media/compatibility';
 
 export function useAddMediaToTimeline() {
   const timelineStore = useTimelineStore();
@@ -37,6 +38,20 @@ export function useAddMediaToTimeline() {
 
   async function addMediaToTimeline(entries: { name: string; path?: string }[]) {
     if (!entries.length) return;
+
+    for (const entry of entries) {
+      const compat = checkFileTimelineCompatibility(entry, mediaStore);
+      if (!compat.compatible) {
+        const errorMsg = compat.reasonKey ? t(compat.reasonKey) : t('common.error');
+        toast.add({
+          color: 'error',
+          title: t('common.error'),
+          description: errorMsg,
+          icon: 'i-heroicons-x-circle',
+        });
+        return false;
+      }
+    }
 
     let currentStartUs = timelineStore.currentTime;
     let anyAdded = false;

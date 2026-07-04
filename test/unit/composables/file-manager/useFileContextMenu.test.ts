@@ -366,4 +366,46 @@ describe('useFileContextMenu', () => {
     const labels = flattenLabels(getContextMenuItems(videoEntry));
     expect(labels).not.toContain('videoEditor.fileManager.actions.transcribe');
   });
+
+  it('shows download action for non-external files', () => {
+    const { getContextMenuItems } = useFileContextMenu(
+      {
+        isGeneratingProxyInDirectory: () => false,
+        folderHasVideos: () => false,
+        isOpenableMediaFile: () => false,
+        isConvertibleMediaFile: () => false,
+        isVideo: () => false,
+        getEntryMeta: () => ({
+          hasProxy: false,
+          generatingProxy: false,
+        }),
+        isExternal: false,
+      },
+      vi.fn(),
+    );
+
+    const labels = flattenLabels(getContextMenuItems(videoEntry));
+    expect(labels).toContain('videoEditor.fileManager.actions.downloadFile');
+  });
+
+  it('hides download action for external files', () => {
+    const { getContextMenuItems } = useFileContextMenu(
+      {
+        isGeneratingProxyInDirectory: () => false,
+        folderHasVideos: () => false,
+        isOpenableMediaFile: () => false,
+        isConvertibleMediaFile: () => false,
+        isVideo: () => false,
+        getEntryMeta: () => ({
+          hasProxy: false,
+          generatingProxy: false,
+        }),
+        isExternal: true,
+      },
+      vi.fn(),
+    );
+
+    const labels = flattenLabels(getContextMenuItems(videoEntry));
+    expect(labels).not.toContain('videoEditor.fileManager.actions.downloadFile');
+  });
 });

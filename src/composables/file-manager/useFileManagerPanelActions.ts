@@ -11,6 +11,7 @@ import { createTimelineFormatFromProjectDefaults } from '~/timeline/format';
 import { getMediaTypeFromFilename, isOpenableProjectFileName } from '~/utils/media-types';
 import type { FileAction as FileActionBase } from '~/composables/file-manager/useFileManagerActions';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
+import { triggerBrowserFileDownload } from '~/utils/browser-download';
 const log = createDevLogger('useFileManagerPanelActions');
 
 export interface FileManagerPanelActionsOptions {
@@ -199,6 +200,25 @@ export function useFileManagerPanelActions({
       openTranscriptionModal(entry);
     } else if (action === 'extractAudio') {
       if (entry.kind === 'file') void extractAudio(entry);
+    } else if (action === 'download') {
+      if (entry.kind !== 'file' || !entry.path) return;
+      try {
+        const file = await vfs.getFile(entry.path);
+        if (!file) {
+          toast.add({
+            title: t('videoEditor.fileManager.actions.downloadFileFailed'),
+            color: 'error',
+          });
+          return;
+        }
+        triggerBrowserFileDownload(file, entry.name);
+      } catch (e: unknown) {
+        log.error('[FileManagerPanel] Failed to download file', e);
+        toast.add({
+          title: t('videoEditor.fileManager.actions.downloadFileFailed'),
+          color: 'error',
+        });
+      }
     } else if (action === 'createSubgroup') {
       uiStore.pendingBloggerDogCreateSubgroup = entry;
     } else if (action === 'createContentItem') {

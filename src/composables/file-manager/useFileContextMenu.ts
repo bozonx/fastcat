@@ -31,7 +31,8 @@ export type FileAction =
   | 'cut'
   | 'paste'
   | 'createSubgroup'
-  | 'createContentItem';
+  | 'createContentItem'
+  | 'download';
 
 interface ContextMenuDeps {
   isGeneratingProxyInDirectory: (entry: FsEntry) => boolean;
@@ -581,6 +582,16 @@ export function useFileContextMenu(
           label: t('fastcat.timeline.createVersion'),
           icon: 'i-heroicons-document-duplicate',
           onSelect: () => onAction('createOtioVersion', entry),
+        },
+      ]);
+    }
+
+    if (entry.kind === 'file' && !deps.isExternal) {
+      items.push([
+        {
+          label: t('videoEditor.fileManager.actions.downloadFile'),
+          icon: 'i-heroicons-arrow-down-tray',
+          onSelect: () => onAction('download', entry),
         },
       ]);
     }

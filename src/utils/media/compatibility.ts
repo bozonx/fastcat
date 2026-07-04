@@ -11,7 +11,7 @@
  * and they had drifted apart; keep new rules here.
  */
 
-import { BROWSER_NATIVE_IMAGE_EXTENSIONS } from '~/utils/media-types';
+import { BROWSER_NATIVE_IMAGE_EXTENSIONS, getMediaTypeFromFilename } from '~/utils/media-types';
 
 export type FileCompatibilityStatus =
   | 'ok'
@@ -115,4 +115,84 @@ export function computeMediaCompatibilityStatus(
   // audio
   if (isAudioUndecodable(meta)) return 'fully_unsupported';
   return 'ok';
+}
+
+export function checkFileTimelineCompatibility(
+  entry: { kind?: string; name: string; path?: string },
+  mediaStore: {
+    metadataLoadFailed: Record<string, boolean>;
+    mediaMetadata: Record<string, any>;
+  }
+): { compatible: boolean; reasonKey: string | null } {
+  if (entry.kind === 'directory') {
+    return {
+      compatible: false,
+      reasonKey: 'videoEditor.fileManager.compatibility.folderUnsupportedForTimeline',
+    };
+  }
+
+  const mediaType = getMediaTypeFromFilename(entry.name);
+  if (mediaType !== 'video' && mediaType !== 'audio' && mediaType !== 'image' && mediaType !== 'text') {
+    return {
+      compatible: false,
+      reasonKey: 'videoEditor.fileManager.compatibility.formatUnsupported',
+    };
+  }
+
+  if (entry.path) {
+    const isRemote = entry.path.startsWith('/remote') || (entry as any).source === 'remote';
+    const isExternal = entry.path.startsWith('/') || /^[A-Za-z]:[\\/]/.test(entry.path);
+    const cacheKey = (isRemote || isExternal) ? `external:${entry.path}` : entry.path;
+
+    if (mediaStore?.metadataLoadFailed?.[cacheKey]) {
+      return {
+        compatible: false,
+        reasonKey: 'videoEditor.fileManager.compatibility.corrupt',
+      };
+    }
+
+    const meta = mediaStore?.mediaMetadata?.[cacheKey];
+    if (meta) {
+      if (meta.error) {
+        return {
+          compatible: false,
+          reasonKey: 'videoEditor.fileManager.compatibility.corrupt',
+        };
+      }
+      if (mediaType === 'image') {
+        const ext = entry.name.split('.').pop()?.toLowerCase() ?? '';
+        const BROWSER_NATIVE_IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'];
+        if (meta.image?.canDisplay === false) {
+          return {
+            compatible: false,
+            reasonKey: BROWSER_NATIVE_IMAGE_EXTENSIONS.includes(ext)
+              ? 'videoEditor.fileManager.compatibility.corrupt'
+              : 'videoEditor.fileManager.compatibility.formatUnsupported',
+          };
+        }
+      } else if (mediaType === 'video') {
+        if (meta.video?.canDecode === false) {
+          return {
+            compatible: false,
+            reasonKey: 'videoEditor.fileManager.compatibility.videoCodecUnsupported',
+          };
+        }
+        if (meta.audio?.canDecode === false) {
+          return {
+            compatible: false,
+            reasonKey: 'videoEditor.fileManager.compatibility.audioCodecUnsupported',
+          };
+        }
+      } else if (mediaType === 'audio') {
+        if (meta.audio?.canDecode === false) {
+          return {
+            compatible: false,
+            reasonKey: 'videoEditor.fileManager.compatibility.audioCodecUnsupported',
+          };
+        }
+      }
+    }
+  }
+
+  return { compatible: true, reasonKey: null };
 }

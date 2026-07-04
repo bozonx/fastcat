@@ -106,8 +106,9 @@ no stable hook:
 pnpm test:e2e
 # Smoke tier only:
 pnpm test:e2e:smoke
-# A single spec, reusing a running dev server:
-PLAYWRIGHT_REUSE_SERVER=1 pnpm exec playwright test --project=e2e test/e2e/web/timeline-trim.spec.ts
+# A single spec (needs a built .output/public; Playwright's webServer starts the
+# static preview server itself and reuses one already running on the port):
+pnpm build && pnpm exec playwright test --project=e2e test/e2e/web/timeline-trim.spec.ts
 ```
 
 Chromium only (web decode + WebGPU flags). Export and playback specs are the

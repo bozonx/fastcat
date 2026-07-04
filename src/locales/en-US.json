@@ -1386,6 +1386,7 @@
         "checking": "Checking file",
         "corrupt": "Corrupt file",
         "corruptTitle": "This file is corrupt or unsupported",
+        "folderUnsupportedForTimeline": "Folders cannot be dragged to the timeline",
         "formatUnsupported": "File format is not recognized or not supported",
         "imageFormatUnsupported": "Image format is not supported by this browser",
         "unsupported": "Not supported",

@@ -6,6 +6,7 @@ import {
   isAudioUndecodable,
   isImageUndisplayable,
   isVideoUndecodable,
+  checkFileTimelineCompatibility,
 } from '~/utils/media/compatibility';
 
 describe('media compatibility predicates', () => {
@@ -136,5 +137,51 @@ describe('computeMediaCompatibilityStatus', () => {
         meta: { image: { canDisplay: true } },
       }),
     ).toBe('ok');
+  });
+});
+
+describe('checkFileTimelineCompatibility', () => {
+  const mediaStore = {
+    metadataLoadFailed: {},
+    mediaMetadata: {},
+  };
+
+  it('rejects directories', () => {
+    const res = checkFileTimelineCompatibility({ kind: 'directory', name: 'Folder', path: 'Folder' }, mediaStore);
+    expect(res.compatible).toBe(false);
+    expect(res.reasonKey).toBe('videoEditor.fileManager.compatibility.folderUnsupportedForTimeline');
+  });
+
+  it('rejects unknown format files', () => {
+    const res = checkFileTimelineCompatibility({ kind: 'file', name: 'archive.zip', path: 'archive.zip' }, mediaStore);
+    expect(res.compatible).toBe(false);
+    expect(res.reasonKey).toBe('videoEditor.fileManager.compatibility.formatUnsupported');
+  });
+
+  it('accepts compatible video files', () => {
+    const res = checkFileTimelineCompatibility({ kind: 'file', name: 'video.mp4', path: 'video.mp4' }, mediaStore);
+    expect(res.compatible).toBe(true);
+  });
+
+  it('rejects corrupt files (metadata load failed)', () => {
+    const customStore = {
+      metadataLoadFailed: { 'video.mp4': true },
+      mediaMetadata: {},
+    };
+    const res = checkFileTimelineCompatibility({ kind: 'file', name: 'video.mp4', path: 'video.mp4' }, customStore);
+    expect(res.compatible).toBe(false);
+    expect(res.reasonKey).toBe('videoEditor.fileManager.compatibility.corrupt');
+  });
+
+  it('rejects files with undecodable codecs', () => {
+    const customStore = {
+      metadataLoadFailed: {},
+      mediaMetadata: {
+        'video.mp4': { video: { canDecode: false } }
+      },
+    };
+    const res = checkFileTimelineCompatibility({ kind: 'file', name: 'video.mp4', path: 'video.mp4' }, customStore);
+    expect(res.compatible).toBe(false);
+    expect(res.reasonKey).toBe('videoEditor.fileManager.compatibility.videoCodecUnsupported');
   });
 });

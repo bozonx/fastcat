@@ -40,29 +40,6 @@ async function findAvailablePort(startPort) {
   throw new Error(`Unable to find a free port starting from ${startPort}`);
 }
 
-async function waitForServer(url, timeoutMs = 120_000) {
-  const start = Date.now();
-
-  while (Date.now() - start < timeoutMs) {
-    try {
-      const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), 5_000);
-      const res = await fetch(url, { signal: ctrl.signal });
-      clearTimeout(timer);
-
-      if (res.ok || res.status > 0) {
-        return;
-      }
-    } catch {
-      // Server is not ready yet.
-    }
-
-    await new Promise((resolve) => setTimeout(resolve, 1_000));
-  }
-
-  throw new Error(`Server at ${url} did not start within ${timeoutMs}ms`);
-}
-
 function hashBuildInputs() {
   const hash = createHash('sha256');
   const root = process.cwd();
@@ -156,65 +133,9 @@ async function main() {
 
   runBuild(e2ePort);
 
-  const preview = spawn(
-    'node',
-    [
-      'scripts/static-preview-server.mjs',
-      '--host',
-      e2eHost,
-      '--port',
-      String(e2ePort),
-      '--root',
-      '.output/public',
-    ],
-    {
-      cwd: process.cwd(),
-      stdio: 'inherit',
-      env: {
-        ...process.env,
-        E2E_HOST: e2eHost,
-        E2E_PORT: String(e2ePort),
-        E2E_BASE_URL: baseURL,
-        E2E_TEST: '1',
-      },
-    },
-  );
-
-  let cleanedUp = false;
-
-  const cleanup = () => {
-    if (cleanedUp) {
-      return;
-    }
-
-    cleanedUp = true;
-
-    if (!preview.killed) {
-      preview.kill('SIGTERM');
-    }
-  };
-
-  process.on('SIGINT', () => {
-    cleanup();
-    process.exit(130);
-  });
-
-  process.on('SIGTERM', () => {
-    cleanup();
-    process.exit(143);
-  });
-
-  preview.on('exit', (code) => {
-    if (!cleanedUp) {
-      console.error(
-        `Preview server exited before Playwright finished with code ${code ?? 'unknown'}`,
-      );
-      process.exit(code ?? 1);
-    }
-  });
-
-  await waitForServer(baseURL);
-
+  // Hand the chosen port + built bundle to Playwright and let its own
+  // `webServer` (playwright.config.ts) start, readiness-poll and tear down the
+  // static preview server. This script owns only build + port selection.
   const playwright = spawn('pnpm', ['exec', 'playwright', ...playwrightArgs], {
     cwd: process.cwd(),
     stdio: 'inherit',
@@ -224,12 +145,10 @@ async function main() {
       E2E_PORT: String(e2ePort),
       E2E_BASE_URL: baseURL,
       E2E_TEST: '1',
-      PLAYWRIGHT_SKIP_WEBSERVER: '1',
     },
   });
 
   playwright.on('exit', (code) => {
-    cleanup();
     process.exit(code ?? 1);
   });
 }

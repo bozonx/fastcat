@@ -18,6 +18,9 @@
  * Only one internal drag can be active at a time (module-level singleton).
  */
 import { elementFromPoint } from '~/utils/browser-api';
+import { isOpenableProjectFileName, getMediaTypeFromFilename } from '~/utils/media-types';
+import { useProjectStore } from '~/stores/project.store';
+import type { FsEntry } from '~/types/fs';
 import type {
   DndDragContext,
   DndDropZoneHandlers,
@@ -45,6 +48,17 @@ import { createDevLogger } from '~/utils/dev-logger';
 import { isTauriRuntime } from '~/utils/runtime';
 
 const log = createDevLogger('pointerDnd');
+type PanelDropPosition = 'left' | 'right' | 'top' | 'bottom';
+
+const PANEL_DROP_EDGE_CLASS_BY_POSITION: Record<PanelDropPosition, string> = {
+  left: 'fastcat-panel-drop-edge-left',
+  right: 'fastcat-panel-drop-edge-right',
+  top: 'fastcat-panel-drop-edge-top',
+  bottom: 'fastcat-panel-drop-edge-bottom',
+};
+const PANEL_DROP_EDGE_CLASSES = Object.values(PANEL_DROP_EDGE_CLASS_BY_POSITION);
+
+let highlightedPanelDropEl: HTMLElement | null = null;
 
 // Opt-in tracing for hard-to-reproduce drag glitches. Enable in the console with
 // `localStorage.fastcatDndDebug = '1'` (and reload), then reproduce the gesture;
@@ -122,6 +136,88 @@ function buildContext(zoneId: string, targetEl: Element | null): DndDragContext 
   };
 }
 
+function getOpenableFileManagerItems(payload: DndPayload): FsEntry[] {
+  if (payload.source !== 'file-manager') return [];
+
+  const data = payload.data as { items?: FsEntry[]; primaryEntry?: FsEntry };
+  const items = data.items ?? (data.primaryEntry ? [data.primaryEntry] : []);
+
+  return items.filter(
+    (item) => item.kind === 'file' && item.name && isOpenableProjectFileName(item.name),
+  );
+}
+
+function getPanelDropPosition(
+  rect: DOMRect,
+  clientX: number,
+  clientY: number,
+): PanelDropPosition | null {
+  const distLeft = clientX - rect.left;
+  const distRight = rect.right - clientX;
+  const distTop = clientY - rect.top;
+  const distBottom = rect.bottom - clientY;
+  const minDist = Math.min(distLeft, distRight, distTop, distBottom);
+  const threshold = Math.min(rect.width * 0.15, rect.height * 0.15, 60);
+
+  if (minDist > threshold) return null;
+  if (minDist === distLeft) return 'left';
+  if (minDist === distRight) return 'right';
+  if (minDist === distTop) return 'top';
+  return 'bottom';
+}
+
+function resolveOpenPanelDropTarget(
+  targetEl: Element | null,
+  clientX: number,
+  clientY: number,
+): { panelEl: HTMLElement; panelId: string; position: PanelDropPosition } | null {
+  const panelEl = targetEl?.closest?.('[data-panel-id]') as HTMLElement | null;
+  const panelId = panelEl?.getAttribute('data-panel-id') ?? '';
+  if (!panelEl || !panelId) return null;
+
+  const position = getPanelDropPosition(panelEl.getBoundingClientRect(), clientX, clientY);
+  if (!position) return null;
+
+  return { panelEl, panelId, position };
+}
+
+function clearPanelDropHighlight(): void {
+  if (!highlightedPanelDropEl) return;
+  highlightedPanelDropEl.classList.remove(...PANEL_DROP_EDGE_CLASSES);
+  highlightedPanelDropEl = null;
+}
+
+function setPanelDropHighlight(
+  target: { panelEl: HTMLElement; position: PanelDropPosition } | null,
+): void {
+  if (!target) {
+    clearPanelDropHighlight();
+    return;
+  }
+
+  if (highlightedPanelDropEl && highlightedPanelDropEl !== target.panelEl) {
+    clearPanelDropHighlight();
+  }
+
+  highlightedPanelDropEl = target.panelEl;
+  target.panelEl.classList.remove(...PANEL_DROP_EDGE_CLASSES);
+  target.panelEl.classList.add(PANEL_DROP_EDGE_CLASS_BY_POSITION[target.position]);
+}
+
+function updateFileManagerPanelOperation(
+  payload: DndPayload,
+  targetEl: Element | null,
+  clientX: number,
+  clientY: number,
+): void {
+  if (payload.source !== 'file-manager') return;
+
+  const hasOpenableFile = getOpenableFileManagerItems(payload).length > 0;
+  const target = hasOpenableFile ? resolveOpenPanelDropTarget(targetEl, clientX, clientY) : null;
+  setPanelDropHighlight(target);
+  setDndOperation(target ? 'open-panel' : 'cancel');
+}
+
 function zoneAccepts(handlers: DndDropZoneHandlers | null, payload: DndPayload): boolean {
   if (!handlers) return false;
   if (!handlers.canAccept) return true;
@@ -183,12 +279,22 @@ function dispatchMove() {
         x: clientX,
         y: clientY,
       });
-      setDndOperation('none');
+      if (drag.payload.source === 'file-manager') {
+        updateFileManagerPanelOperation(drag.payload, targetEl, clientX, clientY);
+      } else {
+        clearPanelDropHighlight();
+        setDndOperation('none');
+      }
     }
   }
 
   if (nextZoneId) {
+    clearPanelDropHighlight();
     getDndZone(nextZoneId)?.onOver?.(buildContext(nextZoneId, targetEl));
+  } else if (drag.payload.source === 'file-manager') {
+    updateFileManagerPanelOperation(drag.payload, targetEl, clientX, clientY);
+  } else {
+    clearPanelDropHighlight();
   }
 }
 
@@ -253,6 +359,7 @@ function teardown(info: { dropped: boolean; cancelled: boolean; nativeTakeover?:
 
   // Reset visual/global state before notifying the source so the cursor never
   // lingers even if the source callback throws.
+  clearPanelDropHighlight();
   endDndState();
 
   // Run the source's cleanup (which clears the eagerly-set drag state:
@@ -316,6 +423,24 @@ function onWindowPointerMove(e: PointerEvent) {
   scheduleDispatchMove();
 }
 
+function handleOpenFileAsPanelDrop(
+  entry: FsEntry,
+  target: { panelId: string; position: PanelDropPosition },
+) {
+  try {
+    const projectStore = useProjectStore();
+    const type = getMediaTypeFromFilename(entry.name);
+
+    if (type === 'text') {
+      projectStore.addTextPanel(entry.path || '', entry.name, target.panelId, target.position);
+    } else if (type === 'video' || type === 'audio' || type === 'image') {
+      projectStore.addMediaPanel(entry, type, entry.name, target.panelId, target.position);
+    }
+  } catch (err) {
+    log.error('Failed to open file as panel on drop', err);
+  }
+}
+
 function onWindowPointerUp(e: PointerEvent) {
   const drag = activeDrag;
   if (!drag || e.pointerId !== drag.pointerId) return;
@@ -340,6 +465,15 @@ function onWindowPointerUp(e: PointerEvent) {
       dropped = true;
       // Fire-and-forget: async drop work must not block teardown (cursor reset).
       void Promise.resolve(handlers.onDrop(buildContext(zoneId, targetEl))).catch(() => {});
+    }
+  } else if (drag.payload.source === 'file-manager') {
+    const target = resolveOpenPanelDropTarget(targetEl, e.clientX, e.clientY);
+
+    if (target) {
+      for (const item of getOpenableFileManagerItems(drag.payload)) {
+        dropped = true;
+        handleOpenFileAsPanelDrop(item, target);
+      }
     }
   }
 

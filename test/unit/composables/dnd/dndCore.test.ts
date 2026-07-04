@@ -18,8 +18,17 @@ import {
 } from '~/composables/dnd/dndRegistry';
 
 import { armPointerDnd, resetPointerDndForTest } from '~/composables/dnd/usePointerDnd';
-import { isDndActive } from '~/composables/dnd/dndState';
+import { isDndActive, useDndState } from '~/composables/dnd/dndState';
 import type { DndPayload } from '~/composables/dnd/dndTypes';
+
+const mockProjectStore = vi.hoisted(() => ({
+  addTextPanel: vi.fn(),
+  addMediaPanel: vi.fn(),
+}));
+
+vi.mock('~/stores/project.store', () => ({
+  useProjectStore: () => mockProjectStore,
+}));
 
 // elementFromPoint is mocked so the engine's hit-test is deterministic.
 // (vi.mock is hoisted above all imports by vitest, so order here is cosmetic.)
@@ -143,6 +152,8 @@ describe('usePointerDnd engine', () => {
     resetPointerDndForTest();
     tauriRuntime = false;
     currentHit = null;
+    mockProjectStore.addTextPanel.mockClear();
+    mockProjectStore.addMediaPanel.mockClear();
     captureEl.setPointerCapture.mockClear();
     captureEl.releasePointerCapture.mockClear();
     // Run scheduled rAF callbacks synchronously for deterministic dispatch.
@@ -159,6 +170,27 @@ describe('usePointerDnd engine', () => {
   });
 
   const payload: DndPayload = { source: 'file-manager', data: { path: '/a.mp4' } };
+
+  function createPanelDropElement() {
+    const panel = document.createElement('div');
+    panel.className = 'panel-focus-frame';
+    panel.setAttribute('data-panel-id', 'panel-2');
+    panel.getBoundingClientRect = () =>
+      ({
+        left: 0,
+        top: 0,
+        right: 100,
+        bottom: 100,
+        width: 100,
+        height: 100,
+      }) as DOMRect;
+
+    const child = document.createElement('div');
+    panel.appendChild(child);
+    document.body.appendChild(panel);
+
+    return { panel, child };
+  }
 
   it('commits on movement past threshold, dispatches enter/over, then drop, and resets', () => {
     const onEnter = vi.fn();
@@ -335,5 +367,67 @@ describe('usePointerDnd engine', () => {
     dispatch('pointerup', 20, 0);
 
     expect(onDrop).not.toHaveBeenCalled();
+  });
+
+  it('opens a dragged file as a panel only when dropped on a panel edge', () => {
+    const dndState = useDndState();
+    const { panel, child } = createPanelDropElement();
+    currentHit = child;
+
+    const filePayload: DndPayload = {
+      source: 'file-manager',
+      data: {
+        primaryEntry: { kind: 'file', name: 'clip.mp4', path: 'media/clip.mp4' },
+        items: [{ kind: 'file', name: 'clip.mp4', path: 'media/clip.mp4' }],
+      },
+    };
+
+    armPointerDnd(armEvent({ x: 0, y: 0 }), { payload: filePayload });
+    dispatch('pointermove', 10, 50);
+
+    expect(dndState.operation.value).toBe('open-panel');
+    expect(panel.classList.contains('fastcat-panel-drop-edge-left')).toBe(true);
+
+    dispatch('pointerup', 10, 50);
+
+    expect(mockProjectStore.addMediaPanel).toHaveBeenCalledWith(
+      { kind: 'file', name: 'clip.mp4', path: 'media/clip.mp4' },
+      'video',
+      'clip.mp4',
+      'panel-2',
+      'left',
+    );
+    expect(panel.classList.contains('fastcat-panel-drop-edge-left')).toBe(false);
+  });
+
+  it('marks the panel center as unavailable for file-to-panel drops', () => {
+    const dndState = useDndState();
+    const { panel, child } = createPanelDropElement();
+    currentHit = child;
+
+    const filePayload: DndPayload = {
+      source: 'file-manager',
+      data: {
+        primaryEntry: { kind: 'file', name: 'clip.mp4', path: 'media/clip.mp4' },
+        items: [{ kind: 'file', name: 'clip.mp4', path: 'media/clip.mp4' }],
+      },
+    };
+
+    armPointerDnd(armEvent({ x: 0, y: 0 }), { payload: filePayload });
+    dispatch('pointermove', 50, 50);
+
+    expect(dndState.operation.value).toBe('cancel');
+    expect(
+      [
+        'fastcat-panel-drop-edge-left',
+        'fastcat-panel-drop-edge-right',
+        'fastcat-panel-drop-edge-top',
+        'fastcat-panel-drop-edge-bottom',
+      ].some((className) => panel.classList.contains(className)),
+    ).toBe(false);
+
+    dispatch('pointerup', 50, 50);
+
+    expect(mockProjectStore.addMediaPanel).not.toHaveBeenCalled();
   });
 });

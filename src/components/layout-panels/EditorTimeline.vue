@@ -9,6 +9,8 @@ import { useProjectStore } from '~/stores/project.store';
 import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useDraggedFile } from '~/composables/useDraggedFile';
+import { useMediaStore } from '~/stores/media.store';
+import { checkFileTimelineCompatibility } from '~/utils/media/compatibility';
 
 import type {
   TextClipStyle,
@@ -58,6 +60,7 @@ const timelineSettingsStore = useTimelineSettingsStore();
 const projectStore = useProjectStore();
 const selectionStore = useSelectionStore();
 const uiStore = useUiStore();
+const mediaStore = useMediaStore();
 const runtimeConfig = useRuntimeConfig();
 const { draggedFile } = useDraggedFile();
 
@@ -836,6 +839,15 @@ function onTimelineDndOver(ctx: DndDragContext) {
     clearDragPreview();
     return;
   }
+  if (ctx.payload.source === 'file-manager') {
+    const items = (ctx.payload.data as any)?.items || [];
+    const hasIncompatible = items.some((item: any) => !checkFileTimelineCompatibility(item, mediaStore).compatible);
+    if (hasIncompatible) {
+      ctx.setOperation('cancel');
+      clearDragPreview();
+      return;
+    }
+  }
   const trackEl = trackElUnderPointer(ctx.pointer.clientX, ctx.pointer.clientY);
   const trackId = trackEl?.dataset.trackId;
   if (!trackEl || !trackId) {
@@ -853,6 +865,23 @@ function onTimelineDndLeave() {
 
 async function onTimelineDndDrop(ctx: DndDragContext) {
   if (timelineStore.previewMode) return;
+
+  if (ctx.payload.source === 'file-manager') {
+    const items = (ctx.payload.data as any)?.items || [];
+    for (const item of items) {
+      const compat = checkFileTimelineCompatibility(item, mediaStore);
+      if (!compat.compatible) {
+        const errorMsg = compat.reasonKey ? t(compat.reasonKey) : t('common.error');
+        toast.add({
+          color: 'error',
+          title: t('common.error'),
+          description: errorMsg,
+          icon: 'i-heroicons-x-circle',
+        });
+        return;
+      }
+    }
+  }
 
   // file-manager carries its descriptor in `draggedFile`; toolbar/library
   // sources carry the full virtual-clip/library descriptor in the payload.

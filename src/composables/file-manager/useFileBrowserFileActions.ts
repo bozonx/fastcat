@@ -7,6 +7,7 @@ import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 import { getMediaTypeFromFilename, isOpenableProjectFileName } from '~/utils/media-types';
 import type { FileAction as ContextMenuFileAction } from '~/composables/file-manager/useFileContextMenu';
 import type { FileAction as FmFileAction } from '~/composables/file-manager/useFileManagerActions';
+import { triggerBrowserFileDownload } from '~/utils/browser-download';
 
 export function useFileBrowserFileActions({
   folderEntries,
@@ -157,6 +158,31 @@ export function useFileBrowserFileActions({
 
     if (action === 'paste') {
       await onFileActionBase('paste', entry);
+      return;
+    }
+
+    if (action === 'download') {
+      if (entry.kind !== 'file' || !entry.path) return;
+      const toast = useToast();
+      const { t } = useI18n();
+      try {
+        const file = await vfs.getFile(entry.path);
+        if (!file) {
+          toast.add({
+            title: t('videoEditor.fileManager.actions.downloadFileFailed'),
+            color: 'error',
+          });
+          return;
+        }
+        triggerBrowserFileDownload(file, entry.name);
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.error('Failed to download file', e);
+        toast.add({
+          title: t('videoEditor.fileManager.actions.downloadFileFailed'),
+          color: 'error',
+        });
+      }
       return;
     }
 

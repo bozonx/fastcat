@@ -23,6 +23,7 @@ import {
   saveGoldenRegistry,
 } from '../test/golden-helpers/golden-compare';
 import { loadAllScenes } from '../test/golden-helpers/scene-loader';
+import { staticPreviewServerArgs, waitForServer } from './lib/preview-server.mjs';
 
 const E2E_HOST = process.env.E2E_HOST ?? '127.0.0.1';
 const E2E_PORT = Number(process.env.E2E_PORT ?? 37107);
@@ -70,23 +71,6 @@ function parseArgs(args: string[]): GenerateOptions {
  * Poll a URL until it responds or timeout is reached.
  * Uses AbortController to avoid hanging on slow SSR compilation.
  */
-async function waitForServer(url: string, timeoutMs = 120_000): Promise<void> {
-  const start = Date.now();
-  while (Date.now() - start < timeoutMs) {
-    try {
-      const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), 5000);
-      const res = await fetch(url, { signal: ctrl.signal });
-      clearTimeout(timer);
-      if (res.ok || res.status > 0) return;
-    } catch {
-      // server not ready yet or fetch failed
-    }
-    await new Promise((r) => setTimeout(r, 1000));
-  }
-  throw new Error(`Server at ${url} did not start within ${timeoutMs}ms`);
-}
-
 /**
  * Start a preview server if no server is already running at BASE_URL.
  * Returns the child process so the caller can kill it on exit.
@@ -118,23 +102,11 @@ async function ensurePreviewServer(): Promise<ChildProcess | null> {
   }
 
   console.log(`  Starting preview server on ${E2E_HOST}:${E2E_PORT}...`);
-  const proc = spawn(
-    'node',
-    [
-      'scripts/static-preview-server.mjs',
-      '--host',
-      E2E_HOST,
-      '--port',
-      String(E2E_PORT),
-      '--root',
-      '.output/public',
-    ],
-    {
-      cwd: process.cwd(),
-      stdio: 'pipe',
-      env: { ...process.env, E2E_HOST, E2E_PORT: String(E2E_PORT), E2E_TEST: '1' },
-    },
-  );
+  const proc = spawn('node', staticPreviewServerArgs({ host: E2E_HOST, port: E2E_PORT }), {
+    cwd: process.cwd(),
+    stdio: 'pipe',
+    env: { ...process.env, E2E_HOST, E2E_PORT: String(E2E_PORT), E2E_TEST: '1' },
+  });
 
   proc.stdout?.on('data', (data: Buffer) => {
     const line = data.toString().trim();
