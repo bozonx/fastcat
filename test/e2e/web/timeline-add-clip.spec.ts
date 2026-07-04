@@ -61,7 +61,9 @@ test.describe('Web timeline add clip', () => {
     const { uiPath } = await seedProjectMedia(page, e2eProject, MEDIA_FIXTURES.audio.wav, 'audio');
     const videoTrackId = (await trackIds(page))[0];
 
-    await addFileToTrack(page, uiPath, videoTrackId);
+    await expect(addFileToTrack(page, uiPath, videoTrackId)).rejects.toThrow(
+      'Only video sources can be added to video tracks',
+    );
 
     const doc = await readTimelineDoc(page, e2eProject);
     expect(doc.allClips).toHaveLength(0);
@@ -71,7 +73,9 @@ test.describe('Web timeline add clip', () => {
     const { uiPath } = await seedProjectMedia(page, e2eProject, MEDIA_FIXTURES.image.jpg, 'image');
     const audioTrackId = (await trackIds(page)).at(-1)!;
 
-    await addFileToTrack(page, uiPath, audioTrackId);
+    await expect(addFileToTrack(page, uiPath, audioTrackId)).rejects.toThrow(
+      'Images cannot be added to audio tracks',
+    );
 
     const doc = await readTimelineDoc(page, e2eProject);
     expect(doc.allClips).toHaveLength(0);

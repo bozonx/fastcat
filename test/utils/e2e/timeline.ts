@@ -59,6 +59,19 @@ async function requireBox(locator: Locator, what: string): Promise<Box> {
   return box;
 }
 
+async function waitForTimelineHook(page: Page, hookName: string): Promise<void> {
+  await expect
+    .poll(
+      () =>
+        page.evaluate(
+          (name) => typeof (window as Window & Record<string, unknown>)[name] === 'function',
+          hookName,
+        ),
+      { timeout: 10_000 },
+    )
+    .toBe(true);
+}
+
 /**
  * Fits the timeline zoom so the clip(s) are wide enough for reliable pointer
  * gestures. This is a real user action (the "zoom to fit" hotkey), not a
@@ -84,6 +97,7 @@ export async function dragClipBy(
   clipId: string,
   deltaUs: { x: number },
 ): Promise<void> {
+  await waitForTimelineHook(page, '__fastcatE2eMoveClip');
   await page.evaluate(
     async (params) => {
       const fn = (
@@ -107,6 +121,7 @@ export async function moveClipToTrack(
   clipId: string,
   toTrackId: string,
 ): Promise<void> {
+  await waitForTimelineHook(page, '__fastcatE2eMoveClipToTrack');
   await page.evaluate(
     async (params) => {
       const fn = (
@@ -137,6 +152,7 @@ export async function trimClipEdge(
   edge: 'start' | 'end',
   deltaUs: number,
 ): Promise<void> {
+  await waitForTimelineHook(page, '__fastcatE2eTrimClip');
   await page.evaluate(
     async (params) => {
       const fn = (
@@ -166,6 +182,7 @@ export async function addFileToTrack(
   entryPath: string,
   trackId: string,
 ): Promise<void> {
+  await waitForTimelineHook(page, '__fastcatE2eAddProjectFileToTrack');
   await page.evaluate(
     async ({ path, trackId: targetTrackId }) => {
       const fn = (
@@ -194,6 +211,7 @@ export async function redoTimeline(page: Page): Promise<void> {
 }
 
 export async function setCurrentTimeUs(page: Page, us: number): Promise<void> {
+  await waitForTimelineHook(page, '__fastcatE2eSetCurrentTimeUs');
   await page.evaluate(
     async ({ us: targetUs }) => {
       const setTime = (
@@ -209,6 +227,7 @@ export async function setCurrentTimeUs(page: Page, us: number): Promise<void> {
 }
 
 export async function splitClipAtPlayhead(page: Page): Promise<void> {
+  await waitForTimelineHook(page, '__fastcatE2eSplitClipAtPlayhead');
   await page.evaluate(async () => {
     const split = (window as Window & { __fastcatE2eSplitClipAtPlayhead?: () => Promise<void> })
       .__fastcatE2eSplitClipAtPlayhead;
@@ -218,6 +237,7 @@ export async function splitClipAtPlayhead(page: Page): Promise<void> {
 }
 
 export async function selectTimelineClipsById(page: Page, itemIds: string[]): Promise<void> {
+  await waitForTimelineHook(page, '__fastcatE2eSelectTimelineItems');
   await page.evaluate(
     async ({ itemIds: ids }) => {
       const select = (
@@ -233,6 +253,7 @@ export async function selectTimelineClipsById(page: Page, itemIds: string[]): Pr
 }
 
 export async function getSelectedItemIds(page: Page): Promise<string[]> {
+  await waitForTimelineHook(page, '__fastcatE2eGetSelectedItemIds');
   return page.evaluate(async () => {
     const getSelected = (
       window as Window & { __fastcatE2eGetSelectedItemIds?: () => Promise<string[]> }
@@ -243,6 +264,7 @@ export async function getSelectedItemIds(page: Page): Promise<string[]> {
 }
 
 export async function deleteSelectedItems(page: Page): Promise<void> {
+  await waitForTimelineHook(page, '__fastcatE2eDeleteSelectedItems');
   await page.evaluate(async () => {
     const del = (window as Window & { __fastcatE2eDeleteSelectedItems?: () => Promise<void> })
       .__fastcatE2eDeleteSelectedItems;
@@ -255,6 +277,7 @@ export async function updateClipProperties(
   page: Page,
   params: { itemId: string; properties: Record<string, unknown> },
 ): Promise<void> {
+  await waitForTimelineHook(page, '__fastcatE2eUpdateClipProperties');
   await page.evaluate(
     async ({ itemId, properties }) => {
       const update = (
@@ -273,6 +296,7 @@ export async function updateClipProperties(
 }
 
 export async function saveTimeline(page: Page): Promise<void> {
+  await waitForTimelineHook(page, '__fastcatE2eSaveTimeline');
   await page.evaluate(async () => {
     const save = (window as Window & { __fastcatE2eSaveTimeline?: () => Promise<void> })
       .__fastcatE2eSaveTimeline;
@@ -282,6 +306,7 @@ export async function saveTimeline(page: Page): Promise<void> {
 }
 
 export async function setTimelineZoom(page: Page, zoom: number): Promise<void> {
+  await waitForTimelineHook(page, '__fastcatE2eSetTimelineZoom');
   await page.evaluate(async (z) => {
     const set = (
       window as Window & { __fastcatE2eSetTimelineZoom?: (p: { zoom: number }) => Promise<void> }
@@ -302,6 +327,7 @@ export async function getTimelineDocInfo(page: Page): Promise<{
     clipTypes: Array<string | undefined>;
   }>;
 }> {
+  await waitForTimelineHook(page, '__fastcatE2eGetTimelineDocInfo');
   return page.evaluate(() => {
     const getInfo = (
       window as Window & {
@@ -333,6 +359,7 @@ export async function addTextClipAtPlayhead(
   },
 ): Promise<string[]> {
   await setCurrentTimeUs(page, 0);
+  await waitForTimelineHook(page, '__fastcatE2eAddTextClip');
   return page.evaluate(async (input) => {
     const addText = (
       window as Window & {
