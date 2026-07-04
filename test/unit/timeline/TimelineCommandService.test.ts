@@ -328,6 +328,90 @@ describe('TimelineCommandService', () => {
       expect(deps.updateProjectFormat).toHaveBeenCalledWith({ sampleRate: 44100 });
       expect(deps.updateTimelineFormat).not.toHaveBeenCalled();
     });
+
+    it('sequentially resolves audio sampleRate first and video geometry second when dropped in order', async () => {
+      const projectState = {
+        width: 1920,
+        height: 1080,
+        fps: 30,
+        sampleRate: 48000,
+        isAutoSettings: true,
+        geometryResolved: false,
+        sampleRateResolved: false,
+      };
+
+      deps.getProjectSettings.mockImplementation(() => ({
+        project: projectState,
+      }));
+
+      deps.updateProjectFormat.mockImplementation((patch: Partial<typeof projectState>) => {
+        if (patch.width !== undefined && patch.height !== undefined) {
+          projectState.width = patch.width;
+          projectState.height = patch.height;
+          if (patch.fps !== undefined) projectState.fps = patch.fps;
+          projectState.geometryResolved = true;
+        }
+        if (patch.sampleRate !== undefined) {
+          projectState.sampleRate = patch.sampleRate;
+          projectState.sampleRateResolved = true;
+        }
+      });
+
+      // 1. Drop Audio-only file first
+      deps.getOrFetchMetadataByPath.mockResolvedValueOnce({
+        duration: 10,
+        audio: { sampleRate: 44100 },
+      });
+      deps.getFileByPath.mockResolvedValueOnce(new File([], 'music.mp3'));
+
+      await service.addClipToTimelineFromPath({
+        trackId: 'a1',
+        name: 'Music',
+        path: 'audio/music.mp3',
+      });
+
+      expect(deps.updateProjectFormat).toHaveBeenLastCalledWith({ sampleRate: 44100 });
+      expect(projectState.sampleRateResolved).toBe(true);
+      expect(projectState.geometryResolved).toBe(false);
+
+      // 2. Drop Video-only file second
+      deps.getOrFetchMetadataByPath.mockResolvedValueOnce({
+        duration: 5,
+        video: { width: 1280, height: 720, fps: 60, canDecode: true },
+      });
+      deps.getFileByPath.mockResolvedValueOnce(new File([], 'clip.mp4'));
+
+      await service.addClipToTimelineFromPath({
+        trackId: 'v1',
+        name: 'Clip',
+        path: 'video/clip.mp4',
+      });
+
+      expect(deps.updateProjectFormat).toHaveBeenLastCalledWith({
+        width: 1280,
+        height: 720,
+        fps: 60,
+      });
+      expect(projectState.geometryResolved).toBe(true);
+      expect(projectState.sampleRateResolved).toBe(true);
+      expect(projectState.sampleRate).toBe(44100);
+
+      // 3. Drop another Video file third - should NOT update project settings again
+      deps.updateProjectFormat.mockClear();
+      deps.getOrFetchMetadataByPath.mockResolvedValueOnce({
+        duration: 8,
+        video: { width: 1920, height: 1080, fps: 24, canDecode: true },
+      });
+      deps.getFileByPath.mockResolvedValueOnce(new File([], 'clip2.mp4'));
+
+      await service.addClipToTimelineFromPath({
+        trackId: 'v1',
+        name: 'Clip 2',
+        path: 'video/clip2.mp4',
+      });
+
+      expect(deps.updateProjectFormat).not.toHaveBeenCalled();
+    });
   });
 
   describe('circular dependencies', () => {

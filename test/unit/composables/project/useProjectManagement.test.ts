@@ -46,14 +46,25 @@ vi.mock('~/stores/project.store', () => ({
   useProjectStore: vi.fn(() => projectMock),
 }));
 
-const { mockReadLocalStorageString, mockWriteLocalStorageString } = vi.hoisted(() => ({
-  mockReadLocalStorageString: vi.fn().mockImplementation((key, fallback) => fallback),
-  mockWriteLocalStorageString: vi.fn(),
-}));
+const { mockReadLocalStorageString, mockWriteLocalStorageString, mockOpenDialog, mockInvokeTauri } =
+  vi.hoisted(() => ({
+    mockReadLocalStorageString: vi.fn().mockImplementation((key, fallback) => fallback),
+    mockWriteLocalStorageString: vi.fn(),
+    mockOpenDialog: vi.fn(),
+    mockInvokeTauri: vi.fn().mockResolvedValue(undefined),
+  }));
 
 vi.mock('~/stores/ui/uiLocalStorage', () => ({
   readLocalStorageString: mockReadLocalStorageString,
   writeLocalStorageString: mockWriteLocalStorageString,
+}));
+
+vi.mock('@tauri-apps/plugin-dialog', () => ({
+  open: mockOpenDialog,
+}));
+
+vi.mock('@tauri-apps/api/core', () => ({
+  invoke: mockInvokeTauri,
 }));
 
 describe('useProjectManagement', () => {
@@ -491,6 +502,74 @@ describe('useProjectManagement', () => {
       handleOpenProject('MyProject');
 
       expect(mockPush).toHaveBeenCalledWith('/m/editor/MyProject?view=edit');
+    });
+  });
+
+  describe('startForget and confirmForget', () => {
+    it('sets forget modal target and calls forgetProject on confirm', async () => {
+      const { startForget, confirmForget, forgetTargetProject, isForgetModalOpen } =
+        useProjectManagement();
+
+      startForget({ projectName: 'ExtProj', projectId: 'id-ext', projectPath: '/ext/ExtProj' });
+      expect(isForgetModalOpen.value).toBe(true);
+      expect(forgetTargetProject.value).toEqual({
+        projectName: 'ExtProj',
+        projectId: 'id-ext',
+        projectPath: '/ext/ExtProj',
+      });
+
+      await confirmForget();
+
+      expect(workspaceMock.forgetProject).toHaveBeenCalledWith({
+        name: 'ExtProj',
+        projectId: 'id-ext',
+        projectPath: '/ext/ExtProj',
+      });
+      expect(isForgetModalOpen.value).toBe(false);
+    });
+  });
+
+  describe('Tauri dialog helpers', () => {
+    it('selectProjectLocation opens directory picker and invokes allow_path_scope', async () => {
+      mockOpenDialog.mockResolvedValueOnce('/custom/projects/dir');
+      const { selectProjectLocation, projectCreationSettings } = useProjectManagement();
+
+      await selectProjectLocation();
+
+      expect(mockOpenDialog).toHaveBeenCalledWith(
+        expect.objectContaining({ directory: true, multiple: false }),
+      );
+      expect(mockInvokeTauri).toHaveBeenCalledWith('allow_path_scope', {
+        path: '/custom/projects/dir',
+      });
+      expect(projectCreationSettings.value.location).toBe('/custom/projects/dir');
+    });
+
+    it('selectDuplicateLocation opens directory picker and updates location', async () => {
+      mockOpenDialog.mockResolvedValueOnce('/custom/dup/dir');
+      const { selectDuplicateLocation, duplicateLocation } = useProjectManagement();
+
+      await selectDuplicateLocation();
+
+      expect(mockOpenDialog).toHaveBeenCalledWith(
+        expect.objectContaining({ directory: true, multiple: false }),
+      );
+      expect(mockInvokeTauri).toHaveBeenCalledWith('allow_path_scope', {
+        path: '/custom/dup/dir',
+      });
+      expect(duplicateLocation.value).toBe('/custom/dup/dir');
+    });
+
+    it('openProjectFromDisk opens directory picker and calls handleOpenProject', async () => {
+      mockOpenDialog.mockResolvedValueOnce('/ext/projects/ExternalProject');
+      const { openProjectFromDisk } = useProjectManagement();
+
+      await openProjectFromDisk();
+
+      expect(mockOpenDialog).toHaveBeenCalledWith(
+        expect.objectContaining({ directory: true, multiple: false }),
+      );
+      expect(mockPush).toHaveBeenCalledWith('/editor/%2Fext%2Fprojects%2FExternalProject');
     });
   });
 });
