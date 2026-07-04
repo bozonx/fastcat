@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch, inject, toRef } from 'vue';
+import { computed, ref, watch, inject, toRef, type Ref } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useProjectTabsStore } from '~/stores/project-tabs.store';
@@ -17,7 +17,9 @@ import {
   isTimelineBlendMode,
 } from '~/utils/constants';
 import type {
+  AnimatableParamPath,
   AudioClipEffect,
+  ClipAnimations,
   ClipTransform,
   TimelineBlendMode,
   TimelineClipItem,
@@ -45,6 +47,7 @@ import { useClipTextProperties } from '~/composables/properties/useClipTextPrope
 import { useClipShapeProperties } from '~/composables/properties/useClipShapeProperties';
 import { useClipHudProperties } from '~/composables/properties/useClipHudProperties';
 import { useClipParametersClipboard } from '~/composables/editor/useClipParametersClipboard';
+import { useClipKeyframes } from '~/composables/timeline/useClipKeyframes';
 import ClipEffectsEditor from '~/components/effects/ClipEffectsEditor.vue';
 
 const props = defineProps<{
@@ -268,9 +271,26 @@ function handleUpdateDuration(val: number) {
   });
 }
 
+// Keyframe animation (v1: opacity + transform). The playhead-driven "current
+// value" and "record edit as keyframe" logic lives in the shared composable so
+// the timeline's keyframe lane and this panel stay in sync.
+const playheadUs = computed(() => timelineStore.currentTime) as Ref<number>;
+const clipKeyframes = useClipKeyframes({
+  clip: clipRef,
+  playheadUs,
+  updateAnimations: (next: ClipAnimations | undefined) => {
+    timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, { animations: next });
+  },
+});
+
 function handleUpdateOpacity(val: number) {
   const safe = typeof val === 'number' && Number.isFinite(val) ? val : 1;
+  if (clipKeyframes.recordValue('opacity', safe)) return;
   timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, { opacity: safe });
+}
+
+function handleToggleOpacityAnimation() {
+  clipKeyframes.toggleAnimated(['opacity']);
 }
 
 function handleUpdateBlendMode(val: TimelineBlendMode | string) {
@@ -283,6 +303,14 @@ function handleUpdateTransform(next: ClipTransform) {
     transform: next,
     transformActive: true,
   });
+}
+
+function handleToggleTransformParamAnimation(paths: AnimatableParamPath[]) {
+  clipKeyframes.toggleAnimated(paths);
+}
+
+function handleRecordAnimatedTransformValue(path: AnimatableParamPath, value: number) {
+  clipKeyframes.recordValue(path, value);
 }
 
 function handleUpdateMask(mask: unknown) {
@@ -594,8 +622,10 @@ defineExpose({
       <ClipOpacitySection
         v-model:enabled="isOpacityEnabled"
         :clip-type="clip.clipType"
-        :opacity="clip.opacity ?? 1"
+        :opacity="clipKeyframes.currentValue('opacity', clip.opacity ?? 1)"
+        :is-animated="clipKeyframes.isAnimated('opacity')"
         @update-opacity="handleUpdateOpacity"
+        @toggle-animation="handleToggleOpacityAnimation"
       />
 
       <ClipTransformSection
@@ -605,7 +635,11 @@ defineExpose({
         :can-edit-reversed="canEditReversed"
         :is-reversed="isReversed"
         :media-meta="mediaMeta"
+        :is-param-animated="clipKeyframes.isAnimated"
+        :get-animated-value="clipKeyframes.currentValue"
         @update-transform="handleUpdateTransform"
+        @toggle-param-animation="handleToggleTransformParamAnimation"
+        @record-animated-value="handleRecordAnimatedTransformValue"
         @update-source-orientation="
           (sourceOrientation) =>
             timelineStore.updateClipProperties(clip.trackId, clip.id, {

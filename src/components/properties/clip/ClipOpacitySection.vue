@@ -1,14 +1,17 @@
 <script setup lang="ts">
 import UiSliderInput from '~/components/ui/UiSliderInput.vue';
 import PropertySection from '~/components/properties/PropertySection.vue';
+import ClipAnimationStopwatchButton from './ClipAnimationStopwatchButton.vue';
 
 const props = defineProps<{
   clipType: string;
   opacity: number;
+  isAnimated: boolean;
 }>();
 
 const emit = defineEmits<{
   updateOpacity: [val: number];
+  toggleAnimation: [];
 }>();
 
 const { t } = useI18n();
@@ -24,6 +27,11 @@ const isEnabled = defineModel<boolean>('enabled', { default: true });
     has-toggle
   >
     <template #header-actions>
+      <ClipAnimationStopwatchButton
+        :active="isAnimated"
+        :disabled="!isEnabled"
+        @toggle="emit('toggleAnimation')"
+      />
       <button
         class="flex items-center gap-1 text-2xs text-ui-text-muted hover:text-ui-text disabled:opacity-50"
         :title="t('common.actions.reset')"

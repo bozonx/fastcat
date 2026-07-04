@@ -3,9 +3,11 @@ import { computed } from 'vue';
 import type { TimelineClipItem, TimelineTrack, TimelineTrackItem } from '~/timeline/types';
 import { timeUsToPx, zoomToPxPerSecond } from '~/utils/timeline/geometry';
 import { clipHasAudio, isAudio, isVideo } from '~/utils/timeline/clip';
+import { hasAnyAnimation } from '~/timeline/animation/evaluate';
 import TimelineClipPreviewOverlays from './TimelineClipPreviewOverlays.vue';
 import TimelineClipThumbnails from './TimelineClipThumbnails.vue';
 import TimelineAudioWaveform from './audio/TimelineAudioWaveform.vue';
+import TimelineClipKeyframeLane from './TimelineClipKeyframeLane.vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 
 const { t } = useI18n();
@@ -23,6 +25,8 @@ const KEYFRAME_DIAMOND_PATH = 'M12 2L2 12l10 10 10-10L12 2z';
 // The keyframes lane can only be shown when there is a content band below the
 // header to attach it to.
 const isKeyframesLaneVisible = computed(() => isKeyframesExpanded.value && !props.isHeaderOnly);
+
+const hasAnimatedParams = computed(() => hasAnyAnimation(props.clipItem?.animations));
 
 interface ClipPreviewOverlay {
   rangeStyle: Record<string, string>;
@@ -159,22 +163,22 @@ const props = defineProps<{
       />
     </div>
 
-    <!-- Collapsible Keyframes Block (placeholder lane) -->
+    <!-- Collapsible Keyframes Lane -->
     <div
       v-if="isKeyframesLaneVisible"
-      class="h-5 w-full bg-slate-950/85 border-t border-amber-500/40 px-1.5 flex items-center justify-between text-[10px] text-amber-200/90 shrink-0 select-none pointer-events-auto rounded-b"
+      class="h-5 w-full bg-slate-950/85 border-t border-amber-500/40 shrink-0 select-none pointer-events-auto rounded-b overflow-hidden"
       :style="{ zIndex: 'var(--z-clip-content)' }"
     >
-      <div class="flex items-center gap-1.5 min-w-0">
-        <span class="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0"></span>
-        <span class="truncate font-mono text-[9px] tracking-tight uppercase opacity-90">
-          {{ t('fastcat.timeline.keyframesLane') }}
+      <TimelineClipKeyframeLane
+        v-if="hasAnimatedParams && clipItem"
+        :clip="clipItem"
+        :track-id="track.id"
+        :zoom="zoom"
+      />
+      <div v-else class="h-full w-full flex items-center px-1.5 text-[10px] text-amber-200/60">
+        <span class="truncate font-mono text-[9px] tracking-tight uppercase opacity-80">
+          {{ t('fastcat.timeline.keyframesLaneEmptyHint') }}
         </span>
-      </div>
-      <div class="flex items-center gap-1 opacity-70 text-[9px]">
-        <svg class="w-2 h-2 fill-current text-amber-400" viewBox="0 0 24 24">
-          <path :d="KEYFRAME_DIAMOND_PATH" />
-        </svg>
       </div>
     </div>
   </div>

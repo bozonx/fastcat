@@ -161,6 +161,10 @@
     },
     "clip": {
       "actions": "Действия",
+      "animation": {
+        "stopwatchTitle": "Анимировать во времени",
+        "stopwatchTitleActive": "Анимировано — нажмите, чтобы удалить все ключи"
+      },
       "audio": {
         "balance": "Баланс",
         "volume": "Громкость"
@@ -828,7 +832,9 @@
       "hideWaveform": "Скрыть вейвформу",
       "hud": "HUD",
       "importFilesCount": "Импорт {count} файлов",
+      "keyframesDiamondHint": "перетащите для перемещения, дважды кликните для удаления",
       "keyframesLane": "Ключи анимации",
+      "keyframesLaneEmptyHint": "Нет анимированных параметров — используйте секундомер в свойствах",
       "keyframesTitle": "Ключи анимации",
       "lock": "Заблокировать",
       "lockClip": "Заблокировать клип",

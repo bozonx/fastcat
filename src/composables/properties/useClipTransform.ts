@@ -1,5 +1,6 @@
 import { computed, type Ref } from 'vue';
 import type {
+  AnimatableParamPath,
   ClipAnchorPreset,
   ClipTransform,
   TimelineClipItem,
@@ -10,6 +11,17 @@ interface UseClipTransformOptions {
   clip: Ref<TimelineClipItem>;
   trackKind?: Ref<TrackKind>;
   updateTransform: (next: ClipTransform) => void;
+  /**
+   * When a leaf transform param is animated, its setter routes the edit to
+   * `onAnimatedParamEdit` (upserting a keyframe) instead of touching the
+   * static transform. Both optional — omit to disable animation routing
+   * entirely (e.g. the multi-clip transform panel, which has no keyframes).
+   */
+  isParamAnimated?: (path: AnimatableParamPath) => boolean;
+  onAnimatedParamEdit?: (path: AnimatableParamPath, value: number) => void;
+  /** When a param is animated, its getter shows this (the value at the
+   * playhead) instead of the static transform field. */
+  getAnimatedDisplayValue?: (path: AnimatableParamPath, staticValue: number) => number;
 }
 
 function clampNumber(value: unknown, min: number, max: number): number {
@@ -157,6 +169,13 @@ export function useClipTransform(options: UseClipTransformOptions) {
     options.updateTransform(next);
   }
 
+  /** Routes an animated leaf param's edit to a keyframe; returns whether it did. */
+  function tryRecordAnimatedEdit(path: AnimatableParamPath, value: number): boolean {
+    if (!options.isParamAnimated?.(path)) return false;
+    options.onAnimatedParamEdit?.(path, value);
+    return true;
+  }
+
   const transformScaleLinked = computed({
     get: () => {
       return Boolean(getSafeTransform(options.clip.value).scale?.linked);
@@ -174,14 +193,16 @@ export function useClipTransform(options: UseClipTransformOptions) {
 
   const transformScaleX = computed({
     get: () => {
-      const x = getSafeTransform(options.clip.value).scale?.x ?? 1;
+      const staticX = getSafeTransform(options.clip.value).scale?.x ?? 1;
+      const x = options.getAnimatedDisplayValue?.('transform.scale.x', staticX) ?? staticX;
       return Number((x * 100).toFixed(1));
     },
     set: (val: number) => {
-      const current = getSafeTransform(options.clip.value);
-      const linked = Boolean(current.scale?.linked);
       let x = val / 100;
       x = x === 0 ? 0.001 : clampNumber(x, 0.001, 1000);
+      if (tryRecordAnimatedEdit('transform.scale.x', x)) return;
+      const current = getSafeTransform(options.clip.value);
+      const linked = Boolean(current.scale?.linked);
       const y = linked ? Math.sign(current.scale?.y ?? 1) * Math.abs(x) : (current.scale?.y ?? 1);
       updateSelectedClipTransform({ scale: { x, y, linked } });
     },
@@ -189,14 +210,16 @@ export function useClipTransform(options: UseClipTransformOptions) {
 
   const transformScaleY = computed({
     get: () => {
-      const y = getSafeTransform(options.clip.value).scale?.y ?? 1;
+      const staticY = getSafeTransform(options.clip.value).scale?.y ?? 1;
+      const y = options.getAnimatedDisplayValue?.('transform.scale.y', staticY) ?? staticY;
       return Number((y * 100).toFixed(1));
     },
     set: (val: number) => {
-      const current = getSafeTransform(options.clip.value);
-      const linked = Boolean(current.scale?.linked);
       let y = val / 100;
       y = y === 0 ? 0.001 : clampNumber(y, 0.001, 1000);
+      if (tryRecordAnimatedEdit('transform.scale.y', y)) return;
+      const current = getSafeTransform(options.clip.value);
+      const linked = Boolean(current.scale?.linked);
       const x = linked ? Math.sign(current.scale?.x ?? 1) * Math.abs(y) : (current.scale?.x ?? 1);
       updateSelectedClipTransform({ scale: { x, y, linked } });
     },
@@ -204,33 +227,42 @@ export function useClipTransform(options: UseClipTransformOptions) {
 
   const transformRotationDeg = computed({
     get: () => {
-      return getSafeTransform(options.clip.value).rotationDeg ?? 0;
+      const staticDeg = getSafeTransform(options.clip.value).rotationDeg ?? 0;
+      return options.getAnimatedDisplayValue?.('transform.rotationDeg', staticDeg) ?? staticDeg;
     },
     set: (val: number) => {
-      updateSelectedClipTransform({ rotationDeg: clampNumber(val, -36000, 36000) });
+      const deg = clampNumber(val, -36000, 36000);
+      if (tryRecordAnimatedEdit('transform.rotationDeg', deg)) return;
+      updateSelectedClipTransform({ rotationDeg: deg });
     },
   });
 
   const transformPosX = computed({
     get: () => {
-      return getSafeTransform(options.clip.value).position?.x ?? 0;
+      const staticX = getSafeTransform(options.clip.value).position?.x ?? 0;
+      return options.getAnimatedDisplayValue?.('transform.position.x', staticX) ?? staticX;
     },
     set: (val: number) => {
+      const x = clampNumber(val, -1_000_000, 1_000_000);
+      if (tryRecordAnimatedEdit('transform.position.x', x)) return;
       const current = getSafeTransform(options.clip.value);
       updateSelectedClipTransform({
-        position: { x: clampNumber(val, -1_000_000, 1_000_000), y: current.position?.y ?? 0 },
+        position: { x, y: current.position?.y ?? 0 },
       });
     },
   });
 
   const transformPosY = computed({
     get: () => {
-      return getSafeTransform(options.clip.value).position?.y ?? 0;
+      const staticY = getSafeTransform(options.clip.value).position?.y ?? 0;
+      return options.getAnimatedDisplayValue?.('transform.position.y', staticY) ?? staticY;
     },
     set: (val: number) => {
+      const y = clampNumber(val, -1_000_000, 1_000_000);
+      if (tryRecordAnimatedEdit('transform.position.y', y)) return;
       const current = getSafeTransform(options.clip.value);
       updateSelectedClipTransform({
-        position: { x: current.position?.x ?? 0, y: clampNumber(val, -1_000_000, 1_000_000) },
+        position: { x: current.position?.x ?? 0, y },
       });
     },
   });

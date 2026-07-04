@@ -32,7 +32,7 @@ vi.mock('~/components/properties/PropertySection.vue', () => ({
 describe('ClipOpacitySection', () => {
   it('renders when clipType is not adjustment', async () => {
     const component = await mountSuspended(ClipOpacitySection, {
-      props: { clipType: 'media', opacity: 0.5 },
+      props: { clipType: 'media', opacity: 0.5, isAnimated: false },
     });
 
     expect(component.find('.section-mock').exists()).toBe(true);
@@ -40,7 +40,7 @@ describe('ClipOpacitySection', () => {
 
   it('does not render when clipType is adjustment', async () => {
     const component = await mountSuspended(ClipOpacitySection, {
-      props: { clipType: 'adjustment', opacity: 0.5 },
+      props: { clipType: 'adjustment', opacity: 0.5, isAnimated: false },
     });
 
     expect(component.find('.section-mock').exists()).toBe(false);
@@ -48,10 +48,13 @@ describe('ClipOpacitySection', () => {
 
   it('emits updateOpacity with 1 when reset button is clicked', async () => {
     const component = await mountSuspended(ClipOpacitySection, {
-      props: { clipType: 'media', opacity: 0.5 },
+      props: { clipType: 'media', opacity: 0.5, isAnimated: false },
     });
 
-    const resetButton = component.find('button[title]');
+    // Two title-bearing buttons render in the header now (the animation
+    // stopwatch toggle first, then reset) — target reset specifically.
+    const buttons = component.findAll('button[title]');
+    const resetButton = buttons[buttons.length - 1]!;
     await resetButton.trigger('click');
 
     expect(component.emitted('updateOpacity')).toBeTruthy();
@@ -60,7 +63,7 @@ describe('ClipOpacitySection', () => {
 
   it('passes opacity value to slider', async () => {
     const component = await mountSuspended(ClipOpacitySection, {
-      props: { clipType: 'media', opacity: 0.75 },
+      props: { clipType: 'media', opacity: 0.75, isAnimated: false },
     });
 
     const slider = component.find('.slider-mock');
@@ -69,7 +72,7 @@ describe('ClipOpacitySection', () => {
 
   it('emits updateOpacity when slider changes', async () => {
     const component = await mountSuspended(ClipOpacitySection, {
-      props: { clipType: 'media', opacity: 0.5 },
+      props: { clipType: 'media', opacity: 0.5, isAnimated: false },
     });
 
     await component.find('.slider-mock').setValue(0.8);

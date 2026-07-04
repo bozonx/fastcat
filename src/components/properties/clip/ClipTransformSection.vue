@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import type { ClipSourceOrientation, ClipTransform } from '~/timeline/types';
+import type { AnimatableParamPath, ClipSourceOrientation, ClipTransform } from '~/timeline/types';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
 import PropertySection from '~/components/properties/PropertySection.vue';
+import ClipAnimationStopwatchButton from './ClipAnimationStopwatchButton.vue';
 import { useClipTransform } from '~/composables/properties/useClipTransform';
 import { computed, type Ref } from 'vue';
 
@@ -12,12 +13,25 @@ const props = defineProps<{
   canEditReversed: boolean;
   isReversed: boolean;
   mediaMeta?: unknown;
+  /**
+   * Omitted by the multi-clip batch panel (keyframes are single-clip only in
+   * v1 — each clip has its own local time, so there's no coherent "batch
+   * animate"). When absent, every param reports as never-animated.
+   */
+  isParamAnimated?: (path: AnimatableParamPath) => boolean;
+  getAnimatedValue?: (path: AnimatableParamPath, staticValue: number) => number;
 }>();
+
+const isParamAnimated = (path: AnimatableParamPath) => props.isParamAnimated?.(path) ?? false;
+const getAnimatedValue = (path: AnimatableParamPath, staticValue: number) =>
+  props.getAnimatedValue?.(path, staticValue) ?? staticValue;
 
 const emit = defineEmits<{
   updateTransform: [next: ClipTransform];
   updateSourceOrientation: [next: ClipSourceOrientation];
   toggleReversed: [];
+  toggleParamAnimation: [paths: AnimatableParamPath[]];
+  recordAnimatedValue: [path: AnimatableParamPath, value: number];
 }>();
 
 const { t } = useI18n();
@@ -57,6 +71,9 @@ const {
   clip: clipRef as Ref<import('~/timeline/types').TimelineClipItem>,
   trackKind: trackKindRef,
   updateTransform: (next) => emit('updateTransform', next),
+  isParamAnimated,
+  onAnimatedParamEdit: (path, value) => emit('recordAnimatedValue', path, value),
+  getAnimatedDisplayValue: getAnimatedValue,
 });
 
 const mediaMetaObj = computed(
@@ -128,6 +145,17 @@ function handleResetAll() {
   resetAll();
   emit('updateSourceOrientation', 'auto');
 }
+
+// Logical groups: the panel toggles/animates position and scale as a pair of
+// axes at once (they're almost always keyframed together), while rotation is
+// a single leaf param.
+const SCALE_PATHS: AnimatableParamPath[] = ['transform.scale.x', 'transform.scale.y'];
+const POSITION_PATHS: AnimatableParamPath[] = ['transform.position.x', 'transform.position.y'];
+const ROTATION_PATHS: AnimatableParamPath[] = ['transform.rotationDeg'];
+
+const isScaleAnimated = computed(() => SCALE_PATHS.some((p) => isParamAnimated(p)));
+const isPositionAnimated = computed(() => POSITION_PATHS.some((p) => isParamAnimated(p)));
+const isRotationAnimated = computed(() => ROTATION_PATHS.some((p) => isParamAnimated(p)));
 </script>
 
 <template>
@@ -241,13 +269,20 @@ function handleResetAll() {
                 ? t('fastcat.clip.transform.scale')
                 : t('fastcat.clip.transform.scaleX')
             }}</span>
-            <button
-              class="p-1 rounded hover:bg-ui-border-elevated text-ui-text-muted hover:text-ui-text disabled:opacity-50"
-              :disabled="!isEnabled"
-              @click="resetScale"
-            >
-              <UIcon name="i-heroicons-arrow-path" class="w-3.5 h-3.5 block" />
-            </button>
+            <div class="flex items-center gap-1">
+              <ClipAnimationStopwatchButton
+                :active="isScaleAnimated"
+                :disabled="!isEnabled"
+                @toggle="emit('toggleParamAnimation', SCALE_PATHS)"
+              />
+              <button
+                class="p-1 rounded hover:bg-ui-border-elevated text-ui-text-muted hover:text-ui-text disabled:opacity-50"
+                :disabled="!isEnabled"
+                @click="resetScale"
+              >
+                <UIcon name="i-heroicons-arrow-path" class="w-3.5 h-3.5 block" />
+              </button>
+            </div>
           </div>
           <div class="grid grid-cols-[1fr_auto_1fr] gap-2 items-center">
             <UiWheelNumberInput
@@ -292,13 +327,20 @@ function handleResetAll() {
             <span class="text-xs text-ui-text-muted">{{
               t('fastcat.clip.transform.rotation')
             }}</span>
-            <button
-              class="p-1 rounded hover:bg-ui-border-elevated text-ui-text-muted hover:text-ui-text disabled:opacity-50"
-              :disabled="!isEnabled"
-              @click="resetRotation"
-            >
-              <UIcon name="i-heroicons-arrow-path" class="w-3.5 h-3.5 block" />
-            </button>
+            <div class="flex items-center gap-1">
+              <ClipAnimationStopwatchButton
+                :active="isRotationAnimated"
+                :disabled="!isEnabled"
+                @toggle="emit('toggleParamAnimation', ROTATION_PATHS)"
+              />
+              <button
+                class="p-1 rounded hover:bg-ui-border-elevated text-ui-text-muted hover:text-ui-text disabled:opacity-50"
+                :disabled="!isEnabled"
+                @click="resetRotation"
+              >
+                <UIcon name="i-heroicons-arrow-path" class="w-3.5 h-3.5 block" />
+              </button>
+            </div>
           </div>
           <UiWheelNumberInput
             v-model="transformRotationDeg"
@@ -315,13 +357,20 @@ function handleResetAll() {
             <span class="text-xs text-ui-text-muted">{{
               t('fastcat.clip.transform.position')
             }}</span>
-            <button
-              class="p-1 rounded hover:bg-ui-border-elevated text-ui-text-muted hover:text-ui-text disabled:opacity-50"
-              :disabled="!isEnabled"
-              @click="resetPosition"
-            >
-              <UIcon name="i-heroicons-arrow-path" class="w-3.5 h-3.5 block" />
-            </button>
+            <div class="flex items-center gap-1">
+              <ClipAnimationStopwatchButton
+                :active="isPositionAnimated"
+                :disabled="!isEnabled"
+                @toggle="emit('toggleParamAnimation', POSITION_PATHS)"
+              />
+              <button
+                class="p-1 rounded hover:bg-ui-border-elevated text-ui-text-muted hover:text-ui-text disabled:opacity-50"
+                :disabled="!isEnabled"
+                @click="resetPosition"
+              >
+                <UIcon name="i-heroicons-arrow-path" class="w-3.5 h-3.5 block" />
+              </button>
+            </div>
           </div>
           <div class="grid grid-cols-2 gap-2">
             <div class="flex items-center gap-1.5">

@@ -161,6 +161,10 @@
     },
     "clip": {
       "actions": "Actions",
+      "animation": {
+        "stopwatchTitle": "Animate over time",
+        "stopwatchTitleActive": "Animated — click to remove all keyframes"
+      },
       "audio": {
         "balance": "Balance",
         "volume": "Volume"
@@ -828,7 +832,9 @@
       "hideWaveform": "Hide waveform",
       "hud": "HUD",
       "importFilesCount": "Import {count} files",
+      "keyframesDiamondHint": "drag to move, double-click to delete",
       "keyframesLane": "Animation keyframes",
+      "keyframesLaneEmptyHint": "No animated parameters — use the stopwatch in Properties",
       "keyframesTitle": "Animation keyframes",
       "lock": "Lock",
       "lockClip": "Lock clip in place",
