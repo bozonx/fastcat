@@ -1798,8 +1798,10 @@
     "settings": {
       "advancedSection": "Advanced",
       "app": "App",
+      "appDefaultHint": "(app default: {value} ms)",
       "audioDeclickDuration": "Audio de-click duration",
       "audioDeclickDurationHelp": "Duration of micro-fades to eliminate clicks.",
+      "resetToAppDefault": "Reset to default from app settings ({value} ms)",
       "audioScrubbingHint": "Play audio while scrubbing (moving the playhead manually)",
       "autoCreateProxies": "Automatically create proxies when adding media to the timeline",
       "autosaveInterval": "Auto-save interval (min)",

@@ -754,14 +754,18 @@ watch(viewportRef, (vp) => {
                   <UIcon
                     v-if="timelineStore.isPlaying"
                     name="i-heroicons-stop-20-solid"
-                    class="w-5 h-5"
+                    class="w-5 h-5 -translate-y-0.5"
                   />
                   <UIcon
                     v-else-if="(selectedPlaybackSpeedOption?.value ?? 1) < 0"
                     name="i-heroicons-play-20-solid"
-                    class="w-5 h-5 -translate-x-0.5 scale-x-[-1]"
+                    class="w-5 h-5 -translate-x-0.5 -translate-y-0.5 scale-x-[-1]"
                   />
-                  <UIcon v-else name="i-heroicons-play-20-solid" class="w-5 h-5 translate-x-0.5" />
+                  <UIcon
+                    v-else
+                    name="i-heroicons-play-20-solid"
+                    class="w-5 h-5 translate-x-0.5 -translate-y-0.5"
+                  />
                   <span
                     class="absolute text-3xs font-mono leading-none text-neutral-900 opacity-80 pointer-events-none"
                     style="right: 4px; bottom: 1px"

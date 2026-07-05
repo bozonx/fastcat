@@ -1798,8 +1798,10 @@
     "settings": {
       "advancedSection": "Расширенные",
       "app": "Приложение",
+      "appDefaultHint": "(по умолчанию в приложении: {value} мс)",
       "audioDeclickDuration": "Длительность de-click",
       "audioDeclickDurationHelp": "Длительность микро-фейдов для устранения щелчков.",
+      "resetToAppDefault": "Сбросить к значению по умолчанию из настроек ({value} мс)",
       "audioScrubbingHint": "Воспроизводить звук при скрабинге (перемещение playhead вручную)",
       "autoCreateProxies": "Автоматически создавать прокси при добавлении медиа на таймлайн",
       "autosaveInterval": "Интервал автосохранения (мин)",

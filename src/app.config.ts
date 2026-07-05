@@ -109,6 +109,11 @@ export default defineAppConfig({
         overlay: 'bg-black/70 backdrop-blur-sm',
       },
     },
+    tooltip: {
+      slots: {
+        content: 'z-[var(--z-tooltip)]',
+      },
+    },
     toast: {
       slots: {
         title: 'select-text',
