@@ -1,5 +1,5 @@
 /** @vitest-environment node */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { extractMetadata, isPassthroughCompatibleClip } from '~/workers/core/export';
 
 // Use variables that can be modified per test
@@ -7,6 +7,7 @@ const mockFunctions = {
   getPrimaryVideoTrack: vi.fn(),
   computeDuration: vi.fn(),
   videoGetSample: vi.fn(),
+  videoGetFirstTimestamp: vi.fn(),
   audioSamples: vi.fn(),
   audioGetFirstTimestamp: vi.fn(),
 };
@@ -54,6 +55,7 @@ describe('extractMetadata', () => {
       yield { close: vi.fn() };
     });
     mockFunctions.audioGetFirstTimestamp.mockResolvedValue(0);
+    mockFunctions.videoGetFirstTimestamp.mockResolvedValue(0);
     mockFunctions.getPrimaryVideoTrack.mockResolvedValue({
       codedWidth: 1920,
       codedHeight: 1080,
@@ -67,6 +69,7 @@ describe('extractMetadata', () => {
       getCodecParameterString: vi.fn().mockResolvedValue('avc1.640028'),
       getColorSpace: vi.fn().mockResolvedValue({}),
       canDecode: vi.fn().mockResolvedValue(true),
+      getFirstTimestamp: (...args: any[]) => mockFunctions.videoGetFirstTimestamp(...args),
     });
   });
 
@@ -121,11 +124,52 @@ describe('extractMetadata', () => {
     expect(meta.video?.canDecode).toBe(false);
   });
 
+  it('sets video.canDecode to false when decoding the first frame throws', async () => {
+    const file = new File([], 'test.mp4');
+    mockFunctions.videoGetSample.mockRejectedValue(new Error('decode blew up'));
+
+    const meta = await extractMetadata(file);
+    expect(meta.video?.canDecode).toBe(false);
+  });
+
+  it('anchors the video decode-validation to the track first timestamp', async () => {
+    // Symmetry with the audio path: a healthy file whose first video frame is at
+    // a non-zero PTS must be probed AT that timestamp, not hardcoded 0.
+    const file = new File([], 'offset-video.mp4');
+    const FIRST_TS = 0.75;
+    mockFunctions.videoGetFirstTimestamp.mockResolvedValue(FIRST_TS);
+    mockFunctions.videoGetSample.mockImplementation(async (t: number) =>
+      t === FIRST_TS ? { close: vi.fn() } : null,
+    );
+
+    const meta = await extractMetadata(file);
+    expect(meta.video?.canDecode).toBe(true);
+    expect(mockFunctions.videoGetSample).toHaveBeenCalledWith(FIRST_TS);
+  });
+
+  it('keeps video.canDecode true for a healthy first frame', async () => {
+    const file = new File([], 'good.mp4');
+    const meta = await extractMetadata(file);
+    expect(meta.video?.canDecode).toBe(true);
+    expect(meta.audio?.canDecode).toBe(true);
+  });
+
   it('sets audio.canDecode to false if audio sample decoding fails', async () => {
     const file = new File([], 'test.mp3');
     mockFunctions.getPrimaryVideoTrack.mockResolvedValue(null);
     mockFunctions.audioSamples.mockImplementation(async function* () {
       // Yield nothing (empty)
+    });
+
+    const meta = await extractMetadata(file);
+    expect(meta.audio?.canDecode).toBe(false);
+  });
+
+  it('sets audio.canDecode to false when iterating samples throws', async () => {
+    const file = new File([], 'test.mp3');
+    mockFunctions.getPrimaryVideoTrack.mockResolvedValue(null);
+    mockFunctions.audioSamples.mockImplementation(async function* () {
+      throw new Error('audio decode blew up');
     });
 
     const meta = await extractMetadata(file);
@@ -151,6 +195,47 @@ describe('extractMetadata', () => {
     const meta = await extractMetadata(file);
     expect(meta.audio?.canDecode).toBe(true);
     expect(mockFunctions.audioSamples).toHaveBeenCalledWith(FIRST_TS, FIRST_TS + 1);
+  });
+
+  describe('image display validation', () => {
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    it('marks a decodable browser-native image displayable', async () => {
+      vi.stubGlobal(
+        'createImageBitmap',
+        vi.fn().mockResolvedValue({ width: 640, height: 480, close: vi.fn() }),
+      );
+      const meta = await extractMetadata(new File([], 'photo.png'));
+      expect(meta.image).toEqual({ canDisplay: true, width: 640, height: 480 });
+    });
+
+    it('marks an undecodable browser-native image as not displayable (corrupt)', async () => {
+      vi.stubGlobal(
+        'createImageBitmap',
+        vi.fn().mockRejectedValue(new Error('bad image bytes')),
+      );
+      const meta = await extractMetadata(new File([], 'broken.png'));
+      expect(meta.image?.canDisplay).toBe(false);
+    });
+
+    it('marks a zero-sized decode as not displayable', async () => {
+      vi.stubGlobal(
+        'createImageBitmap',
+        vi.fn().mockResolvedValue({ width: 0, height: 0, close: vi.fn() }),
+      );
+      const meta = await extractMetadata(new File([], 'empty.png'));
+      expect(meta.image?.canDisplay).toBe(false);
+    });
+
+    it('marks a non-native image format not displayable without attempting decode', async () => {
+      const createImageBitmap = vi.fn();
+      vi.stubGlobal('createImageBitmap', createImageBitmap);
+      const meta = await extractMetadata(new File([], 'scan.tiff'));
+      expect(meta.image?.canDisplay).toBe(false);
+      expect(createImageBitmap).not.toHaveBeenCalled();
+    });
   });
 });
 

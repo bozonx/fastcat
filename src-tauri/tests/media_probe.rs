@@ -8,7 +8,7 @@ use std::path::Path;
 
 use app_lib::media::audio_extract::extract_audio_stream;
 use app_lib::media::image_decode::decode_image;
-use app_lib::media::processing::probe_media;
+use app_lib::media::processing::{probe_media, probe_media_validated};
 use app_lib::media::tasks::NativeMediaTasks;
 
 #[test]
@@ -124,6 +124,111 @@ fn probe_covers_the_audio_format_matrix() {
         );
         assert_eq!(audio.channels, Some(1), "{rel} channels");
         assert!(meta.duration > 0.5, "{rel} duration {}", meta.duration);
+    }
+}
+
+#[test]
+fn validated_probe_marks_healthy_video_and_audio_decodable() {
+    // The whole point of decode validation is to catch corrupt payloads WITHOUT
+    // false-positiving on good ones. Every healthy fixture must come back
+    // can_decode == Some(true); a regression here (e.g. keying corruption off
+    // ffmpeg's benign stderr) would brand perfectly good files corrupt.
+    skip_unless!(
+        common::has_ffmpeg() && common::has_ffprobe(),
+        "ffmpeg/ffprobe not installed"
+    );
+
+    let meta = probe_media_validated(
+        &common::fixture("video/video-h264-aac.mp4"),
+        "ffprobe",
+        "ffmpeg",
+    )
+    .expect("validated probe should succeed on a healthy file");
+
+    assert_eq!(
+        meta.video.expect("has video").can_decode,
+        Some(true),
+        "healthy H.264 video must validate as decodable"
+    );
+    assert_eq!(
+        meta.audio.expect("has audio").can_decode,
+        Some(true),
+        "healthy AAC audio must validate as decodable"
+    );
+}
+
+#[test]
+fn validated_probe_accepts_files_ffmpeg_logs_benign_diagnostics_for() {
+    // MP3 decoding routinely emits error-level "Could not update timestamps for
+    // discarded samples" lines even though the stream is perfectly fine. This
+    // fixture is the guard for the old `stderr.is_empty()` false positive.
+    skip_unless!(
+        common::has_ffmpeg() && common::has_ffprobe(),
+        "ffmpeg/ffprobe not installed"
+    );
+
+    let meta = probe_media_validated(
+        &common::fixture("audio/audio-sine.mp3"),
+        "ffprobe",
+        "ffmpeg",
+    )
+    .expect("validated probe should succeed on a healthy mp3");
+
+    assert!(meta.video.is_none(), "mp3 must not report a video stream");
+    assert_eq!(
+        meta.audio.expect("has audio").can_decode,
+        Some(true),
+        "healthy MP3 must validate as decodable despite benign ffmpeg diagnostics"
+    );
+}
+
+#[test]
+fn validated_probe_marks_corrupt_payload_undecodable() {
+    // A file ffprobe still parses (valid container header) but whose stream
+    // payload ffmpeg cannot decode: truncate a healthy MP4 mid-stream so the
+    // moov/header survives but the sample data is cut. Validation must catch it
+    // (can_decode == Some(false)) — this is corruption detection actually firing.
+    skip_unless!(
+        common::has_ffmpeg() && common::has_ffprobe(),
+        "ffmpeg/ffprobe not installed"
+    );
+
+    let good = std::fs::read(common::fixture("video/video-h264-aac.mp4"))
+        .expect("read source fixture");
+    // Keep only a small head prefix: too little for a full keyframe to survive,
+    // so decoding can't produce a frame. Either ffprobe still recognises the
+    // container (→ streams that fail decode validation) or it rejects the file
+    // outright (→ Err) — both are correct "this file is broken" outcomes. We
+    // deliberately avoid keeping enough bytes for frame 1 to decode cleanly,
+    // which would (correctly) report the file as fine.
+    let truncated = &good[..good.len().min(2048)];
+    let tmp = tempfile::tempdir().unwrap();
+    let path = tmp.path().join("truncated.mp4");
+    std::fs::write(&path, truncated).unwrap();
+
+    match probe_media_validated(&path, "ffprobe", "ffmpeg") {
+        Ok(meta) => {
+            // Whatever streams ffprobe still surfaced must fail decode validation.
+            if let Some(video) = meta.video {
+                assert_eq!(
+                    video.can_decode,
+                    Some(false),
+                    "truncated video payload must fail decode validation"
+                );
+            }
+            if let Some(audio) = meta.audio {
+                assert_eq!(
+                    audio.can_decode,
+                    Some(false),
+                    "truncated audio payload must fail decode validation"
+                );
+            }
+        }
+        Err(e) => {
+            // ffprobe rejected the truncated container outright — also a valid
+            // "this file is broken" outcome, just detected one layer earlier.
+            eprintln!("truncated file rejected at probe stage: {e}");
+        }
     }
 }
 

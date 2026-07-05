@@ -224,6 +224,19 @@ enum StreamKind {
     Audio,
 }
 
+/// Pure decode-success decision for a one-frame validation run, split out from
+/// [`validate_stream_decodes`] so the rule can be unit-tested without ffmpeg.
+///
+/// A stream counts as decodable only when ffmpeg exits cleanly AND actually
+/// emitted a decoded frame (`stdout_len > 0`). We deliberately ignore stderr:
+/// ffmpeg at `-v error` logs benign error-level diagnostics for many perfectly
+/// playable files (MP3 discarded-sample timestamps, H.264 reorder/POC notices),
+/// so keying corruption off stderr wrongly branded good files corrupt. A truly
+/// undecodable stream produces zero frames, making empty stdout the real signal.
+fn decode_output_indicates_success(exit_success: bool, stdout_len: usize) -> bool {
+    exit_success && stdout_len > 0
+}
+
 /// Decodes a single frame/packet of the requested stream with ffmpeg and pipes the
 /// raw decoded output to stdout — the desktop equivalent of the web worker decoding
 /// its first sample. A container that `ffprobe` parses can still have a payload
@@ -256,7 +269,7 @@ fn validate_stream_decodes(path: &Path, ffmpeg_path: &str, kind: StreamKind) -> 
 
     match output {
         Ok(out) => {
-            let ok = out.status.success() && !out.stdout.is_empty();
+            let ok = decode_output_indicates_success(out.status.success(), out.stdout.len());
             if !ok {
                 log::debug!(
                     "[validate_stream_decodes] {} decode failed for {} (status={}, bytes={}): {}",
@@ -993,6 +1006,19 @@ mod tests {
     #[test]
     fn scaled_even_size_keeps_small_source() {
         assert_eq!(scaled_even_size(640, 360, 1920 * 1080), (640, 360));
+    }
+
+    #[test]
+    fn decode_success_requires_a_decoded_frame_not_empty_stderr() {
+        // A clean exit that produced a frame is decodable, regardless of any
+        // benign error-level diagnostics ffmpeg may have logged (the false-positive
+        // that used to brand good MP3/H.264 files corrupt).
+        assert!(decode_output_indicates_success(true, 4096));
+        // Clean exit but zero frames decoded → genuinely undecodable.
+        assert!(!decode_output_indicates_success(true, 0));
+        // Non-zero exit is a failure even if some partial bytes leaked out.
+        assert!(!decode_output_indicates_success(false, 4096));
+        assert!(!decode_output_indicates_success(false, 0));
     }
 
     #[test]
