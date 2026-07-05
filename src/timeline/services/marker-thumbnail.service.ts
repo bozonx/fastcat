@@ -11,7 +11,12 @@ export interface MarkerThumbnailParams {
   markerId: string;
   timeUs: number;
   timelineDoc: TimelineDocument;
-  onComplete?: (url: string) => void;
+  /**
+   * Receives the raw rendered frame. The caller creates and owns the object URL so
+   * URL lifetime is per-consumer (see MarkerThumbnail.vue) — the generator never
+   * hands out a shared URL that another instance could revoke.
+   */
+  onComplete?: (blob: Blob) => void;
   onError?: (err: Error) => void;
 }
 
@@ -39,16 +44,15 @@ export function dispatchMarkerThumbnailGeneration(params: MarkerThumbnailParams)
           return;
         }
 
-        // saveMarkerThumbnail owns and returns the single object URL for this blob;
-        // creating another here would leak the displayed URL.
-        const url = await fileThumbnailGenerator.saveMarkerThumbnail({
+        // Persist for later loads; the URL is created and owned by the consumer.
+        await fileThumbnailGenerator.saveMarkerThumbnail({
           projectId: params.projectId,
           markerId: params.markerId,
           timeUs: params.timeUs,
           blob,
         });
 
-        params.onComplete?.(url);
+        params.onComplete?.(blob);
       } catch (error) {
         log.error('Failed to generate marker thumbnail:', params.markerId, error);
         params.onError?.(error instanceof Error ? error : new Error(String(error)));

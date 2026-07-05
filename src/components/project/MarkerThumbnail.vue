@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { createDevLogger } from '~/utils/dev-logger';
 
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted, onUnmounted, watch } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
@@ -21,6 +21,20 @@ const projectStore = useProjectStore();
 const thumbnailUrl = ref<string | null>(null);
 const isLoading = ref(false);
 
+// This component solely owns the object URL it displays: it mints one from the raw
+// blob and revokes it on replacement / unmount. The generator hands back blobs (not
+// shared URLs), so two instances rendering the same marker never revoke each other.
+function setThumbnailFromBlob(blob: Blob) {
+  const nextUrl = URL.createObjectURL(blob);
+  if (thumbnailUrl.value) URL.revokeObjectURL(thumbnailUrl.value);
+  thumbnailUrl.value = nextUrl;
+}
+
+function clearThumbnail() {
+  if (thumbnailUrl.value) URL.revokeObjectURL(thumbnailUrl.value);
+  thumbnailUrl.value = null;
+}
+
 // Monotonic token guarding against stale async results: when the marker moves
 // (`timeUs` changes) a fresh load starts while an earlier generation may still be
 // in flight. `addLatestMediaTask` only rejects tasks that haven't started yet, so
@@ -35,7 +49,7 @@ async function loadThumbnail() {
   isLoading.value = true;
   try {
     // 1. Check OPFS cache first
-    const cachedUrl = await fileThumbnailGenerator.getMarkerThumbnail({
+    const cachedBlob = await fileThumbnailGenerator.getMarkerThumbnail({
       projectId: projectStore.currentProjectId,
       markerId: props.markerId,
       timeUs: props.timeUs,
@@ -43,8 +57,8 @@ async function loadThumbnail() {
 
     if (token !== loadToken) return;
 
-    if (cachedUrl) {
-      thumbnailUrl.value = cachedUrl;
+    if (cachedBlob) {
+      setThumbnailFromBlob(cachedBlob);
       isLoading.value = false;
       return;
     }
@@ -60,9 +74,9 @@ async function loadThumbnail() {
       markerId: props.markerId,
       timeUs: props.timeUs,
       timelineDoc: timelineStore.timelineDoc,
-      onComplete: (url) => {
+      onComplete: (blob) => {
         if (token !== loadToken) return;
-        thumbnailUrl.value = url;
+        setThumbnailFromBlob(blob);
         isLoading.value = false;
       },
       onError: (err) => {
@@ -89,6 +103,13 @@ watch(
     void loadThumbnail();
   },
 );
+
+onUnmounted(() => {
+  // Drop this instance's token so any in-flight generation callback is ignored, and
+  // release the object URL it owns.
+  loadToken++;
+  clearThumbnail();
+});
 </script>
 
 <template>
@@ -100,7 +121,7 @@ watch(
       :src="thumbnailUrl!"
       class="h-full w-full object-contain"
       alt="Marker Preview"
-      @error="thumbnailUrl = null"
+      @error="clearThumbnail()"
     />
     <div v-else-if="isLoading" class="flex h-full w-full items-center justify-center">
       <div class="h-4 w-4 animate-spin rounded-full border-2 border-white/20 border-t-white" />

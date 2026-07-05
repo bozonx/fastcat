@@ -410,15 +410,20 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
     }
   }
 
+  /**
+   * Reads the persisted marker thumbnail for the exact `timeUs` and returns its raw
+   * blob (or `null` when absent). The object URL is intentionally NOT created or
+   * cached here: each `MarkerThumbnail` instance owns and revokes its own URL, so a
+   * second consumer of the same marker can never revoke the URL a first one is still
+   * painting (the old shared `marker:<id>` cache eagerly revoked across instances).
+   */
   async getMarkerThumbnail(input: {
     projectId: string;
     markerId: string;
     timeUs: number;
-  }): Promise<string | null> {
+  }): Promise<Blob | null> {
     const workspaceStore = useWorkspaceStore();
     if (!workspaceStore.hasPersistentStorage) return null;
-
-    const cacheKey = `marker:${input.markerId}`;
 
     try {
       const vfs = useVfs();
@@ -449,66 +454,42 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
         }
       }
 
-      if (foundBlob) {
-        const url = URL.createObjectURL(foundBlob);
-        const previousUrl = this.cache.get(cacheKey);
-        if (previousUrl && previousUrl !== url) {
-          this.revokeCacheValue(previousUrl);
-        }
-        this.cache.set(cacheKey, url);
-        this.cacheProjectIds.set(cacheKey, input.projectId);
-        return url;
-      }
+      return foundBlob;
     } catch (e) {
       if (!isNotFoundError(e)) {
         log.warn('Failed to get marker thumbnail from VFS', input.markerId, e);
       }
+      return null;
     }
-
-    return null;
   }
 
   /**
-   * Persists a marker thumbnail and returns a single generator-owned object URL.
-   *
-   * The returned URL is cached under `marker:<id>` and revoked here when it is
-   * replaced (next save/load) or when the project is cleared, so callers must NOT
-   * create their own URL for the same blob — that previously double-allocated and
-   * leaked the displayed URL.
+   * Persists a marker thumbnail blob to the VFS. Returns nothing and holds no object
+   * URL: URL ownership belongs entirely to the requesting `MarkerThumbnail` instance
+   * (see {@link getMarkerThumbnail}). When there is no persistent storage the caller
+   * still has the freshly generated blob to display, so nothing is lost by skipping
+   * the write here.
    */
   async saveMarkerThumbnail(input: {
     projectId: string;
     markerId: string;
     timeUs: number;
     blob: Blob;
-  }): Promise<string> {
+  }): Promise<void> {
     const workspaceStore = useWorkspaceStore();
+    if (!workspaceStore.hasPersistentStorage) return;
 
-    // Persist to the VFS when there is somewhere to write; otherwise keep an
-    // in-memory URL only so the UI can still display the freshly generated frame.
-    if (workspaceStore.hasPersistentStorage) {
-      try {
-        const vfs = useVfs();
-        const filePath = getThumbnailFileVfsPath({
-          projectId: input.projectId,
-          dirName: MARKER_THUMBNAILS.DIR_NAME,
-          fileName: `${input.markerId}_${input.timeUs}.webp`,
-        });
-        await vfs.writeFile(filePath, input.blob);
-      } catch (e) {
-        log.error('Failed to save marker thumbnail to VFS', input.markerId, e);
-      }
+    try {
+      const vfs = useVfs();
+      const filePath = getThumbnailFileVfsPath({
+        projectId: input.projectId,
+        dirName: MARKER_THUMBNAILS.DIR_NAME,
+        fileName: `${input.markerId}_${input.timeUs}.webp`,
+      });
+      await vfs.writeFile(filePath, input.blob);
+    } catch (e) {
+      log.error('Failed to save marker thumbnail to VFS', input.markerId, e);
     }
-
-    const url = URL.createObjectURL(input.blob);
-    const cacheKey = `marker:${input.markerId}`;
-    const previousUrl = this.cache.get(cacheKey);
-    if (previousUrl && previousUrl !== url) {
-      this.revokeCacheValue(previousUrl);
-    }
-    this.cache.set(cacheKey, url);
-    this.cacheProjectIds.set(cacheKey, input.projectId);
-    return url;
   }
 
   async clearAllThumbnails(projectId: string) {

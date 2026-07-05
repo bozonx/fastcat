@@ -23,4 +23,12 @@ describe('Tauri smoke', () => {
   it('exposes the document title', async () => {
     await expect(browser).toHaveTitle(/Video Editor|FastCat/);
   });
+
+  it('renders the desktop projects home with native project actions', async () => {
+    const appRoot = await $('[data-app-root]');
+    await appRoot.waitForExist({ timeout: 30_000 });
+
+    await expect($('body')).toHaveText(/FASTCAT/);
+    await expect($('body')).toHaveText(/Open Project|Открыть проект/);
+  });
 });

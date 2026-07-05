@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { nextTick, reactive } from 'vue';
 import { mountWithNuxt } from '../../utils/mount';
 import MarkerThumbnail from '~/components/project/MarkerThumbnail.vue';
@@ -25,35 +25,75 @@ vi.mock('~/timeline/services/marker-thumbnail.service', () => ({
   },
 }));
 
-describe('MarkerThumbnail.vue stale-result guard', () => {
+// Deterministic, per-blob object URLs so ownership and revocation are observable.
+const urlForBlob = new Map<Blob, string>();
+let urlSeq = 0;
+const revoked: string[] = [];
+
+describe('MarkerThumbnail.vue URL ownership + stale-result guard', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     dispatches.length = 0;
+    urlForBlob.clear();
+    urlSeq = 0;
+    revoked.length = 0;
     getMarkerThumbnailMock.mockResolvedValue(null); // force a generation dispatch
     mockProjectStore.currentProjectId = 'project-1';
     mockWorkspaceStore.hasPersistentStorage = true;
+
+    vi.spyOn(URL, 'createObjectURL').mockImplementation((blob: Blob | MediaSource) => {
+      const url = `blob:marker-${++urlSeq}`;
+      urlForBlob.set(blob as Blob, url);
+      return url;
+    });
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation((url: string) => {
+      revoked.push(url);
+    });
   });
 
-  it('ignores an in-flight generation for a previous time once the marker moves', async () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('mints its own URL from the blob and ignores a stale generation after the marker moves', async () => {
     const component = await mountWithNuxt(MarkerThumbnail, {
       props: { markerId: 'marker-1', timeUs: 1_000_000 },
     });
-    // Let the initial async cache-miss → dispatch settle.
     await vi.waitFor(() => expect(dispatches).toHaveLength(1));
 
     // Marker moves before the first generation completes.
     await component.setProps({ timeUs: 2_000_000 });
     await vi.waitFor(() => expect(dispatches).toHaveLength(2));
 
-    // Completion order is the crux of the race: the CURRENT generation resolves
-    // first, then the STALE one for the previous time resolves last. Without the
-    // load-token guard the late stale result would clobber the current frame.
-    dispatches[1].onComplete?.('blob:current-frame');
-    dispatches[0].onComplete?.('blob:stale-frame');
+    const currentBlob = new Blob(['current'], { type: 'image/webp' });
+    const staleBlob = new Blob(['stale'], { type: 'image/webp' });
+
+    // The CURRENT generation resolves first, then the STALE one resolves last.
+    dispatches[1].onComplete?.(currentBlob);
+    dispatches[0].onComplete?.(staleBlob);
     await nextTick();
 
     const img = component.find('img');
     expect(img.exists()).toBe(true);
-    expect(img.attributes('src')).toBe('blob:current-frame');
+    // Shows the current frame's own URL; the stale blob never got a URL created.
+    expect(img.attributes('src')).toBe(urlForBlob.get(currentBlob));
+    expect(urlForBlob.has(staleBlob)).toBe(false);
+  });
+
+  it('revokes its owned URL on unmount', async () => {
+    const component = await mountWithNuxt(MarkerThumbnail, {
+      props: { markerId: 'marker-1', timeUs: 1_000_000 },
+    });
+    await vi.waitFor(() => expect(dispatches).toHaveLength(1));
+
+    const blob = new Blob(['frame'], { type: 'image/webp' });
+    dispatches[0].onComplete?.(blob);
+    await nextTick();
+
+    const ownUrl = urlForBlob.get(blob)!;
+    expect(component.find('img').attributes('src')).toBe(ownUrl);
+
+    component.unmount();
+    expect(revoked).toContain(ownUrl);
   });
 });

@@ -34,7 +34,7 @@ describe('dispatchMarkerThumbnailGeneration', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     extractTimelineFrameBlobMock.mockResolvedValue(new Blob(['x'], { type: 'image/webp' }));
-    saveMarkerThumbnailMock.mockResolvedValue('blob:marker-url');
+    saveMarkerThumbnailMock.mockResolvedValue(undefined);
   });
 
   it('renders at marker resolution with the cheapest effect-quality tier (backend-agnostic)', async () => {
@@ -43,8 +43,13 @@ describe('dispatchMarkerThumbnailGeneration', () => {
     const onComplete = vi.fn();
 
     dispatchMarkerThumbnailGeneration({ ...baseParams(), onComplete });
-    await vi.waitFor(() => expect(onComplete).toHaveBeenCalledWith('blob:marker-url'));
+    await vi.waitFor(() => expect(onComplete).toHaveBeenCalled());
 
+    // The raw blob is handed back (not a shared URL) so the consumer owns URL lifetime.
+    expect(onComplete).toHaveBeenCalledWith(expect.any(Blob));
+    expect(saveMarkerThumbnailMock).toHaveBeenCalledWith(
+      expect.objectContaining({ markerId: 'marker-1', timeUs: 2_000_000, blob: expect.any(Blob) }),
+    );
     expect(extractTimelineFrameBlobMock).toHaveBeenCalledWith(
       expect.objectContaining({
         timeUs: 2_000_000,

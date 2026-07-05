@@ -154,6 +154,14 @@ const sortedProjects = computed(() => {
   return projects;
 });
 
+function getProjectOpenTarget(project: ProjectActionTarget): string {
+  if (workspaceStore.workspaceProviderId === 'tauri') {
+    return project.projectPath || project.projectName;
+  }
+
+  return project.projectName;
+}
+
 // formatDate removed in favor of FriendlyTime component
 </script>
 
@@ -310,7 +318,7 @@ const sortedProjects = computed(() => {
                 v-for="project in sortedProjects"
                 :key="project.projectPath || project.projectId || project.projectName"
                 class="flex flex-col group bg-ui-bg-elevated/50 border border-ui-border rounded-xl overflow-hidden hover:border-primary-500/50 hover:bg-ui-bg-accent transition-all cursor-pointer"
-                @click="handleOpenProject(project.projectPath || project.projectName)"
+                @click="handleOpenProject(getProjectOpenTarget(project))"
               >
                 <div class="aspect-video relative shrink-0">
                   <ProjectThumbnail
