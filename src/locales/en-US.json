@@ -641,9 +641,7 @@
       "forgetProjectConfirm": "Are you sure you want to remove the project \"{name}\" from the recent list? The project files will remain on disk.",
       "nameRequired": "Project name is required",
       "nameInvalid": "Project name contains invalid characters",
-      "nameAlreadyExists": "A project with this name already exists",
-      "nameSameAsCurrent": "New name must be different from current name",
-      "nameSameAsSource": "Duplicate name must be different from source project name"
+      "nameAlreadyExists": "A project with this name already exists"
     },
     "properties": {
       "blur": "Blur",

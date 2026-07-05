@@ -219,11 +219,11 @@ describe('useProjectManagement', () => {
       expect(renameError.value).toBe('fastcat.projects.nameInvalid');
     });
 
-    it('reports nameSameAsCurrent when name is unchanged', () => {
+    it('has no error when name is unchanged, but rename is invalid', () => {
       const { startRename, renameValue, renameError, isRenameNameValid } = useProjectManagement();
       startRename('OldProject');
       renameValue.value = 'OldProject';
-      expect(renameError.value).toBe('fastcat.projects.nameSameAsCurrent');
+      expect(renameError.value).toBeNull();
       expect(isRenameNameValid.value).toBe(false);
     });
 
@@ -233,15 +233,6 @@ describe('useProjectManagement', () => {
       startRename('OldProject');
       renameValue.value = 'Taken';
       expect(renameError.value).toBe('fastcat.projects.nameAlreadyExists');
-      expect(isRenameNameValid.value).toBe(false);
-    });
-
-    it('allows renaming to the same case-insensitive name is not required here', () => {
-      workspaceMock.projects = ['OldProject'];
-      const { startRename, renameValue, renameError, isRenameNameValid } = useProjectManagement();
-      startRename('OldProject');
-      renameValue.value = 'OldProject';
-      expect(renameError.value).toBe('fastcat.projects.nameSameAsCurrent');
       expect(isRenameNameValid.value).toBe(false);
     });
 
@@ -323,12 +314,12 @@ describe('useProjectManagement', () => {
       expect(duplicateError.value).toBe('fastcat.projects.nameInvalid');
     });
 
-    it('reports nameSameAsSource when duplicate name equals source name', () => {
+    it('has no error when duplicate name equals source name, but duplicate is invalid', () => {
       const { startDuplicate, duplicateValue, duplicateError, isDuplicateNameValid } =
         useProjectManagement();
       startDuplicate('Source');
       duplicateValue.value = 'Source';
-      expect(duplicateError.value).toBe('fastcat.projects.nameSameAsSource');
+      expect(duplicateError.value).toBeNull();
       expect(isDuplicateNameValid.value).toBe(false);
     });
 
@@ -502,6 +493,38 @@ describe('useProjectManagement', () => {
       handleOpenProject('MyProject');
 
       expect(mockPush).toHaveBeenCalledWith('/m/editor/MyProject?view=edit');
+    });
+  });
+
+  describe('startDelete and confirmDelete', () => {
+    it('opens delete confirmation modal even when deleteWithoutConfirmation setting is enabled', async () => {
+      workspaceMock.userSettings.deleteWithoutConfirmation = true;
+      const { startDelete, isDeleteModalOpen, deleteTargetProject } = useProjectManagement();
+
+      startDelete({ projectName: 'TestProj', projectId: 'id-1', projectPath: '/path/TestProj' });
+
+      expect(isDeleteModalOpen.value).toBe(true);
+      expect(deleteTargetProject.value).toEqual({
+        projectName: 'TestProj',
+        projectId: 'id-1',
+        projectPath: '/path/TestProj',
+      });
+    });
+
+    it('calls deleteProject and closes modal on confirm', async () => {
+      const { startDelete, confirmDelete, isDeleteModalOpen } = useProjectManagement();
+
+      startDelete({ projectName: 'TestProj', projectId: 'id-1', projectPath: '/path/TestProj' });
+      expect(isDeleteModalOpen.value).toBe(true);
+
+      await confirmDelete();
+
+      expect(workspaceMock.deleteProject).toHaveBeenCalledWith({
+        name: 'TestProj',
+        projectId: 'id-1',
+        projectPath: '/path/TestProj',
+      });
+      expect(isDeleteModalOpen.value).toBe(false);
     });
   });
 

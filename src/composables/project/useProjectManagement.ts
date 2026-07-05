@@ -10,8 +10,6 @@ const I18N_KEYS = {
   nameRequired: 'fastcat.projects.nameRequired',
   nameInvalid: 'fastcat.projects.nameInvalid',
   nameAlreadyExists: 'fastcat.projects.nameAlreadyExists',
-  nameSameAsCurrent: 'fastcat.projects.nameSameAsCurrent',
-  nameSameAsSource: 'fastcat.projects.nameSameAsSource',
 } as const;
 
 type ValidationErrorKey = (typeof I18N_KEYS)[keyof typeof I18N_KEYS];
@@ -104,26 +102,35 @@ export function useProjectManagement(options: { isMobile?: boolean } = {}) {
     const target = renameTargetProject.value;
     const validationError = getProjectNameValidationError(name);
     if (validationError) return validationError;
-    if (target && name.trim() === target.projectName.trim()) return I18N_KEYS.nameSameAsCurrent;
     if (target && isProjectNameExists(name.trim(), target.projectName.trim())) {
       return I18N_KEYS.nameAlreadyExists;
     }
     return null;
   });
 
-  const isRenameNameValid = computed(() => !renameError.value);
+  const isRenameNameValid = computed(() => {
+    if (renameError.value) return false;
+    const target = renameTargetProject.value;
+    if (target && renameValue.value.trim() === target.projectName.trim()) return false;
+    return true;
+  });
 
   const duplicateError = computed<ValidationErrorKey | null>(() => {
     const name = duplicateValue.value;
     const target = duplicateTargetProject.value;
     const validationError = getProjectNameValidationError(name);
     if (validationError) return validationError;
-    if (target && name.trim() === target.projectName.trim()) return I18N_KEYS.nameSameAsSource;
+    if (target && name.trim() === target.projectName.trim()) return null;
     if (isProjectNameExists(name.trim())) return I18N_KEYS.nameAlreadyExists;
     return null;
   });
 
-  const isDuplicateNameValid = computed(() => !duplicateError.value);
+  const isDuplicateNameValid = computed(() => {
+    if (duplicateError.value) return false;
+    const target = duplicateTargetProject.value;
+    if (target && duplicateValue.value.trim() === target.projectName.trim()) return false;
+    return true;
+  });
 
   async function createNewProject() {
     if (workspaceStore.isLoading) return;
