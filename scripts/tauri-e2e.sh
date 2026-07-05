@@ -12,6 +12,8 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
+export E2E_TEST=1
+
 BIN="src-tauri/target/release/fastcat"
 TAURI_DRIVER="${TAURI_DRIVER_PATH:-$HOME/.cargo/bin/tauri-driver}"
 

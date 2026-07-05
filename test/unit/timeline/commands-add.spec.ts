@@ -110,4 +110,69 @@ describe('addClipToTrack', () => {
       }),
     ).not.toThrow();
   });
+
+  it('cuts the existing clip instead of trimming a new pseudo clip', () => {
+    const first = addClipToTrack(makeDoc(), {
+      type: 'add_clip_to_track',
+      trackId: 'v1',
+      name: 'existing',
+      path: 'video/existing.mp4',
+      startUs: 2_000_000,
+      durationUs: 4_000_000,
+      quantizeToFrames: false,
+    });
+
+    const result = addClipToTrack(first.next, {
+      type: 'add_clip_to_track',
+      trackId: 'v1',
+      name: 'dropped',
+      path: 'image/dropped.png',
+      startUs: 0,
+      durationUs: 4_000_000,
+      sourceDurationUs: 4_000_000,
+      isImage: true,
+      pseudo: true,
+      quantizeToFrames: false,
+    });
+
+    const clips = result.next.tracks[0].items.filter((it: any) => it.kind === 'clip');
+    const existing = clips.find((it: any) => it.name === 'existing');
+    const dropped = clips.find((it: any) => it.name === 'dropped');
+
+    expect(existing?.timelineRange).toEqual({ startUs: 4_000_000, durationUs: 2_000_000 });
+    expect(dropped?.timelineRange).toEqual({ startUs: 0, durationUs: 4_000_000 });
+    expect(dropped?.sourceRange).toEqual({ startUs: 0, durationUs: 4_000_000 });
+  });
+
+  it('allows a new pseudo clip to start inside an existing clip and cuts the existing clip', () => {
+    const first = addClipToTrack(makeDoc(), {
+      type: 'add_clip_to_track',
+      trackId: 'v1',
+      name: 'existing',
+      path: 'video/existing.mp4',
+      startUs: 0,
+      durationUs: 2_000_000,
+      quantizeToFrames: false,
+    });
+
+    const result = addClipToTrack(first.next, {
+      type: 'add_clip_to_track',
+      trackId: 'v1',
+      name: 'dropped',
+      path: 'video/dropped.mp4',
+      startUs: 1_000_000,
+      durationUs: 4_000_000,
+      sourceDurationUs: 4_000_000,
+      pseudo: true,
+      quantizeToFrames: false,
+    });
+
+    const clips = result.next.tracks[0].items.filter((it: any) => it.kind === 'clip');
+    const existing = clips.find((it: any) => it.name === 'existing');
+    const dropped = clips.find((it: any) => it.name === 'dropped');
+
+    expect(existing?.timelineRange).toEqual({ startUs: 0, durationUs: 1_000_000 });
+    expect(dropped?.timelineRange).toEqual({ startUs: 1_000_000, durationUs: 4_000_000 });
+    expect(dropped?.sourceRange).toEqual({ startUs: 0, durationUs: 4_000_000 });
+  });
 });

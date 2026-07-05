@@ -8,6 +8,7 @@ const mockFunctions = {
   computeDuration: vi.fn(),
   videoGetSample: vi.fn(),
   audioSamples: vi.fn(),
+  audioGetFirstTimestamp: vi.fn(),
 };
 
 vi.mock('mediabunny', () => ({
@@ -23,6 +24,7 @@ vi.mock('mediabunny', () => ({
       computePacketStats: vi.fn().mockResolvedValue({ averageBitrate: 192000 }),
       getCodecParameterString: vi.fn().mockResolvedValue('mp4a.40.2'),
       canDecode: vi.fn().mockResolvedValue(true),
+      getFirstTimestamp: (...args: any[]) => mockFunctions.audioGetFirstTimestamp(...args),
     });
   },
   BlobSource: class {
@@ -51,6 +53,7 @@ describe('extractMetadata', () => {
     mockFunctions.audioSamples.mockImplementation(async function* () {
       yield { close: vi.fn() };
     });
+    mockFunctions.audioGetFirstTimestamp.mockResolvedValue(0);
     mockFunctions.getPrimaryVideoTrack.mockResolvedValue({
       codedWidth: 1920,
       codedHeight: 1080,
@@ -127,6 +130,27 @@ describe('extractMetadata', () => {
 
     const meta = await extractMetadata(file);
     expect(meta.audio?.canDecode).toBe(false);
+  });
+
+  it('anchors the audio decode-validation window to the track first timestamp', async () => {
+    // A perfectly good file whose first audio sample starts well after t=0 (e.g.
+    // MPEG-TS PTS starting ~1.4s, or an edit-list/encoder-delay offset). A window
+    // hardcoded to [0, 0.1] would find nothing here and wrongly flag it corrupt.
+    const file = new File([], 'ts-audio.mp4');
+    const FIRST_TS = 1.4;
+    mockFunctions.getPrimaryVideoTrack.mockResolvedValue(null);
+    mockFunctions.audioGetFirstTimestamp.mockResolvedValue(FIRST_TS);
+    mockFunctions.audioSamples.mockImplementation(async function* (start: number, end: number) {
+      // Only yield a sample when the query window actually covers the first
+      // timestamp — i.e. the code anchored the window correctly.
+      if (start <= FIRST_TS && end > FIRST_TS) {
+        yield { close: vi.fn() };
+      }
+    });
+
+    const meta = await extractMetadata(file);
+    expect(meta.audio?.canDecode).toBe(true);
+    expect(mockFunctions.audioSamples).toHaveBeenCalledWith(FIRST_TS, FIRST_TS + 1);
   });
 });
 

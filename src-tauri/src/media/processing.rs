@@ -224,16 +224,23 @@ enum StreamKind {
     Audio,
 }
 
-/// Decodes a single frame of the requested stream with ffmpeg, discarding output.
-/// Returns `true` only when ffmpeg exits cleanly with no error-level diagnostics —
-/// the desktop equivalent of the web worker decoding its first sample. A container
-/// that `ffprobe` parses can still have a payload ffmpeg cannot decode (truncated
-/// file, unsupported codec build), so this catches the cases the metadata-only
-/// probe misses.
+/// Decodes a single frame/packet of the requested stream with ffmpeg and pipes the
+/// raw decoded output to stdout — the desktop equivalent of the web worker decoding
+/// its first sample. A container that `ffprobe` parses can still have a payload
+/// ffmpeg cannot decode (truncated file, unsupported codec build), so this catches
+/// the cases the metadata-only probe misses.
+///
+/// Success is signalled by ffmpeg exiting cleanly AND emitting at least one decoded
+/// frame (non-empty stdout). We deliberately do NOT require empty stderr: ffmpeg at
+/// `-v error` emits benign error-level diagnostics for many perfectly playable files
+/// (e.g. MP3 "Could not update timestamps for discarded samples", H.264 reorder/POC
+/// notices), and keying corruption off stderr wrongly branded those good files
+/// corrupt. A genuinely undecodable stream produces zero frames, so empty stdout is
+/// the reliable signal.
 fn validate_stream_decodes(path: &Path, ffmpeg_path: &str, kind: StreamKind) -> bool {
-    let (map, frames_flag, drop_other) = match kind {
-        StreamKind::Video => ("0:v:0", "-frames:v", "-an"),
-        StreamKind::Audio => ("0:a:0", "-frames:a", "-vn"),
+    let (map, frames_flag, drop_other, out_format) = match kind {
+        StreamKind::Video => ("0:v:0", "-frames:v", "-an", "rawvideo"),
+        StreamKind::Audio => ("0:a:0", "-frames:a", "-vn", "s16le"),
     };
 
     let output = Command::new(ffmpeg_path)
@@ -241,13 +248,30 @@ fn validate_stream_decodes(path: &Path, ffmpeg_path: &str, kind: StreamKind) -> 
         .arg("-i")
         .arg(path)
         .arg(drop_other)
-        .args(["-map", map, frames_flag, "1", "-f", "null", "-"])
+        .args(["-map", map, frames_flag, "1", "-f", out_format, "-"])
         .stdin(Stdio::null())
-        .stdout(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
         .output();
 
     match output {
-        Ok(out) => out.status.success() && out.stderr.is_empty(),
+        Ok(out) => {
+            let ok = out.status.success() && !out.stdout.is_empty();
+            if !ok {
+                log::debug!(
+                    "[validate_stream_decodes] {} decode failed for {} (status={}, bytes={}): {}",
+                    match kind {
+                        StreamKind::Video => "video",
+                        StreamKind::Audio => "audio",
+                    },
+                    path.display(),
+                    out.status,
+                    out.stdout.len(),
+                    String::from_utf8_lossy(&out.stderr).trim(),
+                );
+            }
+            ok
+        }
         Err(e) => {
             log::warn!(
                 "[validate_stream_decodes] ffmpeg failed to run for {}: {}",

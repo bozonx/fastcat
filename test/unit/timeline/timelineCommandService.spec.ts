@@ -148,4 +148,52 @@ describe('createTimelineCommandService', () => {
     expect(cmd.durationUs).toBe(5_000_000);
     expect(cmd.isImage).toBe(true);
   });
+
+  it('lets pseudo overlap command cut the existing clip without trimming the dropped clip first', async () => {
+    const track = {
+      id: 'v1',
+      kind: 'video',
+      name: 'V1',
+      items: [
+        {
+          kind: 'clip',
+          id: 'existing',
+          clipType: 'media',
+          name: 'Existing',
+          source: { path: 'video/existing.mp4' },
+          sourceRange: { startUs: 0, durationUs: 2_000_000 },
+          sourceDurationUs: 2_000_000,
+          timelineRange: { startUs: 0, durationUs: 2_000_000 },
+        },
+      ],
+    };
+    const deps = makeDeps({
+      getTimelineDoc: vi.fn(() => ({
+        timebase: { fps: 30 },
+        tracks: [track],
+      })),
+      getTrackById: vi.fn(() => track),
+      getOrFetchMetadataByPath: vi.fn().mockResolvedValue({
+        duration: 4,
+        video: { width: 1920, height: 1080, fps: 30 },
+      }),
+    });
+    const service = createTimelineCommandService(deps);
+
+    const result = await service.addClipToTimelineFromPath({
+      trackId: 'v1',
+      name: 'clip.mp4',
+      path: 'video/clip.mp4',
+      startUs: 1_000_000,
+      pseudo: true,
+    });
+
+    const cmd = (deps.applyTimeline as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    expect(cmd.startUs).toBe(1_000_000);
+    expect(cmd.durationUs).toBe(4_000_000);
+    expect(cmd.sourceRange).toEqual({ startUs: 0, durationUs: 4_000_000 });
+    expect(cmd.pseudo).toBe(true);
+    expect(result.durationUs).toBe(4_000_000);
+    expect(result.warnings).toBeUndefined();
+  });
 });

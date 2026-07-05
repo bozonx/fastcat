@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mountSuspended, mockComponent } from '@nuxt/test-utils/runtime';
 import { reactive, computed, ref } from 'vue';
 import TimelineClip from '~/components/timeline/TimelineClip.vue';
@@ -13,7 +13,12 @@ vi.mock('~/components/timeline/ClipTransitions.vue', () => ({
   default: { name: 'ClipTransitions', template: '<div></div>' },
 }));
 vi.mock('~/components/timeline/ClipAudioFades.vue', () => ({
-  default: { name: 'ClipAudioFades', template: '<div></div>' },
+  default: {
+    name: 'ClipAudioFades',
+    props: ['hideFadeHandles'],
+    template:
+      '<div class="clip-audio-fades" :data-hide-fade-handles="hideFadeHandles ? \'true\' : \'false\'"></div>',
+  },
 }));
 vi.mock('~/components/timeline/ClipMetadata.vue', () => ({
   default: { name: 'ClipMetadata', template: '<div class="clip-metadata"></div>' },
@@ -513,7 +518,7 @@ describe('TimelineClip', () => {
     expect(sourceRange.attributes('style')).toContain('width: 50%');
   });
 
-  it('renders trim overlay with source range and timecode', async () => {
+  it('renders trim overlay whose material line tracks the drag in real time', async () => {
     const component = await mountClip({
       ...defaultProps,
       item: {
@@ -537,8 +542,92 @@ describe('TimelineClip', () => {
 
     expect(overlay.exists()).toBe(true);
     expect(timecode.text()).toContain('+00-00-01-00');
-    expect(sourceRange.attributes('style')).toContain('left: 10%');
-    expect(sourceRange.attributes('style')).toContain('width: 50%');
+    // The overlay reflects the *previewed* (live) source range, not the committed
+    // one: trimming the start by +1s advances the in-point 1s→2s (left 20%) and
+    // shrinks the selected material 5s→4s (width 40%). A stale reading would show
+    // the pre-drag 10% / 50%.
+    expect(sourceRange.attributes('style')).toContain('left: 20%');
+    expect(sourceRange.attributes('style')).toContain('width: 40%');
+    // Source-material line + end caps are drawn for real media clips.
+    expect(component.find('.bg-amber-200\\/80').exists()).toBe(true);
+  });
+
+  it('trim overlay on an image shows the offset but no source-material line', async () => {
+    const component = await mountClip({
+      ...defaultProps,
+      item: {
+        ...baseItem,
+        isImage: true,
+        sourceRange: { startUs: 0, durationUs: 5_000_000 },
+        sourceDurationUs: 0,
+      },
+      trimPreview: {
+        itemId: 'clip-1',
+        trackId: 'track-1',
+        startUs: 1_000_000,
+        durationUs: 4_000_000,
+        edge: 'end',
+        deltaUs: -1_000_000,
+      },
+    });
+
+    // Offset timecode is still shown on every clip while trimming.
+    expect(component.find('[data-trim-overlay]').exists()).toBe(true);
+    expect(component.find('[data-trim-timecode]').text()).toContain('00-00-01-00');
+    // ...but the source-material line and its end caps are suppressed (an image
+    // has no finite source to trim in/out of).
+    expect(component.find('[data-trim-source-range]').exists()).toBe(false);
+    expect(component.find('.bg-amber-200\\/80').exists()).toBe(false);
+  });
+
+  describe('fade handles hidden during trim / material move', () => {
+    // ClipAudioFades only mounts when the clip has audio; give the media entry an
+    // audio stream so it renders and we can read the forwarded hideFadeHandles prop.
+    beforeEach(() => {
+      mockMediaStore.mediaMetadata = { 'file.mp4': { audio: true } } as any;
+    });
+    afterEach(() => {
+      mockMediaStore.mediaMetadata = {};
+    });
+
+    it('keeps fade handles at rest (no trim/slip preview)', async () => {
+      const component = await mountClip();
+      const fades = component.find('.clip-audio-fades');
+      expect(fades.exists()).toBe(true);
+      expect(fades.attributes('data-hide-fade-handles')).toBe('false');
+    });
+
+    it('hides fade handles while a border is being trimmed', async () => {
+      const component = await mountClip({
+        ...defaultProps,
+        trimPreview: {
+          itemId: 'clip-1',
+          trackId: 'track-1',
+          startUs: 1_000_000,
+          durationUs: 4_000_000,
+          edge: 'start',
+          deltaUs: 1_000_000,
+        },
+      });
+      const fades = component.find('.clip-audio-fades');
+      expect(fades.exists()).toBe(true);
+      expect(fades.attributes('data-hide-fade-handles')).toBe('true');
+    });
+
+    it('hides fade handles while material is being slipped', async () => {
+      const component = await mountClip({
+        ...defaultProps,
+        slipPreview: {
+          itemId: 'clip-1',
+          trackId: 'track-1',
+          deltaUs: 2_000_000,
+          timecode: '+00-00-02-00',
+        },
+      });
+      const fades = component.find('.clip-audio-fades');
+      expect(fades.exists()).toBe(true);
+      expect(fades.attributes('data-hide-fade-handles')).toBe('true');
+    });
   });
 
   it('displays missing media state', async () => {

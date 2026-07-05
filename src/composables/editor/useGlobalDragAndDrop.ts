@@ -22,7 +22,26 @@ const log = createDevLogger('useGlobalDragAndDrop');
 
 const GLOBAL_DRAG_LEAVE_HIDE_DELAY_MS = 120;
 
+interface TauriDragDropPayload {
+  type: 'enter' | 'over' | 'drop' | 'leave';
+  paths?: string[];
+  position?: { x: number; y: number };
+}
+
+interface TauriDragDropEvent {
+  payload: TauriDragDropPayload;
+}
+
+interface FastcatE2eTauriDropWindow {
+  __fastcatE2eDispatchTauriDropEvent?: (payload: TauriDragDropPayload) => Promise<void>;
+}
+
 export function useGlobalDragAndDrop() {
+  const runtimeConfig = useRuntimeConfig();
+  const isE2eBridgeEnabled =
+    runtimeConfig.public.e2eTest ||
+    import.meta.env.E2E_TEST === '1' ||
+    import.meta.env.MODE === 'test';
   const isDropInProgress = ref(false);
   const isCurrentDragCancelled = ref(false);
   const uiStore = useUiStore();
@@ -244,206 +263,212 @@ export function useGlobalDragAndDrop() {
     clearInternalDragState();
   }
 
+  async function handleTauriDragDropEvent(event: TauriDragDropEvent) {
+    const hasActiveInternalDrag = uiStore.isFileManagerDragging || Boolean(draggedFile.value);
+
+    if (event.payload.type === 'over') {
+      if (hasActiveInternalDrag) {
+        isTauriNativeInternalDrag = true;
+        tauriNativeInternalDragPayload = draggedFile.value ?? tauriNativeInternalDragPayload;
+        hideGlobalDragOverlay();
+      } else {
+        showGlobalDragOverlay();
+        if (event.payload.position) {
+          dispatchTauriDragOver(event.payload.position);
+        }
+      }
+    } else if (event.payload.type === 'leave') {
+      scheduleGlobalDragOverlayHide();
+      dispatchTauriDragLeave();
+      // The OS drag left the window without dropping. If it was our own
+      // internal drag (promoted to native by WebKitGTK), its source state
+      // was intentionally kept alive for this handler — clear it now so it
+      // doesn't leak past the cancelled drag.
+      if (isTauriNativeInternalDrag || hasActiveInternalDrag) {
+        clearInternalDragState();
+      }
+      isTauriNativeInternalDrag = false;
+      tauriNativeInternalDragPayload = null;
+    } else if (event.payload.type === 'drop') {
+      const wasOverlayVisible = uiStore.isGlobalDragging;
+      hideGlobalDragOverlay();
+
+      if (hasActiveInternalDrag || isTauriNativeInternalDrag) {
+        dispatchTauriInternalFileDrop(event.payload.position);
+        isTauriNativeInternalDrag = false;
+        tauriNativeInternalDragPayload = null;
+        // The native flow is now complete; the pointer-DnD engine skipped
+        // its `onEnd`, so this is the only place that clears the source's
+        // eagerly-set drag state. Runs after the drop is dispatched above.
+        clearInternalDragState();
+        return;
+      }
+
+      if (isDropInProgress.value) return;
+      if (!workspaceStore.projectsHandle || !projectStore.currentProjectName) return;
+
+      // Detect target folder from drop position before DOM is updated
+      let targetDirPath: string | undefined;
+      let isAutoZone = false;
+      try {
+        if (event.payload.position) {
+          const scale = getDevicePixelRatio();
+          const x = event.payload.position.x / scale;
+          const y = event.payload.position.y / scale;
+          const el = elementFromPoint(x, y);
+          if (el) {
+            const folderEl = el.closest('[data-folder-path]');
+            targetDirPath = folderEl?.getAttribute('data-folder-path') || undefined;
+            isAutoZone = !!el.closest('.global-drop-overlay-auto-zone');
+          }
+        }
+      } catch (e) {
+        log.warn('Failed to detect drop target folder from position', e);
+      }
+
+      if (wasOverlayVisible && !isAutoZone && !targetDirPath) {
+        toast.add({
+          color: 'neutral',
+          title: t('videoEditor.fileManager.dropOverlay.cancelled'),
+        });
+        return;
+      }
+
+      isDropInProgress.value = true;
+      try {
+        const paths = event.payload.paths || [];
+        if (paths.length === 0) return;
+
+        const files: File[] = [];
+
+        const { invoke } = await import('@tauri-apps/api/core');
+        for (const rawPath of paths) {
+          // Internal drags can arrive as blob/http/data URLs, so fetch the content
+          // instead of treating the payload as a filesystem path.
+          if (/^(blob|https?|data):/i.test(rawPath)) {
+            try {
+              const resp = await fetch(rawPath);
+              const blob = await resp.blob();
+              // Derive a filename whose extension matches the content. Blob/data
+              // URLs often end in an extensionless UUID, which would otherwise
+              // route media to `_files` and fail later VFS writes.
+              const lastSegment = rawPath.split('/').pop()?.split('?')[0] || '';
+              const hasExt = /\.[a-z0-9]+$/i.test(lastSegment);
+              const mimeExt = (blob.type.split('/')[1] || '').replace(/[^a-z0-9]/gi, '');
+              let filename: string;
+              if (hasExt) {
+                filename = lastSegment;
+              } else if (mimeExt) {
+                const base = lastSegment || `dropped-${Date.now()}`;
+                filename = `${base}.${mimeExt === 'jpeg' ? 'jpg' : mimeExt}`;
+              } else {
+                filename = lastSegment || `dropped-${Date.now()}.bin`;
+              }
+              files.push(
+                new File([blob], filename, {
+                  type: blob.type || 'application/octet-stream',
+                  lastModified: Date.now(),
+                }),
+              );
+            } catch (err) {
+              log.warn('Failed to fetch blob/url drop', rawPath, err);
+            }
+            continue;
+          }
+
+          // Tauri can return `file://...` URLs instead of plain paths depending
+          // on the source; tauri-plugin-fs expects an OS path.
+          let path = rawPath;
+          if (/^file:\/\//i.test(path)) {
+            try {
+              path = decodeURIComponent(new URL(path).pathname);
+            } catch {
+              log.warn('Failed to decode file:// URL, using as-is', rawPath);
+            }
+          }
+
+          // Extend scope to allow reading the dropped file from any location.
+          await invoke('allow_dropped_file_scope', { path }).catch((err) => {
+            log.warn('allow_dropped_file_scope failed', path, err);
+          });
+
+          let file: File | null = null;
+          try {
+            file = await fm.vfs.getFile(path);
+          } catch {
+            // absolute OS path outside VFS workspace scope — fall through to direct read
+          }
+
+          if (file) {
+            files.push(file);
+          } else {
+            const { stat } = await import('@tauri-apps/plugin-fs');
+            let metadata;
+            try {
+              metadata = await stat(path);
+            } catch (err) {
+              log.warn('Failed to stat dropped file via fs plugin', path, err);
+              continue;
+            }
+            const filename = path.split(/[/\\]/).pop() || 'unknown';
+            const size = metadata.size ?? 0;
+            const mimeType = getMimeTypeFromFilename(filename);
+            const lastModified = metadata.mtime ? new Date(metadata.mtime).getTime() : Date.now();
+
+            if (size > LAZY_FILE_MEDIA_THRESHOLD_BYTES && isMediaFile(filename)) {
+              files.push(
+                new LazyTauriFile({
+                  path,
+                  name: filename,
+                  size,
+                  type: mimeType,
+                  lastModified,
+                }),
+              );
+            } else {
+              const { readFile } = await import('@tauri-apps/plugin-fs');
+              let bytes;
+              try {
+                bytes = await readFile(path);
+              } catch (err) {
+                log.warn('Failed to read dropped file via fs plugin', path, err);
+                continue;
+              }
+              files.push(
+                new File([bytes], filename, {
+                  type: mimeType,
+                  lastModified,
+                }),
+              );
+            }
+          }
+        }
+
+        if (files.length > 0) {
+          await fm.handleFiles(files, targetDirPath ? { targetDirPath } : undefined);
+        }
+      } catch (err) {
+        log.error('Failed to handle Tauri file drop:', err);
+      } finally {
+        isDropInProgress.value = false;
+      }
+    }
+  }
+
   onMounted(async () => {
     window.addEventListener('keydown', onGlobalKeyDown, { capture: true });
 
     if (isTauriRuntime()) {
       window.addEventListener('focus', onWindowRefocus);
+      if (isE2eBridgeEnabled) {
+        const e2eWindow = window as Window & FastcatE2eTauriDropWindow;
+        e2eWindow.__fastcatE2eDispatchTauriDropEvent = async (payload) => {
+          await handleTauriDragDropEvent({ payload });
+        };
+      }
       try {
         const { getCurrentWebview } = await import('@tauri-apps/api/webview');
-        unlistenTauriDrop = await getCurrentWebview().onDragDropEvent(async (event) => {
-          const hasActiveInternalDrag = uiStore.isFileManagerDragging || Boolean(draggedFile.value);
-
-          if (event.payload.type === 'over') {
-            if (hasActiveInternalDrag) {
-              isTauriNativeInternalDrag = true;
-              tauriNativeInternalDragPayload = draggedFile.value ?? tauriNativeInternalDragPayload;
-              hideGlobalDragOverlay();
-            } else {
-              showGlobalDragOverlay();
-              if (event.payload.position) {
-                dispatchTauriDragOver(event.payload.position);
-              }
-            }
-          } else if (event.payload.type === 'leave') {
-            scheduleGlobalDragOverlayHide();
-            dispatchTauriDragLeave();
-            // The OS drag left the window without dropping. If it was our own
-            // internal drag (promoted to native by WebKitGTK), its source state
-            // was intentionally kept alive for this handler — clear it now so it
-            // doesn't leak past the cancelled drag.
-            if (isTauriNativeInternalDrag || hasActiveInternalDrag) {
-              clearInternalDragState();
-            }
-            isTauriNativeInternalDrag = false;
-            tauriNativeInternalDragPayload = null;
-          } else if (event.payload.type === 'drop') {
-            const wasOverlayVisible = uiStore.isGlobalDragging;
-            hideGlobalDragOverlay();
-
-            if (hasActiveInternalDrag || isTauriNativeInternalDrag) {
-              dispatchTauriInternalFileDrop(event.payload.position);
-              isTauriNativeInternalDrag = false;
-              tauriNativeInternalDragPayload = null;
-              // The native flow is now complete; the pointer-DnD engine skipped
-              // its `onEnd`, so this is the only place that clears the source's
-              // eagerly-set drag state. Runs after the drop is dispatched above.
-              clearInternalDragState();
-              return;
-            }
-
-            if (isDropInProgress.value) return;
-            if (!workspaceStore.projectsHandle || !projectStore.currentProjectName) return;
-
-            // Detect target folder from drop position before DOM is updated
-            let targetDirPath: string | undefined;
-            let isAutoZone = false;
-            try {
-              if (event.payload.position) {
-                const scale = getDevicePixelRatio();
-                const x = event.payload.position.x / scale;
-                const y = event.payload.position.y / scale;
-                const el = elementFromPoint(x, y);
-                if (el) {
-                  const folderEl = el.closest('[data-folder-path]');
-                  targetDirPath = folderEl?.getAttribute('data-folder-path') || undefined;
-                  isAutoZone = !!el.closest('.global-drop-overlay-auto-zone');
-                }
-              }
-            } catch (e) {
-              log.warn('Failed to detect drop target folder from position', e);
-            }
-
-            if (wasOverlayVisible && !isAutoZone && !targetDirPath) {
-              toast.add({
-                color: 'neutral',
-                title: t('videoEditor.fileManager.dropOverlay.cancelled'),
-              });
-              return;
-            }
-
-            isDropInProgress.value = true;
-            try {
-              const paths = event.payload.paths || [];
-              if (paths.length === 0) return;
-
-              const files: File[] = [];
-
-              const { invoke } = await import('@tauri-apps/api/core');
-              for (const rawPath of paths) {
-                // Внутренний drag (blob:/http:/data:) — забираем содержимое через fetch,
-                // потому что это не путь в FS.
-                if (/^(blob|https?|data):/i.test(rawPath)) {
-                  try {
-                    const resp = await fetch(rawPath);
-                    const blob = await resp.blob();
-                    // Имя файла собираем так, чтобы расширение реально соответствовало контенту:
-                    // у blob:/data: URL имя в path может быть UUID без расширения, тогда оно
-                    // попадает в `_files` вместо `_images`/`_video` и затем падает на VFS-записи.
-                    const lastSegment = rawPath.split('/').pop()?.split('?')[0] || '';
-                    const hasExt = /\.[a-z0-9]+$/i.test(lastSegment);
-                    const mimeExt = (blob.type.split('/')[1] || '').replace(/[^a-z0-9]/gi, '');
-                    let filename: string;
-                    if (hasExt) {
-                      filename = lastSegment;
-                    } else if (mimeExt) {
-                      const base = lastSegment || `dropped-${Date.now()}`;
-                      filename = `${base}.${mimeExt === 'jpeg' ? 'jpg' : mimeExt}`;
-                    } else {
-                      filename = lastSegment || `dropped-${Date.now()}.bin`;
-                    }
-                    files.push(
-                      new File([blob], filename, {
-                        type: blob.type || 'application/octet-stream',
-                        lastModified: Date.now(),
-                      }),
-                    );
-                  } catch (err) {
-                    log.warn('Failed to fetch blob/url drop', rawPath, err);
-                  }
-                  continue;
-                }
-
-                // Tauri иногда отдаёт `file://...` URL вместо plain path (зависит от source);
-                // tauri-plugin-fs не любит non-file URL'ы — конвертим обратно в OS-путь.
-                let path = rawPath;
-                if (/^file:\/\//i.test(path)) {
-                  try {
-                    path = decodeURIComponent(new URL(path).pathname);
-                  } catch {
-                    log.warn('Failed to decode file:// URL, using as-is', rawPath);
-                  }
-                }
-
-                // Extend scope to allow reading the dropped file from any location.
-                await invoke('allow_dropped_file_scope', { path }).catch((err) => {
-                  log.warn('allow_dropped_file_scope failed', path, err);
-                });
-
-                let file: File | null = null;
-                try {
-                  file = await fm.vfs.getFile(path);
-                } catch {
-                  // absolute OS path outside VFS workspace scope — fall through to direct read
-                }
-
-                if (file) {
-                  files.push(file);
-                } else {
-                  const { stat } = await import('@tauri-apps/plugin-fs');
-                  let metadata;
-                  try {
-                    metadata = await stat(path);
-                  } catch (err) {
-                    log.warn('Failed to stat dropped file via fs plugin', path, err);
-                    continue;
-                  }
-                  const filename = path.split(/[/\\]/).pop() || 'unknown';
-                  const size = metadata.size ?? 0;
-                  const mimeType = getMimeTypeFromFilename(filename);
-                  const lastModified = metadata.mtime
-                    ? new Date(metadata.mtime).getTime()
-                    : Date.now();
-
-                  if (size > LAZY_FILE_MEDIA_THRESHOLD_BYTES && isMediaFile(filename)) {
-                    files.push(
-                      new LazyTauriFile({
-                        path,
-                        name: filename,
-                        size,
-                        type: mimeType,
-                        lastModified,
-                      }),
-                    );
-                  } else {
-                    const { readFile } = await import('@tauri-apps/plugin-fs');
-                    let bytes;
-                    try {
-                      bytes = await readFile(path);
-                    } catch (err) {
-                      log.warn('Failed to read dropped file via fs plugin', path, err);
-                      continue;
-                    }
-                    files.push(
-                      new File([bytes], filename, {
-                        type: mimeType,
-                        lastModified,
-                      }),
-                    );
-                  }
-                }
-              }
-
-              if (files.length > 0) {
-                await fm.handleFiles(files, targetDirPath ? { targetDirPath } : undefined);
-              }
-            } catch (err) {
-              log.error('Failed to handle Tauri file drop:', err);
-            } finally {
-              isDropInProgress.value = false;
-            }
-          }
-        });
+        unlistenTauriDrop = await getCurrentWebview().onDragDropEvent(handleTauriDragDropEvent);
       } catch (err) {
         log.error('Failed to setup Tauri drop listener:', err);
       }
@@ -457,6 +482,10 @@ export function useGlobalDragAndDrop() {
 
     if (unlistenTauriDrop) {
       unlistenTauriDrop();
+    }
+    if (isE2eBridgeEnabled) {
+      const e2eWindow = window as Window & FastcatE2eTauriDropWindow;
+      delete e2eWindow.__fastcatE2eDispatchTauriDropEvent;
     }
   });
 

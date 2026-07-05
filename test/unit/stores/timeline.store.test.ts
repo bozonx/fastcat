@@ -522,6 +522,34 @@ describe('TimelineStore', () => {
     expect(store.timelineDoc.tracks[0].items.length).toBeGreaterThan(initialCount);
   });
 
+  it('cuts the existing clip on a project file-manager pseudo drop', async () => {
+    store.timelineDoc = createTestTimeline({
+      tracks: [
+        {
+          id: 'v1',
+          kind: 'video',
+          clips: [{ id: 'existing', startUs: 2_000_000, durationUs: 4_000_000 }],
+        },
+      ],
+    });
+
+    await store.addClipToTimelineFromPath({
+      trackId: 'v1',
+      name: 'image.jpg',
+      path: 'image.jpg',
+      startUs: 0,
+      pseudo: true,
+    });
+
+    const clips = store.timelineDoc.tracks[0].items.filter((it: any) => it.kind === 'clip');
+    const existing = clips.find((it: any) => it.id === 'existing');
+    const dropped = clips.find((it: any) => it.name === 'image.jpg');
+
+    expect(existing.timelineRange).toEqual({ startUs: 5_000_000, durationUs: 1_000_000 });
+    expect(dropped.timelineRange).toEqual({ startUs: 0, durationUs: 5_000_000 });
+    expect(dropped.sourceRange).toEqual({ startUs: 0, durationUs: 5_000_000 });
+  });
+
   it('falls back to default timeline when otio parse throws', async () => {
     store.timelineDoc = null;
 

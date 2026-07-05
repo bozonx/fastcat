@@ -13,6 +13,8 @@ const props = defineProps<{
   canEdit: boolean;
   isDragging?: boolean;
   isResizingVolume?: boolean;
+  /** Hide the fade drag handles (but keep the fade shapes) while trimming/slipping. */
+  hideFadeHandles?: boolean;
   isMobile?: boolean;
   isHovered?: boolean;
   isSelected?: boolean;
@@ -207,6 +209,7 @@ const volumeIndicatorPosition = computed(() => {
           (clip.audioFadeInUs ?? 0) > 0 &&
           (clip.audioFadeInUs ?? 0) <= item.timelineRange.durationUs
         "
+        data-testid="fade-shape-in"
         class="absolute left-0 top-0 h-full"
         preserveAspectRatio="none"
         viewBox="0 0 100 100"
@@ -225,6 +228,7 @@ const volumeIndicatorPosition = computed(() => {
           (clip.audioFadeOutUs ?? 0) > 0 &&
           (clip.audioFadeOutUs ?? 0) <= item.timelineRange.durationUs
         "
+        data-testid="fade-shape-out"
         class="absolute right-0 top-0 h-full"
         preserveAspectRatio="none"
         viewBox="0 0 100 100"
@@ -243,8 +247,9 @@ const volumeIndicatorPosition = computed(() => {
     </div>
 
     <!-- Fade Handles -->
-    <template v-if="canEdit && !clip.locked && !track.locked && !isMobile">
+    <template v-if="canEdit && !clip.locked && !track.locked && !isMobile && !hideFadeHandles">
       <div
+        data-testid="fade-handle-in"
         class="absolute top-0 w-4 h-4 -translate-x-1/2 -translate-y-1/2 transition-opacity flex items-center justify-center shadow-sm pointer-events-auto touch-none coarse-reveal"
         :class="[
           clipWidthPx >= 30 ? 'cursor-ew-resize' : 'hidden pointer-events-none',
@@ -265,6 +270,7 @@ const volumeIndicatorPosition = computed(() => {
       </div>
 
       <div
+        data-testid="fade-handle-out"
         class="absolute top-0 w-4 h-4 -translate-x-1/2 -translate-y-1/2 transition-opacity flex items-center justify-center shadow-sm pointer-events-auto touch-none coarse-reveal"
         :class="[
           clipWidthPx >= 30 ? 'cursor-ew-resize' : 'hidden pointer-events-none',

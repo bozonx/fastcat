@@ -377,35 +377,36 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
     }
 
     const startUs = input.startUs ?? 0;
-
-    // Check if startUs falls inside any existing clip on this track
-    const overlappingClip = targetTrack.items.find((it) => {
-      if (it.kind !== 'clip') return false;
-      const clipStart = it.timelineRange.startUs;
-      const clipEnd = clipStart + it.timelineRange.durationUs;
-      return startUs >= clipStart && startUs < clipEnd - 1; // 1 Us epsilon
-    });
-
-    if (overlappingClip) {
-      throw new Error('cannot_insert_on_clip');
-    }
-
-    // Find the next clip that starts after startUs on this track
-    const nextClip = targetTrack.items
-      .filter((it) => it.kind === 'clip' && it.timelineRange.startUs > startUs)
-      .sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs)[0];
-
     let finalDurationUs = durationUs;
     const warnings: AddClipWarning[] = [];
 
-    if (nextClip) {
-      const maxAvailableDurationUs = nextClip.timelineRange.startUs - startUs;
-      if (maxAvailableDurationUs <= 0) {
+    if (!input.pseudo) {
+      // Check if startUs falls inside any existing clip on this track
+      const overlappingClip = targetTrack.items.find((it) => {
+        if (it.kind !== 'clip') return false;
+        const clipStart = it.timelineRange.startUs;
+        const clipEnd = clipStart + it.timelineRange.durationUs;
+        return startUs >= clipStart && startUs < clipEnd - 1; // 1 Us epsilon
+      });
+
+      if (overlappingClip) {
         throw new Error('cannot_insert_on_clip');
       }
-      if (durationUs > maxAvailableDurationUs) {
-        finalDurationUs = maxAvailableDurationUs;
-        warnings.push({ type: 'clipTrimmed' });
+
+      // Find the next clip that starts after startUs on this track
+      const nextClip = targetTrack.items
+        .filter((it) => it.kind === 'clip' && it.timelineRange.startUs > startUs)
+        .sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs)[0];
+
+      if (nextClip) {
+        const maxAvailableDurationUs = nextClip.timelineRange.startUs - startUs;
+        if (maxAvailableDurationUs <= 0) {
+          throw new Error('cannot_insert_on_clip');
+        }
+        if (durationUs > maxAvailableDurationUs) {
+          finalDurationUs = maxAvailableDurationUs;
+          warnings.push({ type: 'clipTrimmed' });
+        }
       }
     }
 
@@ -512,6 +513,7 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
         path: input.path,
         durationUs: finalDurationUs,
         sourceDurationUs,
+        sourceRange: { startUs: 0, durationUs: finalDurationUs },
         isImage: isImageLike,
         startUs,
         pseudo: input.pseudo,

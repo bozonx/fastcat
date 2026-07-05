@@ -164,6 +164,46 @@ describe('ClipAudioFades', () => {
     addEventListenerSpy.mockRestore();
   });
 
+  // While the clip's borders are being trimmed or its material is slipped, the
+  // fade drag handles must disappear (they sit under the trim handle and get in
+  // the way) — but the fade shapes themselves must stay drawn.
+  describe('fade handles during trim / material move', () => {
+    it('shows both handles and both fade shapes at rest', async () => {
+      const component = await mountSuspended(ClipAudioFades, { props: defaultProps });
+
+      expect(component.find('[data-testid="fade-handle-in"]').exists()).toBe(true);
+      expect(component.find('[data-testid="fade-handle-out"]').exists()).toBe(true);
+      expect(component.find('[data-testid="fade-shape-in"]').exists()).toBe(true);
+      expect(component.find('[data-testid="fade-shape-out"]').exists()).toBe(true);
+    });
+
+    it('hides the handles but keeps the fade shapes when hideFadeHandles is set', async () => {
+      const component = await mountSuspended(ClipAudioFades, {
+        props: { ...defaultProps, hideFadeHandles: true },
+      });
+
+      // Handles gone (covers both trimming a border and slipping material).
+      expect(component.find('[data-testid="fade-handle-in"]').exists()).toBe(false);
+      expect(component.find('[data-testid="fade-handle-out"]').exists()).toBe(false);
+      expect(component.findAll('.cursor-ew-resize').length).toBe(0);
+
+      // Fade shapes stay drawn.
+      expect(component.find('[data-testid="fade-shape-in"]').exists()).toBe(true);
+      expect(component.find('[data-testid="fade-shape-out"]').exists()).toBe(true);
+    });
+
+    it('restores the handles when the interaction ends', async () => {
+      const component = await mountSuspended(ClipAudioFades, {
+        props: { ...defaultProps, hideFadeHandles: true },
+      });
+      expect(component.find('[data-testid="fade-handle-in"]').exists()).toBe(false);
+
+      await component.setProps({ hideFadeHandles: false });
+      expect(component.find('[data-testid="fade-handle-in"]').exists()).toBe(true);
+      expect(component.find('[data-testid="fade-handle-out"]').exists()).toBe(true);
+    });
+  });
+
   describe('volume control visibility', () => {
     async function mountAndGetControl(props: Record<string, unknown>) {
       const clipOverrides = (props.clip as Record<string, unknown>) ?? {};

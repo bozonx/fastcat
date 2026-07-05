@@ -159,6 +159,16 @@ export async function extractMetadata(
         if (canDecodeAudio) {
           try {
             const aSink = new AudioSampleSink(aTrack);
+            // Anchor the validation window to the track's FIRST timestamp, not an
+            // absolute [0, 0.1] window. Many perfectly good files have their first
+            // audio sample well after t=0 — MPEG-TS PTS commonly starts ~1.4s,
+            // edit lists / encoder delay / container start offsets push it later —
+            // and `samples(0, 0.1)` would then yield nothing and brand a healthy
+            // file corrupt. Mirrors the video path (which already uses
+            // getFirstTimestamp). Widen to a 1s window so sparse packets still land
+            // at least one sample; we break on the first regardless.
+            const firstTs =
+              typeof aTrack.getFirstTimestamp === 'function' ? await aTrack.getFirstTimestamp() : 0;
             let decodedAny = false;
             for await (const sampleRaw of (
               aSink as {
@@ -167,7 +177,7 @@ export async function extractMetadata(
                   end: number,
                 ) => AsyncIterable<{ close?: () => void } | null | undefined>;
               }
-            ).samples(0, 0.1)) {
+            ).samples(firstTs, firstTs + 1)) {
               if (sampleRaw) {
                 decodedAny = true;
                 if (typeof sampleRaw.close === 'function') sampleRaw.close();

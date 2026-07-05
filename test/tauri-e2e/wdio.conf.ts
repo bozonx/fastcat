@@ -24,6 +24,8 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(here, '..', '..');
 const tauriDir = path.join(projectRoot, 'src-tauri');
 
+process.env.E2E_TEST ??= '1';
+
 // Cargo package name is `fastcat`, so the release binary is `target/release/fastcat`.
 // `TAURI_E2E_BINARY` lets you point at an already-built binary (e.g. a debug
 // build) to skip the slow release build during local iteration.

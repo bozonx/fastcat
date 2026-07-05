@@ -112,6 +112,12 @@ vi.stubGlobal('useI18n', () => ({
   t: (key: string) => key,
 }));
 
+vi.stubGlobal('useRuntimeConfig', () => ({
+  public: {
+    e2eTest: true,
+  },
+}));
+
 describe('useGlobalDragAndDrop', () => {
   beforeEach(() => {
     draggedFileRef.value = null;
@@ -177,6 +183,40 @@ describe('useGlobalDragAndDrop', () => {
     expect(uiStoreMock.isFileManagerDragging).toBe(false);
     window.removeEventListener('fastcat:tauri-internal-file-drop', dropListener);
     wrapper.unmount();
+  });
+
+  it('exposes an e2e-only dispatcher that uses the Tauri drop path', async () => {
+    const wrapper = mount(
+      defineComponent({
+        setup() {
+          useGlobalDragAndDrop();
+          return () => null;
+        },
+      }),
+    );
+    await flushPromises();
+
+    const e2eWindow = window as Window & {
+      __fastcatE2eDispatchTauriDropEvent?: (payload: {
+        type: 'drop';
+        paths: string[];
+        position: { x: number; y: number };
+      }) => Promise<void>;
+    };
+
+    expect(e2eWindow.__fastcatE2eDispatchTauriDropEvent).toBeTypeOf('function');
+
+    await e2eWindow.__fastcatE2eDispatchTauriDropEvent?.({
+      type: 'drop',
+      paths: ['/tmp/video.mp4'],
+      position: { x: 200, y: 300 },
+    });
+    await flushPromises();
+
+    expect(handleFilesMock).toHaveBeenCalledWith(expect.any(Array), undefined);
+
+    wrapper.unmount();
+    expect(e2eWindow.__fastcatE2eDispatchTauriDropEvent).toBeUndefined();
   });
 
   it('clears internal drag state when a native takeover leaves the window without dropping', async () => {

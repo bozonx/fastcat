@@ -919,6 +919,7 @@ function handleTransitionCreate(
           :clip-width-px="clipWidthPx"
           :can-edit="canEditClipContent"
           :is-dragging="isDraggingCurrentItem || isMovePreviewCurrentItem"
+          :hide-fade-handles="myTrimPreview !== null || currentSlipPreview !== null"
           :is-resizing-volume="resizeVolume?.itemId === item.id"
           :is-mobile="isMobile"
           :is-hovered="isHovered"
