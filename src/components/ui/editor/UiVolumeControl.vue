@@ -40,7 +40,7 @@ const volumeColor = computed(() => {
   const currentVolume = props.isMuted ? 0 : props.volume;
   const pct = Math.round(currentVolume * 100);
   if (pct === 0) return 'error';
-  if (pct < 20) return 'warning';
+  if (pct <= 30) return 'warning';
   return 'neutral';
 });
 

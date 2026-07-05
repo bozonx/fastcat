@@ -107,4 +107,22 @@ describe('MobileMonitorAudioControl', () => {
     expect(uiStore.monitorVolume).toBe(1);
     expect(uiStore.monitorMuted).toBe(false);
   });
+
+  it('sets volume color to warning at 30% or less and neutral above 30%', async () => {
+    const wrapper = mount(MobileMonitorAudioControl, {
+      global: globalOptions,
+    });
+
+    const uiStore = useUiStore();
+    uiStore.monitorMuted = false;
+
+    uiStore.monitorVolume = 0.3;
+    await wrapper.vm.$nextTick();
+    const button = wrapper.find('button.button-stub');
+    expect(button.classes()).toContain('warning');
+
+    uiStore.monitorVolume = 0.31;
+    await wrapper.vm.$nextTick();
+    expect(button.classes()).toContain('neutral');
+  });
 });

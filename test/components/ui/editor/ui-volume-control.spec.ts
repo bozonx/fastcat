@@ -128,10 +128,10 @@ describe('UiVolumeControl', () => {
     expect(button.attributes('color')).toBe('error');
   });
 
-  it('sets color to warning when volume is less than 20% and not muted', async () => {
+  it('sets color to warning when volume is 30% or less and not muted', async () => {
     const component = await mountSuspended(UiVolumeControl, {
       props: {
-        volume: 0.15,
+        volume: 0.3,
         isMuted: false,
       },
       global: { stubs: { UiTooltip: tooltipStub } },
@@ -141,10 +141,10 @@ describe('UiVolumeControl', () => {
     expect(button.attributes('color')).toBe('warning');
   });
 
-  it('sets color to neutral when volume is 20% or more and not muted', async () => {
+  it('sets color to neutral when volume is more than 30% and not muted', async () => {
     const component = await mountSuspended(UiVolumeControl, {
       props: {
-        volume: 0.2,
+        volume: 0.31,
         isMuted: false,
       },
       global: { stubs: { UiTooltip: tooltipStub } },
