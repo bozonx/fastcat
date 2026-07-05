@@ -39,8 +39,19 @@ export interface TimelineItemView {
   audioFadeInCurve?: string;
   audioFadeOutCurve?: string;
   audioMuted?: boolean;
+  /** Edge transitions persisted on the clip metadata, when present. */
+  transitionIn?: TimelineTransitionView;
+  transitionOut?: TimelineTransitionView;
   /** Clip effects persisted as OTIO Effect metadata. */
   effects: TimelineEffectView[];
+}
+
+export interface TimelineTransitionView {
+  type: string;
+  durationUs: number;
+  mode?: string;
+  curve?: string;
+  params?: Record<string, unknown>;
 }
 
 export interface TimelineEffectView {
@@ -76,6 +87,13 @@ interface RawRange {
   start_time?: RawRational;
   duration?: RawRational;
 }
+interface RawTransition {
+  type?: string;
+  durationUs?: number;
+  mode?: string;
+  curve?: string;
+  params?: Record<string, unknown>;
+}
 interface RawChild {
   OTIO_SCHEMA?: string;
   name?: string;
@@ -90,6 +108,10 @@ interface RawChild {
         fadeInCurve?: string;
         fadeOutCurve?: string;
         muted?: boolean;
+      };
+      transitions?: {
+        in?: RawTransition;
+        out?: RawTransition;
       };
     };
   };
@@ -159,6 +181,17 @@ function parseEffects(raw: RawEffect[] | undefined): TimelineEffectView[] {
     .filter((effect) => effect.id.length > 0 && effect.type.length > 0);
 }
 
+function parseTransition(raw: RawTransition | undefined): TimelineTransitionView | undefined {
+  if (!raw || typeof raw.type !== 'string' || raw.type.length === 0) return undefined;
+  return {
+    type: raw.type,
+    durationUs: typeof raw.durationUs === 'number' ? raw.durationUs : 0,
+    mode: raw.mode,
+    curve: raw.curve,
+    params: raw.params,
+  };
+}
+
 function parseTrack(raw: RawTrack): TimelineTrackView {
   const items: TimelineItemView[] = [];
   let cursorUs = 0;
@@ -192,6 +225,8 @@ function parseTrack(raw: RawTrack): TimelineTrackView {
       audioFadeInCurve: fastcatAudio?.fadeInCurve,
       audioFadeOutCurve: fastcatAudio?.fadeOutCurve,
       audioMuted: fastcatAudio?.muted,
+      transitionIn: parseTransition(child.metadata?.fastcat?.transitions?.in),
+      transitionOut: parseTransition(child.metadata?.fastcat?.transitions?.out),
       effects: parseEffects(child.effects),
     });
 
