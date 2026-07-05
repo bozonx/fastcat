@@ -182,7 +182,7 @@ function getProjectOpenTarget(project: ProjectActionTarget): string {
           </div>
           <div class="overflow-hidden">
             <h1 class="font-bold text-lg text-ui-text leading-tight tracking-tight">FASTCAT</h1>
-            <p class="text-[10px] text-ui-text-muted uppercase tracking-widest font-semibold">
+            <p class="text-[10px] text-ui-text-muted tracking-widest font-semibold">
               Video Editor
             </p>
           </div>
@@ -196,7 +196,7 @@ function getProjectOpenTarget(project: ProjectActionTarget): string {
           size="xl"
           color="primary"
           icon="i-heroicons-plus"
-          class="shadow-lg shadow-ui-action/20 py-4 rounded-2xl font-bold uppercase tracking-wide bg-ui-action! hover:bg-ui-action-hover! text-white! border-none transition-all hover:scale-[1.02] active:scale-[0.98]"
+          class="shadow-lg shadow-ui-action/20 py-4 rounded-2xl font-bold tracking-wide bg-ui-action! hover:bg-ui-action-hover! text-white! border-none transition-all hover:scale-[1.02] active:scale-[0.98]"
           @click="startCreateProject"
         >
           {{ t('fastcat.projects.newProject') }}
@@ -208,7 +208,7 @@ function getProjectOpenTarget(project: ProjectActionTarget): string {
           variant="subtle"
           color="neutral"
           icon="i-heroicons-folder-open"
-          class="py-3 rounded-2xl font-bold uppercase tracking-wide transition-all hover:scale-[1.02] active:scale-[0.98]"
+          class="py-3 rounded-2xl font-bold tracking-wide transition-all hover:scale-[1.02] active:scale-[0.98]"
           @click="openProjectFromDisk"
         >
           {{ t('fastcat.projects.openProjectDisk') }}

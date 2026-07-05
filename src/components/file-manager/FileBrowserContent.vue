@@ -225,7 +225,7 @@ function emitResizeStart(event: MouseEvent, column: string) {
             name="i-heroicons-arrow-path"
             class="w-8 h-8 animate-spin text-primary-500/50"
           />
-          <div v-else class="text-ui-text-dim/30 text-xs font-medium uppercase tracking-widest">
+          <div v-else class="text-ui-text-dim/30 text-xs font-medium tracking-widest">
             {{ t('common.scrollForMore') }}
           </div>
         </div>

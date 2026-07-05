@@ -210,7 +210,7 @@ function onVolumeUpdate(db: number) {
       >
         <div class="flex flex-col items-end px-1 h-8 justify-center">
           <span
-            class="text-[10px] uppercase font-bold text-ui-text-muted/70 leading-tight line-clamp-1"
+            class="text-[10px] font-bold text-ui-text-muted/70 leading-tight line-clamp-1"
             >{{ t('fastcat.clip.audio.volume') }}</span
           >
           <span

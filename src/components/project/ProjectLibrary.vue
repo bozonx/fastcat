@@ -173,7 +173,7 @@ function isSelected(kind: 'text' | 'shape' | 'hud', id: string) {
       class="flex items-center border-b border-ui-border shrink-0 px-1 py-1 gap-0.5 bg-ui-bg-elevated sticky top-0 z-10 min-h-[36px]"
     >
       <button
-        class="group relative flex items-center gap-1.5 px-2 py-1 rounded cursor-pointer transition-colors duration-150 shrink-0 text-2xs font-semibold tracking-wide uppercase"
+        class="group relative flex items-center gap-1.5 px-2 py-1 rounded cursor-pointer transition-colors duration-150 shrink-0 text-2xs font-semibold tracking-wide"
         :class="
           activeTab === 'texts'
             ? 'bg-selection-accent-500/15 text-selection-accent-400'
@@ -184,7 +184,7 @@ function isSelected(kind: 'text' | 'shape' | 'hud', id: string) {
         {{ t('fastcat.library.tabs.texts') }}
       </button>
       <button
-        class="group relative flex items-center gap-1.5 px-2 py-1 rounded cursor-pointer transition-colors duration-150 shrink-0 text-2xs font-semibold tracking-wide uppercase"
+        class="group relative flex items-center gap-1.5 px-2 py-1 rounded cursor-pointer transition-colors duration-150 shrink-0 text-2xs font-semibold tracking-wide"
         :class="
           activeTab === 'shapes'
             ? 'bg-selection-accent-500/15 text-selection-accent-400'
@@ -196,7 +196,7 @@ function isSelected(kind: 'text' | 'shape' | 'hud', id: string) {
       </button>
       <button
         v-if="isHudFeatureEnabled"
-        class="group relative flex items-center gap-1.5 px-2 py-1 rounded cursor-pointer transition-colors duration-150 shrink-0 text-2xs font-semibold tracking-wide uppercase"
+        class="group relative flex items-center gap-1.5 px-2 py-1 rounded cursor-pointer transition-colors duration-150 shrink-0 text-2xs font-semibold tracking-wide"
         :class="
           activeTab === 'hud'
             ? 'bg-selection-accent-500/15 text-selection-accent-400'

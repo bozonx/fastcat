@@ -733,7 +733,7 @@ function handleArrayItemUpdate(
                 entry.control.layout === 'horizontal' ? 'p-1.5' : 'pb-2 mb-1 -mx-3 -mt-3 px-3 pt-2'
               "
             >
-              <span class="text-2xs font-medium text-ui-text-muted uppercase tracking-wider">
+              <span class="text-2xs font-medium text-ui-text-muted tracking-wider">
                 #{{ Number(index) + 1 }}
               </span>
               <UButton

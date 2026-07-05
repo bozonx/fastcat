@@ -129,7 +129,7 @@ const {
           class="w-full h-6 bg-primary-500/10 hover:bg-primary-500/20 text-primary-400 border border-primary-500/30 rounded flex items-center justify-center cursor-pointer transition-colors"
           @click="openEffectsEditor"
         >
-          <span class="text-3xs font-bold uppercase truncate px-1">
+          <span class="text-3xs font-bold truncate px-1">
             {{ t('fastcat.effects.effectsCount', { count: audioEffectsCount }) }}
           </span>
         </div>

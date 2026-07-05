@@ -24,7 +24,7 @@ function toggle() {
         class="w-3.5 h-3.5 text-ui-text-muted group-hover:text-ui-text transition-colors shrink-0"
       />
       <span
-        class="uppercase text-2xs font-semibold tracking-wider text-ui-text-muted group-hover:text-ui-text transition-colors"
+        class="text-2xs font-semibold tracking-wider text-ui-text-muted group-hover:text-ui-text transition-colors"
       >
         {{ title }}
       </span>

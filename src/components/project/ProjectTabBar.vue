@@ -85,10 +85,7 @@ function isDraggable(tab: AnyProjectTab): boolean {
                   : 'text-ui-text-muted'
               "
             />
-            <span
-              class="text-2xs font-semibold tracking-wide truncate max-w-[140px]"
-              :class="!isFileTab(tab) ? 'uppercase' : ''"
-            >
+            <span class="text-2xs font-semibold tracking-wide truncate max-w-[140px]">
               {{ tabLabel(tab) }}
             </span>
 
@@ -107,7 +104,7 @@ function isDraggable(tab: AnyProjectTab): boolean {
 
     <div
       v-if="isDropTarget"
-      class="flex items-center gap-1 px-2 text-2xs text-primary-400 font-semibold uppercase tracking-wider shrink-0 pointer-events-none"
+      class="flex items-center gap-1 px-2 text-2xs text-primary-400 font-semibold tracking-wider shrink-0 pointer-events-none"
     >
       <UIcon name="i-heroicons-arrow-down-tray" class="w-3.5 h-3.5" />
       {{ t('videoEditor.projectTabs.dropHint') }}

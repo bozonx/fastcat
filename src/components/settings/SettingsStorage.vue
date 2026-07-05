@@ -208,7 +208,7 @@ function clearCache() {
 
       <!-- Информационный блок о системных путях и кэше -->
       <div class="p-4 rounded-xl border border-ui-border bg-ui-bg-elevated/20 flex flex-col gap-3">
-        <div class="text-xs font-bold text-ui-text-muted uppercase tracking-wider">
+        <div class="text-xs font-bold text-ui-text-muted tracking-wider">
           {{ t('videoEditor.settings.systemPathsTitle') }}
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">

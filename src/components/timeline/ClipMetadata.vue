@@ -76,7 +76,7 @@ const isFreePosition = computed(() => {
       class="absolute inset-0 flex flex-col items-center justify-center z-30 bg-red-600/20"
     >
       <UIcon name="i-heroicons-exclamation-triangle" class="w-5 h-5 text-white mb-1" />
-      <span v-if="clipWidthPx > 60" class="text-2xs font-bold uppercase tracking-wider text-white">
+      <span v-if="clipWidthPx > 60" class="text-2xs font-bold tracking-wider text-white">
         {{ t('fastcat.timeline.noMedia') }}
       </span>
     </div>
@@ -89,7 +89,7 @@ const isFreePosition = computed(() => {
       <UIcon name="i-heroicons-exclamation-circle" class="w-5 h-5 text-amber-200 mb-0.5" />
       <span
         v-if="clipWidthPx > 60"
-        class="text-[10px] leading-tight font-bold uppercase tracking-wider text-amber-100 text-center px-1"
+        class="text-[10px] leading-tight font-bold tracking-wider text-amber-100 text-center px-1"
       >
         {{ t('videoEditor.fileManager.compatibility.unsupported') }}
       </span>

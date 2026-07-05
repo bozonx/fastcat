@@ -121,7 +121,7 @@ function isEntrySelected(entry: FsEntry): boolean {
             class="w-full h-full flex flex-col items-center justify-center bg-red-950/60 text-red-400 gap-1 p-1"
           >
             <UIcon name="i-heroicons-exclamation-triangle" class="w-6 h-6 shrink-0" />
-            <span class="text-xs text-center font-bold leading-tight uppercase">{{
+            <span class="text-xs text-center font-bold leading-tight">{{
               getCompatibilityStatus(entry) === 'corrupt'
                 ? t('videoEditor.fileManager.compatibility.corrupt')
                 : t('videoEditor.fileManager.compatibility.unsupported')

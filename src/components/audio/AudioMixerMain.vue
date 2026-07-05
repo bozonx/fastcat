@@ -91,7 +91,7 @@ const {
           class="w-full h-8 bg-primary/10 hover:bg-primary/20 text-primary-400 border border-primary/40 rounded flex items-center justify-center cursor-pointer transition-all animate-in fade-in zoom-in-95 duration-200"
           @click="openEffectsEditor"
         >
-          <span class="text-3xs font-bold uppercase truncate px-1 tracking-wider">
+          <span class="text-3xs font-bold truncate px-1 tracking-wider">
             {{ t('fastcat.effects.effectsCount', { count: masterEffectsCount }) }}
           </span>
         </div>
@@ -135,7 +135,7 @@ const {
 
     <!-- Label -->
     <div class="w-full px-1 text-center py-1 mt-auto">
-      <div class="text-2xs font-bold text-ui-text uppercase">
+      <div class="text-2xs font-bold text-ui-text">
         {{ t('fastcat.audioMixer.master') }}
       </div>
     </div>

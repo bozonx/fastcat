@@ -586,7 +586,7 @@ useFileManagerPanelBootstrap({
 
         <span
           v-if="!props.isExternal && !props.hideProjectLabel"
-          class="ml-auto text-[10px] font-bold uppercase tracking-wider text-ui-text-muted/80 px-1 select-none"
+          class="ml-auto text-[10px] font-bold tracking-wider text-ui-text-muted/80 px-1 select-none"
         >
           {{ t('videoEditor.fileManager.projectRoot.project') }}
         </span>

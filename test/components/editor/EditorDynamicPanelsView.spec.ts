@@ -114,4 +114,21 @@ describe('EditorDynamicPanelsView', () => {
     expect(component.emitted('panelPointerDown')).toBeTruthy();
     expect(component.emitted('panelPointerDown')![0]?.[1]).toBe('panel-1');
   });
+
+  it('does not emit panelPointerDown when an interactive control inside a drag handle receives pointerdown', async () => {
+    const component = await mountSuspended(EditorDynamicPanelsView, {
+      props: defaultProps,
+      global: {
+        stubs: {
+          EditorDynamicPanelContent: {
+            template: '<div data-panel-drag-handle><div role="slider">Volume</div></div>',
+            props: ['panel', 'view', 'focusPanelId'],
+          },
+        },
+      },
+    });
+
+    await component.find('[role="slider"]').trigger('pointerdown');
+    expect(component.emitted('panelPointerDown')).toBeFalsy();
+  });
 });

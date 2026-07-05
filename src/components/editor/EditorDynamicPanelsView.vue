@@ -60,6 +60,36 @@ const splitterMenuItems = computed(() => [
     },
   ],
 ]);
+
+function shouldStartPanelDrag(event: PointerEvent) {
+  const target = event.target;
+  if (!(target instanceof Element)) {
+    return false;
+  }
+
+  const dragHandle = target.closest('[data-panel-drag-handle]');
+  if (!dragHandle) {
+    return false;
+  }
+
+  return !target.closest(
+    [
+      '[data-panel-no-drag]',
+      'button',
+      'input',
+      'select',
+      'textarea',
+      'a[href]',
+      '[contenteditable="true"]',
+      '[role="button"]',
+      '[role="menuitem"]',
+      '[role="slider"]',
+      '[data-slider-track]',
+      '[data-slider-range]',
+      '[data-slider-thumb]',
+    ].join(','),
+  );
+}
 </script>
 
 <template>
@@ -115,8 +145,7 @@ const splitterMenuItems = computed(() => [
               @click.stop="emit('focus', panel.id)"
               @pointerdown.capture="
                 (event) => {
-                  const target = event.target as HTMLElement;
-                  if (target.closest('[data-panel-drag-handle]')) {
+                  if (shouldStartPanelDrag(event)) {
                     emit('panelPointerDown', event, panel.id, view);
                   }
                 }

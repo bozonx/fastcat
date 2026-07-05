@@ -383,7 +383,7 @@ onUnmounted(() => {
             <UIcon name="i-heroicons-musical-note" class="w-8 h-8 opacity-70" />
           </div>
           <div
-            class="mt-4 text-2xs sm:text-xs uppercase tracking-wider opacity-70 text-center font-medium"
+            class="mt-4 text-2xs sm:text-xs tracking-wider opacity-70 text-center font-medium"
           >
             {{ t('fastcat.preview.audioTrack') }}
           </div>

@@ -81,7 +81,7 @@ function handleApply() {
       </div>
 
       <div class="flex flex-col gap-3">
-        <label class="text-xs font-semibold uppercase tracking-wider text-ui-text-muted">
+        <label class="text-xs font-semibold tracking-wider text-ui-text-muted">
           {{ t('fastcat.timeline.autoMontage.mode') }}
         </label>
         <div class="flex gap-1 p-1 bg-ui-bg-accent rounded-lg w-fit">

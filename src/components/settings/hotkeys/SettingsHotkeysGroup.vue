@@ -122,7 +122,7 @@ function getTitleParts(cmdId: HotkeyCommandId) {
               </div>
               <div
                 v-if="capturingCommandId === cmd.id"
-                class="mt-1 text-3xs text-primary-500 font-bold uppercase tracking-wider animate-pulse"
+                class="mt-1 text-3xs text-primary-500 font-bold tracking-wider animate-pulse"
               >
                 {{ t('videoEditor.settings.hotkeysCapturing') }}
               </div>

@@ -163,7 +163,7 @@ function updateCustomTransitionsOrder(newCustomTransitions: TransitionManifest[]
       class="flex items-center border-b border-ui-border shrink-0 px-1 py-1 gap-0.5 bg-ui-bg-elevated sticky top-0 z-10 min-h-[36px]"
     >
       <button
-        class="group relative flex items-center gap-1.5 px-2 py-1 rounded cursor-pointer transition-colors duration-150 shrink-0 text-2xs font-semibold tracking-wide uppercase"
+        class="group relative flex items-center gap-1.5 px-2 py-1 rounded cursor-pointer transition-colors duration-150 shrink-0 text-2xs font-semibold tracking-wide"
         :class="
           activeTab === 'video'
             ? 'bg-selection-accent-500/15 text-selection-accent-400'
@@ -174,7 +174,7 @@ function updateCustomTransitionsOrder(newCustomTransitions: TransitionManifest[]
         {{ t('fastcat.effects.tabs.video') }}
       </button>
       <button
-        class="group relative flex items-center gap-1.5 px-2 py-1 rounded cursor-pointer transition-colors duration-150 shrink-0 text-2xs font-semibold tracking-wide uppercase"
+        class="group relative flex items-center gap-1.5 px-2 py-1 rounded cursor-pointer transition-colors duration-150 shrink-0 text-2xs font-semibold tracking-wide"
         :class="
           activeTab === 'transitions'
             ? 'bg-selection-accent-500/15 text-selection-accent-400'
@@ -186,7 +186,7 @@ function updateCustomTransitionsOrder(newCustomTransitions: TransitionManifest[]
       </button>
       <button
         v-if="isAudioEffectsEnabled"
-        class="group relative flex items-center gap-1.5 px-2 py-1 rounded cursor-pointer transition-colors duration-150 shrink-0 text-2xs font-semibold tracking-wide uppercase"
+        class="group relative flex items-center gap-1.5 px-2 py-1 rounded cursor-pointer transition-colors duration-150 shrink-0 text-2xs font-semibold tracking-wide"
         :class="
           activeTab === 'audio'
             ? 'bg-selection-accent-500/15 text-selection-accent-400'
@@ -359,7 +359,7 @@ function updateCustomTransitionsOrder(newCustomTransitions: TransitionManifest[]
 
               <div v-if="hasAudioEffects(nonBasicAudioEffects)">
                 <h4
-                  class="text-2xs uppercase tracking-wider font-semibold text-ui-text-muted mb-1 mt-1"
+                  class="text-2xs tracking-wider font-semibold text-ui-text-muted mb-1 mt-1"
                 >
                   {{ t('fastcat.effects.groups.artistic') }}
                 </h4>

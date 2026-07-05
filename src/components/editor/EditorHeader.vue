@@ -119,7 +119,7 @@ defineEmits(['open-project-settings', 'open-editor-settings', 'open-export-modal
           :text="getHotkeyTitle(t('videoEditor.fileManager.tabs.files'), 'general.switchViewFiles')"
         >
           <button
-            class="px-4 h-full flex items-center text-xs font-bold uppercase tracking-wider transition-colors"
+            class="px-4 h-full flex items-center text-xs font-bold tracking-wider transition-colors"
             :class="
               projectStore.currentView === 'files'
                 ? 'bg-ui-bg-accent text-selection-accent-400 font-bold'
@@ -134,7 +134,7 @@ defineEmits(['open-project-settings', 'open-editor-settings', 'open-export-modal
           :text="getHotkeyTitle(t('videoEditor.timeline.tabs.cut'), 'general.switchViewCut')"
         >
           <button
-            class="px-4 h-full flex items-center text-xs font-bold uppercase tracking-wider transition-colors"
+            class="px-4 h-full flex items-center text-xs font-bold tracking-wider transition-colors"
             :class="
               projectStore.currentView === 'cut'
                 ? 'bg-ui-bg-accent text-selection-accent-400 font-bold'
@@ -150,7 +150,7 @@ defineEmits(['open-project-settings', 'open-editor-settings', 'open-export-modal
           :text="getHotkeyTitle(t('videoEditor.timeline.tabs.sound'), 'general.switchViewSound')"
         >
           <button
-            class="px-4 h-full flex items-center text-xs font-bold uppercase tracking-wider transition-colors"
+            class="px-4 h-full flex items-center text-xs font-bold tracking-wider transition-colors"
             :class="
               projectStore.currentView === 'sound'
                 ? 'bg-ui-bg-accent text-selection-accent-400 font-bold'
@@ -166,7 +166,7 @@ defineEmits(['open-project-settings', 'open-editor-settings', 'open-export-modal
         >
           <button
             data-testid="nav-export"
-            class="px-4 h-full flex items-center text-xs font-bold uppercase tracking-wider transition-colors relative"
+            class="px-4 h-full flex items-center text-xs font-bold tracking-wider transition-colors relative"
             :class="
               projectStore.currentView === 'export'
                 ? 'bg-ui-bg-accent text-selection-accent-400 font-bold'

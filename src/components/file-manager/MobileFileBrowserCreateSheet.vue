@@ -32,7 +32,7 @@ const isOpen = computed({
       <div class="flex flex-col gap-3">
         <div class="flex items-center gap-2 px-1 opacity-60">
           <Icon name="lucide:folder" class="w-4 h-4" />
-          <span class="text-xs font-semibold uppercase tracking-wider truncate">
+          <span class="text-xs font-semibold tracking-wider truncate">
             {{ t('common.createInFolder') }}: {{ selectedFolderName || '/' }}
           </span>
         </div>
@@ -76,7 +76,7 @@ const isOpen = computed({
       <div class="flex flex-col gap-4 pt-2">
         <div class="flex items-center gap-2 px-1 opacity-60">
           <Icon name="lucide:layers" class="w-4 h-4" />
-          <span class="text-xs font-semibold uppercase tracking-wider">{{
+          <span class="text-xs font-semibold tracking-wider">{{
             t('common.quickCreateDefault')
           }}</span>
         </div>
