@@ -428,6 +428,56 @@ export type TimelineClipItem =
   | TimelineShapeClipItem
   | TimelineHudClipItem;
 
+export type TimelineClipPropertiesPatch = Partial<
+  Pick<
+    TimelineClipItem,
+    | 'disabled'
+    | 'locked'
+    | 'opacity'
+    | 'blendMode'
+    | 'effects'
+    | 'freezeFrameSourceUs'
+    | 'speed'
+    | 'speedActive'
+    | 'transform'
+    | 'transformActive'
+    | 'animations'
+    | 'sourceOrientation'
+    | 'audioGain'
+    | 'audioBalance'
+    | 'audioFadeInUs'
+    | 'audioFadeOutUs'
+    | 'audioFadeInCurve'
+    | 'audioFadeOutCurve'
+    | 'audioFadesActive'
+    | 'audioMuted'
+    | 'audioWaveformMode'
+    | 'showWaveform'
+    | 'showThumbnails'
+    | 'sourceRange'
+    | 'sourceDurationUs'
+    | 'source'
+    | 'opacityActive'
+    | 'blendModeActive'
+    | 'mask'
+    | 'maskActive'
+    | 'snapToPixelGrid'
+    | 'linkedGroupId'
+    | 'backgroundColor'
+    | 'text'
+    | 'style'
+    | 'shapeType'
+    | 'fillColor'
+    | 'strokeColor'
+    | 'strokeWidth'
+    | 'shapeConfig'
+    | 'hudType'
+    | 'background'
+    | 'content'
+    | 'frame'
+  >
+>;
+
 export interface TimelineGapItem {
   kind: 'gap';
   id: string;

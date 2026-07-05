@@ -33,11 +33,24 @@ export function useClipDrop(options: UseClipDropOptions) {
   const isDraggingOver = ref(false);
 
   function canAccept(payload: DndPayload): boolean {
-    return (
-      options.canEditClipContent.value &&
-      Boolean(options.clipItem.value) &&
-      (payload.source === 'effect' || payload.source === 'transition')
-    );
+    if (!options.canEditClipContent.value || !options.clipItem.value) return false;
+
+    if (payload.source === 'transition') {
+      const type = (payload.data as { type?: string })?.type;
+      return options.track.value.kind === 'video' && Boolean(type && getTransitionManifest(type));
+    }
+
+    if (payload.source === 'effect') {
+      const type = (payload.data as { type?: string })?.type;
+      if (!type) return false;
+
+      const hasAudioEffect = Boolean(getAudioEffectManifest(type));
+      const hasVideoEffect = Boolean(getVideoEffectManifest(type));
+
+      return options.track.value.kind === 'audio' ? hasAudioEffect : hasAudioEffect || hasVideoEffect;
+    }
+
+    return false;
   }
 
   function onOver(ctx: DndDragContext) {
@@ -56,6 +69,7 @@ export function useClipDrop(options: UseClipDropOptions) {
 
     const type = (ctx.payload.data as { type?: string })?.type;
     if (!type) return;
+    if (!canAccept(ctx.payload)) return;
 
     if (ctx.payload.source === 'effect') {
       _handleEffectDrop(clip, type);

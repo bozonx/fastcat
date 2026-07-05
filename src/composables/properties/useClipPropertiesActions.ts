@@ -1,5 +1,10 @@
 import { computed, type Ref } from 'vue';
-import type { TimelineClipItem, TrackKind, TimelineDocument } from '~/timeline/types';
+import type {
+  TimelineClipItem,
+  TrackKind,
+  TimelineDocument,
+  TimelineClipPropertiesPatch,
+} from '~/timeline/types';
 import type { TimelineCommand } from '~/timeline/commands';
 import type { TimelineClipClipboardItem } from '~/stores/timeline/clips';
 import { sanitizeFps } from '~/timeline/commands/utils';
@@ -31,7 +36,7 @@ interface TimelineStoreActions {
   ) => string[] | Promise<string[]>;
   loadTimeline: () => Promise<void>;
   loadTimelineMetadata: () => Promise<void> | void;
-  updateClipProperties: (trackId: string, itemId: string, patch: Partial<TimelineClipItem>) => void;
+  updateClipProperties: (trackId: string, itemId: string, patch: TimelineClipPropertiesPatch) => void;
 
   renameItem: (trackId: string, itemId: string, name: string) => void;
   selectTimelineItems: (

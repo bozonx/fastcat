@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { VNodeRef } from 'vue';
-import type { ExtendedFsEntry } from '~/composables/file-manager/useFileBrowserEntries';
+import type { ExtendedFsEntry } from '~/types/file-browser';
 import type { FileCompatibility } from '~/composables/file-manager/useFileManagerCompatibility';
 import type { FsEntry } from '~/types/fs';
 import FileBrowserViewGrid from '~/components/file-manager/FileBrowserViewGrid.vue';

@@ -46,7 +46,7 @@ Chromium Playwright suite.
   - `native-ffmpeg-diagnostics.e2e.ts`: IPC diagnostics retrieval and hardware acceleration settings updates.
 - **P2 Tier**:
   - `native-frame-render.e2e.ts`: WebP video frame extraction (`native_video_frame_webp`), magic header validation (`RIFF...WEBP`), and invalid path error handling.
-  - `native-export-smoke.e2e.ts`: Minimal 0.5s native export (`native_timeline_export`), verifying output file existence and duration probing.
+  - `native-export-smoke.e2e.ts`: Minimal 0.5s native export (`native_timeline_export`) — an audio-only WAV path plus a video mp4/h264 path (through the vello/wgpu compositor, skipped when no GPU adapter), verifying output file existence, duration probing, and (for video) a real H.264 stream at the requested resolution.
   - `native-monitor-smoke.e2e.ts`: Monitor IPC lifecycle (`monitor_set_mode`, `monitor_set_canvas_size`, `monitor_set_scene`, `monitor_seek`, `monitor_pause`, `monitor_close`).
 
 

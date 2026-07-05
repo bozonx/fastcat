@@ -11,7 +11,7 @@ import {
   WORKSPACE_COMMON_DIR_NAME,
   WORKSPACE_COMMON_PATH_PREFIX,
 } from '~/utils/workspace-common';
-import type { ExtendedFsEntry } from '~/composables/file-manager/useFileBrowserEntries';
+import type { ExtendedFsEntry } from '~/types/file-browser';
 import { useFileBrowserFolderLoader } from '~/composables/file-manager/useFileBrowserFolderLoader';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 import type { MediaType } from '~/utils/media-types';

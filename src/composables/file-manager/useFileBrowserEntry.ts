@@ -5,16 +5,10 @@ import { useProxyStore } from '~/stores/proxy.store';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useClipboardPaths } from '~/composables/file-manager/useClipboardIndicator';
 import type { FsEntry } from '~/types/fs';
+import type { ExtendedFsEntry } from '~/types/file-browser';
 import type { getBdPayload } from '~/types/bloggerdog';
 import { WORKSPACE_COMMON_PATH_PREFIX, isWorkspaceCommonPath } from '~/utils/workspace-common';
 import type { FileCompatibility } from '~/composables/file-manager/useFileManagerCompatibility';
-
-export type ExtendedFsEntry = FsEntry & {
-  objectUrl?: string;
-  size?: number;
-  mimeType?: string;
-  created?: number;
-};
 
 export function getBdType(entry: FsEntry): string | undefined {
   return (entry.adapterPayload as ReturnType<typeof getBdPayload>)?.type;

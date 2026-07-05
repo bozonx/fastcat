@@ -7,12 +7,12 @@ import {
   hasClipParametersPatch,
 } from '~/utils/timeline/clip-parameters';
 import type { ClipParametersPatch } from '~/utils/timeline/clip-parameters';
-import type { TimelineClipItem, TrackKind } from '~/timeline/types';
+import type { TimelineClipItem, TimelineClipPropertiesPatch, TrackKind } from '~/timeline/types';
 
 export interface UseClipParametersClipboardOptions {
   clip: Ref<TimelineClipItem>;
   trackKind: Ref<TrackKind>;
-  updateClipProperties: (trackId: string, itemId: string, props: Record<string, unknown>) => void;
+  updateClipProperties: (trackId: string, itemId: string, props: TimelineClipPropertiesPatch) => void;
   updateClipTransition: (
     trackId: string,
     itemId: string,

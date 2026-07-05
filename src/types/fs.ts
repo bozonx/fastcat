@@ -1,17 +1,8 @@
-export interface FsEntry {
-  name: string;
-  kind: 'file' | 'directory';
-  path: string;
-  parentPath?: string;
+import type { VfsEntry } from '~/file-manager/core/vfs/types';
+
+export interface FsEntry extends Omit<VfsEntry, 'children'> {
   children?: FsEntry[];
-  expanded?: boolean;
-  lastModified?: number;
-  createdAt?: number;
-  size?: number;
   source?: 'local' | 'remote';
   remoteId?: string;
   remotePath?: string;
-  adapterPayload?: unknown;
-  hasChildren?: boolean;
-  hasDirectories?: boolean;
 }

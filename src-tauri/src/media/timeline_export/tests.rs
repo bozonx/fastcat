@@ -873,3 +873,142 @@ fn is_gpu_render_error_rejects_encoder_errors() {
     assert!(!is_gpu_render_error("ffmpeg exited with code 1"));
     assert!(!is_gpu_render_error(""));
 }
+
+// ------------------------------------------------------------------
+// Cross-boundary parity: the `native` blocks in the shared fixture (produced by
+// the web `buildNativeExportOptions`) must deserialize into NativeExportOptions
+// with the same typed values. Mirrors the TS test in
+// test/unit/composables/timeline/export/export-options.parity.test.ts.
+// ------------------------------------------------------------------
+
+#[test]
+fn native_export_options_match_shared_parity_fixture() {
+    const FIXTURE: &str = include_str!("../../../../shared/parity/export-options.cases.json");
+    let parsed: serde_json::Value =
+        serde_json::from_str(FIXTURE).expect("valid parity fixture json");
+    let cases = parsed["cases"].as_array().expect("cases array");
+    assert!(!cases.is_empty(), "fixture has cases");
+
+    for c in cases {
+        let name = c["name"].as_str().unwrap_or("?");
+        let native = &c["native"];
+        let opts: NativeExportOptions = serde_json::from_value(native.clone())
+            .unwrap_or_else(|e| panic!("case `{name}` deserializes into NativeExportOptions: {e}"));
+
+        assert_eq!(
+            opts.width as u64,
+            native["width"].as_u64().unwrap(),
+            "case `{name}` width"
+        );
+        assert_eq!(
+            opts.height as u64,
+            native["height"].as_u64().unwrap(),
+            "case `{name}` height"
+        );
+        assert_eq!(opts.fps, native["fps"].as_f64().unwrap(), "case `{name}` fps");
+        assert_eq!(
+            opts.start_sec,
+            native["startSec"].as_f64().unwrap(),
+            "case `{name}` startSec"
+        );
+        assert_eq!(
+            opts.end_sec,
+            native["endSec"].as_f64().unwrap(),
+            "case `{name}` endSec"
+        );
+        assert_eq!(
+            opts.video_codec,
+            native["videoCodec"].as_str().unwrap(),
+            "case `{name}` videoCodec"
+        );
+        assert_eq!(
+            opts.video_bitrate_bps as u64,
+            native["videoBitrateBps"].as_u64().unwrap(),
+            "case `{name}` videoBitrateBps"
+        );
+        assert_eq!(
+            opts.format,
+            native["format"].as_str().unwrap(),
+            "case `{name}` format"
+        );
+        assert_eq!(
+            opts.audio_enabled,
+            native["audioEnabled"].as_bool().unwrap(),
+            "case `{name}` audioEnabled"
+        );
+        assert_eq!(
+            opts.audio_codec.as_deref(),
+            native["audioCodec"].as_str(),
+            "case `{name}` audioCodec"
+        );
+        assert_eq!(
+            opts.audio_bitrate_bps.map(|v| v as u64),
+            native["audioBitrateBps"].as_u64(),
+            "case `{name}` audioBitrateBps"
+        );
+        assert_eq!(
+            opts.audio_channels.map(|v| v as u64),
+            native["audioChannels"].as_u64(),
+            "case `{name}` audioChannels"
+        );
+        assert_eq!(
+            opts.audio_sample_rate.map(|v| v as u64),
+            native["audioSampleRate"].as_u64(),
+            "case `{name}` audioSampleRate"
+        );
+        assert_eq!(
+            opts.video_enabled,
+            native["videoEnabled"].as_bool(),
+            "case `{name}` videoEnabled"
+        );
+        assert_eq!(
+            opts.bitrate_mode.as_deref(),
+            native["bitrateMode"].as_str(),
+            "case `{name}` bitrateMode"
+        );
+        assert_eq!(
+            opts.keyframe_interval_sec,
+            native["keyframeIntervalSec"].as_f64(),
+            "case `{name}` keyframeIntervalSec"
+        );
+        assert_eq!(
+            opts.metadata_title.as_deref(),
+            native["metadataTitle"].as_str(),
+            "case `{name}` metadataTitle"
+        );
+        assert_eq!(
+            opts.metadata_description.as_deref(),
+            native["metadataDescription"].as_str(),
+            "case `{name}` metadataDescription"
+        );
+        assert_eq!(
+            opts.metadata_author.as_deref(),
+            native["metadataAuthor"].as_str(),
+            "case `{name}` metadataAuthor"
+        );
+        assert_eq!(
+            opts.metadata_tags.as_deref(),
+            native["metadataTags"].as_str(),
+            "case `{name}` metadataTags"
+        );
+        assert_eq!(
+            opts.export_alpha,
+            native["exportAlpha"].as_bool(),
+            "case `{name}` exportAlpha"
+        );
+        assert_eq!(
+            opts.fast_start,
+            native["fastStart"].as_bool(),
+            "case `{name}` fastStart"
+        );
+        assert_eq!(
+            opts.video_max_bitrate_bps.map(|v| v as u64),
+            native["videoMaxBitrateBps"].as_u64(),
+            "case `{name}` videoMaxBitrateBps"
+        );
+
+        // KNOWN DIVERGENCE: NativeExportOptions has no `video_min_bitrate_bps` field, so
+        // the web-emitted `videoMinBitrateBps` is intentionally dropped by serde. There is
+        // nothing to deserialize it into, so it is not asserted here (see fixture comment).
+    }
+}

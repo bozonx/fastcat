@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
 import ClipEffectsEditor from '~/components/effects/ClipEffectsEditor';
+import { clearDndZones, DND_ZONE_ATTR, getDndZone } from '~/composables/dnd/dndRegistry';
+import type { DndDragContext, DndPayload } from '~/composables/dnd/dndTypes';
 
 vi.mock('vue-draggable-plus', () => ({
   VueDraggable: {
@@ -49,6 +51,7 @@ vi.mock('~/effects', async (importOriginal) => {
 describe('ClipEffectsEditor (video target)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    clearDndZones();
   });
 
   const sampleEffects = [
@@ -94,5 +97,70 @@ describe('ClipEffectsEditor (video target)', () => {
 
     expect(component.emitted('update:effects')).toBeTruthy();
     expect(component.emitted('update:effects')![0][0]).toEqual([]);
+  });
+
+  it('adds an effect from a pointer-DnD drop into clip properties', async () => {
+    const component = await mountSuspended(ClipEffectsEditor, {
+      props: { target: 'video', effects: [] },
+    });
+    const zoneId = component.find(`[${DND_ZONE_ATTR}]`).attributes(DND_ZONE_ATTR);
+    const handlers = getDndZone(zoneId!);
+    const payload: DndPayload = { source: 'effect', data: { type: 'blur' } };
+
+    expect(handlers?.canAccept?.(payload)).toBe(true);
+
+    await handlers?.onDrop?.({
+      payload,
+      pointer: {
+        clientX: 0,
+        clientY: 0,
+        pointerType: 'mouse',
+        altKey: false,
+        ctrlKey: false,
+        metaKey: false,
+        shiftKey: false,
+      },
+      zoneId: zoneId!,
+      targetEl: null,
+      setOperation: vi.fn(),
+    } satisfies DndDragContext);
+
+    expect(component.emitted('update:effects')?.[0][0]).toEqual([
+      expect.objectContaining({
+        type: 'blur',
+        enabled: true,
+        target: 'video',
+        radius: 5,
+      }),
+    ]);
+  });
+
+  it('rejects pointer-DnD drops when the editor is disabled', async () => {
+    const component = await mountSuspended(ClipEffectsEditor, {
+      props: { target: 'video', effects: [], disabled: true },
+    });
+    const zoneId = component.find(`[${DND_ZONE_ATTR}]`).attributes(DND_ZONE_ATTR);
+    const handlers = getDndZone(zoneId!);
+    const payload: DndPayload = { source: 'effect', data: { type: 'blur' } };
+
+    expect(handlers?.canAccept?.(payload)).toBe(false);
+
+    await handlers?.onDrop?.({
+      payload,
+      pointer: {
+        clientX: 0,
+        clientY: 0,
+        pointerType: 'mouse',
+        altKey: false,
+        ctrlKey: false,
+        metaKey: false,
+        shiftKey: false,
+      },
+      zoneId: zoneId!,
+      targetEl: null,
+      setOperation: vi.fn(),
+    } satisfies DndDragContext);
+
+    expect(component.emitted('update:effects')).toBeUndefined();
   });
 });

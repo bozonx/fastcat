@@ -85,9 +85,10 @@ const activeSettingsManifest = computed(() => {
 
 const { zoneAttrs: dropZoneAttrs } = useDndDropZone(
   {
-    canAccept: (payload: DndPayload) => payload.source === 'effect',
+    canAccept: (payload: DndPayload) => props.disabled !== true && payload.source === 'effect',
     onOver: (ctx: DndDragContext) => ctx.setOperation('effect'),
     onDrop: (ctx: DndDragContext) => {
+      if (props.disabled) return;
       const type = (ctx.payload.data as { type?: string })?.type;
       if (type) handleAddEffect(type);
     },
@@ -100,6 +101,8 @@ function setEffects(next: Array<VideoClipEffect | AudioClipEffect>) {
 }
 
 function handleAddEffect(type: string) {
+  if (props.disabled) return;
+
   const manifest = isAudio.value ? getAudioEffectManifest(type) : getVideoEffectManifest(type);
   if (!manifest) return;
 

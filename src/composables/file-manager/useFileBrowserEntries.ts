@@ -6,17 +6,12 @@ import { useFileManagerThumbnails } from '~/composables/file-manager/useFileMana
 import { useFileManagerCompatibility } from '~/composables/file-manager/useFileManagerCompatibility';
 import { useFileSorting, type FileSortingStore } from '~/composables/file-manager/useFileSorting';
 import type { FsEntry } from '~/types/fs';
+import type { ExtendedFsEntry } from '~/types/file-browser';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 import { getMimeTypeFromFilename } from '~/utils/media-types';
 import { MAX_COPY_DEPTH } from '~/file-manager/core/rules';
 import PQueue from 'p-queue';
 const log = createDevLogger('useFileBrowserEntries');
-
-export interface ExtendedFsEntry extends FsEntry {
-  size?: number;
-  mimeType?: string;
-  created?: number;
-}
 
 export function useFileBrowserEntries({
   isRemoteMode,

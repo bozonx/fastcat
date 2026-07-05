@@ -9,10 +9,10 @@ import type {
   ShapeConfig,
   HudType,
   HudMediaParams,
-  TimelineClipItem,
   TimelineTrack,
   ClipEffect,
   TimelineFastCatMetadata,
+  TimelineClipPropertiesPatch,
 } from './types';
 import { extractAudioToTrack } from './commands/audioHandlers';
 import {
@@ -194,57 +194,7 @@ export interface UpdateClipPropertiesCommand {
   type: 'update_clip_properties';
   trackId: string;
   itemId: string;
-  properties: Partial<
-    Pick<
-      TimelineClipItem,
-      | 'disabled'
-      | 'locked'
-      | 'opacity'
-      | 'blendMode'
-      | 'effects'
-      | 'freezeFrameSourceUs'
-      | 'speed'
-      | 'speedActive'
-      | 'transform'
-      | 'transformActive'
-      | 'animations'
-      | 'sourceOrientation'
-      | 'audioGain'
-      | 'audioBalance'
-      | 'audioFadeInUs'
-      | 'audioFadeOutUs'
-      | 'audioFadeInCurve'
-      | 'audioFadeOutCurve'
-      | 'audioFadesActive'
-      | 'audioMuted'
-      | 'audioWaveformMode'
-      | 'showWaveform'
-      | 'showThumbnails'
-      | 'sourceRange'
-      | 'sourceDurationUs'
-      | 'source'
-      | 'opacityActive'
-      | 'blendModeActive'
-      | 'mask'
-      | 'maskActive'
-      | 'snapToPixelGrid'
-    >
-  > & {
-    linkedGroupId?: string;
-    backgroundColor?: string;
-    text?: string;
-    style?: TextClipStyle;
-    shapeType?: ShapeType;
-    fillColor?: string;
-    strokeColor?: string;
-    strokeWidth?: number;
-    shapeConfig?: ShapeConfig;
-    hudType?: HudType;
-    background?: HudMediaParams;
-    content?: HudMediaParams;
-    frame?: HudMediaParams;
-    snapToPixelGrid?: boolean;
-  };
+  properties: TimelineClipPropertiesPatch;
 }
 
 export interface UpdateTrackPropertiesCommand {

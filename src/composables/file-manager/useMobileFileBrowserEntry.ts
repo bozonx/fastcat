@@ -1,5 +1,6 @@
 import { ref, computed, onBeforeUnmount } from 'vue';
 import type { FsEntry } from '~/types/fs';
+import type { ExtendedFsEntry } from '~/types/file-browser';
 import { formatBytes } from '~/utils/format';
 import { getMimeTypeFromFilename } from '~/utils/media-types';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
@@ -8,11 +9,6 @@ import type { FileCompatibility } from '~/composables/file-manager/useFileManage
 import { useProxyStore } from '~/stores/proxy.store';
 import { isGeneratingProxyInDirectory } from '~/utils/fs';
 import { normalizeMediaCachePath } from '~/utils/path';
-
-export interface ExtendedFsEntry extends FsEntry {
-  objectUrl?: string;
-  size?: number;
-}
 
 /** Shared props contract for the mobile file-browser grid/list variants. */
 export interface MobileFileBrowserProps {

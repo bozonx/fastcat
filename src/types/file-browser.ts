@@ -12,7 +12,6 @@ export interface FileSortOption {
 
 export type ExtendedFsEntry = FsEntry & {
   objectUrl?: string;
-  size?: number;
   mimeType?: string;
   created?: number;
 };

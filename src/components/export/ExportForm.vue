@@ -612,6 +612,7 @@ const filenamePlaceholder = computed(() =>
         <div class="flex flex-wrap justify-end gap-2" :class="{ 'mt-2': isExporting }">
           <UButton
             v-if="isSettingsDirty && !isExporting"
+            data-testid="export-reset"
             color="neutral"
             variant="ghost"
             :label="t('common.actions.reset')"
@@ -619,6 +620,7 @@ const filenamePlaceholder = computed(() =>
           />
           <UButton
             v-if="isExporting"
+            data-testid="export-cancel"
             color="neutral"
             variant="ghost"
             :label="t('common.cancel')"
