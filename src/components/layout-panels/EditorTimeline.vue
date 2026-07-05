@@ -1143,7 +1143,7 @@ async function handleConfirmCreateVersion(newName: string) {
       </UContextMenu>
       <div
         ref="rulerContainerRef"
-        class="flex-1 min-w-0 relative z-10 timeline-ruler-container overflow-hidden"
+        class="flex-1 min-w-0 relative z-10 timeline-ruler-container overflow-hidden bg-ui-bg-elevated"
       >
         <div
           class="absolute top-0 bottom-0 left-0 h-full"
