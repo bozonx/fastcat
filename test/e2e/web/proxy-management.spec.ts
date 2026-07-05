@@ -1,6 +1,6 @@
 import { test, expect } from '../fixtures/workspace';
 import { MEDIA_FIXTURES } from '../../fixtures/media';
-import { seedProjectMedia } from '../../utils/e2e/file-manager';
+import { entryByPath, seedProjectMedia } from '../../utils/e2e/file-manager';
 import { addFileToTrack, trackIds } from '../../utils/e2e/timeline';
 import { waitForTimelineDoc } from '../../utils/e2e/otio';
 
@@ -10,6 +10,8 @@ import { waitForTimelineDoc } from '../../utils/e2e/otio';
  * - Context menu and file manager proxy actions for video clips
  */
 test.describe('Proxy media management', () => {
+  let seededVideoPath: string;
+
   test.beforeEach(async ({ page, e2eProject }) => {
     const { uiPath } = await seedProjectMedia(
       page,
@@ -17,6 +19,7 @@ test.describe('Proxy media management', () => {
       MEDIA_FIXTURES.video.h264Mp4,
       'video',
     );
+    seededVideoPath = uiPath;
     const videoTrackId = (await trackIds(page))[0];
     await addFileToTrack(page, uiPath, videoTrackId);
     await waitForTimelineDoc(page, e2eProject, (d) => d.allClips.length === 1);
@@ -41,7 +44,7 @@ test.describe('Proxy media management', () => {
   test('file manager item context menu opens and exhibits expected proxy actions or options', async ({
     page,
   }) => {
-    const fileItem = page.locator('[data-testid^="file-item-"], .file-browser-item').first();
+    const fileItem = entryByPath(page, seededVideoPath);
     await expect(fileItem).toBeVisible();
 
     // Right-click on file item to open context menu
