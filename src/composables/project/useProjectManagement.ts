@@ -246,8 +246,6 @@ export function useProjectManagement(options: { isMobile?: boolean } = {}) {
 
   function closeRenameModal() {
     isRenameModalOpen.value = false;
-    renameTargetProject.value = null;
-    renameValue.value = '';
   }
 
   function startDelete(project: ProjectActionTarget | string) {
@@ -274,7 +272,6 @@ export function useProjectManagement(options: { isMobile?: boolean } = {}) {
 
   function closeDeleteModal() {
     isDeleteModalOpen.value = false;
-    deleteTargetProject.value = null;
   }
 
   function startForget(project: ProjectActionTarget | string) {
@@ -301,7 +298,6 @@ export function useProjectManagement(options: { isMobile?: boolean } = {}) {
 
   function closeForgetModal() {
     isForgetModalOpen.value = false;
-    forgetTargetProject.value = null;
   }
 
   function isExternalProject(projectPath?: string): boolean {
@@ -362,9 +358,6 @@ export function useProjectManagement(options: { isMobile?: boolean } = {}) {
 
   function closeDuplicateModal() {
     isDuplicateModalOpen.value = false;
-    duplicateTargetProject.value = null;
-    duplicateValue.value = '';
-    duplicateLocation.value = '';
   }
 
   async function selectProjectLocation() {

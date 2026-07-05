@@ -444,12 +444,12 @@ describe('useProjectManagement', () => {
   });
 
   describe('closeDuplicateModal', () => {
-    it('clears duplicateLocation', () => {
-      const { startDuplicate, closeDuplicateModal, duplicateLocation } = useProjectManagement();
+    it('sets isDuplicateModalOpen to false', () => {
+      const { startDuplicate, closeDuplicateModal, isDuplicateModalOpen } = useProjectManagement();
       startDuplicate({ projectName: 'Source', projectPath: '/projects/Source' });
-      expect(duplicateLocation.value).toBe('/projects');
+      expect(isDuplicateModalOpen.value).toBe(true);
       closeDuplicateModal();
-      expect(duplicateLocation.value).toBe('');
+      expect(isDuplicateModalOpen.value).toBe(false);
     });
 
     it('returns null for duplicateError when modal is closed to prevent validation error flashing', () => {
