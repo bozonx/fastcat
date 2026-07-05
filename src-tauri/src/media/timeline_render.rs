@@ -409,6 +409,7 @@ impl ThumbnailRenderer {
             (req.width.max(1), req.height.max(1)),
             &mut cache,
             None,
+            req.effect_quality,
         )?;
         compositor_scene.background = if req.is_transparent.unwrap_or(false) {
             Color::TRANSPARENT
@@ -452,6 +453,9 @@ pub struct TimelineFrameRequest {
     pub hw_mode: HwAccelMode,
     pub vaapi_device: Option<String>,
     pub is_transparent: Option<bool>,
+    /// Effect / antialiasing tier. Thumbnails pass `Low` (cheap sample budgets +
+    /// analytic-area AA); stop-frame / still-export callers pass `Ultra`.
+    pub effect_quality: crate::compositor::effects::EffectQuality,
 }
 
 static GLOBAL_RENDERER: std::sync::LazyLock<ThumbnailRenderer> =
@@ -483,6 +487,7 @@ pub fn build_export_scene(
     target_size: (u32, u32),
     cache: &mut VideoDecoderCache,
     on_warning: Option<&(dyn Fn(String) + Send + Sync)>,
+    effect_quality: crate::compositor::effects::EffectQuality,
 ) -> Result<Scene> {
     let scene_w = scene.width.max(1);
     let scene_h = scene.height.max(1);
@@ -577,7 +582,7 @@ pub fn build_export_scene(
             })
             .collect(),
         master_effects: scene.master_effects.clone(),
-        effect_quality: crate::compositor::effects::EffectQuality::Ultra,
+        effect_quality,
     })
 }
 
@@ -1186,7 +1191,15 @@ mod tests {
             frame_cache_custom_mb: 0,
         };
         let mut cache = VideoDecoderCache::new();
-        let export = build_export_scene(&scene, 2.5, (1920, 1080), &mut cache, None).unwrap();
+        let export = build_export_scene(
+            &scene,
+            2.5,
+            (1920, 1080),
+            &mut cache,
+            None,
+            crate::compositor::effects::EffectQuality::Ultra,
+        )
+        .unwrap();
 
         let ids: Vec<_> = export.layers.iter().map(|l| l.id.as_str()).collect();
         assert!(
@@ -1260,7 +1273,15 @@ mod tests {
             frame_cache_custom_mb: 0,
         };
         let mut cache = VideoDecoderCache::new();
-        let export = build_export_scene(&scene, 2.5, (1920, 1080), &mut cache, None).unwrap();
+        let export = build_export_scene(
+            &scene,
+            2.5,
+            (1920, 1080),
+            &mut cache,
+            None,
+            crate::compositor::effects::EffectQuality::Ultra,
+        )
+        .unwrap();
 
         let adjustment_layer = export
             .layers

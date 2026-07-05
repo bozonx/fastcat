@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, nextTick } from 'vue';
 import type { ComponentPublicInstance } from 'vue';
 import { useBlurOnPointerDownOutside } from '~/composables/useBlurOnPointerDownOutside';
 
@@ -12,6 +12,7 @@ interface UiTextInputProps {
   fullWidth?: boolean;
   type?: 'text' | 'password' | 'email' | 'url' | 'search';
   autofocus?: boolean;
+  selectOnFocus?: boolean;
   variant?: 'outline' | 'soft' | 'subtle' | 'ghost' | 'none';
   autocomplete?: string;
   ui?: { base?: string };
@@ -25,6 +26,7 @@ const props = withDefaults(defineProps<UiTextInputProps>(), {
   fullWidth: false,
   type: 'text',
   autofocus: false,
+  selectOnFocus: false,
   variant: 'outline',
   autocomplete: undefined,
   ui: undefined,
@@ -44,6 +46,22 @@ useBlurOnPointerDownOutside(containerRef);
 const inputElement = computed<HTMLInputElement | null>(() => {
   const el = containerRef.value;
   return el?.querySelector('input') ?? null;
+});
+
+function handleFocus(event: FocusEvent) {
+  if (props.selectOnFocus) {
+    (event.target as HTMLInputElement)?.select();
+  }
+  emit('focus', event);
+}
+
+onMounted(() => {
+  if (props.autofocus && props.selectOnFocus) {
+    nextTick(() => {
+      inputElement.value?.focus();
+      inputElement.value?.select();
+    });
+  }
 });
 
 defineExpose({
@@ -70,7 +88,7 @@ defineExpose({
     @update:model-value="(val: string) => emit('update:modelValue', val)"
     @keyup="(e: KeyboardEvent) => emit('keyup', e)"
     @keydown="(e: KeyboardEvent) => emit('keydown', e)"
-    @focus="(e: FocusEvent) => emit('focus', e)"
+    @focus="handleFocus"
     @blur="(e: FocusEvent) => emit('blur', e)"
   >
     <template v-for="(_, slot) in $slots" #[slot]="scope">

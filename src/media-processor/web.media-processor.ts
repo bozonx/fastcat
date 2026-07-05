@@ -103,6 +103,7 @@ export function createWebMediaProcessor(): IMediaProcessor {
         clipsPayload,
         options.quality ?? 0.8,
         options.isTransparent,
+        options.effectQuality,
       );
     },
 

@@ -25,36 +25,6 @@ export function useMonitorSnapshot(input: {
 
   const isSavingStopFrame = ref(false);
 
-  async function saveTimelineThumbnail() {
-    if (input.isLoading.value || input.loadError.value) return;
-    if (!input.projectStore.currentProjectId || !input.projectStore.currentTimelinePath) return;
-
-    const timelineDoc = input.timelineStore.timelineDoc;
-    if (!timelineDoc) return;
-
-    try {
-      const [{ renderTimelineThumbnail }, { fileThumbnailGenerator }] = await Promise.all([
-        import('~/timeline/timeline-thumbnail'),
-        import('~/utils/file-thumbnail-generator'),
-      ]);
-      const blob = await renderTimelineThumbnail({
-        timelineDoc,
-        timeUs: input.uiCurrentTimeUs.value,
-        maxSize: 1280,
-        quality: 0.8,
-      });
-      if (!blob) return;
-      await fileThumbnailGenerator.saveManualThumbnail({
-        projectId: input.projectStore.currentProjectId,
-        projectRelativePath: input.projectStore.currentTimelinePath,
-        blob,
-      });
-      uiStore.notifyFileManagerUpdate();
-    } catch (error) {
-      log.error('Failed to save timeline thumbnail:', error);
-    }
-  }
-
   async function createStopFrameSnapshot() {
     if (isSavingStopFrame.value) return;
     if (input.isLoading.value) return;
@@ -159,6 +129,5 @@ export function useMonitorSnapshot(input: {
   return {
     isSavingStopFrame,
     createStopFrameSnapshot,
-    saveTimelineThumbnail,
   };
 }

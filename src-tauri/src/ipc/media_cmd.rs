@@ -386,6 +386,7 @@ pub async fn native_timeline_render_frame_to_file(
                 hw_mode: hw.hardware_acceleration_mode,
                 vaapi_device: Some(hw.vaapi_device),
                 is_transparent,
+                effect_quality: crate::compositor::effects::EffectQuality::default(),
             },
             &target_path,
         )
@@ -401,6 +402,7 @@ pub async fn native_timeline_render_frame_webp(
     height: u32,
     quality: f32,
     is_transparent: Option<bool>,
+    effect_quality: Option<crate::compositor::effects::EffectQuality>,
     hw_settings: State<'_, parking_lot::RwLock<crate::FfmpegHwSettings>>,
 ) -> Result<Vec<u8>, String> {
     let hw = hw_settings.read().clone();
@@ -414,6 +416,9 @@ pub async fn native_timeline_render_frame_webp(
             hw_mode: hw.hardware_acceleration_mode,
             vaapi_device: Some(hw.vaapi_device),
             is_transparent,
+            // Thumbnails pass `low`; stop-frame / still-export callers omit it and
+            // keep the full-fidelity `ultra` default.
+            effect_quality: effect_quality.unwrap_or_default(),
         })
     })
     .await

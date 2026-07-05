@@ -59,6 +59,7 @@ watch(() => [props.projectId, props.projectRelativePath], load);
       class="w-full h-full transition-transform duration-700 group-hover:scale-105"
       :class="[variant === 'mobile' ? 'object-cover' : 'object-contain']"
       :alt="t('fastcat.startup.projectThumbnail')"
+      @error="url = null"
     />
     <div
       v-else

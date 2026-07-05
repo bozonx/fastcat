@@ -164,7 +164,7 @@ export function useMonitorRuntime() {
     setTimecodeEl(el);
   });
 
-  const { isSavingStopFrame, createStopFrameSnapshot, saveTimelineThumbnail } = useMonitorSnapshot({
+  const { isSavingStopFrame, createStopFrameSnapshot } = useMonitorSnapshot({
     projectStore,
     timelineStore,
     workspaceStore,
@@ -172,13 +172,6 @@ export function useMonitorRuntime() {
     loadError,
     uiCurrentTimeUs,
   });
-
-  watch(
-    () => uiStore.timelineSaveTrigger,
-    () => {
-      saveTimelineThumbnail();
-    },
-  );
 
   return {
     projectStore,
@@ -212,7 +205,6 @@ export function useMonitorRuntime() {
     useProxyInMonitor,
     isSavingStopFrame,
     createStopFrameSnapshot,
-    saveTimelineThumbnail,
     timecodeEl,
     uiCurrentTimeUs,
   };

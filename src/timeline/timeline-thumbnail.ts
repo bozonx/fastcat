@@ -7,41 +7,8 @@ import { cloneValue } from '~/utils/clone';
 import { useMediaProcessor } from '~/composables/useMediaProcessor';
 import { fileThumbnailGenerator } from '~/utils/file-thumbnail-generator';
 import { TIMELINE_MANAGER_THUMBNAILS } from '~/utils/constants';
-import { fitDimensions } from '~/media-processor/media-processor.utils';
 import { getTimelineFormat, resolveEffectiveTimelineFormat } from '~/timeline/format';
 const log = createDevLogger('timeline-thumbnail');
-
-/**
- * Renders a timeline frame to a WebP blob. Returns `null` when the scene has no
- * visual layers. The output is fitted into `maxSize` (long edge) preserving the
- * scene's aspect ratio, so non-16:9 timelines aren't squashed.
- */
-export async function renderTimelineThumbnail(params: {
-  timelineDoc: TimelineDocument;
-  timeUs: number;
-  maxSize: number;
-  quality: number;
-}): Promise<Blob | null> {
-  const processor = useMediaProcessor();
-  const projectStore = useProjectStore();
-  const format = resolveEffectiveTimelineFormat(
-    getTimelineFormat(params.timelineDoc),
-    projectStore.projectSettings.project,
-  );
-  const { width, height } = fitDimensions(
-    format.width,
-    format.height,
-    params.maxSize,
-    params.maxSize,
-  );
-  return await processor.extractTimelineFrameBlob({
-    timelineDoc: params.timelineDoc,
-    timeUs: params.timeUs,
-    width,
-    height,
-    quality: params.quality,
-  });
-}
 
 /**
  * Renders a full-resolution timeline frame to a WebP blob at EXPORT (ultra)
@@ -104,6 +71,10 @@ export function generateTimelineThumbnail(params: {
         maxWidth: TIMELINE_MANAGER_THUMBNAILS.MAX_SIZE,
         maxHeight: TIMELINE_MANAGER_THUMBNAILS.MAX_SIZE,
         quality: TIMELINE_MANAGER_THUMBNAILS.QUALITY,
+        // A small downscaled still gains nothing from ultra effect/AA sampling; the
+        // cheapest tier keeps this off the save hot path. The scene is already built
+        // and rendered at thumbnail resolution (no supersample-then-shrink).
+        effectQuality: 'low',
       });
       if (!blob) return;
 

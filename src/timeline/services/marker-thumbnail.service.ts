@@ -30,6 +30,8 @@ export function dispatchMarkerThumbnailGeneration(params: MarkerThumbnailParams)
           maxWidth: MARKER_THUMBNAILS.WIDTH,
           maxHeight: MARKER_THUMBNAILS.HEIGHT,
           quality: MARKER_THUMBNAILS.QUALITY,
+          // Marker previews are tiny stills — render at the cheapest effect/AA tier.
+          effectQuality: 'low',
         });
 
         if (!blob) {

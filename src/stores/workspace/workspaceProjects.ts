@@ -396,7 +396,6 @@ export function createWorkspaceProjectsModule(params: {
       }
 
       await params.getVfs().deleteEntry(toProjectStoragePath(deleteInput.name), true);
-      await loadProjects();
 
       if (params.lastProjectName.value === deleteInput.name) {
         params.lastProjectName.value = null;
@@ -405,6 +404,8 @@ export function createWorkspaceProjectsModule(params: {
       params.recentProjects.value = params.recentProjects.value.filter(
         (p) => p.projectName !== deleteInput.name,
       );
+
+      await loadProjects();
     } catch (e: unknown) {
       if ((e as { name?: unknown }).name !== 'NotFoundError') {
         log.warn('Failed to delete project', deleteInput.name, e);
@@ -481,15 +482,9 @@ export function createWorkspaceProjectsModule(params: {
           await rename(oldPath, newPath);
         }
 
-        await loadProjects();
-
-        if (params.lastProjectName.value === oldName) {
-          params.lastProjectName.value = newName;
-        }
-
         const recentIndex = params.recentProjects.value.findIndex((recent) => {
           if (renameInput.projectId) return recent.projectId === renameInput.projectId;
-          if (renameInput.projectPath) return recent.projectPath === renameInput.projectPath;
+          if (oldPath) return recent.projectPath === oldPath;
           return recent.projectName === oldName;
         });
         if (recentIndex !== -1) {
@@ -499,6 +494,12 @@ export function createWorkspaceProjectsModule(params: {
             projectPath: newPath,
           } as RecentProject;
         }
+
+        if (params.lastProjectName.value === oldName) {
+          params.lastProjectName.value = newName;
+        }
+
+        await loadProjects();
       } catch (e: unknown) {
         params.error.value = getErrorMessage(e, 'Failed to rename project');
         throw e;
@@ -517,12 +518,6 @@ export function createWorkspaceProjectsModule(params: {
       // VFS moveEntry handles same-adapter rename + cross-device copy/delete fallback.
       await params.getVfs().moveEntry(toProjectStoragePath(oldName), toProjectStoragePath(newName));
 
-      await loadProjects();
-
-      if (params.lastProjectName.value === oldName) {
-        params.lastProjectName.value = newName;
-      }
-
       const recentIndex = params.recentProjects.value.findIndex((p) => p.projectName === oldName);
       if (recentIndex !== -1) {
         params.recentProjects.value[recentIndex] = {
@@ -530,6 +525,12 @@ export function createWorkspaceProjectsModule(params: {
           projectName: newName,
         } as RecentProject;
       }
+
+      if (params.lastProjectName.value === oldName) {
+        params.lastProjectName.value = newName;
+      }
+
+      await loadProjects();
     } catch (e: unknown) {
       params.error.value = getErrorMessage(e, 'Failed to rename project');
       throw e;
@@ -611,14 +612,14 @@ export function createWorkspaceProjectsModule(params: {
       meta.updatedAt = new Date().toISOString();
       await writeTextFile(metaPath, JSON.stringify(meta, null, 2));
 
-      await loadProjects();
-
       params.recentProjects.value.unshift({
         projectName: targetName,
         projectId: meta.id as string,
-        updatedAt: new Date().toISOString(),
+        updatedAt: meta.updatedAt as string,
         projectPath: targetPath,
       });
+
+      await loadProjects();
 
       return;
     }
@@ -660,13 +661,13 @@ export function createWorkspaceProjectsModule(params: {
     meta.updatedAt = new Date().toISOString();
     await vfs.writeFile(metaPath, JSON.stringify(meta, null, 2));
 
-    await loadProjects();
-
     params.recentProjects.value.unshift({
       projectName: targetName,
       projectId: meta.id as string,
-      updatedAt: new Date().toISOString(),
+      updatedAt: meta.updatedAt as string,
     });
+
+    await loadProjects();
   }
 
   return {

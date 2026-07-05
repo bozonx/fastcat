@@ -597,6 +597,16 @@ export class VideoCompositor {
     this.ensureStageTextureRenderer(this.app);
   }
 
+  /**
+   * Sets the effect / antialiasing quality tier used by subsequent renders.
+   * Thumbnail extraction lowers this to `'low'` so blur/bloom sample budgets stay
+   * cheap for a small downscaled still.
+   */
+  setPreviewEffectQuality(quality: PreviewEffectQuality): void {
+    this.previewEffectQuality = quality;
+    this.computeRunner.setPreviewEffectQuality(quality);
+  }
+
   private onContextLost = (event: Event) => {
     event.preventDefault();
     log.warn('WebGL/WebGPU context lost!');

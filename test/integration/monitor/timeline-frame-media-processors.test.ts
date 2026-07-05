@@ -138,6 +138,31 @@ describe('timeline frame media processors', () => {
       [{ id: 'clip-1' }],
       0.95,
       undefined,
+      undefined,
+    );
+  });
+
+  it('web processor forwards the low effect-quality tier for thumbnail renders', async () => {
+    const { createWebMediaProcessor } = await import('~/media-processor/web.media-processor');
+    const processor = createWebMediaProcessor();
+
+    await processor.extractTimelineFrameBlob({
+      timelineDoc,
+      timeUs: 1_000_000,
+      maxWidth: 320,
+      maxHeight: 320,
+      quality: 0.6,
+      effectQuality: 'low',
+    });
+
+    expect(extractFrameToBlobMock).toHaveBeenCalledWith(
+      1_000_000,
+      expect.any(Number),
+      expect.any(Number),
+      [{ id: 'clip-1' }],
+      0.6,
+      undefined,
+      'low',
     );
   });
 
@@ -170,16 +195,38 @@ describe('timeline frame media processors', () => {
         }),
       }),
     );
-    expect(nativeRenderTimelineFrameWebpMock).toHaveBeenCalledWith({
-      scene: {
+    expect(nativeRenderTimelineFrameWebpMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        scene: {
+          width: 3840,
+          height: 2160,
+          layers: [{ id: 'layer-1' }],
+        },
+        timeSec: 2,
         width: 3840,
         height: 2160,
-        layers: [{ id: 'layer-1' }],
-      },
-      timeSec: 2,
-      width: 3840,
-      height: 2160,
-      quality: 0.95,
+        quality: 0.95,
+        // Stop-frame / still-export callers omit the tier so the native side keeps ultra.
+        effectQuality: undefined,
+      }),
+    );
+  });
+
+  it('native processor forwards the low effect-quality tier for thumbnail renders', async () => {
+    const { createNativeMediaProcessor } = await import('~/media-processor/native.media-processor');
+    const processor = createNativeMediaProcessor();
+
+    await processor.extractTimelineFrameBlob({
+      timelineDoc,
+      timeUs: 1_000_000,
+      maxWidth: 320,
+      maxHeight: 320,
+      quality: 0.6,
+      effectQuality: 'low',
     });
+
+    expect(nativeRenderTimelineFrameWebpMock).toHaveBeenCalledWith(
+      expect.objectContaining({ effectQuality: 'low' }),
+    );
   });
 });

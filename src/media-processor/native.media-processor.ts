@@ -87,6 +87,7 @@ export function createNativeMediaProcessor(): IMediaProcessor {
         height,
         quality: options.quality ?? 0.8,
         isTransparent: options.isTransparent,
+        effectQuality: options.effectQuality,
       });
     },
 

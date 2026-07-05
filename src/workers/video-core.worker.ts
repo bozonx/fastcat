@@ -385,6 +385,7 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
     timelineClips: import('../composables/timeline/export/types').WorkerVideoPayloadItem[],
     quality: number,
     isTransparent = false,
+    effectQuality?: import('../utils/preview-effect-quality').PreviewEffectQuality,
   ) {
     await loadFonts();
     const localCompositor = new VideoCompositor();
@@ -403,6 +404,10 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
       log.warn('[Worker] extractFrameToBlob: compositor init failed', initErr);
       await localCompositor.destroy().catch(() => {});
       return null;
+    }
+
+    if (effectQuality) {
+      localCompositor.setPreviewEffectQuality(effectQuality);
     }
 
     try {

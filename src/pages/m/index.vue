@@ -582,6 +582,7 @@ const sortedProjects = computed(() => {
                 base: 'h-16 text-xl font-bold px-6 bg-ui-bg-elevated/50 border border-white/5 rounded-3xl focus:ring-2 focus:ring-primary-500 transition-all placeholder:text-ui-text-muted',
               }"
               autofocus
+              select-on-focus
               @keyup.enter="renameProject"
             />
           </UiFormField>
@@ -643,6 +644,7 @@ const sortedProjects = computed(() => {
                 base: 'h-16 text-xl font-bold px-6 bg-ui-bg-elevated/50 border border-white/5 rounded-3xl focus:ring-2 focus:ring-primary-500 transition-all placeholder:text-ui-text-muted',
               }"
               autofocus
+              select-on-focus
               @keyup.enter="confirmDuplicate"
             />
           </UiFormField>

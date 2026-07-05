@@ -793,6 +793,7 @@ pub fn export_timeline(
                                 (width, height),
                                 &mut cache,
                                 Some(on_warning),
+                                crate::compositor::effects::EffectQuality::Ultra,
                             )?;
                             frame_scene.background = frame_background;
                             let build_ms = trace_elapsed_ms(build_started);

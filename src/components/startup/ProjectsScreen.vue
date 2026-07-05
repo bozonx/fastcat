@@ -498,6 +498,7 @@ const sortedProjects = computed(() => {
         :placeholder="t('fastcat.projects.projectNamePlaceholder')"
         full-width
         autofocus
+        select-on-focus
         @keyup.enter="renameProject"
       />
     </UiFormField>
@@ -562,6 +563,7 @@ const sortedProjects = computed(() => {
           :placeholder="t('fastcat.projects.projectNamePlaceholder')"
           full-width
           autofocus
+          select-on-focus
           @keyup.enter="confirmDuplicate"
         />
       </UiFormField>

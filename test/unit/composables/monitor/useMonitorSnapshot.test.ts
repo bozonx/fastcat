@@ -8,10 +8,6 @@ const renderStopFrameWebpMock = vi.hoisted(() =>
   vi.fn().mockResolvedValue(new Blob(['test'], { type: 'image/webp' })),
 );
 
-const renderTimelineThumbnailMock = vi.hoisted(() =>
-  vi.fn().mockResolvedValue(new Blob(['test'], { type: 'image/webp' })),
-);
-
 // Separate mock objects to keep them stable
 const mockToast = {
   add: vi.fn(),
@@ -37,7 +33,6 @@ vi.mock('~/composables/file-manager/useFileManager', () => ({
 
 vi.mock('~/timeline/timeline-thumbnail', () => ({
   renderStopFrameWebp: renderStopFrameWebpMock,
-  renderTimelineThumbnail: renderTimelineThumbnailMock,
 }));
 
 describe('useMonitorSnapshot', () => {

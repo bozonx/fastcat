@@ -69,7 +69,6 @@ vi.mock('~/composables/monitor/useMonitorSnapshot', () => ({
   useMonitorSnapshot: () => ({
     isSavingStopFrame: ref(false),
     createStopFrameSnapshot: vi.fn(),
-    saveTimelineThumbnail: vi.fn(),
   }),
 }));
 

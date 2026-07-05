@@ -1,4 +1,5 @@
 import type { TimelineDocument } from '~/timeline/types';
+import type { PreviewEffectQuality } from '~/utils/preview-effect-quality';
 
 export interface ExtractVideoFrameBlobOptions {
   projectRelativePath: string;
@@ -33,6 +34,13 @@ export interface ExtractTimelineFrameBlobOptions {
   quality?: number;
   /** Native-only: build the scene at export (ultra) quality so stills match export output. */
   isExport?: boolean;
+  /**
+   * Effect / antialiasing quality tier for the render. Thumbnails pass `'low'` so
+   * blur/bloom sample budgets and MSAA drop to the cheapest tier (a downscaled
+   * still doesn't benefit from ultra sampling). Defaults to `'ultra'` to preserve
+   * full fidelity for stop-frame snapshots and other still exports.
+   */
+  effectQuality?: PreviewEffectQuality;
   /** Whether to render background as transparent (true) or opaque black (false). */
   isTransparent?: boolean;
 }
