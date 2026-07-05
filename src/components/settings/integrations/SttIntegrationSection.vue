@@ -172,9 +172,7 @@ async function startDownload() {
             <div class="text-[10px] text-ui-text-muted leading-tight">
               {{ t('videoEditor.settings.sttModelDownloadHint') }}
             </div>
-            <div
-              class="flex justify-between text-[10px] text-ui-text-muted tracking-wider"
-            >
+            <div class="flex justify-between text-[10px] text-ui-text-muted tracking-wider">
               <span>{{ Math.round((activeDownloadTask?.progress || 0) * 100) }}%</span>
             </div>
             <UProgress

@@ -285,7 +285,7 @@ onBeforeUnmount(() => {
               />
 
               <span
-                class="text-2xs truncate flex-1 font-bold tracking-widest uppercase"
+                class="text-2xs truncate flex-1 font-bold tracking-wide"
                 :aria-label="getFileName(path)"
               >
                 {{ getFileName(path) }}

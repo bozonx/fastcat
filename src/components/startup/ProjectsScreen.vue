@@ -182,9 +182,7 @@ function getProjectOpenTarget(project: ProjectActionTarget): string {
           </div>
           <div class="overflow-hidden">
             <h1 class="font-bold text-lg text-ui-text leading-tight tracking-tight">FASTCAT</h1>
-            <p class="text-[10px] text-ui-text-muted tracking-widest font-semibold">
-              Video Editor
-            </p>
+            <p class="text-[10px] text-ui-text-muted tracking-widest font-semibold">Video Editor</p>
           </div>
         </div>
       </div>

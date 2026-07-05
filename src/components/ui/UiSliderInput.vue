@@ -60,7 +60,7 @@ function onInputUpdate(value: unknown) {
     <!-- Label with Unit in parentheses -->
     <div v-if="label" class="flex items-center justify-between gap-2 overflow-hidden">
       <span
-        class="text-2xs text-ui-text-muted font-bold uppercase truncate block tracking-wider"
+        class="text-2xs text-ui-text-muted font-bold truncate block tracking-wider"
         :title="label"
       >
         {{ label }}

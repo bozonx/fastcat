@@ -358,9 +358,7 @@ function updateCustomTransitionsOrder(newCustomTransitions: TransitionManifest[]
               </div>
 
               <div v-if="hasAudioEffects(nonBasicAudioEffects)">
-                <h4
-                  class="text-2xs tracking-wider font-semibold text-ui-text-muted mb-1 mt-1"
-                >
+                <h4 class="text-2xs tracking-wider font-semibold text-ui-text-muted mb-1 mt-1">
                   {{ t('fastcat.effects.groups.artistic') }}
                 </h4>
                 <div class="grid grid-cols-1 gap-1">

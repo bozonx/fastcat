@@ -209,10 +209,9 @@ function onVolumeUpdate(db: number) {
         class="w-20 shrink-0 flex flex-col gap-2 border-l border-ui-border/30 pl-3"
       >
         <div class="flex flex-col items-end px-1 h-8 justify-center">
-          <span
-            class="text-[10px] font-bold text-ui-text-muted/70 leading-tight line-clamp-1"
-            >{{ t('fastcat.clip.audio.volume') }}</span
-          >
+          <span class="text-[10px] font-bold text-ui-text-muted/70 leading-tight line-clamp-1">{{
+            t('fastcat.clip.audio.volume')
+          }}</span>
           <span
             class="text-xs font-mono text-ui-text-muted cursor-pointer hover:text-primary-400 tabular-nums whitespace-nowrap"
             :title="t('common.actions.reset')"

@@ -20,7 +20,7 @@ const fileManagerPayload = computed(() => {
 <template>
   <div class="border-t border-ui-border bg-ui-bg-elevated z-40 container-safe pb-safe shrink-0">
     <div
-      class="px-4 py-1.5 text-[10px] font-medium text-ui-text-muted uppercase tracking-wider border-b border-ui-border/50"
+      class="px-4 py-1.5 text-[10px] font-medium text-ui-text-muted tracking-wider border-b border-ui-border/50"
     >
       {{ fileManagerPayload?.operation === 'cut' ? t('common.cut') : t('common.copied') }}:
       {{ fileManagerPayload?.items.length ?? 0 }}
