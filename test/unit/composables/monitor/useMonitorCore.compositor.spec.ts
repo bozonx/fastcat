@@ -184,6 +184,47 @@ describe('createMonitorCompositorRuntime', () => {
     }
   });
 
+  // Pipeline depth 2 hides the render-RPC round trip: the worker coalesces
+  // (latest-request-wins) so the main thread may keep a second render in flight
+  // instead of stalling a full RTT between frames — the fix that lifted web
+  // playback off its 1/RTT fps ceiling. These pin the invariant so the queue can
+  // never silently regress to a serial await-per-frame loop (depth 1) or grow
+  // unbounded (which would just buffer stale playhead times).
+  it('keeps at most two render RPCs in flight and coalesces the rest to the latest time', async () => {
+    const resolvers: Array<() => void> = [];
+    const renderFrame = vi.fn().mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          resolvers.push(resolve);
+        }),
+    );
+    const mockClient = {
+      renderFrame,
+    } as unknown as import('~/utils/video-editor/worker-rpc').VideoCoreWorkerAPI;
+    const runtime = createMonitorCompositorRuntime(makeOptions(mockClient));
+
+    // Four schedules while every render is still pending: two go in flight, the
+    // remaining two collapse into a single parked request (latest time wins).
+    runtime.scheduleRender(1_000);
+    runtime.scheduleRender(2_000);
+    runtime.scheduleRender(3_000);
+    runtime.scheduleRender(4_000);
+
+    await vi.waitFor(() => expect(renderFrame).toHaveBeenCalledTimes(2));
+    expect(renderFrame).toHaveBeenNthCalledWith(1, 1_000, expect.anything());
+    expect(renderFrame).toHaveBeenNthCalledWith(2, 2_000, expect.anything());
+
+    // Draining one in-flight RPC frees a slot; the parked latest request (4_000,
+    // not the intermediate 3_000) is what pumps next.
+    resolvers[0]!();
+    await vi.waitFor(() => expect(renderFrame).toHaveBeenCalledTimes(3));
+    expect(renderFrame).toHaveBeenNthCalledWith(3, 4_000, expect.anything());
+
+    resolvers[1]!();
+    resolvers[2]!();
+    await vi.waitFor(() => expect(renderFrame).toHaveBeenCalledTimes(3));
+  });
+
   it('does not prewarm video frames for passive renders', async () => {
     const mockClient = {
       renderFrame: vi.fn().mockResolvedValue({}),

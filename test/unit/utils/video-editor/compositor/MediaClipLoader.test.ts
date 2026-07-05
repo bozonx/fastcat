@@ -270,6 +270,107 @@ describe('MediaClipLoader', () => {
     expect(result!.frameRate).toBe(24);
   });
 
+  // --- frame-rate fallback via packet stats (low-fps web playback regression) ---
+  //
+  // mediabunny's InputVideoTrack exposes no direct frame-rate accessor. When
+  // getFrameRate/frameRate/fps are all absent, the loader must estimate the rate
+  // from `computePacketStats().averagePacketRate`. If it does NOT, every clip loads
+  // with frameRate: undefined, computeFrameIndex falls back to exact-µs cache keys,
+  // the frame cache/prewarm never produce a cross-timestamp hit, and playback pays a
+  // cold from-keyframe decode per displayed frame (the ~½-fps web monitor bug).
+  it('derives frameRate from computePacketStats().averagePacketRate when no rate accessor exists', async () => {
+    const computePacketStats = vi.fn().mockResolvedValue({ averagePacketRate: 29.97 });
+    const track = makeTrack({
+      getFrameRate: undefined,
+      frameRate: undefined,
+      fps: undefined,
+      computePacketStats,
+    } as unknown as Partial<MediabunnyTrack>);
+    const mediabunny = makeMediabunny(track);
+
+    const result = await loader.loadVideoRuntime({
+      mediabunny,
+      file: new File([], 'test.mp4'),
+      sourceStartUs: 0,
+      requestedTimelineDurationUs: 0,
+      requestedSourceDurationUs: 0,
+      requestedSourceRangeDurationUs: 0,
+      startUs: 0,
+    });
+
+    expect(computePacketStats).toHaveBeenCalledWith(60);
+    expect(result!.frameRate).toBeCloseTo(29.97, 5);
+  });
+
+  it('does NOT reach for packet stats when a valid frame rate is already known', async () => {
+    const computePacketStats = vi.fn().mockResolvedValue({ averagePacketRate: 29.97 });
+    const track = makeTrack({
+      getFrameRate: async () => 25,
+      computePacketStats,
+    } as unknown as Partial<MediabunnyTrack>);
+    const mediabunny = makeMediabunny(track);
+
+    const result = await loader.loadVideoRuntime({
+      mediabunny,
+      file: new File([], 'test.mp4'),
+      sourceStartUs: 0,
+      requestedTimelineDurationUs: 0,
+      requestedSourceDurationUs: 0,
+      requestedSourceRangeDurationUs: 0,
+      startUs: 0,
+    });
+
+    expect(computePacketStats).not.toHaveBeenCalled();
+    expect(result!.frameRate).toBe(25);
+  });
+
+  it('falls back to the packet-stats estimate when the rate accessor yields a non-positive value', async () => {
+    const computePacketStats = vi.fn().mockResolvedValue({ averagePacketRate: 24 });
+    const track = makeTrack({
+      getFrameRate: async () => 0,
+      computePacketStats,
+    } as unknown as Partial<MediabunnyTrack>);
+    const mediabunny = makeMediabunny(track);
+
+    const result = await loader.loadVideoRuntime({
+      mediabunny,
+      file: new File([], 'test.mp4'),
+      sourceStartUs: 0,
+      requestedTimelineDurationUs: 0,
+      requestedSourceDurationUs: 0,
+      requestedSourceRangeDurationUs: 0,
+      startUs: 0,
+    });
+
+    expect(computePacketStats).toHaveBeenCalledWith(60);
+    expect(result!.frameRate).toBe(24);
+  });
+
+  it('keeps frameRate undefined (graceful) when packet-stats estimation throws', async () => {
+    const computePacketStats = vi.fn().mockRejectedValue(new Error('no packets'));
+    const track = makeTrack({
+      getFrameRate: undefined,
+      frameRate: undefined,
+      fps: undefined,
+      computePacketStats,
+    } as unknown as Partial<MediabunnyTrack>);
+    const mediabunny = makeMediabunny(track);
+
+    const result = await loader.loadVideoRuntime({
+      mediabunny,
+      file: new File([], 'test.mp4'),
+      sourceStartUs: 0,
+      requestedTimelineDurationUs: 0,
+      requestedSourceDurationUs: 0,
+      requestedSourceRangeDurationUs: 0,
+      startUs: 0,
+    });
+
+    // Exact-µs cache keying still works for repeat renders — just no cross-timestamp reuse.
+    expect(computePacketStats).toHaveBeenCalled();
+    expect(result!.frameRate).toBeUndefined();
+  });
+
   it('clamps the timeline-duration fallback to 0 when sourceStartUs exceeds mediaDuration', async () => {
     const track = makeTrack({ computeDuration: async () => 5 });
     const mediabunny = makeMediabunny(track);
