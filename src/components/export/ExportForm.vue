@@ -14,7 +14,6 @@ import UiFormField from '~/components/ui/UiFormField.vue';
 import UiFormSectionHeader from '~/components/ui/UiFormSectionHeader.vue';
 import UiButtonGroup from '~/components/ui/UiButtonGroup.vue';
 
-import { BASE_VIDEO_CODEC_OPTIONS, VIDEO_FORMAT_OPTIONS } from '~/utils/webcodecs';
 import { formatFps, middleEllipsis, formatRenderDuration } from '~/utils/format';
 import { useExportForm, type ExportRangeOption } from '~/composables/timeline/export/useExportForm';
 
@@ -96,24 +95,6 @@ const tabOptions = computed(() => [
 
 const resolutionSummary = computed(() => {
   return `${exportWidth.value}x${exportHeight.value}, ${formatFps(exportFps.value)}FPS, ${(audioSampleRate.value || 0) / 1000}kHz`;
-});
-
-const encodingSummary = computed(() => {
-  const formatLabel =
-    VIDEO_FORMAT_OPTIONS.find((f) => f.value === outputFormat.value)?.label ||
-    outputFormat.value ||
-    '';
-  const format = formatLabel.split(' ')[0]?.toUpperCase() || '';
-
-  const vCodecLabel =
-    BASE_VIDEO_CODEC_OPTIONS.find((o) => o.value === videoCodec.value)?.label ||
-    videoCodec.value ||
-    '';
-  const vCodec = vCodecLabel.split(' ')[0]?.toUpperCase() || '';
-
-  const vBitrate = `${bitrateMbps.value || 0}Mb/s`;
-
-  return `${t('common.video')}: ${format} ${vCodec} ${vBitrate}`;
 });
 
 const exportProgressPercent = computed(() =>
@@ -430,7 +411,10 @@ const filenamePlaceholder = computed(() =>
         <div v-show="exportType === 'video'" class="space-y-4">
           <div class="flex items-center justify-between gap-3">
             <span class="text-sm text-ui-text">
-              {{ t('videoEditor.export.matchTimeline') }}<span v-if="matchTimeline" class="text-ui-text-muted font-normal">: {{ resolutionSummary }}</span>
+              {{ t('videoEditor.export.matchTimeline')
+              }}<span v-if="matchTimeline" class="text-ui-text-muted font-normal"
+                >: {{ resolutionSummary }}</span
+              >
             </span>
             <USwitch v-model="matchTimeline" :disabled="isExporting" />
           </div>
@@ -513,22 +497,14 @@ const filenamePlaceholder = computed(() =>
                 :resettable="isFieldDirty('metadataTitle')"
                 @reset="resetField('metadataTitle')"
               >
-                <UiTextInput
-                  v-model="metadataTitle"
-                  :disabled="isExporting"
-                  full-width
-                />
+                <UiTextInput v-model="metadataTitle" :disabled="isExporting" full-width />
               </UiFormField>
               <UiFormField
                 :label="t('videoEditor.export.metadataAuthor')"
                 :resettable="isFieldDirty('metadataAuthor')"
                 @reset="resetField('metadataAuthor')"
               >
-                <UiTextInput
-                  v-model="metadataAuthor"
-                  :disabled="isExporting"
-                  full-width
-                />
+                <UiTextInput v-model="metadataAuthor" :disabled="isExporting" full-width />
               </UiFormField>
             </div>
 

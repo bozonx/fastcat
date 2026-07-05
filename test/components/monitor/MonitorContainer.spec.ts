@@ -713,8 +713,6 @@ describe('MonitorContainer', () => {
   });
 
   it('applies correct seekbar positioning classes based on toolbarPosition', async () => {
-    mockToolbarPositionRef.value = 'bottom';
-
     wrapper = mount(MonitorContainer, {
       global: {
         plugins: [pinia],
@@ -735,19 +733,21 @@ describe('MonitorContainer', () => {
 
     await wrapper.vm.$nextTick();
 
-    const seekbar = wrapper.find('[data-testid="monitor-seekbar"]');
-    const seekbarWrapper = seekbar.element.parentElement;
-    expect(seekbarWrapper).toBeDefined();
+    const getSeekbarWrapperClassName = () =>
+      wrapper.find('[data-testid="monitor-seekbar"]').element.parentElement?.className ?? '';
+
+    mockToolbarPositionRef.value = 'bottom';
+    await wrapper.vm.$nextTick();
 
     // Default 'bottom' position: seekbar is pressed tight
-    expect(seekbarWrapper?.className).toContain('bottom-[-8px]');
-    expect(seekbarWrapper?.className).toContain('px-0');
+    expect(getSeekbarWrapperClassName()).toContain('bottom-[-8px]');
+    expect(getSeekbarWrapperClassName()).toContain('px-0');
 
-    // Change to 'top' and verify it has spacing/offset
+    // Change to 'top' and verify it lifts off the viewport edge
     mockToolbarPositionRef.value = 'top';
     await wrapper.vm.$nextTick();
-    expect(seekbarWrapper?.className).toContain('bottom-[-8px]');
-    expect(seekbarWrapper?.className).toContain('px-3');
+    expect(getSeekbarWrapperClassName()).toContain('bottom-2');
+    expect(getSeekbarWrapperClassName()).toContain('px-3');
   });
 
   it('applies correct seekbar thumb color classes on hover and drag', async () => {

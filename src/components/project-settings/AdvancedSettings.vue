@@ -54,4 +54,3 @@ function resetToDefault() {
     </UiFormField>
   </SettingsSection>
 </template>
-

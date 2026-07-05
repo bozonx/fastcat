@@ -36,6 +36,18 @@ impl_apply_hw_settings!(NativeProxyOptions);
 impl_apply_hw_settings!(NativeConvertOptions);
 impl_apply_hw_settings!(NativeExportOptions);
 
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeTimelineRenderFrameWebpRequest {
+    scene: MonitorScene,
+    time_sec: f64,
+    width: u32,
+    height: u32,
+    quality: f32,
+    is_transparent: Option<bool>,
+    effect_quality: Option<crate::compositor::effects::EffectQuality>,
+}
+
 /// Runs a blocking, fallible operation on the blocking thread pool and flattens the
 /// two error layers (join error + operation error) into a single `String` so Tauri
 /// commands stay thin. Shared by every blocking media command to keep the
@@ -396,29 +408,23 @@ pub async fn native_timeline_render_frame_to_file(
 
 #[tauri::command]
 pub async fn native_timeline_render_frame_webp(
-    scene: MonitorScene,
-    time_sec: f64,
-    width: u32,
-    height: u32,
-    quality: f32,
-    is_transparent: Option<bool>,
-    effect_quality: Option<crate::compositor::effects::EffectQuality>,
+    request: NativeTimelineRenderFrameWebpRequest,
     hw_settings: State<'_, parking_lot::RwLock<crate::FfmpegHwSettings>>,
 ) -> Result<Vec<u8>, String> {
     let hw = hw_settings.read().clone();
     run_blocking(move || {
         render_timeline_frame_to_webp(TimelineFrameRequest {
-            scene,
-            time_sec,
-            width,
-            height,
-            quality,
+            scene: request.scene,
+            time_sec: request.time_sec,
+            width: request.width,
+            height: request.height,
+            quality: request.quality,
             hw_mode: hw.hardware_acceleration_mode,
             vaapi_device: Some(hw.vaapi_device),
-            is_transparent,
+            is_transparent: request.is_transparent,
             // Thumbnails pass `low`; stop-frame / still-export callers omit it and
             // keep the full-fidelity `ultra` default.
-            effect_quality: effect_quality.unwrap_or_default(),
+            effect_quality: request.effect_quality.unwrap_or_default(),
         })
     })
     .await

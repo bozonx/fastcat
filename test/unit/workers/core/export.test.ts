@@ -2,6 +2,30 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { extractMetadata, isPassthroughCompatibleClip } from '~/workers/core/export';
 
+function createEmptyAsyncIterable<T>(): AsyncIterable<T> {
+  return {
+    [Symbol.asyncIterator]() {
+      return {
+        async next() {
+          return { done: true, value: undefined as T | undefined };
+        },
+      };
+    },
+  };
+}
+
+function createThrowingAsyncIterable<T>(error: Error): AsyncIterable<T> {
+  return {
+    [Symbol.asyncIterator]() {
+      return {
+        async next() {
+          throw error;
+        },
+      };
+    },
+  };
+}
+
 // Use variables that can be modified per test
 const mockFunctions = {
   getPrimaryVideoTrack: vi.fn(),
@@ -157,9 +181,7 @@ describe('extractMetadata', () => {
   it('sets audio.canDecode to false if audio sample decoding fails', async () => {
     const file = new File([], 'test.mp3');
     mockFunctions.getPrimaryVideoTrack.mockResolvedValue(null);
-    mockFunctions.audioSamples.mockImplementation(async function* () {
-      // Yield nothing (empty)
-    });
+    mockFunctions.audioSamples.mockImplementation(() => createEmptyAsyncIterable());
 
     const meta = await extractMetadata(file);
     expect(meta.audio?.canDecode).toBe(false);
@@ -168,9 +190,9 @@ describe('extractMetadata', () => {
   it('sets audio.canDecode to false when iterating samples throws', async () => {
     const file = new File([], 'test.mp3');
     mockFunctions.getPrimaryVideoTrack.mockResolvedValue(null);
-    mockFunctions.audioSamples.mockImplementation(async function* () {
-      throw new Error('audio decode blew up');
-    });
+    mockFunctions.audioSamples.mockImplementation(() =>
+      createThrowingAsyncIterable(new Error('audio decode blew up')),
+    );
 
     const meta = await extractMetadata(file);
     expect(meta.audio?.canDecode).toBe(false);
@@ -212,10 +234,7 @@ describe('extractMetadata', () => {
     });
 
     it('marks an undecodable browser-native image as not displayable (corrupt)', async () => {
-      vi.stubGlobal(
-        'createImageBitmap',
-        vi.fn().mockRejectedValue(new Error('bad image bytes')),
-      );
+      vi.stubGlobal('createImageBitmap', vi.fn().mockRejectedValue(new Error('bad image bytes')));
       const meta = await extractMetadata(new File([], 'broken.png'));
       expect(meta.image?.canDisplay).toBe(false);
     });

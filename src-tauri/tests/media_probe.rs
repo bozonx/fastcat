@@ -193,8 +193,8 @@ fn validated_probe_marks_corrupt_payload_undecodable() {
         "ffmpeg/ffprobe not installed"
     );
 
-    let good = std::fs::read(common::fixture("video/video-h264-aac.mp4"))
-        .expect("read source fixture");
+    let good =
+        std::fs::read(common::fixture("video/video-h264-aac.mp4")).expect("read source fixture");
     // Keep only a small head prefix: too little for a full keyframe to survive,
     // so decoding can't produce a frame. Either ffprobe still recognises the
     // container (→ streams that fail decode validation) or it rejects the file

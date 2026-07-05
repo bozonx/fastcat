@@ -42,7 +42,7 @@ const fieldProps = computed(() => ({
 
 // Slots other than 'default' to forward
 const nonDefaultSlots = computed(() => {
-  const result: Record<string, typeof slots[string]> = {};
+  const result: Record<string, (typeof slots)[string]> = {};
   for (const key of Object.keys(slots)) {
     if (key !== 'default') result[key] = slots[key];
   }
@@ -63,12 +63,17 @@ const nonDefaultSlots = computed(() => {
   >
     <template #default>
       <!-- When resettable prop is used, wrap default slot in a flex row with the reset button -->
-      <div v-if="resettable !== undefined" class="flex gap-2" :class="resetAlign === 'start' ? 'items-start' : 'items-center'">
+      <div
+        v-if="resettable !== undefined"
+        class="flex gap-2"
+        :class="resetAlign === 'start' ? 'items-start' : 'items-center'"
+      >
         <div class="flex-1 min-w-0">
           <slot />
         </div>
         <UiTooltip v-if="resettable" :text="resetTooltip ?? ''">
           <UButton
+            data-testid="form-field-reset"
             color="neutral"
             variant="ghost"
             size="xs"
@@ -87,4 +92,3 @@ const nonDefaultSlots = computed(() => {
     </template>
   </UFormField>
 </template>
-

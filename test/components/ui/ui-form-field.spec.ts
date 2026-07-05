@@ -65,6 +65,7 @@ describe('UiFormField', () => {
       expect(component.find('.field-content').exists()).toBe(true);
       // The flex wrapper should be present
       expect(component.find('.flex.items-center.gap-2').exists()).toBe(true);
+      expect(component.find('[data-testid="form-field-reset"]').exists()).toBe(true);
     });
 
     it('hides reset button when resettable is false', async () => {
@@ -77,6 +78,7 @@ describe('UiFormField', () => {
       expect(component.find('.flex.items-center.gap-2').exists()).toBe(true);
       // Slot content should still render
       expect(component.find('.field-content').exists()).toBe(true);
+      expect(component.find('[data-testid="form-field-reset"]').exists()).toBe(false);
     });
 
     it('does not show reset button when resettable is undefined', async () => {
@@ -86,7 +88,7 @@ describe('UiFormField', () => {
       });
 
       // No reset button should be present
-      expect(component.find('button').exists()).toBe(false);
+      expect(component.find('[data-testid="form-field-reset"]').exists()).toBe(false);
       // Slot content is rendered directly
       expect(component.find('.field-content').exists()).toBe(true);
     });
@@ -98,7 +100,7 @@ describe('UiFormField', () => {
       });
 
       // UButton inside UiTooltip renders as a native <button>
-      const btn = component.find('button');
+      const btn = component.find('[data-testid="form-field-reset"]');
       expect(btn.exists()).toBe(true);
       await btn.trigger('click');
 
@@ -106,4 +108,3 @@ describe('UiFormField', () => {
     });
   });
 });
-

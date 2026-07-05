@@ -38,26 +38,26 @@ describe('AdvancedSettings.vue', () => {
     const component = await mountWithNuxt(AdvancedSettings);
 
     expect(component.exists()).toBe(true);
-    expect(component.find('.reset-declick-btn').exists()).toBe(false);
+    expect(component.find('[data-testid="form-field-reset"]').exists()).toBe(false);
   });
 
   it('renders reset button when project setting differs from app default', async () => {
     mockProjectStore.projectSettings.project.audioDeclickDurationUs = 10000;
     const component = await mountWithNuxt(AdvancedSettings);
 
-    expect(component.find('.reset-declick-btn').exists()).toBe(true);
+    expect(component.find('[data-testid="form-field-reset"]').exists()).toBe(true);
   });
 
   it('resets audioDeclickDurationUs to app default when reset button is clicked', async () => {
     mockProjectStore.projectSettings.project.audioDeclickDurationUs = 10000;
     const component = await mountWithNuxt(AdvancedSettings);
 
-    const btn = component.find('.reset-declick-btn');
+    const btn = component.find('[data-testid="form-field-reset"]');
     expect(btn.exists()).toBe(true);
 
     await btn.trigger('click');
 
     expect(mockProjectStore.projectSettings.project.audioDeclickDurationUs).toBe(5000);
-    expect(component.find('.reset-declick-btn').exists()).toBe(false);
+    expect(component.find('[data-testid="form-field-reset"]').exists()).toBe(false);
   });
 });

@@ -13,6 +13,7 @@ mod common;
 
 use std::path::{Path, PathBuf};
 
+use app_lib::compositor::effects::EffectQuality;
 use app_lib::compositor::Compositor;
 use app_lib::media::timeline_render::{build_export_scene, VideoDecoderCache};
 use app_lib::monitor::scene::MonitorScene;
@@ -392,14 +393,20 @@ fn native_engine_parity_renders_all_scenes() {
 
         for &time_sec in &fixture.sample_times_sec {
             let mut cache = VideoDecoderCache::new();
-            let compositor_scene =
-                build_export_scene(&monitor_scene, time_sec, (width, height), &mut cache, None)
-                    .unwrap_or_else(|e| {
-                        panic!(
-                            "build_export_scene failed for {} at t={time_sec}: {e}",
-                            scene_def.filename
-                        )
-                    });
+            let compositor_scene = build_export_scene(
+                &monitor_scene,
+                time_sec,
+                (width, height),
+                &mut cache,
+                None,
+                EffectQuality::default(),
+            )
+            .unwrap_or_else(|e| {
+                panic!(
+                    "build_export_scene failed for {} at t={time_sec}: {e}",
+                    scene_def.filename
+                )
+            });
 
             let pixels = compositor
                 .render_scene_to_pixels(dev_id, &compositor_scene, width, height)
@@ -512,9 +519,15 @@ fn native_engine_cross_engine_parity_vs_web_golden() {
 
         for &time_sec in &fixture.sample_times_sec {
             let mut cache = VideoDecoderCache::new();
-            let compositor_scene =
-                build_export_scene(&monitor_scene, time_sec, (width, height), &mut cache, None)
-                    .expect("build_export_scene");
+            let compositor_scene = build_export_scene(
+                &monitor_scene,
+                time_sec,
+                (width, height),
+                &mut cache,
+                None,
+                EffectQuality::default(),
+            )
+            .expect("build_export_scene");
 
             let pixels = compositor
                 .render_scene_to_pixels(dev_id, &compositor_scene, width, height)
