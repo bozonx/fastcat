@@ -593,7 +593,12 @@ const sortedProjects = computed(() => {
             <UButton variant="ghost" color="neutral" @click="void (isRenameModalOpen = false)">
               {{ t('common.cancel') }}
             </UButton>
-            <UButton color="primary" :disabled="!isRenameNameValid" @click="renameProject">
+            <UButton
+              color="primary"
+              variant="solid"
+              :disabled="!isRenameNameValid"
+              @click="renameProject"
+            >
               {{ t('common.rename') }}
             </UButton>
           </div>
@@ -618,6 +623,7 @@ const sortedProjects = computed(() => {
             </UButton>
             <UButton
               color="error"
+              variant="solid"
               :loading="workspaceStore.isLoading"
               data-primary-focus="true"
               @click="confirmDelete"
@@ -655,7 +661,12 @@ const sortedProjects = computed(() => {
             <UButton variant="ghost" color="neutral" @click="closeDuplicateModal">
               {{ t('common.cancel') }}
             </UButton>
-            <UButton color="primary" :disabled="!isDuplicateNameValid" @click="confirmDuplicate">
+            <UButton
+              color="primary"
+              variant="solid"
+              :disabled="!isDuplicateNameValid"
+              @click="confirmDuplicate"
+            >
               {{ t('common.duplicate') }}
             </UButton>
           </div>

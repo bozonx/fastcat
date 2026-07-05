@@ -40,13 +40,21 @@ export default defineAppConfig({
     },
     button: {
       slots: {
-        base: 'font-medium rounded-[var(--radius-ui-md)]',
+        base: 'font-medium rounded-[var(--radius-ui-md)] transition-colors duration-150',
       },
       defaultVariants: {
         color: 'neutral',
         variant: 'outline',
         size: 'sm',
       },
+      compoundVariants: [
+        {
+          color: 'primary',
+          variant: 'solid',
+          class:
+            'bg-zinc-300 text-zinc-950 hover:bg-zinc-400 active:bg-zinc-500 dark:bg-zinc-600 dark:text-zinc-50 dark:hover:bg-zinc-500 dark:active:bg-zinc-400 font-semibold shadow-sm disabled:bg-zinc-800/40 disabled:text-zinc-500 disabled:opacity-40 disabled:shadow-none disabled:cursor-not-allowed',
+        },
+      ],
     },
     input: {
       slots: {
