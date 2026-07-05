@@ -103,6 +103,7 @@ const computedStyle = computed(() => {
     :title="title"
     :style="computedStyle"
     :aria-pressed="modelValue"
+    :data-state="modelValue ? 'on' : 'off'"
     class="transition-all duration-200"
     :class="[
       square

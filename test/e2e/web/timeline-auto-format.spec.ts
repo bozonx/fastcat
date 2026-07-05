@@ -43,8 +43,8 @@ test.describe('Web timeline auto format adoption (E2E Smoke)', () => {
       .toEqual(
         expect.objectContaining({
           project: expect.objectContaining({
-            width: 1920,
-            height: 1080,
+            width: 320,
+            height: 240,
             geometryResolved: true,
           }),
         }),

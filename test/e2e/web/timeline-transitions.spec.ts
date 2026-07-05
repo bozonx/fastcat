@@ -3,7 +3,7 @@ import { test, expect, waitForEditorReady } from '../fixtures/workspace';
 import type { E2eProject } from '../fixtures/workspace';
 import { MEDIA_FIXTURES } from '../../fixtures/media';
 import { seedProjectMedia } from '../../utils/e2e/file-manager';
-import { addFileToTrack, clipIds, trackIds } from '../../utils/e2e/timeline';
+import { addFileToTrack, clipIds, setTimelineZoom, trackIds } from '../../utils/e2e/timeline';
 import { readTimelineDoc, waitForTimelineDoc } from '../../utils/e2e/otio';
 
 /**
@@ -18,14 +18,16 @@ test.describe('Web timeline transitions', () => {
     const videoTrackId = (await trackIds(page))[0];
     await addFileToTrack(page, uiPath, videoTrackId);
     await waitForTimelineDoc(page, project, (d) => d.allClips.length === 1);
-    return (await clipIds(page))[0];
+    const clipId = (await clipIds(page))[0];
+    await setTimelineZoom(page, 65);
+    return clipId;
   }
 
   test('renders transition create handles on clip hover', async ({ page, e2eProject }) => {
     const clipId = await projectWithVideoClip(page, e2eProject);
     const clipLocator = page.locator(`[data-clip-id="${clipId}"]`);
 
-    await clipLocator.hover();
+    await clipLocator.hover({ position: { x: 5, y: 5 } });
 
     const createHandleIn = clipLocator.locator('[data-testid="transition-create-in"]');
     const createHandleOut = clipLocator.locator('[data-testid="transition-create-out"]');
