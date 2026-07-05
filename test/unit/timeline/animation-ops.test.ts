@@ -1,9 +1,14 @@
 /** @vitest-environment node */
 import { describe, it, expect } from 'vitest';
 import {
+  addKeyframeMoment,
+  animatedParamPaths,
+  applyKeyframeMoment,
   clearParamAnimation,
   collectKeyframeTimes,
+  extractKeyframeMoment,
   getStaticParamValue,
+  hasKeyframeMomentAt,
   moveKeyframe,
   moveKeyframeMoment,
   removeKeyframe,
@@ -158,5 +163,93 @@ describe('keyframe "moment" ops (unified lane)', () => {
     expect(changed?.['transform.rotationDeg']?.keyframes).toEqual([
       { tUs: 100, value: 45, easing: 'ease' },
     ]);
+  });
+});
+
+describe('animatedParamPaths', () => {
+  it('returns only paths that have keyframes, sorted', () => {
+    let anims: ClipAnimations | undefined = upsertKeyframe(undefined, 'transform.scale.x', 0, 1);
+    anims = upsertKeyframe(anims, 'opacity', 0, 1);
+    expect(animatedParamPaths(anims)).toEqual(['opacity', 'transform.scale.x']);
+  });
+
+  it('includes dynamic effect-param paths (not just the fixed set)', () => {
+    const anims = upsertKeyframe(undefined, 'effect.fx1.intensity' as never, 0, 0.5);
+    expect(animatedParamPaths(anims)).toEqual(['effect.fx1.intensity']);
+  });
+
+  it('is empty for undefined', () => {
+    expect(animatedParamPaths(undefined)).toEqual([]);
+  });
+});
+
+describe('hasKeyframeMomentAt', () => {
+  it('detects a keyframe at the rounded time on any animated param', () => {
+    let anims: ClipAnimations | undefined = upsertKeyframe(undefined, 'opacity', 500, 1);
+    anims = upsertKeyframe(anims, 'transform.rotationDeg', 1000, 90);
+    expect(hasKeyframeMomentAt(anims, 500)).toBe(true);
+    expect(hasKeyframeMomentAt(anims, 1000)).toBe(true);
+    expect(hasKeyframeMomentAt(anims, 750)).toBe(false);
+    expect(hasKeyframeMomentAt(undefined, 0)).toBe(false);
+  });
+});
+
+describe('addKeyframeMoment', () => {
+  it('adds an interpolated keyframe on every animated param without changing motion', () => {
+    let anims: ClipAnimations | undefined = upsertKeyframe(undefined, 'opacity', 0, 0);
+    anims = upsertKeyframe(anims, 'opacity', 1000, 1); // linear 0→1
+    anims = upsertKeyframe(anims, 'transform.position.x', 0, 100);
+    anims = upsertKeyframe(anims, 'transform.position.x', 1000, 300); // linear 100→300
+
+    const next = addKeyframeMoment(anims, 500);
+    // opacity midpoint = 0.5, position.x midpoint = 200
+    const op = next?.opacity?.keyframes.find((k) => k.tUs === 500);
+    const px = next?.['transform.position.x']?.keyframes.find((k) => k.tUs === 500);
+    expect(op?.value).toBeCloseTo(0.5);
+    expect(px?.value).toBeCloseTo(200);
+  });
+
+  it('is a no-op when nothing is animated', () => {
+    expect(addKeyframeMoment(undefined, 500)).toBeUndefined();
+  });
+});
+
+describe('extractKeyframeMoment / applyKeyframeMoment', () => {
+  it('captures value+easing of every param at a time and pastes them elsewhere', () => {
+    let anims: ClipAnimations | undefined = upsertKeyframe(undefined, 'opacity', 200, 0.3, 'ease');
+    anims = upsertKeyframe(anims, 'transform.rotationDeg', 200, 45, 'hold');
+    anims = upsertKeyframe(anims, 'opacity', 999, 1); // unrelated keyframe
+
+    const moment = extractKeyframeMoment(anims, 200);
+    expect(moment?.entries).toEqual([
+      { path: 'opacity', value: 0.3, easing: 'ease' },
+      { path: 'transform.rotationDeg', value: 45, easing: 'hold' },
+    ]);
+
+    const pasted = applyKeyframeMoment(anims, moment!, 700);
+    expect(pasted?.opacity?.keyframes.find((k) => k.tUs === 700)).toEqual({
+      tUs: 700,
+      value: 0.3,
+      easing: 'ease',
+    });
+    expect(pasted?.['transform.rotationDeg']?.keyframes.find((k) => k.tUs === 700)).toEqual({
+      tUs: 700,
+      value: 45,
+      easing: 'hold',
+    });
+  });
+
+  it('returns null when there is no keyframe at the time', () => {
+    const anims = upsertKeyframe(undefined, 'opacity', 200, 0.3);
+    expect(extractKeyframeMoment(anims, 500)).toBeNull();
+    expect(extractKeyframeMoment(undefined, 0)).toBeNull();
+  });
+
+  it('paste creates a track for a param that was not previously animated', () => {
+    const moment = {
+      entries: [{ path: 'opacity' as const, value: 0.5, easing: 'linear' as const }],
+    };
+    const pasted = applyKeyframeMoment(undefined, moment, 100);
+    expect(pasted?.opacity?.keyframes).toEqual([{ tUs: 100, value: 0.5, easing: 'linear' }]);
   });
 });

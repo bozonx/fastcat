@@ -8,6 +8,7 @@ import {
   hasKeyframes,
   normalizeKeyframeTrack,
   resolveClipAnimationTimeUs,
+  resolveKeyframeTimelineTimeUs,
   sampleClipAnimations,
 } from '~/timeline/animation/evaluate';
 import type { KeyframeTrack } from '~/timeline/types';
@@ -163,5 +164,46 @@ describe('helpers', () => {
     expect(ANIMATABLE_PARAM_PATHS).toContain('opacity');
     expect(ANIMATABLE_PARAM_PATHS).toContain('transform.rotationDeg');
     expect(ANIMATABLE_PARAM_PATHS.length).toBe(6);
+  });
+});
+
+describe('resolveKeyframeTimelineTimeUs', () => {
+  it('inverts resolveClipAnimationTimeUs for forward playback (round-trip)', () => {
+    const base = {
+      timelineStartUs: 2_000_000,
+      sourceStartUs: 1_000_000,
+      sourceRangeDurationUs: 5_000_000,
+      speed: 1,
+    };
+    for (const timelineTimeUs of [2_000_000, 3_500_000, 6_000_000]) {
+      const sourceTimeUs = resolveClipAnimationTimeUs({ ...base, timelineTimeUs });
+      const back = resolveKeyframeTimelineTimeUs({ ...base, sourceTimeUs });
+      expect(back).toBeCloseTo(timelineTimeUs, -1);
+    }
+  });
+
+  it('inverts under 2x speed', () => {
+    const base = {
+      timelineStartUs: 0,
+      sourceStartUs: 0,
+      sourceRangeDurationUs: 10_000_000,
+      speed: 2,
+    };
+    const sourceTimeUs = resolveClipAnimationTimeUs({ ...base, timelineTimeUs: 1_000_000 });
+    // 1s of timeline at 2x = 2s of source
+    expect(sourceTimeUs).toBe(2_000_000);
+    expect(resolveKeyframeTimelineTimeUs({ ...base, sourceTimeUs })).toBe(1_000_000);
+  });
+
+  it('maps a source keyframe back to timeline time for reverse playback', () => {
+    const base = {
+      timelineStartUs: 0,
+      sourceStartUs: 0,
+      sourceRangeDurationUs: 4_000_000,
+      speed: -1,
+    };
+    // At the clip start (timeline 0) reverse samples the source tail.
+    const head = resolveClipAnimationTimeUs({ ...base, timelineTimeUs: 0 });
+    expect(resolveKeyframeTimelineTimeUs({ ...base, sourceTimeUs: head })).toBe(0);
   });
 });

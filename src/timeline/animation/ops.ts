@@ -4,7 +4,7 @@ import type {
   KeyframeEasing,
   TimelineClipItem,
 } from '~/timeline/types';
-import { ANIMATABLE_PARAM_PATHS, hasKeyframes, normalizeKeyframeTrack } from './evaluate';
+import { evalTrackAt, hasKeyframes, normalizeKeyframeTrack } from './evaluate';
 
 /**
  * Pure mutation helpers for `ClipAnimations`, used by the keyframe editing UI
@@ -14,8 +14,21 @@ import { ANIMATABLE_PARAM_PATHS, hasKeyframes, normalizeKeyframeTrack } from './
  * `updateClipProperties({ animations: next })`.
  */
 
+/**
+ * Every param path on `animations` that currently has at least one keyframe.
+ * Unlike {@link ANIMATABLE_PARAM_PATHS} (the fixed transform/opacity set) this
+ * reads the object's own keys, so it also covers dynamic effect-param paths
+ * (`effect.<id>.<key>`). Ascending-sorted for stable iteration/output.
+ */
+export function animatedParamPaths(animations: ClipAnimations | undefined): AnimatableParamPath[] {
+  if (!animations) return [];
+  return (Object.keys(animations) as AnimatableParamPath[])
+    .filter((path) => hasKeyframes(animations[path]))
+    .sort();
+}
+
 function isEmptyAnimations(animations: ClipAnimations): boolean {
-  return ANIMATABLE_PARAM_PATHS.every((path) => !hasKeyframes(animations[path]));
+  return animatedParamPaths(animations).length === 0;
 }
 
 /** Insert or replace the keyframe at `tUs` on `path` (rounds to the nearest µs). */
@@ -122,12 +135,40 @@ export function getStaticParamValue(
 export function collectKeyframeTimes(animations: ClipAnimations | undefined): number[] {
   if (!animations) return [];
   const times = new Set<number>();
-  for (const path of ANIMATABLE_PARAM_PATHS) {
+  for (const path of animatedParamPaths(animations)) {
     for (const kf of animations[path]?.keyframes ?? []) {
       times.add(Math.round(kf.tUs));
     }
   }
   return Array.from(times).sort((a, b) => a - b);
+}
+
+/** True when at least one animated param has a keyframe exactly at `tUs`. */
+export function hasKeyframeMomentAt(animations: ClipAnimations | undefined, tUs: number): boolean {
+  const rounded = Math.round(tUs);
+  return animatedParamPaths(animations).some((path) =>
+    animations?.[path]?.keyframes.some((kf) => Math.round(kf.tUs) === rounded),
+  );
+}
+
+/**
+ * Insert a keyframe at `tUs` on every currently-animated param, each taking the
+ * param's interpolated value at `tUs` so adding a keyframe never changes the
+ * motion. This is the lane's "click to add" and the navigator's add action — it
+ * only touches params that already animate (turning a brand-new param on is the
+ * stopwatch's job). No-op when nothing is animated.
+ */
+export function addKeyframeMoment(
+  animations: ClipAnimations | undefined,
+  tUs: number,
+): ClipAnimations | undefined {
+  let next = animations;
+  for (const path of animatedParamPaths(animations)) {
+    const value = evalTrackAt(animations?.[path], tUs);
+    if (value === undefined) continue;
+    next = upsertKeyframe(next, path, tUs, value);
+  }
+  return next;
 }
 
 /** Move every param's keyframe at `fromTUs` (if any) to `toTUs`. */
@@ -137,7 +178,7 @@ export function moveKeyframeMoment(
   toTUs: number,
 ): ClipAnimations | undefined {
   let next = animations;
-  for (const path of ANIMATABLE_PARAM_PATHS) {
+  for (const path of animatedParamPaths(animations)) {
     next = moveKeyframe(next, path, fromTUs, toTUs);
   }
   return next;
@@ -149,7 +190,7 @@ export function removeKeyframeMoment(
   tUs: number,
 ): ClipAnimations | undefined {
   let next = animations;
-  for (const path of ANIMATABLE_PARAM_PATHS) {
+  for (const path of animatedParamPaths(animations)) {
     next = removeKeyframe(next, path, tUs);
   }
   return next;
@@ -162,11 +203,63 @@ export function setKeyframeMomentEasing(
   easing: KeyframeEasing,
 ): ClipAnimations | undefined {
   let next = animations;
-  for (const path of ANIMATABLE_PARAM_PATHS) {
+  for (const path of animatedParamPaths(animations)) {
     const track = next?.[path];
     const kf = track?.keyframes.find((keyframe) => Math.round(keyframe.tUs) === Math.round(tUs));
     if (!kf) continue;
     next = upsertKeyframe(next, path, tUs, kf.value, easing);
+  }
+  return next;
+}
+
+// --- Keyframe-moment copy/paste -------------------------------------------
+// A "moment" copy captures the value+easing of every param's keyframe at a
+// single time, so it can be pasted at another time (same clip) or onto another
+// clip's matching params. The payload is plain JSON (clipboard-serializable).
+
+/** One param's keyframe within a copied moment. */
+export interface KeyframeMomentEntry {
+  path: AnimatableParamPath;
+  value: number;
+  easing: KeyframeEasing;
+}
+
+/** A copied keyframe moment: the keyframes of every animated param at one time. */
+export interface KeyframeMomentClipboard {
+  entries: KeyframeMomentEntry[];
+}
+
+/**
+ * Capture the keyframe moment at `tUs`: every animated param that has a
+ * keyframe exactly there, as `{ path, value, easing }`. Returns `null` when no
+ * param has a keyframe at that time (nothing to copy).
+ */
+export function extractKeyframeMoment(
+  animations: ClipAnimations | undefined,
+  tUs: number,
+): KeyframeMomentClipboard | null {
+  const rounded = Math.round(tUs);
+  const entries: KeyframeMomentEntry[] = [];
+  for (const path of animatedParamPaths(animations)) {
+    const kf = animations?.[path]?.keyframes.find((k) => Math.round(k.tUs) === rounded);
+    if (kf) entries.push({ path, value: kf.value, easing: kf.easing });
+  }
+  return entries.length > 0 ? { entries } : null;
+}
+
+/**
+ * Paste a copied moment at `tUs`, upserting each entry's keyframe. Params that
+ * weren't animated on the target start animating (a track is created) — the
+ * expected behaviour when pasting a keyframe onto a fresh clip.
+ */
+export function applyKeyframeMoment(
+  animations: ClipAnimations | undefined,
+  moment: KeyframeMomentClipboard,
+  tUs: number,
+): ClipAnimations | undefined {
+  let next = animations;
+  for (const entry of moment.entries) {
+    next = upsertKeyframe(next, entry.path, tUs, entry.value, entry.easing);
   }
   return next;
 }

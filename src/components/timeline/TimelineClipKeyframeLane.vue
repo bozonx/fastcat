@@ -4,7 +4,8 @@ import type { KeyframeEasing, TimelineClipItem } from '~/timeline/types';
 import type { TimelineContext } from './context';
 import { pxToDeltaUs, timeUsToPx } from '~/utils/timeline/geometry';
 import { useClipKeyframes } from '~/composables/timeline/useClipKeyframes';
-import { ANIMATABLE_PARAM_PATHS, KEYFRAME_EASINGS } from '~/timeline/animation/evaluate';
+import { KEYFRAME_EASINGS } from '~/timeline/animation/evaluate';
+import { animatedParamPaths } from '~/timeline/animation/ops';
 
 /**
  * Unified keyframe "moment" lane: one diamond per distinct time across every
@@ -27,16 +28,39 @@ const timelineContext = inject<TimelineContext>('timelineContext')!;
 const clipRef = computed(() => props.clip);
 const playheadUs = computed(() => timelineContext.currentTime.value);
 
-const { keyframeTimes, moveKeyframeMomentAt, deleteKeyframeMomentAt, setKeyframeMomentEasingAt } =
-  useClipKeyframes({
-    clip: clipRef,
-    playheadUs,
-    updateAnimations: (next) => {
-      timelineContext.updateClipProperties(props.trackId, props.clip.id, { animations: next });
-    },
-  });
+const {
+  keyframeTimes,
+  addKeyframeAtLocal,
+  moveKeyframeMomentAt,
+  deleteKeyframeMomentAt,
+  setKeyframeMomentEasingAt,
+} = useClipKeyframes({
+  clip: clipRef,
+  playheadUs,
+  updateAnimations: (next) => {
+    timelineContext.updateClipProperties(props.trackId, props.clip.id, { animations: next });
+  },
+  seek: (timelineUs) => timelineContext.setCurrentTimeUs(timelineUs),
+});
 
 const durationUs = computed(() => props.clip.timelineRange.durationUs);
+
+/** The lane only supports click-to-add once at least one param is animated. */
+const hasAnimatedParams = computed(() => animatedParamPaths(props.clip.animations).length > 0);
+
+// Click on empty lane background → add a keyframe on every animated param at
+// the clicked time (interpolated, so motion is unchanged). Diamonds and their
+// own gestures stop propagation, so only bare-background clicks reach here.
+function onLaneClick(e: MouseEvent) {
+  if (e.target !== e.currentTarget) return;
+  if (!hasAnimatedParams.value) return;
+  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+  const localTUs = Math.max(
+    0,
+    Math.min(durationUs.value, pxToDeltaUs(e.clientX - rect.left, props.zoom)),
+  );
+  addKeyframeAtLocal(localTUs);
+}
 
 // Local drag preview: track the dragged diamond's offset without dispatching a
 // store update per pixel; commit once on pointerup.
@@ -53,7 +77,7 @@ function formatSeconds(tUs: number): string {
 }
 
 function easingAt(tUs: number): KeyframeEasing {
-  for (const path of ANIMATABLE_PARAM_PATHS) {
+  for (const path of animatedParamPaths(props.clip.animations)) {
     const keyframe = props.clip.animations?.[path]?.keyframes.find(
       (kf) => Math.round(kf.tUs) === Math.round(tUs),
     );
@@ -111,7 +135,13 @@ function onDiamondContextMenu(tUs: number, e: MouseEvent) {
 </script>
 
 <template>
-  <div class="relative h-full w-full" @pointerdown.stop>
+  <div
+    class="relative h-full w-full"
+    :class="{ 'cursor-copy': hasAnimatedParams }"
+    :title="hasAnimatedParams ? t('fastcat.timeline.keyframesLaneAddHint') : undefined"
+    @pointerdown.stop
+    @click="onLaneClick"
+  >
     <button
       v-for="tUs in keyframeTimes"
       :key="tUs"

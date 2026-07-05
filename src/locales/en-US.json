@@ -162,6 +162,12 @@
     "clip": {
       "actions": "Actions",
       "animation": {
+        "addKeyframe": "Add keyframe at playhead",
+        "copyKeyframe": "Copy keyframe at playhead",
+        "navNext": "Go to next keyframe",
+        "navPrev": "Go to previous keyframe",
+        "pasteKeyframe": "Paste keyframe at playhead",
+        "removeKeyframe": "Remove keyframe at playhead",
         "stopwatchTitle": "Animate over time",
         "stopwatchTitleActive": "Animated — click to remove all keyframes"
       },
@@ -270,6 +276,7 @@
         "apply": "Apply",
         "copy": "Copy parameters",
         "groups": {
+          "animation": "Animation (keyframes)",
           "audio": "Audio",
           "audioEffects": "Audio Effects",
           "background": "Background",
@@ -832,6 +839,7 @@
       "importFilesCount": "Import {count} files",
       "keyframesDiamondHint": "drag to move, double-click to delete, right-click to change easing",
       "keyframesLane": "Animation keyframes",
+      "keyframesLaneAddHint": "Click to add a keyframe at this time",
       "keyframesLaneEmptyHint": "No animated parameters — use the stopwatch in Properties",
       "keyframesTitle": "Animation keyframes",
       "lock": "Lock",

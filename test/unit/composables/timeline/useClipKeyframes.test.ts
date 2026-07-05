@@ -183,4 +183,61 @@ describe('useClipKeyframes', () => {
     deleteKeyframeMomentAt(300);
     expect(animations).toBeUndefined();
   });
+
+  it('toggleKeyframeAtPlayhead adds when off a keyframe and removes when on one', () => {
+    const clip = ref(
+      makeClip({
+        animations: { opacity: { keyframes: [{ tUs: 0, value: 0.2, easing: 'linear' }] } },
+      }),
+    );
+    const playheadUs = ref(1_500_000); // local 500_000, not on a keyframe
+    let animations: ClipAnimations | undefined;
+    const updateAnimations = vi.fn((next: ClipAnimations | undefined) => {
+      animations = next;
+    });
+    const kf = useClipKeyframes({ clip, playheadUs, updateAnimations });
+
+    expect(kf.isOnKeyframe.value).toBe(false);
+    kf.toggleKeyframeAtPlayhead();
+    expect(animations?.opacity?.keyframes.map((k) => k.tUs)).toContain(500_000);
+
+    // Now sit on the new keyframe and toggle again -> removed.
+    clip.value = { ...clip.value, animations };
+    expect(kf.isOnKeyframe.value).toBe(true);
+    kf.toggleKeyframeAtPlayhead();
+    expect(animations?.opacity?.keyframes.map((k) => k.tUs)).not.toContain(500_000);
+  });
+
+  it('seekNextKeyframe / seekPrevKeyframe move the playhead to adjacent keyframe timeline times', () => {
+    const clip = ref(
+      makeClip({
+        // timelineStart 1_000_000, source-relative keyframes at 0 and 1_000_000 -> timeline 1_000_000 & 2_000_000
+        animations: {
+          opacity: {
+            keyframes: [
+              { tUs: 0, value: 0, easing: 'linear' },
+              { tUs: 1_000_000, value: 1, easing: 'linear' },
+            ],
+          },
+        },
+      }),
+    );
+    const playheadUs = ref(1_500_000);
+    const seek = vi.fn();
+    const kf = useClipKeyframes({ clip, playheadUs, updateAnimations: vi.fn(), seek });
+
+    kf.seekNextKeyframe();
+    expect(seek).toHaveBeenLastCalledWith(2_000_000);
+
+    kf.seekPrevKeyframe();
+    expect(seek).toHaveBeenLastCalledWith(1_000_000);
+  });
+
+  it('seek is clamped to the clip timeline range and is a no-op without a seek callback', () => {
+    const clip = ref(makeClip());
+    const playheadUs = ref(1_500_000);
+    const kf = useClipKeyframes({ clip, playheadUs, updateAnimations: vi.fn() });
+    // No seek callback provided: navigation must not throw.
+    expect(() => kf.seekNextKeyframe()).not.toThrow();
+  });
 });

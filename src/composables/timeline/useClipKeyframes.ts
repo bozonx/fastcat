@@ -9,15 +9,21 @@ import {
   evalTrackAt,
   hasKeyframes,
   resolveClipAnimationTimeUs,
+  resolveKeyframeTimelineTimeUs,
 } from '~/timeline/animation/evaluate';
 import {
+  addKeyframeMoment,
+  applyKeyframeMoment,
   clearParamAnimation,
   collectKeyframeTimes,
+  extractKeyframeMoment,
   getStaticParamValue,
+  hasKeyframeMomentAt,
   moveKeyframeMoment,
   removeKeyframeMoment,
   setKeyframeMomentEasing,
   upsertKeyframe,
+  type KeyframeMomentClipboard,
 } from '~/timeline/animation/ops';
 
 export interface UseClipKeyframesOptions {
@@ -25,6 +31,12 @@ export interface UseClipKeyframesOptions {
   /** Timeline-absolute playhead time (µs); converted to clip-local internally. */
   playheadUs: Ref<number>;
   updateAnimations: (next: ClipAnimations | undefined) => void;
+  /**
+   * Move the timeline playhead (absolute µs). Wired by the caller to the
+   * timeline store; enables keyframe navigation (jump to prev/next keyframe).
+   * Optional — navigation is a no-op when absent.
+   */
+  seek?: (timelineUs: number) => void;
 }
 
 /**
@@ -99,6 +111,84 @@ export function useClipKeyframes(options: UseClipKeyframesOptions) {
 
   const keyframeTimes = computed(() => collectKeyframeTimes(options.clip.value.animations));
 
+  /** Source-relative keyframe times mapped to timeline-absolute times, ascending. */
+  const keyframeTimelineTimes = computed(() => {
+    const clip = options.clip.value;
+    return keyframeTimes.value
+      .map((sourceTimeUs) =>
+        resolveKeyframeTimelineTimeUs({
+          timelineStartUs: clip.timelineRange.startUs,
+          sourceStartUs: clip.sourceRange.startUs,
+          sourceRangeDurationUs: clip.sourceRange.durationUs,
+          speed: clip.speed,
+          sourceTimeUs,
+        }),
+      )
+      .sort((a, b) => a - b);
+  });
+
+  /** True when the playhead sits exactly on a keyframe of some animated param. */
+  const isOnKeyframe = computed(() =>
+    hasKeyframeMomentAt(options.clip.value.animations, localPlayheadUs.value),
+  );
+
+  /** Add a keyframe on every animated param at the current playhead. */
+  function addKeyframeAtPlayhead() {
+    options.updateAnimations(
+      addKeyframeMoment(options.clip.value.animations, localPlayheadUs.value),
+    );
+  }
+
+  /** Add a keyframe moment at an explicit clip-local (source-relative) time. */
+  function addKeyframeAtLocal(localTUs: number) {
+    options.updateAnimations(addKeyframeMoment(options.clip.value.animations, localTUs));
+  }
+
+  /**
+   * Toggle a keyframe moment at the playhead: remove it if the playhead is on
+   * one, otherwise add it. Mirrors the AE/Premiere diamond button.
+   */
+  function toggleKeyframeAtPlayhead() {
+    if (isOnKeyframe.value) {
+      deleteKeyframeMomentAt(localPlayheadUs.value);
+    } else {
+      addKeyframeAtPlayhead();
+    }
+  }
+
+  function seekToTimeline(timelineUs: number) {
+    const clip = options.clip.value;
+    const start = clip.timelineRange.startUs;
+    const end = start + clip.timelineRange.durationUs;
+    options.seek?.(Math.max(start, Math.min(end, Math.round(timelineUs))));
+  }
+
+  /** Seek the playhead to the nearest keyframe strictly before it. */
+  function seekPrevKeyframe() {
+    const now = options.playheadUs.value;
+    const prev = keyframeTimelineTimes.value.filter((t) => t < now - 1).pop();
+    if (prev !== undefined) seekToTimeline(prev);
+  }
+
+  /** Seek the playhead to the nearest keyframe strictly after it. */
+  function seekNextKeyframe() {
+    const now = options.playheadUs.value;
+    const next = keyframeTimelineTimes.value.find((t) => t > now + 1);
+    if (next !== undefined) seekToTimeline(next);
+  }
+
+  /** Capture the keyframe moment at the playhead for the clipboard (or null). */
+  function copyMomentAtPlayhead(): KeyframeMomentClipboard | null {
+    return extractKeyframeMoment(options.clip.value.animations, localPlayheadUs.value);
+  }
+
+  /** Paste a copied keyframe moment at the current playhead. */
+  function pasteMomentAtPlayhead(moment: KeyframeMomentClipboard) {
+    options.updateAnimations(
+      applyKeyframeMoment(options.clip.value.animations, moment, localPlayheadUs.value),
+    );
+  }
+
   function moveKeyframeMomentAt(fromTUs: number, toTUs: number) {
     options.updateAnimations(moveKeyframeMoment(options.clip.value.animations, fromTUs, toTUs));
   }
@@ -118,6 +208,15 @@ export function useClipKeyframes(options: UseClipKeyframesOptions) {
     recordValue,
     currentValue,
     keyframeTimes,
+    keyframeTimelineTimes,
+    isOnKeyframe,
+    addKeyframeAtPlayhead,
+    addKeyframeAtLocal,
+    toggleKeyframeAtPlayhead,
+    seekPrevKeyframe,
+    seekNextKeyframe,
+    copyMomentAtPlayhead,
+    pasteMomentAtPlayhead,
     moveKeyframeMomentAt,
     deleteKeyframeMomentAt,
     setKeyframeMomentEasingAt,

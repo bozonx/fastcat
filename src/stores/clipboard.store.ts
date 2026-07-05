@@ -3,6 +3,7 @@ import { computed, ref, shallowRef } from 'vue';
 
 import type { FsEntry } from '~/types/fs';
 import type { TimelineClipItem } from '~/timeline/types';
+import type { KeyframeMomentClipboard } from '~/timeline/animation/ops';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 import type { ClipParametersSnapshot } from '~/utils/timeline/clip-parameters';
 import type {
@@ -50,6 +51,8 @@ export type AppClipboardPayload =
 
 export const useClipboardStore = defineStore('clipboard', () => {
   const clipboardPayload = ref<AppClipboardPayload | null>(null);
+  /** A copied keyframe moment (value+easing per param at one time). */
+  const keyframeMomentClipboard = ref<KeyframeMomentClipboard | null>(null);
   const currentDragOperation = ref<FileManagerDragCursorOperation | null>(null);
   const dragSourceFileManagerInstanceId = ref<string | null>(null);
   const dragTargetFileManagerInstanceId = ref<string | null>(null);
@@ -80,6 +83,14 @@ export const useClipboardStore = defineStore('clipboard', () => {
 
   function clearClipboardPayload() {
     clipboardPayload.value = null;
+  }
+
+  const hasKeyframeMomentPayload = computed(
+    () => (keyframeMomentClipboard.value?.entries.length ?? 0) > 0,
+  );
+
+  function setKeyframeMomentClipboard(moment: KeyframeMomentClipboard | null) {
+    keyframeMomentClipboard.value = moment;
   }
 
   function setCurrentDragOperation(operation: FileManagerDragCursorOperation | null) {
@@ -159,6 +170,9 @@ export const useClipboardStore = defineStore('clipboard', () => {
 
   return {
     clipboardPayload,
+    keyframeMomentClipboard,
+    hasKeyframeMomentPayload,
+    setKeyframeMomentClipboard,
     currentDragOperation,
     dragSourceFileManagerInstanceId,
     dragTargetFileManagerInstanceId,

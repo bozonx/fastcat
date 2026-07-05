@@ -36,6 +36,7 @@ import ClipInfoSection from '~/components/properties/clip/ClipInfoSection.vue';
 import ClipBlendingModeSection from '~/components/properties/clip/ClipBlendingModeSection.vue';
 import ClipOpacitySection from '~/components/properties/clip/ClipOpacitySection.vue';
 import ClipTransformSection from '~/components/properties/clip/ClipTransformSection.vue';
+import ClipKeyframeNavigator from '~/components/properties/clip/ClipKeyframeNavigator.vue';
 import ClipTypeSection from '~/components/properties/clip/ClipTypeSection.vue';
 import ClipMaskSection from '~/components/properties/clip/ClipMaskSection.vue';
 import ClipParametersPasteModal from '~/components/properties/clip/ClipParametersPasteModal.vue';
@@ -281,7 +282,20 @@ const clipKeyframes = useClipKeyframes({
   updateAnimations: (next: ClipAnimations | undefined) => {
     timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, { animations: next });
   },
+  seek: (timelineUs: number) => timelineStore.setCurrentTimeUs(timelineUs),
 });
+
+const hasAnyKeyframes = computed(() => clipKeyframes.keyframeTimes.value.length > 0);
+
+function handleCopyKeyframeMoment() {
+  const moment = clipKeyframes.copyMomentAtPlayhead();
+  if (moment) clipboardStore.setKeyframeMomentClipboard(moment);
+}
+
+function handlePasteKeyframeMoment() {
+  const moment = clipboardStore.keyframeMomentClipboard;
+  if (moment) clipKeyframes.pasteMomentAtPlayhead(moment);
+}
 
 function handleUpdateOpacity(val: number) {
   const safe = typeof val === 'number' && Number.isFinite(val) ? val : 1;
@@ -618,6 +632,24 @@ defineExpose({
         :blend-mode-options="blendModeOptions"
         @update-blend-mode="handleUpdateBlendMode"
       />
+
+      <div
+        v-if="hasAnyKeyframes"
+        class="flex items-center justify-between px-1 py-1.5 rounded bg-ui-bg-elevated/40"
+      >
+        <span class="text-2xs text-ui-text-muted uppercase tracking-wide">{{
+          t('fastcat.timeline.keyframesTitle')
+        }}</span>
+        <ClipKeyframeNavigator
+          :is-on-keyframe="clipKeyframes.isOnKeyframe.value"
+          :can-paste="clipboardStore.hasKeyframeMomentPayload"
+          @prev="clipKeyframes.seekPrevKeyframe"
+          @next="clipKeyframes.seekNextKeyframe"
+          @toggle="clipKeyframes.toggleKeyframeAtPlayhead"
+          @copy="handleCopyKeyframeMoment"
+          @paste="handlePasteKeyframeMoment"
+        />
+      </div>
 
       <ClipOpacitySection
         v-model:enabled="isOpacityEnabled"

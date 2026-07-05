@@ -465,4 +465,26 @@ describe('clip parameters clipboard helpers', () => {
     expect(textPatch.properties.text).toBe('Copied text');
     expect(textPatch.properties.style).toBeUndefined();
   });
+
+  it('copies keyframe animations as a dedicated group and pastes them onto another clip', () => {
+    const animations = {
+      opacity: { keyframes: [{ tUs: 0, value: 0, easing: 'linear' as const }] },
+      'transform.rotationDeg': {
+        keyframes: [{ tUs: 500_000, value: 90, easing: 'ease' as const }],
+      },
+    };
+    const snapshot = createClipParametersSnapshot({
+      trackKind: 'video',
+      clip: makeClip({ animations }),
+    });
+    expect(snapshot.groups.animation).toEqual({ animations });
+
+    const patch = buildClipParametersPatch({
+      snapshot,
+      targetClip: makeClip({ id: 'target' }),
+      targetTrackKind: 'video',
+      groups: ['animation'],
+    });
+    expect(patch.properties.animations).toEqual(animations);
+  });
 });

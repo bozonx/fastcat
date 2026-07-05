@@ -26,6 +26,8 @@ export interface TimelineContext {
   toolbarDragMode: ComputedRef<string>;
 
   // Actions
+  /** Move the timeline playhead to an absolute time (µs). */
+  setCurrentTimeUs: (timeUs: number) => void;
   updateClipProperties: (
     trackId: string,
     itemId: string,

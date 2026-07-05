@@ -78,6 +78,7 @@ export function useProvideTimelineContext() {
     toolbarDragModeEnabled: computed(() => settingsStore.toolbarDragModeEnabled),
     toolbarDragMode: computed(() => settingsStore.toolbarDragMode),
 
+    setCurrentTimeUs: (timeUs: number) => timelineStore.setCurrentTimeUs(timeUs),
     updateClipProperties: (trackId: string, itemId: string, props: Record<string, unknown>) =>
       timelineStore.updateClipProperties(trackId, itemId, props),
     updateClipTransition: (

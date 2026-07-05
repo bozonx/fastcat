@@ -5,6 +5,7 @@ import { cloneValue } from '~/utils/clone';
 export type ClipParameterGroup =
   | 'transform'
   | 'opacity'
+  | 'animation'
   | 'blend'
   | 'mask'
   | 'speed'
@@ -132,6 +133,7 @@ export const TEXT_SUB_PROP_KEYS: Record<string, string[]> = {
 const GROUP_LABEL_KEYS: Record<ClipParameterGroup, string> = {
   transform: 'fastcat.clip.parameters.groups.transform',
   opacity: 'fastcat.clip.parameters.groups.opacity',
+  animation: 'fastcat.clip.parameters.groups.animation',
   blend: 'fastcat.clip.parameters.groups.blend',
   mask: 'fastcat.clip.parameters.groups.mask',
   speed: 'fastcat.clip.parameters.groups.speed',
@@ -185,6 +187,10 @@ export function createClipParametersSnapshot(input: {
 
   const opacity = pickDefined(source, ['opacity', 'opacityActive']);
   if (opacity) groups.opacity = opacity;
+
+  // Keyframe tracks copy as one unit (they span transform/opacity/effects).
+  const animation = pickDefined(source, ['animations']);
+  if (animation) groups.animation = animation;
 
   const blend = pickDefined(source, ['blendMode', 'blendModeActive']);
   if (blend) groups.blend = blend;
@@ -631,6 +637,7 @@ function isGroupApplicable(
   switch (group) {
     case 'transform':
     case 'opacity':
+    case 'animation':
     case 'blend':
     case 'mask':
     case 'transitions':

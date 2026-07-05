@@ -117,6 +117,36 @@ export function resolveClipAnimationTimeUs(params: ResolveClipAnimationTimeUsPar
 }
 
 /**
+ * Inverse of {@link resolveClipAnimationTimeUs}: given a keyframe's
+ * source-relative time, return the timeline-absolute time at which the clip
+ * samples that source time. Used by keyframe navigation (seeking the playhead
+ * to a keyframe) and by the lane's click-to-add (mapping a clicked timeline
+ * pixel back to source time). The result is unclamped to the clip's timeline
+ * range; callers clamp as needed.
+ */
+export function resolveKeyframeTimelineTimeUs(
+  params: Omit<ResolveClipAnimationTimeUsParams, 'timelineTimeUs'> & { sourceTimeUs: number },
+): number {
+  const timelineStartUs = Math.round(clampFinite(params.timelineStartUs, 0));
+  const sourceStartUs = Math.max(0, Math.round(clampFinite(params.sourceStartUs, 0)));
+  const sourceRangeDurationUs = Math.max(
+    0,
+    Math.round(clampFinite(params.sourceRangeDurationUs, 0)),
+  );
+  const speed = normalizeAnimationSpeed(params.speed);
+  const absSpeed = Math.abs(speed) || 1;
+
+  const sourceOffsetUs = clampFinite(params.sourceTimeUs, 0) - sourceStartUs;
+  const sourceDeltaUs =
+    speed < 0 && sourceRangeDurationUs > 0
+      ? sourceRangeDurationUs - sourceOffsetUs
+      : sourceOffsetUs;
+
+  const localTimelineUs = Math.max(0, Math.round(sourceDeltaUs / absSpeed));
+  return timelineStartUs + localTimelineUs;
+}
+
+/**
  * Return a keyframe track with its keyframes sorted ascending by `tUs`, times
  * clamped to `>= 0`, and duplicate times collapsed (last write wins). This is
  * the canonical shape evaluators assume; the schema and command layer route
