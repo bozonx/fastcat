@@ -21,16 +21,13 @@ defineProps<{
         class="flex items-center gap-1.5 text-2xs text-ui-text-muted font-bold tracking-wider antialiased"
       >
         <span>{{ title }}</span>
-        <UiTooltip v-if="infoTooltip" :text="infoTooltip">
+        <UiTooltip v-if="infoTooltip" :text="infoTooltip" open-on-click>
           <button
             type="button"
             class="inline-flex items-center justify-center p-0.5 text-ui-text-muted hover:text-ui-text cursor-help focus:outline-none rounded"
             :aria-label="infoTooltip"
           >
-            <UIcon
-              name="i-heroicons-information-circle"
-              class="w-3.5 h-3.5 shrink-0"
-            />
+            <UIcon name="i-heroicons-information-circle" class="w-3.5 h-3.5 shrink-0" />
           </button>
         </UiTooltip>
       </h3>

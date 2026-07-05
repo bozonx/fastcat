@@ -8,6 +8,7 @@ import UiSliderInput from '~/components/ui/UiSliderInput.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
 import UiTextarea from '~/components/ui/UiTextarea.vue';
 import UiColorBlendPicker from '~/components/ui/UiColorBlendPicker.vue';
+import UiTooltip from '~/components/ui/UiTooltip.vue';
 import { getPlatformCapabilities } from '~/utils/capabilities';
 import { nativeSystemFonts } from '~/utils/tauri-media-processing';
 import { createDevLogger } from '~/utils/dev-logger';
@@ -693,12 +694,15 @@ const fontWeightOptions = ['100', '200', '300', '400', '500', '600', '700', '800
           <span class="text-xs text-ui-text font-medium">{{
             t('fastcat.textClip.snapToPixelGrid')
           }}</span>
-          <UTooltip :text="t('fastcat.textClip.snapToPixelGridTooltip')">
-            <UIcon
-              name="i-heroicons-information-circle"
-              class="w-3.5 h-3.5 text-ui-text-muted cursor-help"
-            />
-          </UTooltip>
+          <UiTooltip :text="t('fastcat.textClip.snapToPixelGridTooltip')" open-on-click>
+            <button
+              type="button"
+              class="inline-flex items-center justify-center rounded p-0.5 text-ui-text-muted hover:text-ui-text focus:outline-none"
+              :aria-label="t('fastcat.textClip.snapToPixelGridTooltip')"
+            >
+              <UIcon name="i-heroicons-information-circle" class="w-3.5 h-3.5" />
+            </button>
+          </UiTooltip>
         </div>
         <USwitch v-model="snapToPixelGrid" size="sm" />
       </div>

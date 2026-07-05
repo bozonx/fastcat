@@ -323,8 +323,14 @@ watch(
         <template #label>
           <div class="flex items-center gap-1">
             {{ t('videoEditor.export.videoBitrate') }}
-            <UiTooltip :text="videoCodecHelp">
-              <UIcon name="i-heroicons-information-circle" class="h-4 w-4 text-ui-text-muted" />
+            <UiTooltip :text="videoCodecHelp" open-on-click>
+              <button
+                type="button"
+                class="inline-flex items-center justify-center rounded p-0.5 text-ui-text-muted hover:text-ui-text focus:outline-none"
+                :aria-label="videoCodecHelp"
+              >
+                <UIcon name="i-heroicons-information-circle" class="h-4 w-4" />
+              </button>
             </UiTooltip>
           </div>
         </template>
@@ -392,8 +398,14 @@ watch(
             <template #label>
               <div class="flex items-center gap-1">
                 {{ t('videoEditor.export.maxBitrate') }}
-                <UiTooltip :text="t('videoEditor.export.maxBitrateHelp')">
-                  <UIcon name="i-heroicons-information-circle" class="h-4 w-4 text-ui-text-muted" />
+                <UiTooltip :text="t('videoEditor.export.maxBitrateHelp')" open-on-click>
+                  <button
+                    type="button"
+                    class="inline-flex items-center justify-center rounded p-0.5 text-ui-text-muted hover:text-ui-text focus:outline-none"
+                    :aria-label="t('videoEditor.export.maxBitrateHelp')"
+                  >
+                    <UIcon name="i-heroicons-information-circle" class="h-4 w-4" />
+                  </button>
                 </UiTooltip>
               </div>
             </template>
@@ -421,8 +433,14 @@ watch(
             <template #label>
               <div class="flex items-center gap-1">
                 {{ t('videoEditor.export.minBitrate') }}
-                <UiTooltip :text="t('videoEditor.export.minBitrateHelp')">
-                  <UIcon name="i-heroicons-information-circle" class="h-4 w-4 text-ui-text-muted" />
+                <UiTooltip :text="t('videoEditor.export.minBitrateHelp')" open-on-click>
+                  <button
+                    type="button"
+                    class="inline-flex items-center justify-center rounded p-0.5 text-ui-text-muted hover:text-ui-text focus:outline-none"
+                    :aria-label="t('videoEditor.export.minBitrateHelp')"
+                  >
+                    <UIcon name="i-heroicons-information-circle" class="h-4 w-4" />
+                  </button>
                 </UiTooltip>
               </div>
             </template>

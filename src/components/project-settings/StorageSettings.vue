@@ -89,9 +89,10 @@ watch(
 <template>
   <div v-if="projectStore.projectSettings" class="space-y-4 pt-1">
     <div class="space-y-3">
-      <!-- Project Size Info -->
-      <div class="p-3 rounded border border-ui-border bg-ui-surface">
-        <div class="flex items-center justify-between gap-3">
+      <!-- Storage block -->
+      <div class="rounded border border-ui-border divide-y divide-ui-border">
+        <!-- Project files size -->
+        <div class="flex items-center justify-between gap-3 px-3 py-2.5">
           <span class="text-sm text-ui-text-muted">
             {{ t('videoEditor.projectSettings.projectStorage') }}
           </span>
@@ -101,35 +102,29 @@ watch(
           <span v-else-if="isLoadingStats" class="text-sm opacity-50">...</span>
           <span v-else class="text-sm opacity-50">—</span>
         </div>
-      </div>
 
-      <!-- Clear Vardata -->
-      <div class="flex items-center justify-between gap-3 p-3 rounded border border-ui-border">
-        <div class="flex flex-col gap-1 min-w-0">
-          <div class="font-medium text-ui-text">
-            {{ t('videoEditor.projectSettings.clearTemp') }}
-          </div>
-          <div class="text-sm text-ui-text-muted mb-1">
-            {{ t('videoEditor.projectSettings.clearTempHint') }}
-          </div>
-          <div class="text-xs flex items-center gap-1.5">
-            <span class="text-ui-text-muted">{{ t('common.size') }}:</span>
-            <span v-if="vardataStats" class="text-ui-text font-medium">
+        <!-- Temp files size + clear button -->
+        <div class="flex items-center justify-between gap-3 px-3 py-2.5">
+          <span class="text-sm text-ui-text-muted">
+            {{ t('videoEditor.projectSettings.tempStorage') }}
+          </span>
+          <div class="flex items-center gap-2 shrink-0">
+            <span v-if="vardataStats" class="text-sm text-ui-text font-medium">
               {{ formatBytes(vardataStats.size) }}
             </span>
-            <span v-else-if="isLoadingStats" class="opacity-50">...</span>
-            <span v-else class="opacity-50">—</span>
+            <span v-else-if="isLoadingStats" class="text-sm opacity-50">...</span>
+            <span v-else class="text-sm opacity-50">—</span>
+            <UButton
+              color="warning"
+              variant="soft"
+              size="xs"
+              icon="i-heroicons-trash"
+              :disabled="!projectStore.currentProjectId"
+              :label="t('videoEditor.projectSettings.clearTempAction')"
+              @click="emit('clearTemp')"
+            />
           </div>
         </div>
-
-        <UButton
-          color="warning"
-          variant="soft"
-          icon="i-heroicons-trash"
-          :disabled="!projectStore.currentProjectId"
-          :label="t('videoEditor.projectSettings.clearTempAction')"
-          @click="emit('clearTemp')"
-        />
       </div>
 
       <!-- Delete Project -->
@@ -156,3 +151,4 @@ watch(
     </div>
   </div>
 </template>
+

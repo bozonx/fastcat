@@ -4,6 +4,7 @@ import PropertySection from '~/components/properties/PropertySection.vue';
 import PropertyField from '~/components/properties/PropertyField.vue';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
+import UiTooltip from '~/components/ui/UiTooltip.vue';
 
 const props = defineProps<{
   clip: TimelineShapeClipItem;
@@ -320,12 +321,15 @@ const snapToPixelGrid = computed({
           <span class="text-xs text-ui-text font-medium">{{
             t('fastcat.shapeClip.snapToPixelGrid')
           }}</span>
-          <UTooltip :text="t('fastcat.shapeClip.snapToPixelGridTooltip')">
-            <UIcon
-              name="i-heroicons-information-circle"
-              class="w-3.5 h-3.5 text-ui-text-muted cursor-help"
-            />
-          </UTooltip>
+          <UiTooltip :text="t('fastcat.shapeClip.snapToPixelGridTooltip')" open-on-click>
+            <button
+              type="button"
+              class="inline-flex items-center justify-center rounded p-0.5 text-ui-text-muted hover:text-ui-text focus:outline-none"
+              :aria-label="t('fastcat.shapeClip.snapToPixelGridTooltip')"
+            >
+              <UIcon name="i-heroicons-information-circle" class="w-3.5 h-3.5" />
+            </button>
+          </UiTooltip>
         </div>
         <USwitch v-model="snapToPixelGrid" size="sm" />
       </div>
