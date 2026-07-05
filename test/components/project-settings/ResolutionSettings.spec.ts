@@ -64,16 +64,9 @@ vi.mock('~/stores/workspace.store', () => ({
 vi.mock('~/components/ui/UiFormSectionHeader.vue', () => ({
   default: {
     name: 'UiFormSectionHeader',
-    props: ['title'],
-    template: '<div class="form-section-header">{{ title }}<slot /></div>',
-  },
-}));
-
-vi.mock('~/components/ui/UiTooltip.vue', () => ({
-  default: {
-    name: 'UiTooltip',
-    props: ['text'],
-    template: '<div class="ui-tooltip" :data-tooltip="text"><slot /></div>',
+    props: ['title', 'infoTooltip'],
+    template:
+      '<div class="form-section-header">{{ title }}<span v-if="infoTooltip" class="info-tooltip" :data-tooltip="infoTooltip" /><slot /></div>',
   },
 }));
 
@@ -103,7 +96,7 @@ describe('ResolutionSettings.vue', () => {
     expect(component.find('.form-section-header').text()).toContain(
       'videoEditor.projectSettings.resolutionAndFps',
     );
-    const tooltip = component.find('.ui-tooltip');
+    const tooltip = component.find('.info-tooltip');
     expect(tooltip.exists()).toBe(true);
     expect(tooltip.attributes('data-tooltip')).toBe(
       'videoEditor.projectSettings.resolutionAndFpsTooltip',

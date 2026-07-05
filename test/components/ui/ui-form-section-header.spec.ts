@@ -38,4 +38,15 @@ describe('UiFormSectionHeader', () => {
     expect(heading.exists()).toBe(true);
     expect(heading.text()).toBe('Section Title');
   });
+
+  it('renders info tooltip when infoTooltip prop is provided', async () => {
+    const component = await mountSuspended(UiFormSectionHeader, {
+      props: {
+        title: 'Section Title',
+        infoTooltip: 'Helpful information',
+      },
+    });
+
+    expect(component.text()).toContain('Section Title');
+  });
 });

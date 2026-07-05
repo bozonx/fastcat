@@ -739,7 +739,7 @@ watch(viewportRef, (vp) => {
                 variant="subtle"
                 color="neutral"
                 data-monitor-play
-                class="relative overflow-hidden w-9 h-8 rounded-lg bg-neutral-200 hover:bg-white active:bg-neutral-300 text-neutral-900 border-0 shadow-xs px-0"
+                class="relative overflow-hidden w-9 h-8 rounded-lg bg-neutral-200 hover:bg-white active:bg-neutral-300 text-neutral-900 border-0 ring-0 shadow-xs px-0"
                 :aria-label="t('fastcat.monitor.play')"
                 :disabled="!canInteractPlayback"
                 @click="
