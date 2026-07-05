@@ -428,13 +428,9 @@ const filenamePlaceholder = computed(() =>
 
         <!-- Resolution & FPS Settings (Video only) -->
         <div v-show="exportType === 'video'" class="space-y-4">
-          <div class="text-ui-text-muted font-normal">
-            {{ resolutionSummary }}
-          </div>
-
           <div class="flex items-center justify-between gap-3">
             <span class="text-sm text-ui-text">
-              {{ t('videoEditor.export.matchTimeline') }}
+              {{ t('videoEditor.export.matchTimeline') }}<span v-if="matchTimeline" class="text-ui-text-muted font-normal">: {{ resolutionSummary }}</span>
             </span>
             <USwitch v-model="matchTimeline" :disabled="isExporting" />
           </div>
