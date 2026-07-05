@@ -36,6 +36,10 @@ describe('getExt', () => {
   it('returns mp3 for mp3', () => {
     expect(getExt('mp3')).toBe('mp3');
   });
+
+  it('falls back to mp4 for an unknown format', () => {
+    expect(getExt('unknown' as never)).toBe('mp4');
+  });
 });
 
 describe('sanitizeBaseName', () => {
@@ -121,6 +125,14 @@ describe('hasInvalidExportFilenameChars', () => {
 
   it('returns true for backslash', () => {
     expect(hasInvalidExportFilenameChars('file\\name')).toBe(true);
+  });
+
+  it('returns true for forward slash', () => {
+    expect(hasInvalidExportFilenameChars('nested/video.mp4')).toBe(true);
+  });
+
+  it('returns true for colon', () => {
+    expect(hasInvalidExportFilenameChars('video:1.mp4')).toBe(true);
   });
 });
 

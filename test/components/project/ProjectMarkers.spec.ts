@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { reactive } from 'vue';
+import { nextTick, reactive } from 'vue';
 import { mountWithNuxt } from '../../utils/mount';
 import ProjectMarkers from '~/components/project/ProjectMarkers.vue';
 import MarkerExportModal from '~/components/project/MarkerExportModal.vue';
@@ -79,6 +79,46 @@ describe('ProjectMarkers.vue', () => {
 
     expect(mockTimelineStore.setCurrentTimeUs).toHaveBeenCalledWith(1_000_000);
     expect(mockTimelineStore.requestScrollToPlayhead).toHaveBeenCalled();
+    expect(mockSelectionStore.selectTimelineMarker).toHaveBeenCalledWith('1');
+  });
+
+  it('adds a marker to multi-selection with shift click', async () => {
+    mockTimelineStore.markers = [
+      { id: '1', timeUs: 1_000_000, text: 'First' },
+      { id: '2', timeUs: 2_000_000, text: 'Second' },
+    ];
+    mockSelectionStore.selectedEntity = {
+      source: 'timeline',
+      kind: 'marker',
+      markerId: '1',
+    };
+
+    const component = await mountWithNuxt(ProjectMarkers);
+    const rows = component.findAll('tbody tr');
+
+    await rows[1]!.trigger('click', { shiftKey: true });
+
+    expect(mockSelectionStore.selectTimelineMarkers).toHaveBeenCalledWith(['1', '2']);
+    expect(mockSelectionStore.selectTimelineMarker).not.toHaveBeenCalled();
+  });
+
+  it('removes a marker from multi-selection with shift click', async () => {
+    mockTimelineStore.markers = [
+      { id: '1', timeUs: 1_000_000, text: 'First' },
+      { id: '2', timeUs: 2_000_000, text: 'Second' },
+    ];
+    mockSelectionStore.selectedEntity = {
+      source: 'timeline',
+      kind: 'markers',
+      markerIds: ['1', '2'],
+    };
+
+    const component = await mountWithNuxt(ProjectMarkers);
+    const rows = component.findAll('tbody tr');
+
+    await rows[0]!.trigger('click', { shiftKey: true });
+
+    expect(mockSelectionStore.selectTimelineMarkers).toHaveBeenCalledWith(['2']);
   });
 
   it('filters markers by selected colors', async () => {
@@ -144,6 +184,28 @@ describe('ProjectMarkers.vue', () => {
     expect(rows[0]?.text()).toContain('Blue');
   });
 
+  it('keeps selected colors in sync when marker colors appear and disappear', async () => {
+    mockTimelineStore.markers = [{ id: '1', timeUs: 1_000_000, text: 'Red', color: '#d0021b' }];
+
+    const component = await mountWithNuxt(ProjectMarkers);
+    expect(component.findAll('tbody tr').length).toBe(1);
+
+    mockTimelineStore.markers = [
+      { id: '1', timeUs: 1_000_000, text: 'Red', color: '#d0021b' },
+      { id: '2', timeUs: 2_000_000, text: 'Blue', color: '#4a90e2' },
+    ];
+    await nextTick();
+
+    expect(component.findAll('tbody tr').length).toBe(2);
+
+    mockTimelineStore.markers = [{ id: '2', timeUs: 2_000_000, text: 'Blue', color: '#4a90e2' }];
+    await nextTick();
+
+    const rows = component.findAll('tbody tr');
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.text()).toContain('Blue');
+  });
+
   it('opens export modal on export button click', async () => {
     mockTimelineStore.markers = [{ id: '1', timeUs: 1_000_000, text: 'Marker 1' }];
 
@@ -156,6 +218,18 @@ describe('ProjectMarkers.vue', () => {
 
     await exportButton!.trigger('click');
     expect(component.find('.modal-mock').exists()).toBe(true);
+  });
+
+  it('hides export button when premium features are disabled', async () => {
+    workspaceStore.premiumFeaturesEnabled = false;
+    mockTimelineStore.markers = [{ id: '1', timeUs: 1_000_000, text: 'Marker 1' }];
+
+    const component = await mountWithNuxt(ProjectMarkers);
+
+    const exportButton = component
+      .findAll('button')
+      .find((btn) => btn.text().includes('fastcat.marker.exportAsText'));
+    expect(exportButton).toBeUndefined();
   });
 
   it('passes vertical orientation to MarkerColorFilter', async () => {

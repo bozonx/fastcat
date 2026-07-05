@@ -15,10 +15,12 @@ import { checkFileTimelineCompatibility } from '~/utils/media/compatibility';
 import type {
   TextClipStyle,
   ClipTransition,
+  TimelineMarker,
   TimelineClipActionPayload,
   TimelineOpenSpeedModalPayload,
   TimelineTrack,
 } from '~/timeline/types';
+import { createMarkerId } from '~/timeline/id';
 import {
   computeTimelineScrollLeftForPlayhead,
   computeTimelinePlaybackAutoScrollLeft,
@@ -424,6 +426,11 @@ onBeforeUnmount(() => {
     delete e2eWindow.__fastcatE2eAddTextClip;
     delete e2eWindow.__fastcatE2eAddProjectFileToTrack;
     delete e2eWindow.__fastcatE2eGetTimelineDocInfo;
+    delete e2eWindow.__fastcatE2eAddMarker;
+    delete e2eWindow.__fastcatE2eAddMarkers;
+    delete e2eWindow.__fastcatE2eUpdateMarker;
+    delete e2eWindow.__fastcatE2eRemoveMarker;
+    delete e2eWindow.__fastcatE2eGetMarkers;
   }
 });
 
@@ -542,6 +549,48 @@ onMounted(() => {
         })),
       };
     };
+
+    e2eWindow.__fastcatE2eAddMarker = async ({ timeUs, text, color, durationUs }) => {
+      const id = createMarkerId();
+      timelineStore.applyTimeline({
+        type: 'add_marker',
+        id,
+        timeUs,
+        text,
+        color,
+        ...(durationUs !== undefined ? { durationUs } : {}),
+      });
+      await persistE2eTimelineEdit();
+      return id;
+    };
+
+    e2eWindow.__fastcatE2eAddMarkers = async ({ markers }) => {
+      const entries = markers.map((marker) => ({ ...marker, id: createMarkerId() }));
+      timelineStore.batchApplyTimeline(
+        entries.map((marker) => ({
+          type: 'add_marker' as const,
+          id: marker.id,
+          timeUs: marker.timeUs,
+          text: marker.text,
+          color: marker.color,
+          ...(marker.durationUs !== undefined ? { durationUs: marker.durationUs } : {}),
+        })),
+      );
+      await persistE2eTimelineEdit();
+      return entries.map((marker) => marker.id);
+    };
+
+    e2eWindow.__fastcatE2eUpdateMarker = async ({ markerId, patch }) => {
+      timelineStore.updateMarker(markerId, patch);
+      await persistE2eTimelineEdit();
+    };
+
+    e2eWindow.__fastcatE2eRemoveMarker = async ({ markerId }) => {
+      timelineStore.removeMarker(markerId);
+      await persistE2eTimelineEdit();
+    };
+
+    e2eWindow.__fastcatE2eGetMarkers = async () => timelineStore.getMarkers();
 
     e2eWindow.__fastcatE2eTrimClip = async ({ itemId, edge, deltaUs }) => {
       const track = findE2eClipTrack(itemId);
@@ -755,6 +804,26 @@ type FastcatE2eAddTextClip = (params: {
   durationUs?: number;
   trackId?: string;
 }) => Promise<string[]>;
+type FastcatE2eAddMarker = (params: {
+  timeUs: number;
+  text?: string;
+  color?: string;
+  durationUs?: number;
+}) => Promise<string | null>;
+type FastcatE2eAddMarkers = (params: {
+  markers: Array<{
+    timeUs: number;
+    text?: string;
+    color?: string;
+    durationUs?: number;
+  }>;
+}) => Promise<string[]>;
+type FastcatE2eUpdateMarker = (params: {
+  markerId: string;
+  patch: { timeUs?: number; durationUs?: number | null; text?: string; color?: string };
+}) => Promise<void>;
+type FastcatE2eRemoveMarker = (params: { markerId: string }) => Promise<void>;
+type FastcatE2eGetMarkers = () => Promise<TimelineMarker[]>;
 
 type FastcatE2eGetTimelineDocInfo = () => {
   duration: number;
@@ -781,6 +850,11 @@ interface FastcatE2eTimelineWindow {
   __fastcatE2eAddTextClip?: FastcatE2eAddTextClip;
   __fastcatE2eAddProjectFileToTrack?: (params: { path: string; trackId: string }) => Promise<void>;
   __fastcatE2eGetTimelineDocInfo?: FastcatE2eGetTimelineDocInfo;
+  __fastcatE2eAddMarker?: FastcatE2eAddMarker;
+  __fastcatE2eAddMarkers?: FastcatE2eAddMarkers;
+  __fastcatE2eUpdateMarker?: FastcatE2eUpdateMarker;
+  __fastcatE2eRemoveMarker?: FastcatE2eRemoveMarker;
+  __fastcatE2eGetMarkers?: FastcatE2eGetMarkers;
   __fastcatE2eTrimClip?: (params: {
     itemId: string;
     edge: 'start' | 'end';

@@ -111,6 +111,36 @@ describe('markerHandlers', () => {
       expect(markers[0]!.text).toBe('updated');
     });
 
+    it('throws if moving a marker onto another marker time', () => {
+      const doc = createDoc([
+        { id: 'm1', timeUs: 1_000_000, text: '' },
+        { id: 'm2', timeUs: 2_000_000, text: '' },
+      ] as TimelineMarker[]);
+
+      expect(() =>
+        updateMarker(doc, {
+          type: 'update_marker',
+          id: 'm2',
+          timeUs: 1_000_000,
+        }),
+      ).toThrow('Marker already exists at this time');
+    });
+
+    it('throws if quantized update lands on another marker time', () => {
+      const doc = createDoc([
+        { id: 'm1', timeUs: 1_000_000, text: '' },
+        { id: 'm2', timeUs: 2_000_000, text: '' },
+      ] as TimelineMarker[]);
+
+      expect(() =>
+        updateMarker(doc, {
+          type: 'update_marker',
+          id: 'm2',
+          timeUs: 999_999,
+        }),
+      ).toThrow('Marker already exists at this time');
+    });
+
     it('returns doc unchanged when marker is not found (defensive)', () => {
       const doc = createDoc([{ id: 'm1', timeUs: 1000, text: '' }] as TimelineMarker[]);
       const result = updateMarker(doc, {

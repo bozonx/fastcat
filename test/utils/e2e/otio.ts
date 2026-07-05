@@ -77,6 +77,16 @@ export interface TimelineDocView {
   audioTracks: TimelineTrackView[];
   /** Every clip across every track, in track order. */
   allClips: TimelineItemView[];
+  /** Timeline-level markers persisted as OTIO markers on the stack. */
+  markers: TimelineMarkerView[];
+}
+
+export interface TimelineMarkerView {
+  id: string;
+  timeUs: number;
+  durationUs?: number;
+  text: string;
+  color?: string;
 }
 
 interface RawRational {
@@ -145,7 +155,22 @@ interface RawTrack {
 interface RawTimeline {
   OTIO_SCHEMA?: string;
   name?: string;
-  tracks?: { children?: RawTrack[] };
+  tracks?: { children?: RawTrack[]; markers?: RawMarker[] };
+  markers?: RawMarker[];
+}
+interface RawMarker {
+  OTIO_SCHEMA?: string;
+  name?: string;
+  comment?: string;
+  marked_range?: RawRange;
+  metadata?: {
+    fastcat?: {
+      marker?: {
+        id?: string;
+        color?: string;
+      };
+    };
+  };
 }
 
 function rationalToUs(r: RawRational | undefined): number {
@@ -243,15 +268,36 @@ function parseTrack(raw: RawTrack): TimelineTrackView {
   };
 }
 
+function parseMarkers(raw: RawMarker[] | undefined): TimelineMarkerView[] {
+  return (raw ?? [])
+    .filter((marker) => marker.OTIO_SCHEMA === 'Marker.2' || marker.OTIO_SCHEMA === 'Marker.1')
+    .map((marker) => {
+      const range = marker.marked_range;
+      const durationUs = rationalToUs(range?.duration);
+      return {
+        id: marker.metadata?.fastcat?.marker?.id ?? '',
+        timeUs: rationalToUs(range?.start_time),
+        ...(durationUs > 0 ? { durationUs } : {}),
+        text: marker.comment || marker.name || '',
+        color: marker.metadata?.fastcat?.marker?.color,
+      };
+    })
+    .filter((marker) => marker.id.length > 0)
+    .sort((a, b) => a.timeUs - b.timeUs);
+}
+
 export function parseTimelineDoc(json: string): TimelineDocView {
   const raw = JSON.parse(json) as RawTimeline;
   const tracks = (raw.tracks?.children ?? []).map(parseTrack);
+  const markerSource =
+    raw.tracks?.markers && raw.tracks.markers.length > 0 ? raw.tracks.markers : raw.markers;
   return {
     name: raw.name ?? '',
     tracks,
     videoTracks: tracks.filter((t) => t.kind === 'Video'),
     audioTracks: tracks.filter((t) => t.kind === 'Audio'),
     allClips: tracks.flatMap((t) => t.clips),
+    markers: parseMarkers(markerSource),
   };
 }
 
@@ -332,7 +378,8 @@ export async function waitForTimelineDoc(
 
   throw new Error(
     `waitForTimelineDoc timed out after ${timeout}ms. ` +
-      `Last document: ${last ? JSON.stringify(last.allClips) : 'unavailable'}. ` +
+      `Last clips: ${last ? JSON.stringify(last.allClips) : 'unavailable'}. ` +
+      `Last markers: ${last ? JSON.stringify(last.markers) : 'unavailable'}. ` +
       `Last error: ${String(lastError)}`,
   );
 }

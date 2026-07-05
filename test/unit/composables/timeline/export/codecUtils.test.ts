@@ -22,6 +22,11 @@ describe('resolveExportCodecs', () => {
     expect(result).toEqual({ videoCodec: 'av01.0.05M.08', audioCodec: 'aac' });
   });
 
+  it('keeps an allowed h264 codec for mkv', () => {
+    const result = resolveExportCodecs('mkv', 'avc1.640032', 'aac');
+    expect(result).toEqual({ videoCodec: 'avc1.640032', audioCodec: 'aac' });
+  });
+
   it('returns avc1 for mp4', () => {
     const result = resolveExportCodecs('mp4', 'vp09.00.10.08', 'aac');
     expect(result).toEqual({ videoCodec: 'avc1.640032', audioCodec: 'aac' });

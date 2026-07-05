@@ -416,3 +416,98 @@ export async function addTextClipAtPlayhead(
     return addText(input);
   }, params);
 }
+
+export async function addMarker(
+  page: Page,
+  params: { timeUs: number; text?: string; color?: string; durationUs?: number },
+): Promise<string> {
+  await waitForTimelineHook(page, '__fastcatE2eAddMarker');
+  const markerId = await page.evaluate(async (input) => {
+    const add = (
+      window as Window & {
+        __fastcatE2eAddMarker?: (params: {
+          timeUs: number;
+          text?: string;
+          color?: string;
+          durationUs?: number;
+        }) => Promise<string | null>;
+      }
+    ).__fastcatE2eAddMarker;
+    if (!add) throw new Error('E2E timeline add-marker hook is not registered');
+    return add(input);
+  }, params);
+
+  if (!markerId) throw new Error('E2E marker was not created');
+  return markerId;
+}
+
+export async function addMarkers(
+  page: Page,
+  markers: Array<{ timeUs: number; text?: string; color?: string; durationUs?: number }>,
+): Promise<string[]> {
+  await waitForTimelineHook(page, '__fastcatE2eAddMarkers');
+  return page.evaluate(async (input) => {
+    const add = (
+      window as Window & {
+        __fastcatE2eAddMarkers?: (params: {
+          markers: Array<{
+            timeUs: number;
+            text?: string;
+            color?: string;
+            durationUs?: number;
+          }>;
+        }) => Promise<string[]>;
+      }
+    ).__fastcatE2eAddMarkers;
+    if (!add) throw new Error('E2E timeline add-markers hook is not registered');
+    return add({ markers: input });
+  }, markers);
+}
+
+export async function updateMarker(
+  page: Page,
+  params: {
+    markerId: string;
+    patch: { timeUs?: number; durationUs?: number | null; text?: string; color?: string };
+  },
+): Promise<void> {
+  await waitForTimelineHook(page, '__fastcatE2eUpdateMarker');
+  await page.evaluate(async (input) => {
+    const update = (
+      window as Window & {
+        __fastcatE2eUpdateMarker?: (params: {
+          markerId: string;
+          patch: { timeUs?: number; durationUs?: number | null; text?: string; color?: string };
+        }) => Promise<void>;
+      }
+    ).__fastcatE2eUpdateMarker;
+    if (!update) throw new Error('E2E timeline update-marker hook is not registered');
+    await update(input);
+  }, params);
+}
+
+export async function removeMarker(page: Page, markerId: string): Promise<void> {
+  await waitForTimelineHook(page, '__fastcatE2eRemoveMarker');
+  await page.evaluate(async (id) => {
+    const remove = (
+      window as Window & {
+        __fastcatE2eRemoveMarker?: (params: { markerId: string }) => Promise<void>;
+      }
+    ).__fastcatE2eRemoveMarker;
+    if (!remove) throw new Error('E2E timeline remove-marker hook is not registered');
+    await remove({ markerId: id });
+  }, markerId);
+}
+
+export async function markerIds(page: Page): Promise<string[]> {
+  await waitForTimelineHook(page, '__fastcatE2eGetMarkers');
+  return page.evaluate(async () => {
+    const getMarkers = (
+      window as Window & {
+        __fastcatE2eGetMarkers?: () => Promise<Array<{ id: string }>>;
+      }
+    ).__fastcatE2eGetMarkers;
+    if (!getMarkers) throw new Error('E2E timeline get-markers hook is not registered');
+    return (await getMarkers()).map((marker) => marker.id);
+  });
+}

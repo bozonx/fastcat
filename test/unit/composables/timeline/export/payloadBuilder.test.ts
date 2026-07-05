@@ -1,16 +1,18 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   assignLayerBands,
+  buildVideoWorkerPayload,
   buildVideoWorkerPayloadFromTracks,
   buildWorkerVideoTracks,
   clearNestedDocCacheForTests,
   getNestedClipWindow,
   mergeNestedClipSpeed,
+  toWorkerTimelineClips,
   trimNestedClipToParentWindow,
   trimWorkerClipToRange,
 } from '~/composables/timeline/export/payloadBuilder';
 import { serializeTimelineToOtio } from '~/timeline/otio-serializer';
-import type { TimelineDocument, TimelineTrack } from '~/timeline/types';
+import type { TimelineDocument, TimelineTrack, TimelineTrackItem } from '~/timeline/types';
 
 function track(overrides: Record<string, unknown> = {}): any {
   return {
@@ -268,6 +270,43 @@ describe('trimWorkerClipToRange', () => {
     expect(trimmed.audioFadeInUs).toBe(0);
     // 2s trimmed from the tail fully eats the 1s fade-out (clamped to 0).
     expect(trimmed.audioFadeOutUs).toBe(0);
+  });
+
+  it('partially shifts audio fades that survive a narrower crop', () => {
+    const clipped = trimWorkerClipToRange(
+      workerClip({
+        clipType: 'media',
+        source: { path: '/audio.wav' },
+        audioFadeInUs: 300_000,
+        audioFadeOutUs: 400_000,
+        timelineRange: { startUs: 1_000_000, durationUs: 1_000_000 },
+        sourceRange: { startUs: 2_000_000, durationUs: 1_000_000 },
+      }),
+      { startUs: 1_200_000, endUs: 1_800_000 },
+    );
+
+    // 200us trimmed off the head leaves 100us of the 300us fade-in; 200us off the
+    // tail leaves 200us of the 400us fade-out.
+    expect(clipped).toMatchObject({
+      audioFadeInUs: 100_000,
+      audioFadeOutUs: 200_000,
+      timelineRange: { startUs: 0, durationUs: 600_000 },
+      sourceRange: { startUs: 2_200_000, durationUs: 600_000 },
+    });
+  });
+
+  it('trims reversed clips from the source tail', () => {
+    const reversed = trimWorkerClipToRange(
+      workerClip({
+        id: 'reverse',
+        speed: -1,
+        source: { path: '/video.mp4' },
+        timelineRange: { startUs: 0, durationUs: 1_000_000 },
+        sourceRange: { startUs: 2_000_000, durationUs: 1_000_000 },
+      }),
+      { startUs: 250_000, endUs: 750_000 },
+    );
+    expect(reversed?.sourceRange).toEqual({ startUs: 2_250_000, durationUs: 500_000 });
   });
 });
 
@@ -626,5 +665,851 @@ describe('nested-timeline layer reservation', () => {
     expect(nestedSubTrack!.effects).toEqual(
       expect.arrayContaining([expect.objectContaining({ type: 'sharpen' })]),
     );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// buildVideoWorkerPayload emits the flat meta/track/clip item stream consumed by
+// the worker (distinct from buildVideoWorkerPayloadFromTracks above).
+// ---------------------------------------------------------------------------
+
+describe('buildVideoWorkerPayload', () => {
+  it('emits meta, track and clip items', () => {
+    const payload = buildVideoWorkerPayload({
+      masterEffects: [{ id: 'master-1', type: 'blur', enabled: true, amount: 4 } as any],
+      tracks: [
+        {
+          id: 'v1',
+          layer: 2,
+          opacity: 0.6,
+          blendMode: 'screen',
+          effects: [{ id: 'track-1', type: 'blur', enabled: true, amount: 2 } as any],
+        },
+      ],
+      clips: [
+        {
+          kind: 'clip',
+          clipType: 'media',
+          id: 'c1',
+          trackId: 'v1',
+          layer: 2,
+          source: { path: '/video.mp4' },
+          timelineRange: { startUs: 0, durationUs: 1_000_000 },
+          sourceRange: { startUs: 0, durationUs: 1_000_000 },
+        },
+      ],
+    });
+
+    expect(payload).toMatchObject([
+      { kind: 'meta' },
+      {
+        kind: 'track',
+        id: 'v1',
+        layer: 2,
+        opacity: 0.6,
+        blendMode: 'screen',
+      },
+      {
+        kind: 'clip',
+        id: 'c1',
+        trackId: 'v1',
+        layer: 2,
+      },
+    ]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// toWorkerTimelineClips flattens document track items (incl. nested timelines)
+// into worker clips. Moved here from the retired useTimelineExport monolith.
+// ---------------------------------------------------------------------------
+
+describe('toWorkerTimelineClips', () => {
+  const wsMock: any = { userSettings: { projectDefaults: { defaultAudioFadeCurve: 'linear' } } };
+
+  beforeEach(() => {
+    clearNestedDocCacheForTests();
+  });
+
+  it('attaches layer (default 0) and honours an options override', async () => {
+    const items: TimelineTrackItem[] = [
+      {
+        kind: 'clip',
+        clipType: 'media',
+        id: 'c1',
+        trackId: 't1',
+        name: 'Clip 1',
+        source: { path: '/video.mp4' },
+        sourceDurationUs: 1_000_000,
+        timelineRange: { startUs: 0, durationUs: 1_000_000 },
+        sourceRange: { startUs: 0, durationUs: 1_000_000 },
+        audioGain: 1.5,
+        audioBalance: -0.25,
+        audioFadeInUs: 120_000,
+        audioFadeOutUs: 340_000,
+      } as any,
+    ];
+
+    const projectStoreMock = {
+      getFileHandleByPath: async () => null,
+      projectSettings: { project: { audioDeclickDurationUs: 5000 } },
+    } as any;
+
+    expect(await toWorkerTimelineClips(items, projectStoreMock, wsMock)).toMatchObject([
+      {
+        kind: 'clip',
+        clipType: 'media',
+        id: 'c1',
+        layer: 0,
+        source: { path: '/video.mp4' },
+        timelineRange: { startUs: 0, durationUs: 1_000_000 },
+        sourceRange: { startUs: 0, durationUs: 1_000_000 },
+        audioGain: 1.5,
+        audioBalance: -0.25,
+        audioFadeInUs: 120_000,
+        audioFadeOutUs: 340_000,
+      },
+    ]);
+
+    const nested = await toWorkerTimelineClips(items, projectStoreMock, wsMock, { layer: 3 });
+    expect(nested[0]?.layer).toBe(3);
+  });
+
+  it('serializes HUD frame and masks into video worker payloads', async () => {
+    const tracks = [
+      {
+        id: 'v1',
+        kind: 'video',
+        items: [
+          {
+            kind: 'clip',
+            clipType: 'hud',
+            id: 'hud-1',
+            trackId: 'v1',
+            name: 'HUD',
+            hudType: 'media_frame',
+            background: { source: { path: '/background.png' } },
+            content: { source: { path: '/content.mp4' } },
+            frame: { source: { path: '/frame.png' }, scaleX: 1.5 },
+            mask: { source: { path: '/mask.png' }, mode: 'alpha' },
+            timelineRange: { startUs: 0, durationUs: 1_000_000 },
+            sourceRange: { startUs: 0, durationUs: 1_000_000 },
+          },
+        ],
+      },
+    ] as any;
+    const projectStoreMock = {
+      getFileByPath: async () => null,
+      projectSettings: { project: { audioDeclickDurationUs: 5000 } },
+    } as any;
+
+    const built = await buildVideoWorkerPayloadFromTracks({
+      tracks,
+      projectStore: projectStoreMock,
+      workspaceStore: wsMock,
+    });
+
+    expect(built.clips[0]).toMatchObject({
+      clipType: 'hud',
+      frame: { source: { path: '/frame.png' }, scaleX: 1.5 },
+      mask: { source: { path: '/mask.png' }, mode: 'alpha' },
+    });
+
+    const legacy = await toWorkerTimelineClips(tracks[0].items, projectStoreMock, wsMock);
+    expect(legacy[0]).toMatchObject({
+      clipType: 'hud',
+      frame: { source: { path: '/frame.png' }, scaleX: 1.5 },
+      mask: { source: { path: '/mask.png' }, mode: 'alpha' },
+    });
+  });
+
+  it('propagates transform', async () => {
+    const items: TimelineTrackItem[] = [
+      {
+        kind: 'clip',
+        clipType: 'media',
+        id: 'c1',
+        trackId: 't1',
+        name: 'Clip 1',
+        source: { path: '/video.mp4' },
+        sourceDurationUs: 1_000_000,
+        timelineRange: { startUs: 0, durationUs: 1_000_000 },
+        sourceRange: { startUs: 0, durationUs: 1_000_000 },
+      } as any,
+    ];
+
+    (items[0] as any).transform = {
+      scale: { x: 1.25, y: 0.75, linked: false },
+      rotationDeg: 10,
+      position: { x: 12, y: -34 },
+      anchor: { preset: 'center' },
+    };
+
+    const projectStoreMock = {
+      getFileHandleByPath: async () => null,
+      projectSettings: { project: { audioDeclickDurationUs: 5000 } },
+    } as any;
+    const clips = await toWorkerTimelineClips(items, projectStoreMock, wsMock);
+
+    expect(clips[0]?.transform).toEqual((items[0] as any).transform);
+  });
+
+  it('keeps top-level clip compositing separate from track compositing', async () => {
+    const items: TimelineTrackItem[] = [
+      {
+        kind: 'clip',
+        clipType: 'media',
+        id: 'c1',
+        trackId: 'v1',
+        name: 'Clip 1',
+        source: { path: '/video.mp4' },
+        sourceDurationUs: 1_000_000,
+        timelineRange: { startUs: 0, durationUs: 1_000_000 },
+        sourceRange: { startUs: 0, durationUs: 1_000_000 },
+        opacity: 0.5,
+        blendMode: 'multiply',
+        effects: [{ id: 'clip-1', type: 'blur', enabled: true, amount: 1 } as any],
+      } as any,
+    ];
+
+    const projectStoreMock = {
+      getFileHandleByPath: async () => null,
+      projectSettings: { project: { audioDeclickDurationUs: 5000 } },
+    } as any;
+    const clips = await toWorkerTimelineClips(items, projectStoreMock, wsMock, {
+      layer: 3,
+      trackKind: 'video',
+    });
+
+    expect(clips).toHaveLength(1);
+    expect(clips[0]).toMatchObject({
+      id: 'c1',
+      trackId: 'v1',
+      layer: 3,
+      opacity: 0.5,
+      blendMode: 'multiply',
+    });
+    expect(clips[0]?.effects).toEqual([{ id: 'clip-1', type: 'blur', enabled: true, amount: 1 }]);
+  });
+
+  it('normalizes background clip colors', async () => {
+    const items: TimelineTrackItem[] = [
+      {
+        kind: 'clip',
+        clipType: 'background',
+        id: 'bg1',
+        trackId: 't1',
+        name: 'Background',
+        backgroundColor: 'abc',
+        timelineRange: { startUs: 0, durationUs: 1_000_000 },
+        sourceRange: { startUs: 0, durationUs: 1_000_000 },
+      } as any,
+    ];
+
+    const projectStoreMock = {
+      getFileHandleByPath: async () => null,
+      projectSettings: { project: { audioDeclickDurationUs: 5000 } },
+    } as any;
+
+    const clips = await toWorkerTimelineClips(items, projectStoreMock, wsMock);
+
+    expect(clips).toHaveLength(1);
+    expect(clips[0]).toMatchObject({
+      clipType: 'background',
+      backgroundColor: '#aabbcc',
+    });
+  });
+
+  it('preserves transitions on background clips', async () => {
+    const items: TimelineTrackItem[] = [
+      {
+        kind: 'clip',
+        clipType: 'background',
+        id: 'bg1',
+        trackId: 't1',
+        name: 'Background',
+        backgroundColor: '#112233',
+        transitionIn: {
+          type: 'fade-to-black',
+          durationUs: 250_000,
+          mode: 'background',
+          curve: 'linear',
+          params: {},
+        },
+        transitionOut: {
+          type: 'dissolve',
+          durationUs: 250_000,
+          mode: 'transparent',
+          curve: 'linear',
+          params: {},
+        },
+        timelineRange: { startUs: 0, durationUs: 1_000_000 },
+        sourceRange: { startUs: 0, durationUs: 1_000_000 },
+      } as any,
+    ];
+
+    const projectStoreMock = {
+      getFileHandleByPath: async () => null,
+      projectSettings: { project: { audioDeclickDurationUs: 5000 } },
+    } as any;
+
+    const clips = await toWorkerTimelineClips(items, projectStoreMock, wsMock);
+
+    expect(clips[0]).toMatchObject({
+      clipType: 'background',
+      transitionIn: {
+        type: 'fade-to-black',
+        durationUs: 250_000,
+        mode: 'background',
+      },
+      transitionOut: {
+        type: 'dissolve',
+        durationUs: 250_000,
+        mode: 'transparent',
+      },
+    });
+  });
+
+  it('respects item.layer when options.layer is not provided', async () => {
+    const items: TimelineTrackItem[] = [
+      {
+        kind: 'clip',
+        clipType: 'media',
+        id: 'c1',
+        trackId: 't1',
+        name: 'Clip 1',
+        source: { path: '/video.mp4' },
+        sourceDurationUs: 1_000_000,
+        timelineRange: { startUs: 0, durationUs: 1_000_000 },
+        sourceRange: { startUs: 0, durationUs: 1_000_000 },
+      } as any,
+    ];
+
+    (items[0] as any).layer = 5;
+
+    const projectStoreMock = {
+      getFileHandleByPath: async () => null,
+      projectSettings: { project: { audioDeclickDurationUs: 5000 } },
+    } as any;
+
+    const clips = await toWorkerTimelineClips(items, projectStoreMock, wsMock);
+    expect(clips[0]?.layer).toBe(5);
+
+    const overridden = await toWorkerTimelineClips(items, projectStoreMock, wsMock, { layer: 2 });
+    expect(overridden[0]?.layer).toBe(2);
+  });
+
+  it('does not merge parent track effects into clip effects', async () => {
+    const items: TimelineTrackItem[] = [
+      {
+        kind: 'clip',
+        clipType: 'media',
+        id: 'c1',
+        trackId: 't1',
+        name: 'Clip 1',
+        source: { path: '/video.mp4' },
+        sourceDurationUs: 1_000_000,
+        timelineRange: { startUs: 0, durationUs: 1_000_000 },
+        sourceRange: { startUs: 0, durationUs: 1_000_000 },
+        effects: [{ id: 'clip-fx', type: 'brightness', enabled: true, amount: 1.2 } as any],
+      } as any,
+    ];
+
+    const projectStoreMock = {
+      getFileHandleByPath: async () => null,
+      projectSettings: { project: { audioDeclickDurationUs: 5000 } },
+    } as any;
+
+    const trackFx = [{ id: 'track-fx', type: 'blur', enabled: true, amount: 2 } as any];
+    const clips = await toWorkerTimelineClips(items, projectStoreMock, wsMock, {
+      parentEffects: trackFx,
+    });
+
+    expect(clips[0]?.effects).toEqual([expect.objectContaining({ id: 'clip-fx' })]);
+    expect(clips[0]?.effects).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: 'track-fx' })]),
+    );
+  });
+
+  it('resolves relative media paths inside a nested timeline', async () => {
+    const nestedOtio = JSON.stringify({
+      OTIO_SCHEMA: 'Timeline.1',
+      name: 'nested',
+      metadata: { fastcat: { timebase: { fps: 25 } } },
+      tracks: {
+        OTIO_SCHEMA: 'Stack.1',
+        name: 'tracks',
+        children: [
+          {
+            OTIO_SCHEMA: 'Track.1',
+            name: 'V1',
+            kind: 'Video',
+            children: [
+              {
+                OTIO_SCHEMA: 'Clip.1',
+                name: 'Clip',
+                media_reference: {
+                  OTIO_SCHEMA: 'ExternalReference.1',
+                  target_url: 'media/video.mp4',
+                },
+                source_range: {
+                  OTIO_SCHEMA: 'TimeRange.1',
+                  start_time: { OTIO_SCHEMA: 'RationalTime.1', value: 0, rate: 1000000 },
+                  duration: { OTIO_SCHEMA: 'RationalTime.1', value: 1000000, rate: 1000000 },
+                },
+                metadata: {
+                  fastcat: {
+                    clipType: 'media',
+                    source: { durationUs: 1000000 },
+                  },
+                },
+              },
+            ],
+          },
+        ],
+      },
+    });
+
+    const items: TimelineTrackItem[] = [
+      {
+        kind: 'clip',
+        clipType: 'timeline',
+        id: 'nested1',
+        trackId: 't1',
+        name: 'Nested',
+        source: { path: '_timelines/nested.otio' } as any,
+        timelineRange: { startUs: 0, durationUs: 1_000_000 },
+        sourceRange: { startUs: 0, durationUs: 1_000_000 },
+      } as any,
+    ];
+
+    const projectStoreMock = {
+      projectSettings: { project: { audioDeclickDurationUs: 5000 } },
+      getFileByPath: async (path: string) => {
+        if (path !== '_timelines/nested.otio') return null;
+        return {
+          text: async () => nestedOtio,
+        } as any;
+      },
+    } as any;
+
+    const clips = await toWorkerTimelineClips(items, projectStoreMock, wsMock, {
+      layer: 1,
+      trackKind: 'video',
+    });
+
+    expect(clips.length).toBe(1);
+    expect(clips[0]?.clipType).toBe('media');
+    expect(clips[0]?.source?.path).toBe('_timelines/media/video.mp4');
+    expect(clips[0]?.trackId).toBe('t1::nested1::v1');
+  });
+
+  it('reuses a nested document for repeated references within one flattening pass', async () => {
+    const nestedOtio = JSON.stringify({
+      OTIO_SCHEMA: 'Timeline.1',
+      name: 'nested',
+      metadata: { fastcat: { timebase: { fps: 25 } } },
+      tracks: {
+        OTIO_SCHEMA: 'Stack.1',
+        children: [
+          {
+            OTIO_SCHEMA: 'Track.1',
+            name: 'V1',
+            kind: 'Video',
+            children: [],
+          },
+        ],
+      },
+    });
+    const getFileByPath = vi.fn(async () => {
+      return {
+        lastModified: 10,
+        text: async () => nestedOtio,
+      } as File;
+    });
+    const projectStoreMock = {
+      projectSettings: {
+        project: {
+          audioDeclickDurationUs: 5000,
+          fps: 25,
+        },
+      },
+      getFileByPath,
+    } as any;
+    const createNestedItem = (id: string, startUs: number) =>
+      ({
+        kind: 'clip',
+        clipType: 'timeline',
+        id,
+        trackId: 'track',
+        name: id,
+        source: { path: '_timelines/shared.otio' },
+        timelineRange: { startUs, durationUs: 1_000_000 },
+        sourceRange: { startUs: 0, durationUs: 1_000_000 },
+      }) as TimelineTrackItem;
+
+    await toWorkerTimelineClips(
+      [createNestedItem('nested-1', 0), createNestedItem('nested-2', 1_000_000)],
+      projectStoreMock,
+      wsMock,
+      { trackKind: 'video' },
+    );
+
+    expect(getFileByPath).toHaveBeenCalledTimes(1);
+  });
+
+  it('maps parent nested timeline speed into child clips', async () => {
+    const nestedOtio = JSON.stringify({
+      OTIO_SCHEMA: 'Timeline.1',
+      name: 'nested',
+      metadata: { fastcat: { timebase: { fps: 25 } } },
+      tracks: {
+        OTIO_SCHEMA: 'Stack.1',
+        name: 'tracks',
+        children: [
+          {
+            OTIO_SCHEMA: 'Track.1',
+            name: 'V1',
+            kind: 'Video',
+            children: [
+              {
+                OTIO_SCHEMA: 'Clip.1',
+                name: 'Clip',
+                media_reference: {
+                  OTIO_SCHEMA: 'ExternalReference.1',
+                  target_url: 'media/video.mp4',
+                },
+                source_range: {
+                  OTIO_SCHEMA: 'TimeRange.1',
+                  start_time: { OTIO_SCHEMA: 'RationalTime.1', value: 0, rate: 1000000 },
+                  duration: { OTIO_SCHEMA: 'RationalTime.1', value: 2000000, rate: 1000000 },
+                },
+                metadata: {
+                  fastcat: {
+                    clipType: 'media',
+                    source: { durationUs: 2000000 },
+                  },
+                },
+              },
+            ],
+          },
+        ],
+      },
+    });
+
+    const items: TimelineTrackItem[] = [
+      {
+        kind: 'clip',
+        clipType: 'timeline',
+        id: 'nested-fast',
+        trackId: 't1',
+        name: 'Nested Fast',
+        source: { path: '_timelines/nested.otio' } as any,
+        speed: 2,
+        timelineRange: { startUs: 5_000_000, durationUs: 1_000_000 },
+        sourceRange: { startUs: 0, durationUs: 2_000_000 },
+      } as any,
+    ];
+
+    const projectStoreMock = {
+      projectSettings: { project: { audioDeclickDurationUs: 5000 } },
+      getFileByPath: async (path: string) => {
+        if (path !== '_timelines/nested.otio') return null;
+        return {
+          text: async () => nestedOtio,
+        } as any;
+      },
+    } as any;
+
+    const clips = await toWorkerTimelineClips(items, projectStoreMock, wsMock, {
+      layer: 1,
+      trackKind: 'video',
+    });
+
+    expect(clips).toHaveLength(1);
+    expect(clips[0]).toMatchObject({
+      speed: 2,
+      timelineRange: { startUs: 5_000_000, durationUs: 1_000_000 },
+      sourceRange: { startUs: 0, durationUs: 2_000_000 },
+    });
+  });
+
+  it('stops circular nested timelines after resolving relative paths', async () => {
+    const makeNestedOtio = (targetUrl: string) =>
+      JSON.stringify({
+        OTIO_SCHEMA: 'Timeline.1',
+        name: 'nested',
+        metadata: { fastcat: { timebase: { fps: 25 } } },
+        tracks: {
+          OTIO_SCHEMA: 'Stack.1',
+          name: 'tracks',
+          children: [
+            {
+              OTIO_SCHEMA: 'Track.1',
+              name: 'V1',
+              kind: 'Video',
+              children: [
+                {
+                  OTIO_SCHEMA: 'Clip.1',
+                  name: 'Nested',
+                  media_reference: {
+                    OTIO_SCHEMA: 'ExternalReference.1',
+                    target_url: targetUrl,
+                  },
+                  source_range: {
+                    OTIO_SCHEMA: 'TimeRange.1',
+                    start_time: { OTIO_SCHEMA: 'RationalTime.1', value: 0, rate: 1000000 },
+                    duration: { OTIO_SCHEMA: 'RationalTime.1', value: 1000000, rate: 1000000 },
+                  },
+                  metadata: {
+                    fastcat: {
+                      clipType: 'timeline',
+                      source: { durationUs: 1000000 },
+                    },
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      });
+
+    const requestedPaths: string[] = [];
+    const projectStoreMock = {
+      projectSettings: { project: { audioDeclickDurationUs: 5000 } },
+      getFileByPath: async (path: string) => {
+        requestedPaths.push(path);
+        if (path === '_timelines/sub/a.otio') {
+          return { text: async () => makeNestedOtio('../root.otio') } as any;
+        }
+        if (path === '_timelines/root.otio') {
+          return { text: async () => makeNestedOtio('sub/./a.otio') } as any;
+        }
+        return null;
+      },
+    } as any;
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    try {
+      const clips = await toWorkerTimelineClips(
+        [
+          {
+            kind: 'clip',
+            clipType: 'timeline',
+            id: 'nested-a',
+            trackId: 't1',
+            name: 'Nested A',
+            source: { path: '_timelines/sub/../sub/a.otio' },
+            timelineRange: { startUs: 0, durationUs: 1_000_000 },
+            sourceRange: { startUs: 0, durationUs: 1_000_000 },
+          } as any,
+        ],
+        projectStoreMock,
+        wsMock,
+        { layer: 1, trackKind: 'video' },
+      );
+
+      expect(clips).toEqual([]);
+      expect(requestedPaths).toEqual(['_timelines/sub/a.otio', '_timelines/root.otio']);
+      expect(warnSpy).toHaveBeenCalledWith(
+        '[payloadBuilder]',
+        expect.stringContaining('Circular dependency in nested timeline'),
+      );
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
+
+  it('applies nested timeline parent audio gain/balance/fades when trackKind is audio', async () => {
+    const nestedOtio = JSON.stringify({
+      OTIO_SCHEMA: 'Timeline.1',
+      name: 'nested',
+      metadata: { fastcat: { timebase: { fps: 25 } } },
+      tracks: {
+        OTIO_SCHEMA: 'Stack.1',
+        name: 'tracks',
+        children: [
+          {
+            OTIO_SCHEMA: 'Track.1',
+            name: 'A1',
+            kind: 'Audio',
+            children: [
+              {
+                OTIO_SCHEMA: 'Clip.1',
+                name: 'AudioClip',
+                media_reference: {
+                  OTIO_SCHEMA: 'ExternalReference.1',
+                  target_url: 'audio.wav',
+                },
+                source_range: {
+                  OTIO_SCHEMA: 'TimeRange.1',
+                  start_time: { OTIO_SCHEMA: 'RationalTime.1', value: 0, rate: 1000000 },
+                  duration: { OTIO_SCHEMA: 'RationalTime.1', value: 1000000, rate: 1000000 },
+                },
+                metadata: {
+                  fastcat: {
+                    clipType: 'media',
+                    source: { durationUs: 1000000 },
+                    audio: {
+                      gain: 2,
+                      balance: 0.1,
+                      fadeInUs: 100000,
+                      fadeOutUs: 100000,
+                    },
+                  },
+                },
+              },
+            ],
+          },
+        ],
+      },
+    });
+
+    const items: TimelineTrackItem[] = [
+      {
+        kind: 'clip',
+        clipType: 'timeline',
+        id: 'nested1',
+        trackId: 't1',
+        name: 'Nested',
+        source: { path: '_timelines/nested.otio' } as any,
+        timelineRange: { startUs: 0, durationUs: 1_000_000 },
+        sourceRange: { startUs: 0, durationUs: 1_000_000 },
+        audioGain: 0.5,
+        audioBalance: -0.2,
+        audioFadeInUs: 200_000,
+        audioFadeOutUs: 300_000,
+      } as any,
+    ];
+
+    const projectStoreMock = {
+      projectSettings: { project: { audioDeclickDurationUs: 5000 } },
+      getFileByPath: async (path: string) => {
+        if (path !== '_timelines/nested.otio') return null;
+        return {
+          text: async () => nestedOtio,
+        } as any;
+      },
+    } as any;
+
+    const clips = await toWorkerTimelineClips(items, projectStoreMock, wsMock, {
+      trackKind: 'audio',
+    });
+
+    expect(clips.length).toBe(1);
+    expect(clips[0]?.source?.path).toBe('_timelines/audio.wav');
+    expect(clips[0]?.audioGain).toBeCloseTo(1);
+    expect(clips[0]?.audioBalance).toBeCloseTo(-0.1);
+    expect(clips[0]?.audioFadeInUs).toBe(200_000);
+    expect(clips[0]?.audioFadeOutUs).toBe(300_000);
+  });
+
+  it('emits explicit nested track payload items with compounded opacity/blend', async () => {
+    const workspaceStoreMock = {
+      userSettings: {
+        projectDefaults: { audioDeclickDurationUs: 5000 },
+        optimization: { videoFrameCacheMb: 256 },
+      },
+    } as any;
+
+    const nestedOtio = JSON.stringify({
+      OTIO_SCHEMA: 'Timeline.1',
+      name: 'nested',
+      metadata: { fastcat: { timebase: { fps: 25 } } },
+      tracks: {
+        OTIO_SCHEMA: 'Stack.1',
+        name: 'tracks',
+        children: [
+          {
+            OTIO_SCHEMA: 'Track.1',
+            name: 'NestedV1',
+            kind: 'Video',
+            metadata: {
+              fastcat: {
+                video: {
+                  opacity: 0.4,
+                  blendMode: 'screen',
+                },
+              },
+            },
+            children: [
+              {
+                OTIO_SCHEMA: 'Clip.1',
+                name: 'NestedClip',
+                media_reference: {
+                  OTIO_SCHEMA: 'ExternalReference.1',
+                  target_url: 'media/video.mp4',
+                },
+                source_range: {
+                  OTIO_SCHEMA: 'TimeRange.1',
+                  start_time: { OTIO_SCHEMA: 'RationalTime.1', value: 0, rate: 1000000 },
+                  duration: { OTIO_SCHEMA: 'RationalTime.1', value: 1000000, rate: 1000000 },
+                },
+                metadata: {
+                  fastcat: {
+                    clipType: 'media',
+                    source: { durationUs: 1000000 },
+                  },
+                },
+              },
+            ],
+          },
+        ],
+      },
+    });
+
+    const projectStoreMock = {
+      projectSettings: { project: { audioDeclickDurationUs: 5000 } },
+      getFileByPath: async (path: string) => {
+        if (path !== '_timelines/nested.otio') return null;
+        return {
+          text: async () => nestedOtio,
+        } as any;
+      },
+    } as any;
+
+    const result = await buildVideoWorkerPayloadFromTracks({
+      tracks: [
+        {
+          id: 'v1',
+          kind: 'video',
+          videoHidden: false,
+          opacity: 0.5,
+          blendMode: 'multiply',
+          items: [
+            {
+              kind: 'clip',
+              clipType: 'timeline',
+              id: 'nested-1',
+              trackId: 'v1',
+              name: 'Nested',
+              source: { path: '_timelines/nested.otio' },
+              timelineRange: { startUs: 0, durationUs: 1_000_000 },
+              sourceRange: { startUs: 0, durationUs: 1_000_000 },
+            },
+          ],
+        } as any,
+      ],
+      projectStore: projectStoreMock,
+      workspaceStore: workspaceStoreMock,
+    });
+
+    expect(result.tracks).toEqual([
+      expect.objectContaining({ id: 'v1', layer: 0, opacity: 0.5, blendMode: 'multiply' }),
+      expect.objectContaining({
+        id: 'v1::nested-1::v1',
+        layer: 0,
+        // Parent track opacity (0.5) compounds with the inner track opacity (0.4).
+        opacity: 0.2,
+        blendMode: 'screen',
+      }),
+    ]);
+    expect(result.clips).toHaveLength(1);
+    expect(result.clips[0]?.id.startsWith('nested-1_nested_')).toBe(true);
+    expect(result.clips[0]).toMatchObject({
+      trackId: 'v1::nested-1::v1',
+      source: { path: '_timelines/media/video.mp4' },
+    });
+    expect(result.payload.filter((item) => item.kind === 'track')).toHaveLength(2);
   });
 });

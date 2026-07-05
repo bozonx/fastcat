@@ -88,6 +88,10 @@ export function updateMarker(
     color: cmd.color !== undefined ? String(cmd.color) : (prev as { color?: string }).color,
   };
 
+  if (markers.some((m) => m.id !== cmd.id && m.timeUs === nextMarker.timeUs)) {
+    throw new Error('Marker already exists at this time');
+  }
+
   const nextMarkers = [...markers];
   nextMarkers[idx] = nextMarker;
   nextMarkers.sort((a, b) => a.timeUs - b.timeUs);
