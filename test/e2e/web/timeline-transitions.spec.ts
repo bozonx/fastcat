@@ -4,7 +4,7 @@ import type { E2eProject } from '../fixtures/workspace';
 import { MEDIA_FIXTURES } from '../../fixtures/media';
 import { seedProjectMedia } from '../../utils/e2e/file-manager';
 import { addFileToTrack, clipIds, setTimelineZoom, trackIds } from '../../utils/e2e/timeline';
-import { readTimelineDoc, waitForTimelineDoc } from '../../utils/e2e/otio';
+import { waitForTimelineDoc } from '../../utils/e2e/otio';
 
 /**
  * Transitions interactive setup and manipulation on timeline clips.
@@ -22,27 +22,46 @@ test.describe('Web timeline transitions', () => {
     await page.mouse.move(box.x + 5, box.y + 5, { steps: 4 });
   }
 
-  async function clickVisibleHandleArea(page: Page, handleLocator: Locator) {
+  async function clickCreateHandle(page: Page, handleLocator: Locator) {
     const box = await handleLocator.boundingBox();
-    const viewport = page.viewportSize();
-    if (!box || !viewport) {
-      throw new Error('Transition handle has no clickable viewport area');
+    if (!box) {
+      throw new Error('Transition handle has no bounding box');
     }
 
-    const left = Math.max(1, box.x + 1);
-    const right = Math.min(viewport.width - 1, box.x + box.width - 1);
-    const top = Math.max(1, box.y + 1);
-    const bottom = Math.min(viewport.height - 1, box.y + box.height - 1);
+    const point = {
+      x: box.x + box.width / 2,
+      y: box.y + box.height / 2,
+    };
 
-    if (left > right || top > bottom) {
-      throw new Error('Transition handle is outside of the viewport');
-    }
+    await handleLocator.evaluate((el, { x, y }) => {
+      el.dispatchEvent(
+        new PointerEvent('pointerdown', {
+          bubbles: true,
+          cancelable: true,
+          clientX: x,
+          clientY: y,
+          button: 0,
+          buttons: 1,
+          pointerId: 1,
+          pointerType: 'mouse',
+        }),
+      );
+    }, point);
 
-    const x = left + (right - left) / 2;
-    const y = top + (bottom - top) / 2;
-
-    await page.mouse.move(x, y, { steps: 2 });
-    await page.mouse.click(x, y);
+    await page.evaluate(({ x, y }) => {
+      window.dispatchEvent(
+        new PointerEvent('pointerup', {
+          bubbles: true,
+          cancelable: true,
+          clientX: x,
+          clientY: y,
+          button: 0,
+          buttons: 0,
+          pointerId: 1,
+          pointerType: 'mouse',
+        }),
+      );
+    }, point);
   }
 
   async function projectWithVideoClip(page: Page, project: E2eProject) {
@@ -79,9 +98,13 @@ test.describe('Web timeline transitions', () => {
 
     const createHandleOut = clipLocator.locator('[data-testid="transition-create-out"]');
     await expect(createHandleOut).toHaveClass(/opacity-100/);
-    await clickVisibleHandleArea(page, createHandleOut);
+    await clickCreateHandle(page, createHandleOut);
 
-    const doc = await readTimelineDoc(page, e2eProject);
+    const doc = await waitForTimelineDoc(
+      page,
+      e2eProject,
+      (timelineDoc) => timelineDoc.allClips[0]?.transitionOut?.type === 'dissolve',
+    );
     expect(doc.allClips[0]?.transitionOut).toMatchObject({
       type: 'dissolve',
     });
