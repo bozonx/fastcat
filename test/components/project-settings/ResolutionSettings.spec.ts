@@ -65,7 +65,15 @@ vi.mock('~/components/ui/UiFormSectionHeader.vue', () => ({
   default: {
     name: 'UiFormSectionHeader',
     props: ['title'],
-    template: '<div class="form-section-header">{{ title }}</div>',
+    template: '<div class="form-section-header">{{ title }}<slot /></div>',
+  },
+}));
+
+vi.mock('~/components/ui/UiTooltip.vue', () => ({
+  default: {
+    name: 'UiTooltip',
+    props: ['text'],
+    template: '<div class="ui-tooltip" :data-tooltip="text"><slot /></div>',
   },
 }));
 
@@ -87,13 +95,18 @@ describe('ResolutionSettings.vue', () => {
     mockWorkspaceStore.userSettings.projectPresets.selectedPresetId = '1080p';
   });
 
-  it('renders form section header with resolution title', async () => {
+  it('renders form section header with resolution title and tooltip', async () => {
     const component = await mountWithNuxt(ResolutionSettings);
 
     expect(component.exists()).toBe(true);
     expect(component.find('.form-section-header').exists()).toBe(true);
     expect(component.find('.form-section-header').text()).toContain(
       'videoEditor.projectSettings.resolutionAndFps',
+    );
+    const tooltip = component.find('.ui-tooltip');
+    expect(tooltip.exists()).toBe(true);
+    expect(tooltip.attributes('data-tooltip')).toBe(
+      'videoEditor.projectSettings.resolutionAndFpsTooltip',
     );
   });
 

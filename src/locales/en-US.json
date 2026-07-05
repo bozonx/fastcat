@@ -1760,7 +1760,8 @@
       "resetSettings": "Reset settings",
       "resetConfirmDescription": "This will restore all project settings to the default values from your workspace settings.",
       "resetConfirmTitle": "Reset to defaults?",
-      "resolutionAndFps": "Resolution, FPS, Sample Rate for Creating Timelines",
+      "resolutionAndFps": "Timeline Settings",
+      "resolutionAndFpsTooltip": "Used as default settings when creating new timelines in the project",
       "storage": "Storage",
       "title": "Project Settings"
     },

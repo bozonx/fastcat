@@ -4,6 +4,7 @@ import { useProjectStore } from '~/stores/project.store';
 import { markProjectSettingsManual } from '~/utils/project-settings';
 import MediaResolutionSettings from '~/components/media/MediaResolutionSettings.vue';
 import UiFormSectionHeader from '~/components/ui/UiFormSectionHeader.vue';
+import UiTooltip from '~/components/ui/UiTooltip.vue';
 
 const { t } = useI18n();
 const projectStore = useProjectStore();
@@ -30,7 +31,14 @@ watch(
 
 <template>
   <div v-if="projectStore.projectSettings" class="space-y-2 pt-2 px-0">
-    <UiFormSectionHeader :title="t('videoEditor.projectSettings.resolutionAndFps')" />
+    <UiFormSectionHeader :title="t('videoEditor.projectSettings.resolutionAndFps')">
+      <UiTooltip :text="t('videoEditor.projectSettings.resolutionAndFpsTooltip')">
+        <UIcon
+          name="i-heroicons-information-circle"
+          class="w-4 h-4 text-ui-text-muted hover:text-ui-text cursor-help"
+        />
+      </UiTooltip>
+    </UiFormSectionHeader>
     <MediaResolutionSettings
       v-model:width="projectStore.projectSettings.project.width"
       v-model:height="projectStore.projectSettings.project.height"
