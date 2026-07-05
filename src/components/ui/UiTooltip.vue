@@ -83,7 +83,10 @@ onBeforeUnmount(() => {
     :disabled="!hasTooltip"
     :content="{ side: placement, sideOffset: 8, collisionPadding: 8 }"
     :delay-duration="0"
-    :ui="{ content: 'max-w-xs whitespace-pre-line text-left leading-snug' }"
+    :ui="{
+      content:
+        'h-auto min-h-6 max-w-xs whitespace-pre-line border border-ui-border bg-ui-bg-elevated px-2.5 py-1.5 text-left leading-snug text-ui-text shadow-xl',
+    }"
   >
     <span
       ref="root"

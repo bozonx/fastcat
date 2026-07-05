@@ -6,7 +6,7 @@ import UiTooltip from '~/components/ui/UiTooltip.vue';
 const stubs = {
   UTooltip: {
     template:
-      '<div class="u-tooltip-stub"><slot /><div v-if="open" class="tooltip-content"><slot name="content" /></div></div>',
+      '<div class="u-tooltip-stub" :data-ui-content="ui?.content"><slot /><div v-if="open" class="tooltip-content"><slot name="content" /></div></div>',
     props: ['open', 'disabled', 'content', 'delayDuration', 'ui'],
   },
 };
@@ -162,5 +162,25 @@ describe('UiTooltip', () => {
     await component.find('.u-tooltip-stub > span').trigger('pointerenter');
 
     expect(component.find('.tooltip-content').text()).toContain('First line\nSecond line');
+  });
+
+  it('keeps explicit content styling for readable multi-line tooltips', async () => {
+    const component = await mountSuspended(UiTooltip, {
+      global: { stubs },
+      props: {
+        text: 'Readable tooltip',
+      },
+      slots: {
+        default: '<button>Info</button>',
+      },
+    });
+
+    const tooltip = component.find('.u-tooltip-stub');
+    const contentClasses = tooltip.attributes('data-ui-content') ?? '';
+
+    expect(contentClasses).toContain('bg-ui-bg-elevated');
+    expect(contentClasses).toContain('border-ui-border');
+    expect(contentClasses).toContain('h-auto');
+    expect(contentClasses).toContain('whitespace-pre-line');
   });
 });

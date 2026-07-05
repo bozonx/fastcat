@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { h } from 'vue';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
 import UiFormField from '~/components/ui/UiFormField.vue';
 
@@ -52,4 +53,57 @@ describe('UiFormField', () => {
 
     expect(component.text()).toContain('Test');
   });
+
+  describe('resettable', () => {
+    it('shows reset button when resettable is true', async () => {
+      const component = await mountSuspended(UiFormField, {
+        props: { label: 'Test', resettable: true },
+        slots: { default: () => h('span', { class: 'field-content' }, 'Value') },
+      });
+
+      // The slot content should still be rendered
+      expect(component.find('.field-content').exists()).toBe(true);
+      // The flex wrapper should be present
+      expect(component.find('.flex.items-center.gap-2').exists()).toBe(true);
+    });
+
+    it('hides reset button when resettable is false', async () => {
+      const component = await mountSuspended(UiFormField, {
+        props: { label: 'Test', resettable: false },
+        slots: { default: () => h('span', { class: 'field-content' }, 'Value') },
+      });
+
+      // The flex wrapper should be present (resettable !== undefined)
+      expect(component.find('.flex.items-center.gap-2').exists()).toBe(true);
+      // Slot content should still render
+      expect(component.find('.field-content').exists()).toBe(true);
+    });
+
+    it('does not wrap slot when resettable is undefined', async () => {
+      const component = await mountSuspended(UiFormField, {
+        props: { label: 'Test' },
+        slots: { default: () => h('span', { class: 'field-content' }, 'Value') },
+      });
+
+      // No flex wrapper should be present
+      expect(component.find('.flex.items-center.gap-2').exists()).toBe(false);
+      // Slot content is rendered directly
+      expect(component.find('.field-content').exists()).toBe(true);
+    });
+
+    it('emits reset when button is clicked', async () => {
+      const component = await mountSuspended(UiFormField, {
+        props: { label: 'Test', resettable: true, resetTooltip: 'Reset it' },
+        slots: { default: () => h('span', null, 'Value') },
+      });
+
+      // UButton inside UiTooltip renders as a native <button>
+      const btn = component.find('button');
+      expect(btn.exists()).toBe(true);
+      await btn.trigger('click');
+
+      expect(component.emitted('reset')).toBeTruthy();
+    });
+  });
 });
+
