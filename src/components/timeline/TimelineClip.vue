@@ -93,6 +93,8 @@ interface SlipOverlayView {
   direction: string;
   timecode: string;
   hasSourceRange: boolean;
+  /** Whether to draw the source-material line (false for images/virtual clips). */
+  showSourceRange: boolean;
 }
 
 interface TrimOverlayView {
@@ -100,6 +102,8 @@ interface TrimOverlayView {
   direction: string;
   timecode: string;
   hasSourceRange: boolean;
+  /** Whether to draw the source-material line (false for images/virtual clips). */
+  showSourceRange: boolean;
 }
 
 const props = defineProps<Props>();
@@ -192,10 +196,21 @@ const currentSlipPreview = computed(() => {
   if (!props.slipPreview || props.slipPreview.itemId !== props.item.id) return null;
   return props.slipPreview;
 });
+// The trim/slip overlays visualize the clip's in/out point over its finite
+// source material. Images and the procedural "virtual" clip types (text, shape,
+// background, hud, adjustment) have no trimmable source, so the overlay is
+// meaningless there — suppress it.
+const hasTrimmableSource = computed(() => {
+  const clip = clipItem.value;
+  if (!clip) return false;
+  if (clip.clipType === 'timeline') return true;
+  return clip.clipType === 'media' && !clip.isImage;
+});
+
 const slipOverlay = computed<SlipOverlayView | null>(() => {
   const preview = currentSlipPreview.value;
   const clip = clipItem.value;
-  if (!preview || !clip) return null;
+  if (!preview || !clip || !hasTrimmableSource.value) return null;
 
   const sourceDurationUs = Math.max(0, Math.round(Number(clip.sourceDurationUs ?? 0)));
   const sourceRangeStartUs = Math.max(0, Math.round(Number(clip.sourceRange?.startUs ?? 0)));
@@ -216,19 +231,25 @@ const slipOverlay = computed<SlipOverlayView | null>(() => {
     direction: preview.deltaUs < 0 ? '<' : preview.deltaUs > 0 ? '>' : '',
     timecode: preview.timecode,
     hasSourceRange,
+    showSourceRange: hasTrimmableSource.value,
   };
 });
 
 const trimOverlay = computed<TrimOverlayView | null>(() => {
   const preview = myTrimPreview.value;
   const clip = clipItem.value;
+  // The offset (delta) timecode is shown while trimming any clip; only the
+  // source-material line is suppressed for images/virtual clips further below.
   if (!preview || !clip) return null;
 
+  // Use the live, previewed source range so the material line tracks the drag in
+  // real time (effectiveSourceRange runs the same computeTrimGeometry as commit),
+  // instead of the committed clip.sourceRange which only jumps after mouse-up.
   const sourceDurationUs = Math.max(0, Math.round(Number(clip.sourceDurationUs ?? 0)));
-  const sourceRangeStartUs = Math.max(0, Math.round(Number(clip.sourceRange?.startUs ?? 0)));
+  const sourceRangeStartUs = Math.max(0, Math.round(Number(effectiveSourceRange.value.startUs)));
   const sourceRangeDurationUs = Math.max(
     0,
-    Math.round(Number(clip.sourceRange?.durationUs ?? clip.timelineRange.durationUs ?? 0)),
+    Math.round(Number(effectiveSourceRange.value.durationUs || clip.timelineRange.durationUs || 0)),
   );
   const hasSourceRange = sourceDurationUs > 0 && sourceDurationUs > sourceRangeDurationUs;
   const startPercent = hasSourceRange ? (sourceRangeStartUs / sourceDurationUs) * 100 : 0;
@@ -249,6 +270,7 @@ const trimOverlay = computed<TrimOverlayView | null>(() => {
     direction: preview.edge === 'start' ? '<' : '>',
     timecode,
     hasSourceRange,
+    showSourceRange: hasTrimmableSource.value,
   };
 });
 
@@ -872,6 +894,7 @@ function handleTransitionCreate(
           :can-edit="canEditClipContent"
           :is-mobile="isMobile"
           :is-clip-hovered="isHovered"
+          :is-trimming="myTrimPreview !== null"
           @select="(e, payload) => emit('selectTransition', e, payload)"
           @resize="
             (e, payload) =>

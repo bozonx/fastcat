@@ -33,6 +33,7 @@ const props = defineProps<{
   trackHeight: number;
   isMobile?: boolean;
   isClipHovered?: boolean;
+  isTrimming?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -151,6 +152,9 @@ function getTransitionSvgFill(edge: 'in' | 'out', hasProblem: boolean) {
 function canShowCreateTransitionHandle() {
   return (
     !props.isMobile &&
+    // While the clip is being trimmed, the create-transition triangles sit right
+    // under the trim handle and just get in the way — hide them until trim ends.
+    !props.isTrimming &&
     props.clipWidthPx >= 30 &&
     props.trackHeight >= MIN_TRANSITION_CREATE_HANDLE_TRACK_HEIGHT_PX
   );

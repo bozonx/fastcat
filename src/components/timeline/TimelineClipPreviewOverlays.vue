@@ -4,6 +4,11 @@ interface ClipPreviewOverlay {
   direction: string;
   timecode: string;
   hasSourceRange: boolean;
+  /**
+   * Whether to draw the source-material line + end caps. False for images and
+   * virtual clips, which have no finite source — only the offset timecode shows.
+   */
+  showSourceRange: boolean;
 }
 
 interface SlipOverlayView extends ClipPreviewOverlay {
@@ -26,7 +31,10 @@ const { t } = useI18n();
     :title="t('fastcat.timeline.slipMode')"
     data-slip-overlay
   >
-    <div class="absolute inset-x-1.5 top-1 h-1.5 rounded-full bg-black/45 ring-1 ring-white/15">
+    <div
+      v-if="slipOverlay.showSourceRange"
+      class="absolute inset-x-1.5 top-1 h-1.5 rounded-full bg-black/45 ring-1 ring-white/15"
+    >
       <div
         v-if="slipOverlay.hasSourceRange"
         class="absolute top-0 bottom-0 min-w-2 rounded-full bg-cyan-300 shadow-[0_0_8px_rgba(103,232,249,0.75)]"
@@ -43,7 +51,10 @@ const { t } = useI18n();
       <span v-if="slipOverlay.direction" class="text-cyan-300">{{ slipOverlay.direction }}</span>
       <span>{{ slipOverlay.timecode }}</span>
     </div>
-    <div class="absolute inset-x-1.5 bottom-1 flex justify-between">
+    <div
+      v-if="slipOverlay.showSourceRange"
+      class="absolute inset-x-1.5 bottom-1 flex justify-between"
+    >
       <span class="h-2 w-px rounded-full bg-cyan-200/80" />
       <span class="h-2 w-px rounded-full bg-cyan-200/80" />
     </div>
@@ -56,7 +67,10 @@ const { t } = useI18n();
     :title="t('fastcat.timeline.trimOverlayMode')"
     data-trim-overlay
   >
-    <div class="absolute inset-x-1.5 top-1 h-1.5 rounded-full bg-black/45 ring-1 ring-white/15">
+    <div
+      v-if="trimOverlay.showSourceRange"
+      class="absolute inset-x-1.5 top-1 h-1.5 rounded-full bg-black/45 ring-1 ring-white/15"
+    >
       <div
         v-if="trimOverlay.hasSourceRange"
         class="absolute top-0 bottom-0 min-w-2 rounded-full bg-amber-300 shadow-[0_0_8px_rgba(251,191,36,0.75)]"
@@ -72,7 +86,10 @@ const { t } = useI18n();
       <span v-if="trimOverlay.direction" class="text-amber-300">{{ trimOverlay.direction }}</span>
       <span>{{ trimOverlay.timecode }}</span>
     </div>
-    <div class="absolute inset-x-1.5 bottom-1 flex justify-between">
+    <div
+      v-if="trimOverlay.showSourceRange"
+      class="absolute inset-x-1.5 bottom-1 flex justify-between"
+    >
       <span class="h-2 w-px rounded-full bg-amber-200/80" />
       <span class="h-2 w-px rounded-full bg-amber-200/80" />
     </div>

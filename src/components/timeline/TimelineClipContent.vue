@@ -33,6 +33,7 @@ interface ClipPreviewOverlay {
   direction: string;
   timecode: string;
   hasSourceRange: boolean;
+  showSourceRange: boolean;
 }
 
 interface SlipOverlayView extends ClipPreviewOverlay {
