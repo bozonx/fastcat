@@ -16,6 +16,26 @@ export function useTimelinePlayheadDrag(scrollEl: Ref<HTMLElement | null>) {
   const hasPlayheadMoved = ref(false);
   const workspaceStore = useWorkspaceStore();
 
+  // The element that actually holds the pointer capture (the time ruler that was
+  // pressed). Kept explicitly because the terminal pointerup/move may be
+  // delivered with `currentTarget` set to a different element (the window or the
+  // scroll container), so releasing capture off `e.currentTarget` would be a
+  // silent no-op and leave the capture dangling.
+  let captureEl: HTMLElement | null = null;
+  let capturePointerId: number | null = null;
+
+  function releaseCapture() {
+    if (captureEl !== null && capturePointerId !== null) {
+      try {
+        captureEl.releasePointerCapture(capturePointerId);
+      } catch {
+        // Element may be gone or capture already released — harmless.
+      }
+    }
+    captureEl = null;
+    capturePointerId = null;
+  }
+
   const { hotkeyLookup, defaultHotkeyLookup } = useEffectiveHotkeys();
 
   function getLocalX(e: MouseEvent): number {
@@ -47,6 +67,7 @@ export function useTimelinePlayheadDrag(scrollEl: Ref<HTMLElement | null>) {
         startDragTimeUs.value = null;
       }
       e.preventDefault();
+      releaseCapture();
       window.removeEventListener('keydown', onGlobalKeyDown);
     }
   }
@@ -55,8 +76,17 @@ export function useTimelinePlayheadDrag(scrollEl: Ref<HTMLElement | null>) {
     isDraggingPlayhead.value = true;
     hasPlayheadMoved.value = false;
     startDragPos.value = { x: e.clientX, y: e.clientY };
-    dragOriginRect.value = (e.currentTarget as HTMLElement | null)?.getBoundingClientRect() ?? null;
-    (e.currentTarget as HTMLElement | null)?.setPointerCapture(e.pointerId);
+    const target = e.currentTarget as HTMLElement | null;
+    dragOriginRect.value = target?.getBoundingClientRect() ?? null;
+    if (target) {
+      try {
+        target.setPointerCapture(e.pointerId);
+        captureEl = target;
+        capturePointerId = e.pointerId;
+      } catch {
+        // Capture can fail if the pointer was already released; harmless.
+      }
+    }
     window.addEventListener('keydown', onGlobalKeyDown);
   }
 
@@ -93,12 +123,10 @@ export function useTimelinePlayheadDrag(scrollEl: Ref<HTMLElement | null>) {
     return true;
   }
 
-  function onGlobalPointerUp(e?: PointerEvent) {
+  function onGlobalPointerUp(_e?: PointerEvent) {
     if (!isDraggingPlayhead.value) return;
-    if (e) {
-      (e.currentTarget as HTMLElement | null)?.releasePointerCapture(e.pointerId);
-    }
 
+    releaseCapture();
     isDraggingPlayhead.value = false;
     startDragTimeUs.value = null;
     dragOriginRect.value = null;
@@ -106,6 +134,7 @@ export function useTimelinePlayheadDrag(scrollEl: Ref<HTMLElement | null>) {
   }
 
   onBeforeUnmount(() => {
+    releaseCapture();
     window.removeEventListener('keydown', onGlobalKeyDown);
   });
 
