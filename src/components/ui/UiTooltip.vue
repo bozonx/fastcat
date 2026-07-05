@@ -90,7 +90,7 @@ onBeforeUnmount(() => {
   >
     <span
       ref="root"
-      class="inline-flex"
+      class="inline-flex [&>*]:flex-1 [&>*]:min-w-0"
       :aria-describedby="isOpen ? tooltipId : undefined"
       @pointerenter="openHover"
       @pointerleave="closeHover"

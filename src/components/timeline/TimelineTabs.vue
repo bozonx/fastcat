@@ -236,15 +236,15 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="timeline-tabs flex items-center h-full min-w-0 flex-1 select-none">
+  <div class="timeline-tabs flex items-center h-7 min-w-0 flex-1 select-none">
     <div
       ref="scrollContainer"
-      class="flex h-full w-full overflow-x-auto no-scrollbar items-center min-w-0"
+      class="flex h-7 w-full overflow-x-auto no-scrollbar items-center min-w-0"
     >
-      <UContextMenu :items="timelineTabContextMenuItems" class="flex h-full min-w-max">
+      <UContextMenu :items="timelineTabContextMenuItems" class="flex h-7 min-w-max">
         <VueDraggable
           v-model="openPaths"
-          class="flex h-full items-center"
+          class="flex h-7 items-center"
           :animation="150"
           ghost-class="tab-ghost"
         >
@@ -259,7 +259,7 @@ onBeforeUnmount(() => {
           >
             <div
               :data-path="path"
-              class="group relative flex items-center h-full px-4 gap-2 border-r border-ui-border cursor-pointer min-w-[120px] max-w-[220px] transition-all duration-200 border-b"
+              class="group relative flex items-center h-7 px-4 gap-2 border-r border-ui-border cursor-pointer min-w-[120px] max-w-[220px] transition-all duration-200 border-b"
               :class="[
                 isActive(path)
                   ? 'active-tab text-selection-accent-400 border-b-transparent'

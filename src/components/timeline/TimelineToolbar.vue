@@ -11,6 +11,7 @@ import { usePresetsStore } from '~/stores/presets.store';
 import { useProjectTabsStore } from '~/stores/project-tabs.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import UiSplitDropdownButton from '~/components/ui/UiSplitDropdownButton.vue';
+import UiIconToggleGroup from '~/components/ui/UiIconToggleGroup.vue';
 import UiWheelSlider from '~/components/ui/UiWheelSlider.vue';
 import {
   DEFAULT_TIMELINE_ZOOM_POSITION,
@@ -124,6 +125,38 @@ const trimMenuItems = computed(() => {
   ];
 });
 
+const snapModeModel = computed({
+  get: () => settingsStore.toolbarSnapMode,
+  set: (value: ToolbarSnapMode) => settingsStore.selectToolbarSnapMode(value),
+});
+
+const snapModeOptions = computed(() => [
+  {
+    value: 'snap' as ToolbarSnapMode,
+    icon: 'i-heroicons-link',
+    tooltip: getHotkeyTitle(
+      t('fastcat.timeline.snapModeFullDescription'),
+      'timeline.selectSnapModeSnap',
+    ),
+  },
+  {
+    value: 'no_snap' as ToolbarSnapMode,
+    icon: 'i-heroicons-link-slash',
+    tooltip: getHotkeyTitle(
+      t('fastcat.timeline.snapModeFramesDescription'),
+      'timeline.selectSnapModeNoSnap',
+    ),
+  },
+  {
+    value: 'free_mode' as ToolbarSnapMode,
+    icon: 'i-heroicons-arrows-pointing-out',
+    tooltip: getHotkeyTitle(
+      t('fastcat.timeline.snapModeFreeDescription'),
+      'timeline.selectSnapModeFree',
+    ),
+  },
+]);
+
 const moveModeOptions = computed<
   {
     value: 'none' | ToolbarDragMode;
@@ -151,7 +184,15 @@ const moveModeOptions = computed<
   },
 ]);
 
-const currentMoveMode = computed({
+const moveModeToggleOptions = computed(() =>
+  moveModeOptions.value.map((opt) => ({
+    value: opt.value,
+    icon: opt.icon,
+    tooltip: opt.commandId ? getHotkeyTitle(opt.tooltip, opt.commandId) : opt.tooltip,
+  })),
+);
+
+const currentMoveMode = computed<'none' | ToolbarDragMode>({
   get: () => {
     if (!settingsStore.toolbarDragModeEnabled) return 'none';
     return settingsStore.toolbarDragMode;
@@ -191,10 +232,6 @@ const zoomCombinedTooltip = computed(() => {
 
   return parts.join(' | ');
 });
-
-function selectToolbarSnapMode(mode: ToolbarSnapMode) {
-  settingsStore.selectToolbarSnapMode(mode);
-}
 
 function toggleTrimMode(event?: MouseEvent) {
   event?.preventDefault();
@@ -328,56 +365,7 @@ function onToolbarContextMenu(e: MouseEvent) {
         class="flex-1 flex items-center justify-center gap-2"
         @click.self="timelineStore.selectTimelineProperties()"
       >
-        <UFieldGroup class="inline-flex">
-          <UiTooltip
-            :text="
-              getHotkeyTitle(
-                t('fastcat.timeline.snapModeFullDescription'),
-                'timeline.selectSnapModeSnap',
-              )
-            "
-          >
-            <UiActionButton
-              size="xs"
-              :variant="settingsStore.toolbarSnapMode === 'snap' ? 'solid' : 'ghost'"
-              :color="settingsStore.toolbarSnapMode === 'snap' ? 'primary' : 'neutral'"
-              icon="i-heroicons-link"
-              @click="selectToolbarSnapMode('snap')"
-            />
-          </UiTooltip>
-          <UiTooltip
-            :text="
-              getHotkeyTitle(
-                t('fastcat.timeline.snapModeFramesDescription'),
-                'timeline.selectSnapModeNoSnap',
-              )
-            "
-          >
-            <UiActionButton
-              size="xs"
-              :variant="settingsStore.toolbarSnapMode === 'no_snap' ? 'solid' : 'ghost'"
-              :color="settingsStore.toolbarSnapMode === 'no_snap' ? 'primary' : 'neutral'"
-              icon="i-heroicons-link-slash"
-              @click="selectToolbarSnapMode('no_snap')"
-            />
-          </UiTooltip>
-          <UiTooltip
-            :text="
-              getHotkeyTitle(
-                t('fastcat.timeline.snapModeFreeDescription'),
-                'timeline.selectSnapModeFree',
-              )
-            "
-          >
-            <UiActionButton
-              size="xs"
-              :variant="settingsStore.toolbarSnapMode === 'free_mode' ? 'solid' : 'ghost'"
-              :color="settingsStore.toolbarSnapMode === 'free_mode' ? 'primary' : 'neutral'"
-              icon="i-heroicons-arrows-pointing-out"
-              @click="selectToolbarSnapMode('free_mode')"
-            />
-          </UiTooltip>
-        </UFieldGroup>
+        <UiIconToggleGroup v-model="snapModeModel" :options="snapModeOptions" />
 
         <UiTooltip :text="t('videoEditor.settings.snappingTitle')">
           <UiActionButton
@@ -392,21 +380,7 @@ function onToolbarContextMenu(e: MouseEvent) {
 
         <div class="w-px h-4 bg-ui-border mx-1 opacity-50" />
 
-        <UFieldGroup class="inline-flex">
-          <UiTooltip
-            v-for="opt in moveModeOptions"
-            :key="opt.value"
-            :text="opt.commandId ? getHotkeyTitle(opt.tooltip, opt.commandId) : opt.tooltip"
-          >
-            <UiActionButton
-              size="xs"
-              :variant="currentMoveMode === opt.value ? 'solid' : 'ghost'"
-              :color="currentMoveMode === opt.value ? 'primary' : 'neutral'"
-              :icon="opt.icon"
-              @click="currentMoveMode = opt.value"
-            />
-          </UiTooltip>
-        </UFieldGroup>
+        <UiIconToggleGroup v-model="currentMoveMode" :options="moveModeToggleOptions" />
 
         <UiTooltip :text="t('fastcat.timeline.trim')">
           <UiSplitDropdownButton

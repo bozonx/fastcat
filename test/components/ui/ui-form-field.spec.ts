@@ -79,14 +79,14 @@ describe('UiFormField', () => {
       expect(component.find('.field-content').exists()).toBe(true);
     });
 
-    it('does not wrap slot when resettable is undefined', async () => {
+    it('does not show reset button when resettable is undefined', async () => {
       const component = await mountSuspended(UiFormField, {
         props: { label: 'Test' },
         slots: { default: () => h('span', { class: 'field-content' }, 'Value') },
       });
 
-      // No flex wrapper should be present
-      expect(component.find('.flex.items-center.gap-2').exists()).toBe(false);
+      // No reset button should be present
+      expect(component.find('button').exists()).toBe(false);
       // Slot content is rendered directly
       expect(component.find('.field-content').exists()).toBe(true);
     });

@@ -19,6 +19,8 @@ interface Props {
   resettable?: boolean;
   /** Tooltip text for the reset button */
   resetTooltip?: string;
+  /** Vertical alignment of the reset button row: 'center' (default) or 'start' */
+  resetAlign?: 'center' | 'start';
 }
 
 const props = defineProps<Props>();
@@ -61,7 +63,7 @@ const nonDefaultSlots = computed(() => {
   >
     <template #default>
       <!-- When resettable prop is used, wrap default slot in a flex row with the reset button -->
-      <div v-if="resettable !== undefined" class="flex items-center gap-2">
+      <div v-if="resettable !== undefined" class="flex gap-2" :class="resetAlign === 'start' ? 'items-start' : 'items-center'">
         <div class="flex-1 min-w-0">
           <slot />
         </div>
