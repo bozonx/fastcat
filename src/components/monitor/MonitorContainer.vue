@@ -596,7 +596,7 @@ watch(viewportRef, (vp) => {
           <!-- Playback controls bar -->
           <div
             data-panel-drag-handle
-            class="flex flex-wrap items-center justify-center gap-3 border-ui-border shrink-0 transition-all duration-300 select-none"
+            class="flex flex-nowrap items-center justify-center gap-2 border-ui-border shrink-0 transition-all duration-300 select-none"
             :class="[
               effectiveFullscreen
                 ? [
@@ -631,10 +631,11 @@ watch(viewportRef, (vp) => {
                   :text="getHotkeyTitle(t('fastcat.monitor.exitFullscreen'), 'general.fullscreen')"
                 >
                   <UiActionButton
-                    size="sm"
+                    size="xs"
                     color="neutral"
                     variant="ghost"
-                    icon="lucide:minimize"
+                    icon="i-heroicons-arrows-pointing-in"
+                    class="text-ui-text-muted hover:text-ui-text"
                     :aria-label="t('fastcat.monitor.exitFullscreen')"
                     @click="exitBrowserFullscreen()"
                   />
@@ -648,7 +649,8 @@ watch(viewportRef, (vp) => {
                     size="xs"
                     color="neutral"
                     variant="ghost"
-                    icon="lucide:maximize"
+                    icon="i-heroicons-arrows-pointing-out"
+                    class="text-ui-text-muted hover:text-ui-text"
                     :aria-label="t('fastcat.monitor.fullscreen')"
                     @click="enterBrowserFullscreen()"
                   />
@@ -678,6 +680,7 @@ watch(viewportRef, (vp) => {
                 inactive-variant="ghost"
                 active-color="neutral"
                 active-variant="soft"
+                class="text-ui-text-muted hover:text-ui-text"
                 :active-bg="'color-mix(in srgb, var(--selection-accent-500) 12%, transparent)'"
                 :active-text="'var(--selection-accent-400)'"
                 no-toggle
@@ -701,6 +704,7 @@ watch(viewportRef, (vp) => {
                 inactive-variant="ghost"
                 active-color="neutral"
                 active-variant="soft"
+                class="text-ui-text-muted hover:text-ui-text"
                 :active-bg="'color-mix(in srgb, var(--selection-accent-500) 12%, transparent)'"
                 :active-text="'var(--selection-accent-400)'"
                 no-toggle
@@ -716,6 +720,7 @@ watch(viewportRef, (vp) => {
                 variant="ghost"
                 color="neutral"
                 icon="i-lucide-skip-back"
+                class="text-ui-text-muted hover:text-ui-text"
                 :aria-label="t('fastcat.monitor.rewind')"
                 :disabled="!canInteractPlayback"
                 @click="
@@ -731,10 +736,10 @@ watch(viewportRef, (vp) => {
             <UiTooltip :text="getHotkeyTitle(t('fastcat.monitor.play'), 'playback.toggle')">
               <UButton
                 size="md"
-                variant="solid"
+                variant="subtle"
                 color="neutral"
                 data-monitor-play
-                class="relative overflow-hidden min-w-8 px-1.5"
+                class="relative overflow-hidden min-w-8 h-8 rounded-lg bg-neutral-800 hover:bg-neutral-700 active:bg-neutral-600 text-white border border-neutral-700/60 shadow-xs px-1.5"
                 :aria-label="t('fastcat.monitor.play')"
                 :disabled="!canInteractPlayback"
                 @click="
@@ -759,7 +764,7 @@ watch(viewportRef, (vp) => {
                   <UIcon v-else name="i-heroicons-play-20-solid" class="w-5 h-5 ml-0.5" />
                   <span
                     class="absolute text-3xs font-mono leading-none opacity-90 pointer-events-none"
-                    style="right: 4px; bottom: 0"
+                    style="right: 4px; bottom: 1px"
                   >
                     {{ speedButtonLabel }}
                   </span>
@@ -773,6 +778,7 @@ watch(viewportRef, (vp) => {
                 variant="ghost"
                 color="neutral"
                 icon="i-lucide-skip-forward"
+                class="text-ui-text-muted hover:text-ui-text"
                 :aria-label="t('fastcat.monitor.end')"
                 :disabled="!canInteractPlayback"
                 @click="
@@ -803,6 +809,7 @@ watch(viewportRef, (vp) => {
                 color="neutral"
                 variant="ghost"
                 icon="i-heroicons-ellipsis-vertical-16-solid"
+                class="text-ui-text-muted hover:text-ui-text"
                 square
                 :title="t('common.more')"
               />

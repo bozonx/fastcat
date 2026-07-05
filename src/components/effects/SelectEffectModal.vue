@@ -89,14 +89,14 @@ function handleSelect(type: string) {
 
 <template>
   <UiModal v-model:open="isOpen" :title="modalTitle">
-    <div class="space-y-6 max-h-[60vh] overflow-y-auto pr-2">
+    <div class="space-y-3 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
       <!-- Basic Effects -->
       <CollapsibleEffectGroup
         v-if="groupedEffects.basic.length > 0"
         v-model:is-collapsed="presetsStore.effectsStandardCollapsed"
         :title="t('fastcat.effects.groups.standard')"
       >
-        <div class="grid grid-cols-1 gap-2">
+        <div class="grid grid-cols-1 gap-1">
           <EffectCard
             v-for="effect in groupedEffects.basic"
             :key="effect.type"
@@ -113,7 +113,7 @@ function handleSelect(type: string) {
         v-model:is-collapsed="presetsStore.audioStandardCollapsed"
         :title="t('fastcat.effects.groups.artistic')"
       >
-        <div class="grid grid-cols-1 gap-2">
+        <div class="grid grid-cols-1 gap-1">
           <EffectCard
             v-for="effect in groupedEffects.nonBasic"
             :key="effect.type"
@@ -130,7 +130,7 @@ function handleSelect(type: string) {
         v-model:is-collapsed="presetsStore.effectsCustomCollapsed"
         :title="t('fastcat.effects.groups.custom')"
       >
-        <div class="grid grid-cols-1 gap-2">
+        <div class="grid grid-cols-1 gap-1">
           <EffectCard
             v-for="effect in groupedEffects.custom"
             :key="effect.type"

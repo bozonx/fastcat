@@ -209,15 +209,15 @@ function isSelected(kind: 'text' | 'shape' | 'hud', id: string) {
     </div>
 
     <!-- Content -->
-    <div class="flex-1 overflow-y-auto px-3 py-3 space-y-3 custom-scrollbar bg-ui-bg-elevated">
+    <div class="flex-1 overflow-y-auto px-2 py-2 space-y-2.5 custom-scrollbar bg-ui-bg-elevated">
       <!-- Texts -->
-      <div v-show="activeTab === 'texts'" class="flex flex-col gap-4 pb-4">
+      <div v-show="activeTab === 'texts'" class="flex flex-col gap-2.5 pb-2">
         <!-- Standard Texts -->
         <CollapsibleEffectGroup
           v-model:is-collapsed="presetsStore.textsStandardCollapsed"
           :title="t('fastcat.effects.groups.standard')"
         >
-          <div class="grid grid-cols-1 gap-2">
+          <div class="grid grid-cols-1 gap-1">
             <EffectCard
               v-for="text in standardTexts"
               :key="text.type"
@@ -242,7 +242,7 @@ function isSelected(kind: 'text' | 'shape' | 'hud', id: string) {
         >
           <VueDraggable
             :model-value="customTexts"
-            class="flex flex-col gap-2"
+            class="flex flex-col gap-1"
             :animation="150"
             ghost-class="opacity-50"
             filter="button"
@@ -278,13 +278,13 @@ function isSelected(kind: 'text' | 'shape' | 'hud', id: string) {
       </div>
 
       <!-- Shapes -->
-      <div v-show="activeTab === 'shapes'" class="flex flex-col gap-4 pb-4">
+      <div v-show="activeTab === 'shapes'" class="flex flex-col gap-2.5 pb-2">
         <!-- Standard Shapes -->
         <CollapsibleEffectGroup
           v-model:is-collapsed="presetsStore.shapesStandardCollapsed"
           :title="t('fastcat.effects.groups.standard')"
         >
-          <div class="grid grid-cols-1 gap-2">
+          <div class="grid grid-cols-1 gap-1">
             <EffectCard
               v-for="shape in standardShapes"
               :key="shape.type"
@@ -306,7 +306,7 @@ function isSelected(kind: 'text' | 'shape' | 'hud', id: string) {
         >
           <VueDraggable
             :model-value="customShapes"
-            class="flex flex-col gap-2"
+            class="flex flex-col gap-1"
             :animation="150"
             ghost-class="opacity-50"
             filter="button"
@@ -338,13 +338,17 @@ function isSelected(kind: 'text' | 'shape' | 'hud', id: string) {
       </div>
 
       <!-- HUDs -->
-      <div v-if="isHudFeatureEnabled" v-show="activeTab === 'hud'" class="flex flex-col gap-4 pb-4">
+      <div
+        v-if="isHudFeatureEnabled"
+        v-show="activeTab === 'hud'"
+        class="flex flex-col gap-2.5 pb-2"
+      >
         <!-- Standard HUDs -->
         <CollapsibleEffectGroup
           v-model:is-collapsed="presetsStore.hudsStandardCollapsed"
           :title="t('fastcat.effects.groups.standard')"
         >
-          <div class="grid grid-cols-1 gap-2">
+          <div class="grid grid-cols-1 gap-1">
             <EffectCard
               v-for="hud in standardHuds"
               :key="hud.type"
@@ -366,7 +370,7 @@ function isSelected(kind: 'text' | 'shape' | 'hud', id: string) {
         >
           <VueDraggable
             :model-value="customHuds"
-            class="flex flex-col gap-2"
+            class="flex flex-col gap-1"
             :animation="150"
             ghost-class="opacity-50"
             filter="button"

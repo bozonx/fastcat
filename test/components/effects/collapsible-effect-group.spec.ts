@@ -26,7 +26,7 @@ describe('CollapsibleEffectGroup', () => {
       slots: { default: '<div class="content">Content</div>' },
     });
 
-    const slotWrapper = component.find('.space-y-2 > div');
+    const slotWrapper = component.find('.effect-group-content');
     expect(slotWrapper.exists()).toBe(true);
   });
 

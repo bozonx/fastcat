@@ -41,39 +41,39 @@ function selectPreset(id: string) {
     :title="t('fastcat.library.texts.selectPreset')"
     @close="emit('close')"
   >
-    <div class="flex flex-col gap-6">
+    <div class="flex flex-col gap-4">
       <!-- Standard -->
       <div v-if="standardPresets.length > 0">
-        <h3 class="text-sm font-medium text-ui-text-muted mb-3 px-1 uppercase tracking-wider">
+        <h3 class="text-2xs font-semibold text-ui-text-muted mb-2 px-1 uppercase tracking-wider">
           {{ t('fastcat.effects.groups.standard') }}
         </h3>
-        <div class="grid grid-cols-2 gap-2">
+        <div class="grid grid-cols-2 gap-1.5">
           <button
             v-for="p in standardPresets"
             :key="p.id"
-            class="flex items-center gap-3 p-3 rounded-lg border text-left transition-all hover:bg-ui-bg-hover active:scale-95 border-ui-border bg-ui-bg-muted"
+            class="flex items-center gap-2 px-2.5 py-1.5 rounded border text-left transition-colors hover:bg-ui-bg-muted hover:border-ui-border border-ui-border/60 bg-ui-bg-muted/40"
             @click="selectPreset(p.id)"
           >
-            <UIcon :name="p.icon" class="w-8 h-8 text-primary shrink-0" />
-            <span class="text-sm font-medium text-ui-text truncate">{{ p.name }}</span>
+            <UIcon :name="p.icon" class="w-4 h-4 text-primary shrink-0" />
+            <span class="text-xs font-medium text-ui-text truncate">{{ p.name }}</span>
           </button>
         </div>
       </div>
 
       <!-- Custom -->
       <div v-if="customPresets.length > 0">
-        <h3 class="text-sm font-medium text-ui-text-muted mb-3 px-1 uppercase tracking-wider">
+        <h3 class="text-2xs font-semibold text-ui-text-muted mb-2 px-1 uppercase tracking-wider">
           {{ t('fastcat.effects.groups.custom') }}
         </h3>
-        <div class="grid grid-cols-2 gap-2">
+        <div class="grid grid-cols-2 gap-1.5">
           <button
             v-for="p in customPresets"
             :key="p.id"
-            class="flex items-center gap-3 p-3 rounded-lg border text-left transition-all hover:bg-ui-bg-hover active:scale-95 border-ui-border bg-ui-bg-muted"
+            class="flex items-center gap-2 px-2.5 py-1.5 rounded border text-left transition-colors hover:bg-ui-bg-muted hover:border-ui-border border-ui-border/60 bg-ui-bg-muted/40"
             @click="selectPreset(p.id)"
           >
-            <UIcon name="i-heroicons-document-text" class="w-8 h-8 text-primary shrink-0" />
-            <span class="text-sm font-medium text-ui-text truncate">{{ p.name }}</span>
+            <UIcon name="i-heroicons-document-text" class="w-4 h-4 text-primary shrink-0" />
+            <span class="text-xs font-medium text-ui-text truncate">{{ p.name }}</span>
           </button>
         </div>
       </div>

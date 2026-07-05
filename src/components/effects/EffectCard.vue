@@ -69,34 +69,34 @@ function onPointerDown(e: PointerEvent) {
 
 <template>
   <div
-    class="effect-card flex items-center gap-3 p-3 rounded-lg border transition-colors group relative select-none"
+    class="effect-card flex items-center gap-2 px-2.5 py-1.5 rounded border transition-colors group relative select-none"
     :class="[
       isSelected
-        ? 'border-primary bg-primary/10'
-        : 'border-ui-border bg-ui-bg-muted hover:bg-ui-bg-elevated',
+        ? 'border-primary bg-primary/10 text-ui-text font-medium'
+        : 'border-ui-border/60 bg-ui-bg-muted/40 hover:bg-ui-bg-muted hover:border-ui-border',
       isDraggable ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer',
     ]"
     @pointerdown="onPointerDown"
     @click="emit('click')"
   >
-    <UIcon :name="cardIcon" class="w-8 h-8 text-primary shrink-0" />
+    <UIcon :name="cardIcon" class="w-4 h-4 text-primary shrink-0" />
 
-    <div class="flex-1 min-w-0 flex items-start gap-2">
+    <div class="flex-1 min-w-0 flex items-center gap-1.5">
       <div
         v-if="showDragHandle"
-        class="drag-handle w-4 h-4 text-ui-text-muted hover:text-ui-text cursor-grab active:cursor-grabbing shrink-0 mt-0.5"
+        class="drag-handle w-3.5 h-3.5 text-ui-text-muted hover:text-ui-text cursor-grab active:cursor-grabbing shrink-0"
       >
-        <UIcon name="i-heroicons-bars-3" class="w-4 h-4" />
+        <UIcon name="i-heroicons-bars-3" class="w-3.5 h-3.5" />
       </div>
 
       <div class="flex-1 min-w-0">
-        <div class="flex items-center justify-between gap-2">
-          <h4 class="text-sm font-medium text-ui-text truncate">
+        <div class="flex items-center justify-between gap-1.5">
+          <h4 class="text-xs font-medium text-ui-text truncate leading-snug">
             {{ cardTitle }}
           </h4>
           <div
             v-if="showDefaultStar || showRename || showAction"
-            class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+            class="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
           >
             <UButton
               v-if="showDefaultStar"
@@ -105,6 +105,7 @@ function onPointerDown(e: PointerEvent) {
               variant="ghost"
               size="xs"
               :title="t('fastcat.library.texts.setAsDefault')"
+              class="p-0.5"
               @click.stop="emit('toggle-default')"
             />
             <UButton
@@ -114,6 +115,7 @@ function onPointerDown(e: PointerEvent) {
               variant="ghost"
               size="xs"
               :title="t('common.rename')"
+              class="p-0.5"
               @click.stop="emit('rename')"
             />
             <UButton
@@ -122,13 +124,14 @@ function onPointerDown(e: PointerEvent) {
               :color="actionColor || 'red'"
               variant="ghost"
               size="xs"
+              class="p-0.5"
               @click.stop="emit('action')"
             />
           </div>
         </div>
         <p
           v-if="(manifest?.target === 'audio' || description) && cardDescription"
-          class="text-xs text-ui-text-muted mt-1 line-clamp-2"
+          class="text-2xs text-ui-text-muted mt-0.5 line-clamp-1 leading-tight"
           :title="cardDescription"
         >
           {{ cardDescription }}
@@ -142,7 +145,7 @@ function onPointerDown(e: PointerEvent) {
     >
       <UIcon
         name="i-heroicons-plus-circle"
-        class="w-5 h-5 text-ui-text-muted opacity-0 group-hover:opacity-100 transition-opacity"
+        class="w-4 h-4 text-ui-text-muted opacity-0 group-hover:opacity-100 transition-opacity"
       />
     </div>
   </div>

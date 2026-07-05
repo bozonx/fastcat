@@ -88,7 +88,6 @@ export function useProjectManagement(options: { isMobile?: boolean } = {}) {
   }
 
   const createError = computed<ValidationErrorKey | null>(() => {
-    if (!isCreateModalOpen.value) return null;
     const name = projectCreationSettings.value.name;
     const validationError = getProjectNameValidationError(name);
     if (validationError) return validationError;
@@ -99,7 +98,6 @@ export function useProjectManagement(options: { isMobile?: boolean } = {}) {
   const isCreateNameValid = computed(() => !createError.value);
 
   const renameError = computed<ValidationErrorKey | null>(() => {
-    if (!isRenameModalOpen.value) return null;
     const name = renameValue.value;
     const target = renameTargetProject.value;
     const validationError = getProjectNameValidationError(name);
@@ -118,7 +116,6 @@ export function useProjectManagement(options: { isMobile?: boolean } = {}) {
   });
 
   const duplicateError = computed<ValidationErrorKey | null>(() => {
-    if (!isDuplicateModalOpen.value) return null;
     const name = duplicateValue.value;
     const target = duplicateTargetProject.value;
     const validationError = getProjectNameValidationError(name);

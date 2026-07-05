@@ -111,18 +111,14 @@ describe('useProjectManagement', () => {
 
   describe('create validation', () => {
     it('reports nameRequired for empty project name', () => {
-      const { startCreateProject, projectCreationSettings, createError, isCreateNameValid } =
-        useProjectManagement();
-      startCreateProject();
+      const { projectCreationSettings, createError, isCreateNameValid } = useProjectManagement();
       projectCreationSettings.value.name = '   ';
       expect(createError.value).toBe('fastcat.projects.nameRequired');
       expect(isCreateNameValid.value).toBe(false);
     });
 
     it('reports nameInvalid for project name with forbidden characters', () => {
-      const { startCreateProject, projectCreationSettings, createError, isCreateNameValid } =
-        useProjectManagement();
-      startCreateProject();
+      const { projectCreationSettings, createError, isCreateNameValid } = useProjectManagement();
       projectCreationSettings.value.name = 'foo:bar';
       expect(createError.value).toBe('fastcat.projects.nameInvalid');
       expect(isCreateNameValid.value).toBe(false);
@@ -130,9 +126,7 @@ describe('useProjectManagement', () => {
 
     it('reports nameAlreadyExists when project name is taken', () => {
       workspaceMock.projects = ['Existing'];
-      const { startCreateProject, projectCreationSettings, createError, isCreateNameValid } =
-        useProjectManagement();
-      startCreateProject();
+      const { projectCreationSettings, createError, isCreateNameValid } = useProjectManagement();
       projectCreationSettings.value.name = 'Existing';
       expect(createError.value).toBe('fastcat.projects.nameAlreadyExists');
       expect(isCreateNameValid.value).toBe(false);
@@ -140,17 +134,14 @@ describe('useProjectManagement', () => {
 
     it('reports nameAlreadyExists when project name is in recentProjects', () => {
       workspaceMock.recentProjects = [{ projectName: 'Recent', projectId: 'recent-1' }];
-      const { startCreateProject, projectCreationSettings, createError } = useProjectManagement();
-      startCreateProject();
+      const { projectCreationSettings, createError } = useProjectManagement();
       projectCreationSettings.value.name = 'Recent';
       expect(createError.value).toBe('fastcat.projects.nameAlreadyExists');
     });
 
     it('has no error for valid unique project name', () => {
       workspaceMock.projects = ['Existing'];
-      const { startCreateProject, projectCreationSettings, createError, isCreateNameValid } =
-        useProjectManagement();
-      startCreateProject();
+      const { projectCreationSettings, createError, isCreateNameValid } = useProjectManagement();
       projectCreationSettings.value.name = 'NewProject';
       expect(createError.value).toBeNull();
       expect(isCreateNameValid.value).toBe(true);
@@ -444,22 +435,15 @@ describe('useProjectManagement', () => {
   });
 
   describe('closeDuplicateModal', () => {
-    it('sets isDuplicateModalOpen to false', () => {
-      const { startDuplicate, closeDuplicateModal, isDuplicateModalOpen } = useProjectManagement();
+    it('preserves duplicateValue and sets isDuplicateModalOpen to false on close', () => {
+      const { startDuplicate, closeDuplicateModal, isDuplicateModalOpen, duplicateValue } =
+        useProjectManagement();
       startDuplicate({ projectName: 'Source', projectPath: '/projects/Source' });
       expect(isDuplicateModalOpen.value).toBe(true);
+      expect(duplicateValue.value).toBe('Source');
       closeDuplicateModal();
       expect(isDuplicateModalOpen.value).toBe(false);
-    });
-
-    it('returns null for duplicateError when modal is closed to prevent validation error flashing', () => {
-      const { startDuplicate, closeDuplicateModal, duplicateError, isDuplicateModalOpen } =
-        useProjectManagement();
-      startDuplicate({ projectName: 'Source' });
-      expect(isDuplicateModalOpen.value).toBe(true);
-      closeDuplicateModal();
-      expect(isDuplicateModalOpen.value).toBe(false);
-      expect(duplicateError.value).toBeNull();
+      expect(duplicateValue.value).toBe('Source');
     });
   });
 

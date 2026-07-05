@@ -199,15 +199,15 @@ function updateCustomTransitionsOrder(newCustomTransitions: TransitionManifest[]
     </div>
 
     <!-- Content -->
-    <div class="flex-1 overflow-y-auto px-3 py-3 space-y-3 custom-scrollbar bg-ui-bg-elevated">
+    <div class="flex-1 overflow-y-auto px-2 py-2 space-y-2.5 custom-scrollbar bg-ui-bg-elevated">
       <!-- Video Effects -->
-      <div v-show="activeTab === 'video'" class="flex flex-col gap-4 pb-4">
+      <div v-show="activeTab === 'video'" class="flex flex-col gap-2.5 pb-2">
         <!-- Standard Effects -->
         <CollapsibleEffectGroup
           v-model:is-collapsed="presetsStore.effectsStandardCollapsed"
           :title="t('fastcat.effects.groups.standard')"
         >
-          <div class="grid grid-cols-1 gap-2">
+          <div class="grid grid-cols-1 gap-1">
             <EffectCard
               v-for="effect in standardEffects"
               :key="effect.type"
@@ -232,7 +232,7 @@ function updateCustomTransitionsOrder(newCustomTransitions: TransitionManifest[]
         >
           <VueDraggable
             :model-value="customEffects"
-            class="flex flex-col gap-2"
+            class="flex flex-col gap-1"
             :animation="150"
             ghost-class="opacity-50"
             filter="button"
@@ -265,13 +265,13 @@ function updateCustomTransitionsOrder(newCustomTransitions: TransitionManifest[]
       </div>
 
       <!-- Transitions -->
-      <div v-show="activeTab === 'transitions'" class="flex flex-col gap-4 pb-4">
+      <div v-show="activeTab === 'transitions'" class="flex flex-col gap-2.5 pb-2">
         <!-- Standard Transitions -->
         <CollapsibleEffectGroup
           v-model:is-collapsed="presetsStore.transitionsStandardCollapsed"
           :title="t('fastcat.effects.groups.standard')"
         >
-          <div class="grid grid-cols-1 gap-2">
+          <div class="grid grid-cols-1 gap-1">
             <EffectCard
               v-for="transition in standardTransitions"
               :key="transition.type"
@@ -297,7 +297,7 @@ function updateCustomTransitionsOrder(newCustomTransitions: TransitionManifest[]
         >
           <VueDraggable
             :model-value="customTransitions"
-            class="flex flex-col gap-2"
+            class="flex flex-col gap-1"
             :animation="150"
             ghost-class="opacity-50"
             filter="button"
@@ -332,15 +332,15 @@ function updateCustomTransitionsOrder(newCustomTransitions: TransitionManifest[]
 
       <template v-if="isAudioEffectsEnabled">
         <!-- Audio Effects -->
-        <div v-show="activeTab === 'audio'" class="flex flex-col gap-4 pb-4">
+        <div v-show="activeTab === 'audio'" class="flex flex-col gap-2.5 pb-2">
           <!-- Standard Audio Effects -->
           <CollapsibleEffectGroup
             v-model:is-collapsed="presetsStore.audioStandardCollapsed"
             :title="t('fastcat.effects.groups.standard')"
           >
-            <div class="flex flex-col gap-4">
+            <div class="flex flex-col gap-2">
               <div v-if="hasAudioEffects(basicAudioEffects)">
-                <div class="grid grid-cols-1 gap-2">
+                <div class="grid grid-cols-1 gap-1">
                   <EffectCard
                     v-for="effect in basicAudioEffects"
                     :key="effect.type"
@@ -358,10 +358,12 @@ function updateCustomTransitionsOrder(newCustomTransitions: TransitionManifest[]
               </div>
 
               <div v-if="hasAudioEffects(nonBasicAudioEffects)">
-                <h4 class="text-xs uppercase tracking-wide text-ui-text-muted mb-2">
+                <h4
+                  class="text-2xs uppercase tracking-wider font-semibold text-ui-text-muted mb-1 mt-1"
+                >
                   {{ t('fastcat.effects.groups.artistic') }}
                 </h4>
-                <div class="grid grid-cols-1 gap-2">
+                <div class="grid grid-cols-1 gap-1">
                   <EffectCard
                     v-for="effect in nonBasicAudioEffects"
                     :key="effect.type"
@@ -392,7 +394,7 @@ function updateCustomTransitionsOrder(newCustomTransitions: TransitionManifest[]
           >
             <VueDraggable
               :model-value="customAudioEffects"
-              class="flex flex-col gap-2"
+              class="flex flex-col gap-1"
               :animation="150"
               ghost-class="opacity-50"
               filter="button"

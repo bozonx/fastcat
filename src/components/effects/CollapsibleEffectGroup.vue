@@ -14,23 +14,23 @@ function toggle() {
 </script>
 
 <template>
-  <div class="space-y-2">
+  <div class="effect-group space-y-1">
     <button
-      class="flex items-center gap-2 w-full text-left font-medium text-ui-text group"
+      class="flex items-center gap-1.5 w-full text-left font-semibold text-ui-text group py-0.5"
       @click="toggle"
     >
       <UIcon
         :name="isCollapsed ? 'i-heroicons-chevron-right' : 'i-heroicons-chevron-down'"
-        class="w-4 h-4 text-ui-text-muted group-hover:text-ui-text transition-colors"
+        class="w-3.5 h-3.5 text-ui-text-muted group-hover:text-ui-text transition-colors shrink-0"
       />
       <span
-        class="uppercase text-xs tracking-wider text-ui-text-muted group-hover:text-ui-text transition-colors"
+        class="uppercase text-2xs font-semibold tracking-wider text-ui-text-muted group-hover:text-ui-text transition-colors"
       >
         {{ title }}
       </span>
     </button>
 
-    <div v-show="!isCollapsed" class="space-y-2">
+    <div v-show="!isCollapsed" class="effect-group-content space-y-1">
       <slot />
     </div>
   </div>
