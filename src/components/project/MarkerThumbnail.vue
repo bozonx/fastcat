@@ -21,9 +21,17 @@ const projectStore = useProjectStore();
 const thumbnailUrl = ref<string | null>(null);
 const isLoading = ref(false);
 
+// Monotonic token guarding against stale async results: when the marker moves
+// (`timeUs` changes) a fresh load starts while an earlier generation may still be
+// in flight. `addLatestMediaTask` only rejects tasks that haven't started yet, so
+// with queue concurrency > 1 an older in-flight render can resolve last and paint a
+// stale frame. Each load captures the current token and drops results once it moves.
+let loadToken = 0;
+
 async function loadThumbnail() {
   if (!projectStore.currentProjectId || !workspaceStore.hasPersistentStorage) return;
 
+  const token = ++loadToken;
   isLoading.value = true;
   try {
     // 1. Check OPFS cache first
@@ -32,6 +40,8 @@ async function loadThumbnail() {
       markerId: props.markerId,
       timeUs: props.timeUs,
     });
+
+    if (token !== loadToken) return;
 
     if (cachedUrl) {
       thumbnailUrl.value = cachedUrl;
@@ -51,15 +61,18 @@ async function loadThumbnail() {
       timeUs: props.timeUs,
       timelineDoc: timelineStore.timelineDoc,
       onComplete: (url) => {
+        if (token !== loadToken) return;
         thumbnailUrl.value = url;
         isLoading.value = false;
       },
       onError: (err) => {
+        if (token !== loadToken) return;
         log.warn('Failed to load marker thumbnail:', props.markerId, err);
         isLoading.value = false;
       },
     });
   } catch (error) {
+    if (token !== loadToken) return;
     log.error('Failed to load marker thumbnail:', props.markerId, error);
     isLoading.value = false;
   }
@@ -87,6 +100,7 @@ watch(
       :src="thumbnailUrl!"
       class="h-full w-full object-contain"
       alt="Marker Preview"
+      @error="thumbnailUrl = null"
     />
     <div v-else-if="isLoading" class="flex h-full w-full items-center justify-center">
       <div class="h-4 w-4 animate-spin rounded-full border-2 border-white/20 border-t-white" />

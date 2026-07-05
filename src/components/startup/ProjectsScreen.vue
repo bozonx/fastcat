@@ -447,6 +447,7 @@ const sortedProjects = computed(() => {
         />
         <UButton
           color="primary"
+          variant="solid"
           :disabled="!isCreateNameValid"
           :label="t('common.create')"
           @click="createNewProject"
@@ -513,6 +514,7 @@ const sortedProjects = computed(() => {
         />
         <UButton
           color="primary"
+          variant="solid"
           :disabled="!isRenameNameValid"
           :label="t('common.rename')"
           @click="renameProject"
@@ -538,6 +540,7 @@ const sortedProjects = computed(() => {
         />
         <UButton
           color="error"
+          variant="solid"
           :label="t('videoEditor.projectSettings.deleteProjectAction')"
           :loading="workspaceStore.isLoading"
           data-primary-focus="true"
@@ -594,6 +597,7 @@ const sortedProjects = computed(() => {
         />
         <UButton
           color="primary"
+          variant="solid"
           :disabled="!isDuplicateNameValid"
           :label="t('common.duplicate')"
           @click="confirmDuplicate"
