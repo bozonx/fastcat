@@ -45,6 +45,7 @@ const {
   handleOpenProject,
   renameProject,
   startRename,
+  closeRenameModal,
   startDelete,
   confirmDelete,
   closeDeleteModal,
@@ -518,7 +519,7 @@ function getProjectOpenTarget(project: ProjectActionTarget): string {
           variant="ghost"
           color="neutral"
           :label="t('common.cancel')"
-          @click="void (isRenameModalOpen = false)"
+          @click="closeRenameModal"
         />
         <UButton
           color="primary"
