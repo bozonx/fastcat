@@ -1,9 +1,16 @@
-import type { Page } from '@playwright/test';
-import { test, expect, waitForEditorReady } from '../fixtures/workspace';
+import type { Locator, Page } from '@playwright/test';
+import { test, expect } from '../fixtures/workspace';
 import type { E2eProject } from '../fixtures/workspace';
 import { MEDIA_FIXTURES } from '../../fixtures/media';
 import { seedProjectMedia } from '../../utils/e2e/file-manager';
-import { addFileToTrack, clipIds, selectTimelineClipsById, setTimelineZoom, trackIds } from '../../utils/e2e/timeline';
+import {
+  addFileToTrack,
+  clipIds,
+  getSelectedItemIds,
+  selectTimelineClipsById,
+  setTimelineZoom,
+  trackIds,
+} from '../../utils/e2e/timeline';
 import { readTimelineDoc, waitForTimelineDoc } from '../../utils/e2e/otio';
 
 /**
@@ -12,6 +19,16 @@ import { readTimelineDoc, waitForTimelineDoc } from '../../utils/e2e/otio';
  */
 test.describe('Web timeline audio fades', () => {
   test.slow();
+
+  async function dblclickLocatorCenter(page: Page, locator: Locator) {
+    const box = await locator.boundingBox();
+    if (!box) {
+      throw new Error('Volume control has no bounding box');
+    }
+
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 4 });
+    await page.mouse.dblclick(box.x + box.width / 2, box.y + box.height / 2);
+  }
 
   async function projectWithAudioClip(page: Page, project: E2eProject) {
     const { uiPath } = await seedProjectMedia(page, project, MEDIA_FIXTURES.audio.m4a, 'audio');
@@ -43,12 +60,14 @@ test.describe('Web timeline audio fades', () => {
     const clipLocator = page.locator(`[data-clip-id="${clipId}"]`);
 
     await selectTimelineClipsById(page, [clipId]);
-    const volumeControl = clipLocator.locator('[data-testid="clip-volume-control"]');
+    await expect.poll(async () => (await getSelectedItemIds(page)).includes(clipId)).toBe(true);
 
-    if (await volumeControl.isVisible()) {
-      await volumeControl.dblclick({ force: true });
-      const doc = await readTimelineDoc(page, e2eProject);
-      expect(doc.allClips[0].audioGain ?? 1).toBeCloseTo(1, 1);
-    }
+    const volumeControl = clipLocator.locator('[data-testid="clip-volume-control"]');
+    await expect(volumeControl).toHaveClass(/pointer-events-auto/);
+
+    await dblclickLocatorCenter(page, volumeControl);
+
+    const doc = await readTimelineDoc(page, e2eProject);
+    expect(doc.allClips[0].audioGain ?? 1).toBeCloseTo(1, 1);
   });
 });

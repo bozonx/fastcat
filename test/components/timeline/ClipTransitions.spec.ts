@@ -61,6 +61,19 @@ describe('ClipTransitions', () => {
     expect(hoverStyle).toContain('width:');
   });
 
+  it('shows transition create handles when the clip hover state is active', async () => {
+    const component = await mountSuspended(ClipTransitions, {
+      props: defaultProps,
+    });
+
+    const handle = component.get('[data-testid="transition-create-in"]');
+    expect(handle.classes()).toContain('opacity-0');
+
+    await component.setProps({ isClipHovered: true });
+
+    expect(handle.classes()).toContain('opacity-100');
+  });
+
   it('hides transition create handles on short tracks', async () => {
     const component = await mountSuspended(ClipTransitions, {
       props: {

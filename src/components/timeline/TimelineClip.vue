@@ -871,6 +871,7 @@ function handleTransitionCreate(
           :selected-transition="selectedTransition"
           :can-edit="canEditClipContent"
           :is-mobile="isMobile"
+          :is-clip-hovered="isHovered"
           @select="(e, payload) => emit('selectTransition', e, payload)"
           @resize="
             (e, payload) =>

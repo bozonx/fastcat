@@ -32,6 +32,7 @@ const props = defineProps<{
   canEdit: boolean;
   trackHeight: number;
   isMobile?: boolean;
+  isClipHovered?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -165,6 +166,16 @@ function getCreateTransitionHandleStyle(edge: 'in' | 'out'): Record<string, stri
     height: `${isHovered ? TRANSITION_CREATE_HANDLE_HOVER_HEIGHT_PX : TRANSITION_CREATE_HANDLE_HEIGHT_PX}px`,
     zIndex: 'var(--z-clip-handles)',
   };
+}
+
+function getCreateTransitionHandleClass(edge: 'in' | 'out') {
+  if (!canShowCreateTransitionHandle()) {
+    return 'hidden pointer-events-none';
+  }
+
+  return props.isClipHovered || hoveredCreateHandleEdge.value === edge
+    ? 'cursor-pointer opacity-100'
+    : 'cursor-pointer opacity-0 group-hover/clip:opacity-100';
 }
 
 // Active pointer-drag cleanup, so unmounting mid-drag doesn't leak window listeners.
@@ -442,11 +453,7 @@ onBeforeUnmount(() => {
       v-if="!clip.transitionIn && canEdit && !clip.locked && !track.locked"
       class="absolute transition-[opacity,width,height] pointer-events-auto"
       :style="getCreateTransitionHandleStyle('in')"
-      :class="[
-        canShowCreateTransitionHandle()
-          ? 'cursor-pointer opacity-0 group-hover/clip:opacity-100'
-          : 'hidden pointer-events-none',
-      ]"
+      :class="getCreateTransitionHandleClass('in')"
       data-testid="transition-create-in"
       @pointerenter="setCreateTransitionHandleHover('in')"
       @pointerleave="!isPointerDownOnCreateHandle && setCreateTransitionHandleHover(null)"
@@ -464,11 +471,7 @@ onBeforeUnmount(() => {
       v-if="!clip.transitionOut && canEdit && !clip.locked && !track.locked"
       class="absolute transition-[opacity,width,height] pointer-events-auto"
       :style="getCreateTransitionHandleStyle('out')"
-      :class="[
-        canShowCreateTransitionHandle()
-          ? 'cursor-pointer opacity-0 group-hover/clip:opacity-100'
-          : 'hidden pointer-events-none',
-      ]"
+      :class="getCreateTransitionHandleClass('out')"
       data-testid="transition-create-out"
       @pointerenter="setCreateTransitionHandleHover('out')"
       @pointerleave="!isPointerDownOnCreateHandle && setCreateTransitionHandleHover(null)"
