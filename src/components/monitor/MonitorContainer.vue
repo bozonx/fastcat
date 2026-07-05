@@ -739,7 +739,7 @@ watch(viewportRef, (vp) => {
                 variant="subtle"
                 color="neutral"
                 data-monitor-play
-                class="relative overflow-hidden min-w-8 h-8 rounded-lg bg-neutral-800 hover:bg-neutral-700 active:bg-neutral-600 text-white border border-neutral-700/60 shadow-xs px-1.5"
+                class="relative overflow-hidden w-9 h-8 rounded-lg bg-neutral-200 hover:bg-white active:bg-neutral-300 text-neutral-900 border-0 shadow-xs px-0"
                 :aria-label="t('fastcat.monitor.play')"
                 :disabled="!canInteractPlayback"
                 @click="
@@ -750,7 +750,7 @@ watch(viewportRef, (vp) => {
                 "
                 @wheel.prevent="handleSpeedWheel"
               >
-                <div class="flex items-center justify-center">
+                <div class="flex items-center justify-center w-full h-full">
                   <UIcon
                     v-if="timelineStore.isPlaying"
                     name="i-heroicons-stop-20-solid"
@@ -759,11 +759,11 @@ watch(viewportRef, (vp) => {
                   <UIcon
                     v-else-if="(selectedPlaybackSpeedOption?.value ?? 1) < 0"
                     name="i-heroicons-play-20-solid"
-                    class="w-5 h-5 scale-x-[-1]"
+                    class="w-5 h-5 -translate-x-0.5 scale-x-[-1]"
                   />
-                  <UIcon v-else name="i-heroicons-play-20-solid" class="w-5 h-5 ml-0.5" />
+                  <UIcon v-else name="i-heroicons-play-20-solid" class="w-5 h-5 translate-x-0.5" />
                   <span
-                    class="absolute text-3xs font-mono leading-none opacity-90 pointer-events-none"
+                    class="absolute text-3xs font-mono leading-none text-neutral-900 opacity-80 pointer-events-none"
                     style="right: 4px; bottom: 1px"
                   >
                     {{ speedButtonLabel }}

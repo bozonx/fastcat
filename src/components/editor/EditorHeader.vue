@@ -31,7 +31,7 @@ defineEmits(['open-project-settings', 'open-editor-settings', 'open-export-modal
       />
 
       <span
-        class="text-ui-text font-bold text-sm truncate max-w-[200px] cursor-pointer hover:text-white transition-colors shrink-0"
+        class="text-ui-text font-bold text-sm truncate max-w-[200px] cursor-pointer hover:text-white transition-colors shrink-0 select-none"
         :title="projectStore.currentProjectName ?? ''"
         @click="$emit('open-project-settings')"
       >
