@@ -47,7 +47,9 @@ export function useClipDrop(options: UseClipDropOptions) {
       const hasAudioEffect = Boolean(getAudioEffectManifest(type));
       const hasVideoEffect = Boolean(getVideoEffectManifest(type));
 
-      return options.track.value.kind === 'audio' ? hasAudioEffect : hasAudioEffect || hasVideoEffect;
+      return options.track.value.kind === 'audio'
+        ? hasAudioEffect
+        : hasAudioEffect || hasVideoEffect;
     }
 
     return false;
