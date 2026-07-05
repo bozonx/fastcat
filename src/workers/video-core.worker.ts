@@ -36,6 +36,7 @@ import { extractMetadata, runExport, extractAudioStream } from './core/export';
 import { runTranscode } from './core/transcode';
 import { VIDEO_CORE_LIMITS } from '../utils/constants';
 import { loadFonts } from '../utils/video-editor/load-fonts';
+import { isTauriRuntime } from '~/utils/runtime';
 const log = createDevLogger('video-core.worker');
 
 DOMAdapter.set(WebWorkerAdapter);
@@ -161,10 +162,7 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
     designWidth?: number,
     designHeight?: number,
   ) {
-    if (
-      typeof (globalThis as unknown as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__ !==
-      'undefined'
-    ) {
+    if (isTauriRuntime()) {
       throw new Error('JS video core is disabled in Tauri runtime');
     }
     await loadFonts();

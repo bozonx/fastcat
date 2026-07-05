@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue';
-import { open } from '@tauri-apps/plugin-dialog';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useStoragePersistence } from '~/composables/useStoragePersistence';
 import { formatBytes } from '~/utils/format';
@@ -81,6 +80,7 @@ const ephemeralTmpRootPath = computed({
 async function pickDesktopPath(target: 'content' | 'data' | 'temp' | 'proxies' | 'ephemeralTmp') {
   if (!isDesktopTauri.value) return;
 
+  const { open } = await import('@tauri-apps/plugin-dialog');
   const selected = await open({
     directory: true,
     multiple: false,

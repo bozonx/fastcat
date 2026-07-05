@@ -15,7 +15,6 @@ import {
   normalizeExportFilename,
 } from '~/composables/timeline/export';
 import { createTimelineFormatFromProjectDefaults } from '~/timeline/format';
-import { copyFile, rename } from '@tauri-apps/plugin-fs';
 import { withFileIoSlot } from '~/utils/io/io-governor';
 import { isTauriRuntime } from '~/utils/runtime';
 import { randomToken } from '~/utils/ids';
@@ -539,6 +538,7 @@ export function useExportForm() {
           if (!tempNativePath || !finalNativePath) {
             throw new Error('Native export file path is not available for finalizing');
           }
+          const { rename, copyFile } = await import('@tauri-apps/plugin-fs');
           try {
             await rename(tempNativePath, finalNativePath);
           } catch (renameErr) {

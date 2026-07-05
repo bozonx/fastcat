@@ -3,7 +3,6 @@ import { OpfsFileSystemAdapter } from '~/file-manager/core/vfs/opfs.adapter';
 import { RouterFileSystemAdapter, type VfsRoute } from '~/file-manager/core/vfs/router.adapter';
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
-import { TauriFileSystemAdapter } from '~/file-manager/core/vfs/tauri.adapter';
 import type { TauriDirectoryHandle } from '~/stores/workspace/provider/tauri-handle';
 import type {
   IFileSystemAdapter,
@@ -125,6 +124,9 @@ interface WorkspaceAdapters {
   projectProxies: IFileSystemAdapter;
 }
 
+type TauriFileSystemAdapterConstructor =
+  typeof import('~/file-manager/core/vfs/tauri.adapter').TauriFileSystemAdapter;
+
 /** Matches a POSIX (`/…`) or Windows (`C:\…`) absolute path. */
 function isAbsoluteStorageRoot(path: string): boolean {
   return /^\//.test(path) || /^[a-zA-Z]:[\\/]/.test(path);
@@ -133,6 +135,7 @@ function isAbsoluteStorageRoot(path: string): boolean {
 function createTauriWorkspaceAdapters(
   workspaceStore: ReturnType<typeof useWorkspaceStore>,
   projectStore: ReturnType<typeof useProjectStore>,
+  TauriFileSystemAdapter: TauriFileSystemAdapterConstructor,
   fastcatDevDir?: string,
 ): WorkspaceAdapters {
   // Resolve the workspace path *dynamically* on every call: the workspace is
@@ -348,6 +351,7 @@ export default defineNuxtPlugin(async (nuxtApp) => {
     ? createTauriWorkspaceAdapters(
         workspaceStore,
         projectStore,
+        (await import('~/file-manager/core/vfs/tauri.adapter')).TauriFileSystemAdapter,
         runtimeConfig.public.fastcatDevDir as string | undefined,
       )
     : createOpfsWorkspaceAdapters(workspaceStore, projectStore);
