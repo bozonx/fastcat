@@ -814,6 +814,14 @@ mod tests {
         engine.shared.0.lock().seek_serial
     }
 
+    fn stop_producer(engine: &NativeAudioEngine) {
+        engine.running.store(false, Ordering::Release);
+        engine.shared.1.notify_all();
+        if let Some(handle) = engine.producer.lock().take() {
+            handle.join().expect("producer thread must stop cleanly");
+        }
+    }
+
     fn layer(
         id: &str,
         path: &str,
@@ -1365,6 +1373,9 @@ mod tests {
             "paused seek must keep playing = false"
         );
 
+        // Keep this assertion deterministic: the producer is allowed to consume
+        // scrub_request immediately after scrub_preview publishes it.
+        stop_producer(&engine);
         engine.scrub_preview(2.0, 0.1);
         assert!(
             engine.shared.0.lock().scrub_request.is_some(),

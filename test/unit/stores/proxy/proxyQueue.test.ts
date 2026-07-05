@@ -3,26 +3,38 @@ import { describe, it, expect } from 'vitest';
 import { createProxyQueueModule } from '~/stores/proxy/proxyQueue';
 
 describe('createProxyQueueModule', () => {
-  it('returns a proxyQueue ref', () => {
+  it('returns a proxyQueue ref wrapping shared PQueue', () => {
     const mod = createProxyQueueModule();
     expect(mod.proxyQueue).toBeDefined();
     expect(mod.proxyQueue.value).toBeDefined();
-  });
-
-  it('proxyQueue has add method', () => {
-    const mod = createProxyQueueModule();
     expect(typeof mod.proxyQueue.value.add).toBe('function');
-  });
-
-  it('proxyQueue has clear method', () => {
-    const mod = createProxyQueueModule();
     expect(typeof mod.proxyQueue.value.clear).toBe('function');
   });
 
-  it('creates a new queue each call', () => {
+  it('shares queue instance across module calls', () => {
     const mod1 = createProxyQueueModule();
     const mod2 = createProxyQueueModule();
-    // getMediaTaskQueue returns a shared singleton
     expect(mod1.proxyQueue.value).toBe(mod2.proxyQueue.value);
+  });
+
+  it('queues and executes tasks sequentially or concurrently based on queue configuration', async () => {
+    const mod = createProxyQueueModule();
+    const executed: number[] = [];
+
+    const task1 = mod.proxyQueue.value.add(async () => {
+      executed.push(1);
+      return 1;
+    });
+
+    const task2 = mod.proxyQueue.value.add(async () => {
+      executed.push(2);
+      return 2;
+    });
+
+    const results = await Promise.all([task1, task2]);
+
+    expect(results).toEqual([1, 2]);
+    expect(executed).toContain(1);
+    expect(executed).toContain(2);
   });
 });

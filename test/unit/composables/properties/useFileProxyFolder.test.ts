@@ -39,7 +39,7 @@ describe('useFileProxyFolder', () => {
     expect(api.isGeneratingProxyForFolder.value).toBe(true);
   });
 
-  it('does not treat nested proxy paths as folder generation (non-recursive)', () => {
+  it('treats nested proxy paths as folder generation (recursive check)', () => {
     const api = useFileProxyFolder({
       selectedFsEntry: ref({ kind: 'directory', path: '/dir', children: [] }),
       proxyStore: {
@@ -50,7 +50,6 @@ describe('useFileProxyFolder', () => {
       videoExtensions: ['mp4'],
     });
 
-    // this test is outdated as the component logic changed to consider any nested file being processed as a proxy generation for the folder
     expect(api.isGeneratingProxyForFolder.value).toBe(true);
   });
 

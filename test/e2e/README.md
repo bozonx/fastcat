@@ -45,6 +45,8 @@ test/e2e/
     workspace.spec.ts       ← OPFS workspace creation
   web/
     editor-smoke-workflow.spec.ts   ← the single long happy-path
+    journey-main-editing.spec.ts    ← user journey: import → multi-track edit → effect → export
+    journey-persistence.spec.ts     ← user journey: edit → reload → verify persistence → edit → export
     clip-effects-workflow.spec.ts   ← add/edit/reload clip video effects
     project-creation.spec.ts        ← create project → FS + timeline doc
     media-import.spec.ts            ← real import pipeline (file input)
