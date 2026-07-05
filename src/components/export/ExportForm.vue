@@ -453,10 +453,6 @@ const filenamePlaceholder = computed(() =>
 
         <!-- Encoding Settings (Video only) -->
         <div v-show="exportType === 'video'" class="space-y-4">
-          <div class="text-ui-text-muted font-normal">
-            {{ encodingSummary }}
-          </div>
-
           <VideoEncodingForm
             v-model:output-format="outputFormat"
             v-model:video-codec="videoCodec"
