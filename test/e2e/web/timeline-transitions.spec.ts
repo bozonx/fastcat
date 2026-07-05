@@ -22,6 +22,29 @@ test.describe('Web timeline transitions', () => {
     await page.mouse.move(box.x + 5, box.y + 5, { steps: 4 });
   }
 
+  async function clickVisibleHandleArea(page: Page, handleLocator: Locator) {
+    const box = await handleLocator.boundingBox();
+    const viewport = page.viewportSize();
+    if (!box || !viewport) {
+      throw new Error('Transition handle has no clickable viewport area');
+    }
+
+    const left = Math.max(1, box.x + 1);
+    const right = Math.min(viewport.width - 1, box.x + box.width - 1);
+    const top = Math.max(1, box.y + 1);
+    const bottom = Math.min(viewport.height - 1, box.y + box.height - 1);
+
+    if (left > right || top > bottom) {
+      throw new Error('Transition handle is outside of the viewport');
+    }
+
+    const x = left + (right - left) / 2;
+    const y = top + (bottom - top) / 2;
+
+    await page.mouse.move(x, y, { steps: 2 });
+    await page.mouse.click(x, y);
+  }
+
   async function projectWithVideoClip(page: Page, project: E2eProject) {
     const { uiPath } = await seedProjectMedia(page, project, MEDIA_FIXTURES.video.h264Mp4, 'video');
     const videoTrackId = (await trackIds(page))[0];
@@ -54,12 +77,13 @@ test.describe('Web timeline transitions', () => {
 
     await hoverClipAt(page, clipLocator);
 
-    const createHandleIn = clipLocator.locator('[data-testid="transition-create-in"]');
-    await expect(createHandleIn).toHaveClass(/opacity-100/);
-    await createHandleIn.click();
+    const createHandleOut = clipLocator.locator('[data-testid="transition-create-out"]');
+    await expect(createHandleOut).toHaveClass(/opacity-100/);
+    await clickVisibleHandleArea(page, createHandleOut);
 
-    // Verify transition was registered or selected
     const doc = await readTimelineDoc(page, e2eProject);
-    expect(doc.allClips.length).toBeGreaterThan(0);
+    expect(doc.allClips[0]?.transitionOut).toMatchObject({
+      type: 'dissolve',
+    });
   });
 });
