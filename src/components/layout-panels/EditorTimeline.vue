@@ -14,6 +14,7 @@ import { checkFileTimelineCompatibility } from '~/utils/media/compatibility';
 
 import type {
   TextClipStyle,
+  ClipTransition,
   TimelineClipActionPayload,
   TimelineOpenSpeedModalPayload,
   TimelineTrack,
@@ -419,6 +420,7 @@ onBeforeUnmount(() => {
     delete e2eWindow.__fastcatE2eSetTimelineZoom;
     delete e2eWindow.__fastcatE2eTrimClip;
     delete e2eWindow.__fastcatE2eMoveClip;
+    delete e2eWindow.__fastcatE2eUpdateClipTransition;
     delete e2eWindow.__fastcatE2eAddTextClip;
     delete e2eWindow.__fastcatE2eAddProjectFileToTrack;
     delete e2eWindow.__fastcatE2eGetTimelineDocInfo;
@@ -477,6 +479,18 @@ onMounted(() => {
         trackId: track.id,
         itemId,
         properties,
+      });
+      await persistE2eTimelineEdit();
+    };
+
+    e2eWindow.__fastcatE2eUpdateClipTransition = async ({ itemId, edge, transition }) => {
+      const track = findE2eClipTrack(itemId);
+      if (!track) throw new Error(`Timeline clip track not found: ${itemId}`);
+      timelineStore.applyTimeline({
+        type: 'update_clip_transition',
+        trackId: track.id,
+        itemId,
+        ...(edge === 'in' ? { transitionIn: transition } : { transitionOut: transition }),
       });
       await persistE2eTimelineEdit();
     };
@@ -728,6 +742,11 @@ type FastcatE2eUpdateClipProperties = (params: {
   itemId: string;
   properties: Record<string, unknown>;
 }) => Promise<void>;
+type FastcatE2eUpdateClipTransition = (params: {
+  itemId: string;
+  edge: 'in' | 'out';
+  transition: ClipTransition | null;
+}) => Promise<void>;
 type FastcatE2eSetCurrentTimeUs = (params: { us: number }) => Promise<void>;
 type FastcatE2eGetSelectedItemIds = () => Promise<string[]>;
 type FastcatE2eAddTextClip = (params: {
@@ -754,6 +773,7 @@ interface FastcatE2eTimelineWindow {
   __fastcatE2eSelectTimelineItems?: FastcatE2eSelectTimelineItems;
   __fastcatE2eDeleteSelectedItems?: FastcatE2eDeleteSelectedItems;
   __fastcatE2eUpdateClipProperties?: FastcatE2eUpdateClipProperties;
+  __fastcatE2eUpdateClipTransition?: FastcatE2eUpdateClipTransition;
   __fastcatE2eSetCurrentTimeUs?: FastcatE2eSetCurrentTimeUs;
   __fastcatE2eGetSelectedItemIds?: FastcatE2eGetSelectedItemIds;
   __fastcatE2eSaveTimeline?: () => Promise<void>;

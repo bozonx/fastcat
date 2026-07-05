@@ -300,6 +300,42 @@ export async function updateClipProperties(
   );
 }
 
+export async function updateClipTransition(
+  page: Page,
+  params: {
+    itemId: string;
+    edge: 'in' | 'out';
+    transition: {
+      type: string;
+      durationUs: number;
+      mode: 'adjacent' | 'transparent' | 'background';
+      curve: 'linear' | 'smooth' | 'ease-in' | 'ease-out';
+      params?: Record<string, unknown>;
+    } | null;
+  },
+): Promise<void> {
+  await waitForTimelineHook(page, '__fastcatE2eUpdateClipTransition');
+  await page.evaluate(async ({ itemId, edge, transition }) => {
+    const update = (
+      window as Window & {
+        __fastcatE2eUpdateClipTransition?: (params: {
+          itemId: string;
+          edge: 'in' | 'out';
+          transition: {
+            type: string;
+            durationUs: number;
+            mode: 'adjacent' | 'transparent' | 'background';
+            curve: 'linear' | 'smooth' | 'ease-in' | 'ease-out';
+            params?: Record<string, unknown>;
+          } | null;
+        }) => Promise<void>;
+      }
+    ).__fastcatE2eUpdateClipTransition;
+    if (!update) throw new Error('E2E timeline update-clip-transition hook is not registered');
+    await update({ itemId, edge, transition });
+  }, params);
+}
+
 export async function saveTimeline(page: Page): Promise<void> {
   await waitForTimelineHook(page, '__fastcatE2eSaveTimeline');
   await page.evaluate(async () => {
