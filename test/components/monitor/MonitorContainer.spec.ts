@@ -265,9 +265,9 @@ describe('MonitorContainer', () => {
               '<button class="u-button-stub" :title="title" :aria-label="ariaLabel" :data-icon="icon"><slot /></button>',
           },
           UiActionButton: {
-            props: ['icon', 'title', 'ariaLabel'],
+            props: ['icon', 'title', 'ariaLabel', 'size', 'square'],
             template:
-              '<button class="ui-action-button-stub" :title="title" :aria-label="ariaLabel" :data-icon="icon"><slot /></button>',
+              '<button class="ui-action-button-stub" :title="title" :aria-label="ariaLabel" :data-icon="icon" :data-size="size" :data-square="square"><slot /></button>',
           },
           UiToggleButton: true,
           UDropdownMenu: { template: '<div data-dropdown-menu><slot /></div>' },
@@ -282,6 +282,10 @@ describe('MonitorContainer', () => {
 
     const moreButton = wrapper.find('[data-icon="i-heroicons-ellipsis-vertical-16-solid"]');
     expect(moreButton.exists()).toBe(true);
+    expect(moreButton.attributes('data-size')).toBe('md');
+    expect(moreButton.classes()).toContain('text-ui-text-muted');
+    expect(moreButton.classes()).toContain('hover:text-ui-text');
+    expect(moreButton.attributes('data-square')).toBeUndefined();
   });
 
   it('closes monitor dropdowns on viewport pointer down', async () => {
@@ -742,7 +746,7 @@ describe('MonitorContainer', () => {
     // Change to 'top' and verify it has spacing/offset
     mockToolbarPositionRef.value = 'top';
     await wrapper.vm.$nextTick();
-    expect(seekbarWrapper?.className).toContain('bottom-2');
+    expect(seekbarWrapper?.className).toContain('bottom-[-8px]');
     expect(seekbarWrapper?.className).toContain('px-3');
   });
 

@@ -138,4 +138,31 @@ describe('FileBrowserToolbar', () => {
     expect(tooltip).toContain('videoEditor.hotkeys.general.zoomOut (-)');
     expect(tooltip).toContain('videoEditor.hotkeys.general.zoomReset (0)');
   });
+
+  it('renders the toolbar menu button with the standard toolbar button size', () => {
+    const wrapper = mount(FileBrowserToolbar, {
+      props: {
+        gridSizes: [100, 130, 160],
+        currentGridSizeName: 'm',
+        gridCardSize: 130,
+      },
+      global: {
+        stubs: {
+          UiToggleButton: true,
+          UiWheelSlider: true,
+          UiSelect: true,
+          UiActionButton: true,
+          UiTooltip: tooltipStub,
+          UDropdownMenu: dropdownStub,
+        },
+      },
+    });
+
+    const menuButton = wrapper.find('[data-testid="file-toolbar-menu"]');
+
+    expect(menuButton.attributes('size')).toBe('sm');
+    expect(menuButton.classes()).toContain('text-ui-text-muted');
+    expect(menuButton.classes()).toContain('hover:text-ui-text');
+    expect(menuButton.attributes('square')).not.toBe('true');
+  });
 });

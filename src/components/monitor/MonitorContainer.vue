@@ -169,6 +169,12 @@ const props = withDefaults(
 );
 
 const effectiveFullscreen = computed(() => props.isFullscreen || isBrowserFullscreen.value);
+
+// When the toolbar is not at the bottom, the seekbar keeps its bottom margin, so lift the
+// bottom-right info stack (timecode/markers) up to clear the playback line.
+const bottomOverlayOffsetClass = computed(() =>
+  !effectiveFullscreen.value && toolbarPosition.value !== 'bottom' ? '-translate-y-6' : '',
+);
 const shouldTeleport = computed(() => isTauriRuntime() && effectiveFullscreen.value);
 const monitorMenuPortal = computed(() =>
   effectiveFullscreen.value ? (panelRef.value ?? false) : true,
@@ -491,6 +497,8 @@ watch(viewportRef, (vp) => {
               :is-idle="isIdle"
               :effective-fullscreen="effectiveFullscreen"
               :ui-current-time-us="uiCurrentTimeUs"
+              :timecode-offset-class="bottomOverlayOffsetClass"
+              :markers-offset-class="bottomOverlayOffsetClass"
               @pointerdown.capture="closeMonitorMenus"
             >
               <template #canvas>
@@ -809,12 +817,11 @@ watch(viewportRef, (vp) => {
               @update:open="setMonitorMoreMenuOpen"
             >
               <UiActionButton
-                size="xs"
+                size="md"
                 color="neutral"
                 variant="ghost"
                 icon="i-heroicons-ellipsis-vertical-16-solid"
                 class="text-ui-text-muted hover:text-ui-text"
-                square
                 :title="t('common.more')"
               />
             </UDropdownMenu>

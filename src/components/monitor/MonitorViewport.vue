@@ -208,6 +208,7 @@ defineExpose({
           :class="[
             effectiveFullscreen ? 'bottom-28 right-8' : 'bottom-[2.25rem] right-3',
             effectiveFullscreen && isIdle ? 'opacity-0' : 'opacity-100',
+            timecodeOffsetClass,
           ]"
         >
           <span class="text-blue-400">{{ selectionRangeText }}</span>

@@ -245,8 +245,8 @@ const toolbarMenuItems = computed(() => {
           icon="i-heroicons-ellipsis-vertical-16-solid"
           variant="ghost"
           color="neutral"
-          size="xs"
-          square
+          size="sm"
+          class="text-ui-text-muted hover:text-ui-text"
         />
       </UDropdownMenu>
     </div>
