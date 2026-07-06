@@ -869,6 +869,7 @@
       "nestedTimeline": "Вложенный",
       "nestedTimelineHint": "Вложенный таймлайн — двойной клик чтобы открыть",
       "nextMarker": "Следующий маркер",
+      "noAudioTrackInVideo": "Выбранный файл не содержит аудиодорожек.",
       "noDroppableTrack": "Нет подходящего {kind}-трека — клип не размещён.",
       "noMedia": "Нет медиа",
       "noSupportedFiles": "Нет поддерживаемых файлов",

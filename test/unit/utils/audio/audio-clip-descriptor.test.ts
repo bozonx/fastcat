@@ -367,7 +367,11 @@ describe('buildNativeAudioEffectSpecs', () => {
         enabled: true,
         target: 'audio',
         wet: 0.8,
-        plugin: { format: 'clap', path: '/usr/lib/clap/reverb.clap', pluginId: 'com.example.reverb' },
+        plugin: {
+          format: 'clap',
+          path: '/usr/lib/clap/reverb.clap',
+          pluginId: 'com.example.reverb',
+        },
       },
     ] as never);
 
@@ -378,7 +382,11 @@ describe('buildNativeAudioEffectSpecs', () => {
         enabled: true,
         wet: 0.8,
         params: {},
-        plugin: { format: 'clap', path: '/usr/lib/clap/reverb.clap', pluginId: 'com.example.reverb' },
+        plugin: {
+          format: 'clap',
+          path: '/usr/lib/clap/reverb.clap',
+          pluginId: 'com.example.reverb',
+        },
       },
     ]);
   });

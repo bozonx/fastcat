@@ -13,10 +13,13 @@ import FileBrowser from '~/components/file-manager/FileBrowser.vue';
 import { useI18n } from 'vue-i18n';
 import type { FsEntry } from '~/types/fs';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
+import { useMediaStore } from '~/stores/media.store';
 
 const uiStore = useUiStore();
 const timelineStore = useTimelineStore();
 const selectionStore = useSelectionStore();
+const mediaStore = useMediaStore();
+const toast = useToast();
 const { t } = useI18n();
 
 const replaceStore = useReplaceMediaFileManagerStore();
@@ -38,7 +41,7 @@ const isOpen = computed({
 
 const allowedMediaTypes = computed(() => {
   const target = uiStore.mediaReplaceTarget;
-  return target ? [target.expectedType] : undefined;
+  return target ? target.expectedType : undefined;
 });
 
 const currentSourcePath = computed(() => {
@@ -84,15 +87,28 @@ function handlePickerSelect(entry: FsEntry | null) {
   selectedFileEntry.value = entry?.kind === 'file' ? entry : null;
 }
 
-function handleSelectFile(entry: FsEntry) {
+async function handleSelectFile(entry: FsEntry) {
   if (entry.kind !== 'file' || !entry.path) return;
   const target = uiStore.mediaReplaceTarget;
   if (!target) return;
 
   const mType = getMediaTypeFromFilename(entry.name);
-  if (mType !== target.expectedType) {
+  if (!target.expectedType.includes(mType as any)) {
     // optional: show toast or handle invalid selection
     return;
+  }
+
+  const track = timelineStore.timelineDoc?.tracks.find((track) => track.id === target.trackId);
+  if (track?.kind === 'audio') {
+    const metadata = await mediaStore.getOrFetchMetadataByPath(entry.path);
+    if (!metadata || !metadata.audio) {
+      toast.add({
+        color: 'error',
+        title: t('common.error'),
+        description: t('fastcat.timeline.noAudioTrackInVideo'),
+      });
+      return;
+    }
   }
 
   // Update clip source

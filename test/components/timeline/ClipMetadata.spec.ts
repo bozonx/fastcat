@@ -109,7 +109,7 @@ describe('ClipMetadata', () => {
     expect(component.html()).not.toContain('w-6 h-6');
   });
 
-  it('renders free position warning when clip is not frame-aligned', async () => {
+  it('does not render free position warning when clip is not frame-aligned', async () => {
     // 12345 Us is not aligned on 30 FPS boundary (33333 Us per frame)
     const nonAlignedItem = {
       kind: 'clip',
@@ -126,9 +126,8 @@ describe('ClipMetadata', () => {
       },
     });
 
-    // Contains the warning triangle icon wrapper with correct title
-    expect(component.find('[title="fastcat.timeline.freePositionHint"]').exists()).toBe(true);
-    expect(component.find('[style*="--z-clip-free-pos"]').exists()).toBe(true);
+    // Warning triangle icon wrapper with correct title should not exist
+    expect(component.find('[title="fastcat.timeline.freePositionHint"]').exists()).toBe(false);
   });
 
   it('renders freeze frame indicator badge when freezeFrameSourceUs is present', async () => {

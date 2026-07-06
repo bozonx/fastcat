@@ -597,6 +597,7 @@ const { contextMenuItems } = useClipContextMenu({
     () => timelineContext.userSettings.value.timeline.defaultTransitionDurationUs,
   ),
   selectedItemIds: computed(() => timelineContext.selectedItemIds.value),
+  currentTime: computed(() => timelineContext.currentTime.value),
   applyTimelineCommand: (cmd) => timelineContext.applyTimeline(cmd) as string[],
   batchApplyTimeline: (cmds) => timelineContext.batchApplyTimeline(cmds) as string[],
   updateClipProperties: (trackId, itemId, p) =>
@@ -846,6 +847,7 @@ function handleTransitionCreate(
       }"
       :class="[
         getClipClass(item, track),
+        clipItem && clipItem.linkedGroupId && !isMediaMissing ? 'border-yellow-400!' : '',
         isSelected
           ? isMultiSelected
             ? 'outline-orange-400 outline-2 z-10 shadow-lg'
@@ -868,7 +870,7 @@ function handleTransitionCreate(
       @pointerleave="isHovered = false"
     >
       <template v-if="!isMovePreviewCurrentItem">
-        <!-- Indicators -->
+        <!-- Speed Indicator (dashed border) -->
         <div
           v-if="
             clipItem &&
@@ -876,16 +878,9 @@ function handleTransitionCreate(
             clipItem.speed !== 1 &&
             !isMediaMissing
           "
-          class="absolute top-0 left-0 right-0 border-t-2 pointer-events-none rounded-t"
+          class="absolute inset-0 rounded border-2 border-dashed pointer-events-none"
           :style="{ zIndex: 'var(--z-clip-speed)' }"
-          :class="clipItem.speed < 0 ? 'border-fuchsia-500' : 'border-violet-400'"
-        />
-
-        <!-- Group Indicator (bottom border) -->
-        <div
-          v-if="clipItem && clipItem.linkedGroupId && !isMediaMissing"
-          class="absolute bottom-0 left-0 right-0 border-b-2 border-sky-400/80 pointer-events-none rounded-b"
-          :style="{ zIndex: 'var(--z-clip-handles)' }"
+          :class="clipItem.speed < 0 ? 'border-fuchsia-500/80' : 'border-blue-500/80'"
         />
 
         <!-- Free Position Indicator (dashed border) -->

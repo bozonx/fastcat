@@ -869,6 +869,7 @@
       "nestedTimeline": "Nested",
       "nestedTimelineHint": "Nested timeline — double-click to open",
       "nextMarker": "Next marker",
+      "noAudioTrackInVideo": "The selected file does not contain any audio tracks.",
       "noDroppableTrack": "No suitable {kind} track available — could not place the clip.",
       "noMedia": "No media",
       "noSupportedFiles": "No supported files",

@@ -70,7 +70,7 @@ function isSelectableEntry(entry: FsEntry): boolean {
   if (!['video', 'audio', 'image', 'timeline'].includes(mediaType)) return false;
 
   if (props.isReplaceMode && uiStore.mediaReplaceTarget) {
-    if (mediaType !== uiStore.mediaReplaceTarget.expectedType) return false;
+    if (!uiStore.mediaReplaceTarget.expectedType.includes(mediaType as any)) return false;
 
     // Hide the file that is already set as the clip's source.
     const clip = timelineStore.timelineDoc?.tracks
@@ -153,6 +153,22 @@ async function addToTimeline() {
     if (props.isReplaceMode && uiStore.mediaReplaceTarget) {
       const entry = selectedFiles.value[0];
       if (entry?.path) {
+        const track = timelineStore.timelineDoc?.tracks.find(
+          (track) => track.id === uiStore.mediaReplaceTarget!.trackId,
+        );
+        if (track?.kind === 'audio') {
+          const metadata = await mediaStore.getOrFetchMetadataByPath(entry.path);
+          if (!metadata || !metadata.audio) {
+            toast.add({
+              color: 'error',
+              title: t('common.error'),
+              description: t('fastcat.timeline.noAudioTrackInVideo'),
+            });
+            isAdding.value = false;
+            return;
+          }
+        }
+
         timelineStore.updateClipProperties(
           uiStore.mediaReplaceTarget.trackId,
           uiStore.mediaReplaceTarget.itemId,

@@ -29,6 +29,7 @@ export interface UseClipContextMenuOptions {
   projectSettings: Ref<FastCatProjectSettings>;
   defaultTransitionDurationUs: Ref<number>;
   selectedItemIds: Ref<string[]>;
+  currentTime: Ref<number>;
   getHotkeyKbds: (commandId: HotkeyCommandId) => string[] | undefined;
   applyTimelineCommand: (cmd: TimelineCommand) => string[];
   batchApplyTimeline: (cmds: TimelineCommand[]) => string[];

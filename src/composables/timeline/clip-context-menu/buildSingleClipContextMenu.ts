@@ -23,35 +23,6 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
   const stateGroup: ContextMenuGroup = [];
   const isFree = isClipFreePosition(clipItem, options.timelineDoc.value);
 
-  // 1. speedGroup (Скорость, Реверс, Заморозить клип)
-  const currentSpeed = clipItem.speed ?? 1;
-  if (clipSupportsSpeedControls(track, clipItem)) {
-    speedGroup.push({
-      label: `${options.t('fastcat.timeline.speed')} (${currentSpeed.toFixed(2)})`,
-      icon: 'i-heroicons-forward',
-      kbds: options.getHotkeyKbds('timeline.openSpeedModal'),
-      onSelect: () =>
-        options.emitOpenSpeedModal({
-          trackId: track.id,
-          itemId: clipItem.id,
-          speed: currentSpeed,
-        }),
-    });
-    if (clipSupportsReverseControls(track, clipItem)) {
-      speedGroup.push({
-        label: options.t('videoEditor.audio.reverse'),
-        icon: 'i-heroicons-arrow-path',
-        kbds: options.getHotkeyKbds('timeline.reverseSpeed'),
-        onSelect: async () => {
-          options.updateClipProperties(track.id, clipItem.id, {
-            speed: -currentSpeed,
-          });
-          await options.requestTimelineSave({ immediate: true });
-        },
-      });
-    }
-  }
-
   const mediaStore = useMediaStore();
   const meta = clipItem.source?.path
     ? resolveMediaMetadata(mediaStore.mediaMetadata, clipItem.source.path)
@@ -66,12 +37,49 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
     track.kind === 'video' && clipItem.clipType === 'media' && !clipItem.isImage;
   const hasFreezeFrame = typeof clipItem.freezeFrameSourceUs === 'number';
 
+  const playheadUs = options.currentTime.value;
+  const clipStartUs = clipItem.timelineRange.startUs;
+  const clipEndUs = clipStartUs + clipItem.timelineRange.durationUs;
+  const playheadOnClip = playheadUs >= clipStartUs && playheadUs < clipEndUs;
+
+  // 1. speedGroup (Скорость, Реверс, Заморозить клип)
+  const currentSpeed = clipItem.speed ?? 1;
+  if (clipSupportsSpeedControls(track, clipItem)) {
+    speedGroup.push({
+      label: `${options.t('fastcat.timeline.speed')} (${currentSpeed.toFixed(2)})`,
+      icon: 'i-heroicons-forward',
+      kbds: options.getHotkeyKbds('timeline.openSpeedModal'),
+      disabled: hasFreezeFrame,
+      onSelect: () =>
+        options.emitOpenSpeedModal({
+          trackId: track.id,
+          itemId: clipItem.id,
+          speed: currentSpeed,
+        }),
+    });
+    if (clipSupportsReverseControls(track, clipItem)) {
+      speedGroup.push({
+        label: options.t('videoEditor.audio.reverse'),
+        icon: 'i-heroicons-arrow-path',
+        kbds: options.getHotkeyKbds('timeline.reverseSpeed'),
+        disabled: hasFreezeFrame,
+        onSelect: async () => {
+          options.updateClipProperties(track.id, clipItem.id, {
+            speed: -currentSpeed,
+          });
+          await options.requestTimelineSave({ immediate: true });
+        },
+      });
+    }
+  }
+
   if (isMediaVideoClip) {
     if (!hasFreezeFrame) {
       speedGroup.push({
         label: options.t('fastcat.timeline.freezeFrame'),
         icon: 'i-heroicons-pause-circle',
         kbds: options.getHotkeyKbds('timeline.toggleFreezeFrame'),
+        disabled: !playheadOnClip,
         onSelect: () =>
           options.emitClipAction({
             action: 'freezeFrame',

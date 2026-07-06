@@ -59,13 +59,18 @@ function isBakeableField(value: unknown): value is FieldValue {
   return typeof value === 'number' || typeof value === 'boolean';
 }
 
-function numericFieldAt(spec: Record<string, unknown> | undefined, field: string): number | undefined {
+function numericFieldAt(
+  spec: Record<string, unknown> | undefined,
+  field: string,
+): number | undefined {
   const [root, indexRaw] = field.split('.', 2);
   if (!root) return undefined;
   if (indexRaw !== undefined) {
     const arr = spec?.[root];
     const index = Number(indexRaw);
-    return Array.isArray(arr) && Number.isInteger(index) ? numericFieldValue(arr[index]) : undefined;
+    return Array.isArray(arr) && Number.isInteger(index)
+      ? numericFieldValue(arr[index])
+      : undefined;
   }
   return numericFieldValue(spec?.[field]);
 }
@@ -98,10 +103,7 @@ function setNestedAnimatedParam(next: Record<string, unknown>, key: string, valu
     return;
   }
 
-  if (
-    typeof next[root] === 'string' &&
-    (channel === 'r' || channel === 'g' || channel === 'b')
-  ) {
+  if (typeof next[root] === 'string' && (channel === 'r' || channel === 'g' || channel === 'b')) {
     const hex = normalizeHexColor(next[root], '#000000').slice(1);
     const rgb = {
       r: Number.parseInt(hex.slice(0, 2), 16),
@@ -109,7 +111,8 @@ function setNestedAnimatedParam(next: Record<string, unknown>, key: string, valu
       b: Number.parseInt(hex.slice(4, 6), 16),
       [channel]: value,
     };
-    next[root] = `#${colorChannelToHex(rgb.r)}${colorChannelToHex(rgb.g)}${colorChannelToHex(rgb.b)}`;
+    next[root] =
+      `#${colorChannelToHex(rgb.r)}${colorChannelToHex(rgb.g)}${colorChannelToHex(rgb.b)}`;
     return;
   }
 

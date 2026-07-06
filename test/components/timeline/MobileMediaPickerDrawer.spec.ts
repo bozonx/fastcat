@@ -59,7 +59,7 @@ const mockUiStore = reactive({
   mediaReplaceTarget: null as null | {
     trackId: string;
     itemId: string;
-    expectedType: string;
+    expectedType: string[];
   },
   isMediaReplaceModalOpen: false,
 });
@@ -190,7 +190,7 @@ describe('MobileMediaPickerDrawer', () => {
     mockUiStore.mediaReplaceTarget = {
       trackId: 'track-1',
       itemId: 'clip-1',
-      expectedType: 'image',
+      expectedType: ['image'],
     };
     assetEntries.value = [
       { name: 'clip.mp4', kind: 'file', path: 'clip.mp4' },
@@ -218,7 +218,7 @@ describe('MobileMediaPickerDrawer', () => {
     mockUiStore.mediaReplaceTarget = {
       trackId: 'track-1',
       itemId: 'clip-1',
-      expectedType: 'video',
+      expectedType: ['video'],
     };
     assetEntries.value = [
       { name: 'current.mp4', kind: 'file', path: 'current.mp4' },

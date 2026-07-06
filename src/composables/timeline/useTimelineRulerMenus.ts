@@ -14,6 +14,7 @@ interface UseTimelineRulerMenusOptions {
       options?: Record<string, unknown>,
     ) => void;
     createSelectionRangeAtPlayhead: () => void;
+    createSelectionRange: (input: { startUs: number; endUs: number }) => void;
     convertZoneToMarker: (markerId: string) => void;
     convertMarkerToSelectionRange: (markerId: string) => void;
     createSelectionRangeFromMarker: (markerId: string) => void;
@@ -69,7 +70,15 @@ export function useTimelineRulerMenus(options: UseTimelineRulerMenusOptions) {
         label: options.t('fastcat.timeline.createSelectionArea'),
         icon: 'i-heroicons-rectangle-group',
         onSelect: () => {
-          options.timelineStore.createSelectionRangeAtPlayhead();
+          const timeUs = options.getRightClickTimeUs?.() ?? null;
+          if (timeUs !== null) {
+            options.timelineStore.createSelectionRange({
+              startUs: timeUs,
+              endUs: timeUs + options.timelineStore.defaultZoneDurationUs,
+            });
+          } else {
+            options.timelineStore.createSelectionRangeAtPlayhead();
+          }
         },
       },
     ],

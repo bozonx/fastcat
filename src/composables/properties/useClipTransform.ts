@@ -354,9 +354,7 @@ export function useClipTransform(options: UseClipTransformOptions) {
   const transformCropBottom = computed({
     get: () => {
       const staticValue = getSafeTransform(options.clip.value).crop?.bottom ?? 0;
-      return (
-        options.getAnimatedDisplayValue?.('transform.crop.bottom', staticValue) ?? staticValue
-      );
+      return options.getAnimatedDisplayValue?.('transform.crop.bottom', staticValue) ?? staticValue;
     },
     set: (val: number) => {
       const current = getSafeTransform(options.clip.value);
@@ -485,8 +483,8 @@ export function useClipTransform(options: UseClipTransformOptions) {
     get: () => {
       const staticValue = getSafeTransform(options.clip.value).flipVertical ? 1 : 0;
       return (
-        (options.getAnimatedDisplayValue?.('transform.flipVertical', staticValue) ??
-          staticValue) >= 0.5
+        (options.getAnimatedDisplayValue?.('transform.flipVertical', staticValue) ?? staticValue) >=
+        0.5
       );
     },
     set: (val: boolean) => {

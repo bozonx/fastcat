@@ -540,7 +540,12 @@ export function useTimelineHotkeys(
           if (typeof item.freezeFrameSourceUs === 'number') {
             timelineStore.resetClipFreezeFrame({ trackId: track.id, itemId: item.id });
           } else {
-            timelineStore.setClipFreezeFrameFromPlayhead({ trackId: track.id, itemId: item.id });
+            const playheadUs = timelineStore.currentTime;
+            const clipStartUs = item.timelineRange.startUs;
+            const clipEndUs = clipStartUs + item.timelineRange.durationUs;
+            if (playheadUs >= clipStartUs && playheadUs < clipEndUs) {
+              timelineStore.setClipFreezeFrameFromPlayhead({ trackId: track.id, itemId: item.id });
+            }
           }
           return true;
         }
@@ -668,7 +673,10 @@ export function useTimelineHotkeys(
       const targets = getSelectedClipRefs(
         doc,
         timelineStore.selectedItemIds.map((itemId) => ({ trackId: '', itemId })),
-      ).filter(({ track, clip }) => clipSupportsSpeedControls(track, clip));
+      ).filter(
+        ({ track, clip }) =>
+          clipSupportsSpeedControls(track, clip) && typeof clip.freezeFrameSourceUs !== 'number',
+      );
 
       if (targets.length === 0) return false;
 
@@ -695,7 +703,10 @@ export function useTimelineHotkeys(
       const targets = getSelectedClipRefs(
         doc,
         timelineStore.selectedItemIds.map((itemId) => ({ trackId: '', itemId })),
-      ).filter(({ track, clip }) => clipSupportsSpeedControls(track, clip));
+      ).filter(
+        ({ track, clip }) =>
+          clipSupportsSpeedControls(track, clip) && typeof clip.freezeFrameSourceUs !== 'number',
+      );
 
       if (targets.length === 0) return false;
 

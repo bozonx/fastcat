@@ -177,16 +177,14 @@ describe('useClipPropertiesActions', () => {
       });
     });
 
-    it('clamps the offset to the clip duration', () => {
+    it('does not store freeze frame if playhead is outside the clip range', () => {
       const clip = makeClip({ timelineRange: { startUs: 0, durationUs: 1_000_000 } });
       const timelineStore = makeTimelineStore({ currentTime: 9_000_000 });
       const { actions } = build({ clip, timelineStore });
 
       actions.handleFreezeFrame();
 
-      expect(timelineStore.updateClipProperties).toHaveBeenCalledWith('v1', 'clip1', {
-        freezeFrameSourceUs: 1_000_000,
-      });
+      expect(timelineStore.updateClipProperties).not.toHaveBeenCalled();
     });
   });
 
@@ -264,7 +262,7 @@ describe('useClipPropertiesActions', () => {
       expect(videoUiStore.mediaReplaceTarget).toEqual({
         trackId: 'v1',
         itemId: 'clip1',
-        expectedType: 'video',
+        expectedType: ['video'],
       });
       expect(videoUiStore.isMediaReplaceModalOpen).toBe(true);
 
@@ -282,7 +280,7 @@ describe('useClipPropertiesActions', () => {
       expect(imageUiStore.mediaReplaceTarget).toEqual({
         trackId: 'v1',
         itemId: 'clip1',
-        expectedType: 'image',
+        expectedType: ['image'],
       });
       expect(imageUiStore.isMediaReplaceModalOpen).toBe(true);
 
@@ -300,7 +298,7 @@ describe('useClipPropertiesActions', () => {
       expect(audioUiStore.mediaReplaceTarget).toEqual({
         trackId: 'a1',
         itemId: 'clip1',
-        expectedType: 'audio',
+        expectedType: ['audio', 'video'],
       });
       expect(audioUiStore.isMediaReplaceModalOpen).toBe(true);
     });
@@ -323,6 +321,25 @@ describe('useClipPropertiesActions', () => {
       expect(audio.actions.otherActionsList.value.some((a) => a.id === 'reverse-speed')).toBe(
         false,
       );
+    });
+
+    it('disables speed and reverse actions when freeze frame is active', () => {
+      const clip = makeClip({ freezeFrameSourceUs: 500_000 });
+      const { actions } = build({ clip });
+      const speedAction = actions.otherActionsList.value.find((a) => a.id === 'speed');
+      const reverseAction = actions.otherActionsList.value.find((a) => a.id === 'reverse-speed');
+
+      expect(speedAction?.disabled).toBe(true);
+      expect(reverseAction?.disabled).toBe(true);
+    });
+
+    it('disables freezeFrame action when playhead is outside the clip', () => {
+      const clip = makeClip({ timelineRange: { startUs: 1_000_000, durationUs: 2_000_000 } });
+      const timelineStore = makeTimelineStore({ currentTime: 500_000 });
+      const { actions } = build({ clip, timelineStore });
+
+      const freezeAction = actions.otherActionsList.value.find((a) => a.id === 'freezeFrame');
+      expect(freezeAction?.disabled).toBe(true);
     });
 
     it('includes rename after paste-parameters in other actions', () => {

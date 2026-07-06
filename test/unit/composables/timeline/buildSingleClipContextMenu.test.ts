@@ -36,6 +36,7 @@ function createOptions(
     projectSettings: ref({} as any),
     defaultTransitionDurationUs: ref(1_000_000),
     selectedItemIds: ref(['clip-1']),
+    currentTime: ref(0),
     applyTimelineCommand: vi.fn(() => []),
     batchApplyTimeline: vi.fn(() => []),
     updateClipProperties: vi.fn(() => []),
@@ -209,5 +210,54 @@ describe('buildSingleClipContextMenu', () => {
     expect(speedGroupLabels[0]).toContain('fastcat.timeline.speed');
     expect(speedGroupLabels[1]).toBe('videoEditor.audio.reverse');
     expect(speedGroupLabels[2]).toBe('fastcat.timeline.freezeFrame');
+  });
+
+  it('disables freezeFrame action when playhead is outside the clip', () => {
+    const options = createOptions({
+      item: ref({
+        id: 'clip-1',
+        kind: 'clip',
+        trackId: 'track-1',
+        clipType: 'media',
+        name: 'Clip 1',
+        timelineRange: { startUs: 1_000_000, durationUs: 5_000_000 },
+        sourceRange: { startUs: 0, durationUs: 5_000_000 },
+        sourceDurationUs: 5_000_000,
+      } as any),
+      currentTime: ref(500_000),
+    });
+
+    const groups = buildSingleClipMainGroup(options);
+    const speedGroup = groups[0];
+    const freezeAction = speedGroup.find(
+      (action) => action.label === 'fastcat.timeline.freezeFrame',
+    );
+    expect(freezeAction?.disabled).toBe(true);
+  });
+
+  it('disables speed and reverse actions when freeze frame is active', () => {
+    const options = createOptions({
+      item: ref({
+        id: 'clip-1',
+        kind: 'clip',
+        trackId: 'track-1',
+        clipType: 'media',
+        name: 'Clip 1',
+        timelineRange: { startUs: 0, durationUs: 5_000_000 },
+        sourceRange: { startUs: 0, durationUs: 5_000_000 },
+        sourceDurationUs: 5_000_000,
+        freezeFrameSourceUs: 2_000_000,
+      } as any),
+    });
+
+    const groups = buildSingleClipMainGroup(options);
+    const speedGroup = groups[0];
+    const speedAction = speedGroup.find((action) =>
+      action.label.startsWith('fastcat.timeline.speed'),
+    );
+    const reverseAction = speedGroup.find((action) => action.label === 'videoEditor.audio.reverse');
+
+    expect(speedAction?.disabled).toBe(true);
+    expect(reverseAction?.disabled).toBe(true);
   });
 });

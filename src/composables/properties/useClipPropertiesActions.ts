@@ -73,7 +73,7 @@ interface UiStoreActions {
   mediaReplaceTarget: {
     trackId: string;
     itemId: string;
-    expectedType: 'video' | 'image' | 'audio';
+    expectedType: ('video' | 'image' | 'audio')[];
   } | null;
   isMediaReplaceModalOpen: boolean;
   notifyFileManagerUpdate: () => void;
@@ -329,11 +329,11 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
     const clip = options.clip.value;
     if (clip.clipType !== 'media') return;
 
-    let expectedType: 'video' | 'image' | 'audio' = 'video';
+    let expectedType: ('video' | 'image' | 'audio')[] = ['video'];
     if (options.trackKind.value === 'audio') {
-      expectedType = 'audio';
+      expectedType = ['audio', 'video'];
     } else if (clip.isImage) {
-      expectedType = 'image';
+      expectedType = ['image'];
     }
 
     uiStore.mediaReplaceTarget = {
@@ -365,6 +365,9 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
   function handleFreezeFrame() {
     const playheadUs = timelineStore.currentTime;
     const clipStartUs = options.clip.value.timelineRange.startUs;
+    const clipEndUs = clipStartUs + options.clip.value.timelineRange.durationUs;
+    if (playheadUs < clipStartUs || playheadUs >= clipEndUs) return;
+
     const relativeUs = playheadUs - clipStartUs;
     const clampedUs = Math.max(
       0,
@@ -457,6 +460,7 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
         id: 'speed',
         label: `${t('fastcat.timeline.speed')} (${(clip.speed ?? 1).toFixed(2)})`,
         icon: 'i-heroicons-forward',
+        disabled: hasFreezeFrame.value,
         onClick: () => {
           uiStore.triggerSpeedModal(clip.trackId, clip.id, clip.speed ?? 1);
         },
@@ -469,6 +473,7 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
         id: 'reverse-speed',
         label: t('videoEditor.audio.reverse'),
         icon: 'i-heroicons-arrow-path',
+        disabled: hasFreezeFrame.value,
         onClick: () => {
           const currentSpeed = typeof clip.speed === 'number' ? clip.speed : 1;
           timelineStore.updateClipProperties(clip.trackId, clip.id, {
@@ -480,10 +485,16 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
 
     // 5. Заморозить клип / Сбросить заморозку
     if (isMediaVideoClip.value && !hasFreezeFrame.value) {
+      const playheadUs = timelineStore.currentTime;
+      const clipStartUs = clip.timelineRange.startUs;
+      const clipEndUs = clipStartUs + clip.timelineRange.durationUs;
+      const playheadOnClip = playheadUs >= clipStartUs && playheadUs < clipEndUs;
+
       list.push({
         id: 'freezeFrame',
         label: t('fastcat.timeline.freezeFrame'),
         icon: 'i-heroicons-pause-circle',
+        disabled: !playheadOnClip,
         onClick: handleFreezeFrame,
       });
     }

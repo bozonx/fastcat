@@ -410,7 +410,10 @@ function getProjectOpenTarget(project: ProjectActionTarget): string {
         </div>
       </UiFormField>
 
-      <div class="flex items-center justify-between gap-3">
+      <label
+        class="flex items-center justify-between gap-3 select-none"
+        :class="[workspaceStore.isLoading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer']"
+      >
         <span class="text-sm text-ui-text">
           {{ t('fastcat.projects.specifyProjectSettings') }}
         </span>
@@ -418,7 +421,7 @@ function getProjectOpenTarget(project: ProjectActionTarget): string {
           v-model="projectCreationSettings.specifyProjectSettings"
           :disabled="workspaceStore.isLoading"
         />
-      </div>
+      </label>
 
       <div
         v-if="!projectCreationSettings.specifyProjectSettings"

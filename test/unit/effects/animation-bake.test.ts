@@ -138,10 +138,12 @@ describe('bakeClipEffectAnimations', () => {
     };
     const baked = bakeClipEffectAnimations(effects, animations)!;
     const tintRed = (t: number) =>
-      (patchBakedEffectSpecs(baked, t).find((s) => s.type === 'blur-fill') as Record<
-        string,
-        unknown
-      >).tint_color as number[];
+      (
+        patchBakedEffectSpecs(baked, t).find((s) => s.type === 'blur-fill') as Record<
+          string,
+          unknown
+        >
+      ).tint_color as number[];
 
     expect(tintRed(0)[0]).toBeCloseTo(0);
     expect(tintRed(1_000_000)[0]).toBeCloseTo(255);

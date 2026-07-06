@@ -488,7 +488,17 @@ describe('TimelineClip', () => {
       item: { ...baseItem, speed: 2 },
     });
 
-    const speedIndicator = component.find('.border-violet-400');
+    const speedIndicator = component.find('.border-dashed.border-blue-500\\/80');
+    expect(speedIndicator.exists()).toBe(true);
+  });
+
+  it('displays fuchsia/magenta speed indicator when speed is inverted', async () => {
+    const component = await mountClip({
+      ...defaultProps,
+      item: { ...baseItem, speed: -2 },
+    });
+
+    const speedIndicator = component.find('.border-dashed.border-fuchsia-500\\/80');
     expect(speedIndicator.exists()).toBe(true);
   });
 
@@ -498,8 +508,8 @@ describe('TimelineClip', () => {
       item: { ...baseItem, linkedGroupId: 'group-123' },
     });
 
-    const groupIndicator = component.find('.border-sky-400\\/80');
-    expect(groupIndicator.exists()).toBe(true);
+    const clipDiv = component.find('[data-clip-id="clip-1"]');
+    expect(clipDiv.classes()).toContain('border-yellow-400!');
   });
 
   it('displays free position indicator when clip is not frame-aligned', async () => {

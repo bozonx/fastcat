@@ -1068,7 +1068,9 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
     const playheadUs = deps.currentTime.value;
 
     const usePlayhead = playheadUs >= clipStartUs && playheadUs < clipEndUs;
-    const localUs = usePlayhead ? playheadUs - clipStartUs : 0;
+    if (!usePlayhead) return;
+
+    const localUs = playheadUs - clipStartUs;
     const sourceUsRaw = resolveClipSourceTimeUs({
       localTimeUs: localUs,
       sourceStartUs: item.sourceRange.startUs,

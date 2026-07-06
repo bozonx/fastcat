@@ -377,7 +377,7 @@ describe('TimelineStore', () => {
     expect(updated.freezeFrameSourceUs).toBe(5_966_667);
   });
 
-  it('sets freeze frame to first frame when playhead is outside clip', async () => {
+  it('does not set freeze frame when playhead is outside clip', async () => {
     const timeline = createTestTimeline({
       tracks: [
         {
@@ -392,7 +392,7 @@ describe('TimelineStore', () => {
     await store.setClipFreezeFrameFromPlayhead({ trackId: 'v1', itemId: 'c1' });
 
     const clip = store.timelineDoc.tracks[0].items.find((it: any) => it.id === 'c1');
-    expect(clip.freezeFrameSourceUs).toBe(0);
+    expect(clip.freezeFrameSourceUs).toBeUndefined();
   });
 
   it('resets freeze frame', async () => {

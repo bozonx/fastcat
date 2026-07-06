@@ -2,7 +2,6 @@
 import { computed, inject } from 'vue';
 import type { TimelineTrack, TimelineTrackItem, TimelineClipItem } from '~/timeline/types';
 import type { TimelineContext } from './context';
-import { isClipFreePosition } from '~/utils/timeline/clip-checks';
 import { timeUsToPx, computeClipCenteredOverlayLeftPx } from '~/utils/timeline/geometry';
 
 const props = defineProps<{
@@ -22,15 +21,6 @@ const timelineContext = inject<TimelineContext>('timelineContext');
 const clipItem = computed(() =>
   props.item.kind === 'clip' ? (props.item as TimelineClipItem) : null,
 );
-
-const isFreePosition = computed(() => {
-  if (!timelineContext || !clipItem.value) return false;
-  return isClipFreePosition(
-    clipItem.value,
-    timelineContext.timelineDoc.value,
-    timelineContext.fps.value || 30,
-  );
-});
 
 // Keep the muted / disabled badge centred within the *visible* part of the
 // clip so it follows the timeline scroll instead of sliding off screen.
@@ -61,15 +51,6 @@ const centeredOverlayStyle = computed(() => {
         :title="t('fastcat.timeline.freezeFrameTitle')"
       >
         <UIcon name="i-heroicons-pause-circle" class="w-3.5 h-3.5" />
-      </div>
-
-      <!-- Free Position Warning -->
-      <div
-        v-if="clipItem && isFreePosition && !isMediaMissing && !isUnsupported"
-        class="flex items-center justify-center p-0.5 rounded bg-black/60 text-yellow-400"
-        :title="t('fastcat.timeline.freePositionHint')"
-      >
-        <UIcon name="i-heroicons-exclamation-triangle" class="w-3.5 h-3.5" />
       </div>
     </div>
 

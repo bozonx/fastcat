@@ -55,7 +55,9 @@ test.describe('Transition triangle repro', () => {
     const box = await clipLocator.boundingBox();
     if (!box) throw new Error('no clip box');
     console.log('clip box:', JSON.stringify(box));
-    await page.mouse.move(box.x + 8, box.y + box.height / 2, { steps: 3 });
+    await page.mouse.move(box.x + 8, box.y + box.height / 2, {
+      steps: 3,
+    });
 
     // Drive the whole gesture in-page from the handle's own rect, so device-pixel
     // and viewport-offset quirks can't push the click off-target. Verify the
@@ -64,9 +66,7 @@ test.describe('Transition triangle repro', () => {
     // never receives the pointer and no transition is created.
     const result = await page.evaluate((cid) => {
       const clipEl = document.querySelector(`[data-clip-id="${cid}"]`);
-      const h = clipEl?.querySelector(
-        '[data-testid="transition-create-in"]',
-      ) as HTMLElement | null;
+      const h = clipEl?.querySelector('[data-testid="transition-create-in"]') as HTMLElement | null;
       if (!h) return { ok: false, reason: 'no handle el' };
       const cls = h.getAttribute('class') ?? '';
       const r = h.getBoundingClientRect();
@@ -118,10 +118,7 @@ test.describe('Transition triangle repro', () => {
       (d) => Boolean(d.allClips[0]?.transitionIn),
       { timeout: 4000 },
     ).catch(() => null);
-    console.log(
-      'persisted transitionIn:',
-      JSON.stringify(doc?.allClips[0]?.transitionIn ?? null),
-    );
+    console.log('persisted transitionIn:', JSON.stringify(doc?.allClips[0]?.transitionIn ?? null));
 
     // The wedge button must be present and non-zero width.
     const wedge = clipLocator.locator('button[class*="group/trans"]');

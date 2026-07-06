@@ -283,7 +283,7 @@ export function buildGainEnvelope(params: {
       const frameInClip = startFrame + i;
       const animatedGain = evalTrackAt(
         volumeTrack,
-        Math.round((clip.offsetS + frameInClip / targetSampleRate * clip.speed) * 1_000_000),
+        Math.round((clip.offsetS + (frameInClip / targetSampleRate) * clip.speed) * 1_000_000),
       );
       const baseGain =
         animatedGain === undefined ? clip.audioGain : Math.max(0, Math.min(10, animatedGain));
@@ -357,7 +357,7 @@ function buildPanEnvelope(params: {
     const frameInClip = startFrame + i;
     const value = evalTrackAt(
       panTrack,
-      Math.round((clip.offsetS + frameInClip / targetSampleRate * clip.speed) * 1_000_000),
+      Math.round((clip.offsetS + (frameInClip / targetSampleRate) * clip.speed) * 1_000_000),
     );
     panEnvelope[i] = Math.max(-1, Math.min(1, value ?? clip.audioBalance));
   }
