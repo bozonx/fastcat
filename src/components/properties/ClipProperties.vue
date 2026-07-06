@@ -21,6 +21,7 @@ import type {
   AudioClipEffect,
   ClipAnimations,
   ClipTransform,
+  FixedAnimatableParamPath,
   TimelineBlendMode,
   TimelineClipItem,
   TimelineTrack,
@@ -319,7 +320,7 @@ function handleUpdateTransform(next: ClipTransform) {
   });
 }
 
-function handleToggleTransformParamAnimation(paths: AnimatableParamPath[]) {
+function handleToggleTransformParamAnimation(paths: FixedAnimatableParamPath[]) {
   clipKeyframes.toggleAnimated(paths);
 }
 

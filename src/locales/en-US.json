@@ -840,6 +840,8 @@
       "keyframesDiamondHint": "drag to move, double-click to delete, right-click to change easing",
       "keyframesLane": "Animation keyframes",
       "keyframesLaneAddHint": "Click to add a keyframe at this time",
+      "keyframesCurveEditor": "Animation curve editor",
+      "keyframesCurveParam": "Animated parameter",
       "keyframesLaneEmptyHint": "No animated parameters — use the stopwatch in Properties",
       "keyframesTitle": "Animation keyframes",
       "lock": "Lock",

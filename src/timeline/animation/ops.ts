@@ -1,6 +1,7 @@
 import type {
   AnimatableParamPath,
   ClipAnimations,
+  FixedAnimatableParamPath,
   KeyframeEasing,
   TimelineClipItem,
 } from '~/timeline/types';
@@ -90,6 +91,45 @@ export function moveKeyframe(
   return upsertKeyframe(withoutOld, path, toTUs, kf.value, kf.easing);
 }
 
+export interface UpdateKeyframeParams {
+  path: AnimatableParamPath;
+  fromTUs: number;
+  toTUs: number;
+  value: number;
+}
+
+/** Move and/or retarget one keyframe on a single path, preserving its easing. */
+export function updateKeyframe(
+  animations: ClipAnimations | undefined,
+  params: UpdateKeyframeParams,
+): ClipAnimations | undefined {
+  const track = animations?.[params.path];
+  const kf = track?.keyframes.find(
+    (keyframe) => Math.round(keyframe.tUs) === Math.round(params.fromTUs),
+  );
+  if (!kf) return animations;
+
+  const roundedFromTUs = Math.round(params.fromTUs);
+  const roundedToTUs = Math.max(0, Math.round(params.toTUs));
+  if (roundedFromTUs === roundedToTUs && kf.value === params.value) return animations;
+
+  const withoutOld = removeKeyframe(animations, params.path, params.fromTUs);
+  return upsertKeyframe(withoutOld, params.path, params.toTUs, params.value, kf.easing);
+}
+
+/** Update easing on one path's keyframe at `tUs` without changing its value. */
+export function setKeyframeEasing(
+  animations: ClipAnimations | undefined,
+  path: AnimatableParamPath,
+  tUs: number,
+  easing: KeyframeEasing,
+): ClipAnimations | undefined {
+  const track = animations?.[path];
+  const kf = track?.keyframes.find((keyframe) => Math.round(keyframe.tUs) === Math.round(tUs));
+  if (!kf || kf.easing === easing) return animations;
+  return upsertKeyframe(animations, path, tUs, kf.value, easing);
+}
+
 /** Clear every keyframe on `path`, dropping `animations` if nothing else animates. */
 export function clearParamAnimation(
   animations: ClipAnimations | undefined,
@@ -108,7 +148,7 @@ export function clearParamAnimation(
  */
 export function getStaticParamValue(
   clip: Pick<TimelineClipItem, 'opacity' | 'transform'>,
-  path: AnimatableParamPath,
+  path: FixedAnimatableParamPath,
 ): number {
   switch (path) {
     case 'opacity':

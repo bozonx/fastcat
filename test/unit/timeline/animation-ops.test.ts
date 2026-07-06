@@ -13,7 +13,9 @@ import {
   moveKeyframeMoment,
   removeKeyframe,
   removeKeyframeMoment,
+  setKeyframeEasing,
   setKeyframeMomentEasing,
+  updateKeyframe,
   upsertKeyframe,
 } from '~/timeline/animation/ops';
 import type { ClipAnimations } from '~/timeline/types';
@@ -83,6 +85,43 @@ describe('moveKeyframe', () => {
     const withOne = upsertKeyframe(undefined, 'opacity', 100, 0.5);
     const moved = moveKeyframe(withOne, 'opacity', 100, 100);
     expect(moved).toBe(withOne);
+  });
+});
+
+describe('updateKeyframe', () => {
+  it('moves one keyframe and updates its value while preserving easing', () => {
+    const withOne = upsertKeyframe(undefined, 'opacity', 100, 0.5, 'ease');
+    const updated = updateKeyframe(withOne, {
+      path: 'opacity',
+      fromTUs: 100,
+      toTUs: 500,
+      value: 0.75,
+    });
+    expect(updated?.opacity?.keyframes).toEqual([{ tUs: 500, value: 0.75, easing: 'ease' }]);
+  });
+
+  it('is a no-op when no keyframe exists at fromTUs', () => {
+    const withOne = upsertKeyframe(undefined, 'opacity', 100, 0.5);
+    const updated = updateKeyframe(withOne, {
+      path: 'opacity',
+      fromTUs: 999,
+      toTUs: 500,
+      value: 0.75,
+    });
+    expect(updated).toBe(withOne);
+  });
+});
+
+describe('setKeyframeEasing', () => {
+  it('updates one param keyframe without touching other paths', () => {
+    let anims: ClipAnimations | undefined = upsertKeyframe(undefined, 'opacity', 100, 0.5);
+    anims = upsertKeyframe(anims, 'transform.rotationDeg', 100, 45);
+
+    const changed = setKeyframeEasing(anims, 'opacity', 100, 'hold');
+    expect(changed?.opacity?.keyframes).toEqual([{ tUs: 100, value: 0.5, easing: 'hold' }]);
+    expect(changed?.['transform.rotationDeg']?.keyframes).toEqual([
+      { tUs: 100, value: 45, easing: 'linear' },
+    ]);
   });
 });
 

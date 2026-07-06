@@ -3,10 +3,11 @@ import { computed } from 'vue';
 import type { TimelineClipItem, TimelineTrack, TimelineTrackItem } from '~/timeline/types';
 import { timeUsToPx, zoomToPxPerSecond } from '~/utils/timeline/geometry';
 import { clipHasAudio, isAudio, isVideo } from '~/utils/timeline/clip';
-import { hasAnyAnimation } from '~/timeline/animation/evaluate';
+import { animatedParamPaths } from '~/timeline/animation/ops';
 import TimelineClipPreviewOverlays from './TimelineClipPreviewOverlays.vue';
 import TimelineClipThumbnails from './TimelineClipThumbnails.vue';
 import TimelineAudioWaveform from './audio/TimelineAudioWaveform.vue';
+import TimelineClipCurveEditor from './TimelineClipCurveEditor.vue';
 import TimelineClipKeyframeLane from './TimelineClipKeyframeLane.vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 
@@ -26,7 +27,7 @@ const KEYFRAME_DIAMOND_PATH = 'M12 2L2 12l10 10 10-10L12 2z';
 // header to attach it to.
 const isKeyframesLaneVisible = computed(() => isKeyframesExpanded.value && !props.isHeaderOnly);
 
-const hasAnimatedParams = computed(() => hasAnyAnimation(props.clipItem?.animations));
+const hasAnimatedParams = computed(() => animatedParamPaths(props.clipItem?.animations).length > 0);
 
 interface ClipPreviewOverlay {
   rangeStyle: Record<string, string>;
@@ -164,18 +165,20 @@ const props = defineProps<{
       />
     </div>
 
-    <!-- Collapsible Keyframes Lane -->
+    <!-- Collapsible Keyframes Lane + Curve Editor -->
     <div
       v-if="isKeyframesLaneVisible"
-      class="h-5 w-full bg-slate-950/85 border-t border-amber-500/40 shrink-0 select-none pointer-events-auto rounded-b overflow-hidden"
+      class="h-[76px] w-full bg-slate-950/85 border-t border-amber-500/40 shrink-0 select-none pointer-events-auto rounded-b overflow-hidden"
       :style="{ zIndex: 'var(--z-clip-content)' }"
     >
-      <TimelineClipKeyframeLane
-        v-if="hasAnimatedParams && clipItem"
-        :clip="clipItem"
-        :track-id="track.id"
-        :zoom="zoom"
-      />
+      <template v-if="hasAnimatedParams && clipItem">
+        <div class="h-5 border-b border-white/10">
+          <TimelineClipKeyframeLane :clip="clipItem" :track-id="track.id" :zoom="zoom" />
+        </div>
+        <div class="h-14">
+          <TimelineClipCurveEditor :clip="clipItem" :track-id="track.id" :zoom="zoom" />
+        </div>
+      </template>
       <div v-else class="h-full w-full flex items-center px-1.5 text-[10px] text-amber-200/60">
         <span class="truncate font-mono text-[9px] tracking-tight uppercase opacity-80">
           {{ t('fastcat.timeline.keyframesLaneEmptyHint') }}

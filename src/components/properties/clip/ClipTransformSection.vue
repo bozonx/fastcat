@@ -1,5 +1,10 @@
 <script setup lang="ts">
-import type { AnimatableParamPath, ClipSourceOrientation, ClipTransform } from '~/timeline/types';
+import type {
+  AnimatableParamPath,
+  ClipSourceOrientation,
+  ClipTransform,
+  FixedAnimatableParamPath,
+} from '~/timeline/types';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
 import PropertySection from '~/components/properties/PropertySection.vue';
@@ -30,7 +35,7 @@ const emit = defineEmits<{
   updateTransform: [next: ClipTransform];
   updateSourceOrientation: [next: ClipSourceOrientation];
   toggleReversed: [];
-  toggleParamAnimation: [paths: AnimatableParamPath[]];
+  toggleParamAnimation: [paths: FixedAnimatableParamPath[]];
   recordAnimatedValue: [path: AnimatableParamPath, value: number];
 }>();
 
@@ -149,9 +154,9 @@ function handleResetAll() {
 // Logical groups: the panel toggles/animates position and scale as a pair of
 // axes at once (they're almost always keyframed together), while rotation is
 // a single leaf param.
-const SCALE_PATHS: AnimatableParamPath[] = ['transform.scale.x', 'transform.scale.y'];
-const POSITION_PATHS: AnimatableParamPath[] = ['transform.position.x', 'transform.position.y'];
-const ROTATION_PATHS: AnimatableParamPath[] = ['transform.rotationDeg'];
+const SCALE_PATHS: FixedAnimatableParamPath[] = ['transform.scale.x', 'transform.scale.y'];
+const POSITION_PATHS: FixedAnimatableParamPath[] = ['transform.position.x', 'transform.position.y'];
+const ROTATION_PATHS: FixedAnimatableParamPath[] = ['transform.rotationDeg'];
 
 const isScaleAnimated = computed(() => SCALE_PATHS.some((p) => isParamAnimated(p)));
 const isPositionAnimated = computed(() => POSITION_PATHS.some((p) => isParamAnimated(p)));

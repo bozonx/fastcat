@@ -2,6 +2,7 @@ import { computed, type Ref } from 'vue';
 import type {
   AnimatableParamPath,
   ClipAnimations,
+  FixedAnimatableParamPath,
   KeyframeEasing,
   TimelineClipItem,
 } from '~/timeline/types';
@@ -68,7 +69,7 @@ export function useClipKeyframes(options: UseClipKeyframesOptions) {
    * static value, so enabling never causes a visible jump. Turning OFF clears
    * every path in the group.
    */
-  function toggleAnimated(paths: AnimatableParamPath[]) {
+  function toggleAnimated(paths: FixedAnimatableParamPath[]) {
     const clip = options.clip.value;
     const turningOff = paths.some((path) => isAnimated(path));
     let next = clip.animations;

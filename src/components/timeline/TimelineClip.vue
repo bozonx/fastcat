@@ -112,9 +112,9 @@ const props = defineProps<Props>();
 // The header sits at the top; the keyframes lane (placeholder) sits at the
 // bottom when expanded. Trim handles and audio fades are constrained to the
 // content band between them so they never sit under the header controls
-// (e.g. the keyframes toggle) or the keyframes lane.
+// (e.g. the keyframes toggle) or the keyframes editor.
 const CLIP_HEADER_HEIGHT_PX = 20; // h-5
-const CLIP_KEYFRAMES_HEIGHT_PX = 20; // h-5
+const CLIP_KEYFRAMES_HEIGHT_PX = 76; // h-5 lane + h-14 curve editor
 const CLIP_MIN_CONTENT_BAND_PX = 16; // below this we collapse to header-only
 
 // Persisted per instance only; virtualization remount resets it (placeholder feature).
