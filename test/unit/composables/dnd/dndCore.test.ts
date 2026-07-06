@@ -231,13 +231,13 @@ describe('usePointerDnd engine', () => {
   it('prevents browser-native mouse drag takeover while preserving touch defaults', () => {
     const mouseDown = armEvent({ x: 0, y: 0 }, 'mouse');
     armPointerDnd(mouseDown, { payload });
-    expect(mouseDown.preventDefault).toHaveBeenCalledTimes(1);
+    expect(mouseDown.preventDefault).not.toHaveBeenCalled();
 
     resetPointerDndForTest();
 
     const penDown = armEvent({ x: 0, y: 0 }, 'pen');
     armPointerDnd(penDown, { payload });
-    expect(penDown.preventDefault).toHaveBeenCalledTimes(1);
+    expect(penDown.preventDefault).not.toHaveBeenCalled();
 
     resetPointerDndForTest();
 

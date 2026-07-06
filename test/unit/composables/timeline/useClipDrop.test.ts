@@ -8,14 +8,10 @@ import type { TimelineClipItem, TimelineTrack } from '~/timeline/types';
 
 vi.mock('~/effects', () => ({
   getAudioEffectManifest: vi.fn((type: string) =>
-    type === 'echo'
-      ? { type: 'echo', defaultValues: { delay: 0.25 } }
-      : undefined,
+    type === 'echo' ? { type: 'echo', defaultValues: { delay: 0.25 } } : undefined,
   ),
   getVideoEffectManifest: vi.fn((type: string) =>
-    type === 'blur'
-      ? { type: 'blur', defaultValues: { strength: 12 } }
-      : undefined,
+    type === 'blur' ? { type: 'blur', defaultValues: { strength: 12 } } : undefined,
   ),
 }));
 
@@ -78,7 +74,7 @@ function setupDropZone(options?: {
   canEdit?: boolean;
   defaultTransitionDurationUs?: number;
 }) {
-  let scope: EffectScope | undefined;
+  const scope = effectScope();
   const updateClipProperties = vi.fn();
   const updateClipTransition = vi.fn();
   const selectTimelineItem = vi.fn();
@@ -90,7 +86,6 @@ function setupDropZone(options?: {
   const canEditClipContent = ref(options?.canEdit ?? true);
   const defaultTransitionDurationUs = ref(options?.defaultTransitionDurationUs ?? 1_000_000);
 
-  scope = effectScope();
   const api = scope.run(() =>
     useClipDrop({
       track: computed(() => track.value),

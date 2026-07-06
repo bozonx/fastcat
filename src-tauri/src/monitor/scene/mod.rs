@@ -592,7 +592,8 @@ mod tests {
             snap_to_pixel_grid: false,
             transform: None,
             animations: None,
-            baked_effects: None,            transition_in: None,
+            baked_effects: None,
+            transition_in: None,
             transition_out: None,
             effects: Vec::new(),
         }

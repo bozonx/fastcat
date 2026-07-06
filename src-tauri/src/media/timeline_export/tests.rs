@@ -564,7 +564,8 @@ fn video_layer() -> crate::monitor::scene::SceneLayer {
         snap_to_pixel_grid: false,
         transform: None,
         animations: None,
-        baked_effects: None,        transition_in: None,
+        baked_effects: None,
+        transition_in: None,
         transition_out: None,
         effects: Vec::new(),
     }
@@ -905,7 +906,11 @@ fn native_export_options_match_shared_parity_fixture() {
             native["height"].as_u64().unwrap(),
             "case `{name}` height"
         );
-        assert_eq!(opts.fps, native["fps"].as_f64().unwrap(), "case `{name}` fps");
+        assert_eq!(
+            opts.fps,
+            native["fps"].as_f64().unwrap(),
+            "case `{name}` fps"
+        );
         assert_eq!(
             opts.start_sec,
             native["startSec"].as_f64().unwrap(),

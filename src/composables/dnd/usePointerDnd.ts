@@ -350,6 +350,7 @@ function teardown(info: { dropped: boolean; cancelled: boolean; nativeTakeover?:
   window.removeEventListener('keydown', onWindowKeyDown, true);
   window.removeEventListener('keyup', onWindowKeyUp, true);
   window.removeEventListener('blur', onWindowBlur, true);
+  window.removeEventListener('dragstart', onWindowDragStart, true);
 
   try {
     drag.captureEl?.releasePointerCapture?.(drag.pointerId);
@@ -394,6 +395,10 @@ function abort(nativeTakeover = false) {
     getDndZone(drag.currentZoneId)?.onLeave?.(buildContext(drag.currentZoneId, null));
   }
   teardown({ dropped: false, cancelled: true, nativeTakeover });
+}
+
+function onWindowDragStart(e: DragEvent) {
+  e.preventDefault();
 }
 
 function onWindowPointerMove(e: PointerEvent) {
@@ -528,10 +533,6 @@ export function armPointerDnd(e: PointerEvent, options: ArmPointerDndOptions): v
   const secondaryOk = options.acceptSecondaryButton === true && e.button === 2;
   if (!secondaryOk && !isPrimaryPointer(pointerType, e.button)) return;
 
-  if (pointerType !== 'touch') {
-    e.preventDefault();
-  }
-
   // Cancel any stale drag (e.g. a previous gesture that never released).
   if (activeDrag) teardown({ dropped: false, cancelled: true });
 
@@ -563,6 +564,7 @@ export function armPointerDnd(e: PointerEvent, options: ArmPointerDndOptions): v
   window.addEventListener('keydown', onWindowKeyDown, true);
   window.addEventListener('keyup', onWindowKeyUp, true);
   window.addEventListener('blur', onWindowBlur, true);
+  window.addEventListener('dragstart', onWindowDragStart, true);
 
   // Touch: promote a stationary press to a drag after the long-press delay.
   if (pointerType === 'touch') {

@@ -178,7 +178,8 @@ pub fn patch_baked_specs(baked: &ClipBakedEffects, animation_t_us: f64) -> Vec<V
 /// its baked effect-param tracks. Returns `None` when the layer has no baked
 /// effects (callers then use the static `sl.effects`).
 pub fn resolve_baked_effect_specs(sl: &SceneLayer, animation_t_us: f64) -> Option<Vec<EffectSpec>> {
-    let baked: ClipBakedEffects = serde_json::from_value(sl.baked_effects.as_ref()?.clone()).ok()?;
+    let baked: ClipBakedEffects =
+        serde_json::from_value(sl.baked_effects.as_ref()?.clone()).ok()?;
     // Re-type the patched JSON specs, dropping any that no longer deserialize.
     Some(
         patch_baked_specs(&baked, animation_t_us)
@@ -354,8 +355,13 @@ mod tests {
                 let wo = w.as_object().expect("spec object");
                 assert_eq!(go.len(), wo.len(), "{name}: field count");
                 for (k, wv) in wo {
-                    let gv = go.get(k).unwrap_or_else(|| panic!("{name}: missing field {k}"));
-                    assert!(value_eq(gv, wv), "{name}: field {k}: got {gv:?}, want {wv:?}");
+                    let gv = go
+                        .get(k)
+                        .unwrap_or_else(|| panic!("{name}: missing field {k}"));
+                    assert!(
+                        value_eq(gv, wv),
+                        "{name}: field {k}: got {gv:?}, want {wv:?}"
+                    );
                 }
             }
         }

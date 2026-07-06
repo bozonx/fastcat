@@ -73,7 +73,7 @@ transform?: SceneLayerTransform,
  * Sampled per frame in `finalize_layer` to drive an animated
  * transform/opacity. Mirrors the web `clip.animations`.
  */
-animations?: import('~/timeline/types').ClipAnimations, transition_in?: SceneTransition, transition_out?: SceneTransition, effects: import('~/effects').VideoEffectSpec[],
+animations?: import('~/timeline/types').ClipAnimations, transition_in?: SceneTransition, transition_out?: SceneTransition, effects: import('~/effects').VideoEffectSpec[], 
 /**
  * Effect-parameter keyframes baked to spec-field tracks (see the web
  * `bakeClipEffectAnimations`). When present, `finalize_layer` samples these

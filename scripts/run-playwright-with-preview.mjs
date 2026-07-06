@@ -112,6 +112,7 @@ function runBuild(e2ePort) {
       E2E_HOST: e2eHost,
       E2E_PORT: String(e2ePort),
       E2E_TEST: '1',
+      FASTCAT_ENABLE_IN_DEVELOPMENT_FEATURES: 'true',
     },
   });
 
@@ -145,6 +146,7 @@ async function main() {
       E2E_PORT: String(e2ePort),
       E2E_BASE_URL: baseURL,
       E2E_TEST: '1',
+      FASTCAT_ENABLE_IN_DEVELOPMENT_FEATURES: 'true',
     },
   });
 

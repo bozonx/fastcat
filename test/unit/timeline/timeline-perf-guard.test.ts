@@ -19,11 +19,7 @@ import {
   selectTimelineDurationUs,
   selectItemToTrackMap,
 } from '~/timeline/selectors';
-import type {
-  TimelineDocument,
-  TimelineTrack,
-  TimelineClipItem,
-} from '~/timeline/types';
+import type { TimelineDocument, TimelineTrack, TimelineClipItem } from '~/timeline/types';
 
 const FPS = 30;
 const CLIP_DUR = 1_000_000;

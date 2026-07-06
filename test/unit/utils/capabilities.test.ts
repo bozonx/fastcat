@@ -20,6 +20,7 @@ describe('getPlatformCapabilities', () => {
       hardwareEncoding: false,
       systemFonts: false,
       nativeAudioEngine: false,
+      nativeAudioPlugins: false,
     });
   });
 
@@ -30,6 +31,7 @@ describe('getPlatformCapabilities', () => {
       hardwareEncoding: true,
       systemFonts: true,
       nativeAudioEngine: true,
+      nativeAudioPlugins: true,
     });
   });
 });

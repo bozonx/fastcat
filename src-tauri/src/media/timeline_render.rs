@@ -1131,7 +1131,8 @@ mod tests {
             snap_to_pixel_grid: false,
             transform: None,
             animations: None,
-            baked_effects: None,            transition_in: None,
+            baked_effects: None,
+            transition_in: None,
             transition_out: None,
             effects: Vec::new(),
         };
@@ -1161,7 +1162,8 @@ mod tests {
             snap_to_pixel_grid: false,
             transform: None,
             animations: None,
-            baked_effects: None,            transition_in: Some(crate::monitor::scene::SceneTransition {
+            baked_effects: None,
+            transition_in: Some(crate::monitor::scene::SceneTransition {
                 transition_type: "dissolve".into(),
                 duration_sec: 1.0,
                 curve: None,
@@ -1240,7 +1242,8 @@ mod tests {
             snap_to_pixel_grid: false,
             transform: None,
             animations: None,
-            baked_effects: None,            transition_in: None,
+            baked_effects: None,
+            transition_in: None,
             transition_out: None,
             effects: Vec::new(),
         };

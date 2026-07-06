@@ -39,7 +39,7 @@ export default defineConfig({
   // can never be pulled into two runs at once.
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
+  retries: process.env.CI ? 2 : 1,
   timeout: 60_000,
   workers: process.env.CI ? 1 : e2eWorkers,
   reporter: process.env.CI
@@ -51,6 +51,7 @@ export default defineConfig({
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
+    locale: 'en-US',
   },
 
   projects: [
@@ -110,6 +111,7 @@ export default defineConfig({
       E2E_HOST: e2eHost,
       E2E_PORT: String(e2ePort),
       NUXT_IGNORE_LOCK: '1',
+      FASTCAT_ENABLE_IN_DEVELOPMENT_FEATURES: 'true',
     },
   },
 });

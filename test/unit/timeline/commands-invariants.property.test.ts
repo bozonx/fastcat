@@ -29,7 +29,11 @@ interface ClipSpec {
   durationUs: number;
 }
 
-function makeMediaClip(id: string, trackId: string, spec: Omit<ClipSpec, 'trackId'>): TimelineClipItem {
+function makeMediaClip(
+  id: string,
+  trackId: string,
+  spec: Omit<ClipSpec, 'trackId'>,
+): TimelineClipItem {
   return {
     kind: 'clip',
     clipType: 'media',
@@ -81,9 +85,7 @@ function invariantViolations(doc: TimelineDocument): string[] {
   const seenIds = new Set<string>();
 
   for (const track of doc.tracks) {
-    const clips = track.items.filter(
-      (it): it is TimelineClipItem => it.kind === 'clip',
-    );
+    const clips = track.items.filter((it): it is TimelineClipItem => it.kind === 'clip');
 
     for (const it of track.items) {
       // 1. Unique ids across the whole document.
@@ -105,9 +107,7 @@ function invariantViolations(doc: TimelineDocument): string[] {
     }
 
     // 4. Clips on the same track never meaningfully overlap.
-    const ordered = [...clips].sort(
-      (a, b) => a.timelineRange.startUs - b.timelineRange.startUs,
-    );
+    const ordered = [...clips].sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
     for (let i = 1; i < ordered.length; i++) {
       const prev = ordered[i - 1]!;
       const cur = ordered[i]!;
@@ -216,7 +216,12 @@ function toCommand(doc: TimelineDocument, action: Action): TimelineCommand | nul
 
   switch (action.kind) {
     case 'move':
-      return { type: 'move_item', trackId: ref.trackId, itemId: ref.itemId, startUs: action.startUs };
+      return {
+        type: 'move_item',
+        trackId: ref.trackId,
+        itemId: ref.itemId,
+        startUs: action.startUs,
+      };
     case 'trim':
       return {
         type: 'trim_item',
@@ -256,9 +261,7 @@ describe('timeline command invariants (property-based)', () => {
           }
           const violations = invariantViolations(next);
           if (violations.length > 0) {
-            throw new Error(
-              `invariants broken after ${cmd.type}: ${violations.join('; ')}`,
-            );
+            throw new Error(`invariants broken after ${cmd.type}: ${violations.join('; ')}`);
           }
           doc = next;
         }
@@ -315,8 +318,10 @@ describe('timeline command invariants (property-based)', () => {
           expect(totalTimeline).toBe(original.timelineRange.durationUs);
 
           // Source range is conserved and contiguous.
-          const leftSrc = (left as { sourceRange: { startUs: number; durationUs: number } }).sourceRange;
-          const rightSrc = (right as { sourceRange: { startUs: number; durationUs: number } }).sourceRange;
+          const leftSrc = (left as { sourceRange: { startUs: number; durationUs: number } })
+            .sourceRange;
+          const rightSrc = (right as { sourceRange: { startUs: number; durationUs: number } })
+            .sourceRange;
           expect(rightSrc.startUs).toBe(leftSrc.startUs + leftSrc.durationUs);
           const totalSrc = leftSrc.durationUs + rightSrc.durationUs;
           const originalSrc = (original as { sourceRange: { durationUs: number } }).sourceRange

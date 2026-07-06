@@ -154,7 +154,10 @@ mod tests {
 
         let spec = serde_json::to_value(&out.effects[0]).unwrap();
         let radius = spec["radius"].as_f64().unwrap();
-        assert!((radius - 36.0).abs() < 1e-5, "radius should patch to 36, got {radius}");
+        assert!(
+            (radius - 36.0).abs() < 1e-5,
+            "radius should patch to 36, got {radius}"
+        );
     }
 
     #[test]
@@ -734,7 +737,8 @@ mod tests {
             snap_to_pixel_grid: false,
             transform: None,
             animations: None,
-            baked_effects: None,            transition_in: None,
+            baked_effects: None,
+            transition_in: None,
             transition_out: None,
             effects: Vec::new(),
         };
@@ -790,7 +794,8 @@ mod tests {
             snap_to_pixel_grid: false,
             transform: None,
             animations: None,
-            baked_effects: None,            transition_in: None,
+            baked_effects: None,
+            transition_in: None,
             transition_out: None,
             effects: Vec::new(),
         };
@@ -892,7 +897,8 @@ mod tests {
             snap_to_pixel_grid: false,
             transform: None,
             animations: None,
-            baked_effects: None,            transition_in: None,
+            baked_effects: None,
+            transition_in: None,
             transition_out: None,
             effects: Vec::new(),
         };
@@ -974,7 +980,8 @@ mod tests {
             snap_to_pixel_grid: false,
             transform: None,
             animations: None,
-            baked_effects: None,            transition_in: None,
+            baked_effects: None,
+            transition_in: None,
             transition_out: None,
             effects: Vec::new(),
         };
@@ -1111,7 +1118,8 @@ mod tests {
                 flip_vertical: false,
             }),
             animations: None,
-            baked_effects: None,            transition_in: None,
+            baked_effects: None,
+            transition_in: None,
             transition_out: None,
             effects: Vec::new(),
         };

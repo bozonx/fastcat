@@ -12,7 +12,11 @@ import type { TimelineClipItem, TimelineClipPropertiesPatch, TrackKind } from '~
 export interface UseClipParametersClipboardOptions {
   clip: Ref<TimelineClipItem>;
   trackKind: Ref<TrackKind>;
-  updateClipProperties: (trackId: string, itemId: string, props: TimelineClipPropertiesPatch) => void;
+  updateClipProperties: (
+    trackId: string,
+    itemId: string,
+    props: TimelineClipPropertiesPatch,
+  ) => void;
   updateClipTransition: (
     trackId: string,
     itemId: string,

@@ -36,7 +36,11 @@ interface TimelineStoreActions {
   ) => string[] | Promise<string[]>;
   loadTimeline: () => Promise<void>;
   loadTimelineMetadata: () => Promise<void> | void;
-  updateClipProperties: (trackId: string, itemId: string, patch: TimelineClipPropertiesPatch) => void;
+  updateClipProperties: (
+    trackId: string,
+    itemId: string,
+    patch: TimelineClipPropertiesPatch,
+  ) => void;
 
   renameItem: (trackId: string, itemId: string, name: string) => void;
   selectTimelineItems: (
