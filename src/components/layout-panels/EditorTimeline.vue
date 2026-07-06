@@ -67,8 +67,13 @@ const mediaStore = useMediaStore();
 const runtimeConfig = useRuntimeConfig();
 const { draggedFile } = useDraggedFile();
 
-const { speedModal, openSpeedModal, saveSpeedModal, speedModalTargetHasAudio, speedModalTargetIsAudioTrack } =
-  useTimelineSpeedModal(() => tracks.value);
+const {
+  speedModal,
+  openSpeedModal,
+  saveSpeedModal,
+  speedModalTargetHasAudio,
+  speedModalTargetIsAudioTrack,
+} = useTimelineSpeedModal(() => tracks.value);
 
 interface TauriInternalFileDropDetail {
   clientX: number;

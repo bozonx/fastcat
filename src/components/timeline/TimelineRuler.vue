@@ -284,18 +284,6 @@ const { markerPoints, selectionRangePoint, currentFrameHighlightStyle, playheadS
     draggedMarkerId,
   });
 
-const {
-  rulerContextMenuItems,
-  getZoneMarkerMenuItems,
-  getMarkerMenuItems,
-  selectionRangeMenuItems,
-} = useTimelineRulerMenus({
-  t,
-  timelineStore,
-  selectMarker,
-  deleteMarker,
-});
-
 const suppressNextRulerClick = computed({
   get: () => suppressNextRulerClickMarker.value || suppressNextRulerClickSelection.value,
   set: (val) => {
@@ -316,6 +304,7 @@ const {
   onRulerPointerDown,
   onRulerPointerMove,
   onRulerPointerUp,
+  lastRightClickTimeUs,
 } = useTimelineRulerInteractions({
   containerRef,
   scrollLeft,
@@ -328,6 +317,19 @@ const {
   startSelectionRangeCreate,
   resolvePlayheadClickTimeUs: getSnappedPlayheadTimeUs,
   emit,
+});
+
+const {
+  rulerContextMenuItems,
+  getZoneMarkerMenuItems,
+  getMarkerMenuItems,
+  selectionRangeMenuItems,
+} = useTimelineRulerMenus({
+  t,
+  timelineStore,
+  selectMarker,
+  deleteMarker,
+  getRightClickTimeUs: () => lastRightClickTimeUs.value,
 });
 
 const isSelectionRangeSelected = computed(

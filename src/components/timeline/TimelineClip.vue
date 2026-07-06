@@ -24,6 +24,7 @@ import {
 } from '~/utils/timeline/geometry';
 import { formatStopFrameTimecode } from '~/utils/stop-frames';
 import { sanitizeFps } from '~/timeline/commands/utils';
+import { isClipFreePosition } from '~/utils/timeline/clip-checks';
 import { cloneValue } from '~/utils/clone';
 import { useClipContextMenu } from '~/composables/timeline/useClipContextMenu';
 import { useHotkeyLabel } from '~/composables/useHotkeyLabel';
@@ -530,6 +531,12 @@ const isAudioMuted = computed(() => {
   );
 });
 
+const isFreePosition = computed(() => {
+  if (!clipItem.value) return false;
+  const fps = sanitizeFps(timelineContext.timelineDoc.value?.timebase?.fps);
+  return isClipFreePosition(clipItem.value, timelineContext.timelineDoc.value, fps || 30);
+});
+
 const isMediaMissing = computed(() => {
   if (
     !clipItem.value ||
@@ -869,9 +876,23 @@ function handleTransitionCreate(
             clipItem.speed !== 1 &&
             !isMediaMissing
           "
-          class="absolute inset-0 rounded border-2 pointer-events-none"
+          class="absolute top-0 left-0 right-0 border-t-2 pointer-events-none rounded-t"
           :style="{ zIndex: 'var(--z-clip-speed)' }"
           :class="clipItem.speed < 0 ? 'border-fuchsia-500' : 'border-violet-400'"
+        />
+
+        <!-- Group Indicator (bottom border) -->
+        <div
+          v-if="clipItem && clipItem.linkedGroupId && !isMediaMissing"
+          class="absolute bottom-0 left-0 right-0 border-b-2 border-sky-400/80 pointer-events-none rounded-b"
+          :style="{ zIndex: 'var(--z-clip-handles)' }"
+        />
+
+        <!-- Free Position Indicator (dashed border) -->
+        <div
+          v-if="clipItem && isFreePosition && !isMediaMissing"
+          class="absolute inset-0 rounded border-2 border-dashed border-amber-500/80 pointer-events-none"
+          :style="{ zIndex: 'var(--z-clip-free-pos)' }"
         />
 
         <div

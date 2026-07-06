@@ -399,7 +399,7 @@ export const useTimelineStore = defineStore('timeline', () => {
         selectionRange.value = newRange ? { ...newRange } : null;
       }
     },
-    { deep: true, immediate: true }
+    { deep: true, immediate: true },
   );
 
   async function requestTimelineSave(options?: { immediate?: boolean }) {
@@ -1164,6 +1164,19 @@ export const useTimelineStore = defineStore('timeline', () => {
       }
       return createdMarker;
     },
+    addMarker: (
+      input: { timeUs: number; durationUs?: number; text?: string; color?: string },
+      options?: Record<string, unknown>,
+    ) => {
+      const markerId = markerService.addMarker(input, options);
+      const nextMarkers = markerService.getMarkers();
+      const createdMarker = nextMarkers.find((m) => m.id === markerId);
+
+      if (createdMarker && options?.select !== false) {
+        selectionStore.selectTimelineMarker(createdMarker.id);
+      }
+      return createdMarker;
+    },
     goToNextMarker: () => {
       const next = findNextMarkerTime(markerService.getMarkers(), currentTime.value, fps.value);
       if (next !== undefined) {
@@ -1276,6 +1289,9 @@ export const useTimelineStore = defineStore('timeline', () => {
     loadBackupVersions: backup.loadBackupVersions,
     clearAllBackups: backup.clearAllBackups,
     isMobileLayout,
+    get defaultZoneDurationUs() {
+      return workspaceStore.userSettings.timeline.defaultStaticClipDurationUs;
+    },
     // Create a forced backup of the current timeline before leaving the project
     // or switching timelines on mobile.
     async maybeCreateMobileBackup() {

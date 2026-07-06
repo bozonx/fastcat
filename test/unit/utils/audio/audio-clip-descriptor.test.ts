@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { WorkerTimelineClip } from '~/types/worker-payload';
 import {
   buildCanonicalAudioClipDescriptor,
+  buildNativeAudioEffectSpecs,
   sanitizeNativeAudioSpeed,
   toAudioEngineClip,
   toNativeSceneAudioLayer,
@@ -352,6 +353,34 @@ describe('audio clip descriptor adapters', () => {
 
     expect(outgoingNative.timeline_end_sec).toBeGreaterThan(incomingNative.timeline_start_sec);
     expect(outgoingNative.timeline_end_sec - incomingNative.timeline_start_sec).toBeCloseTo(0.5);
+  });
+});
+
+describe('buildNativeAudioEffectSpecs', () => {
+  it('lifts a CLAP plugin reference onto the spec and keeps it out of params', () => {
+    // Shape mirrors what the CLAP effect manifest injects via defaultValues.plugin
+    // when a scanned plugin is added to a clip.
+    const specs = buildNativeAudioEffectSpecs([
+      {
+        id: 'audio_effect_1',
+        type: 'clap:abc123:com.example.reverb',
+        enabled: true,
+        target: 'audio',
+        wet: 0.8,
+        plugin: { format: 'clap', path: '/usr/lib/clap/reverb.clap', pluginId: 'com.example.reverb' },
+      },
+    ] as never);
+
+    expect(specs).toEqual([
+      {
+        id: 'audio_effect_1',
+        type: 'clap:abc123:com.example.reverb',
+        enabled: true,
+        wet: 0.8,
+        params: {},
+        plugin: { format: 'clap', path: '/usr/lib/clap/reverb.clap', pluginId: 'com.example.reverb' },
+      },
+    ]);
   });
 });
 

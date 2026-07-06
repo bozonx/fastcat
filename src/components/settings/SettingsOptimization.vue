@@ -99,21 +99,21 @@ function resetDefaults() {
       </UiFormField>
     </div>
 
-    <div
-      class="flex items-center justify-between gap-3"
+    <label
+      class="flex items-center justify-between gap-3 cursor-pointer select-none"
       :title="t('videoEditor.settings.proxyCopyOpusAudioHelp')"
     >
       <span class="text-sm text-ui-text">
         {{ t('videoEditor.settings.proxyCopyOpusAudio') }}
       </span>
       <USwitch v-model="workspaceStore.userSettings.optimization.proxyCopyOpusAudio" />
-    </div>
+    </label>
 
-    <div class="flex items-center justify-between gap-3">
+    <label class="flex items-center justify-between gap-3 cursor-pointer select-none">
       <span class="text-sm text-ui-text">
         {{ t('videoEditor.settings.autoCreateProxies') }}
       </span>
       <USwitch v-model="workspaceStore.userSettings.optimization.autoCreateProxies" />
-    </div>
+    </label>
   </div>
 </template>

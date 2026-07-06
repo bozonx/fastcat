@@ -197,7 +197,9 @@ function handleCancel() {
         </UButton>
         <UButton
           color="primary"
-          :disabled="!name.trim() || loading || !!errorMsg || (hideErrorIfUnmodified && !isModified)"
+          :disabled="
+            !name.trim() || loading || !!errorMsg || (hideErrorIfUnmodified && !isModified)
+          "
           :loading="loading"
           @click="handleConfirm"
         >

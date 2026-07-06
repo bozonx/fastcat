@@ -364,12 +364,15 @@ watch(
       :ui="{ label: 'text-sm text-ui-text-muted' }"
     />
 
-    <div class="my-1 flex items-center justify-between gap-3">
+    <label
+      class="my-1 flex items-center justify-between gap-3 select-none"
+      :class="[props.disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer']"
+    >
       <span class="text-sm text-ui-text">
         {{ t('videoEditor.export.advancedSettings') }}
       </span>
       <USwitch v-model="enableAdvancedSettings" :disabled="props.disabled" />
-    </div>
+    </label>
 
     <template v-if="enableAdvancedSettings">
       <div class="flex flex-col gap-4 pl-4 border-l border-ui-border">
@@ -470,23 +473,30 @@ watch(
           />
         </UiFormField>
 
-        <div v-if="outputFormat === 'mp4'" class="flex items-center justify-between gap-3">
+        <label
+          v-if="outputFormat === 'mp4'"
+          class="flex items-center justify-between gap-3 select-none"
+          :class="[props.disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer']"
+        >
           <span class="text-sm text-ui-text-muted">
             {{ t('videoEditor.export.fastStart') }}
           </span>
           <USwitch v-model="fastStart" :disabled="props.disabled" />
-        </div>
+        </label>
       </div>
     </template>
 
     <div class="h-px bg-ui-border my-2"></div>
 
-    <div class="flex items-center justify-between">
+    <label
+      class="flex items-center justify-between select-none"
+      :class="[isAudioDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer']"
+    >
       <span class="text-sm text-ui-text-muted">
         {{ t('common.audio') }}
       </span>
       <USwitch v-model="includeAudio" :disabled="isAudioDisabled" />
-    </div>
+    </label>
 
     <div v-if="includeAudio && !props.hideAudioBitrate" class="flex flex-col gap-4">
       <UiFormField v-if="!props.showAudioAdvanced" :label="t('videoEditor.export.audioCodec')">

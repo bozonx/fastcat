@@ -70,7 +70,10 @@ function deleteGap() {
     </PropertySection>
 
     <!-- Track divider -->
-    <div v-if="track" class="text-xs font-bold text-ui-text-muted px-2 py-1 mt-2 uppercase tracking-wider">
+    <div
+      v-if="track"
+      class="text-xs font-bold text-ui-text-muted px-2 py-1 mt-2 uppercase tracking-wider"
+    >
       {{ t('fastcat.track.trackName', { name: track.name }) }}
     </div>
 

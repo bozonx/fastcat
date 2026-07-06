@@ -111,12 +111,12 @@ const stopFramesQualityOptions = [
     </UiFormField>
 
     <UiFormField>
-      <div class="flex items-center justify-between gap-3">
+      <label class="flex items-center justify-between gap-3 cursor-pointer select-none w-full">
         <span class="text-sm text-ui-text">
           {{ t('videoEditor.settings.openLastProjectOnStart') }}
         </span>
         <USwitch v-model="workspaceStore.userSettings.openLastProjectOnStart" />
-      </div>
+      </label>
     </UiFormField>
 
     <UiFormField :label="t('videoEditor.settings.defaultTransitionDuration')">
@@ -174,12 +174,12 @@ const stopFramesQualityOptions = [
       </div>
     </UiFormField>
 
-    <div class="flex items-center justify-between gap-3 px-1">
+    <label class="flex items-center justify-between gap-3 px-1 cursor-pointer select-none">
       <span class="text-sm text-ui-text">
         {{ t('videoEditor.settings.deleteWithoutConfirmation') }}
       </span>
       <USwitch v-model="workspaceStore.userSettings.deleteWithoutConfirmation" />
-    </div>
+    </label>
 
     <UiAccordion :title="t('videoEditor.settings.advancedSection')">
       <div class="flex flex-col gap-6 pt-2">
@@ -221,12 +221,14 @@ const stopFramesQualityOptions = [
 
         <template v-if="workspaceStore.inDevelopmentFeaturesEnabled">
           <UiFormField>
-            <div class="flex items-center justify-between gap-3">
+            <label
+              class="flex items-center justify-between gap-3 cursor-pointer select-none w-full"
+            >
               <span class="text-sm text-ui-text">
                 {{ t('videoEditor.settings.useBackups') }}
               </span>
               <USwitch v-model="workspaceStore.userSettings.backup.enabled" />
-            </div>
+            </label>
           </UiFormField>
 
           <UiFormField

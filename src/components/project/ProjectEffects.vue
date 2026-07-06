@@ -12,6 +12,7 @@ import { getAllTransitionManifests, getTransitionManifest } from '~/transitions'
 import { useSelectionStore } from '~/stores/selection.store';
 import { usePresetsStore } from '~/stores/presets.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
+import { useAudioPluginsStore } from '~/stores/audio-plugins.store';
 
 import CollapsibleEffectGroup from '~/components/effects/CollapsibleEffectGroup.vue';
 import EffectCard from '~/components/effects/EffectCard.vue';
@@ -26,6 +27,9 @@ const { t } = useI18n();
 const selectionStore = useSelectionStore();
 const presetsStore = usePresetsStore();
 const workspaceStore = useWorkspaceStore();
+const audioPluginsStore = useAudioPluginsStore();
+
+void audioPluginsStore.ensureInit();
 
 const isRenameModalOpen = ref(false);
 const renamingPresetId = ref<string | null>(null);
@@ -60,11 +64,13 @@ const videoEffects = computed(() =>
     (m) => !m.experimental || workspaceStore.inDevelopmentFeaturesEnabled,
   ),
 );
-const audioEffects = computed(() =>
-  getAllAudioEffectManifests().filter(
+const audioEffects = computed(() => {
+  // Recompute when native audio plugins (de)register into the shared registry.
+  void audioPluginsStore.registryVersion;
+  return getAllAudioEffectManifests().filter(
     (m) => !m.experimental || workspaceStore.inDevelopmentFeaturesEnabled,
-  ),
-);
+  );
+});
 const standardAudioEffects = computed(() => audioEffects.value.filter((e) => !e.isCustom));
 const customAudioEffects = computed(() => {
   const presetManifests = presetsStore.customPresets

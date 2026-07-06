@@ -62,6 +62,11 @@ export function getDndBadge(operation: DndOperation, t: DndTranslate): DndBadge 
       return { glyph: '⇄', color: 'green', label: t(getDndLabelKey(operation)), visible: true };
     case 'none':
     default:
-      return { glyph: '✕', color: 'red', label: t('videoEditor.fileManager.drag.notAllowed'), visible: true };
+      return {
+        glyph: '✕',
+        color: 'red',
+        label: t('videoEditor.fileManager.drag.notAllowed'),
+        visible: true,
+      };
   }
 }

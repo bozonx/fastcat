@@ -8,6 +8,7 @@ import {
 } from '~/effects';
 import { usePresetsStore } from '~/stores/presets.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
+import { useAudioPluginsStore } from '~/stores/audio-plugins.store';
 import CollapsibleEffectGroup from './CollapsibleEffectGroup.vue';
 import EffectCard from './EffectCard.vue';
 
@@ -32,9 +33,17 @@ const emit = defineEmits<{
 const { t } = useI18n();
 const presetsStore = usePresetsStore();
 const workspaceStore = useWorkspaceStore();
+const audioPluginsStore = useAudioPluginsStore();
 const isOpen = useModalOpenModel(props, emit);
 
+if (props.target === 'audio') {
+  void audioPluginsStore.ensureInit();
+}
+
 const allManifests = computed(() => {
+  // Native audio plugins register into the shared effect registry; depend on the
+  // store's version so this recomputes when a scan (de)registers CLAP effects.
+  void audioPluginsStore.registryVersion;
   const manifests =
     props.target === 'video' ? getAllVideoEffectManifests() : getAllAudioEffectManifests();
   return manifests.filter((m) => !m.experimental || workspaceStore.inDevelopmentFeaturesEnabled);

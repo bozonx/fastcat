@@ -28,7 +28,7 @@ const speedValue = computed({
 
 const isOpen = useModalOpenModel(props, emit);
 
-const minSpeed = computed(() => props.isAudioTrack ? 0.1 : -10);
+const minSpeed = computed(() => (props.isAudioTrack ? 0.1 : -10));
 
 const isSaveDisabled = computed(() => {
   if (props.isAudioTrack) {
@@ -112,7 +112,13 @@ watch(
         <UButton color="neutral" variant="ghost" @click="void (isOpen = false)">
           {{ t('common.cancel') }}
         </UButton>
-        <UButton ref="saveButtonRef" color="primary" autofocus :disabled="isSaveDisabled" @click="emit('save')">
+        <UButton
+          ref="saveButtonRef"
+          color="primary"
+          autofocus
+          :disabled="isSaveDisabled"
+          @click="emit('save')"
+        >
           {{ t('common.save') }}
         </UButton>
       </div>

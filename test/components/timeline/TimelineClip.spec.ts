@@ -492,6 +492,29 @@ describe('TimelineClip', () => {
     expect(speedIndicator.exists()).toBe(true);
   });
 
+  it('displays group indicator when clip belongs to a group', async () => {
+    const component = await mountClip({
+      ...defaultProps,
+      item: { ...baseItem, linkedGroupId: 'group-123' },
+    });
+
+    const groupIndicator = component.find('.border-sky-400\\/80');
+    expect(groupIndicator.exists()).toBe(true);
+  });
+
+  it('displays free position indicator when clip is not frame-aligned', async () => {
+    const component = await mountClip({
+      ...defaultProps,
+      item: {
+        ...baseItem,
+        timelineRange: { startUs: 1012345, durationUs: 5000000 },
+      },
+    });
+
+    const freePositionIndicator = component.find('.border-dashed.border-amber-500\\/80');
+    expect(freePositionIndicator.exists()).toBe(true);
+  });
+
   it('renders slip overlay with offset and source range position', async () => {
     const component = await mountClip({
       ...defaultProps,

@@ -1,27 +1,26 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
+import { storeToRefs } from 'pinia';
 import UiAlert from '~/components/ui/UiAlert.vue';
 import UiFormField from '~/components/ui/UiFormField.vue';
 import UiTextInput from '~/components/ui/UiTextInput.vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
+import { useAudioPluginsStore } from '~/stores/audio-plugins.store';
 import { DEFAULT_USER_SETTINGS, type AudioPluginFormat } from '~/utils/settings';
 import { getPlatformCapabilities } from '~/utils/capabilities';
-import {
-  createEmptyNativeAudioPluginScanResult,
-  scanNativeAudioPlugins,
-  type NativeAudioPluginDescriptor,
-} from '~/utils/audio/native-audio-plugins';
+import type { NativeAudioPluginDescriptor } from '~/utils/audio/native-audio-plugins';
 import { createDevLogger } from '~/utils/dev-logger';
 
 const log = createDevLogger('SettingsAudioPlugins');
 
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
+const audioPluginsStore = useAudioPluginsStore();
 const isTauri = computed(() => getPlatformCapabilities().nativeAudioPlugins);
 
-const scanResult = ref(createEmptyNativeAudioPluginScanResult());
-const isScanning = ref(false);
-const scanError = ref<string | null>(null);
+// Scanning and its results are shared with the editor (effect pickers) via the
+// store, so discovering a plugin here immediately makes it selectable there.
+const { plugins: scannedPlugins, isScanning, error: scanError } = storeToRefs(audioPluginsStore);
 const manualPath = ref('');
 
 const pluginSettings = computed(() => workspaceStore.userSettings.audioPlugins);
@@ -80,22 +79,7 @@ async function browsePath() {
 }
 
 async function scanPlugins() {
-  if (!isTauri.value || isScanning.value) return;
-  isScanning.value = true;
-  scanError.value = null;
-  try {
-    scanResult.value = await scanNativeAudioPlugins({
-      formats: pluginSettings.value.enabledFormats,
-      customPaths: pluginSettings.value.customScanPaths,
-      includeStandardPaths: true,
-    });
-  } catch (err) {
-    log.error('Failed to scan native audio plugins:', err);
-    scanResult.value = createEmptyNativeAudioPluginScanResult();
-    scanError.value = err instanceof Error ? err.message : String(err);
-  } finally {
-    isScanning.value = false;
-  }
+  await audioPluginsStore.scan();
 }
 
 function resetDefaults() {
@@ -104,8 +88,6 @@ function resetDefaults() {
     enabledFormats: [...DEFAULT_USER_SETTINGS.audioPlugins.enabledFormats],
     customScanPaths: [...DEFAULT_USER_SETTINGS.audioPlugins.customScanPaths],
   };
-  scanResult.value = createEmptyNativeAudioPluginScanResult();
-  scanError.value = null;
 }
 
 function statusLabel(plugin: NativeAudioPluginDescriptor): string {
@@ -132,19 +114,22 @@ function statusLabel(plugin: NativeAudioPluginDescriptor): string {
     </UiAlert>
 
     <template v-else>
-      <div class="flex items-center justify-between gap-3">
+      <label class="flex items-center justify-between gap-3 cursor-pointer select-none">
         <span class="text-sm text-ui-text">
           {{ t('videoEditor.settings.audioPlugins.enable') }}
         </span>
         <USwitch v-model="pluginSettings.enabled" />
-      </div>
+      </label>
 
-      <div class="flex items-center justify-between gap-3">
+      <label
+        class="flex items-center justify-between gap-3 select-none"
+        :class="[!pluginSettings.enabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer']"
+      >
         <span class="text-sm text-ui-text">
           {{ t('videoEditor.settings.audioPlugins.scanOnStartup') }}
         </span>
         <USwitch v-model="pluginSettings.scanOnStartup" :disabled="!pluginSettings.enabled" />
-      </div>
+      </label>
 
       <UiFormField
         :label="t('videoEditor.settings.audioPlugins.formats')"
@@ -156,7 +141,6 @@ function statusLabel(plugin: NativeAudioPluginDescriptor): string {
             :key="option.value"
             :model-value="isFormatEnabled(option.value)"
             :label="option.label"
-            :disabled="!pluginSettings.enabled"
             @update:model-value="
               (value: boolean | 'indeterminate') => toggleFormat(option.value, value === true)
             "
@@ -174,7 +158,6 @@ function statusLabel(plugin: NativeAudioPluginDescriptor): string {
               v-model="manualPath"
               full-width
               mono
-              :disabled="!pluginSettings.enabled"
               :placeholder="t('videoEditor.settings.audioPlugins.pathPlaceholder')"
               @keyup.enter="addPath(manualPath)"
             />
@@ -182,7 +165,6 @@ function statusLabel(plugin: NativeAudioPluginDescriptor): string {
               icon="i-heroicons-folder-open"
               color="neutral"
               variant="outline"
-              :disabled="!pluginSettings.enabled"
               :aria-label="t('videoEditor.settings.audioPlugins.browsePath')"
               @click="browsePath"
             />
@@ -190,7 +172,7 @@ function statusLabel(plugin: NativeAudioPluginDescriptor): string {
               icon="i-heroicons-plus"
               color="neutral"
               variant="outline"
-              :disabled="!pluginSettings.enabled || manualPath.trim().length === 0"
+              :disabled="manualPath.trim().length === 0"
               :aria-label="t('videoEditor.settings.audioPlugins.addPath')"
               @click="addPath(manualPath)"
             />
@@ -231,7 +213,7 @@ function statusLabel(plugin: NativeAudioPluginDescriptor): string {
           variant="outline"
           size="xs"
           :loading="isScanning"
-          :disabled="!pluginSettings.enabled"
+          :disabled="isScanning"
           @click="scanPlugins"
         >
           {{ t('videoEditor.settings.audioPlugins.scan') }}
@@ -243,7 +225,7 @@ function statusLabel(plugin: NativeAudioPluginDescriptor): string {
       </UiAlert>
 
       <div
-        v-if="scanResult.plugins.length === 0"
+        v-if="scannedPlugins.length === 0"
         class="rounded-md border border-ui-border-muted bg-ui-bg-muted/40 px-3 py-3 text-sm text-ui-text-muted"
       >
         {{ t('videoEditor.settings.audioPlugins.noPlugins') }}
@@ -254,7 +236,7 @@ function statusLabel(plugin: NativeAudioPluginDescriptor): string {
         class="flex flex-col divide-y divide-ui-border-muted rounded-md border border-ui-border-muted"
       >
         <div
-          v-for="plugin in scanResult.plugins"
+          v-for="plugin in scannedPlugins"
           :key="plugin.id"
           class="grid grid-cols-[minmax(0,1fr)_auto] gap-3 px-3 py-2"
         >

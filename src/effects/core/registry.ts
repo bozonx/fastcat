@@ -108,6 +108,10 @@ export function registerEffect<T>(manifest: EffectManifest<T>) {
   effectsRegistry.set(manifest.type, videoManifest as EffectManifest<Record<string, unknown>>);
 }
 
+export function unregisterEffect(type: EffectType) {
+  effectsRegistry.delete(type);
+}
+
 export function getEffectManifest(
   type: EffectType,
 ): EffectManifest<Record<string, unknown>> | undefined {

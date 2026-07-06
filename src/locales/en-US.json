@@ -764,6 +764,7 @@
       "addVideoTrack": "Add video track",
       "addVideoTrackAbove": "Add video track above",
       "addVideoTrackBelow": "Add video track below",
+      "addZoneMarker": "Add zone marker",
       "addZoneMarkerAtPlayhead": "Add zone marker at playhead",
       "markerAlreadyExists": "A marker already exists at this position",
       "adjustment": "Adjustment",

@@ -368,9 +368,9 @@ const tauriVideoCodecs = computed(() => {
             />
           </UiFormField>
 
-          <div
+          <label
             v-if="workspaceStore.inDevelopmentFeaturesEnabled"
-            class="flex items-start justify-between gap-3 px-1"
+            class="flex items-start justify-between gap-3 px-1 cursor-pointer select-none"
           >
             <div class="flex flex-col gap-1">
               <span class="text-sm text-ui-text">
@@ -384,7 +384,7 @@ const tauriVideoCodecs = computed(() => {
               v-model="workspaceStore.userSettings.optimization.enableHardwareEncoding"
               class="shrink-0"
             />
-          </div>
+          </label>
 
           <UiFormField
             :label="t('videoEditor.settings.video.ffmpegPath')"

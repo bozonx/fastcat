@@ -49,6 +49,7 @@ interface UseTimelineRulerInteractionsOptions {
 export function useTimelineRulerInteractions(options: UseTimelineRulerInteractionsOptions) {
   const middlePointerDown = ref<{ x: number; y: number; moved: boolean } | null>(null);
   const pendingSelectAreaEvent = ref<PointerEvent | null>(null);
+  const lastRightClickTimeUs = ref<number | null>(null);
 
   const rulerSettings = computed(() => options.workspaceStore.userSettings.mouse.ruler);
 
@@ -108,10 +109,14 @@ export function useTimelineRulerInteractions(options: UseTimelineRulerInteractio
   }
 
   function onContextMenuOpenChange(isOpen: boolean) {
-    if (!isOpen) return;
+    if (!isOpen) {
+      lastRightClickTimeUs.value = null;
+    }
   }
 
-  function onRulerContextMenu(_event: MouseEvent) {}
+  function onRulerContextMenu(event: MouseEvent) {
+    lastRightClickTimeUs.value = getTimeUsFromMouseEvent(event);
+  }
 
   function onRulerClick(event: MouseEvent) {
     if (event.button !== 0) return;
@@ -255,5 +260,6 @@ export function useTimelineRulerInteractions(options: UseTimelineRulerInteractio
     onRulerPointerMove,
     onRulerPointerUp,
     rulerSettings,
+    lastRightClickTimeUs,
   };
 }

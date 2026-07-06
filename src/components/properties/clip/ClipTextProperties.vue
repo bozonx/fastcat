@@ -390,13 +390,17 @@ const fontWeightOptions = ['100', '200', '300', '400', '500', '600', '700', '800
           <div class="grid grid-cols-2 gap-2">
             <PropertyField :label="t('fastcat.textClip.widthMode')">
               <div class="h-8 flex items-center justify-between gap-2">
-                <span class="text-xs text-ui-text-muted">{{ t('fastcat.textClip.autoWidth') }}</span>
+                <span class="text-xs text-ui-text-muted">{{
+                  t('fastcat.textClip.autoWidth')
+                }}</span>
                 <USwitch v-model="isAutoWidth" size="sm" color="error" />
               </div>
             </PropertyField>
             <PropertyField :label="t('fastcat.textClip.heightMode')">
               <div class="h-8 flex items-center justify-between gap-2">
-                <span class="text-xs text-ui-text-muted">{{ t('fastcat.textClip.autoHeight') }}</span>
+                <span class="text-xs text-ui-text-muted">{{
+                  t('fastcat.textClip.autoHeight')
+                }}</span>
                 <USwitch v-model="isAutoHeight" size="sm" color="error" />
               </div>
             </PropertyField>

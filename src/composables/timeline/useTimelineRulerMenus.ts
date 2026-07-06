@@ -9,6 +9,10 @@ interface UseTimelineRulerMenusOptions {
   timelineStore: {
     addMarkerAtPlayhead: () => void;
     addZoneMarkerAtPlayhead: () => void;
+    addMarker: (
+      input: { timeUs: number; durationUs?: number; text?: string; color?: string },
+      options?: Record<string, unknown>,
+    ) => void;
     createSelectionRangeAtPlayhead: () => void;
     convertZoneToMarker: (markerId: string) => void;
     convertMarkerToSelectionRange: (markerId: string) => void;
@@ -18,30 +22,45 @@ interface UseTimelineRulerMenusOptions {
     rippleTrimSelectionRange: () => void;
     removeSelectionRange: () => void;
     getMarkers: () => MarkerLike[];
+    defaultZoneDurationUs: number;
   };
   selectMarker: (markerId: string) => void;
   deleteMarker: (markerId: string) => void;
+  getRightClickTimeUs?: () => number | null;
 }
 
 export function useTimelineRulerMenus(options: UseTimelineRulerMenusOptions) {
   const rulerContextMenuItems = computed(() => [
     [
       {
-        label: options.t('fastcat.timeline.addMarkerAtPlayhead'),
+        label: options.t('fastcat.timeline.addMarker'),
         icon: 'i-heroicons-bookmark',
         onSelect: () => {
+          const timeUs = options.getRightClickTimeUs?.() ?? null;
           const existingIds = new Set(options.timelineStore.getMarkers().map((m) => m.id));
-          options.timelineStore.addMarkerAtPlayhead();
+          if (timeUs !== null) {
+            options.timelineStore.addMarker({ timeUs });
+          } else {
+            options.timelineStore.addMarkerAtPlayhead();
+          }
           const created = options.timelineStore.getMarkers().find((m) => !existingIds.has(m.id));
           if (created) options.selectMarker(created.id);
         },
       },
       {
-        label: options.t('fastcat.timeline.addZoneMarkerAtPlayhead'),
+        label: options.t('fastcat.timeline.addZoneMarker'),
         icon: 'i-heroicons-arrows-right-left',
         onSelect: () => {
+          const timeUs = options.getRightClickTimeUs?.() ?? null;
           const existingIds = new Set(options.timelineStore.getMarkers().map((m) => m.id));
-          options.timelineStore.addZoneMarkerAtPlayhead();
+          if (timeUs !== null) {
+            options.timelineStore.addMarker({
+              timeUs,
+              durationUs: options.timelineStore.defaultZoneDurationUs,
+            });
+          } else {
+            options.timelineStore.addZoneMarkerAtPlayhead();
+          }
           const created = options.timelineStore.getMarkers().find((m) => !existingIds.has(m.id));
           if (created) options.selectMarker(created.id);
         },
