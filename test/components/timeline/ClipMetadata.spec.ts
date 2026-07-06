@@ -14,6 +14,7 @@ describe('ClipMetadata', () => {
   const timelineContextMock = {
     timelineDoc: ref({ tracks: [] }),
     fps: ref(30),
+    zoom: ref(1),
   } as any;
 
   it('renders missing media overlay', async () => {

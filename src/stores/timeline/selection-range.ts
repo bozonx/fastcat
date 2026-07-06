@@ -85,6 +85,8 @@ export function createTimelineSelectionRangeModule(
         }
       : null;
 
+    params.selectionRange.value = nextRange;
+
     params.applyTimeline(
       {
         type: 'update_timeline_properties',

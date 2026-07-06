@@ -260,4 +260,82 @@ describe('CompositorRenderContextBuilder.build', () => {
     await ctx.applyMasterEffects();
     // Should not throw
   });
+
+  describe('hideStageBelowAdjustmentClips', () => {
+    function makeAdjustmentSetup(spriteAlpha: number, containerAlpha = 1) {
+      const adjustmentTexture = { id: 'rt' } as any;
+      const lowerChild = { visible: true, __trackId: 'lower' } as any;
+      const adjustmentChild = { visible: true, __trackId: 'adj' } as any;
+      const upperChild = { visible: true, __trackId: 'upper' } as any;
+      const tracks: Record<string, { layer: number; container: { alpha: number } }> = {
+        lower: { layer: 0, container: { alpha: 1 } },
+        adj: { layer: 1, container: { alpha: containerAlpha } },
+        upper: { layer: 2, container: { alpha: 1 } },
+      };
+      const clip = {
+        itemId: 'a1',
+        clipKind: 'adjustment',
+        trackId: 'adj',
+        layer: 1,
+        adjustmentSourceTexture: adjustmentTexture,
+        sprite: { visible: true, alpha: spriteAlpha, texture: adjustmentTexture },
+      } as unknown as CompositorClip;
+      const params = makeParams({
+        app: { stage: { children: [lowerChild, adjustmentChild, upperChild] } } as any,
+        trackRuntimeManager: {
+          all: [] as CompositorTrack[],
+          getById: vi.fn((id: string) => tracks[id]),
+        } as any,
+      });
+      return { params, clip, lowerChild, adjustmentChild, upperChild };
+    }
+
+    it('hides stage children below a fully-opaque adjustment clip', () => {
+      // The adjustment sprite is a processed copy of everything below it; with a
+      // transparent project background the raw semi-transparent content would
+      // otherwise show through the overlay, visually weakening the effect.
+      const builder = new CompositorRenderContextBuilder();
+      const { params, clip, lowerChild, adjustmentChild, upperChild } = makeAdjustmentSetup(1);
+      const ctx = builder.build(params);
+
+      ctx.hideStageBelowAdjustmentClips([clip]);
+
+      expect(lowerChild.visible).toBe(false);
+      expect(adjustmentChild.visible).toBe(true);
+      expect(upperChild.visible).toBe(true);
+    });
+
+    it('keeps lower layers visible while the adjustment is fading (alpha < 1)', () => {
+      // A fading adjustment must blend with the originals so the effect
+      // crossfades in/out instead of the whole content fading to background.
+      const builder = new CompositorRenderContextBuilder();
+      const { params, clip, lowerChild } = makeAdjustmentSetup(0.5);
+      const ctx = builder.build(params);
+
+      ctx.hideStageBelowAdjustmentClips([clip]);
+
+      expect(lowerChild.visible).toBe(true);
+    });
+
+    it('accounts for the adjustment track container alpha', () => {
+      const builder = new CompositorRenderContextBuilder();
+      const { params, clip, lowerChild } = makeAdjustmentSetup(1, 0.5);
+      const ctx = builder.build(params);
+
+      ctx.hideStageBelowAdjustmentClips([clip]);
+
+      expect(lowerChild.visible).toBe(true);
+    });
+
+    it('ignores adjustment clips whose sprite does not hold the processed texture', () => {
+      const builder = new CompositorRenderContextBuilder();
+      const { params, clip, lowerChild } = makeAdjustmentSetup(1);
+      (clip.sprite as unknown as { texture: unknown }).texture = { id: 'other' };
+      const ctx = builder.build(params);
+
+      ctx.hideStageBelowAdjustmentClips([clip]);
+
+      expect(lowerChild.visible).toBe(true);
+    });
+  });
 });

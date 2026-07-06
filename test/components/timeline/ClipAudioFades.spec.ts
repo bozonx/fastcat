@@ -329,7 +329,7 @@ describe('ClipAudioFades', () => {
       const control = component.get('[data-testid="clip-volume-control"]');
       const label = control.find('.text-2xs');
       expect(label.exists()).toBe(true);
-      expect(label.attributes('style')).toContain('left: 274px');
+      expect(label.attributes('style')).toContain('left: 325px');
     });
 
     it('hides the entire volume control when track height is less than 35px', async () => {

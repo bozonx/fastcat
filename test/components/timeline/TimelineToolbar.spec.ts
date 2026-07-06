@@ -69,6 +69,8 @@ describe('TimelineToolbar', () => {
     vi.clearAllMocks();
     mockTimelineStore.isTrimModeActive = false;
     mockTimelineStore.isAnyTrackSoloed = false;
+    mockTimelineStore.selectedItemIds = [];
+    mockTimelineStore.getHotkeyTargetClip.mockReturnValue(null);
   });
 
   it('renders correctly', async () => {
@@ -135,6 +137,7 @@ describe('TimelineToolbar', () => {
 
   it('enables ripple trim items when a clip is selected', async () => {
     mockTimelineStore.getHotkeyTargetClip.mockReturnValue({ trackId: 'track1', itemId: 'clip1' });
+    mockTimelineStore.selectedItemIds = ['clip1'];
     const component = await mountSuspended(TimelineToolbar);
     const dropdowns = component.findAllComponents({ name: 'UiSplitDropdownButton' });
     const trimDropdown = dropdowns[0];

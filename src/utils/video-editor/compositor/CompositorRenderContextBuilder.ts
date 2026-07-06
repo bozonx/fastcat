@@ -200,6 +200,42 @@ export class CompositorRenderContextBuilder {
       prepareAdjustmentClips: async (activeClips) => {
         await params.prepareAdjustmentClips(activeClips);
       },
+      // The adjustment sprite is a processed copy of everything below it, so
+      // the originals must not composite as well: with a transparent project
+      // background the captured pixels keep the content's alpha, and the raw
+      // sharp clip would show through the semi-transparent processed overlay
+      // (native parity: materialize_adjustment_clips replaces lower layers).
+      // Only a fully-opaque adjustment replaces; while it fades (transition or
+      // reduced opacity) the overlay blends with the originals instead, so the
+      // effect fades in/out rather than the whole content.
+      hideStageBelowAdjustmentClips: (activeClips) => {
+        let topLayer: number | null = null;
+        for (const clip of activeClips) {
+          if (clip.clipKind !== 'adjustment') continue;
+          const sprite = clip.sprite;
+          if (!sprite || (sprite as { destroyed?: boolean }).destroyed || !sprite.visible) {
+            continue;
+          }
+          if (!clip.adjustmentSourceTexture || sprite.texture !== clip.adjustmentSourceTexture) {
+            continue;
+          }
+          const track = params.trackRuntimeManager.getById(clip.trackId ?? '');
+          const containerAlpha = track?.container?.alpha ?? 1;
+          if (sprite.alpha * containerAlpha < 1) continue;
+          topLayer = topLayer === null ? clip.layer : Math.max(topLayer, clip.layer);
+        }
+        if (topLayer === null) return;
+
+        for (const child of app.stage.children) {
+          const trackId = (child as { __trackId?: string }).__trackId ?? '';
+          const track = params.trackRuntimeManager.getById(trackId);
+          const childLayer =
+            typeof track?.layer === 'number' ? track.layer : Number.POSITIVE_INFINITY;
+          if (childLayer < topLayer) {
+            child.visible = false;
+          }
+        }
+      },
       applyShaderTransitions: (activeClips, currentTimeUs) =>
         params.transitionRenderer.applyShaderTransitions(activeClips, currentTimeUs, {
           app,

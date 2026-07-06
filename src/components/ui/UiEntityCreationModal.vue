@@ -11,6 +11,7 @@ const props = defineProps<{
   defaultValue?: string;
   loading?: boolean;
   selectWithoutExtension?: boolean;
+  hideErrorIfUnmodified?: boolean;
   validate?: (name: string) => string | boolean | null | undefined;
 }>();
 
@@ -94,7 +95,7 @@ function handleAfterEnter() {
 }
 
 function runValidation() {
-  if (!isModified.value) {
+  if (props.hideErrorIfUnmodified && !isModified.value) {
     errorMsg.value = null;
     return;
   }
@@ -196,7 +197,7 @@ function handleCancel() {
         </UButton>
         <UButton
           color="primary"
-          :disabled="!name.trim() || loading || !!errorMsg || !isModified"
+          :disabled="!name.trim() || loading || !!errorMsg || (hideErrorIfUnmodified && !isModified)"
           :loading="loading"
           @click="handleConfirm"
         >

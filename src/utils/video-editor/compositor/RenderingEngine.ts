@@ -37,6 +37,16 @@ export interface RenderingEngineContext {
   }) => Promise<{ updatedClips: CompositorClip[] }>;
   sortStage: () => void;
   prepareAdjustmentClips: (activeClips: CompositorClip[]) => Promise<void>;
+  /**
+   * Hides stage content below a fully-opaque adjustment clip for the final
+   * composite: the adjustment sprite already contains the processed copy of
+   * everything below it, and leaving the originals visible lets
+   * semi-transparent content show through the overlay (a strong blur then
+   * looks weaker the more transparent the clip is). Mirrors the native
+   * engine, which replaces the lower layers with the processed raster.
+   * Visibility is restored by the caller's stage snapshot.
+   */
+  hideStageBelowAdjustmentClips: (activeClips: CompositorClip[]) => void;
   applyShaderTransitions: (activeClips: CompositorClip[], timeUs: number) => Promise<void>;
   applyWebGpuClipEffects?: (clip: CompositorClip) => Promise<void>;
   applyTrackEffects: () => Promise<() => void>;
@@ -155,6 +165,8 @@ export class RenderingEngine {
         if (!context.app || !context.canvas || !context.app.renderer) {
           return null;
         }
+
+        context.hideStageBelowAdjustmentClips(activeClips);
 
         // Track-level effects must be applied before the stage composites, so
         // process each effected track's container into a sprite now; the cleanup

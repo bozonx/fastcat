@@ -806,6 +806,7 @@ describe('TimelineTracks', () => {
     const component = await mountSuspended(TimelineTracks, {
       props: {
         ...defaultProps,
+        isMobile: true,
         tracks: [
           {
             id: 'track-1',
