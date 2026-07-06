@@ -123,6 +123,23 @@ describe('createTimelineHistoryDebounceModule', () => {
     expect(mod.pendingDebouncedHistory.value).toBeNull();
   });
 
+  it('flushPendingDebouncedHistory preserves the pending label key', () => {
+    const mod = createTimelineHistoryDebounceModule({ historyStore: { push: historyPush } });
+    const doc = makeDoc();
+    const cmd = makeCmd('update_clip_properties') as unknown as TimelineCommand;
+    (cmd as Record<string, unknown>).properties = { audioGain: 1.25 };
+
+    mod.pushHistory(cmd, doc, { historyMode: 'debounced' });
+    mod.flushPendingDebouncedHistory();
+
+    expect(historyPush).toHaveBeenCalledWith(
+      'timeline',
+      'update_clip_properties',
+      doc,
+      'videoEditor.fileManager.history.entries.updateClipGain',
+    );
+  });
+
   it('flushPendingDebouncedHistory does nothing when no pending', () => {
     const mod = createTimelineHistoryDebounceModule({ historyStore: { push: historyPush } });
     mod.flushPendingDebouncedHistory();

@@ -238,39 +238,48 @@ const visibleOtherActionsList = computed(() =>
 function handleUpdateStartTime(val: number) {
   const newStartUs = Math.max(0, Math.round(val));
   if (newStartUs === props.clip.timelineRange.startUs) return;
-  timelineStore.applyTimeline({
-    type: 'move_item',
-    trackId: props.clip.trackId,
-    itemId: props.clip.id,
-    startUs: newStartUs,
-    quantizeToFrames: false,
-  });
+  timelineStore.applyTimeline(
+    {
+      type: 'move_item',
+      trackId: props.clip.trackId,
+      itemId: props.clip.id,
+      startUs: newStartUs,
+      quantizeToFrames: false,
+    },
+    { historyMode: 'debounced' },
+  );
 }
 
 function handleUpdateEndTime(val: number) {
   const newEndUs = Math.max(0, Math.round(val));
   const currentEndUs = props.clip.timelineRange.startUs + props.clip.timelineRange.durationUs;
   if (newEndUs === currentEndUs) return;
-  timelineStore.applyTimeline({
-    type: 'trim_item',
-    trackId: props.clip.trackId,
-    itemId: props.clip.id,
-    edge: 'end',
-    deltaUs: newEndUs - currentEndUs,
-  });
+  timelineStore.applyTimeline(
+    {
+      type: 'trim_item',
+      trackId: props.clip.trackId,
+      itemId: props.clip.id,
+      edge: 'end',
+      deltaUs: newEndUs - currentEndUs,
+    },
+    { historyMode: 'debounced' },
+  );
 }
 
 function handleUpdateDuration(val: number) {
   const newDurationUs = Math.max(1, Math.round(val));
   const currentDurationUs = props.clip.timelineRange.durationUs;
   if (newDurationUs === currentDurationUs) return;
-  timelineStore.applyTimeline({
-    type: 'trim_item',
-    trackId: props.clip.trackId,
-    itemId: props.clip.id,
-    edge: 'end',
-    deltaUs: newDurationUs - currentDurationUs,
-  });
+  timelineStore.applyTimeline(
+    {
+      type: 'trim_item',
+      trackId: props.clip.trackId,
+      itemId: props.clip.id,
+      edge: 'end',
+      deltaUs: newDurationUs - currentDurationUs,
+    },
+    { historyMode: 'debounced' },
+  );
 }
 
 // Keyframe animation (v1: opacity + transform). The playhead-driven "current

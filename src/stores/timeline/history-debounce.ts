@@ -14,6 +14,7 @@ export interface TimelineHistoryDebounceModule {
   pendingDebouncedHistory: Ref<{
     snapshot: TimelineDocument;
     cmd: TimelineCommand;
+    labelKey: string;
     timeoutId: number;
   } | null>;
   clearPendingDebouncedHistory: () => void;
@@ -35,6 +36,7 @@ export function createTimelineHistoryDebounceModule(
   const pendingDebouncedHistory = ref<{
     snapshot: TimelineDocument;
     cmd: TimelineCommand;
+    labelKey: string;
     timeoutId: number;
   } | null>(null);
 
@@ -53,7 +55,7 @@ export function createTimelineHistoryDebounceModule(
       'timeline',
       pending.cmd.type,
       pending.snapshot,
-      getTimelineCommandLabelKey(pending.cmd.type),
+      pending.labelKey,
     );
     pendingDebouncedHistory.value = null;
   }
@@ -86,10 +88,11 @@ export function createTimelineHistoryDebounceModule(
         pendingDebouncedHistory.value = {
           snapshot: pending.snapshot,
           cmd,
+          labelKey,
           timeoutId: window.setTimeout(() => {
             const p = pendingDebouncedHistory.value;
             if (!p) return;
-            deps.historyStore.push('timeline', p.cmd.type, p.snapshot, labelKey);
+            deps.historyStore.push('timeline', p.cmd.type, p.snapshot, p.labelKey);
             pendingDebouncedHistory.value = null;
           }, debounceMs),
         };
@@ -97,10 +100,11 @@ export function createTimelineHistoryDebounceModule(
         pendingDebouncedHistory.value = {
           snapshot: prevDoc,
           cmd,
+          labelKey,
           timeoutId: window.setTimeout(() => {
             const p = pendingDebouncedHistory.value;
             if (!p) return;
-            deps.historyStore.push('timeline', p.cmd.type, p.snapshot, labelKey);
+            deps.historyStore.push('timeline', p.cmd.type, p.snapshot, p.labelKey);
             pendingDebouncedHistory.value = null;
           }, debounceMs),
         };

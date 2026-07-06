@@ -205,7 +205,7 @@ export function createTimelineDispatcherModule(
     if (!options?.skipHistory) {
       deps.historyDebounce.pushHistory(cmds[0]!, prev, {
         ...options,
-        historyMode: 'immediate',
+        historyMode: options?.historyMode ?? 'immediate',
         labelKey:
           options?.labelKey ?? (cmds.length > 1 ? TIMELINE_MULTIPLE_ACTIONS_LABEL_KEY : undefined),
       });

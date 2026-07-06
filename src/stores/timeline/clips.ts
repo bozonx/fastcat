@@ -48,6 +48,8 @@ export interface TimelineClipsDeps {
     options?: {
       saveMode?: 'debounced' | 'immediate' | 'none';
       skipHistory?: boolean;
+      historyMode?: 'immediate' | 'debounced';
+      historyDebounceMs?: number;
       labelKey?: string;
     },
   ) => string[];
@@ -124,6 +126,7 @@ export interface TimelineClipsModule {
       skipHistory?: boolean;
       saveMode?: 'debounced' | 'immediate' | 'none';
       historyMode?: 'immediate' | 'debounced';
+      historyDebounceMs?: number;
     },
   ) => string[];
   updateClipTransition: (
@@ -136,6 +139,8 @@ export interface TimelineClipsModule {
     applyOptions?: {
       skipHistory?: boolean;
       saveMode?: 'debounced' | 'immediate' | 'none';
+      historyMode?: 'immediate' | 'debounced';
+      historyDebounceMs?: number;
     },
   ) => string[];
   deleteSelectedItems: (trackId: string) => void;
@@ -318,6 +323,7 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
       skipHistory?: boolean;
       saveMode?: 'debounced' | 'immediate' | 'none';
       historyMode?: 'immediate' | 'debounced';
+      historyDebounceMs?: number;
     },
   ): string[] {
     const isMultiSelect =
@@ -346,6 +352,8 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
         return deps.batchApplyTimeline(cmds, {
           saveMode: options?.saveMode ?? 'debounced',
           skipHistory: options?.skipHistory,
+          historyMode: options?.historyMode ?? 'debounced',
+          historyDebounceMs: options?.historyDebounceMs,
           labelKey: 'videoEditor.fileManager.history.entries.updateClipProperties',
         });
       }
@@ -360,6 +368,7 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
       },
       {
         historyMode: options?.historyMode ?? 'debounced',
+        historyDebounceMs: options?.historyDebounceMs,
         skipHistory: options?.skipHistory,
         saveMode: options?.saveMode,
       },
@@ -376,6 +385,8 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
     applyOptions?: {
       skipHistory?: boolean;
       saveMode?: 'debounced' | 'immediate' | 'none';
+      historyMode?: 'immediate' | 'debounced';
+      historyDebounceMs?: number;
     },
   ): string[] {
     const isMultiSelect =
@@ -404,6 +415,8 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
         return deps.batchApplyTimeline(cmds, {
           saveMode: applyOptions?.saveMode ?? 'debounced',
           skipHistory: applyOptions?.skipHistory,
+          historyMode: applyOptions?.historyMode ?? 'debounced',
+          historyDebounceMs: applyOptions?.historyDebounceMs,
           labelKey: 'videoEditor.fileManager.history.entries.updateTransition',
         });
       }
@@ -416,7 +429,12 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
         itemId,
         ...options,
       },
-      applyOptions,
+      {
+        historyMode: applyOptions?.historyMode ?? 'debounced',
+        historyDebounceMs: applyOptions?.historyDebounceMs,
+        skipHistory: applyOptions?.skipHistory,
+        saveMode: applyOptions?.saveMode,
+      },
     );
   }
 

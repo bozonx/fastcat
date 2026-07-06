@@ -51,7 +51,7 @@ function handleUpdateColorAll(val: string | string[]) {
   }));
   if (cmds.length === 0) return;
 
-  timelineStore.batchApplyTimeline(cmds);
+  timelineStore.batchApplyTimeline(cmds, { historyMode: 'debounced' });
 }
 
 const commonActions = computed(() => [

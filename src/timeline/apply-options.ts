@@ -7,13 +7,11 @@ export interface TimelineApplyOptions {
   saveMode?: 'debounced' | 'immediate' | 'none';
   skipHistory?: boolean;
   labelKey?: string;
-}
-
-/**
- * Extended options available for single-command apply (not batch),
- * because history debouncing only makes sense per-command.
- */
-export interface TimelineApplyWithHistoryOptions extends TimelineApplyOptions {
   historyMode?: 'immediate' | 'debounced';
   historyDebounceMs?: number;
 }
+
+/**
+ * Extended options available for single-command apply.
+ */
+export interface TimelineApplyWithHistoryOptions extends TimelineApplyOptions {}

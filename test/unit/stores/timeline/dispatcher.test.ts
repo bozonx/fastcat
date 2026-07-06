@@ -91,6 +91,29 @@ describe('TimelineDispatcherModule', () => {
     expect(deps.timelineDoc.value).toEqual(fallbackDoc);
   });
 
+  it('batchApplyTimeline forwards debounced history options', () => {
+    const deps = createMockDeps();
+    deps.timelineDoc.value = fallbackDoc;
+    const mod = createTimelineDispatcherModule(deps);
+    const cmd = { type: 'update_clip_properties', trackId: 't1', itemId: 'c1', properties: {} };
+
+    mod.batchApplyTimeline([cmd] as any, {
+      historyMode: 'debounced',
+      historyDebounceMs: 150,
+      labelKey: 'custom.label',
+    });
+
+    expect(deps.historyDebounce.pushHistory).toHaveBeenCalledWith(
+      cmd,
+      fallbackDoc,
+      expect.objectContaining({
+        historyMode: 'debounced',
+        historyDebounceMs: 150,
+        labelKey: 'custom.label',
+      }),
+    );
+  });
+
   it('undoTimeline does nothing when history is empty', () => {
     const deps = createMockDeps();
     deps.timelineDoc.value = fallbackDoc;

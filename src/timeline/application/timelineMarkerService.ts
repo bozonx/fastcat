@@ -83,7 +83,7 @@ export function createTimelineMarkerService(
         text: patch.text,
         color: patch.color,
       } as const,
-      options,
+      { historyMode: 'debounced', ...options },
     );
   }
 
