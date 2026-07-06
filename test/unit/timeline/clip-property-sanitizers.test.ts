@@ -52,11 +52,21 @@ describe('sanitizeAnimations', () => {
     expect(result?.opacity?.keyframes).toEqual([{ tUs: 10, value: 0.5, easing: 'linear' }]);
   });
 
-  it('drops unknown animation paths', () => {
+  it('keeps well-formed effect-param paths', () => {
     const result = sanitizeAnimations({
       'effect.blur.radius': {
         keyframes: [{ tUs: 10, value: 0.5, easing: 'linear' }],
       },
+    });
+    expect(result?.['effect.blur.radius']?.keyframes).toEqual([
+      { tUs: 10, value: 0.5, easing: 'linear' },
+    ]);
+  });
+
+  it('drops unknown / malformed animation paths', () => {
+    const result = sanitizeAnimations({
+      'not.a.real.path': { keyframes: [{ tUs: 10, value: 0.5, easing: 'linear' }] },
+      'effect.': { keyframes: [{ tUs: 0, value: 1, easing: 'linear' }] },
     });
     expect(result).toBeUndefined();
   });

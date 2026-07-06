@@ -53,14 +53,17 @@ const KeyframeTrackSchema = z.object({
   keyframes: z.array(KeyframeSchema).catch([]),
 });
 
-export const ClipAnimationsSchema = z.object({
-  opacity: KeyframeTrackSchema.optional(),
-  'transform.position.x': KeyframeTrackSchema.optional(),
-  'transform.position.y': KeyframeTrackSchema.optional(),
-  'transform.scale.x': KeyframeTrackSchema.optional(),
-  'transform.scale.y': KeyframeTrackSchema.optional(),
-  'transform.rotationDeg': KeyframeTrackSchema.optional(),
-});
+export const ClipAnimationsSchema = z
+  .object({
+    opacity: KeyframeTrackSchema.optional(),
+    'transform.position.x': KeyframeTrackSchema.optional(),
+    'transform.position.y': KeyframeTrackSchema.optional(),
+    'transform.scale.x': KeyframeTrackSchema.optional(),
+    'transform.scale.y': KeyframeTrackSchema.optional(),
+    'transform.rotationDeg': KeyframeTrackSchema.optional(),
+  })
+  // Effect-param paths (`effect.<id>.<key>`) validate through the catchall.
+  .catchall(KeyframeTrackSchema);
 
 export const ClipMaskSchema = z.object({
   source: z.object({ path: z.string() }).optional(),

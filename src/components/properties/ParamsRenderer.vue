@@ -7,6 +7,7 @@ import UiKnob from '~/components/ui/editor/UiKnob.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
 import UiTextInput from '~/components/ui/UiTextInput.vue';
 import UiTextarea from '~/components/ui/UiTextarea.vue';
+import ClipAnimationStopwatchButton from '~/components/properties/clip/ClipAnimationStopwatchButton.vue';
 import type {
   ButtonGroupParamControl,
   FileParamControl,
@@ -15,6 +16,17 @@ import type {
   ScaleXYParamControl,
   SelectParamControl,
 } from '~/components/properties/params';
+
+/**
+ * Optional keyframe hooks. When supplied (clip video-effect editing), numeric
+ * and boolean params get a stopwatch toggle; the parent decides how to seed /
+ * record the keyframe and passes interpolated values back in through `values`.
+ */
+export interface ParamsKeyframeHooks {
+  isKeyframable: (key: string, kind: string) => boolean;
+  isAnimated: (key: string) => boolean;
+  toggle: (key: string) => void;
+}
 
 const props = withDefaults(
   defineProps<{
@@ -25,6 +37,7 @@ const props = withDefaults(
     forceFullWidth?: boolean;
     disabled?: boolean;
     testIdPrefix?: string;
+    keyframes?: ParamsKeyframeHooks;
   }>(),
   {
     asContents: false,
@@ -32,6 +45,7 @@ const props = withDefaults(
     disabled: false,
     size: 'sm',
     testIdPrefix: undefined,
+    keyframes: undefined,
   },
 );
 
@@ -274,6 +288,10 @@ function handleAction(action: string | undefined, key: string | undefined) {
   emit('action', action, key);
 }
 
+function showStopwatch(key: string, kind: string): boolean {
+  return !!props.keyframes && props.keyframes.isKeyframable(key, kind);
+}
+
 function handleScaleReset(control: RenderableParamControl) {
   updateValue(control.keyX, control.defaultValueX ?? 100);
   scheduleValueUpdate(control.keyY, control.defaultValueY ?? 100);
@@ -371,23 +389,33 @@ function handleArrayItemUpdate(
         />
       </div>
 
-      <UiSliderInput
-        v-else-if="entry.kind === 'slider'"
-        :model-value="entry.numberValue"
-        :label="entry.label"
-        :formatted-value="
-          entry.control.format ? entry.control.format(entry.numberValue) : String(entry.numberValue)
-        "
-        :min="entry.control.min ?? 0"
-        :max="entry.control.max ?? 100"
-        :step="entry.control.step ?? 1"
-        :default-value="entry.control.defaultValue"
-        :disabled="entry.disabled"
-        :data-testid="props.testIdPrefix ? `${props.testIdPrefix}-param-${entry.key}` : undefined"
-        :data-param-key="entry.key"
-        show-input
-        @update:model-value="(value: number) => updateValue(entry.control.key, value)"
-      />
+      <div v-else-if="entry.kind === 'slider'" class="flex items-center gap-1">
+        <ClipAnimationStopwatchButton
+          v-if="showStopwatch(entry.key, entry.kind)"
+          :active="props.keyframes!.isAnimated(entry.key)"
+          :disabled="entry.disabled"
+          @toggle="props.keyframes!.toggle(entry.key)"
+        />
+        <UiSliderInput
+          class="flex-1 min-w-0"
+          :model-value="entry.numberValue"
+          :label="entry.label"
+          :formatted-value="
+            entry.control.format
+              ? entry.control.format(entry.numberValue)
+              : String(entry.numberValue)
+          "
+          :min="entry.control.min ?? 0"
+          :max="entry.control.max ?? 100"
+          :step="entry.control.step ?? 1"
+          :default-value="entry.control.defaultValue"
+          :disabled="entry.disabled"
+          :data-testid="props.testIdPrefix ? `${props.testIdPrefix}-param-${entry.key}` : undefined"
+          :data-param-key="entry.key"
+          show-input
+          @update:model-value="(value: number) => updateValue(entry.control.key, value)"
+        />
+      </div>
 
       <div
         v-else-if="entry.kind === 'knob'"
@@ -414,13 +442,23 @@ function handleArrayItemUpdate(
       </div>
 
       <div v-else-if="entry.kind === 'number'" class="flex flex-col gap-0.5">
-        <span
-          class="text-xs text-ui-text-muted"
-          :data-testid="props.testIdPrefix ? `${props.testIdPrefix}-param-${entry.key}` : undefined"
-          :data-param-key="entry.key"
-        >
-          {{ entry.label }}
-        </span>
+        <div class="flex items-center gap-1">
+          <ClipAnimationStopwatchButton
+            v-if="showStopwatch(entry.key, entry.kind)"
+            :active="props.keyframes!.isAnimated(entry.key)"
+            :disabled="entry.disabled"
+            @toggle="props.keyframes!.toggle(entry.key)"
+          />
+          <span
+            class="text-xs text-ui-text-muted"
+            :data-testid="
+              props.testIdPrefix ? `${props.testIdPrefix}-param-${entry.key}` : undefined
+            "
+            :data-param-key="entry.key"
+          >
+            {{ entry.label }}
+          </span>
+        </div>
         <UiWheelNumberInput
           :model-value="entry.numberValue"
           :size="size"
@@ -529,7 +567,15 @@ function handleArrayItemUpdate(
         :data-testid="props.testIdPrefix ? `${props.testIdPrefix}-param-${entry.key}` : undefined"
         :data-param-key="entry.key"
       >
-        <span class="text-xs text-ui-text-muted">{{ entry.label }}</span>
+        <div class="flex items-center gap-1">
+          <ClipAnimationStopwatchButton
+            v-if="showStopwatch(entry.key, entry.kind)"
+            :active="props.keyframes!.isAnimated(entry.key)"
+            :disabled="entry.disabled"
+            @toggle="props.keyframes!.toggle(entry.key)"
+          />
+          <span class="text-xs text-ui-text-muted">{{ entry.label }}</span>
+        </div>
         <USwitch
           :model-value="Boolean(entry.value)"
           size="sm"

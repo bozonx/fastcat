@@ -84,6 +84,18 @@ export interface BaseCompositorClip {
    */
   animatedTransform?: ClipTransform;
   animatedOpacity?: number;
+  /**
+   * Effect-parameter keyframes baked to spec-field tracks (see
+   * `src/effects/animation-bake.ts`), derived from `effects` + `animations`.
+   * `undefined` when no effect param is animated.
+   */
+  bakedEffects?: import('~/effects/animation-bake').ClipBakedEffects;
+  /**
+   * Per-frame resolved effect specs from {@link bakedEffects}, recomputed by the
+   * animation step. When set it replaces `buildEffectSpecs(effects)` in the
+   * render path; `undefined` when the clip has no animated effect params.
+   */
+  animatedEffectSpecs?: import('~/effects').VideoEffectSpec[];
   sourceOrientation?: ClipSourceOrientation;
   effectFilters?: Map<string, Filter>;
   transitionIn?: ClipTransition;

@@ -134,7 +134,9 @@ export const ClipAnimationsSchema: z.ZodType<ClipAnimations> = z
     'transform.scale.y': KeyframeTrackSchema.optional(),
     'transform.rotationDeg': KeyframeTrackSchema.optional(),
   })
-  .strip() as unknown as z.ZodType<ClipAnimations>;
+  // Effect-param paths (`effect.<id>.<key>`) ride the catchall so they validate
+  // and pass through with the same track shape.
+  .catchall(KeyframeTrackSchema) as unknown as z.ZodType<ClipAnimations>;
 
 export const ClipTransitionSchema: z.ZodType<ClipTransition> = z
   .object({

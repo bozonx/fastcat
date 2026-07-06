@@ -1,0 +1,135 @@
+{
+  "_comment": [
+    "Cross-engine parity contract for patching BAKED effect-parameter specs.",
+    "  - web:    patchBakedEffectSpecs() in src/effects/animation-bake.ts",
+    "  - native: patch_baked_specs() in src-tauri/src/monitor/scene/build/animation.rs",
+    "Effect-param keyframes are baked (web-side) into per-field tracks over the",
+    "finished VideoEffectSpec list; both engines then interpolate those tracks",
+    "with the shared keyframe evaluator and overwrite the named field on the base",
+    "spec. Numeric fields take the sampled value; boolean fields take (value>=0.5).",
+    "Each case has a `baked` payload (baseSpecs + fields), a query time `atUs`,",
+    "and the `expected` patched spec objects both engines must produce."
+  ],
+  "cases": [
+    {
+      "name": "single numeric field interpolates at the segment midpoint",
+      "baked": {
+        "baseSpecs": [{ "type": "gaussian-blur", "radius": 8, "mix": 1 }],
+        "fields": [
+          {
+            "specIndex": 0,
+            "field": "radius",
+            "kind": "number",
+            "keyframes": [
+              { "tUs": 0, "value": 8, "easing": "linear" },
+              { "tUs": 1000, "value": 64, "easing": "linear" }
+            ]
+          }
+        ]
+      },
+      "atUs": 500,
+      "expected": [{ "type": "gaussian-blur", "radius": 36, "mix": 1 }]
+    },
+    {
+      "name": "holds boundary values before first and after last keyframe",
+      "baked": {
+        "baseSpecs": [{ "type": "gaussian-blur", "radius": 0 }],
+        "fields": [
+          {
+            "specIndex": 0,
+            "field": "radius",
+            "kind": "number",
+            "keyframes": [
+              { "tUs": 100, "value": 10, "easing": "linear" },
+              { "tUs": 200, "value": 20, "easing": "linear" }
+            ]
+          }
+        ]
+      },
+      "atUs": 0,
+      "expected": [{ "type": "gaussian-blur", "radius": 10 }]
+    },
+    {
+      "name": "boolean field flips on when the sampled value crosses 0.5",
+      "baked": {
+        "baseSpecs": [{ "type": "gaussian-blur", "radius": 8, "bleed": false }],
+        "fields": [
+          {
+            "specIndex": 0,
+            "field": "bleed",
+            "kind": "bool",
+            "keyframes": [
+              { "tUs": 0, "value": 0, "easing": "hold" },
+              { "tUs": 1000, "value": 1, "easing": "hold" }
+            ]
+          }
+        ]
+      },
+      "atUs": 1000,
+      "expected": [{ "type": "gaussian-blur", "radius": 8, "bleed": true }]
+    },
+    {
+      "name": "boolean field stays off before the flip keyframe (hold)",
+      "baked": {
+        "baseSpecs": [{ "type": "gaussian-blur", "radius": 8, "bleed": false }],
+        "fields": [
+          {
+            "specIndex": 0,
+            "field": "bleed",
+            "kind": "bool",
+            "keyframes": [
+              { "tUs": 0, "value": 0, "easing": "hold" },
+              { "tUs": 1000, "value": 1, "easing": "hold" }
+            ]
+          }
+        ]
+      },
+      "atUs": 999,
+      "expected": [{ "type": "gaussian-blur", "radius": 8, "bleed": false }]
+    },
+    {
+      "name": "patches only the addressed spec in a multi-spec list",
+      "baked": {
+        "baseSpecs": [
+          { "type": "brightness", "value": 1 },
+          { "type": "hue", "degrees": 0 }
+        ],
+        "fields": [
+          {
+            "specIndex": 1,
+            "field": "degrees",
+            "kind": "number",
+            "keyframes": [
+              { "tUs": 0, "value": 0, "easing": "linear" },
+              { "tUs": 1000, "value": 90, "easing": "linear" }
+            ]
+          }
+        ]
+      },
+      "atUs": 500,
+      "expected": [
+        { "type": "brightness", "value": 1 },
+        { "type": "hue", "degrees": 45 }
+      ]
+    },
+    {
+      "name": "ease segment uses smoothstep (quarter point below linear)",
+      "baked": {
+        "baseSpecs": [{ "type": "gaussian-blur", "radius": 0 }],
+        "fields": [
+          {
+            "specIndex": 0,
+            "field": "radius",
+            "kind": "number",
+            "keyframes": [
+              { "tUs": 0, "value": 0, "easing": "ease" },
+              { "tUs": 1000, "value": 100, "easing": "linear" }
+            ]
+          }
+        ]
+      },
+      "atUs": 250,
+      "expected": [{ "type": "gaussian-blur", "radius": 15.625 }]
+    }
+  ]
+}

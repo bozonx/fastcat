@@ -643,7 +643,9 @@ pub fn finalize_layer(
         opacity,
         blend: sl.blend_mode,
         mask: None,
-        effects: sl.effects.clone(),
+        // Baked effect-param animation overrides the static specs per frame.
+        effects: super::animation::resolve_baked_effect_specs(sl, animation_t_us)
+            .unwrap_or_else(|| sl.effects.clone()),
         transition,
     }
 }

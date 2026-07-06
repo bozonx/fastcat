@@ -10,7 +10,7 @@ import type {
   KeyframeTrack,
 } from '../types';
 import type { OtioRationalTime, OtioTimeRange, OtioColor } from './types';
-import { ANIMATABLE_PARAM_PATHS, normalizeKeyframeTrack } from '../animation/evaluate';
+import { isAnimatableParamPath, normalizeKeyframeTrack } from '../animation/evaluate';
 const log = createDevLogger('utils');
 
 export const TIME_RATE_US = 1_000_000;
@@ -125,7 +125,8 @@ export function coerceAnimations(raw: unknown): ClipAnimations | undefined {
   const rawObj = raw as Record<string, unknown>;
   const out: ClipAnimations = {};
   let count = 0;
-  for (const path of ANIMATABLE_PARAM_PATHS) {
+  for (const path of Object.keys(rawObj)) {
+    if (!isAnimatableParamPath(path)) continue;
     const track = rawObj[path];
     if (!track || typeof track !== 'object') continue;
     const keyframes = (track as Record<string, unknown>).keyframes;

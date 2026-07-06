@@ -1,6 +1,7 @@
 import { parseHexColor, sanitizeTimelineColor } from '../utils';
 import { cloneValue } from '~/utils/clone';
 import type { VideoClipEffect } from '~/timeline/types';
+import { bakeClipEffectAnimations } from '~/effects/animation-bake';
 import {
   areShapeConfigsEqual,
   areTextClipStylesEqual,
@@ -270,6 +271,7 @@ export class TimelineClipLoader {
     reusable.animations = clipData.animations as
       | import('~/timeline/types').ClipAnimations
       | undefined;
+    reusable.bakedEffects = bakeClipEffectAnimations(reusable.effects, reusable.animations);
     reusable.transitionIn = clipData.transitionIn as
       | import('~/timeline/types').ClipTransition
       | undefined;

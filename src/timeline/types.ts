@@ -202,18 +202,30 @@ export interface KeyframeTrack {
   keyframes: Keyframe[];
 }
 
-/**
- * The closed set of clip parameters that can be keyframed in v1. A closed union
- * (rather than an open string) keeps validation and render-side application
- * type-safe. Effect parameters will extend this in a later iteration.
- */
-export type AnimatableParamPath =
+/** The fixed transform/opacity keyframe paths (stable, render-applied directly). */
+export type FixedAnimatableParamPath =
   | 'opacity'
   | 'transform.position.x'
   | 'transform.position.y'
   | 'transform.scale.x'
   | 'transform.scale.y'
   | 'transform.rotationDeg';
+
+/**
+ * A keyframable numeric/boolean parameter of a clip effect, addressed by the
+ * effect instance id and the effect's UI value key: `effect.<effectId>.<key>`.
+ * (Colours animate as per-channel keys, e.g. `effect.<id>.tintColor.r`.) These
+ * are sampled and "baked" to `VideoEffectSpec` fields at render time — see
+ * `src/effects/animation-bake.ts` — rather than applied to the clip directly.
+ */
+export type EffectAnimatableParamPath = `effect.${string}.${string}`;
+
+/**
+ * A clip parameter that can be keyframed: the fixed transform/opacity set plus
+ * dynamic effect-parameter paths. Kept as a (mostly) closed union so the
+ * fixed paths stay type-safe, while effect paths ride the template-literal arm.
+ */
+export type AnimatableParamPath = FixedAnimatableParamPath | EffectAnimatableParamPath;
 
 /** Per-clip keyframe tracks, keyed by the animated parameter path. */
 export type ClipAnimations = Partial<Record<AnimatableParamPath, KeyframeTrack>>;

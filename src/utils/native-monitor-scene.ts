@@ -29,6 +29,7 @@ import {
 } from '~/utils/video-editor/clip-layout';
 import { normalizeClipSpeed } from '~/utils/video-editor/source-time';
 import { buildEffectSpecs } from '~/effects';
+import { bakeClipEffectAnimations } from '~/effects/animation-bake';
 import { normalizeMediaCachePath } from '~/utils/path';
 import { getTransitionManifest } from '~/transitions';
 import type { TransitionMode } from '~/transitions/core/registry';
@@ -515,6 +516,7 @@ function buildBaseLayer(params: {
     effects: buildEffectSpecs(clip.effects) ?? [],
     transform: buildNativeTransform(clip.transform, sceneWidth, sceneHeight),
     animations: clip.animations,
+    baked_effects: bakeClipEffectAnimations(clip.effects, clip.animations),
     transition_in,
     transition_out,
     // Only text/shape layers snap; other kinds override this below.

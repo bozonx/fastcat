@@ -2,10 +2,38 @@ import { clamp, clampFinite } from '~/utils/math';
 import type {
   AnimatableParamPath,
   ClipAnimations,
+  EffectAnimatableParamPath,
+  FixedAnimatableParamPath,
   Keyframe,
   KeyframeEasing,
   KeyframeTrack,
 } from '~/timeline/types';
+
+/** Prefix marking an effect-parameter keyframe path (`effect.<id>.<key>`). */
+export const EFFECT_PARAM_PREFIX = 'effect.';
+
+/** Build an effect-parameter keyframe path from an effect id + UI value key. */
+export function effectParamPath(effectId: string, key: string): EffectAnimatableParamPath {
+  return `${EFFECT_PARAM_PREFIX}${effectId}.${key}`;
+}
+
+/** True when `path` addresses an effect parameter (vs. transform/opacity). */
+export function isEffectParamPath(path: string): path is EffectAnimatableParamPath {
+  return path.startsWith(EFFECT_PARAM_PREFIX);
+}
+
+/**
+ * Split an `effect.<effectId>.<key>` path into its parts. `key` keeps any
+ * remaining dots (e.g. colour channels `tintColor.r`). Returns `null` for
+ * non-effect paths or malformed input.
+ */
+export function parseEffectParamPath(path: string): { effectId: string; key: string } | null {
+  if (!isEffectParamPath(path)) return null;
+  const rest = path.slice(EFFECT_PARAM_PREFIX.length);
+  const dot = rest.indexOf('.');
+  if (dot <= 0 || dot >= rest.length - 1) return null;
+  return { effectId: rest.slice(0, dot), key: rest.slice(dot + 1) };
+}
 
 /**
  * Pure keyframe evaluation core (v1: transform + opacity).
@@ -29,6 +57,19 @@ export const ANIMATABLE_PARAM_PATHS: readonly AnimatableParamPath[] = [
 
 export const KEYFRAME_EASINGS: readonly KeyframeEasing[] = ['linear', 'ease', 'hold'] as const;
 
+/**
+ * True when `key` is a valid animatable param path: one of the fixed
+ * transform/opacity paths, or a well-formed effect-parameter path
+ * (`effect.<id>.<key>`). The schema/sanitizer/coerce gates use this to accept
+ * effect-param tracks while rejecting arbitrary keys.
+ */
+export function isAnimatableParamPath(key: string): key is AnimatableParamPath {
+  return (
+    (ANIMATABLE_PARAM_PATHS as readonly string[]).includes(key) ||
+    parseEffectParamPath(key) !== null
+  );
+}
+
 export interface ResolveClipAnimationTimeUsParams {
   timelineTimeUs: number;
   timelineStartUs: number;
@@ -43,7 +84,7 @@ export interface ResolveClipAnimationTimeUsParams {
  * `[0, 1]` alpha multiplier and scale must stay non-negative (reflection is a
  * separate flip flag). Position/rotation are unbounded (any finite value).
  */
-const PARAM_CLAMP: Record<AnimatableParamPath, { min: number; max: number }> = {
+const PARAM_CLAMP: Record<FixedAnimatableParamPath, { min: number; max: number }> = {
   opacity: { min: 0, max: 1 },
   'transform.position.x': { min: -Infinity, max: Infinity },
   'transform.position.y': { min: -Infinity, max: Infinity },
@@ -52,8 +93,15 @@ const PARAM_CLAMP: Record<AnimatableParamPath, { min: number; max: number }> = {
   'transform.rotationDeg': { min: -Infinity, max: Infinity },
 };
 
-/** Clamp an interpolated value to its parameter's valid range. */
+/**
+ * Clamp an interpolated value to its parameter's valid range. Effect-parameter
+ * values are only kept finite here — their per-effect range clamp lives in the
+ * manifest's `toEffectSpecs` (applied during bake), so this stays generic.
+ */
 export function clampAnimatedValue(path: AnimatableParamPath, value: number): number {
+  if (isEffectParamPath(path)) {
+    return clampFinite(value, 0);
+  }
   const range = PARAM_CLAMP[path];
   return clamp(clampFinite(value, range.min === -Infinity ? 0 : range.min), range.min, range.max);
 }

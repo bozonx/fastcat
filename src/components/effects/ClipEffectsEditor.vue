@@ -13,6 +13,25 @@ import { genUuid } from '~/utils/ids';
 import { useDndDropZone } from '~/composables/dnd/useDndDropZone';
 import type { DndDragContext, DndPayload } from '~/composables/dnd/dndTypes';
 import type { VideoClipEffect, AudioClipEffect } from '~/timeline/types';
+import type { ParamsKeyframeHooks } from '~/components/properties/ParamsRenderer.vue';
+
+/**
+ * Keyframe hooks for animating VIDEO clip-effect params. Supplied only by the
+ * per-clip properties panel; absent for audio, track and master effects (which
+ * have no clip-local timeline), so those keep the plain static-edit behaviour.
+ */
+export interface ClipEffectKeyframeHooks {
+  isAnimated: (effectId: string, key: string) => boolean;
+  /** Toggle animation for a param; seeds from the effect's current value. */
+  toggle: (effectId: string, key: string) => void;
+  /** Record an edit as a keyframe when animated; returns true if consumed. */
+  recordEdit: (effectId: string, key: string, value: unknown) => boolean;
+  /** Interpolated-at-playhead overlay for an effect's animated params. */
+  displayValues: (effect: Record<string, unknown>) => Record<string, unknown>;
+}
+
+/** Effect param kinds that support keyframe animation (numeric + boolean). */
+const KEYFRAMABLE_KINDS = ['slider', 'knob', 'number', 'toggle', 'boolean'];
 
 interface Props {
   effects?: Array<VideoClipEffect | AudioClipEffect>;
@@ -22,6 +41,7 @@ interface Props {
   hasToggle?: boolean;
   disabled?: boolean;
   target: 'video' | 'audio';
+  keyframes?: ClipEffectKeyframeHooks;
 }
 
 const props = defineProps<Props>();
@@ -172,7 +192,27 @@ function openSaveModal(effectId: string) {
 }
 
 function handleUpdateEffectValue(effectId: string, key: string, value: unknown) {
+  // When the param is animated, the edit becomes a keyframe at the playhead and
+  // the static value is left untouched.
+  if (props.keyframes?.recordEdit(effectId, key, value)) return;
   handleUpdateEffect(effectId, { [key]: value });
+}
+
+/** Per-effect adapter passed to ParamsRenderer (numeric/boolean params only). */
+function paramsKeyframesFor(effectId: string): ParamsKeyframeHooks | undefined {
+  const kf = props.keyframes;
+  if (!kf) return undefined;
+  return {
+    isKeyframable: (_key: string, kind: string) => KEYFRAMABLE_KINDS.includes(kind),
+    isAnimated: (key: string) => kf.isAnimated(effectId, key),
+    toggle: (key: string) => kf.toggle(effectId, key),
+  };
+}
+
+/** The values shown for an effect: static params with animated ones interpolated. */
+function effectRenderValues(effect: Record<string, unknown>): Record<string, unknown> {
+  if (!props.keyframes) return effect;
+  return { ...effect, ...props.keyframes.displayValues(effect) };
 }
 
 function handleAction(effectId: string, action: string, _key: string) {
@@ -280,7 +320,8 @@ function resolveEffectName(manifest: EffectItem['manifest'], type: string) {
             <ParamsRenderer
               v-if="manifest?.controls"
               :controls="manifest.controls"
-              :values="effect"
+              :values="effectRenderValues(effect)"
+              :keyframes="paramsKeyframesFor(String(effect.id))"
               :disabled="props.disabled || !effect.enabled"
               :test-id-prefix="`clip-effect-${String(effect.type)}`"
               @update:value="

@@ -98,7 +98,9 @@ export class ClipResourceManager {
       return;
     }
 
-    const effectSpecs = buildEffectSpecs(clip.effects);
+    // Prefer per-frame animated specs (baked effect-param keyframes); the
+    // cacheKey below includes the specs, so animated values reprocess each frame.
+    const effectSpecs = clip.animatedEffectSpecs ?? buildEffectSpecs(clip.effects);
     if (!effectSpecs || effectSpecs.length === 0) return;
 
     // Skip reprocessing when clip content and effects haven't changed.
@@ -701,7 +703,7 @@ export class ClipResourceManager {
           const hasEffects = (clip.effects?.length ?? 0) > 0;
           const runner = this.context.computeRunner;
           if (previewEffectsEnabled && hasEffects && runner?.isReady()) {
-            const effectSpecs = buildEffectSpecs(clip.effects);
+            const effectSpecs = clip.animatedEffectSpecs ?? buildEffectSpecs(clip.effects);
             if (effectSpecs && effectSpecs.length > 0) {
               try {
                 const blurFillIndex = effectSpecs.findIndex((e) => e.type === 'blur-fill');

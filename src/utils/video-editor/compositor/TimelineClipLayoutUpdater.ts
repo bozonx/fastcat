@@ -1,5 +1,6 @@
 import { parseHexColor, sanitizeTimelineColor } from '../utils';
 import { cloneValue } from '~/utils/clone';
+import { bakeClipEffectAnimations } from '~/effects/animation-bake';
 import {
   areShapeConfigsEqual,
   areTextClipStylesEqual,
@@ -92,6 +93,7 @@ export class TimelineClipLayoutUpdater {
     clip.transform = n['transform'] as CompositorClip['transform'];
     clip.transformActive = n['transformActive'] as boolean | undefined;
     clip.animations = n['animations'] as CompositorClip['animations'];
+    clip.bakedEffects = bakeClipEffectAnimations(clip.effects, clip.animations);
     clip.sourceOrientation = n['sourceOrientation'] as CompositorClip['sourceOrientation'];
     clip.mask = n['mask'] as CompositorClip['mask'];
     clip.maskActive = n['maskActive'] as boolean | undefined;

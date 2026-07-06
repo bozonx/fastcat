@@ -135,4 +135,34 @@ describe('effectiveClipTransform', () => {
     });
     expect(effectiveClipTransform(c)?.rotationDeg).toBe(90);
   });
+
+  it('resolves animatedEffectSpecs from baked effects (even with no transform/opacity keyframes)', () => {
+    const c = clip({
+      bakedEffects: {
+        baseSpecs: [{ type: 'gaussian-blur', radius: 8 } as never],
+        fields: [
+          {
+            specIndex: 0,
+            field: 'radius',
+            kind: 'number',
+            keyframes: [
+              { tUs: 0, value: 8, easing: 'linear' },
+              { tUs: 1000, value: 64, easing: 'linear' },
+            ],
+          },
+        ],
+      },
+    });
+    resolveClipAnimationOverlay(c, 500); // local 500 -> midpoint
+    expect((c.animatedEffectSpecs?.[0] as Record<string, unknown>).radius).toBeCloseTo(36);
+    // transform/opacity overlays stay cleared
+    expect(c.animatedTransform).toBeUndefined();
+    expect(c.animatedOpacity).toBeUndefined();
+  });
+
+  it('clears animatedEffectSpecs when a clip has no baked effects', () => {
+    const c = clip({ animatedEffectSpecs: [{ type: 'x' } as never] });
+    resolveClipAnimationOverlay(c, 500);
+    expect(c.animatedEffectSpecs).toBeUndefined();
+  });
 });

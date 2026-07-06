@@ -197,6 +197,14 @@ pub struct SceneLayer {
     #[serde(default)]
     #[ts(type = "import('~/effects').VideoEffectSpec[]")]
     pub effects: Vec<EffectSpec>,
+    /// Effect-parameter keyframes baked to spec-field tracks (see the web
+    /// `bakeClipEffectAnimations`). When present, `finalize_layer` samples these
+    /// per frame to override numeric/boolean fields on the effect specs, so
+    /// effect-param animation works natively without porting each manifest's
+    /// `toEffectSpecs`. `None` when no effect param is animated.
+    #[serde(default)]
+    #[ts(optional, type = "import('~/effects').ClipBakedEffects")]
+    pub baked_effects: Option<Value>,
 }
 
 #[derive(Debug, Clone, Deserialize, TS)]
@@ -584,7 +592,7 @@ mod tests {
             snap_to_pixel_grid: false,
             transform: None,
             animations: None,
-            transition_in: None,
+            baked_effects: None,            transition_in: None,
             transition_out: None,
             effects: Vec::new(),
         }

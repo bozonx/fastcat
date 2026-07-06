@@ -240,4 +240,67 @@ describe('useClipKeyframes', () => {
     // No seek callback provided: navigation must not throw.
     expect(() => kf.seekNextKeyframe()).not.toThrow();
   });
+
+  it('toggleEffectParam ON seeds an effect.<id>.<key> keyframe; OFF clears it', () => {
+    const clip = ref(makeClip());
+    const playheadUs = ref(1_500_000); // local 500_000
+    let animations: ClipAnimations | undefined;
+    const updateAnimations = vi.fn((next: ClipAnimations | undefined) => {
+      animations = next;
+    });
+    const kf = useClipKeyframes({ clip, playheadUs, updateAnimations });
+
+    kf.toggleEffectParam('fx1', 'radius', 8);
+    expect(animations?.['effect.fx1.radius']?.keyframes).toEqual([
+      { tUs: 500_000, value: 8, easing: 'linear' },
+    ]);
+
+    clip.value = { ...clip.value, animations };
+    expect(kf.isEffectParamAnimated('fx1', 'radius')).toBe(true);
+    kf.toggleEffectParam('fx1', 'radius', 8);
+    expect(animations).toBeUndefined();
+  });
+
+  it('recordEffectParam upserts when animated (true) and no-ops otherwise (false)', () => {
+    const clip = ref(
+      makeClip({
+        animations: {
+          'effect.fx1.radius': { keyframes: [{ tUs: 0, value: 8, easing: 'linear' }] },
+        },
+      }),
+    );
+    const playheadUs = ref(1_500_000);
+    let animations: ClipAnimations | undefined;
+    const updateAnimations = vi.fn((next: ClipAnimations | undefined) => {
+      animations = next;
+    });
+    const kf = useClipKeyframes({ clip, playheadUs, updateAnimations });
+
+    expect(kf.recordEffectParam('fx1', 'radius', 40)).toBe(true);
+    expect(animations?.['effect.fx1.radius']?.keyframes.at(-1)).toEqual({
+      tUs: 500_000,
+      value: 40,
+      easing: 'linear',
+    });
+    expect(kf.recordEffectParam('fx1', 'mix', 0.5)).toBe(false);
+  });
+
+  it('effectParamDisplayValue interpolates at the playhead when animated', () => {
+    const clip = ref(
+      makeClip({
+        animations: {
+          'effect.fx1.radius': {
+            keyframes: [
+              { tUs: 0, value: 0, easing: 'linear' },
+              { tUs: 1_000_000, value: 100, easing: 'linear' },
+            ],
+          },
+        },
+      }),
+    );
+    const playheadUs = ref(1_500_000); // local 500_000 -> midpoint
+    const kf = useClipKeyframes({ clip, playheadUs, updateAnimations: vi.fn() });
+    expect(kf.effectParamDisplayValue('fx1', 'radius', 0)).toBeCloseTo(50);
+    expect(kf.effectParamDisplayValue('fx1', 'other', 7)).toBe(7);
+  });
 });

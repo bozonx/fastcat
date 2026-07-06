@@ -6,6 +6,7 @@ import type {
   TimelineClipItem,
 } from '~/timeline/types';
 import {
+  effectParamPath,
   evalTrackAt,
   hasKeyframes,
   resolveClipAnimationTimeUs,
@@ -177,6 +178,43 @@ export function useClipKeyframes(options: UseClipKeyframesOptions) {
     if (next !== undefined) seekToTimeline(next);
   }
 
+  /**
+   * Toggle animation for an effect parameter. Turning ON seeds a keyframe at
+   * the playhead with `seedValue` (the effect's current static value) so the
+   * animation doesn't jump; OFF clears the track. The path is
+   * `effect.<effectId>.<key>`.
+   */
+  function toggleEffectParam(effectId: string, key: string, seedValue: number) {
+    const path = effectParamPath(effectId, key);
+    const clip = options.clip.value;
+    if (isAnimated(path)) {
+      options.updateAnimations(clearParamAnimation(clip.animations, path));
+    } else {
+      options.updateAnimations(
+        upsertKeyframe(clip.animations, path, localPlayheadUs.value, seedValue),
+      );
+    }
+  }
+
+  /** True when the given effect parameter is keyframed. */
+  function isEffectParamAnimated(effectId: string, key: string): boolean {
+    return isAnimated(effectParamPath(effectId, key));
+  }
+
+  /**
+   * Record an effect-param edit: upsert a keyframe at the playhead when the
+   * param is animated (returns `true` so the caller skips the static update),
+   * otherwise `false` (caller updates the static effect value).
+   */
+  function recordEffectParam(effectId: string, key: string, value: number): boolean {
+    return recordValue(effectParamPath(effectId, key), value);
+  }
+
+  /** The value to show for an effect param: interpolated at the playhead when animated. */
+  function effectParamDisplayValue(effectId: string, key: string, staticValue: number): number {
+    return currentValue(effectParamPath(effectId, key), staticValue);
+  }
+
   /** Capture the keyframe moment at the playhead for the clipboard (or null). */
   function copyMomentAtPlayhead(): KeyframeMomentClipboard | null {
     return extractKeyframeMoment(options.clip.value.animations, localPlayheadUs.value);
@@ -217,6 +255,10 @@ export function useClipKeyframes(options: UseClipKeyframesOptions) {
     seekNextKeyframe,
     copyMomentAtPlayhead,
     pasteMomentAtPlayhead,
+    toggleEffectParam,
+    isEffectParamAnimated,
+    recordEffectParam,
+    effectParamDisplayValue,
     moveKeyframeMomentAt,
     deleteKeyframeMomentAt,
     setKeyframeMomentEasingAt,

@@ -7,7 +7,7 @@ import type {
   KeyframeTrack,
 } from '../../types';
 import { isTimelineBlendMode } from '~/utils/constants';
-import { ANIMATABLE_PARAM_PATHS, normalizeKeyframeTrack } from '../../animation/evaluate';
+import { isAnimatableParamPath, normalizeKeyframeTrack } from '../../animation/evaluate';
 
 // Pure value sanitizers for `updateClipProperties`. They never read clip/doc
 // state — each takes a raw (untrusted) value and returns a normalized one or
@@ -144,7 +144,10 @@ export function sanitizeAnimations(raw: unknown): ClipAnimations | undefined {
   const rawRecord = raw as Record<string, unknown>;
   const out: ClipAnimations = {};
   let count = 0;
-  for (const path of ANIMATABLE_PARAM_PATHS) {
+  // Accept the fixed transform/opacity paths plus well-formed effect-param
+  // paths (`effect.<id>.<key>`); reject any other key.
+  for (const path of Object.keys(rawRecord)) {
+    if (!isAnimatableParamPath(path)) continue;
     const track = rawRecord[path];
     if (!track || typeof track !== 'object') continue;
     const keyframes = (track as Record<string, unknown>).keyframes;

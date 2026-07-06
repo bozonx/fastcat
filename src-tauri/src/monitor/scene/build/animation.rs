@@ -16,6 +16,7 @@ use serde::Deserialize;
 use serde_json::Value;
 use std::collections::HashMap;
 
+use crate::compositor::effects::EffectSpec;
 use crate::monitor::scene::{SceneLayer, SceneLayerTransform};
 
 /// Transform design base — must match `TRANSFORM_DESIGN_BASE` on the web side.
@@ -111,6 +112,80 @@ pub fn eval_track_at(track: &KeyframeTrack, local_us: f64) -> Option<f64> {
         _ => frac,
     };
     Some(left.value + (right.value - left.value) * eased)
+}
+
+// --- Baked effect-parameter animation --------------------------------------
+// Effect params are baked (on the web side) into per-field keyframe tracks over
+// the finished `VideoEffectSpec`s, so the native side never needs each
+// manifest's `toEffectSpecs`. We patch numeric/boolean fields on the base specs
+// by name via `serde_json::Value`, then re-type them — fully generic across all
+// spec variants. Mirrors the web `patchBakedEffectSpecs`; pinned by a parity
+// fixture.
+
+#[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum BakeKind {
+    Number,
+    Bool,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct BakedEffectField {
+    #[serde(rename = "specIndex")]
+    pub spec_index: usize,
+    pub field: String,
+    pub kind: BakeKind,
+    #[serde(default)]
+    pub keyframes: Vec<Keyframe>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ClipBakedEffects {
+    /// Base specs kept as raw JSON so any field can be patched by name.
+    #[serde(rename = "baseSpecs")]
+    pub base_specs: Vec<Value>,
+    #[serde(default)]
+    pub fields: Vec<BakedEffectField>,
+}
+
+/// Patch the base specs at `animation_t_us`, overwriting each baked field with
+/// its sampled value. Pure JSON in/out; mirrors the web `patchBakedEffectSpecs`
+/// and is pinned by the shared parity fixture.
+pub fn patch_baked_specs(baked: &ClipBakedEffects, animation_t_us: f64) -> Vec<Value> {
+    let mut specs = baked.base_specs.clone();
+    for field in &baked.fields {
+        if field.spec_index >= specs.len() {
+            continue;
+        }
+        let track = KeyframeTrack {
+            keyframes: field.keyframes.clone(),
+        };
+        let Some(value) = eval_track_at(&track, animation_t_us) else {
+            continue;
+        };
+        if let Some(obj) = specs[field.spec_index].as_object_mut() {
+            let json_value = match field.kind {
+                BakeKind::Bool => Value::Bool(value >= 0.5),
+                BakeKind::Number => Value::from(value),
+            };
+            obj.insert(field.field.clone(), json_value);
+        }
+    }
+    specs
+}
+
+/// Resolve a layer's effect specs at `animation_t_us` (source-relative µs) from
+/// its baked effect-param tracks. Returns `None` when the layer has no baked
+/// effects (callers then use the static `sl.effects`).
+pub fn resolve_baked_effect_specs(sl: &SceneLayer, animation_t_us: f64) -> Option<Vec<EffectSpec>> {
+    let baked: ClipBakedEffects = serde_json::from_value(sl.baked_effects.as_ref()?.clone()).ok()?;
+    // Re-type the patched JSON specs, dropping any that no longer deserialize.
+    Some(
+        patch_baked_specs(&baked, animation_t_us)
+            .into_iter()
+            .filter_map(|v| serde_json::from_value(v).ok())
+            .collect(),
+    )
 }
 
 /// The effective overrides sampled for a layer this frame. Both `None` when the
@@ -243,6 +318,46 @@ mod tests {
                     easing,
                 })
                 .collect(),
+        }
+    }
+
+    /// Cross-engine parity contract — pairs with the TS test
+    /// `effect-bake-patch.parity.test.ts`. Both must patch every baked case in
+    /// `shared/parity/effect-bake-patch.cases.json` identically.
+    #[test]
+    fn patch_baked_specs_matches_shared_parity_fixture() {
+        const FIXTURE: &str =
+            include_str!("../../../../../shared/parity/effect-bake-patch.cases.json");
+        let parsed: serde_json::Value = serde_json::from_str(FIXTURE).expect("valid fixture json");
+        let cases = parsed["cases"].as_array().expect("cases array");
+        assert!(!cases.is_empty());
+
+        fn value_eq(a: &Value, b: &Value) -> bool {
+            match (a, b) {
+                (Value::Number(x), Value::Number(y)) => {
+                    (x.as_f64().unwrap() - y.as_f64().unwrap()).abs() < 1e-9
+                }
+                _ => a == b,
+            }
+        }
+
+        for c in cases {
+            let name = c["name"].as_str().unwrap_or("<unnamed>");
+            let baked: ClipBakedEffects =
+                serde_json::from_value(c["baked"].clone()).expect("valid baked payload");
+            let at_us = c["atUs"].as_f64().unwrap();
+            let got = patch_baked_specs(&baked, at_us);
+            let want = c["expected"].as_array().expect("expected array");
+            assert_eq!(got.len(), want.len(), "{name}: spec count");
+            for (g, w) in got.iter().zip(want.iter()) {
+                let go = g.as_object().expect("spec object");
+                let wo = w.as_object().expect("spec object");
+                assert_eq!(go.len(), wo.len(), "{name}: field count");
+                for (k, wv) in wo {
+                    let gv = go.get(k).unwrap_or_else(|| panic!("{name}: missing field {k}"));
+                    assert!(value_eq(gv, wv), "{name}: field {k}: got {gv:?}, want {wv:?}");
+                }
+            }
         }
     }
 

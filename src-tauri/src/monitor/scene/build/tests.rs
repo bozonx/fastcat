@@ -120,6 +120,44 @@ mod tests {
     }
 
     #[test]
+    fn finalize_layer_applies_baked_effect_animation() {
+        // A blur whose radius is baked to animate 8→64 over the first second;
+        // sampling at t=0.5s must patch the emitted spec's radius to 36.
+        let layer: SceneLayer = serde_json::from_value(json!({
+            "id": "fx-anim",
+            "kind": "background",
+            "timeline_start_sec": 0.0,
+            "timeline_end_sec": 2.0,
+            "source_start_sec": 0.0,
+            "z": 1,
+            "opacity": 1.0,
+            "background_color": "#123456",
+            "effects": [{ "type": "gaussian-blur", "radius": 8 }],
+            "baked_effects": {
+                "baseSpecs": [{ "type": "gaussian-blur", "radius": 8 }],
+                "fields": [{
+                    "specIndex": 0,
+                    "field": "radius",
+                    "kind": "number",
+                    "keyframes": [
+                        { "tUs": 0, "value": 8, "easing": "linear" },
+                        { "tUs": 1000000, "value": 64, "easing": "linear" }
+                    ]
+                }]
+            }
+        }))
+        .unwrap();
+
+        let scene_size = (1920u32, 1080u32);
+        let kind = build_virtual_kind(&layer, scene_size).unwrap();
+        let out = finalize_layer(&layer, kind, scene_size, 0.5);
+
+        let spec = serde_json::to_value(&out.effects[0]).unwrap();
+        let radius = spec["radius"].as_f64().unwrap();
+        assert!((radius - 36.0).abs() < 1e-5, "radius should patch to 36, got {radius}");
+    }
+
+    #[test]
     fn finalize_layer_without_animation_keeps_static_values() {
         let layer: SceneLayer = serde_json::from_value(json!({
             "id": "static",
@@ -696,7 +734,7 @@ mod tests {
             snap_to_pixel_grid: false,
             transform: None,
             animations: None,
-            transition_in: None,
+            baked_effects: None,            transition_in: None,
             transition_out: None,
             effects: Vec::new(),
         };
@@ -752,7 +790,7 @@ mod tests {
             snap_to_pixel_grid: false,
             transform: None,
             animations: None,
-            transition_in: None,
+            baked_effects: None,            transition_in: None,
             transition_out: None,
             effects: Vec::new(),
         };
@@ -854,7 +892,7 @@ mod tests {
             snap_to_pixel_grid: false,
             transform: None,
             animations: None,
-            transition_in: None,
+            baked_effects: None,            transition_in: None,
             transition_out: None,
             effects: Vec::new(),
         };
@@ -936,7 +974,7 @@ mod tests {
             snap_to_pixel_grid: false,
             transform: None,
             animations: None,
-            transition_in: None,
+            baked_effects: None,            transition_in: None,
             transition_out: None,
             effects: Vec::new(),
         };
@@ -1073,7 +1111,7 @@ mod tests {
                 flip_vertical: false,
             }),
             animations: None,
-            transition_in: None,
+            baked_effects: None,            transition_in: None,
             transition_out: None,
             effects: Vec::new(),
         };

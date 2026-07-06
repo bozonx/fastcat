@@ -4,6 +4,7 @@ import {
   resolveClipAnimationTimeUs,
   sampleClipAnimations,
 } from '~/timeline/animation/evaluate';
+import { patchBakedEffectSpecs } from '~/effects/animation-bake';
 import type { CompositorClip } from './types';
 
 /**
@@ -68,9 +69,12 @@ function buildAnimatedTransform(
  * for the kinds that don't already re-layout per frame.
  */
 export function resolveClipAnimationOverlay(clip: CompositorClip, timeUs: number): void {
-  if (!hasAnyAnimation(clip.animations)) {
+  const hasTransformOpacity = hasAnyAnimation(clip.animations);
+  const hasEffects = !!clip.bakedEffects;
+  if (!hasTransformOpacity && !hasEffects) {
     clip.animatedTransform = undefined;
     clip.animatedOpacity = undefined;
+    clip.animatedEffectSpecs = undefined;
     return;
   }
 
@@ -81,6 +85,18 @@ export function resolveClipAnimationOverlay(clip: CompositorClip, timeUs: number
     sourceRangeDurationUs: clip.sourceRangeDurationUs,
     speed: clip.speed,
   });
+
+  // Effect params: patch the baked spec-field tracks onto the base specs.
+  clip.animatedEffectSpecs = hasEffects
+    ? patchBakedEffectSpecs(clip.bakedEffects!, animationTimeUs)
+    : undefined;
+
+  if (!hasTransformOpacity) {
+    clip.animatedTransform = undefined;
+    clip.animatedOpacity = undefined;
+    return;
+  }
+
   const sampled = sampleClipAnimations(clip.animations, animationTimeUs);
 
   clip.animatedOpacity = sampled.opacity;

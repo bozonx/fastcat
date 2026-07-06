@@ -268,7 +268,7 @@ export class VideoCompositor {
 
     const runner = this.computeRunner;
     for (const clip of adjustmentClips) {
-      const effectSpecs = buildEffectSpecs(clip.effects);
+      const effectSpecs = clip.animatedEffectSpecs ?? buildEffectSpecs(clip.effects);
       if (
         !this.previewEffectsEnabled ||
         !effectSpecs ||

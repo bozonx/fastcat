@@ -333,6 +333,37 @@ function handleUpdateMask(mask: unknown) {
   });
 }
 
+// Keyframe hooks for animating video clip-effect params (numeric + boolean).
+// Numbers seed/record directly; booleans map to 0/1. Interpolated values are
+// fed back through `displayValues` so the controls show what's playing.
+const clipEffectKeyframes = {
+  isAnimated: (effectId: string, key: string) => clipKeyframes.isEffectParamAnimated(effectId, key),
+  toggle: (effectId: string, key: string) => {
+    const effect = (props.clip.effects ?? []).find(
+      (e) => (e as Record<string, unknown>).id === effectId,
+    ) as Record<string, unknown> | undefined;
+    const cur = effect?.[key];
+    const seed = typeof cur === 'boolean' ? (cur ? 1 : 0) : Number(cur ?? 0);
+    clipKeyframes.toggleEffectParam(effectId, key, Number.isFinite(seed) ? seed : 0);
+  },
+  recordEdit: (effectId: string, key: string, value: unknown) => {
+    const num = typeof value === 'boolean' ? (value ? 1 : 0) : Number(value);
+    if (!Number.isFinite(num)) return false;
+    return clipKeyframes.recordEffectParam(effectId, key, num);
+  },
+  displayValues: (effect: Record<string, unknown>) => {
+    const out: Record<string, unknown> = {};
+    const id = String(effect.id);
+    for (const key of Object.keys(effect)) {
+      if (!clipKeyframes.isEffectParamAnimated(id, key)) continue;
+      const cur = effect[key];
+      const staticNum = typeof cur === 'boolean' ? (cur ? 1 : 0) : Number(cur ?? 0);
+      out[key] = clipKeyframes.effectParamDisplayValue(id, key, staticNum);
+    }
+    return out;
+  },
+};
+
 function handleUpdateClipEffects(effects: Array<VideoClipEffect | AudioClipEffect>) {
   const audioEffects = (clipRef.value?.effects ?? []).filter(
     (e): e is AudioClipEffect => e?.target === 'audio',
@@ -517,6 +548,7 @@ defineExpose({
           v-model:enabled="isVideoEffectsEnabled"
           target="video"
           :effects="clipVideoEffects"
+          :keyframes="clipEffectKeyframes"
           :title="t('fastcat.effects.videoTitle')"
           :add-label="t('fastcat.effects.add')"
           :empty-label="t('fastcat.effects.empty')"
@@ -706,6 +738,7 @@ defineExpose({
           v-model:enabled="isVideoEffectsEnabled"
           target="video"
           :effects="clipVideoEffects"
+          :keyframes="clipEffectKeyframes"
           :title="t('fastcat.effects.videoTitle')"
           :add-label="t('fastcat.effects.add')"
           :empty-label="t('fastcat.effects.empty')"
