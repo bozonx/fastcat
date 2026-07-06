@@ -39,8 +39,6 @@ const centeredOverlayStyle = computed(() => {
 
 <template>
   <div class="absolute inset-x-0 top-0 h-full pointer-events-none rounded overflow-hidden">
-
-
     <!-- Nested timeline badge: helps the user distinguish embedded sequences
          from regular media. Double-click on the clip opens the nested timeline
          (see TimelineClip.vue:278). -->

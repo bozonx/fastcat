@@ -268,6 +268,11 @@ async function addToTimeline() {
     emit('close');
   } catch (error) {
     log.error('addToTimeline / replace failed', error);
+    toast.add({
+      color: 'error',
+      title: t('common.error'),
+      description: error instanceof Error ? error.message : String(error),
+    });
   } finally {
     isAdding.value = false;
   }

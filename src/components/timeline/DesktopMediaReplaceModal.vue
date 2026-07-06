@@ -57,10 +57,12 @@ const currentSourcePath = computed(() => {
 
 const excludedPaths = computed(() => (currentSourcePath.value ? [currentSourcePath.value] : []));
 const selectedFileEntry = ref<FsEntry | null>(null);
+const isVerifying = ref(false);
 
 watch(isOpen, (newVal) => {
   if (newVal) {
     selectedFileEntry.value = null;
+    isVerifying.value = false;
 
     // Clear selection for replace-modal instance to avoid leftover selections
     const selected = selectionStore.selectedEntity;
@@ -88,7 +90,7 @@ function handlePickerSelect(entry: FsEntry | null) {
 }
 
 async function handleSelectFile(entry: FsEntry) {
-  if (entry.kind !== 'file' || !entry.path) return;
+  if (entry.kind !== 'file' || !entry.path || isVerifying.value) return;
   const target = uiStore.mediaReplaceTarget;
   if (!target) return;
 
@@ -101,26 +103,37 @@ async function handleSelectFile(entry: FsEntry) {
     return;
   }
 
-  const track = timelineStore.timelineDoc?.tracks.find((track) => track.id === target.trackId);
-  if (track?.kind === 'audio') {
-    const metadata = await mediaStore.getOrFetchMetadataByPath(entry.path);
-    if (!metadata || !metadata.audio) {
-      toast.add({
-        color: 'error',
-        title: t('common.error'),
-        description: t('fastcat.timeline.noAudioTrackInVideo'),
-      });
-      return;
+  isVerifying.value = true;
+  try {
+    const track = timelineStore.timelineDoc?.tracks.find((track) => track.id === target.trackId);
+    if (track?.kind === 'audio') {
+      const metadata = await mediaStore.getOrFetchMetadataByPath(entry.path);
+      if (!metadata || !metadata.audio) {
+        toast.add({
+          color: 'error',
+          title: t('common.error'),
+          description: t('fastcat.timeline.noAudioTrackInVideo'),
+        });
+        return;
+      }
     }
+
+    // Update clip source
+    timelineStore.updateClipProperties(target.trackId, target.itemId, {
+      source: { path: entry.path },
+    });
+
+    uiStore.mediaReplaceTarget = null;
+    uiStore.isMediaReplaceModalOpen = false;
+  } catch {
+    toast.add({
+      color: 'error',
+      title: t('common.error'),
+      description: t('fastcat.timeline.noAudioTrackInVideo'),
+    });
+  } finally {
+    isVerifying.value = false;
   }
-
-  // Update clip source
-  timelineStore.updateClipProperties(target.trackId, target.itemId, {
-    source: { path: entry.path },
-  });
-
-  uiStore.mediaReplaceTarget = null;
-  uiStore.isMediaReplaceModalOpen = false;
 }
 </script>
 
@@ -154,6 +167,7 @@ async function handleSelectFile(entry: FsEntry) {
           icon="i-heroicons-check"
           color="primary"
           size="lg"
+          :loading="isVerifying"
           @click="handleSelectFile(selectedFileEntry)"
         >
           {{ t('fastcat.clip.replaceMedia') }}
