@@ -63,6 +63,11 @@ async function createProject(projectName: string): Promise<void> {
     timeout: 30_000,
     timeoutMsg: 'Project editor did not open after creating a project',
   });
+
+  await $('[data-testid="timeline-container"]').waitForDisplayed({
+    timeout: 30_000,
+    timeoutMsg: 'Project editor did not finish loading after creating a project',
+  });
 }
 
 async function waitForTauriDropBridge(): Promise<void> {

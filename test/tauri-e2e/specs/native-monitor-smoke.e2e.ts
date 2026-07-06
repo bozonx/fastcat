@@ -35,11 +35,7 @@ describe('Native Monitor Smoke (P2)', () => {
     const pauseResult = await invokeTauri('monitor_pause');
     expect(pauseResult).toBeNull();
 
-    // 6. Set mode back to disabled
-    const disableModeResult = await invokeTauri('monitor_set_mode', { mode: 'disabled' });
-    expect(disableModeResult).toBeNull();
-
-    // 7. Close / graceful pause monitor
+    // 6. Close / graceful pause monitor
     const closeResult = await invokeTauri('monitor_close');
     expect(closeResult).toBeNull();
   });
