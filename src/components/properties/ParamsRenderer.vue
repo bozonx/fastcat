@@ -385,6 +385,7 @@ function handleArrayItemUpdate(
           as-contents
           :force-full-width="Boolean(entry.control.columns && entry.control.columns > 1)"
           :test-id-prefix="props.testIdPrefix"
+          :keyframes="props.keyframes"
           @update:value="(key, value) => updateValue(key, value)"
         />
       </div>

@@ -112,4 +112,20 @@ describe('UiActionButton', () => {
     expect(button.classes()).toContain('text-ui-text-muted');
     expect(button.classes()).toContain('hover:text-ui-text');
   });
+
+  it('keeps explicit text color classes for neutral ghost icon-only buttons', async () => {
+    const component = await mountSuspended(UiActionButton, {
+      props: {
+        icon: 'i-lucide-save',
+        variant: 'ghost',
+        color: 'neutral',
+        class: 'text-selection-accent-500 hover:text-selection-accent-400',
+      },
+    });
+
+    const button = component.find('button');
+    expect(button.classes()).toContain('text-selection-accent-500');
+    expect(button.classes()).toContain('hover:text-selection-accent-400');
+    expect(button.classes()).not.toContain('text-ui-text-muted');
+  });
 });

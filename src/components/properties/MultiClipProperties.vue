@@ -16,6 +16,7 @@ import { useUiStore } from '~/stores/ui.store';
 import { useAppClipboard } from '~/composables/useAppClipboard';
 import { BLEND_MODE_OPTIONS as RAW_BLEND_MODE_OPTIONS } from '~/utils/constants';
 import { DEFAULT_TRANSITION_CURVE, DEFAULT_TRANSITION_MODE } from '~/transitions';
+import type { PropertyAction } from '~/components/properties/PropertyActionList.vue';
 import type {
   TimelineBlendMode,
   TimelineClipItem,
@@ -504,7 +505,7 @@ const commonActions = computed(() => {
     });
   }
 
-  return actions as import('~/components/properties/PropertyActionsBlock.vue').PropertyActionItem[];
+  return actions as PropertyAction[];
 });
 
 const otherActions = computed(() => {
@@ -582,7 +583,7 @@ const otherActions = computed(() => {
     });
   }
 
-  return result as import('~/components/properties/PropertyActionsBlock.vue').PropertyActionItem[];
+  return result as PropertyAction[];
 });
 </script>
 

@@ -254,10 +254,16 @@ export const usePresetsStore = defineStore('presets', () => {
       }
     });
 
-    customPresets.value = [...otherPresets, ...reordered];
+    const reorderedIds = new Set(reordered.map((preset) => preset.id));
+    const untouched = categoryPresets.filter((preset) => !reorderedIds.has(preset.id));
+    untouched.forEach((preset, index) => {
+      preset.order = reordered.length + index;
+    });
+
+    customPresets.value = [...otherPresets, ...reordered, ...untouched];
 
     const repo = getPresetRepo();
-    for (const preset of reordered) {
+    for (const preset of [...reordered, ...untouched]) {
       await repo.saveCustomPreset(preset);
     }
   }

@@ -111,9 +111,9 @@ export const ClipTransformSchema: z.ZodType<ClipTransform> = z
   .passthrough() as unknown as z.ZodType<ClipTransform>;
 
 /**
- * Keyframe animation tracks (v1: transform + opacity). Times are source-relative
- * microseconds. We validate the known param paths and drop unknown ones so a
- * malformed/forward-compatible track can't smuggle in an un-evaluatable path.
+ * Keyframe animation tracks. Times are source-relative microseconds. We
+ * validate the known param paths and drop unknown ones so a malformed or
+ * forward-compatible track can't smuggle in an un-evaluatable path.
  */
 const KeyframeSchema = z.object({
   tUs: z.number().finite().nonnegative(),

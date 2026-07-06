@@ -42,6 +42,7 @@ import ClipTypeSection from '~/components/properties/clip/ClipTypeSection.vue';
 import ClipMaskSection from '~/components/properties/clip/ClipMaskSection.vue';
 import ClipParametersPasteModal from '~/components/properties/clip/ClipParametersPasteModal.vue';
 import ClipBackgroundProperties from '~/components/properties/clip/ClipBackgroundProperties.vue';
+import ClipEffectsSection from '~/components/properties/clip/ClipEffectsSection.vue';
 import { useClipAudio } from '~/composables/properties/useClipAudio';
 import { useClipTransitions } from '~/composables/properties/useClipTransitions';
 import { useClipPropertiesActions } from '~/composables/properties/useClipPropertiesActions';
@@ -50,7 +51,6 @@ import { useClipShapeProperties } from '~/composables/properties/useClipShapePro
 import { useClipHudProperties } from '~/composables/properties/useClipHudProperties';
 import { useClipParametersClipboard } from '~/composables/editor/useClipParametersClipboard';
 import { useClipKeyframes } from '~/composables/timeline/useClipKeyframes';
-import ClipEffectsEditor from '~/components/effects/ClipEffectsEditor.vue';
 import { normalizeHexColor } from '~/utils/color';
 import { upsertKeyframe } from '~/timeline/animation/ops';
 
@@ -312,27 +312,72 @@ function handlePasteKeyframeMoment() {
 type AnimationPreset = 'fade-in' | 'fade-out' | 'ken-burns' | 'slide-in';
 
 function handleApplyAnimationPreset(preset: AnimationPreset) {
-  const durationUs = Math.max(1, props.clip.sourceRange.durationUs || props.clip.timelineRange.durationUs);
+  const durationUs = Math.max(
+    1,
+    props.clip.sourceRange.durationUs || props.clip.timelineRange.durationUs,
+  );
   const presetSpanUs = Math.min(1_000_000, durationUs);
   let next = props.clip.animations;
 
   if (preset === 'fade-in') {
     next = upsertKeyframe(next, 'opacity', props.clip.sourceRange.startUs, 0, 'linear');
-    next = upsertKeyframe(next, 'opacity', props.clip.sourceRange.startUs + presetSpanUs, 1, 'linear');
+    next = upsertKeyframe(
+      next,
+      'opacity',
+      props.clip.sourceRange.startUs + presetSpanUs,
+      1,
+      'linear',
+    );
   } else if (preset === 'fade-out') {
     const endUs = props.clip.sourceRange.startUs + durationUs;
-    next = upsertKeyframe(next, 'opacity', Math.max(props.clip.sourceRange.startUs, endUs - presetSpanUs), 1, 'linear');
+    next = upsertKeyframe(
+      next,
+      'opacity',
+      Math.max(props.clip.sourceRange.startUs, endUs - presetSpanUs),
+      1,
+      'linear',
+    );
     next = upsertKeyframe(next, 'opacity', endUs, 0, 'linear');
   } else if (preset === 'ken-burns') {
     next = upsertKeyframe(next, 'transform.scale.x', props.clip.sourceRange.startUs, 1, 'ease');
     next = upsertKeyframe(next, 'transform.scale.y', props.clip.sourceRange.startUs, 1, 'ease');
-    next = upsertKeyframe(next, 'transform.scale.x', props.clip.sourceRange.startUs + durationUs, 1.12, 'linear');
-    next = upsertKeyframe(next, 'transform.scale.y', props.clip.sourceRange.startUs + durationUs, 1.12, 'linear');
+    next = upsertKeyframe(
+      next,
+      'transform.scale.x',
+      props.clip.sourceRange.startUs + durationUs,
+      1.12,
+      'linear',
+    );
+    next = upsertKeyframe(
+      next,
+      'transform.scale.y',
+      props.clip.sourceRange.startUs + durationUs,
+      1.12,
+      'linear',
+    );
   } else if (preset === 'slide-in') {
-    next = upsertKeyframe(next, 'transform.position.x', props.clip.sourceRange.startUs, -400, 'ease');
-    next = upsertKeyframe(next, 'transform.position.x', props.clip.sourceRange.startUs + presetSpanUs, 0, 'linear');
+    next = upsertKeyframe(
+      next,
+      'transform.position.x',
+      props.clip.sourceRange.startUs,
+      -400,
+      'ease',
+    );
+    next = upsertKeyframe(
+      next,
+      'transform.position.x',
+      props.clip.sourceRange.startUs + presetSpanUs,
+      0,
+      'linear',
+    );
     next = upsertKeyframe(next, 'opacity', props.clip.sourceRange.startUs, 0, 'linear');
-    next = upsertKeyframe(next, 'opacity', props.clip.sourceRange.startUs + presetSpanUs, 1, 'linear');
+    next = upsertKeyframe(
+      next,
+      'opacity',
+      props.clip.sourceRange.startUs + presetSpanUs,
+      1,
+      'linear',
+    );
   }
 
   timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, { animations: next });
@@ -657,17 +702,13 @@ defineExpose({
     <!-- Adjustment clip: flat layout without tabs -->
     <template v-if="clip.clipType === 'adjustment'">
       <div ref="effectsSectionRef">
-        <ClipEffectsEditor
-          v-model:enabled="isVideoEffectsEnabled"
-          target="video"
-          :effects="clipVideoEffects"
-          :keyframes="clipEffectKeyframes"
-          :title="t('fastcat.effects.videoTitle')"
-          :add-label="t('fastcat.effects.add')"
-          :empty-label="t('fastcat.effects.empty')"
-          :has-toggle="true"
-          :disabled="!isVideoEffectsEnabled"
-          @update:effects="handleUpdateClipEffects"
+        <ClipEffectsSection
+          v-model:video-enabled="isVideoEffectsEnabled"
+          :video-effects="clipVideoEffects"
+          :audio-effects="clipAudioEffects"
+          :video-keyframes="clipEffectKeyframes"
+          :show-audio-effects="false"
+          @update-video-effects="handleUpdateClipEffects"
         />
       </div>
 
@@ -887,17 +928,13 @@ defineExpose({
       />
 
       <div ref="effectsSectionRef">
-        <ClipEffectsEditor
-          v-model:enabled="isVideoEffectsEnabled"
-          target="video"
-          :effects="clipVideoEffects"
-          :keyframes="clipEffectKeyframes"
-          :title="t('fastcat.effects.videoTitle')"
-          :add-label="t('fastcat.effects.add')"
-          :empty-label="t('fastcat.effects.empty')"
-          :has-toggle="true"
-          :disabled="!isVideoEffectsEnabled"
-          @update:effects="handleUpdateClipEffects"
+        <ClipEffectsSection
+          v-model:video-enabled="isVideoEffectsEnabled"
+          :video-effects="clipVideoEffects"
+          :audio-effects="clipAudioEffects"
+          :video-keyframes="clipEffectKeyframes"
+          :show-audio-effects="false"
+          @update-video-effects="handleUpdateClipEffects"
         />
       </div>
     </div>
@@ -930,14 +967,14 @@ defineExpose({
         @volume-drag-end="onVolumeDragEnd"
       />
 
-      <ClipEffectsEditor
+      <ClipEffectsSection
         v-if="isAudioEffectsFeatureEnabled && canEditAudioEffects"
-        v-model:enabled="isAudioEffectsEnabled"
-        target="audio"
-        :effects="clipAudioEffects"
-        :has-toggle="true"
-        :disabled="!isAudioEffectsEnabled"
-        @update:effects="handleUpdateClipAudioEffects"
+        v-model:audio-enabled="isAudioEffectsEnabled"
+        :video-effects="clipVideoEffects"
+        :audio-effects="clipAudioEffects"
+        :show-video-effects="false"
+        :show-audio-effects="true"
+        @update-audio-effects="handleUpdateClipAudioEffects"
       />
     </div>
 

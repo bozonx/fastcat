@@ -1,22 +1,10 @@
 <script setup lang="ts">
 import PropertyActionList from './PropertyActionList.vue';
-
-export interface PropertyActionItem {
-  id: string;
-  label?: string;
-  title?: string;
-  icon?: string;
-  color?: 'neutral' | 'primary' | 'secondary' | 'success' | 'warning' | 'error' | 'info' | 'danger';
-  variant?: 'solid' | 'outline' | 'soft' | 'ghost' | 'subtle' | 'link';
-  disabled?: boolean;
-  loading?: boolean;
-  hidden?: boolean;
-  onClick: () => void;
-}
+import type { PropertyAction } from './PropertyActionList.vue';
 
 defineProps<{
-  quickActions?: PropertyActionItem[];
-  additionalActions?: PropertyActionItem[];
+  quickActions?: PropertyAction[];
+  additionalActions?: PropertyAction[];
 }>();
 </script>
 

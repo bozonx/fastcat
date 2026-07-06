@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import type { AudioClipEffect, VideoClipEffect } from '~/timeline/types';
 import ClipEffectsEditor from '~/components/effects/ClipEffectsEditor.vue';
+import type { ClipEffectKeyframeHooks } from '~/components/effects/ClipEffectsEditor.vue';
 
 const props = defineProps<{
-  clipType: string;
   videoEffects: VideoClipEffect[];
   audioEffects: AudioClipEffect[];
-  canEditAudioEffects: boolean;
+  showVideoEffects?: boolean;
+  showAudioEffects?: boolean;
+  videoKeyframes?: ClipEffectKeyframeHooks;
 }>();
 
 const emit = defineEmits<{
@@ -22,9 +24,11 @@ const isAudioEnabled = defineModel<boolean>('audioEnabled', { default: true });
 
 <template>
   <ClipEffectsEditor
+    v-if="props.showVideoEffects !== false"
     v-model:enabled="isVideoEnabled"
     target="video"
     :effects="props.videoEffects"
+    :keyframes="props.videoKeyframes"
     :title="t('fastcat.effects.videoTitle')"
     :add-label="t('fastcat.effects.add')"
     :empty-label="t('fastcat.effects.empty')"
@@ -34,7 +38,7 @@ const isAudioEnabled = defineModel<boolean>('audioEnabled', { default: true });
   />
 
   <ClipEffectsEditor
-    v-if="props.canEditAudioEffects"
+    v-if="props.showAudioEffects"
     v-model:enabled="isAudioEnabled"
     target="audio"
     :effects="props.audioEffects"

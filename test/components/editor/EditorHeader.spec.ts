@@ -105,6 +105,16 @@ describe('EditorHeader', () => {
     expect(saveBtn.classes()).toContain('animate-spin');
   });
 
+  it('highlights save button when timeline has unsaved changes', async () => {
+    mockTimelineStore.isTimelineDirty = true;
+    const wrapper = await mountSuspended(EditorHeader);
+
+    const saveBtn = wrapper.find('[icon="i-lucide-save"]');
+    expect(saveBtn.exists()).toBe(true);
+    expect(saveBtn.classes()).toContain('text-selection-accent-500');
+    expect(saveBtn.classes()).toContain('hover:text-selection-accent-400');
+  });
+
   it('renders app settings button and emits open-editor-settings when clicked', async () => {
     const wrapper = await mountSuspended(EditorHeader);
 

@@ -53,6 +53,7 @@ const emit = defineEmits<{
   click: [event: MouseEvent];
 }>();
 
+const attrs = useAttrs();
 const slots = useSlots();
 
 const { tooltipText, tooltipVisible, tooltipX, tooltipY, startPress, movePress, hide } =
@@ -67,6 +68,32 @@ const isIconOnly = computed(() => {
 const isNeutralGhostIconOnly = computed(() => {
   return isIconOnly.value && props.color === 'neutral' && props.variant === 'ghost';
 });
+
+function hasTextColorClass(value: unknown): boolean {
+  if (!value) return false;
+
+  if (typeof value === 'string') {
+    return value
+      .split(/\s+/)
+      .some((className) =>
+        /^(hover:)?text-(selection|ui|white|black|\[|[a-z]+-\d)/.test(className),
+      );
+  }
+
+  if (Array.isArray(value)) {
+    return value.some((item) => hasTextColorClass(item));
+  }
+
+  if (typeof value === 'object') {
+    return Object.entries(value).some(
+      ([className, enabled]) => enabled && hasTextColorClass(className),
+    );
+  }
+
+  return false;
+}
+
+const hasCustomTextColor = computed(() => hasTextColorClass(attrs.class));
 
 const iconOnlySizeClasses = computed(() => {
   if (!isIconOnly.value) return '';
@@ -94,7 +121,7 @@ const iconButtonClasses = computed(() => {
   return [
     'aspect-square p-0 inline-flex items-center justify-center shrink-0',
     iconOnlySizeClasses.value,
-    isNeutralGhostIconOnly.value
+    isNeutralGhostIconOnly.value && !hasCustomTextColor.value
       ? 'text-ui-text-muted hover:text-ui-text disabled:text-ui-text-dimmed disabled:opacity-40'
       : '',
   ];

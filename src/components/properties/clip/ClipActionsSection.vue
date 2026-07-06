@@ -2,21 +2,11 @@
 import { computed } from 'vue';
 import PropertySection from '~/components/properties/PropertySection.vue';
 import PropertyActionsBlock from '~/components/properties/PropertyActionsBlock.vue';
-
-interface ActionItem {
-  id: string;
-  label?: string;
-  title?: string;
-  icon: string;
-  onClick: () => void;
-  color?: 'neutral' | 'error' | 'success' | 'warning' | 'info' | 'primary' | 'secondary' | 'danger';
-  variant?: 'solid' | 'outline' | 'soft' | 'ghost' | 'subtle' | 'link';
-  disabled?: boolean;
-}
+import type { PropertyAction } from '~/components/properties/PropertyActionList.vue';
 
 const props = defineProps<{
-  commonActions: ActionItem[];
-  otherActions: ActionItem[];
+  commonActions: PropertyAction[];
+  otherActions: PropertyAction[];
 }>();
 
 const emit = defineEmits<{

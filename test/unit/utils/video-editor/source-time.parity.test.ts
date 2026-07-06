@@ -79,4 +79,28 @@ describe('source-time core', () => {
     expect(halfFrameGuard).toBe(5_000_000 - Math.round(500_000 / 30));
     expect(halfFrameGuard).toBeLessThan(flatGuard);
   });
+
+  it('maps source time from clip speed and source fps, independent of timeline fps', () => {
+    const sourceUs = resolveClipSourceTimeUs({
+      localTimeUs: 1_000_000,
+      sourceStartUs: 2_000_000,
+      sourceRangeDurationUs: 5_000_000,
+      speed: 2,
+      frameRate: 24,
+    });
+
+    expect(sourceUs).toBe(4_000_000);
+  });
+
+  it('maps negative-speed video from the readable tail backwards', () => {
+    const sourceUs = resolveClipSourceTimeUs({
+      localTimeUs: 500_000,
+      sourceStartUs: 10_000_000,
+      sourceRangeDurationUs: 5_000_000,
+      speed: -2,
+      frameRate: 25,
+    });
+
+    expect(sourceUs).toBe(10_000_000 + 5_000_000 - Math.round(500_000 / 25) - 1_000_000);
+  });
 });

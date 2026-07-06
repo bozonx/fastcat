@@ -90,6 +90,44 @@ describe('audio chunk file cache', () => {
     ]);
   });
 
+  it('restores chunks with their decoded sample rate even when the context timeline differs', async () => {
+    const vfs = new InMemoryFileSystemAdapter();
+    const cacheVfsPath = '@ptemp/projects/project-1/audio-cache';
+    const context = new AudioContextMock() as unknown as BaseAudioContext;
+    const sourceFile = createSourceFile();
+    const buffer = new AudioBufferMock(1, 44_100, 44_100);
+    buffer.copyToChannel(new Float32Array([0.5]), 0);
+
+    await writeAudioChunkToFileCache({
+      vfs,
+      cacheVfsPath,
+      sourceKey: 'source:_audio/test-44100.wav',
+      chunkIndex: 0,
+      chunkSizeS: 5,
+      sourceFile,
+      chunk: {
+        chunkIndex: 0,
+        startTimeS: 0,
+        durationS: 1,
+        buffer: buffer as unknown as AudioBuffer,
+      },
+    });
+
+    const restored = await readAudioChunkFromFileCache({
+      vfs,
+      cacheVfsPath,
+      sourceKey: 'source:_audio/test-44100.wav',
+      chunkIndex: 0,
+      chunkSizeS: 5,
+      sourceFile,
+      context,
+    });
+
+    expect(restored?.buffer.sampleRate).toBe(44_100);
+    expect(restored?.buffer.length).toBe(44_100);
+    expect(restored?.buffer.getChannelData(0)[0]).toBeCloseTo(0.5);
+  });
+
   it('misses when the source file stamp changes', async () => {
     const vfs = new InMemoryFileSystemAdapter();
     const cacheVfsPath = '@ptemp/projects/project-1/audio-cache';

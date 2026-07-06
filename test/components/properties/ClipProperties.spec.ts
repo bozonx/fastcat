@@ -76,6 +76,14 @@ vi.mock('~/components/properties/clip/ClipParametersPasteModal.vue', () => ({
 vi.mock('~/components/effects/ClipEffectsEditor.vue', () => ({
   default: { name: 'ClipEffectsEditor', props: ['target'], template: '<div></div>' },
 }));
+vi.mock('~/components/properties/clip/ClipEffectsSection.vue', () => ({
+  default: {
+    name: 'ClipEffectsSection',
+    props: ['showAudioEffects', 'showVideoEffects'],
+    template:
+      '<div><div v-if="showVideoEffects !== false" data-testid="video-effects"></div><div v-if="showAudioEffects" data-testid="audio-effects"></div></div>',
+  },
+}));
 
 const mockTimelineStore = reactive({
   timelineDoc: {
@@ -358,33 +366,42 @@ describe('ClipProperties.vue', () => {
 
     infoSection.vm.$emit('update-start-time', 2000000);
     await nextTick();
-    expect(mockTimelineStore.applyTimeline).toHaveBeenCalledWith({
-      type: 'move_item',
-      trackId: 'track-1',
-      itemId: 'clip-1',
-      startUs: 2000000,
-      quantizeToFrames: false,
-    });
+    expect(mockTimelineStore.applyTimeline).toHaveBeenCalledWith(
+      {
+        type: 'move_item',
+        trackId: 'track-1',
+        itemId: 'clip-1',
+        startUs: 2000000,
+        quantizeToFrames: false,
+      },
+      { historyMode: 'debounced' },
+    );
 
     infoSection.vm.$emit('update-end-time', 7000000);
     await nextTick();
-    expect(mockTimelineStore.applyTimeline).toHaveBeenCalledWith({
-      type: 'trim_item',
-      trackId: 'track-1',
-      itemId: 'clip-1',
-      edge: 'end',
-      deltaUs: 1000000,
-    });
+    expect(mockTimelineStore.applyTimeline).toHaveBeenCalledWith(
+      {
+        type: 'trim_item',
+        trackId: 'track-1',
+        itemId: 'clip-1',
+        edge: 'end',
+        deltaUs: 1000000,
+      },
+      { historyMode: 'debounced' },
+    );
 
     infoSection.vm.$emit('update-duration', 4000000);
     await nextTick();
-    expect(mockTimelineStore.applyTimeline).toHaveBeenCalledWith({
-      type: 'trim_item',
-      trackId: 'track-1',
-      itemId: 'clip-1',
-      edge: 'end',
-      deltaUs: -1000000,
-    });
+    expect(mockTimelineStore.applyTimeline).toHaveBeenCalledWith(
+      {
+        type: 'trim_item',
+        trackId: 'track-1',
+        itemId: 'clip-1',
+        edge: 'end',
+        deltaUs: -1000000,
+      },
+      { historyMode: 'debounced' },
+    );
   });
 
   it('updates opacity and blendMode correctly', async () => {
@@ -533,9 +550,9 @@ describe('ClipProperties.vue', () => {
     // Tabs should not be rendered for adjustment clips
     expect(wrapper.find('.tabs-stub').exists()).toBe(false);
 
-    // Effects editor should be rendered
-    const effectsEditor = wrapper.findComponent({ name: 'ClipEffectsEditor' });
-    expect(effectsEditor.exists()).toBe(true);
+    // Effects section should be rendered
+    const effectsSection = wrapper.findComponent({ name: 'ClipEffectsSection' });
+    expect(effectsSection.exists()).toBe(true);
 
     // Transitions section should be rendered (non-mobile)
     const transitionsSection = wrapper.findComponent({ name: 'ClipTransitionsSection' });
@@ -557,10 +574,10 @@ describe('ClipProperties.vue', () => {
     await wrapper.find('[data-tab="audio"]').trigger('click');
     await nextTick();
 
-    const audioEffectsEditor = wrapper
-      .findAllComponents({ name: 'ClipEffectsEditor' })
-      .find((c) => c.props('target') === 'audio');
-    expect(audioEffectsEditor).toBeUndefined();
+    const audioEffectsSection = wrapper
+      .findAllComponents({ name: 'ClipEffectsSection' })
+      .find((c) => c.props('showAudioEffects') === true);
+    expect(audioEffectsSection).toBeUndefined();
   });
 
   it('shows audio effects editor when in-development features are enabled', async () => {
@@ -571,9 +588,9 @@ describe('ClipProperties.vue', () => {
     await wrapper.find('[data-tab="audio"]').trigger('click');
     await nextTick();
 
-    const audioEffectsEditor = wrapper
-      .findAllComponents({ name: 'ClipEffectsEditor' })
-      .find((c) => c.props('target') === 'audio');
-    expect(audioEffectsEditor).toBeDefined();
+    const audioEffectsSection = wrapper
+      .findAllComponents({ name: 'ClipEffectsSection' })
+      .find((c) => c.props('showAudioEffects') === true);
+    expect(audioEffectsSection).toBeDefined();
   });
 });

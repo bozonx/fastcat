@@ -30,8 +30,15 @@ const mockWorkspaceStore = reactive({
 vi.mock('~/stores/selection.store', () => ({ useSelectionStore: () => mockSelectionStore }));
 vi.mock('~/stores/presets.store', () => ({ usePresetsStore: () => mockPresetsStore }));
 vi.mock('~/stores/workspace.store', () => ({ useWorkspaceStore: () => mockWorkspaceStore }));
+vi.mock('~/stores/audio-plugins.store', () => ({
+  useAudioPluginsStore: () => ({
+    ensureInit: vi.fn(),
+    registryVersion: 0,
+  }),
+}));
 
 vi.mock('~/effects', () => ({
+  initEffects: vi.fn(),
   getAllVideoEffectManifests: vi.fn(() => [
     {
       type: 'blur',

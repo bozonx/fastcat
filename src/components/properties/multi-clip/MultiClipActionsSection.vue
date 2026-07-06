@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import PropertyActionsBlock from '~/components/properties/PropertyActionsBlock.vue';
 import PropertySection from '~/components/properties/PropertySection.vue';
-import type { PropertyActionItem } from '~/components/properties/PropertyActionsBlock.vue';
+import type { PropertyAction } from '~/components/properties/PropertyActionList.vue';
 
 defineProps<{
   selectedCountLabel: string;
-  commonActions: PropertyActionItem[];
-  otherActions: PropertyActionItem[];
+  commonActions: PropertyAction[];
+  otherActions: PropertyAction[];
   isMobile?: boolean;
 }>();
 

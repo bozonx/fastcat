@@ -273,6 +273,15 @@ describe('computeFrameIndex', () => {
     expect(computeFrameIndex(clip, 0.5)).toBe(500_000);
   });
 
+  it('keys cached frames by source fps, not timeline cadence', () => {
+    const clip = { itemId: 'clip', frameRate: 24, firstTimestampS: 0 };
+
+    expect(computeFrameIndex(clip, 0)).toBe(0);
+    expect(computeFrameIndex(clip, 1 / 30)).toBe(0);
+    expect(computeFrameIndex(clip, 2 / 30)).toBe(1);
+    expect(computeFrameIndex(clip, 3 / 30)).toBe(2);
+  });
+
   it('clamps negative times to 0', () => {
     const clip = { itemId: 'clip', frameRate: 30 };
     expect(computeFrameIndex(clip, -1)).toBe(0);

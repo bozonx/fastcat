@@ -6,6 +6,7 @@ import {
   ClipPositionSchema,
   ClipCropSchema,
   ClipTransformSchema,
+  ClipAnimationsSchema,
   TimelineBlendModeSchema,
   AudioFadeCurveSchema,
   TimelineClipTypeSchema,
@@ -56,13 +57,63 @@ describe('ClipCropSchema', () => {
 
 describe('ClipTransformSchema', () => {
   it('parses valid transform', () => {
-    const result = ClipTransformSchema.parse({ scale: { x: 2, y: 1 }, rotationDeg: 45 });
+    const result = ClipTransformSchema.parse({
+      scale: { x: 2, y: 1 },
+      rotationDeg: 45,
+      flipHorizontal: true,
+      flipVertical: false,
+    });
     expect(result.scale).toEqual({ x: 2, y: 1 });
     expect(result.rotationDeg).toBe(45);
+    expect(result.flipHorizontal).toBe(true);
+    expect(result.flipVertical).toBe(false);
   });
 
   it('allows empty transform', () => {
     expect(ClipTransformSchema.parse({})).toEqual({});
+  });
+});
+
+describe('ClipAnimationsSchema', () => {
+  it('parses every fixed animatable path used by timeline clips', () => {
+    const track = { keyframes: [{ tUs: 0, value: 1, easing: 'linear' }] };
+    const result = ClipAnimationsSchema.parse({
+      opacity: track,
+      'audio.volume': track,
+      'audio.pan': track,
+      'transform.position.x': track,
+      'transform.position.y': track,
+      'transform.scale.x': track,
+      'transform.scale.y': track,
+      'transform.rotationDeg': track,
+      'transform.anchor.x': track,
+      'transform.anchor.y': track,
+      'transform.crop.top': track,
+      'transform.crop.bottom': track,
+      'transform.crop.left': track,
+      'transform.crop.right': track,
+      'transform.flipHorizontal': track,
+      'transform.flipVertical': track,
+    });
+
+    expect(Object.keys(result).sort()).toEqual([
+      'audio.pan',
+      'audio.volume',
+      'opacity',
+      'transform.anchor.x',
+      'transform.anchor.y',
+      'transform.crop.bottom',
+      'transform.crop.left',
+      'transform.crop.right',
+      'transform.crop.top',
+      'transform.flipHorizontal',
+      'transform.flipVertical',
+      'transform.position.x',
+      'transform.position.y',
+      'transform.rotationDeg',
+      'transform.scale.x',
+      'transform.scale.y',
+    ]);
   });
 });
 

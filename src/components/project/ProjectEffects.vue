@@ -1,23 +1,17 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
-import { VueDraggable } from 'vue-draggable-plus';
-import {
-  getAllVideoEffectManifests,
-  getAllAudioEffectManifests,
-  getEffectManifest,
-} from '~/effects';
-import type { AudioEffectManifest, EffectManifest } from '~/effects';
-import type { TransitionManifest } from '~/transitions';
 import { getAllTransitionManifests, getTransitionManifest } from '~/transitions';
 import { useSelectionStore } from '~/stores/selection.store';
 import { usePresetsStore } from '~/stores/presets.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useAudioPluginsStore } from '~/stores/audio-plugins.store';
 
-import CollapsibleEffectGroup from '~/components/effects/CollapsibleEffectGroup.vue';
-import EffectCard from '~/components/effects/EffectCard.vue';
+import EffectCatalogGroup, {
+  type EffectCatalogItem,
+} from '~/components/effects/EffectCatalogGroup.vue';
 import PresetSaveModal from '~/components/properties/PresetSaveModal.vue';
 import { armPointerDnd } from '~/composables/dnd/usePointerDnd';
+import { useEffectManifestGroups } from '~/composables/effects/useEffectManifestGroups';
 
 defineProps<{
   compact?: boolean;
@@ -59,65 +53,20 @@ watch(isAudioEffectsEnabled, (enabled) => {
   }
 });
 
-const videoEffects = computed(() =>
-  getAllVideoEffectManifests().filter(
-    (m) => !m.experimental || workspaceStore.inDevelopmentFeaturesEnabled,
-  ),
+const { groups: effectGroups } = useEffectManifestGroups('video');
+const { groups: audioEffectGroups } = useEffectManifestGroups(
+  'audio',
+  () => audioPluginsStore.registryVersion,
 );
-const audioEffects = computed(() => {
-  // Recompute when native audio plugins (de)register into the shared registry.
-  void audioPluginsStore.registryVersion;
-  return getAllAudioEffectManifests().filter(
-    (m) => !m.experimental || workspaceStore.inDevelopmentFeaturesEnabled,
-  );
-});
-const standardAudioEffects = computed(() => audioEffects.value.filter((e) => !e.isCustom));
-const customAudioEffects = computed(() => {
-  const presetManifests = presetsStore.customPresets
-    .filter((preset) => preset.category === 'effect')
-    .slice()
-    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
-    .map((preset) => {
-      const manifest = getEffectManifest(preset.id);
-      if (!manifest) return null;
-      return { ...manifest, name: preset.name };
-    })
-    .filter((manifest): manifest is NonNullable<ReturnType<typeof getEffectManifest>> =>
-      Boolean(manifest),
-    );
 
-  return presetManifests.filter((manifest) => manifest.target === 'audio');
-});
+const videoEffects = computed(() => effectGroups.value.standard);
+const customEffects = computed(() => effectGroups.value.custom);
+const standardAudioEffects = computed(() => audioEffectGroups.value.standard);
+const customAudioEffects = computed(() => audioEffectGroups.value.custom);
 
-const basicAudioEffects = computed(() =>
-  standardAudioEffects.value.filter((effect) => (effect.category ?? 'basic') === 'basic'),
-);
-const nonBasicAudioEffects = computed(() =>
-  standardAudioEffects.value.filter((effect) => (effect.category ?? 'basic') !== 'basic'),
-);
+const basicAudioEffects = computed(() => audioEffectGroups.value.basic);
+const nonBasicAudioEffects = computed(() => audioEffectGroups.value.nonBasic);
 const transitions = computed(() => getAllTransitionManifests());
-
-function hasAudioEffects(effects: AudioEffectManifest[]) {
-  return effects.length > 0;
-}
-
-const standardEffects = computed(() => videoEffects.value.filter((e) => !e.isCustom));
-const customEffects = computed(() => {
-  const presetManifests = presetsStore.customPresets
-    .filter((preset) => preset.category === 'effect')
-    .slice()
-    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
-    .map((preset) => {
-      const manifest = getEffectManifest(preset.id);
-      if (!manifest) return null;
-      return { ...manifest, name: preset.name };
-    })
-    .filter((manifest): manifest is NonNullable<ReturnType<typeof getEffectManifest>> =>
-      Boolean(manifest),
-    );
-
-  return presetManifests.filter((manifest) => (manifest.target ?? 'video') === 'video');
-});
 
 const standardTransitions = computed(() => transitions.value.filter((t) => !t.isCustom));
 const customTransitions = computed(() => {
@@ -137,6 +86,18 @@ const customTransitions = computed(() => {
   return presetManifests;
 });
 
+const selectedEffectType = computed(() => {
+  const entity = selectionStore.selectedEntity;
+  return entity?.source === 'project' && entity.kind === 'effect' ? entity.effectType : null;
+});
+
+const selectedTransitionType = computed(() => {
+  const entity = selectionStore.selectedEntity;
+  return entity?.source === 'project' && entity.kind === 'transition'
+    ? entity.transitionType
+    : null;
+});
+
 function handlePointerDown(event: PointerEvent, type: string, category: 'effect' | 'transition') {
   armPointerDnd(event, {
     payload: { source: category, data: { type }, preview: { label: type } },
@@ -151,12 +112,12 @@ function selectTransition(type: string) {
   selectionStore.selectProjectTransition(type);
 }
 
-function updateCustomEffectsOrder(newCustomEffects: EffectManifest[]) {
+function updateCustomEffectsOrder(newCustomEffects: EffectCatalogItem[]) {
   const orderIds = newCustomEffects.map((e) => e.type);
   presetsStore.updatePresetsOrder('effect', orderIds);
 }
 
-function updateCustomTransitionsOrder(newCustomTransitions: TransitionManifest[]) {
+function updateCustomTransitionsOrder(newCustomTransitions: EffectCatalogItem[]) {
   const orderIds = newCustomTransitions.map((t) => t.type);
   presetsStore.updatePresetsOrder('transition', orderIds);
 }
@@ -206,228 +167,96 @@ function updateCustomTransitionsOrder(newCustomTransitions: TransitionManifest[]
 
     <!-- Content -->
     <div class="flex-1 overflow-y-auto px-2 py-2 space-y-2.5 custom-scrollbar bg-ui-bg-elevated">
-      <!-- Video Effects -->
       <div v-show="activeTab === 'video'" class="flex flex-col gap-2.5 pb-2">
-        <!-- Standard Effects -->
-        <CollapsibleEffectGroup
+        <EffectCatalogGroup
           v-model:is-collapsed="presetsStore.effectsStandardCollapsed"
           :title="t('fastcat.effects.groups.standard')"
-        >
-          <div class="grid grid-cols-1 gap-1">
-            <EffectCard
-              v-for="effect in standardEffects"
-              :key="effect.type"
-              :manifest="effect"
-              :is-selected="
-                selectionStore.selectedEntity?.source === 'project' &&
-                selectionStore.selectedEntity.kind === 'effect' &&
-                selectionStore.selectedEntity.effectType === effect.type
-              "
-              :is-draggable="true"
-              @pointer-down="handlePointerDown($event, effect.type, 'effect')"
-              @click="selectEffect(effect.type)"
-            />
-            <UiEmptyState v-if="standardEffects.length === 0" :message="t('common.noData')" />
-          </div>
-        </CollapsibleEffectGroup>
+          :items="videoEffects"
+          :selected-type="selectedEffectType"
+          :empty-message="t('common.noData')"
+          @pointer-down="(event, item) => handlePointerDown(event, item.type, 'effect')"
+          @select="(item) => selectEffect(item.type)"
+        />
 
-        <!-- Custom Effects -->
-        <CollapsibleEffectGroup
+        <EffectCatalogGroup
           v-model:is-collapsed="presetsStore.effectsCustomCollapsed"
           :title="t('fastcat.effects.groups.custom')"
-        >
-          <VueDraggable
-            :model-value="customEffects"
-            class="flex flex-col gap-1"
-            :animation="150"
-            ghost-class="opacity-50"
-            filter="button"
-            :prevent-on-filter="false"
-            @update:model-value="updateCustomEffectsOrder"
-          >
-            <EffectCard
-              v-for="effect in customEffects"
-              :key="effect.type"
-              :manifest="effect"
-              :is-selected="
-                selectionStore.selectedEntity?.source === 'project' &&
-                selectionStore.selectedEntity.kind === 'effect' &&
-                selectionStore.selectedEntity.effectType === effect.type
-              "
-              :show-action="true"
-              :show-rename="true"
-              :is-draggable="true"
-              @pointer-down="handlePointerDown($event, effect.type, 'effect')"
-              @click="selectEffect(effect.type)"
-              @rename="openRenameModal(effect)"
-              @action="presetsStore.removePreset(effect.type)"
-            />
-          </VueDraggable>
-          <UiEmptyState
-            v-if="customEffects.length === 0"
-            :message="t('fastcat.effects.noCustomPresets')"
-          />
-        </CollapsibleEffectGroup>
+          :items="customEffects"
+          :selected-type="selectedEffectType"
+          :empty-message="t('fastcat.effects.noCustomPresets')"
+          reorderable
+          show-actions
+          @pointer-down="(event, item) => handlePointerDown(event, item.type, 'effect')"
+          @select="(item) => selectEffect(item.type)"
+          @rename="openRenameModal"
+          @action="(item) => presetsStore.removePreset(item.type)"
+          @update-order="updateCustomEffectsOrder"
+        />
       </div>
 
-      <!-- Transitions -->
       <div v-show="activeTab === 'transitions'" class="flex flex-col gap-2.5 pb-2">
-        <!-- Standard Transitions -->
-        <CollapsibleEffectGroup
+        <EffectCatalogGroup
           v-model:is-collapsed="presetsStore.transitionsStandardCollapsed"
           :title="t('fastcat.effects.groups.standard')"
-        >
-          <div class="grid grid-cols-1 gap-1">
-            <EffectCard
-              v-for="transition in standardTransitions"
-              :key="transition.type"
-              :title="transition.nameKey ? t(transition.nameKey) : transition.name"
-              :icon="transition.icon"
-              :is-selected="
-                selectionStore.selectedEntity?.source === 'project' &&
-                selectionStore.selectedEntity.kind === 'transition' &&
-                selectionStore.selectedEntity.transitionType === transition.type
-              "
-              :is-draggable="true"
-              @pointer-down="handlePointerDown($event, transition.type, 'transition')"
-              @click="selectTransition(transition.type)"
-            />
-            <UiEmptyState v-if="standardTransitions.length === 0" :message="t('common.noData')" />
-          </div>
-        </CollapsibleEffectGroup>
+          :items="standardTransitions"
+          :selected-type="selectedTransitionType"
+          :empty-message="t('common.noData')"
+          @pointer-down="(event, item) => handlePointerDown(event, item.type, 'transition')"
+          @select="(item) => selectTransition(item.type)"
+        />
 
-        <!-- Custom Transitions -->
-        <CollapsibleEffectGroup
+        <EffectCatalogGroup
           v-model:is-collapsed="presetsStore.transitionsCustomCollapsed"
           :title="t('fastcat.effects.groups.custom')"
-        >
-          <VueDraggable
-            :model-value="customTransitions"
-            class="flex flex-col gap-1"
-            :animation="150"
-            ghost-class="opacity-50"
-            filter="button"
-            :prevent-on-filter="false"
-            @update:model-value="updateCustomTransitionsOrder"
-          >
-            <EffectCard
-              v-for="transition in customTransitions"
-              :key="transition.type"
-              :title="transition.nameKey ? t(transition.nameKey) : transition.name"
-              :icon="transition.icon"
-              :is-selected="
-                selectionStore.selectedEntity?.source === 'project' &&
-                selectionStore.selectedEntity.kind === 'transition' &&
-                selectionStore.selectedEntity.transitionType === transition.type
-              "
-              :is-draggable="true"
-              :show-rename="true"
-              :show-action="true"
-              @pointer-down="handlePointerDown($event, transition.type, 'transition')"
-              @click="selectTransition(transition.type)"
-              @rename="openRenameModal(transition)"
-              @action="presetsStore.removePreset(transition.type)"
-            />
-          </VueDraggable>
-          <UiEmptyState
-            v-if="customTransitions.length === 0"
-            :message="t('fastcat.effects.noCustomPresets')"
-          />
-        </CollapsibleEffectGroup>
+          :items="customTransitions"
+          :selected-type="selectedTransitionType"
+          :empty-message="t('fastcat.effects.noCustomPresets')"
+          reorderable
+          show-actions
+          @pointer-down="(event, item) => handlePointerDown(event, item.type, 'transition')"
+          @select="(item) => selectTransition(item.type)"
+          @rename="openRenameModal"
+          @action="(item) => presetsStore.removePreset(item.type)"
+          @update-order="updateCustomTransitionsOrder"
+        />
       </div>
 
       <template v-if="isAudioEffectsEnabled">
-        <!-- Audio Effects -->
         <div v-show="activeTab === 'audio'" class="flex flex-col gap-2.5 pb-2">
-          <!-- Standard Audio Effects -->
-          <CollapsibleEffectGroup
+          <EffectCatalogGroup
             v-model:is-collapsed="presetsStore.audioStandardCollapsed"
             :title="t('fastcat.effects.groups.standard')"
-          >
-            <div class="flex flex-col gap-2">
-              <div v-if="hasAudioEffects(basicAudioEffects)">
-                <div class="grid grid-cols-1 gap-1">
-                  <EffectCard
-                    v-for="effect in basicAudioEffects"
-                    :key="effect.type"
-                    :manifest="effect"
-                    :is-selected="
-                      selectionStore.selectedEntity?.source === 'project' &&
-                      selectionStore.selectedEntity.kind === 'effect' &&
-                      selectionStore.selectedEntity.effectType === effect.type
-                    "
-                    :is-draggable="true"
-                    @pointer-down="handlePointerDown($event, effect.type, 'effect')"
-                    @click="selectEffect(effect.type)"
-                  />
-                </div>
-              </div>
+            :items="basicAudioEffects"
+            :selected-type="selectedEffectType"
+            :empty-message="standardAudioEffects.length === 0 ? t('common.noData') : undefined"
+            @pointer-down="(event, item) => handlePointerDown(event, item.type, 'effect')"
+            @select="(item) => selectEffect(item.type)"
+          />
 
-              <div v-if="hasAudioEffects(nonBasicAudioEffects)">
-                <h4 class="text-2xs tracking-wider font-semibold text-ui-text-muted mb-1 mt-1">
-                  {{ t('fastcat.effects.groups.artistic') }}
-                </h4>
-                <div class="grid grid-cols-1 gap-1">
-                  <EffectCard
-                    v-for="effect in nonBasicAudioEffects"
-                    :key="effect.type"
-                    :manifest="effect"
-                    :is-selected="
-                      selectionStore.selectedEntity?.source === 'project' &&
-                      selectionStore.selectedEntity.kind === 'effect' &&
-                      selectionStore.selectedEntity.effectType === effect.type
-                    "
-                    :is-draggable="true"
-                    @pointer-down="handlePointerDown($event, effect.type, 'effect')"
-                    @click="selectEffect(effect.type)"
-                  />
-                </div>
-              </div>
+          <EffectCatalogGroup
+            v-if="nonBasicAudioEffects.length > 0"
+            v-model:is-collapsed="presetsStore.audioStandardCollapsed"
+            :title="t('fastcat.effects.groups.artistic')"
+            :items="nonBasicAudioEffects"
+            :selected-type="selectedEffectType"
+            @pointer-down="(event, item) => handlePointerDown(event, item.type, 'effect')"
+            @select="(item) => selectEffect(item.type)"
+          />
 
-              <UiEmptyState
-                v-if="standardAudioEffects.length === 0"
-                :message="t('common.noData')"
-              />
-            </div>
-          </CollapsibleEffectGroup>
-
-          <!-- Custom Audio Effects -->
-          <CollapsibleEffectGroup
+          <EffectCatalogGroup
             v-model:is-collapsed="presetsStore.audioCustomCollapsed"
             :title="t('fastcat.effects.groups.custom')"
-          >
-            <VueDraggable
-              :model-value="customAudioEffects"
-              class="flex flex-col gap-1"
-              :animation="150"
-              ghost-class="opacity-50"
-              filter="button"
-              :prevent-on-filter="false"
-              @update:model-value="updateCustomEffectsOrder"
-            >
-              <EffectCard
-                v-for="effect in customAudioEffects"
-                :key="effect.type"
-                :manifest="effect"
-                :is-selected="
-                  selectionStore.selectedEntity?.source === 'project' &&
-                  selectionStore.selectedEntity.kind === 'effect' &&
-                  selectionStore.selectedEntity.effectType === effect.type
-                "
-                :show-action="true"
-                :show-rename="true"
-                :is-draggable="true"
-                @pointer-down="handlePointerDown($event, effect.type, 'effect')"
-                @click="selectEffect(effect.type)"
-                @rename="openRenameModal(effect)"
-                @action="presetsStore.removePreset(effect.type)"
-              />
-            </VueDraggable>
-            <UiEmptyState
-              v-if="customAudioEffects.length === 0"
-              :message="t('fastcat.effects.noCustomPresets')"
-            />
-          </CollapsibleEffectGroup>
+            :items="customAudioEffects"
+            :selected-type="selectedEffectType"
+            :empty-message="t('fastcat.effects.noCustomPresets')"
+            reorderable
+            show-actions
+            @pointer-down="(event, item) => handlePointerDown(event, item.type, 'effect')"
+            @select="(item) => selectEffect(item.type)"
+            @rename="openRenameModal"
+            @action="(item) => presetsStore.removePreset(item.type)"
+            @update-order="updateCustomEffectsOrder"
+          />
         </div>
       </template>
     </div>

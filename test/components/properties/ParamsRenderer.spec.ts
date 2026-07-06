@@ -44,6 +44,16 @@ vi.mock('~/components/ui/UiTextInput.vue', () => ({
   },
 }));
 
+vi.mock('~/components/properties/clip/ClipAnimationStopwatchButton.vue', () => ({
+  default: {
+    name: 'ClipAnimationStopwatchButton',
+    template:
+      '<button type="button" data-test-stopwatch :data-active="String(active)" @click="$emit(\'toggle\')" />',
+    props: ['active', 'disabled'],
+    emits: ['toggle'],
+  },
+}));
+
 describe('ParamsRenderer', () => {
   it('updates scale-xy presentation when linked state changes', async () => {
     const component = await mountWithNuxt(ParamsRenderer, {
@@ -116,6 +126,47 @@ describe('ParamsRenderer', () => {
     expect(component.find('.mock-ui-select').text()).toContain('Low');
     expect(component.find('.mock-button-group').text()).toContain('Fit');
     expect(component.find('.mock-button-group').text()).toContain('Fill');
+  });
+
+  it('passes keyframe hooks into row controls', async () => {
+    const toggle = vi.fn();
+    const component = await mountWithNuxt(ParamsRenderer, {
+      props: {
+        controls: [
+          {
+            kind: 'row',
+            columns: 1,
+            controls: [
+              {
+                kind: 'slider',
+                key: 'innerAmount',
+                label: 'Inner Amount',
+                min: 0,
+                max: 100,
+                step: 1,
+              },
+            ],
+          },
+        ],
+        values: {
+          innerAmount: 25,
+        },
+        keyframes: {
+          isKeyframable: (key: string, kind: string) => key === 'innerAmount' && kind === 'slider',
+          isAnimated: (key: string) => key === 'innerAmount',
+          toggle,
+        },
+      },
+    });
+
+    const stopwatch = component.find('[data-test-stopwatch]');
+
+    expect(stopwatch.exists()).toBe(true);
+    expect(stopwatch.attributes('data-active')).toBe('true');
+
+    await stopwatch.trigger('click');
+
+    expect(toggle).toHaveBeenCalledWith('innerAmount');
   });
 
   it('updates array empty state and rendered cards from cached array items', async () => {

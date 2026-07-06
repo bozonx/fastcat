@@ -6,6 +6,7 @@ import type { TimelineTrack, VideoClipEffect, AudioClipEffect } from '~/timeline
 import ClipEffectsEditor from '~/components/effects/ClipEffectsEditor.vue';
 import PropertySection from '~/components/properties/PropertySection.vue';
 import PropertyActionsBlock from '~/components/properties/PropertyActionsBlock.vue';
+import type { PropertyAction } from '~/components/properties/PropertyActionList.vue';
 import UiSliderInput from '~/components/ui/UiSliderInput.vue';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 import UiRenameModal from '~/components/ui/UiRenameModal.vue';
@@ -121,7 +122,7 @@ const { extraActions } = useTrackExtraActions({
 });
 
 const trackQuickActions = computed(() => {
-  const actions: import('~/components/properties/PropertyActionsBlock.vue').PropertyActionItem[] = [
+  const actions: PropertyAction[] = [
     {
       id: 'delete',
       title: t('common.delete'),

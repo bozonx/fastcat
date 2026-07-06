@@ -39,6 +39,8 @@ export const ClipTransformSchema = z.object({
   position: ClipPositionSchema.optional(),
   anchor: ClipAnchorSchema.optional(),
   crop: ClipCropSchema.optional(),
+  flipHorizontal: z.boolean().optional(),
+  flipVertical: z.boolean().optional(),
 });
 
 export const ClipSourceOrientationSchema = z.enum(['auto', '0', '90', '180', '270']);
@@ -61,6 +63,16 @@ export const ClipAnimationsSchema = z
     'transform.scale.x': KeyframeTrackSchema.optional(),
     'transform.scale.y': KeyframeTrackSchema.optional(),
     'transform.rotationDeg': KeyframeTrackSchema.optional(),
+    'transform.anchor.x': KeyframeTrackSchema.optional(),
+    'transform.anchor.y': KeyframeTrackSchema.optional(),
+    'transform.crop.top': KeyframeTrackSchema.optional(),
+    'transform.crop.bottom': KeyframeTrackSchema.optional(),
+    'transform.crop.left': KeyframeTrackSchema.optional(),
+    'transform.crop.right': KeyframeTrackSchema.optional(),
+    'transform.flipHorizontal': KeyframeTrackSchema.optional(),
+    'transform.flipVertical': KeyframeTrackSchema.optional(),
+    'audio.volume': KeyframeTrackSchema.optional(),
+    'audio.pan': KeyframeTrackSchema.optional(),
   })
   // Effect-param paths (`effect.<id>.<key>`) validate through the catchall.
   .catchall(KeyframeTrackSchema);

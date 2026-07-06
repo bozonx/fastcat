@@ -4,6 +4,7 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import type { TimelineMarker } from '~/timeline/types';
 import PropertySection from '~/components/properties/PropertySection.vue';
 import PropertyActionsBlock from '~/components/properties/PropertyActionsBlock.vue';
+import type { PropertyAction } from '~/components/properties/PropertyActionList.vue';
 import UiTimecode from '~/components/ui/editor/UiTimecode.vue';
 import UiTextarea from '~/components/ui/UiTextarea.vue';
 
@@ -100,10 +101,8 @@ const commonActions = computed(() => [
   },
 ]);
 
-const mainActions = computed<
-  import('~/components/properties/PropertyActionsBlock.vue').PropertyActionItem[]
->(() => {
-  const list: import('~/components/properties/PropertyActionsBlock.vue').PropertyActionItem[] = [
+const mainActions = computed<PropertyAction[]>(() => {
+  const list: PropertyAction[] = [
     {
       id: 'convert',
       label: isZone.value

@@ -28,6 +28,12 @@ vi.mock('~/stores/presets.store', () => ({
 vi.mock('~/stores/workspace.store', () => ({
   useWorkspaceStore: () => mockWorkspaceStore,
 }));
+vi.mock('~/stores/audio-plugins.store', () => ({
+  useAudioPluginsStore: () => ({
+    ensureInit: vi.fn(),
+    registryVersion: 0,
+  }),
+}));
 
 vi.mock('~/effects', async (importOriginal) => {
   const actual = await importOriginal<typeof import('~/effects')>();

@@ -50,7 +50,7 @@ const emit = defineEmits<{
   'update:effects': [effects: Array<VideoClipEffect | AudioClipEffect>];
 }>();
 
-const modelValue = defineModel<boolean>('toggleValue');
+const isEnabled = defineModel<boolean>('enabled');
 
 const { t } = useI18n();
 const presetsStore = usePresetsStore();
@@ -236,7 +236,7 @@ function resolveEffectName(manifest: EffectItem['manifest'], type: string) {
 
 <template>
   <PropertySection
-    v-model:enabled="modelValue"
+    v-model:enabled="isEnabled"
     :title="safeTitle"
     class="mt-2"
     :has-toggle="props.hasToggle"

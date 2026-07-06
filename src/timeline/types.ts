@@ -165,7 +165,7 @@ export interface ClipTransform {
 export type ClipSourceOrientation = 'auto' | '0' | '90' | '180' | '270';
 
 /**
- * Keyframe animation (v1: transform + opacity).
+ * Keyframe animation.
  *
  * Keyframe times are **source-relative**: `tUs` is measured in microseconds
  * from the source media/timeline start. Moving/rippling a clip keeps its
@@ -317,7 +317,7 @@ interface TimelineClipBase {
   transitionOut?: ClipTransition;
   transform?: ClipTransform;
   transformActive?: boolean;
-  /** Keyframe animation tracks for transform/opacity. See {@link ClipAnimations}. */
+  /** Keyframe animation tracks. See {@link ClipAnimations}. */
   animations?: ClipAnimations;
   sourceOrientation?: ClipSourceOrientation;
 

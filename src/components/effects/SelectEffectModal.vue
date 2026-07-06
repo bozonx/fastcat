@@ -1,19 +1,12 @@
 <script setup lang="ts">
-import { computed } from 'vue';
-import {
-  getAllVideoEffectManifests,
-  getAllAudioEffectManifests,
-  getEffectManifest,
-  type EffectManifest,
-} from '~/effects';
+import { computed, watchEffect } from 'vue';
 import { usePresetsStore } from '~/stores/presets.store';
-import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useAudioPluginsStore } from '~/stores/audio-plugins.store';
-import CollapsibleEffectGroup from './CollapsibleEffectGroup.vue';
-import EffectCard from './EffectCard.vue';
+import EffectCatalogGroup from './EffectCatalogGroup.vue';
 
 import UiModal from '~/components/ui/UiModal.vue';
 import { useModalOpenModel } from '~/composables/ui/useModalOpenModel';
+import { useEffectManifestGroups } from '~/composables/effects/useEffectManifestGroups';
 
 const props = withDefaults(
   defineProps<{
@@ -32,57 +25,16 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 const presetsStore = usePresetsStore();
-const workspaceStore = useWorkspaceStore();
 const audioPluginsStore = useAudioPluginsStore();
 const isOpen = useModalOpenModel(props, emit);
 
-if (props.target === 'audio') {
-  void audioPluginsStore.ensureInit();
-}
-
-const allManifests = computed(() => {
-  // Native audio plugins register into the shared effect registry; depend on the
-  // store's version so this recomputes when a scan (de)registers CLAP effects.
-  void audioPluginsStore.registryVersion;
-  const manifests =
-    props.target === 'video' ? getAllVideoEffectManifests() : getAllAudioEffectManifests();
-  return manifests.filter((m) => !m.experimental || workspaceStore.inDevelopmentFeaturesEnabled);
-});
-
-const groupedEffects = computed<{
-  basic: EffectManifest[];
-  custom: EffectManifest[];
-  hasAnyEffects: boolean;
-  nonBasic: EffectManifest[];
-}>(() => {
-  const basic: EffectManifest[] = [];
-  const nonBasic: EffectManifest[] = [];
-
-  for (const manifest of allManifests.value) {
-    if (manifest.isCustom) continue;
-
-    if ((manifest.category ?? 'basic') === 'basic') {
-      basic.push(manifest);
-      continue;
-    }
-
-    nonBasic.push(manifest);
+watchEffect(() => {
+  if (props.target === 'audio') {
+    void audioPluginsStore.ensureInit();
   }
-
-  const custom = presetsStore.customPresets
-    .filter(
-      (preset) => preset.category === 'effect' && (preset.effectTarget ?? 'video') === props.target,
-    )
-    .map((preset) => getEffectManifest(preset.id))
-    .filter((manifest): manifest is EffectManifest => Boolean(manifest));
-
-  return {
-    basic,
-    nonBasic,
-    custom,
-    hasAnyEffects: basic.length > 0 || nonBasic.length > 0 || custom.length > 0,
-  };
 });
+
+const { groups: effectGroups } = useEffectManifestGroups(() => props.target);
 
 const modalTitle = computed(() =>
   props.target === 'video'
@@ -100,58 +52,37 @@ function handleSelect(type: string) {
   <UiModal v-model:open="isOpen" :title="modalTitle">
     <div class="space-y-3 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
       <!-- Basic Effects -->
-      <CollapsibleEffectGroup
-        v-if="groupedEffects.basic.length > 0"
+      <EffectCatalogGroup
+        v-if="effectGroups.basic.length > 0"
         v-model:is-collapsed="presetsStore.effectsStandardCollapsed"
         :title="t('fastcat.effects.groups.standard')"
-      >
-        <div class="grid grid-cols-1 gap-1">
-          <EffectCard
-            v-for="effect in groupedEffects.basic"
-            :key="effect.type"
-            :manifest="effect"
-            :data-testid="`select-effect-${effect.type}`"
-            @click="handleSelect(effect.type)"
-          />
-        </div>
-      </CollapsibleEffectGroup>
+        :items="effectGroups.basic"
+        :draggable="false"
+        @select="(effect) => handleSelect(effect.type)"
+      />
 
       <!-- Artistic/Voice Effects (mostly for audio) -->
-      <CollapsibleEffectGroup
-        v-if="groupedEffects.nonBasic.length > 0"
+      <EffectCatalogGroup
+        v-if="effectGroups.nonBasic.length > 0"
         v-model:is-collapsed="presetsStore.audioStandardCollapsed"
         :title="t('fastcat.effects.groups.artistic')"
-      >
-        <div class="grid grid-cols-1 gap-1">
-          <EffectCard
-            v-for="effect in groupedEffects.nonBasic"
-            :key="effect.type"
-            :manifest="effect"
-            :data-testid="`select-effect-${effect.type}`"
-            @click="handleSelect(effect.type)"
-          />
-        </div>
-      </CollapsibleEffectGroup>
+        :items="effectGroups.nonBasic"
+        :draggable="false"
+        @select="(effect) => handleSelect(effect.type)"
+      />
 
       <!-- Custom Effects -->
-      <CollapsibleEffectGroup
-        v-if="groupedEffects.custom.length > 0"
+      <EffectCatalogGroup
+        v-if="effectGroups.custom.length > 0"
         v-model:is-collapsed="presetsStore.effectsCustomCollapsed"
         :title="t('fastcat.effects.groups.custom')"
-      >
-        <div class="grid grid-cols-1 gap-1">
-          <EffectCard
-            v-for="effect in groupedEffects.custom"
-            :key="effect.type"
-            :manifest="effect"
-            :data-testid="`select-effect-${effect.type}`"
-            @click="handleSelect(effect.type)"
-          />
-        </div>
-      </CollapsibleEffectGroup>
+        :items="effectGroups.custom"
+        :draggable="false"
+        @select="(effect) => handleSelect(effect.type)"
+      />
 
       <UiEmptyState
-        v-if="!groupedEffects.hasAnyEffects"
+        v-if="!effectGroups.hasAnyEffects"
         :message="t('fastcat.effects.empty')"
         wrapper-class="py-8"
       />
