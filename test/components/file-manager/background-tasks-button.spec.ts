@@ -37,6 +37,8 @@ describe('BackgroundTasksButton', () => {
 
     expect(component.exists()).toBe(true);
     expect(component.find('button').exists()).toBe(true);
+    expect(component.find('button').classes()).toContain('aspect-square');
+    expect(component.find('button').classes()).toContain('text-ui-text-muted');
   });
 
   it('shows progress spinner when there are active tasks', async () => {

@@ -89,6 +89,39 @@ const computedStyle = computed(() => {
 
   return Object.keys(style).length ? style : undefined;
 });
+
+const isIconOnly = computed(() => !!computedIcon.value && !props.label);
+
+const iconOnlySizeClasses = computed(() => {
+  if (!isIconOnly.value && !props.square) return '';
+  switch (props.size) {
+    case 'xs':
+      return 'w-6 h-6';
+    case 'sm':
+      return 'w-7 h-7';
+    case 'md':
+      return 'w-8 h-8';
+    case 'lg':
+      return 'w-9 h-9';
+    case 'xl':
+      return 'w-10 h-10';
+    default:
+      return 'w-6 h-6';
+  }
+});
+
+const iconButtonToneClass = computed(() => {
+  if (
+    !isIconOnly.value ||
+    props.modelValue ||
+    props.inactiveColor !== 'neutral' ||
+    props.inactiveVariant !== 'ghost'
+  ) {
+    return '';
+  }
+
+  return 'text-ui-text-muted hover:text-ui-text disabled:text-ui-text-dimmed';
+});
 </script>
 
 <template>
@@ -106,12 +139,13 @@ const computedStyle = computed(() => {
     :data-state="modelValue ? 'on' : 'off'"
     class="transition-all duration-200"
     :class="[
-      square
-        ? 'aspect-square p-0 flex items-center justify-center'
+      square || isIconOnly
+        ? ['aspect-square p-0 flex items-center justify-center shrink-0', iconOnlySizeClasses]
         : label
           ? 'w-full h-8 px-2'
           : 'w-6 h-6 p-0 flex items-center justify-center',
       modelValue ? 'opacity-100' : 'opacity-60 hover:opacity-100',
+      iconButtonToneClass,
       $props.class,
     ]"
     @click="onClick"

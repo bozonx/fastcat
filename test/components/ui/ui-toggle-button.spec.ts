@@ -145,4 +145,22 @@ describe('UiToggleButton', () => {
     const button = component.find('button');
     expect(button.classes()).toContain('my-custom-class');
   });
+
+  it('standardizes inactive neutral ghost icon-only buttons', async () => {
+    const component = await mountSuspended(UiToggleButton, {
+      props: {
+        modelValue: false,
+        icon: 'i-heroicons-eye',
+        inactiveColor: 'neutral',
+        inactiveVariant: 'ghost',
+      },
+    });
+
+    const button = component.find('button');
+    expect(button.classes()).toContain('w-6');
+    expect(button.classes()).toContain('h-6');
+    expect(button.classes()).toContain('p-0');
+    expect(button.classes()).toContain('text-ui-text-muted');
+    expect(button.classes()).toContain('hover:text-ui-text');
+  });
 });

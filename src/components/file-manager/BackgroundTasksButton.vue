@@ -30,10 +30,11 @@ const { t } = useI18n();
 
 <template>
   <div class="relative flex items-center justify-center">
-    <UButton
+    <UiActionButton
       variant="ghost"
       color="neutral"
       :size="size"
+      square
       class="relative"
       :title="t('videoEditor.backgroundTasks.title')"
       @click="void (modalOpen = true)"
@@ -44,7 +45,7 @@ const { t } = useI18n();
         size="sm"
       />
       <UIcon v-else name="i-mdi-progress-helper" class="w-4 h-4 text-ui-text-muted" />
-    </UButton>
+    </UiActionButton>
 
     <BackgroundTasksModal v-model:open="modalOpen" />
   </div>

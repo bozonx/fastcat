@@ -96,4 +96,20 @@ describe('UiActionButton', () => {
     const button = component.find('button');
     expect(button.classes()).toContain('aspect-square');
   });
+
+  it('standardizes neutral ghost icon-only buttons', async () => {
+    const component = await mountSuspended(UiActionButton, {
+      props: {
+        icon: 'i-heroicons-cog-6-tooth',
+        variant: 'ghost',
+        color: 'neutral',
+      },
+    });
+
+    const button = component.find('button');
+    expect(button.classes()).toContain('aspect-square');
+    expect(button.classes()).toContain('p-0');
+    expect(button.classes()).toContain('text-ui-text-muted');
+    expect(button.classes()).toContain('hover:text-ui-text');
+  });
 });
