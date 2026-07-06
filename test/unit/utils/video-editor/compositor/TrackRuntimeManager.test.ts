@@ -102,6 +102,36 @@ describe('TrackRuntimeManager', () => {
     expect(mgr.getById('t1')!.opacity).toBe(0.8);
   });
 
+  it('sync keeps tracks distinct when inserting a track shifts every layer', () => {
+    const mgr = new TrackRuntimeManager({ toVideoEffects });
+    const app = makeMockApp();
+
+    // One video track holding the existing content, at layer 0.
+    mgr.sync([{ kind: 'track', id: 'v1', layer: 0 }], app);
+    const v1Container = mgr.getById('v1')!.container;
+
+    // Add a track below v1: topmost keeps highest layer, so v1 -> layer 1 and
+    // the newly inserted v2 -> layer 0. v2 must NOT hijack v1's container via
+    // the stale by-layer lookup.
+    mgr.sync(
+      [
+        { kind: 'track', id: 'v2', layer: 0 },
+        { kind: 'track', id: 'v1', layer: 1 },
+      ],
+      app,
+    );
+
+    const v1 = mgr.getById('v1')!;
+    const v2 = mgr.getById('v2')!;
+    expect(v1).not.toBe(v2);
+    expect(v1.container).not.toBe(v2.container);
+    // v1 retains its original container (its loaded content stays put).
+    expect(v1.container).toBe(v1Container);
+    expect(v1.layer).toBe(1);
+    expect(v2.layer).toBe(0);
+    expect(mgr.all).toHaveLength(2);
+  });
+
   it('sync disposes removed tracks', () => {
     const mgr = new TrackRuntimeManager({ toVideoEffects });
     const app = makeMockApp();

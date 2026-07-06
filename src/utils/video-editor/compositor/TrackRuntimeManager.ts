@@ -53,17 +53,34 @@ export class TrackRuntimeManager {
     if (!app) return;
 
     const nextDefs = this.buildList(timelineItems);
+    const defIds = new Set(nextDefs.map((def) => def.id));
+    const claimed = new Set<CompositorTrack>();
     const nextTrackById = new Map<string, CompositorTrack>();
     const nextTrackByLayer = new Map<number, CompositorTrack>();
     const nextTracks: CompositorTrack[] = [];
 
     for (const def of nextDefs) {
-      const existing = this.trackById.get(def.id) ?? this.trackByLayer.get(def.layer);
+      let existing = this.trackById.get(def.id);
+      if (existing && claimed.has(existing)) existing = undefined;
+      if (!existing) {
+        // Fall back to reusing a track by its (previous) layer only when that
+        // track isn't going to be reclaimed by its own id and hasn't already
+        // been claimed this pass. Inserting a track shifts every layer, so an
+        // unconditional layer match lets the inserted track hijack an existing
+        // track's container — collapsing two tracks into one and breaking
+        // z-order (a below-track clip then renders on top). See the add-track
+        // regression this guards against.
+        const byLayer = this.trackByLayer.get(def.layer);
+        if (byLayer && !claimed.has(byLayer) && !defIds.has(byLayer.id)) {
+          existing = byLayer;
+        }
+      }
       const track: CompositorTrack = existing ?? {
         id: def.id,
         layer: def.layer,
         container: new Container(),
       };
+      claimed.add(track);
 
       track.id = def.id;
       track.layer = def.layer;
