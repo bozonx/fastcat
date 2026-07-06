@@ -46,6 +46,15 @@ export interface ExternalIntegrationsSettings {
   stt: SttIntegrationSettings;
 }
 
+export type AudioPluginFormat = 'clap' | 'lv2' | 'vst3';
+
+export interface AudioPluginManagerSettings {
+  enabled: boolean;
+  scanOnStartup: boolean;
+  enabledFormats: AudioPluginFormat[];
+  customScanPaths: string[];
+}
+
 export interface FastCatUserSettings {
   locale: 'en-US' | 'ru-RU';
   openLastProjectOnStart: boolean;
@@ -214,6 +223,7 @@ export interface FastCatUserSettings {
     bufferSize: 'default' | 64 | 128 | 256 | 512 | 1024 | 2048 | 4096;
     backend: 'default' | 'alsa' | 'pulseaudio' | 'jack' | 'wasapi' | 'coreaudio';
   };
+  audioPlugins: AudioPluginManagerSettings;
 }
 
 export interface FastCatAppSettings {
@@ -381,6 +391,12 @@ export const DEFAULT_USER_SETTINGS: FastCatUserSettings = {
   audioEngine: {
     bufferSize: 'default',
     backend: 'default',
+  },
+  audioPlugins: {
+    enabled: false,
+    scanOnStartup: false,
+    enabledFormats: ['clap'],
+    customScanPaths: [],
   },
 };
 

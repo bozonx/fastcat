@@ -84,6 +84,8 @@ pub fn run() {
             ipc::media_cmd::native_timeline_render_frame_webp,
             ipc::media_cmd::native_video_frame_webp,
             ipc::media_cmd::native_video_frame_webps,
+            ipc::plugin_cmd::native_audio_plugins_scan,
+            ipc::plugin_cmd::native_audio_plugins_list,
             ipc::monitor_cmd::monitor_set_scene,
             ipc::monitor_cmd::monitor_play,
             ipc::monitor_cmd::monitor_pause,

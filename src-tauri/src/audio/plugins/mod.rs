@@ -34,6 +34,8 @@
 
 use std::collections::{HashMap, HashSet};
 
+pub mod catalog;
+
 /// Specification of a single audio effect, sent from the frontend.
 #[derive(Debug, Clone, PartialEq, serde::Deserialize, serde::Serialize, ts_rs::TS)]
 #[ts(export, export_to = "../../src/types/generated/native-monitor/")]

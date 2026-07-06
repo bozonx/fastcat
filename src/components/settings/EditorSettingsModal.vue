@@ -10,10 +10,12 @@ import SettingsExportDefaults from '~/components/settings/SettingsExportDefaults
 import SettingsIntegrations from '~/components/settings/SettingsIntegrations.vue';
 import SettingsVideo from '~/components/settings/SettingsVideo.vue';
 import SettingsAudio from '~/components/settings/SettingsAudio.vue';
+import SettingsAudioPlugins from '~/components/settings/SettingsAudioPlugins.vue';
 import SettingsStorage from '~/components/settings/SettingsStorage.vue';
 import SettingsUi from '~/components/settings/SettingsUi.vue';
 import { useUiStore } from '~/stores/ui.store';
 import { useModalOpenModel } from '~/composables/ui/useModalOpenModel';
+import { getPlatformCapabilities } from '~/utils/capabilities';
 
 interface Props {
   open: boolean;
@@ -28,6 +30,7 @@ const emit = defineEmits<{
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
 const uiStore = useUiStore();
+const isNativeAudioPluginsAvailable = getPlatformCapabilities().nativeAudioPlugins;
 
 type SettingsSection =
   | 'user.general'
@@ -38,6 +41,7 @@ type SettingsSection =
   | 'user.integrations'
   | 'user.video'
   | 'user.audio'
+  | 'user.audioPlugins'
   | 'user.ui'
   | 'workspace.storage';
 
@@ -184,6 +188,20 @@ watch(
             @click="activeSection = 'user.audio'"
           />
           <UiToggleButton
+            v-if="isNativeAudioPluginsAvailable"
+            :model-value="activeSection === 'user.audioPlugins'"
+            :label="t('videoEditor.settings.userAudioPlugins')"
+            inactive-color="neutral"
+            active-color="neutral"
+            :active-bg="'color-mix(in srgb, var(--selection-accent-500) 15%, transparent)'"
+            :active-text="'var(--selection-accent-400)'"
+            inactive-variant="ghost"
+            active-variant="soft"
+            no-toggle
+            class="justify-start"
+            @click="activeSection = 'user.audioPlugins'"
+          />
+          <UiToggleButton
             v-if="workspaceStore.inDevelopmentFeaturesEnabled"
             :model-value="activeSection === 'user.integrations'"
             :label="t('videoEditor.settings.userIntegrations')"
@@ -237,6 +255,7 @@ watch(
         />
         <SettingsVideo v-else-if="activeSection === 'user.video'" />
         <SettingsAudio v-else-if="activeSection === 'user.audio'" />
+        <SettingsAudioPlugins v-else-if="activeSection === 'user.audioPlugins'" />
         <SettingsIntegrations v-else-if="activeSection === 'user.integrations'" />
         <SettingsUi v-else-if="activeSection === 'user.ui'" />
         <SettingsStorage v-else-if="activeSection === 'workspace.storage'" />

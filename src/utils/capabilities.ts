@@ -19,6 +19,8 @@ export interface PlatformCapabilities {
   systemFonts: boolean;
   /** Native audio monitor/engine driven over IPC. */
   nativeAudioEngine: boolean;
+  /** Native audio plugin discovery/hosting. Desktop-only by design. */
+  nativeAudioPlugins: boolean;
 }
 
 /**
@@ -35,5 +37,6 @@ export function getPlatformCapabilities(): PlatformCapabilities {
     hardwareEncoding: native,
     systemFonts: native,
     nativeAudioEngine: native,
+    nativeAudioPlugins: native,
   };
 }

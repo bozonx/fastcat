@@ -130,6 +130,11 @@ export function createDefaultUserSettings(): FastCatUserSettings {
     autosave: { ...DEFAULT_USER_SETTINGS.autosave },
     experimentalFeatures: DEFAULT_USER_SETTINGS.experimentalFeatures,
     audioEngine: { ...DEFAULT_USER_SETTINGS.audioEngine },
+    audioPlugins: {
+      ...DEFAULT_USER_SETTINGS.audioPlugins,
+      enabledFormats: [...DEFAULT_USER_SETTINGS.audioPlugins.enabledFormats],
+      customScanPaths: [...DEFAULT_USER_SETTINGS.audioPlugins.customScanPaths],
+    },
   } as FastCatUserSettings;
 }
 

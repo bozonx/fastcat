@@ -1,4 +1,6 @@
 export {
+  type AudioPluginFormat,
+  type AudioPluginManagerSettings,
   type ExternalIntegrationsSettings,
   type FastCatAppSettings,
   type FastCatUserSettings,

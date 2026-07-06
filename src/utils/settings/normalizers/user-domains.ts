@@ -488,6 +488,44 @@ export function normalizeAudioEngineSettings(raw: unknown): FastCatUserSettings[
     .parse(input);
 }
 
+export function normalizeAudioPluginSettings(raw: unknown): FastCatUserSettings['audioPlugins'] {
+  const input = ((raw as Record<string, unknown>)?.['audioPlugins'] ?? {}) as Record<
+    string,
+    unknown
+  >;
+  const defaults = DEFAULT_USER_SETTINGS.audioPlugins;
+
+  const formatSchema = z.enum(['clap', 'lv2', 'vst3']);
+  const customScanPaths = Array.isArray(input.customScanPaths)
+    ? input.customScanPaths.flatMap((path) => {
+        const parsed = z.string().trim().min(1).safeParse(path);
+        return parsed.success ? [parsed.data] : [];
+      })
+    : [...defaults.customScanPaths];
+  const enabledFormats = Array.isArray(input.enabledFormats)
+    ? input.enabledFormats.flatMap((format) => {
+        const parsed = formatSchema.safeParse(format);
+        return parsed.success ? [parsed.data] : [];
+      })
+    : [...defaults.enabledFormats];
+  const uniqueScanPaths = [...new Set(customScanPaths)];
+  const uniqueFormats = [...new Set(enabledFormats)];
+
+  const base = z
+    .object({
+      enabled: z.coerce.boolean().catch(defaults.enabled),
+      scanOnStartup: z.coerce.boolean().catch(defaults.scanOnStartup),
+    })
+    .catch(defaults)
+    .parse(input);
+
+  return {
+    ...base,
+    enabledFormats: uniqueFormats.length > 0 ? uniqueFormats : [...defaults.enabledFormats],
+    customScanPaths: uniqueScanPaths,
+  };
+}
+
 export function normalizePresetsSettings(raw: unknown): FastCatUserSettings['presets'] {
   const input = (raw as Record<string, unknown>)?.['presets'];
   const defaults = DEFAULT_USER_SETTINGS.presets;

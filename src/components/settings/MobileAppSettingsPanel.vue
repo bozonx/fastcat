@@ -6,10 +6,12 @@ import SettingsOptimization from './SettingsOptimization.vue';
 import SettingsExportDefaults from './SettingsExportDefaults.vue';
 import SettingsVideo from './SettingsVideo.vue';
 import SettingsAudio from './SettingsAudio.vue';
+import SettingsAudioPlugins from './SettingsAudioPlugins.vue';
 import SettingsIntegrations from './SettingsIntegrations.vue';
 import SettingsStorage from './SettingsStorage.vue';
 import SettingsUi from './SettingsUi.vue';
 import { useUiStore } from '~/stores/ui.store';
+import { getPlatformCapabilities } from '~/utils/capabilities';
 
 type SettingsSection =
   | 'user.general'
@@ -17,6 +19,7 @@ type SettingsSection =
   | 'user.export'
   | 'user.video'
   | 'user.audio'
+  | 'user.audioPlugins'
   | 'user.integrations'
   | 'user.ui'
   | 'workspace.storage';
@@ -24,6 +27,7 @@ type SettingsSection =
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
 const uiStore = useUiStore();
+const isNativeAudioPluginsAvailable = getPlatformCapabilities().nativeAudioPlugins;
 
 const SETTINGS_SECTIONS: readonly SettingsSection[] = [
   'user.general',
@@ -31,6 +35,7 @@ const SETTINGS_SECTIONS: readonly SettingsSection[] = [
   'user.export',
   'user.video',
   'user.audio',
+  ...(isNativeAudioPluginsAvailable ? (['user.audioPlugins'] as const) : []),
   'user.integrations',
   'user.ui',
   'workspace.storage',
@@ -57,6 +62,9 @@ const sections = computed(() => [
   { value: 'user.export', label: t('videoEditor.settings.userExport') },
   { value: 'user.video', label: t('videoEditor.settings.userVideo') },
   { value: 'user.audio', label: t('videoEditor.settings.userAudio') },
+  ...(isNativeAudioPluginsAvailable
+    ? [{ value: 'user.audioPlugins', label: t('videoEditor.settings.userAudioPlugins') }]
+    : []),
   { value: 'user.integrations', label: t('videoEditor.settings.userIntegrations') },
   { value: 'user.ui', label: t('videoEditor.settings.userUi') },
   { value: 'workspace.storage', label: t('videoEditor.settings.workspaceStorage') },
@@ -92,6 +100,7 @@ onBeforeUnmount(() => {
       />
       <SettingsVideo v-else-if="activeSection === 'user.video'" />
       <SettingsAudio v-else-if="activeSection === 'user.audio'" />
+      <SettingsAudioPlugins v-else-if="activeSection === 'user.audioPlugins'" />
       <SettingsIntegrations v-else-if="activeSection === 'user.integrations'" />
       <SettingsUi v-else-if="activeSection === 'user.ui'" />
       <SettingsStorage v-else-if="activeSection === 'workspace.storage'" />
