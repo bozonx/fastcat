@@ -35,6 +35,8 @@ process.env.TAURI_E2E_PROJECTS_ROOT ??= path.join(
   'FastCat',
   'projects',
 );
+process.env.TAURI_E2E_TEMP_ROOT ??= path.join(process.env.FASTCAT_DEV_DIR, 'tmp', 'fixtures');
+process.env.TMPDIR ??= path.join(process.env.FASTCAT_DEV_DIR, 'tmp', 'native');
 
 // Cargo package name is `fastcat`, so the release binary is `target/release/fastcat`.
 // `TAURI_E2E_BINARY` lets you point at an already-built binary (e.g. a debug

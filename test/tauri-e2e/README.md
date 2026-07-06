@@ -128,3 +128,4 @@ TAURI_E2E_BINARY=src-tauri/target/debug/fastcat pnpm exec wdio run test/tauri-e2
 | `TAURI_DRIVER_PORT`  | `4444`                       | tauri-driver intermediary port   |
 | `FASTCAT_DEV_DIR`    | `./test-files/tauri-e2e`     | Emulated desktop filesystem root |
 | `TAURI_E2E_PROJECTS_ROOT` | `$FASTCAT_DEV_DIR/home/user/Documents/FastCat/projects` | Project cleanup root |
+| `TAURI_E2E_TEMP_ROOT` | `$FASTCAT_DEV_DIR/tmp/fixtures` | Temporary copied fixture root |

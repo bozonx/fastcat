@@ -13,6 +13,8 @@
  * in that case no GOLDEN lines are emitted and this script warns accordingly.
  */
 import { spawn } from 'node:child_process';
+import { mkdirSync, rmSync } from 'node:fs';
+import { resolve } from 'node:path';
 import {
   loadGoldenRegistry,
   saveGoldenRegistry,
@@ -21,6 +23,7 @@ import {
 
 const GOLDEN_RE =
   /^GOLDEN\[native\]\s+(\S+)\s+t=([\d.]+)\s+hash=([0-9a-f]{16})(?:\s+colorSig=([0-9a-f]{24}))?\s+tolerance=(\d+)/i;
+const NATIVE_TMPDIR = process.env.TMPDIR ?? resolve(process.cwd(), 'test-files', 'native', 'tmp');
 
 interface ImportOptions {
   scene?: string;
@@ -69,6 +72,7 @@ function runNativeParity(): Promise<string> {
       {
         cwd: process.cwd(),
         stdio: ['ignore', 'pipe', 'pipe'],
+        env: { ...process.env, TMPDIR: NATIVE_TMPDIR },
       },
     );
 
@@ -100,6 +104,9 @@ function runNativeParity(): Promise<string> {
 }
 
 async function main(): Promise<void> {
+  rmSync(NATIVE_TMPDIR, { recursive: true, force: true });
+  mkdirSync(NATIVE_TMPDIR, { recursive: true });
+
   const { scene } = parseArgs(process.argv.slice(2));
 
   console.log(

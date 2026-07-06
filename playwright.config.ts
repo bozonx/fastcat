@@ -5,7 +5,9 @@ const e2eHost = process.env.E2E_HOST ?? '127.0.0.1';
 const e2ePort = Number(process.env.E2E_PORT ?? 37107);
 const e2eWorkers = Number(process.env.E2E_WORKERS ?? 1);
 const baseURL = process.env.E2E_BASE_URL ?? `http://${e2eHost}:${e2ePort}`;
-const e2eOutputDir = process.env.E2E_OUTPUT_DIR ?? '.output';
+const e2eOutputDir = process.env.E2E_OUTPUT_DIR ?? 'test-files/playwright/output';
+const playwrightOutputDir = process.env.PLAYWRIGHT_OUTPUT_DIR ?? 'test-files/playwright/results';
+const playwrightReportDir = process.env.PLAYWRIGHT_HTML_REPORT ?? 'test-files/playwright/report';
 const webServerCommand = staticPreviewServerCommand({
   host: e2eHost,
   port: e2ePort,
@@ -42,9 +44,10 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 1,
   timeout: 60_000,
   workers: process.env.CI ? 1 : e2eWorkers,
+  outputDir: playwrightOutputDir,
   reporter: process.env.CI
-    ? [['github'], ['html', { open: 'never' }]]
-    : [['list'], ['html', { open: 'never' }]],
+    ? [['github'], ['html', { open: 'never', outputFolder: playwrightReportDir }]]
+    : [['list'], ['html', { open: 'never', outputFolder: playwrightReportDir }]],
 
   use: {
     baseURL,
@@ -111,6 +114,8 @@ export default defineConfig({
       E2E_HOST: e2eHost,
       E2E_PORT: String(e2ePort),
       NUXT_IGNORE_LOCK: '1',
+      E2E_OUTPUT_DIR: e2eOutputDir,
+      TMPDIR: `${process.cwd()}/test-files/playwright/tmp`,
       FASTCAT_ENABLE_IN_DEVELOPMENT_FEATURES: 'true',
     },
   },

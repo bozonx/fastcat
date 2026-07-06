@@ -15,6 +15,8 @@ cd "$ROOT_DIR"
 export E2E_TEST=1
 export FASTCAT_DEV_DIR="${FASTCAT_DEV_DIR:-$ROOT_DIR/test-files/tauri-e2e}"
 export TAURI_E2E_PROJECTS_ROOT="${TAURI_E2E_PROJECTS_ROOT:-$FASTCAT_DEV_DIR/home/user/Documents/FastCat/projects}"
+export TAURI_E2E_TEMP_ROOT="${TAURI_E2E_TEMP_ROOT:-$FASTCAT_DEV_DIR/tmp/fixtures}"
+export TMPDIR="${TMPDIR:-$FASTCAT_DEV_DIR/tmp/native}"
 
 BIN="src-tauri/target/release/fastcat"
 TAURI_DRIVER="${TAURI_DRIVER_PATH:-$HOME/.cargo/bin/tauri-driver}"
@@ -37,6 +39,7 @@ if [ "${FORCE_BUILD:-0}" = "1" ] || [ ! -x "$BIN" ]; then
 fi
 
 node scripts/clean-test-files.mjs tauri-e2e
+mkdir -p "$TAURI_E2E_TEMP_ROOT" "$TMPDIR"
 
 echo "==> Running Tauri e2e (wdio)"
 pnpm exec wdio run test/tauri-e2e/wdio.conf.ts "$@"

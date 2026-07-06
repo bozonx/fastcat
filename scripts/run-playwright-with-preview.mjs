@@ -1,10 +1,22 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
 import { createServer } from 'node:net';
 import { join } from 'node:path';
 
 const e2eHost = process.env.E2E_HOST ?? '127.0.0.1';
+const testFilesRoot = join(process.cwd(), 'test-files');
+const playwrightFilesRoot = join(testFilesRoot, 'playwright');
+const playwrightTmpDir = join(playwrightFilesRoot, 'tmp');
+const e2eOutputDir = process.env.E2E_OUTPUT_DIR ?? join('test-files', 'playwright', 'output');
 const playwrightArgs = process.argv.slice(2);
 
 // Inputs whose contents decide whether the prebuilt bundle is still valid.
@@ -12,7 +24,12 @@ const playwrightArgs = process.argv.slice(2);
 // need to); a subset would serve a stale bundle.
 const BUILD_INPUT_DIRS = ['src', 'shared', 'public'];
 const BUILD_INPUT_FILES = ['package.json', 'pnpm-lock.yaml', 'nuxt.config.ts', 'tsconfig.json'];
-const BUILD_MANIFEST = '.output/.e2e-build-hash';
+const BUILD_MANIFEST = join(e2eOutputDir, '.e2e-build-hash');
+
+function cleanPlaywrightFiles() {
+  rmSync(playwrightFilesRoot, { recursive: true, force: true });
+  mkdirSync(playwrightTmpDir, { recursive: true });
+}
 
 async function findAvailablePort(startPort) {
   let port = startPort;
@@ -75,7 +92,9 @@ function hashBuildInputs() {
 
 function bundleIndexMtime() {
   try {
-    return String(Math.floor(statSync(join(process.cwd(), '.output/public/index.html')).mtimeMs));
+    return String(
+      Math.floor(statSync(join(process.cwd(), e2eOutputDir, 'public', 'index.html')).mtimeMs),
+    );
   } catch {
     return '';
   }
@@ -112,6 +131,8 @@ function runBuild(e2ePort) {
       E2E_HOST: e2eHost,
       E2E_PORT: String(e2ePort),
       E2E_TEST: '1',
+      E2E_OUTPUT_DIR: e2eOutputDir,
+      TMPDIR: playwrightTmpDir,
       FASTCAT_ENABLE_IN_DEVELOPMENT_FEATURES: 'true',
     },
   });
@@ -128,6 +149,8 @@ function runBuild(e2ePort) {
 }
 
 async function main() {
+  cleanPlaywrightFiles();
+
   const requestedPort = Number(process.env.E2E_PORT ?? 37107);
   const e2ePort = process.env.E2E_BASE_URL ? requestedPort : await findAvailablePort(requestedPort);
   const baseURL = process.env.E2E_BASE_URL ?? `http://${e2eHost}:${e2ePort}`;
@@ -146,6 +169,10 @@ async function main() {
       E2E_PORT: String(e2ePort),
       E2E_BASE_URL: baseURL,
       E2E_TEST: '1',
+      E2E_OUTPUT_DIR: e2eOutputDir,
+      PLAYWRIGHT_OUTPUT_DIR: join('test-files', 'playwright', 'results'),
+      PLAYWRIGHT_HTML_REPORT: join('test-files', 'playwright', 'report'),
+      TMPDIR: playwrightTmpDir,
       FASTCAT_ENABLE_IN_DEVELOPMENT_FEATURES: 'true',
     },
   });

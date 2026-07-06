@@ -1,7 +1,16 @@
 import { defineVitestConfig } from '@nuxt/test-utils/config';
+import { mkdirSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 process.env.NODE_ENV ??= 'test';
 process.env.VITEST ??= '1';
+
+const vitestFilesRoot = resolve(import.meta.dirname, 'test-files', 'vitest');
+const vitestTmpDir = resolve(vitestFilesRoot, 'tmp');
+mkdirSync(vitestTmpDir, { recursive: true });
+process.env.TMPDIR = vitestTmpDir;
+process.env.TEMP = vitestTmpDir;
+process.env.TMP = vitestTmpDir;
 
 export default defineVitestConfig({
   test: {
@@ -24,7 +33,7 @@ export default defineVitestConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov', 'html'],
-      reportsDirectory: './coverage',
+      reportsDirectory: './test-files/vitest/coverage',
       include: ['src/**/*.{ts,vue}'],
       exclude: [
         '**/*.d.ts',

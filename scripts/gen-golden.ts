@@ -14,8 +14,8 @@
  *   pnpm test:golden:gen -- --both                    # web + native (requires cargo)
  *   pnpm test:golden:gen -- --both --scene scene.json # one scene only
  */
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { mkdirSync, readFileSync, rmSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
 import {
   upsertGoldenSample,
@@ -28,6 +28,9 @@ import { staticPreviewServerArgs, waitForServer } from './lib/preview-server.mjs
 const E2E_HOST = process.env.E2E_HOST ?? '127.0.0.1';
 const E2E_PORT = Number(process.env.E2E_PORT ?? 37107);
 const BASE_URL = process.env.E2E_BASE_URL ?? `http://${E2E_HOST}:${E2E_PORT}`;
+const GOLDEN_GEN_FILES_ROOT = resolve(process.cwd(), 'test-files', 'golden-gen');
+const E2E_OUTPUT_DIR = process.env.E2E_OUTPUT_DIR ?? join('test-files', 'golden-gen', 'output');
+const TMPDIR = process.env.TMPDIR ?? join(GOLDEN_GEN_FILES_ROOT, 'tmp');
 
 const MEDIA_DIR = resolve(process.cwd(), 'test/fixtures/media');
 
@@ -94,7 +97,14 @@ async function ensurePreviewServer(): Promise<ChildProcess | null> {
   const build = spawnSync('pnpm', ['build'], {
     cwd: process.cwd(),
     stdio: 'inherit',
-    env: { ...process.env, E2E_HOST, E2E_PORT: String(E2E_PORT), E2E_TEST: '1' },
+    env: {
+      ...process.env,
+      E2E_HOST,
+      E2E_PORT: String(E2E_PORT),
+      E2E_OUTPUT_DIR,
+      E2E_TEST: '1',
+      TMPDIR,
+    },
   });
 
   if (build.status !== 0) {
@@ -102,11 +112,19 @@ async function ensurePreviewServer(): Promise<ChildProcess | null> {
   }
 
   console.log(`  Starting preview server on ${E2E_HOST}:${E2E_PORT}...`);
-  const proc = spawn('node', staticPreviewServerArgs({ host: E2E_HOST, port: E2E_PORT }), {
-    cwd: process.cwd(),
-    stdio: 'pipe',
-    env: { ...process.env, E2E_HOST, E2E_PORT: String(E2E_PORT), E2E_TEST: '1' },
-  });
+  const proc = spawn(
+    'node',
+    staticPreviewServerArgs({
+      host: E2E_HOST,
+      port: E2E_PORT,
+      root: `${E2E_OUTPUT_DIR}/public`,
+    }),
+    {
+      cwd: process.cwd(),
+      stdio: 'pipe',
+      env: { ...process.env, E2E_HOST, E2E_PORT: String(E2E_PORT), E2E_TEST: '1', TMPDIR },
+    },
+  );
 
   proc.stdout?.on('data', (data: Buffer) => {
     const line = data.toString().trim();
@@ -258,6 +276,9 @@ function runImportNative(sceneFilter: string | undefined): Promise<boolean> {
 }
 
 async function main(): Promise<void> {
+  rmSync(GOLDEN_GEN_FILES_ROOT, { recursive: true, force: true });
+  mkdirSync(TMPDIR, { recursive: true });
+
   const { mode, scene } = parseArgs(process.argv.slice(2));
 
   console.log(`Generating golden hashes (${mode}${scene ? `, scene=${scene}` : ''})...\n`);
