@@ -71,6 +71,36 @@ export function quantizeTimeUsToPixelGrid(timeUs: number, zoom = 100) {
   return pxToTimeUs(Math.round(timeUsToPx(timeUs, zoom)), zoom);
 }
 
+/**
+ * Clip-local X (px) for an overlay (volume plate, mute icon, …) that should
+ * follow the timeline scroll so it stays visible, while gravitating toward the
+ * clip's own centre. It centres on the *visible* intersection of the clip and
+ * the viewport, clamped inside the clip (minus an optional padding). When the
+ * whole clip is on screen the visible centre equals the clip centre, so the
+ * overlay simply sits in the middle.
+ */
+export function computeClipCenteredOverlayLeftPx(params: {
+  clipStartPx: number;
+  clipWidthPx: number;
+  scrollLeft?: number;
+  viewportWidth?: number;
+  paddingPx?: number;
+}): number {
+  const { clipStartPx, clipWidthPx, scrollLeft, viewportWidth, paddingPx = 0 } = params;
+  const idealX = clipWidthPx / 2;
+
+  if (scrollLeft === undefined || viewportWidth === undefined) return idealX;
+
+  const clipEndPx = clipStartPx + clipWidthPx;
+  const visibleStart = Math.max(clipStartPx, scrollLeft);
+  const visibleEnd = Math.min(clipEndPx, scrollLeft + viewportWidth);
+  if (visibleEnd <= visibleStart) return idealX;
+
+  const localX = (visibleStart + visibleEnd) / 2 - clipStartPx;
+  const maxX = Math.max(paddingPx, clipWidthPx - paddingPx);
+  return Math.max(paddingPx, Math.min(maxX, localX));
+}
+
 export function pxToDeltaUs(px: number, zoom = 100) {
   const pxPerSecond = zoomToPxPerSecond(zoom);
   return Math.round((px / pxPerSecond) * 1e6);

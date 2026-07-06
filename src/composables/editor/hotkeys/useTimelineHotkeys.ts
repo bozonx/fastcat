@@ -165,6 +165,7 @@ export function useTimelineHotkeys(
       void timelineStore
         .pasteClips(payload.items, {
           targetTrackId: timelineStore.getSelectedOrActiveTrackId(),
+          respectToolbarModes: true,
         })
         .then((res) => {
           if (payload.operation === 'cut' && res.length > 0) {

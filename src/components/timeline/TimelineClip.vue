@@ -329,6 +329,13 @@ const {
     return true;
   },
   onShortRightClick: (e) => {
+    // Right-clicking a clip that isn't part of the current selection should
+    // select it first, so the context menu — and every action inside it —
+    // targets the clip under the cursor rather than whatever was selected
+    // before. A right-click inside an existing (multi-)selection is preserved.
+    if (!timelineContext.selectedItemIdSet.value.has(props.item.id)) {
+      timelineContext.selectTimelineItems([{ trackId: props.track.id, itemId: props.item.id }]);
+    }
     const target = e.target as HTMLElement | null;
     void nextTick().then(() => {
       target?.dispatchEvent(
@@ -874,6 +881,8 @@ function handleTransitionCreate(
           :is-media-missing="isMediaMissing"
           :is-unsupported="isUnsupported"
           :clip-width-px="clipWidthPx"
+          :scroll-left="scrollLeft"
+          :viewport-width="viewportWidth"
         />
 
         <!-- Dotted pattern overlay for muted clips -->

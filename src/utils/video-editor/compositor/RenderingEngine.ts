@@ -40,7 +40,13 @@ export interface RenderingEngineContext {
   applyShaderTransitions: (activeClips: CompositorClip[], timeUs: number) => Promise<void>;
   applyWebGpuClipEffects?: (clip: CompositorClip) => Promise<void>;
   applyTrackEffects: () => Promise<() => void>;
-  applyMasterEffects: () => void;
+  /**
+   * Renders the stage off-screen, runs the master WGSL effects over it, and
+   * presents the processed frame as the only write to the visible canvas.
+   * Returns false when there is nothing to apply (or processing failed) and
+   * the caller must present the raw stage itself.
+   */
+  applyMasterEffects: () => Promise<boolean>;
   setStageSortDirty: (value: boolean) => void;
   setActiveSortDirty: (value: boolean) => void;
   setLastRenderedTimeUs: (value: number) => void;
@@ -159,8 +165,17 @@ export class RenderingEngine {
             return null;
           }
           context.setLastRenderedTimeUs(timeUs);
-          context.app.renderer.render(context.app.stage);
-          await context.applyMasterEffects();
+          // The canvas is displayed directly (transferControlToOffscreen), so
+          // every frame must reach it with exactly one final render: drawing
+          // the raw stage first and post-processing it in place would commit
+          // an effect-less frame at each await inside the master pipeline.
+          const presentedWithMasterEffects = await context.applyMasterEffects();
+          if (!presentedWithMasterEffects) {
+            if (!context.app || !context.canvas || !context.app.renderer) {
+              return null;
+            }
+            context.app.renderer.render(context.app.stage);
+          }
         } finally {
           restoreTrackEffects();
         }

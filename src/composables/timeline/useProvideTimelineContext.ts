@@ -122,7 +122,7 @@ export function useProvideTimelineContext() {
         clipboardStore.clipboardPayload?.source === 'timeline'
           ? clipboardStore.clipboardPayload.items
           : [],
-        options,
+        { ...options, respectToolbarModes: true },
       ),
 
     revealClipInFileManager: (clip: unknown, trackKind: string) => {

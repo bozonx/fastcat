@@ -142,6 +142,7 @@ describe('audio clip descriptor adapters', () => {
         enabled: true,
         wet: 0.4,
         params: { delayMs: 120 },
+        plugin: null,
       },
     ]);
   });

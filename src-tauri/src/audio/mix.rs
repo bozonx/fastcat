@@ -2006,6 +2006,7 @@ mod tests {
             enabled: true,
             wet: 1.0,
             params: Default::default(),
+            plugin: None,
         };
         let l = SceneAudioLayer {
             id: "l1".into(),
@@ -2039,6 +2040,7 @@ mod tests {
             enabled: true,
             wet: 1.0,
             params: Default::default(),
+            plugin: None,
         };
 
         let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));

@@ -31,6 +31,10 @@ const { openProject, leaveProject } = useProjectActions();
 const isOpeningProject = ref(true);
 const projectOpenError = ref<string | null>(null);
 
+const { pendingFilesForNewProject } = usePendingNewProjectFiles();
+const fileManager = useFileManager();
+const { addMediaToTimeline } = useAddMediaToTimeline();
+
 const tabToViewMap = {
   files: 'files',
   edit: 'cut',
@@ -96,15 +100,11 @@ onMounted(async () => {
     }
 
     // Auto-import pending files for new project
-    const { pendingFilesForNewProject } = usePendingNewProjectFiles();
     if (pendingFilesForNewProject.value.length > 0) {
       const filesToImport = [...pendingFilesForNewProject.value];
       pendingFilesForNewProject.value = []; // Reset immediately to prevent double triggers
 
       filesToImport.sort((a, b) => a.lastModified - b.lastModified);
-
-      const fileManager = useFileManager();
-      const { addMediaToTimeline } = useAddMediaToTimeline();
 
       const uploadResults = await fileManager.handleFiles(filesToImport, {
         selectInFileManager: false,

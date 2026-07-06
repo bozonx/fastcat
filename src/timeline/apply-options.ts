@@ -14,4 +14,4 @@ export interface TimelineApplyOptions {
 /**
  * Extended options available for single-command apply.
  */
-export interface TimelineApplyWithHistoryOptions extends TimelineApplyOptions {}
+export type TimelineApplyWithHistoryOptions = TimelineApplyOptions;

@@ -3,6 +3,7 @@ import { computed, inject } from 'vue';
 import type { TimelineTrack, TimelineTrackItem, TimelineClipItem } from '~/timeline/types';
 import type { TimelineContext } from './context';
 import { isClipFreePosition } from '~/utils/timeline/clip-checks';
+import { timeUsToPx, computeClipCenteredOverlayLeftPx } from '~/utils/timeline/geometry';
 
 const props = defineProps<{
   item: TimelineTrackItem;
@@ -10,6 +11,8 @@ const props = defineProps<{
   isMediaMissing?: boolean;
   isUnsupported?: boolean;
   clipWidthPx: number;
+  scrollLeft?: number;
+  viewportWidth?: number;
 }>();
 
 const { t } = useI18n();
@@ -27,6 +30,20 @@ const isFreePosition = computed(() => {
     timelineContext.timelineDoc.value,
     timelineContext.fps.value || 30,
   );
+});
+
+// Keep the muted / disabled badge centred within the *visible* part of the
+// clip so it follows the timeline scroll instead of sliding off screen.
+const centeredOverlayStyle = computed(() => {
+  if (!timelineContext || !clipItem.value) return undefined;
+  const left = computeClipCenteredOverlayLeftPx({
+    clipStartPx: timeUsToPx(props.item.timelineRange.startUs, timelineContext.zoom.value),
+    clipWidthPx: props.clipWidthPx,
+    scrollLeft: props.scrollLeft,
+    viewportWidth: props.viewportWidth,
+    paddingPx: 16,
+  });
+  return { left: `${left}px`, transform: 'translateX(-50%)' };
 });
 </script>
 
@@ -95,12 +112,14 @@ const isFreePosition = computed(() => {
       </span>
     </div>
 
-    <!-- Muted / Disabled Overlay -->
+    <!-- Muted / Disabled Overlay — badge follows the timeline scroll so it stays
+         visible while gravitating toward the clip centre. -->
     <div
       v-if="
         clipItem && (clipItem.disabled || clipItem.audioMuted) && !isMediaMissing && !isUnsupported
       "
-      class="absolute inset-0 flex items-center justify-center z-30"
+      class="absolute inset-y-0 z-30 flex items-center"
+      :style="centeredOverlayStyle"
     >
       <div v-if="clipItem.disabled" class="bg-black/30 rounded-full p-1">
         <UIcon

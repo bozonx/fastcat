@@ -8,7 +8,8 @@ import type { TimelineCommand } from '~/timeline/commands';
 import { createTimelineEditService } from '~/timeline/application/timelineEditService';
 import { parseTimelineFromOtio, serializeTimelineToOtio } from '~/timeline/otio-serializer';
 import { selectTimelineDurationUs } from '~/timeline/selectors';
-import { pxPerSecondToZoom } from '~/utils/timeline/geometry';
+import { pxPerSecondToZoom, computeSnappedStartUs, sanitizeFps } from '~/utils/timeline/geometry';
+import { computeSnapTargetsUs } from '~/composables/timeline/timeline-drag-domain';
 
 import { createTimelinePersistenceModule } from '~/stores/timeline/persistence';
 import { createTimelineMarkerService } from '~/timeline/application/timelineMarkerService';
@@ -47,6 +48,7 @@ import { useSelectionStore } from './selection.store';
 import { useFocusStore } from './focus.store';
 import { useUiStore } from './ui.store';
 import { useProjectSettingsStore } from './project-settings.store';
+import { useTimelineSettingsStore } from './timeline-settings.store';
 import { MAX_TIMELINE_ZOOM_POSITION, MIN_TIMELINE_ZOOM_POSITION } from '~/utils/zoom';
 import { TIMELINE_DEFAULTS } from '~/utils/constants';
 import { normalizeMediaCachePath } from '~/utils/path';
@@ -64,6 +66,7 @@ export const useTimelineStore = defineStore('timeline', () => {
   const mediaStore = useMediaStore();
   const historyStore = useHistoryStore();
   const workspaceStore = useWorkspaceStore();
+  const timelineSettingsStore = useTimelineSettingsStore();
   const proxyStore = useProxyStore();
   const selectionStore = useSelectionStore();
   const uiStore = useUiStore();
@@ -303,6 +306,45 @@ export const useTimelineStore = defineStore('timeline', () => {
     getHotkeyTargetClip: () => selection.getHotkeyTargetClip(),
     ensureNoNestedTimelineCycle: (path) =>
       commands.commandService.ensureNoNestedTimelineCycle(path),
+    resolvePastePlacement: ({
+      baseTargetTrackId: _baseTargetTrackId,
+      insertStartUs,
+      totalDurationUs,
+    }) => {
+      const pseudo = timelineSettingsStore.isPseudoOverlapEnabled;
+      const quantizeToFrames = timelineSettingsStore.toolbarSnapMode !== 'free_mode';
+      const doc = timelineDoc.value;
+      if (!doc) return { pseudo, insertStartUs, quantizeToFrames };
+
+      const snapSettings = workspaceStore.userSettings.timeline.snapping;
+      const timelineEndUs = Number.isFinite(duration.value)
+        ? Math.max(0, Math.round(duration.value))
+        : null;
+      const snapTargetsUs = computeSnapTargetsUs({
+        tracks: doc.tracks,
+        includeTimelineStart: snapSettings.timelineEdges,
+        includeTimelineEndUs: snapSettings.timelineEdges ? timelineEndUs : null,
+        includePlayheadUs: snapSettings.playhead ? currentTime.value : null,
+        includeMarkers: snapSettings.markers,
+        markers: markerService.getMarkers(),
+        includeClips: snapSettings.clips,
+        selectionRangeUs: snapSettings.selection ? selectionRangeModule.getSelectionRange() : null,
+      });
+      const snappedStartUs = computeSnappedStartUs({
+        rawStartUs: insertStartUs,
+        draggingItemDurationUs: totalDurationUs,
+        fps: sanitizeFps(doc.timebase.fps),
+        zoom: timelineZoom.value,
+        snapThresholdPx: timelineSettingsStore.snapThresholdPx,
+        snapTargetsUs,
+        enableFrameSnap:
+          timelineSettingsStore.frameSnapMode === 'frames' &&
+          timelineSettingsStore.toolbarSnapMode !== 'free_mode',
+        enableClipSnap: timelineSettingsStore.toolbarSnapMode === 'snap',
+        frameOffsetUs: 0,
+      });
+      return { pseudo, insertStartUs: snappedStartUs, quantizeToFrames };
+    },
     get defaultStaticClipDurationUs() {
       return workspaceStore.userSettings.timeline.defaultStaticClipDurationUs;
     },

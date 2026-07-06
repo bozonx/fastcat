@@ -114,6 +114,7 @@ const trimMenuItems = computed(() => {
       {
         label: formatLabel(t('videoEditor.hotkeys.timeline.splitAtPlayhead'), keySplit),
         icon: 'i-heroicons-scissors',
+        disabled: isNoClipSelected,
         onSelect: () => timelineStore.splitClipAtPlayhead(),
       },
       {

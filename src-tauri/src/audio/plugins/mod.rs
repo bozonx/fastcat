@@ -53,6 +53,30 @@ pub struct AudioEffectSpec {
     #[serde(default)]
     #[ts(type = "Record<string, unknown>")]
     pub params: std::collections::HashMap<String, serde_json::Value>,
+    /// Reference to a scanned external plugin this effect maps to, when the
+    /// effect is backed by a host format (CLAP/LV2/VST3) rather than a built-in
+    /// DSP block. `None` for built-in effects. The host uses this to pick the
+    /// backend and locate the binary; `effect_type` stays a stable category so
+    /// the frontend does not need to special-case plugin ids.
+    #[serde(default)]
+    pub plugin: Option<AudioPluginRef>,
+}
+
+/// Locator that ties an [`AudioEffectSpec`] to a concrete plugin binary
+/// discovered by the catalog scan. Format-agnostic so the same shape serves
+/// CLAP, LV2 and VST3.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize, ts_rs::TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "../../src/types/generated/native-monitor/")]
+pub struct AudioPluginRef {
+    /// Which host backend loads this plugin.
+    pub format: catalog::AudioPluginFormat,
+    /// Absolute path to the plugin bundle/binary (from the scan descriptor).
+    pub path: String,
+    /// Sub-plugin identity within a bundle that exposes several plugins (e.g. a
+    /// CLAP factory plugin id). `None` selects the bundle's first/only plugin.
+    #[serde(default)]
+    pub plugin_id: Option<String>,
 }
 
 /// A live, stateful plugin instance.
@@ -93,6 +117,54 @@ impl PluginInstance for MultiplyPlugin {
     fn reset(&mut self) {}
 }
 
+/// A factory that turns an [`AudioEffectSpec`] into a live [`PluginInstance`]
+/// for one class of effect — a built-in DSP block or an external plugin format
+/// (CLAP/LV2/VST3). This is the sole extension point for new host formats:
+/// implement `PluginBackend` and register it via [`PluginHost::register_backend`];
+/// nothing else in the host, mixer or cache is format-aware.
+///
+/// Instantiation may be expensive (dlopen + activate for external formats), so
+/// the host only ever calls [`PluginBackend::instantiate`] off the realtime
+/// audio thread — either lazily on the first `apply_effects` of a spec, or
+/// ahead of time via [`PluginHost::prewarm_specs`].
+pub trait PluginBackend: Send + Sync {
+    /// Whether this backend owns the given spec. The first registered backend
+    /// that returns `true` builds the instance; specs no backend claims fall
+    /// through to a passthrough so an unknown/unavailable plugin is inert
+    /// rather than fatal.
+    fn can_handle(&self, spec: &AudioEffectSpec) -> bool;
+
+    /// Build an instance for a fixed `(sample_rate, channels)` layout. The host
+    /// pushes the current parameters via [`PluginInstance::set_params`] right
+    /// after this returns, so implementations need not read params here.
+    fn instantiate(
+        &self,
+        spec: &AudioEffectSpec,
+        sample_rate: u32,
+        channels: usize,
+    ) -> Box<dyn PluginInstance>;
+}
+
+/// Built-in effects that ship with the app, plus the `test-multiply` fixture
+/// used by tests. External formats (CLAP/LV2/VST3) are added as their own
+/// backends and are not handled here.
+struct BuiltinBackend;
+
+impl PluginBackend for BuiltinBackend {
+    fn can_handle(&self, spec: &AudioEffectSpec) -> bool {
+        spec.effect_type == "test-multiply"
+    }
+
+    fn instantiate(
+        &self,
+        _spec: &AudioEffectSpec,
+        _sample_rate: u32,
+        _channels: usize,
+    ) -> Box<dyn PluginInstance> {
+        Box::new(MultiplyPlugin)
+    }
+}
+
 /// Cache key for a live plugin instance — stable identity, not parameters.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct InstanceKey {
@@ -112,6 +184,9 @@ struct CachedInstance {
 /// Host that owns and reuses plugin instances across chunks.
 pub struct PluginHost {
     instances: HashMap<InstanceKey, CachedInstance>,
+    /// Registered backends, consulted in registration order to build instances.
+    /// A spec no backend claims falls through to [`PassthroughPlugin`].
+    backends: Vec<Box<dyn PluginBackend>>,
     /// Reused dry-signal buffer for wet/dry blending; grows to the largest
     /// chunk seen and is then reused without reallocating.
     scratch: Vec<f32>,
@@ -129,9 +204,74 @@ impl PluginHost {
     pub fn new() -> Self {
         Self {
             instances: HashMap::new(),
+            backends: vec![Box::new(BuiltinBackend)],
             scratch: Vec::new(),
             #[cfg(test)]
             reset_all_count: 0,
+        }
+    }
+
+    /// Register an additional plugin backend (e.g. a CLAP host). Backends are
+    /// consulted in registration order; the first that `can_handle` a spec owns
+    /// it. Call once at startup before audio flows — the registry is not locked
+    /// per chunk, so adding a backend mid-playback is not supported.
+    pub fn register_backend(&mut self, backend: Box<dyn PluginBackend>) {
+        self.backends.push(backend);
+    }
+
+    /// Build an instance for `spec` at the given layout, routing through the
+    /// registered backends and falling back to passthrough. Associated (not a
+    /// method) so callers can split-borrow `backends` alongside `instances`.
+    /// May be expensive — never call from the realtime audio thread.
+    fn build_instance(
+        backends: &[Box<dyn PluginBackend>],
+        spec: &AudioEffectSpec,
+        sample_rate: u32,
+        channels: usize,
+    ) -> CachedInstance {
+        let mut instance = backends
+            .iter()
+            .find(|backend| backend.can_handle(spec))
+            .map(|backend| backend.instantiate(spec, sample_rate, channels))
+            .unwrap_or_else(|| Box::new(PassthroughPlugin) as Box<dyn PluginInstance>);
+        instance.set_params(spec);
+        CachedInstance {
+            instance,
+            applied_spec: spec.clone(),
+        }
+    }
+
+    /// Pre-create instances for `specs` on `layer_id` without processing audio,
+    /// so the realtime path finds them already cached. Intended to be called
+    /// from the scene-update (main) thread whenever the effect graph changes,
+    /// keeping expensive dlopen/activate work off the audio thread. A no-op for
+    /// specs whose instance already exists at this `(sample_rate, channels)`
+    /// layout. Not yet wired on the realtime path — the built-in backends
+    /// instantiate cheaply, so lazy creation in `apply_effects` suffices; wire
+    /// this once a backend with costly instantiation (CLAP) is registered and
+    /// the realtime target layout is threaded to the scene-update call site.
+    pub fn prewarm_specs(
+        &mut self,
+        layer_id: &str,
+        sample_rate: u32,
+        channels: usize,
+        specs: &[AudioEffectSpec],
+    ) {
+        let Self {
+            instances,
+            backends,
+            ..
+        } = self;
+        for spec in specs.iter().filter(|s| s.enabled) {
+            let key = InstanceKey {
+                layer_id: layer_id.to_string(),
+                effect_id: spec.id.clone(),
+                sample_rate,
+                channels,
+            };
+            instances
+                .entry(key)
+                .or_insert_with(|| Self::build_instance(backends, spec, sample_rate, channels));
         }
     }
 
@@ -148,7 +288,10 @@ impl PluginHost {
         // Split-borrow so the wet/dry blend can touch `scratch` while a cached
         // instance is mutably borrowed out of `instances`.
         let Self {
-            instances, scratch, ..
+            instances,
+            scratch,
+            backends,
+            ..
         } = self;
 
         for spec in specs.iter().filter(|s| s.enabled) {
@@ -159,18 +302,9 @@ impl PluginHost {
                 channels,
             };
 
-            let cached = instances.entry(key).or_insert_with(|| {
-                let mut instance: Box<dyn PluginInstance> = if spec.effect_type == "test-multiply" {
-                    Box::new(MultiplyPlugin)
-                } else {
-                    Box::new(PassthroughPlugin)
-                };
-                instance.set_params(spec);
-                CachedInstance {
-                    instance,
-                    applied_spec: spec.clone(),
-                }
-            });
+            let cached = instances
+                .entry(key)
+                .or_insert_with(|| Self::build_instance(backends, spec, sample_rate, channels));
 
             // Parameters changed → push them into the live instance instead of
             // rebuilding it, preserving internal state.
@@ -262,6 +396,7 @@ mod tests {
             enabled: true,
             wet: 1.0,
             params: Default::default(),
+            plugin: None,
         }
     }
 
@@ -415,5 +550,104 @@ mod tests {
         let mut buf = vec![0.25f32, -0.5, 0.75, -1.0];
         host.apply_effects("layer-1", &mut buf, 48_000, 2, &[fx]);
         assert_eq!(buf, vec![0.25f32, -0.5, 0.75, -1.0]);
+    }
+
+    /// A stand-in for a future format backend (CLAP/LV2/VST3): claims its own
+    /// `effect_type` and produces an instance that adds 1.0 so the test can
+    /// prove the registry, not a hardcoded branch, selected it.
+    struct AddOneBackend;
+
+    impl PluginBackend for AddOneBackend {
+        fn can_handle(&self, spec: &AudioEffectSpec) -> bool {
+            spec.effect_type == "add-one"
+        }
+
+        fn instantiate(
+            &self,
+            _spec: &AudioEffectSpec,
+            _sample_rate: u32,
+            _channels: usize,
+        ) -> Box<dyn PluginInstance> {
+            struct AddOne;
+            impl PluginInstance for AddOne {
+                fn set_params(&mut self, _spec: &AudioEffectSpec) {}
+                fn process(&mut self, buffer: &mut [f32], _channels: usize) {
+                    for sample in buffer.iter_mut() {
+                        *sample += 1.0;
+                    }
+                }
+                fn reset(&mut self) {}
+            }
+            Box::new(AddOne)
+        }
+    }
+
+    #[test]
+    fn registered_backend_handles_its_own_specs() {
+        let mut host = PluginHost::new();
+        host.register_backend(Box::new(AddOneBackend));
+        let mut fx = spec("fx1");
+        fx.effect_type = "add-one".into();
+        let mut buf = vec![0.0f32; 4];
+        host.apply_effects("layer-1", &mut buf, 48_000, 2, &[fx]);
+        assert_eq!(buf, vec![1.0f32; 4]);
+    }
+
+    #[test]
+    fn unclaimed_effect_type_falls_through_to_passthrough() {
+        // No backend claims "passthrough", so the host must leave audio intact
+        // rather than error — an unknown/unavailable plugin is inert.
+        let mut host = PluginHost::new();
+        let mut buf = vec![0.25f32, -0.5, 0.75, -1.0];
+        host.apply_effects("layer-1", &mut buf, 48_000, 2, &[spec("fx1")]);
+        assert_eq!(buf, vec![0.25f32, -0.5, 0.75, -1.0]);
+    }
+
+    #[test]
+    fn prewarm_creates_instances_reused_by_realtime_path() {
+        let mut host = PluginHost::new();
+        let fx = spec("fx1");
+        host.prewarm_specs("layer-1", 48_000, 2, std::slice::from_ref(&fx));
+        assert_eq!(host.instances.len(), 1);
+
+        // The realtime path must reuse the prewarmed instance, not build a new
+        // one at the same layout.
+        host.apply_effects(
+            "layer-1",
+            &mut [1.0f32; 4],
+            48_000,
+            2,
+            std::slice::from_ref(&fx),
+        );
+        assert_eq!(host.instances.len(), 1);
+    }
+
+    #[test]
+    fn prewarm_skips_disabled_specs() {
+        let mut host = PluginHost::new();
+        let mut fx = spec("fx1");
+        fx.enabled = false;
+        host.prewarm_specs("layer-1", 48_000, 2, &[fx]);
+        assert!(host.instances.is_empty());
+    }
+
+    #[test]
+    fn plugin_ref_survives_json_roundtrip() {
+        let mut fx = spec("fx1");
+        fx.plugin = Some(AudioPluginRef {
+            format: catalog::AudioPluginFormat::Clap,
+            path: "/usr/lib/clap/synth.clap".into(),
+            plugin_id: Some("com.example.synth".into()),
+        });
+        let json = serde_json::to_string(&fx).unwrap();
+        let back: AudioEffectSpec = serde_json::from_str(&json).unwrap();
+        assert_eq!(back, fx);
+    }
+
+    #[test]
+    fn plugin_ref_defaults_to_none_when_absent() {
+        let json = r#"{"id":"fx1","type":"passthrough","enabled":true,"wet":1.0}"#;
+        let spec: AudioEffectSpec = serde_json::from_str(json).unwrap();
+        assert_eq!(spec.plugin, None);
     }
 }

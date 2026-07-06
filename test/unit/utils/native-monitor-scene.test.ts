@@ -132,6 +132,7 @@ describe('buildNativeAudioEffectSpecs', () => {
         enabled: true,
         wet: 0.4,
         params: { delayMs: 120 },
+        plugin: null,
       },
       {
         id: 'audio-default-wet',
@@ -139,6 +140,7 @@ describe('buildNativeAudioEffectSpecs', () => {
         enabled: true,
         wet: 1,
         params: { threshold: -12 },
+        plugin: null,
       },
     ]);
   });

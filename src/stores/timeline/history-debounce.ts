@@ -51,12 +51,7 @@ export function createTimelineHistoryDebounceModule(
     const pending = pendingDebouncedHistory.value;
     if (!pending) return;
     window.clearTimeout(pending.timeoutId);
-    deps.historyStore.push(
-      'timeline',
-      pending.cmd.type,
-      pending.snapshot,
-      pending.labelKey,
-    );
+    deps.historyStore.push('timeline', pending.cmd.type, pending.snapshot, pending.labelKey);
     pendingDebouncedHistory.value = null;
   }
 

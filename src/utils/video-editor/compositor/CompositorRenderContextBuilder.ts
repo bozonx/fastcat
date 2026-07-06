@@ -335,7 +335,7 @@ export class CompositorRenderContextBuilder {
           }
         };
       },
-      applyMasterEffects: async () => {
+      applyMasterEffects: async (): Promise<boolean> => {
         const previewEffectsEnabled = params.getPreviewEffectsEnabled();
         if (!previewEffectsEnabled) {
           params.effectManager.applyMasterEffects(
@@ -344,43 +344,54 @@ export class CompositorRenderContextBuilder {
             params.masterEffectFilters,
             { previewEffectsEnabled: false },
           );
-          return;
+          return false;
         }
 
         const masterSpecs = buildEffectSpecs(state.masterEffects ?? undefined);
         const runner = params.clipResourceManager.getComputeRunner();
         if (!masterSpecs || masterSpecs.length === 0 || !runner?.isReady()) {
-          return;
+          return false;
         }
 
         try {
-          const bitmap = await createImageBitmap(canvas);
+          // Capture the stage off-screen: the visible canvas must only ever
+          // receive the final processed frame (see RenderingEngine).
+          const bitmap = await params.stageTextureRenderer.renderDisplayObjectToBitmapForcedVisible(
+            app.stage,
+          );
           try {
             const processed = await runner.applyEffects(bitmap, masterSpecs);
-            if (processed) {
-              const texture = Texture.from(processed);
-              const sprite = new Sprite(texture);
-              // applyEffects pads its output symmetrically (so blur/bloom can bleed
-              // past the frame), so `processed` can be larger than the canvas.
-              // Center it so the original content stays aligned with the canvas.
-              sprite.x = (state.width - processed.width) / 2;
-              sprite.y = (state.height - processed.height) / 2;
-              try {
-                app.renderer.render({ container: sprite, clear: true });
-              } finally {
-                // The sprite, its texture and the processed bitmap are recreated
-                // every frame; release them so playback with a master effect does
-                // not leak a GPU texture + ImageBitmap per frame.
-                sprite.destroy();
-                texture.destroy(true);
-                (processed as { close?: () => void }).close?.();
-              }
+            if (!processed) {
+              return false;
             }
+
+            const texture = Texture.from(processed);
+            const sprite = new Sprite(texture);
+            // applyEffects pads its output symmetrically (so blur/bloom can bleed
+            // past the frame), so `processed` can be larger than the canvas.
+            // Center it so the original content stays aligned with the canvas.
+            sprite.x = (state.width - processed.width) / 2;
+            sprite.y = (state.height - processed.height) / 2;
+            try {
+              if (!app.renderer) {
+                return false;
+              }
+              app.renderer.render({ container: sprite, clear: true });
+            } finally {
+              // The sprite, its texture and the processed bitmap are recreated
+              // every frame; release them so playback with a master effect does
+              // not leak a GPU texture + ImageBitmap per frame.
+              sprite.destroy();
+              texture.destroy(true);
+              (processed as { close?: () => void }).close?.();
+            }
+            return true;
           } finally {
             bitmap.close();
           }
         } catch (err) {
           log.warn('[Compositor] Master WebGPU effects failed:', err);
+          return false;
         }
       },
       setStageSortDirty: params.setStageSortDirty,

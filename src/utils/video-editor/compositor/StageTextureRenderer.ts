@@ -1,4 +1,4 @@
-import { Sprite, Texture, type Application, type Container, type RenderTexture } from 'pixi.js';
+import { RenderTexture, Sprite, Texture, type Application, type Container } from 'pixi.js';
 import type { CompositorClip, CompositorTrack } from './types';
 
 export interface StageTextureRendererContext {
@@ -11,8 +11,37 @@ export interface StageTextureRendererContext {
 export class StageTextureRenderer {
   private transitionCombineSprite: Sprite | null = null;
   private bitmapCaptureSprite: Sprite | null = null;
+  private captureTexture: RenderTexture | null = null;
 
   constructor(private readonly context: StageTextureRendererContext) {}
+
+  // All bitmap captures must go through an off-screen RenderTexture, never the
+  // renderer's own canvas: that canvas is displayed directly in the monitor
+  // (transferControlToOffscreen), and the awaited createImageBitmap yields to
+  // the event loop, which commits whatever intermediate content is on the
+  // canvas as a visible frame (black flashes during transitions, effect-less
+  // frames with track/adjustment/master effects).
+  private ensureCaptureTexture(): RenderTexture {
+    const { width, height } = this.context;
+    const texture = this.captureTexture;
+    const valid =
+      texture &&
+      !(texture as { destroyed?: boolean }).destroyed &&
+      texture.width === width &&
+      texture.height === height;
+    if (valid) {
+      return texture;
+    }
+
+    this.captureTexture?.destroy(true);
+    this.captureTexture = RenderTexture.create({ width, height });
+    return this.captureTexture;
+  }
+
+  private async captureTextureToBitmap(texture: RenderTexture): Promise<ImageBitmap> {
+    const canvas = this.context.app.renderer.extract.canvas(texture);
+    return await createImageBitmap(canvas as unknown as OffscreenCanvas);
+  }
 
   public setSize(width: number, height: number) {
     this.context.width = width;
@@ -27,6 +56,10 @@ export class StageTextureRenderer {
     if (this.bitmapCaptureSprite) {
       this.bitmapCaptureSprite.destroy();
       this.bitmapCaptureSprite = null;
+    }
+    if (this.captureTexture) {
+      this.captureTexture.destroy(true);
+      this.captureTexture = null;
     }
   }
 
@@ -111,11 +144,13 @@ export class StageTextureRenderer {
     const previousVisible = displayObject.visible;
     displayObject.visible = true;
     try {
+      const capture = this.ensureCaptureTexture();
       this.context.app.renderer.render({
         container: displayObject,
+        target: capture,
         clear: true,
       });
-      return await createImageBitmap(this.context.app.canvas);
+      return await this.captureTextureToBitmap(capture);
     } finally {
       displayObject.visible = previousVisible;
     }
@@ -135,11 +170,13 @@ export class StageTextureRenderer {
       this.context.height / Math.max(1, texture.height),
     );
 
+    const capture = this.ensureCaptureTexture();
     this.context.app.renderer.render({
       container: this.bitmapCaptureSprite,
+      target: capture,
       clear: true,
     });
-    return await createImageBitmap(this.context.app.canvas);
+    return await this.captureTextureToBitmap(capture);
   }
 
   public renderSingleClipToTexture(
@@ -237,10 +274,15 @@ export class StageTextureRenderer {
     }
 
     try {
+      const capture = this.ensureCaptureTexture();
       this.context.app.renderer.render({
         container: this.context.app.stage,
+        target: capture,
         clear: true,
       });
+      const captureCanvas = this.context.app.renderer.extract.canvas(
+        capture,
+      ) as unknown as OffscreenCanvas;
 
       const edgeInsetPixels = Math.max(0, Math.floor(options.edgeInsetPixels ?? 0));
       const maxInset = Math.max(
@@ -252,11 +294,11 @@ export class StageTextureRenderer {
       );
       const inset = Math.min(edgeInsetPixels, maxInset);
       if (inset === 0) {
-        return await createImageBitmap(this.context.app.canvas);
+        return await createImageBitmap(captureCanvas);
       }
 
       return await createImageBitmap(
-        this.context.app.canvas,
+        captureCanvas,
         inset,
         inset,
         this.context.width - inset * 2,

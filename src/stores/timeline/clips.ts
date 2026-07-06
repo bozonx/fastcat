@@ -64,6 +64,15 @@ export interface TimelineClipsDeps {
   selectTrack: (trackId: string | null) => void;
   getHotkeyTargetClip: () => { trackId: string; itemId: string } | null;
   ensureNoNestedTimelineCycle?: (path: string) => Promise<void>;
+  /**
+   * Resolve toolbar-mode-aware paste placement (overlap vs normal, snapping,
+   * frame quantization) for user-initiated paste. Mirrors the drop handler.
+   */
+  resolvePastePlacement?: (params: {
+    baseTargetTrackId: string;
+    insertStartUs: number;
+    totalDurationUs: number;
+  }) => { pseudo: boolean; insertStartUs: number; quantizeToFrames: boolean };
   defaultStaticClipDurationUs: number;
   defaultAudioFadeCurve: import('~/timeline/types').AudioFadeCurve;
   lastClipTrimmed: Ref<boolean>;
@@ -220,7 +229,11 @@ export interface TimelineClipsModule {
   cutSelectedClips: () => TimelineClipClipboardItem[];
   pasteClips: (
     items: TimelineClipClipboardItem[],
-    options?: { targetTrackId?: string | null; insertStartUs?: number },
+    options?: {
+      targetTrackId?: string | null;
+      insertStartUs?: number;
+      respectToolbarModes?: boolean;
+    },
   ) => Promise<{ trackId: string; itemId: string }[]>;
   trimItem: (params: {
     trackId: string;
@@ -552,7 +565,12 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
 
   async function pasteClips(
     items: TimelineClipClipboardItem[],
-    options?: { targetTrackId?: string | null; insertStartUs?: number },
+    options?: {
+      targetTrackId?: string | null;
+      insertStartUs?: number;
+      /** Honour the toolbar overlap / snap / free-mode switches (user paste). */
+      respectToolbarModes?: boolean;
+    },
   ): Promise<{ trackId: string; itemId: string }[]> {
     if (items.length === 0) return [];
 
@@ -594,7 +612,28 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
 
     // 2. Determine horizontal and vertical offsets
     const minStartUs = Math.min(...items.map((item) => item.clip.timelineRange.startUs));
-    const insertStartUs = Math.max(0, Math.round(options?.insertStartUs ?? deps.currentTime.value));
+    let insertStartUs = Math.max(0, Math.round(options?.insertStartUs ?? deps.currentTime.value));
+
+    // Placement mode. By default paste overlays (pseudo) and frame-quantizes —
+    // this preserves programmatic callers (alt-drag copy, etc.). User-initiated
+    // paste (context menu / Ctrl+V) opts into `respectToolbarModes` so it honours
+    // the toolbar's overlap / normal, snap / no-snap and free-mode switches, just
+    // like dropping media does.
+    let pasteAsPseudo = true;
+    let pasteQuantizeToFrames: boolean | undefined;
+    if (options?.respectToolbarModes && deps.resolvePastePlacement) {
+      const spanEndUs = Math.max(
+        ...items.map((it) => it.clip.timelineRange.startUs + it.clip.timelineRange.durationUs),
+      );
+      const placement = deps.resolvePastePlacement({
+        baseTargetTrackId: baseTargetTrack.id,
+        insertStartUs,
+        totalDurationUs: Math.max(0, spanEndUs - minStartUs),
+      });
+      pasteAsPseudo = placement.pseudo;
+      pasteQuantizeToFrames = placement.quantizeToFrames;
+      insertStartUs = Math.max(0, Math.round(placement.insertStartUs));
+    }
 
     // Identify unique source tracks and find the "top-most" one among copied items
     const sourceTrackIdsSet = new Set(items.map((it) => it.sourceTrackId));
@@ -683,7 +722,8 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
           sourceDurationUs: clip.sourceDurationUs,
           sourceRange: clip.sourceRange,
           isImage: clip.isImage,
-          pseudo: true,
+          pseudo: pasteAsPseudo,
+          quantizeToFrames: pasteQuantizeToFrames,
         });
       } else {
         commands.push({
@@ -697,7 +737,8 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
           name: clip.name,
           durationUs: clip.timelineRange.durationUs,
           startUs: nextStartUs,
-          pseudo: true,
+          pseudo: pasteAsPseudo,
+          quantizeToFrames: pasteQuantizeToFrames,
           backgroundColor: 'backgroundColor' in clip ? clip.backgroundColor : undefined,
           text: 'text' in clip ? clip.text : undefined,
           style: 'style' in clip ? clip.style : undefined,

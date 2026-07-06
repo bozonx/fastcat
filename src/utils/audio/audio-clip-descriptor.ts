@@ -79,13 +79,14 @@ export function buildNativeAudioEffectSpecs(effects?: ClipEffect[]): AudioEffect
       Boolean(effect?.enabled && effect.target === 'audio'),
     )
     .map((effect) => {
-      const { id, type: effectType, enabled, target: _target, wet, ...rest } = effect;
+      const { id, type: effectType, enabled, target: _target, wet, plugin, ...rest } = effect;
       return {
         id,
         type: effectType,
         enabled: Boolean(enabled),
         wet: typeof wet === 'number' ? wet : 1,
         params: rest as Record<string, unknown>,
+        plugin: (plugin as AudioEffectSpec['plugin']) ?? null,
       };
     });
 }

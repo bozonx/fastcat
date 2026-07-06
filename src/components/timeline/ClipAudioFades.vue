@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount } from 'vue';
 import type { TimelineTrack, TimelineClipItem, TimelineTrackItem } from '~/timeline/types';
-import { timeUsToPx } from '~/utils/timeline/geometry';
+import { timeUsToPx, computeClipCenteredOverlayLeftPx } from '~/utils/timeline/geometry';
 import { clipGainToYPercent } from '~/utils/audio';
 
 const props = defineProps<{
@@ -128,6 +128,27 @@ onBeforeUnmount(() => {
   }
 });
 
+const canEditVolume = computed(
+  () => props.canEdit && !props.clip.locked && !props.track.locked && !props.isMobile,
+);
+
+function onVolumeLinePointerDown(event: PointerEvent) {
+  // Only the primary button starts a volume drag. Right / middle clicks must
+  // fall through untouched so the clip's own context menu opens as it does on
+  // any other part of the clip.
+  if (event.button !== 0 || !canEditVolume.value) return;
+  event.stopPropagation();
+  event.preventDefault();
+  emit('startResizeVolume', event, props.clip.audioGain ?? 1);
+}
+
+function onVolumeLineDblClick(event: MouseEvent) {
+  if (!canEditVolume.value) return;
+  event.stopPropagation();
+  event.preventDefault();
+  emit('resetVolume');
+}
+
 const volumeY = computed(() => {
   return clipGainToYPercent(props.clip.audioGain ?? 1);
 });
@@ -156,38 +177,13 @@ const volumeIcon = computed(() => {
 });
 
 const volumeIndicatorPosition = computed(() => {
-  const idealX = props.clipWidthPx / 2;
-
-  if (props.scrollLeft === undefined || props.viewportWidth === undefined) {
-    return { left: `${idealX}px` };
-  }
-
-  const zoom = props.zoom;
-  const clipStartPx = timeUsToPx(props.item.timelineRange.startUs, zoom);
-  const vpStart = props.scrollLeft;
-  const vpEnd = vpStart + props.viewportWidth;
-
-  const clipCenterPx = clipStartPx + idealX;
-  const isCenterOutsideViewport = clipCenterPx < vpStart || clipCenterPx > vpEnd;
-
-  if (!isCenterOutsideViewport) {
-    return { left: `${idealX}px` };
-  }
-
-  // Shift indicator to stay visible
-  const padding = 24; // Padding to keep the text within the clip boundaries
-  const localVpStart = vpStart - clipStartPx;
-  const localVpEnd = localVpStart + props.viewportWidth;
-
-  let shiftedX = idealX;
-  if (clipCenterPx < vpStart) {
-    shiftedX = localVpStart + padding;
-  } else if (clipCenterPx > vpEnd) {
-    shiftedX = localVpEnd - padding;
-  }
-
-  // Ensure it stays within clip boundaries
-  const finalX = Math.max(padding, Math.min(props.clipWidthPx - padding, shiftedX));
+  const finalX = computeClipCenteredOverlayLeftPx({
+    clipStartPx: timeUsToPx(props.item.timelineRange.startUs, props.zoom),
+    clipWidthPx: props.clipWidthPx,
+    scrollLeft: props.scrollLeft,
+    viewportWidth: props.viewportWidth,
+    paddingPx: 24, // keep the plate within the clip boundaries
+  });
   return { left: `${finalX}px` };
 });
 </script>
@@ -290,14 +286,25 @@ const volumeIndicatorPosition = computed(() => {
         ></div>
       </div>
     </template>
+  </div>
 
-    <!-- Volume Control Line -->
+  <!-- Volume Control Line — kept in its own stacking root *below* the trim
+       handles (unlike the fade shapes/handles above) so the horizontal volume
+       line never covers the trim grips at the clip edges. -->
+  <div
+    v-if="!shouldCollapseFades() && trackHeight >= 35"
+    class="absolute left-0 right-0 pointer-events-none"
+    :style="{
+      zIndex: 'calc(var(--z-clip-trim) - 5)',
+      top: `${topInsetPx ?? 0}px`,
+      bottom: `${bottomInsetPx ?? 0}px`,
+    }"
+  >
     <div
-      v-if="trackHeight >= 35"
       data-testid="clip-volume-control"
-      class="absolute left-0 right-0 z-45 h-3 -mt-1.5 flex flex-col justify-center transition-opacity touch-none"
+      class="absolute left-0 right-0 h-3 -mt-1.5 flex flex-col justify-center transition-opacity touch-none"
       :class="[
-        canEdit && !clip.locked && !track.locked && !isMobile && isSelected
+        canEditVolume && isSelected
           ? 'cursor-ns-resize pointer-events-auto'
           : 'pointer-events-none',
         clip.audioMuted || ((clip.audioGain ?? 1) === 1 && !isResizingVolume && !isSelected)
@@ -306,16 +313,8 @@ const volumeIndicatorPosition = computed(() => {
         isDragging && !isResizingVolume ? 'opacity-0! pointer-events-none' : '',
       ]"
       :style="{ top: `${volumeY}%` }"
-      @pointerdown.stop.prevent="
-        canEdit &&
-        !clip.locked &&
-        !track.locked &&
-        !isMobile &&
-        emit('startResizeVolume', $event, clip.audioGain ?? 1)
-      "
-      @dblclick.stop.prevent="
-        canEdit && !clip.locked && !track.locked && !isMobile && emit('resetVolume')
-      "
+      @pointerdown="onVolumeLinePointerDown"
+      @dblclick="onVolumeLineDblClick"
     >
       <div
         v-if="!isMobile"

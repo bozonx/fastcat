@@ -628,7 +628,7 @@ watch(
           :style="getTrackMuteOverlayStyle(track)"
         >
           <div
-            v-if="track.audioMuted"
+            v-if="track.audioMuted && isMobile"
             class="absolute top-1/2 -translate-y-1/2 pointer-events-none"
             :style="getMuteIconPositionStyle()"
           >
