@@ -160,6 +160,7 @@ const timelineContext = inject<TimelineContext>('timelineContext')!;
 
 const isHovered = ref(false);
 const isTransitionCreateHandleActive = ref(false);
+const clipContainerRef = ref<HTMLElement | null>(null);
 
 // O(1) selection check via the shared Set view; avoids Array.includes() scans on
 // every render (this binding is read several times per clip per frame).
@@ -336,16 +337,18 @@ const {
     if (!timelineContext.selectedItemIdSet.value.has(props.item.id)) {
       timelineContext.selectTimelineItems([{ trackId: props.track.id, itemId: props.item.id }]);
     }
-    const target = e.target as HTMLElement | null;
     void nextTick().then(() => {
-      target?.dispatchEvent(
-        new MouseEvent('contextmenu', {
-          bubbles: true,
-          cancelable: true,
-          clientX: e.clientX,
-          clientY: e.clientY,
-        }),
-      );
+      const container = clipContainerRef.value;
+      if (container) {
+        container.dispatchEvent(
+          new MouseEvent('contextmenu', {
+            bubbles: true,
+            cancelable: true,
+            clientX: e.clientX,
+            clientY: e.clientY,
+          }),
+        );
+      }
     });
   },
   onLongPress: (e) => {
@@ -363,15 +366,17 @@ const {
     // for the (untrusted) contextmenu event and onContextMenu only blocks
     // trusted ones.
     if (e.pointerType === 'touch' || e.pointerType === 'pen') {
-      const target = e.target as HTMLElement | null;
-      target?.dispatchEvent(
-        new MouseEvent('contextmenu', {
-          bubbles: true,
-          cancelable: true,
-          clientX: e.clientX,
-          clientY: e.clientY,
-        }),
-      );
+      const container = clipContainerRef.value;
+      if (container) {
+        container.dispatchEvent(
+          new MouseEvent('contextmenu', {
+            bubbles: true,
+            cancelable: true,
+            clientX: e.clientX,
+            clientY: e.clientY,
+          }),
+        );
+      }
     }
   },
 });
@@ -810,6 +815,7 @@ function handleTransitionCreate(
     @update:open="isContextMenuOpen = $event"
   >
     <div
+      ref="clipContainerRef"
       :data-clip-id="item.kind === 'clip' ? item.id : undefined"
       :data-gap-id="item.kind === 'gap' ? item.id : undefined"
       class="absolute top-0.5 bottom-0.5 rounded flex flex-col text-xs text-(--clip-text) select-none transition-shadow group/clip"

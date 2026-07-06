@@ -26,7 +26,7 @@ const handleWidth = computed(() => {
     data-testid="clip-trim-start"
     class="absolute left-0 cursor-ew-resize bg-white/0 transition-colors group/trim flex items-center justify-start pl-0.5 touch-none"
     :style="{
-      zIndex: 'var(--z-clip-trim)',
+      zIndex: 'var(--z-clip-handles)',
       width: `${handleWidth}px`,
       top: `${topInsetPx ?? 0}px`,
       bottom: `${bottomInsetPx ?? 0}px`,
@@ -42,7 +42,7 @@ const handleWidth = computed(() => {
     data-testid="clip-trim-end"
     class="absolute right-0 cursor-ew-resize bg-white/0 transition-colors group/trim flex items-center justify-end pr-0.5 touch-none"
     :style="{
-      zIndex: 'var(--z-clip-trim)',
+      zIndex: 'var(--z-clip-handles)',
       width: `${handleWidth}px`,
       top: `${topInsetPx ?? 0}px`,
       bottom: `${bottomInsetPx ?? 0}px`,

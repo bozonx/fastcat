@@ -271,10 +271,16 @@ export class CompositorRenderContextBuilder {
             container.alpha = 1;
             container.blendMode = 'normal';
             try {
-              bitmap =
-                await params.stageTextureRenderer.renderDisplayObjectToBitmapForcedVisible(
-                  container,
-                );
+              // Capture over transparent, not the project background: the
+              // processed sprite must keep the track content's alpha so it
+              // still composites over lower tracks (and the track's own
+              // opacity/blend don't tint baked-in background pixels). Mirrors
+              // the native engine, which renders track members via
+              // Scene::isolated with a TRANSPARENT background.
+              bitmap = await params.stageTextureRenderer.renderDisplayObjectToBitmapForcedVisible(
+                container,
+                { transparent: true },
+              );
             } finally {
               container.alpha = prevAlpha;
               container.blendMode = prevBlend;

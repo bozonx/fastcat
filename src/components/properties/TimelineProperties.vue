@@ -597,6 +597,8 @@ const addTrackActions = computed(() => [
       v-model:open="isSaveAsModalOpen"
       :title="t('fastcat.timeline.saveAs')"
       :confirm-label="t('common.save')"
+      :default-value="fsEntry?.name"
+      :select-without-extension="true"
       :validate="validateSaveAs"
       @confirm="handleSaveAsConfirm"
     />

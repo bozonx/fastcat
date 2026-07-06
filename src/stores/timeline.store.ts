@@ -392,6 +392,16 @@ export const useTimelineStore = defineStore('timeline', () => {
     },
   );
 
+  watch(
+    () => timelineDoc.value?.metadata?.fastcat?.selectionRange,
+    (newRange) => {
+      if (JSON.stringify(selectionRange.value) !== JSON.stringify(newRange)) {
+        selectionRange.value = newRange ? { ...newRange } : null;
+      }
+    },
+    { deep: true, immediate: true }
+  );
+
   async function requestTimelineSave(options?: { immediate?: boolean }) {
     await lifecycle.requestTimelineSave(options);
   }
@@ -399,6 +409,19 @@ export const useTimelineStore = defineStore('timeline', () => {
   async function loadTimeline() {
     await lifecycle.loadTimeline();
     scrollToPlayheadRequest.value++;
+    selectionStore.selectTimelineProperties();
+
+    if (selectionRange.value && !timelineDoc.value?.metadata?.fastcat?.selectionRange) {
+      applyTimeline(
+        {
+          type: 'update_timeline_properties',
+          properties: {
+            selectionRange: { ...selectionRange.value },
+          },
+        },
+        { skipHistory: true, saveMode: 'none' },
+      );
+    }
   }
 
   // eslint-disable-next-line prefer-const -- late-initialized before createTimelineLifecycleModule call

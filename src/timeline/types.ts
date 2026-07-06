@@ -612,6 +612,7 @@ export interface TimelineFastCatMetadata {
   masterEffects?: ClipEffect[];
   masterGain?: number;
   masterMuted?: boolean;
+  selectionRange?: TimelineSelectionRange | null;
 }
 
 export interface TimelineMetadata {

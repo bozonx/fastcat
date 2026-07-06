@@ -54,7 +54,7 @@ const { isSnapSettingsModalOpen } = storeToRefs(settingsStore);
 const { showPresetModal } = useTimelineTextPreset();
 
 const trimMenuItems = computed(() => {
-  const isNoClipSelected = timelineStore.getHotkeyTargetClip() === null;
+  const isNoClipSelected = timelineStore.selectedItemIds.length === 0;
 
   const keyTrimL = getHotkeyLabel('timeline.trimToPlayheadLeft');
   const keyTrimR = getHotkeyLabel('timeline.trimToPlayheadRight');

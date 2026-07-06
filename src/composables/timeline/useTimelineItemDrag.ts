@@ -1129,6 +1129,7 @@ export function useTimelineItemDrag(
         {
           targetTrackId: copiedSingleClipPayload.targetTrackId,
           insertStartUs: copiedSingleClipPayload.targetStartUs,
+          respectToolbarModes: true,
         },
       );
       hasPendingTimelinePersist.value = true;

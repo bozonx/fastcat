@@ -74,19 +74,26 @@ export function createTimelineSelectionRangeModule(
 
   function updateSelectionRange(
     range: TimelineSelectionRange | null,
-    _options?: TimelineApplyOptions,
+    options?: TimelineApplyOptions,
   ) {
     previewRange.value = null;
 
-    if (!range) {
-      params.selectionRange.value = null;
-      return;
-    }
+    const nextRange = range
+      ? {
+          startUs: Math.max(0, Math.round(range.startUs)),
+          endUs: Math.max(Math.round(range.startUs), Math.round(range.endUs)),
+        }
+      : null;
 
-    params.selectionRange.value = {
-      startUs: Math.max(0, Math.round(range.startUs)),
-      endUs: Math.max(Math.round(range.startUs), Math.round(range.endUs)),
-    };
+    params.applyTimeline(
+      {
+        type: 'update_timeline_properties',
+        properties: {
+          selectionRange: nextRange,
+        },
+      },
+      options,
+    );
   }
 
   function createSelectionRangeAtPlayhead(durationUs?: number) {

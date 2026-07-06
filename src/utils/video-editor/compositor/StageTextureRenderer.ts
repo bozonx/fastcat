@@ -1,4 +1,11 @@
-import { RenderTexture, Sprite, Texture, type Application, type Container } from 'pixi.js';
+import {
+  RendererType,
+  RenderTexture,
+  Sprite,
+  Texture,
+  type Application,
+  type Container,
+} from 'pixi.js';
 import type { CompositorClip, CompositorTrack } from './types';
 
 export interface StageTextureRendererContext {
@@ -38,9 +45,34 @@ export class StageTextureRenderer {
     return this.captureTexture;
   }
 
+  private extractImageData(texture: RenderTexture): ImageData {
+    const renderer = this.context.app.renderer;
+    const { pixels, width, height } = renderer.extract.pixels(texture);
+    const data =
+      pixels instanceof Uint8ClampedArray
+        ? pixels
+        : new Uint8ClampedArray(pixels as ArrayLike<number>);
+
+    // Pixi's WebGL extract reads the render target's premultiplied pixels but
+    // labels them straight (its unpremultiplyAlpha call is compiled out), which
+    // darkens semi-transparent pixels; undo the premultiply here. The WebGPU
+    // extract path goes through a 2D-canvas drawImage, which already
+    // unpremultiplies.
+    if (renderer.type === RendererType.WEBGL) {
+      for (let i = 0; i < data.length; i += 4) {
+        const alpha = data[i + 3]!;
+        if (alpha === 0 || alpha === 255) continue;
+        data[i] = Math.min(255, Math.round((data[i]! * 255) / alpha));
+        data[i + 1] = Math.min(255, Math.round((data[i + 1]! * 255) / alpha));
+        data[i + 2] = Math.min(255, Math.round((data[i + 2]! * 255) / alpha));
+      }
+    }
+
+    return new ImageData(data as Uint8ClampedArray<ArrayBuffer>, width, height);
+  }
+
   private async captureTextureToBitmap(texture: RenderTexture): Promise<ImageBitmap> {
-    const canvas = this.context.app.renderer.extract.canvas(texture);
-    return await createImageBitmap(canvas as unknown as OffscreenCanvas);
+    return await createImageBitmap(this.extractImageData(texture));
   }
 
   public setSize(width: number, height: number) {
@@ -140,6 +172,7 @@ export class StageTextureRenderer {
 
   public async renderDisplayObjectToBitmapForcedVisible(
     displayObject: Container,
+    options: { transparent?: boolean } = {},
   ): Promise<ImageBitmap> {
     const previousVisible = displayObject.visible;
     displayObject.visible = true;
@@ -149,6 +182,10 @@ export class StageTextureRenderer {
         container: displayObject,
         target: capture,
         clear: true,
+        // The default clear uses the project background color; isolated
+        // captures (track effects) must keep the content's own alpha so the
+        // processed result still composites over the layers below it.
+        clearColor: options.transparent ? [0, 0, 0, 0] : undefined,
       });
       return await this.captureTextureToBitmap(capture);
     } finally {
@@ -280,9 +317,7 @@ export class StageTextureRenderer {
         target: capture,
         clear: true,
       });
-      const captureCanvas = this.context.app.renderer.extract.canvas(
-        capture,
-      ) as unknown as OffscreenCanvas;
+      const captureData = this.extractImageData(capture);
 
       const edgeInsetPixels = Math.max(0, Math.floor(options.edgeInsetPixels ?? 0));
       const maxInset = Math.max(
@@ -294,11 +329,11 @@ export class StageTextureRenderer {
       );
       const inset = Math.min(edgeInsetPixels, maxInset);
       if (inset === 0) {
-        return await createImageBitmap(captureCanvas);
+        return await createImageBitmap(captureData);
       }
 
       return await createImageBitmap(
-        captureCanvas,
+        captureData,
         inset,
         inset,
         this.context.width - inset * 2,

@@ -28,6 +28,7 @@ const INPUT_FOCUS_DELAY_MS = 50;
 const name = ref(props.defaultValue || '');
 const inputRef = ref<HTMLElement | null>(null);
 const errorMsg = ref<string | null>(null);
+const isModified = ref(false);
 
 // While true, focusing the input re-applies the base-name selection. This
 // outlasts Reka UI's focus-scope refocus (which calls input.select() and would
@@ -93,6 +94,10 @@ function handleAfterEnter() {
 }
 
 function runValidation() {
+  if (!isModified.value) {
+    errorMsg.value = null;
+    return;
+  }
   if (!props.validate) {
     errorMsg.value = null;
     return;
@@ -107,7 +112,8 @@ function runValidation() {
   }
 }
 
-watch(name, () => {
+watch(name, (newVal) => {
+  isModified.value = newVal.trim() !== (props.defaultValue || '').trim();
   runValidation();
 });
 
@@ -117,6 +123,7 @@ watch(
   async (val) => {
     if (val) {
       name.value = props.defaultValue || '';
+      isModified.value = false;
       errorMsg.value = null;
       shouldSelectOnFocus.value = true;
       await nextTick();
@@ -136,6 +143,7 @@ watch(
 onMounted(() => {
   if (isOpen.value) {
     name.value = props.defaultValue || '';
+    isModified.value = false;
     runValidation();
   }
 });
@@ -188,7 +196,7 @@ function handleCancel() {
         </UButton>
         <UButton
           color="primary"
-          :disabled="!name.trim() || loading || !!errorMsg"
+          :disabled="!name.trim() || loading || !!errorMsg || !isModified"
           :loading="loading"
           @click="handleConfirm"
         >

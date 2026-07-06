@@ -175,6 +175,7 @@ watch([localWidth, localHeight, localIsCustom], ([w, h, isCustom]) => {
         <UiFormField :label="t('videoEditor.resolution.finalResolution')" class="flex-1 shrink-0">
           <div
             class="text-sm text-ui-text font-mono font-medium bg-ui-bg-accent px-3 rounded flex items-center justify-center border border-ui-border/50 h-8"
+            :class="disabled ? 'cursor-not-allowed opacity-60' : ''"
           >
             {{ localWidth }} &times; {{ localHeight }}
           </div>

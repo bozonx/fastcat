@@ -464,6 +464,8 @@ watch(
         :key="trackViewModel.track.id"
         v-memo="[
           trackViewModel.track.id,
+          props.scrollLeft,
+          props.viewportWidth,
           trackViewModel.track.locked,
           trackViewModel.track.color,
           trackViewModel.height,
