@@ -4,6 +4,7 @@
 !.env.*.example
 playwright-report
 test-results/
+test-files/
 playwright/.cache/
 coverage/
 dist-lib/

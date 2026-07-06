@@ -43,8 +43,10 @@ export interface RecentProject {
 
 export const useWorkspaceStore = defineStore('workspace', () => {
   const runtimeConfig = useRuntimeConfig();
+  const forceTauriDevPaths = Boolean(runtimeConfig.public.e2eTest);
   const workspaceProvider = createWorkspaceProvider(
     runtimeConfig.public.fastcatDevDir as string | undefined,
+    forceTauriDevPaths,
   );
   const workspaceTopology = getWorkspaceStorageTopology();
 
@@ -146,6 +148,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
 
     tauriAppPaths.value ??= await resolveTauriAppPaths(
       runtimeConfig.public.fastcatDevDir as string | undefined,
+      forceTauriDevPaths,
     );
     if (!tauriAppPaths.value) {
       resolvedStorageTopology.value = resolveWorkspaceLocalStorageTopology(paths);

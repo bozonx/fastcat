@@ -25,6 +25,7 @@ export class TauriWorkspaceProvider implements WorkspaceProvider {
   constructor(
     private storage: WorkspaceHandleStorage<string>,
     private fastcatDevDir?: string,
+    private forceDevPaths?: boolean,
   ) {}
 
   async openWorkspace(): Promise<DirectoryHandleLike | null> {
@@ -62,7 +63,7 @@ export class TauriWorkspaceProvider implements WorkspaceProvider {
   }
 
   private async resolveDefaultWorkspacePath(): Promise<string | null> {
-    const paths = await resolveTauriAppPaths(this.fastcatDevDir);
+    const paths = await resolveTauriAppPaths(this.fastcatDevDir, this.forceDevPaths);
     if (!paths) return null;
 
     const { join } = await import('@tauri-apps/api/path');

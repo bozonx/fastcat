@@ -106,6 +106,8 @@ pnpm test:e2e:tauri:build
 
 The release build (`pnpm tauri build --no-bundle`) runs `pnpm generate` and
 embeds the frontend into the binary, so the suite is self-contained.
+The suite uses `test-files/tauri-e2e` as its emulated desktop filesystem root
+and cleans it before every `pnpm test:e2e:tauri` run.
 
 ### Fast local iteration
 
@@ -124,3 +126,5 @@ TAURI_E2E_BINARY=src-tauri/target/debug/fastcat pnpm exec wdio run test/tauri-e2
 | `TAURI_E2E_BINARY`   | `…/target/release/fastcat`   | Use a prebuilt binary as-is      |
 | `TAURI_DRIVER_PATH`  | `~/.cargo/bin/tauri-driver`  | tauri-driver location            |
 | `TAURI_DRIVER_PORT`  | `4444`                       | tauri-driver intermediary port   |
+| `FASTCAT_DEV_DIR`    | `./test-files/tauri-e2e`     | Emulated desktop filesystem root |
+| `TAURI_E2E_PROJECTS_ROOT` | `$FASTCAT_DEV_DIR/home/user/Documents/FastCat/projects` | Project cleanup root |

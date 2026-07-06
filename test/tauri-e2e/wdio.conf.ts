@@ -2,7 +2,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, readdirSync, rmSync } from 'node:fs';
 import type { Options } from '@wdio/types';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -23,8 +23,18 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 
 const projectRoot = path.resolve(here, '..', '..');
 const tauriDir = path.join(projectRoot, 'src-tauri');
+const defaultTauriE2eRoot = path.join(projectRoot, 'test-files', 'tauri-e2e');
 
 process.env.E2E_TEST ??= '1';
+process.env.FASTCAT_DEV_DIR ??= defaultTauriE2eRoot;
+process.env.TAURI_E2E_PROJECTS_ROOT ??= path.join(
+  process.env.FASTCAT_DEV_DIR,
+  'home',
+  'user',
+  'Documents',
+  'FastCat',
+  'projects',
+);
 
 // Cargo package name is `fastcat`, so the release binary is `target/release/fastcat`.
 // `TAURI_E2E_BINARY` lets you point at an already-built binary (e.g. a debug
@@ -42,6 +52,34 @@ let tauriDriver: ChildProcess | undefined;
 // explicit host/port to attach to this already-running WebDriver instead of
 // trying to auto-provision its own browser driver.
 const tauriDriverPort = Number(process.env.TAURI_DRIVER_PORT ?? 4444);
+
+const testProjectPrefixes = ['Tauri Drop '];
+
+interface WdioBrowserGlobal {
+  execute: <T>(fn: () => T | Promise<T>) => Promise<T>;
+  refresh: () => Promise<void>;
+  waitUntil: (
+    condition: () => Promise<boolean> | boolean,
+    options?: { timeout?: number; timeoutMsg?: string },
+  ) => Promise<boolean>;
+}
+
+function cleanupTauriE2eProjects(): void {
+  const projectsRoot = process.env.TAURI_E2E_PROJECTS_ROOT
+    ? path.resolve(process.env.TAURI_E2E_PROJECTS_ROOT)
+    : path.join(defaultTauriE2eRoot, 'home', 'user', 'Documents', 'FastCat', 'projects');
+
+  if (!existsSync(projectsRoot)) {
+    return;
+  }
+
+  for (const entry of readdirSync(projectsRoot, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    if (!testProjectPrefixes.some((prefix) => entry.name.startsWith(prefix))) continue;
+
+    rmSync(path.join(projectsRoot, entry.name), { recursive: true, force: true });
+  }
+}
 
 export const config: Options.Testrunner = {
   runner: 'local',
@@ -82,6 +120,8 @@ export const config: Options.Testrunner = {
   // (`pnpm generate`) + cargo is slow, so we skip when the binary already
   // exists — run `pnpm tauri:build:e2e` to force a rebuild.
   onPrepare: () => {
+    cleanupTauriE2eProjects();
+
     if (existsSync(application)) {
       return;
     }
@@ -107,6 +147,26 @@ export const config: Options.Testrunner = {
       console.error('[tauri-e2e] failed to start tauri-driver:', error);
       process.exit(1);
     });
+  },
+
+  before: async () => {
+    const browser = (globalThis as unknown as { browser: WdioBrowserGlobal }).browser;
+    await browser.execute(() => {
+      localStorage.removeItem('fastcat_recent_projects');
+    });
+    await browser.refresh();
+    await browser.waitUntil(
+      () =>
+        browser.execute(() => {
+          const hasTauriInternals =
+            typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
+          return document.readyState === 'complete' && hasTauriInternals;
+        }),
+      {
+        timeout: 10_000,
+        timeoutMsg: 'Tauri e2e app did not finish reloading after storage cleanup',
+      },
+    );
   },
 
   afterSession: () => {
