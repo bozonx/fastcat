@@ -293,6 +293,9 @@ pub struct SceneAudioLayer {
     #[serde(default)]
     pub audio_balance: f64,
     #[serde(default)]
+    #[ts(type = "import('~/timeline/types').ClipAnimations", optional)]
+    pub animations: Option<serde_json::Value>,
+    #[serde(default)]
     pub audio_fade_in_sec: f64,
     #[serde(default)]
     pub audio_fade_out_sec: f64,
@@ -849,6 +852,7 @@ mod tests {
             speed: 1.0,
             audio_gain: 1.0,
             audio_balance: 0.0,
+            animations: None,
             audio_fade_in_sec: 0.0,
             audio_fade_out_sec: 0.0,
             audio_fade_in_curve: AudioFadeCurve::Linear,

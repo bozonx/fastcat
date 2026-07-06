@@ -441,6 +441,7 @@ mod tests {
             speed: 1.0,
             audio_gain: 1.0,
             audio_balance: 0.0,
+            animations: None,
             audio_fade_in_sec: 2.0,
             audio_fade_out_sec: 2.0,
             audio_fade_in_curve: AudioFadeCurve::Linear,

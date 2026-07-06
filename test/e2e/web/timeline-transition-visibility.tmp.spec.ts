@@ -49,33 +49,35 @@ test.describe('Transition triangle repro', () => {
   }) => {
     const clipId = await projectWithVideoClip(page, e2eProject);
     const clipLocator = page.locator(`[data-clip-id="${clipId}"]`);
-    await selectClip(page, clipId);
 
-    // Hover to reveal the create handles.
+    // Hover near the clip's left edge to reveal the create handles (no click:
+    // the clip can be wider than the viewport, making a center-click hang).
     const box = await clipLocator.boundingBox();
     if (!box) throw new Error('no clip box');
     console.log('clip box:', JSON.stringify(box));
-    await page.mouse.move(box.x + Math.min(20, box.width / 2), box.y + box.height / 2, {
-      steps: 3,
-    });
-
-    const handle = clipLocator.locator('[data-testid="transition-create-in"]');
-    await expect(handle).toBeVisible();
+    await page.mouse.move(box.x + 8, box.y + box.height / 2, { steps: 3 });
 
     // Drive the whole gesture in-page from the handle's own rect, so device-pixel
     // and viewport-offset quirks can't push the click off-target. Verify the
-    // handle really is the hit-test target before dispatching.
+    // handle really is the hit-test target before dispatching — this is the crux:
+    // if the trim handle (raised to --z-clip-handles) sits on top, the triangle
+    // never receives the pointer and no transition is created.
     const result = await page.evaluate((cid) => {
       const clipEl = document.querySelector(`[data-clip-id="${cid}"]`);
       const h = clipEl?.querySelector(
         '[data-testid="transition-create-in"]',
       ) as HTMLElement | null;
       if (!h) return { ok: false, reason: 'no handle el' };
+      const cls = h.getAttribute('class') ?? '';
       const r = h.getBoundingClientRect();
       const cx = r.left + r.width / 2;
       const cy = r.top + r.height / 2;
-      const hit = document.elementFromPoint(cx, cy);
-      const hitInHandle = !!hit && (hit === h || h.contains(hit));
+      const hitEl = document.elementFromPoint(cx, cy) as HTMLElement | null;
+      const hitInHandle = !!hitEl && (hitEl === h || h.contains(hitEl));
+      const hitTestid =
+        hitEl?.getAttribute('data-testid') ??
+        hitEl?.closest('[data-testid]')?.getAttribute('data-testid') ??
+        null;
 
       const fire = (type: string, target: EventTarget, x: number, dy = 0) => {
         target.dispatchEvent(
@@ -92,12 +94,14 @@ test.describe('Transition triangle repro', () => {
         );
       };
 
-      // pointerdown on the handle, then a real drag to the left on window.
-      fire('pointerdown', h, cx);
+      // Dispatch on whatever is actually the hit-test winner (mimicking a real
+      // user click at that pixel), then drag right on window.
+      const downTarget = hitEl ?? h;
+      fire('pointerdown', downTarget, cx);
       for (let i = 1; i <= 10; i++) fire('pointermove', window, cx + i * 8);
       fire('pointerup', window, cx + 80);
 
-      return { ok: true, hitInHandle, hitTag: hit?.tagName, rect: { cx, cy } };
+      return { ok: true, handleClass: cls, hitInHandle, hitTag: hitEl?.tagName, hitTestid };
     }, clipId);
     console.log('gesture result:', JSON.stringify(result));
 

@@ -1,5 +1,10 @@
 import { computed, ref, type Ref } from 'vue';
-import type { TimelineClipItem, TimelineTrack, TimelineDocument } from '~/timeline/types';
+import type {
+  FixedAnimatableParamPath,
+  TimelineClipItem,
+  TimelineTrack,
+  TimelineDocument,
+} from '~/timeline/types';
 import {
   CLIP_AUDIO_GAIN_MAX,
   normalizeAudioFadeCurve,
@@ -28,6 +33,9 @@ interface UseClipAudioOptions {
   ) => void;
   pushHistory?: (preState: TimelineDocument, commandType: string, labelKey: string) => void;
   getTimelineDoc?: () => TimelineDocument | null;
+  isParamAnimated?: (path: FixedAnimatableParamPath) => boolean;
+  onAnimatedParamEdit?: (path: FixedAnimatableParamPath, value: number) => void;
+  getAnimatedDisplayValue?: (path: FixedAnimatableParamPath, staticValue: number) => number;
 }
 
 function clampNumber(value: unknown, min: number, max: number): number {
@@ -70,22 +78,32 @@ export function useClipAudio(options: UseClipAudioOptions) {
   const audioGain = computed(() => {
     const v = options.clip.value.audioGain;
     const safe = typeof v === 'number' && Number.isFinite(v) ? v : 1;
-    return Math.max(0, Math.min(CLIP_AUDIO_GAIN_MAX, safe));
+    const displayed = options.getAnimatedDisplayValue?.('audio.volume', safe) ?? safe;
+    return Math.max(0, Math.min(CLIP_AUDIO_GAIN_MAX, displayed));
   });
 
   const audioBalance = computed(() => {
     const v = options.clip.value.audioBalance;
     const safe = typeof v === 'number' && Number.isFinite(v) ? v : 0;
-    return Math.max(-1, Math.min(1, safe));
+    const displayed = options.getAnimatedDisplayValue?.('audio.pan', safe) ?? safe;
+    return Math.max(-1, Math.min(1, displayed));
   });
+
+  function tryRecordAnimatedEdit(path: FixedAnimatableParamPath, value: number): boolean {
+    if (!options.isParamAnimated?.(path)) return false;
+    options.onAnimatedParamEdit?.(path, value);
+    return true;
+  }
 
   function updateAudioGain(val: unknown, applyOptions?: { skipHistory?: boolean }) {
     const safe = clampNumber(val, 0, CLIP_AUDIO_GAIN_MAX);
+    if (tryRecordAnimatedEdit('audio.volume', safe)) return;
     options.updateAudio({ audioGain: safe }, applyOptions);
   }
 
   function updateAudioBalance(val: unknown) {
     const safe = clampNumber(val, -1, 1);
+    if (tryRecordAnimatedEdit('audio.pan', safe)) return;
     options.updateAudio({ audioBalance: safe });
   }
 

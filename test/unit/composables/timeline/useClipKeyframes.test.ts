@@ -76,6 +76,24 @@ describe('useClipKeyframes', () => {
     ]);
   });
 
+  it('toggleAnimated seeds audio volume and pan from static audio fields', () => {
+    const clip = ref(makeClip({ audioGain: 0.35, audioBalance: -0.25 }));
+    const playheadUs = ref(1_500_000);
+    let animations: ClipAnimations | undefined;
+    const updateAnimations = vi.fn((next: ClipAnimations | undefined) => {
+      animations = next;
+    });
+    const { toggleAnimated } = useClipKeyframes({ clip, playheadUs, updateAnimations });
+
+    toggleAnimated(['audio.volume', 'audio.pan']);
+    expect(animations?.['audio.volume']?.keyframes).toEqual([
+      { tUs: 500_000, value: 0.35, easing: 'linear' },
+    ]);
+    expect(animations?.['audio.pan']?.keyframes).toEqual([
+      { tUs: 500_000, value: -0.25, easing: 'linear' },
+    ]);
+  });
+
   it('toggleAnimated turning OFF clears every path in the group', () => {
     const clip = ref(
       makeClip({

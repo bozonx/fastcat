@@ -133,6 +133,16 @@ export const ClipAnimationsSchema: z.ZodType<ClipAnimations> = z
     'transform.scale.x': KeyframeTrackSchema.optional(),
     'transform.scale.y': KeyframeTrackSchema.optional(),
     'transform.rotationDeg': KeyframeTrackSchema.optional(),
+    'transform.anchor.x': KeyframeTrackSchema.optional(),
+    'transform.anchor.y': KeyframeTrackSchema.optional(),
+    'transform.crop.top': KeyframeTrackSchema.optional(),
+    'transform.crop.bottom': KeyframeTrackSchema.optional(),
+    'transform.crop.left': KeyframeTrackSchema.optional(),
+    'transform.crop.right': KeyframeTrackSchema.optional(),
+    'transform.flipHorizontal': KeyframeTrackSchema.optional(),
+    'transform.flipVertical': KeyframeTrackSchema.optional(),
+    'audio.volume': KeyframeTrackSchema.optional(),
+    'audio.pan': KeyframeTrackSchema.optional(),
   })
   // Effect-param paths (`effect.<id>.<key>`) ride the catchall so they validate
   // and pass through with the same track shape.

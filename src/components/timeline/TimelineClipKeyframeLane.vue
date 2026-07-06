@@ -12,8 +12,8 @@ import { animatedParamPaths } from '~/timeline/animation/ops';
  * animated param on the clip (not one row per param — see `animation/ops.ts`
  * for the cross-param "moment" model). Dragging or double-clicking a diamond
  * moves/deletes/updates easing for the keyframe at that time on every param
- * that has one there. Adding a new keyframe happens from the properties panel's
- * stopwatch toggle, not from this lane.
+ * that has one there. Clicking the empty lane adds a non-destructive keyframe
+ * moment for every parameter that is already animated.
  */
 
 const props = defineProps<{

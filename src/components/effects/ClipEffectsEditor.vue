@@ -30,8 +30,8 @@ export interface ClipEffectKeyframeHooks {
   displayValues: (effect: Record<string, unknown>) => Record<string, unknown>;
 }
 
-/** Effect param kinds that support keyframe animation (numeric + boolean). */
-const KEYFRAMABLE_KINDS = ['slider', 'knob', 'number', 'toggle', 'boolean'];
+/** Effect param kinds that support keyframe animation. */
+const KEYFRAMABLE_KINDS = ['slider', 'knob', 'number', 'toggle', 'boolean', 'color'];
 
 interface Props {
   effects?: Array<VideoClipEffect | AudioClipEffect>;

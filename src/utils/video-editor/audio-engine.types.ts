@@ -1,5 +1,5 @@
 import type { AudioFadeCurve, AudioTransitionEnvelope } from '~/utils/audio/envelope';
-import type { AudioClipEffect } from '~/timeline/types';
+import type { AudioClipEffect, ClipAnimations } from '~/timeline/types';
 
 export interface ClipPlaybackWindow {
   currentTimeS: number;
@@ -34,6 +34,7 @@ export interface AudioEngineClip {
   speed?: number;
   audioGain?: number;
   audioBalance?: number;
+  animations?: ClipAnimations;
   audioFadeInUs?: number;
   audioFadeOutUs?: number;
   audioFadeInCurve?: AudioFadeCurve;

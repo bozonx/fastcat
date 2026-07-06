@@ -301,6 +301,27 @@ describe('AudioMixer clip mix parity primitives', () => {
     expect(envelope[500]).toBeCloseTo(0.5);
   });
 
+  it('samples animated audio volume in the gain envelope', () => {
+    const envelope = buildGainEnvelope({
+      frames: 3,
+      startFrame: 0,
+      targetSampleRate: 2,
+      clip: preparedClip({
+        playDurationS: 1.5,
+        animations: {
+          'audio.volume': {
+            keyframes: [
+              { tUs: 0, value: 0, easing: 'linear' },
+              { tUs: 1_000_000, value: 1, easing: 'linear' },
+            ],
+          },
+        },
+      }),
+    });
+
+    expect(Array.from(envelope)).toEqual([0, 0.5, 1]);
+  });
+
   it('mixes hard-left stereo balance by folding right into left', () => {
     const mixed = new Float32Array(8);
     const next = mixProcessedChunk({
@@ -309,7 +330,7 @@ describe('AudioMixer clip mix parity primitives', () => {
         frames: 4,
         planes: [new Float32Array([1, 1, 1, 1]), new Float32Array([0.5, 0.5, 0.5, 0.5])],
         gainEnvelope: new Float32Array([1, 1, 1, 1]),
-        audioBalance: -1,
+        panEnvelope: new Float32Array([-1, -1, -1, -1]),
       },
       sourceStartFrame: 0,
       sourceEndFrame: 4,
@@ -330,7 +351,7 @@ describe('AudioMixer clip mix parity primitives', () => {
         frames: 4,
         planes: [new Float32Array([1, 2, 3, 4])],
         gainEnvelope: new Float32Array([1, 0.5, 0.25, 0]),
-        audioBalance: 0,
+        panEnvelope: new Float32Array([0, 0, 0, 0]),
       },
       sourceStartFrame: 11,
       sourceEndFrame: 13,

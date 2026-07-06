@@ -205,11 +205,21 @@ export interface KeyframeTrack {
 /** The fixed transform/opacity keyframe paths (stable, render-applied directly). */
 export type FixedAnimatableParamPath =
   | 'opacity'
+  | 'audio.volume'
+  | 'audio.pan'
   | 'transform.position.x'
   | 'transform.position.y'
   | 'transform.scale.x'
   | 'transform.scale.y'
-  | 'transform.rotationDeg';
+  | 'transform.rotationDeg'
+  | 'transform.anchor.x'
+  | 'transform.anchor.y'
+  | 'transform.crop.top'
+  | 'transform.crop.bottom'
+  | 'transform.crop.left'
+  | 'transform.crop.right'
+  | 'transform.flipHorizontal'
+  | 'transform.flipVertical';
 
 /**
  * A keyframable numeric/boolean parameter of a clip effect, addressed by the

@@ -4,7 +4,9 @@ import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import DbSlider from '~/components/audio/DbSlider.vue';
 import UiSliderInput from '~/components/ui/UiSliderInput.vue';
 import PropertySection from '~/components/properties/PropertySection.vue';
+import ClipAnimationStopwatchButton from '~/components/properties/clip/ClipAnimationStopwatchButton.vue';
 import type { AudioFadeCurve } from '~/utils/audio/envelope';
+import type { FixedAnimatableParamPath } from '~/timeline/types';
 import { linearToDb, dbToLinear } from '~/utils/audio';
 
 const props = defineProps<{
@@ -21,6 +23,7 @@ const props = defineProps<{
   audioFadeOutMaxSec: number;
   audioFadeInCurve: AudioFadeCurve;
   audioFadeOutCurve: AudioFadeCurve;
+  isParamAnimated?: (path: FixedAnimatableParamPath) => boolean;
 }>();
 
 const emit = defineEmits<{
@@ -32,6 +35,7 @@ const emit = defineEmits<{
   updateAudioFadeOutCurve: [val: AudioFadeCurve];
   volumeDragStart: [];
   volumeDragEnd: [];
+  toggleParamAnimation: [paths: FixedAnimatableParamPath[]];
 }>();
 
 const { t } = useI18n();
@@ -42,6 +46,11 @@ const audioGainDb = computed({
   get: () => linearToDb(props.audioGain),
   set: (db: number) => emit('updateAudioGain', dbToLinear(db)),
 });
+
+const VOLUME_PATHS: FixedAnimatableParamPath[] = ['audio.volume'];
+const PAN_PATHS: FixedAnimatableParamPath[] = ['audio.pan'];
+const isVolumeAnimated = computed(() => props.isParamAnimated?.('audio.volume') ?? false);
+const isPanAnimated = computed(() => props.isParamAnimated?.('audio.pan') ?? false);
 
 const isDragging = ref(false);
 
@@ -82,17 +91,25 @@ function onVolumeUpdate(db: number) {
     <div class="flex gap-4" :class="{ 'opacity-50 pointer-events-none': !isEnabled }">
       <!-- Left column: Balance and Fades -->
       <div class="flex-1 flex flex-col gap-4">
-        <UiSliderInput
-          v-if="props.canEditAudioBalance"
-          :label="t('fastcat.clip.audio.balance')"
-          :model-value="props.audioBalance"
-          :min="-1"
-          :max="1"
-          :step="0.01"
-          :default-value="0"
-          :disabled="!isEnabled"
-          @update:model-value="(v: number) => emit('updateAudioBalance', v)"
-        />
+        <div v-if="props.canEditAudioBalance" class="flex items-end gap-1">
+          <div class="pb-1">
+            <ClipAnimationStopwatchButton
+              :active="isPanAnimated"
+              :disabled="!isEnabled"
+              @toggle="emit('toggleParamAnimation', PAN_PATHS)"
+            />
+          </div>
+          <UiSliderInput
+            :label="t('fastcat.clip.audio.balance')"
+            :model-value="props.audioBalance"
+            :min="-1"
+            :max="1"
+            :step="0.01"
+            :default-value="0"
+            :disabled="!isEnabled"
+            @update:model-value="(v: number) => emit('updateAudioBalance', v)"
+          />
+        </div>
 
         <div class="flex flex-col gap-3">
           <!-- Fade In -->
@@ -209,9 +226,16 @@ function onVolumeUpdate(db: number) {
         class="w-20 shrink-0 flex flex-col gap-2 border-l border-ui-border/30 pl-3"
       >
         <div class="flex flex-col items-end px-1 h-8 justify-center">
-          <span class="text-[10px] font-bold text-ui-text-muted/70 leading-tight line-clamp-1">{{
-            t('fastcat.clip.audio.volume')
-          }}</span>
+          <div class="flex items-center gap-1">
+            <ClipAnimationStopwatchButton
+              :active="isVolumeAnimated"
+              :disabled="!isEnabled"
+              @toggle="emit('toggleParamAnimation', VOLUME_PATHS)"
+            />
+            <span class="text-[10px] font-bold text-ui-text-muted/70 leading-tight line-clamp-1">{{
+              t('fastcat.clip.audio.volume')
+            }}</span>
+          </div>
           <span
             class="text-xs font-mono text-ui-text-muted cursor-pointer hover:text-primary-400 tabular-nums whitespace-nowrap"
             :title="t('common.actions.reset')"

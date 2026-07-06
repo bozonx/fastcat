@@ -1,5 +1,5 @@
 import type { WorkerTimelineClip } from '~/types/worker-payload';
-import type { AudioClipEffect, ClipEffect } from '~/timeline/types';
+import type { AudioClipEffect, ClipAnimations, ClipEffect } from '~/timeline/types';
 import type { AudioEffectSpec } from '~/types/generated/native-monitor/AudioEffectSpec';
 import type { SceneAudioLayer } from '~/types/generated/native-monitor/SceneAudioLayer';
 import type { AudioEngineClip } from '~/utils/video-editor/audio-engine.types';
@@ -26,6 +26,7 @@ export interface CanonicalAudioClipDescriptor {
   speed?: number;
   audioGain?: number;
   audioBalance?: number;
+  animations?: ClipAnimations;
   originalAudioGain?: unknown;
   originalAudioBalance?: unknown;
   audioFadeInUs?: number;
@@ -107,6 +108,7 @@ export function buildCanonicalAudioClipDescriptor(
     speed: clip.speed,
     audioGain: clip.audioGain,
     audioBalance: clip.audioBalance,
+    animations: clip.animations,
     originalAudioGain: clip.originalAudioGain,
     originalAudioBalance: clip.originalAudioBalance,
     audioFadeInUs: clip.audioFadeInUs,
@@ -136,6 +138,7 @@ export function toAudioEngineClip(params: ToAudioEngineClipParams): AudioEngineC
     speed: descriptor.speed,
     audioGain: descriptor.audioGain,
     audioBalance: descriptor.audioBalance,
+    animations: descriptor.animations,
     audioFadeInUs: descriptor.audioFadeInUs,
     audioFadeOutUs: descriptor.audioFadeOutUs,
     audioFadeInCurve: descriptor.audioFadeInCurve,
@@ -284,6 +287,7 @@ export function toNativeSceneAudioLayer(params: ToNativeSceneAudioLayerParams): 
     // additive single-pan as the web live engine and export mixer.
     audio_gain: Math.max(0, clampFinite(descriptor.originalAudioGain ?? descriptor.audioGain, 1)),
     audio_balance: Math.max(-1, Math.min(1, clampFinite(descriptor.audioBalance, 0))),
+    animations: descriptor.animations,
     audio_fade_in_sec: Math.max(0, fadeInS),
     audio_fade_out_sec: Math.max(0, fadeOutS),
     audio_fade_in_curve: fadeInCurve,

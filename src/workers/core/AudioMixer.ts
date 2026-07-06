@@ -17,6 +17,8 @@ import { clampFloat32 } from './utils';
 import { usToS } from './time';
 import { runResilientWorkerFileIo } from './io-governor';
 import { governedBlobWorker } from '~/utils/io/governed-blob-worker';
+import type { ClipAnimations } from '~/timeline/types';
+import { evalTrackAt } from '~/timeline/animation/evaluate';
 import {
   CLIP_PROCESS_BLOCK_DURATION_S,
   crossfadePendingTailIntoBlock,
@@ -59,6 +61,7 @@ export interface PreparedClip {
   speed: number;
   audioGain: number;
   audioBalance: number;
+  animations?: ClipAnimations;
   audioFadeInS: number;
   audioFadeOutS: number;
   audioFadeInCurve: AudioFadeCurve;
@@ -101,6 +104,7 @@ interface AudioClipData {
   speed?: number;
   audioGain?: number;
   audioBalance?: number;
+  animations?: ClipAnimations;
   audioFadeInUs?: number;
   audioFadeOutUs?: number;
   audioFadeInCurve?: AudioFadeCurve;
@@ -112,6 +116,7 @@ interface AudioClipData {
   fastcat?: {
     audioGain?: number;
     audioBalance?: number;
+    animations?: ClipAnimations;
     audioFadeInUs?: number;
     audioFadeOutUs?: number;
     audioFadeInCurve?: AudioFadeCurve;
@@ -162,7 +167,7 @@ interface ProcessedClipChunk {
   planes: Float32Array[];
   frames: number;
   gainEnvelope: Float32Array;
-  audioBalance: number;
+  panEnvelope: Float32Array;
 }
 
 interface ActiveProcessedClip {
@@ -228,12 +233,12 @@ export function mixProcessedChunk(params: {
     const planeL = processed.planes[0];
     const planeR = processed.planes[1];
     if (!planeL || !planeR) return segmentEndFrame;
-    const { ll, lr, rl, rr } = getStereoPanMatrix(processed.audioBalance);
     for (let i = 0; i < framesToWrite; i += 1) {
       const srcIdx = sourceOffsetFrame + i;
       const dstFrame = writeOffsetFrame + i;
       const g = processed.gainEnvelope[srcIdx] ?? 0;
       if (g === 0) continue;
+      const { ll, lr, rl, rr } = getStereoPanMatrix(processed.panEnvelope[srcIdx] ?? 0);
       const L = (planeL[srcIdx] ?? 0) * g;
       const R = (planeR[srcIdx] ?? 0) * g;
       const idxL = dstFrame * 2;
@@ -263,7 +268,8 @@ export function buildGainEnvelope(params: {
 }): Float32Array {
   const { frames, startFrame, targetSampleRate, clip } = params;
   const gainEnvelope = new Float32Array(frames);
-  if (clip.audioFadeInS === 0 && clip.audioFadeOutS === 0) {
+  const volumeTrack = clip.animations?.['audio.volume'];
+  if (clip.audioFadeInS === 0 && clip.audioFadeOutS === 0 && !volumeTrack?.keyframes.length) {
     gainEnvelope.fill(clip.audioGain);
     return gainEnvelope;
   }
@@ -275,13 +281,19 @@ export function buildGainEnvelope(params: {
     const end = Math.max(start, Math.min(frames, endFrameInClip - startFrame));
     for (let i = start; i < end; i += 1) {
       const frameInClip = startFrame + i;
+      const animatedGain = evalTrackAt(
+        volumeTrack,
+        Math.round((clip.offsetS + frameInClip / targetSampleRate * clip.speed) * 1_000_000),
+      );
+      const baseGain =
+        animatedGain === undefined ? clip.audioGain : Math.max(0, Math.min(10, animatedGain));
       gainEnvelope[i] = getGainAtClipTime({
         clipDurationS: clip.playDurationS,
         fadeInS: clip.audioFadeInS,
         fadeOutS: clip.audioFadeOutS,
         fadeInCurve: clip.audioFadeInCurve,
         fadeOutCurve: clip.audioFadeOutCurve,
-        baseGain: clip.audioGain,
+        baseGain,
         tClipS: frameInClip / targetSampleRate,
       });
     }
@@ -289,7 +301,8 @@ export function buildGainEnvelope(params: {
 
   if (
     (clip.audioFadeInS > 0 && clip.audioFadeInS >= clip.playDurationS) ||
-    (clip.audioFadeOutS > 0 && clip.audioFadeOutS >= clip.playDurationS)
+    (clip.audioFadeOutS > 0 && clip.audioFadeOutS >= clip.playDurationS) ||
+    !!volumeTrack?.keyframes.length
   ) {
     applyEnvelopeRange(startFrame, startFrame + frames);
     return gainEnvelope;
@@ -325,6 +338,30 @@ export function buildGainEnvelope(params: {
   }
 
   return gainEnvelope;
+}
+
+function buildPanEnvelope(params: {
+  frames: number;
+  startFrame: number;
+  targetSampleRate: number;
+  clip: PreparedClip;
+}): Float32Array {
+  const { frames, startFrame, targetSampleRate, clip } = params;
+  const panEnvelope = new Float32Array(frames);
+  const panTrack = clip.animations?.['audio.pan'];
+  if (!panTrack?.keyframes.length) {
+    panEnvelope.fill(clip.audioBalance);
+    return panEnvelope;
+  }
+  for (let i = 0; i < frames; i += 1) {
+    const frameInClip = startFrame + i;
+    const value = evalTrackAt(
+      panTrack,
+      Math.round((clip.offsetS + frameInClip / targetSampleRate * clip.speed) * 1_000_000),
+    );
+    panEnvelope[i] = Math.max(-1, Math.min(1, value ?? clip.audioBalance));
+  }
+  return panEnvelope;
 }
 
 /**
@@ -565,7 +602,12 @@ async function* processClipAudio(args: {
           targetSampleRate,
           clip,
         }),
-        audioBalance: clip.audioBalance,
+        panEnvelope: buildPanEnvelope({
+          frames: emitFrames,
+          startFrame: blockStartFrame,
+          targetSampleRate,
+          clip,
+        }),
       };
     }
 
@@ -601,7 +643,12 @@ async function* processClipAudio(args: {
           targetSampleRate,
           clip,
         }),
-        audioBalance: clip.audioBalance,
+        panEnvelope: buildPanEnvelope({
+          frames,
+          startFrame: pendingTail.startFrame,
+          targetSampleRate,
+          clip,
+        }),
       };
     }
   }
@@ -903,6 +950,7 @@ export class AudioMixer {
         clipData.audioBalance ?? clipData.fastcat?.audioBalance,
         0,
       );
+      const animations = clipData.animations ?? clipData.fastcat?.animations;
 
       const input = new Input({
         source: new BlobSource(governedBlobWorker(file)),
@@ -948,6 +996,7 @@ export class AudioMixer {
           speed,
           audioGain,
           audioBalance,
+          animations,
           audioFadeInS,
           audioFadeOutS,
           audioFadeInCurve: fadeInCurve,

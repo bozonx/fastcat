@@ -131,12 +131,19 @@ describe('bakeClipEffectAnimations', () => {
     ).toBeUndefined();
   });
 
-  it('ignores colour (dotted) keys in v1 baking', () => {
-    const effects = [fx({ type: 'blur-fill', tintColor: '#ffffff', tintStrength: 0 })];
+  it('bakes colour channel keys by assembling the hex UI value before manifest mapping', () => {
+    const effects = [fx({ type: 'blur-fill', tintColor: '#000000', tintStrength: 1 })];
     const animations: ClipAnimations = {
-      'effect.fx1.tintColor.r': linTrack([0, 0], [1_000_000, 1]),
+      'effect.fx1.tintColor.r': linTrack([0, 0], [1_000_000, 255]),
     };
-    // Only a dotted colour key animates -> nothing bakeable in v1.
-    expect(bakeClipEffectAnimations(effects, animations)).toBeUndefined();
+    const baked = bakeClipEffectAnimations(effects, animations)!;
+    const tintRed = (t: number) =>
+      (patchBakedEffectSpecs(baked, t).find((s) => s.type === 'blur-fill') as Record<
+        string,
+        unknown
+      >).tint_color as number[];
+
+    expect(tintRed(0)[0]).toBeCloseTo(0);
+    expect(tintRed(1_000_000)[0]).toBeCloseTo(255);
   });
 });

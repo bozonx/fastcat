@@ -48,11 +48,21 @@ export function parseEffectParamPath(path: string): { effectId: string; key: str
 /** The closed set of animatable parameters in v1, in a stable UI order. */
 export const ANIMATABLE_PARAM_PATHS: readonly AnimatableParamPath[] = [
   'opacity',
+  'audio.volume',
+  'audio.pan',
   'transform.position.x',
   'transform.position.y',
   'transform.scale.x',
   'transform.scale.y',
   'transform.rotationDeg',
+  'transform.anchor.x',
+  'transform.anchor.y',
+  'transform.crop.top',
+  'transform.crop.bottom',
+  'transform.crop.left',
+  'transform.crop.right',
+  'transform.flipHorizontal',
+  'transform.flipVertical',
 ] as const;
 
 export const KEYFRAME_EASINGS: readonly KeyframeEasing[] = ['linear', 'ease', 'hold'] as const;
@@ -86,11 +96,21 @@ export interface ResolveClipAnimationTimeUsParams {
  */
 const PARAM_CLAMP: Record<FixedAnimatableParamPath, { min: number; max: number }> = {
   opacity: { min: 0, max: 1 },
+  'audio.volume': { min: 0, max: 10 },
+  'audio.pan': { min: -1, max: 1 },
   'transform.position.x': { min: -Infinity, max: Infinity },
   'transform.position.y': { min: -Infinity, max: Infinity },
   'transform.scale.x': { min: 0, max: Infinity },
   'transform.scale.y': { min: 0, max: Infinity },
   'transform.rotationDeg': { min: -Infinity, max: Infinity },
+  'transform.anchor.x': { min: -10, max: 10 },
+  'transform.anchor.y': { min: -10, max: 10 },
+  'transform.crop.top': { min: 0, max: 100 },
+  'transform.crop.bottom': { min: 0, max: 100 },
+  'transform.crop.left': { min: 0, max: 100 },
+  'transform.crop.right': { min: 0, max: 100 },
+  'transform.flipHorizontal': { min: 0, max: 1 },
+  'transform.flipVertical': { min: 0, max: 1 },
 };
 
 /**

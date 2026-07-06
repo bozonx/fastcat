@@ -299,15 +299,18 @@ export function useClipTransform(options: UseClipTransformOptions) {
 
   const transformAnchorX = computed({
     get: () => {
-      return getSafeTransform(options.clip.value).anchor?.x ?? 0.5;
+      const staticX = getSafeTransform(options.clip.value).anchor?.x ?? 0.5;
+      return options.getAnimatedDisplayValue?.('transform.anchor.x', staticX) ?? staticX;
     },
     set: (val: number) => {
       const current = getSafeTransform(options.clip.value);
       if (current.anchor?.preset !== 'custom') return;
+      const x = clampNumber(val, -10, 10);
+      if (tryRecordAnimatedEdit('transform.anchor.x', x)) return;
       updateSelectedClipTransform({
         anchor: {
           preset: 'custom',
-          x: clampNumber(val, -10, 10),
+          x,
           y: current.anchor?.y ?? 0.5,
         },
       });
@@ -316,25 +319,32 @@ export function useClipTransform(options: UseClipTransformOptions) {
 
   const transformAnchorY = computed({
     get: () => {
-      return getSafeTransform(options.clip.value).anchor?.y ?? 0.5;
+      const staticY = getSafeTransform(options.clip.value).anchor?.y ?? 0.5;
+      return options.getAnimatedDisplayValue?.('transform.anchor.y', staticY) ?? staticY;
     },
     set: (val: number) => {
       const current = getSafeTransform(options.clip.value);
       if (current.anchor?.preset !== 'custom') return;
+      const y = clampNumber(val, -10, 10);
+      if (tryRecordAnimatedEdit('transform.anchor.y', y)) return;
       updateSelectedClipTransform({
         anchor: {
           preset: 'custom',
           x: current.anchor?.x ?? 0.5,
-          y: clampNumber(val, -10, 10),
+          y,
         },
       });
     },
   });
 
   const transformCropTop = computed({
-    get: () => getSafeTransform(options.clip.value).crop?.top ?? 0,
+    get: () => {
+      const staticValue = getSafeTransform(options.clip.value).crop?.top ?? 0;
+      return options.getAnimatedDisplayValue?.('transform.crop.top', staticValue) ?? staticValue;
+    },
     set: (val: number) => {
       const current = getSafeTransform(options.clip.value);
+      if (tryRecordAnimatedEdit('transform.crop.top', val)) return;
       updateSelectedClipTransform({
         crop: { ...(current.crop ?? { top: 0, bottom: 0, left: 0, right: 0 }), top: val },
       });
@@ -342,9 +352,15 @@ export function useClipTransform(options: UseClipTransformOptions) {
   });
 
   const transformCropBottom = computed({
-    get: () => getSafeTransform(options.clip.value).crop?.bottom ?? 0,
+    get: () => {
+      const staticValue = getSafeTransform(options.clip.value).crop?.bottom ?? 0;
+      return (
+        options.getAnimatedDisplayValue?.('transform.crop.bottom', staticValue) ?? staticValue
+      );
+    },
     set: (val: number) => {
       const current = getSafeTransform(options.clip.value);
+      if (tryRecordAnimatedEdit('transform.crop.bottom', val)) return;
       updateSelectedClipTransform({
         crop: { ...(current.crop ?? { top: 0, bottom: 0, left: 0, right: 0 }), bottom: val },
       });
@@ -352,9 +368,13 @@ export function useClipTransform(options: UseClipTransformOptions) {
   });
 
   const transformCropLeft = computed({
-    get: () => getSafeTransform(options.clip.value).crop?.left ?? 0,
+    get: () => {
+      const staticValue = getSafeTransform(options.clip.value).crop?.left ?? 0;
+      return options.getAnimatedDisplayValue?.('transform.crop.left', staticValue) ?? staticValue;
+    },
     set: (val: number) => {
       const current = getSafeTransform(options.clip.value);
+      if (tryRecordAnimatedEdit('transform.crop.left', val)) return;
       updateSelectedClipTransform({
         crop: { ...(current.crop ?? { top: 0, bottom: 0, left: 0, right: 0 }), left: val },
       });
@@ -362,9 +382,13 @@ export function useClipTransform(options: UseClipTransformOptions) {
   });
 
   const transformCropRight = computed({
-    get: () => getSafeTransform(options.clip.value).crop?.right ?? 0,
+    get: () => {
+      const staticValue = getSafeTransform(options.clip.value).crop?.right ?? 0;
+      return options.getAnimatedDisplayValue?.('transform.crop.right', staticValue) ?? staticValue;
+    },
     set: (val: number) => {
       const current = getSafeTransform(options.clip.value);
+      if (tryRecordAnimatedEdit('transform.crop.right', val)) return;
       updateSelectedClipTransform({
         crop: { ...(current.crop ?? { top: 0, bottom: 0, left: 0, right: 0 }), right: val },
       });
@@ -373,11 +397,13 @@ export function useClipTransform(options: UseClipTransformOptions) {
 
   function toggleFlipHorizontal() {
     const current = getSafeTransform(options.clip.value);
+    if (tryRecordAnimatedEdit('transform.flipHorizontal', current.flipHorizontal ? 0 : 1)) return;
     updateSelectedClipTransform({ flipHorizontal: !current.flipHorizontal });
   }
 
   function toggleFlipVertical() {
     const current = getSafeTransform(options.clip.value);
+    if (tryRecordAnimatedEdit('transform.flipVertical', current.flipVertical ? 0 : 1)) return;
     updateSelectedClipTransform({ flipVertical: !current.flipVertical });
   }
 
@@ -403,10 +429,16 @@ export function useClipTransform(options: UseClipTransformOptions) {
   }
 
   function resetAnchor() {
+    tryRecordAnimatedEdit('transform.anchor.x', 0.5);
+    tryRecordAnimatedEdit('transform.anchor.y', 0.5);
     updateSelectedClipTransform({ anchor: { preset: 'center' } });
   }
 
   function resetCrop() {
+    tryRecordAnimatedEdit('transform.crop.top', 0);
+    tryRecordAnimatedEdit('transform.crop.bottom', 0);
+    tryRecordAnimatedEdit('transform.crop.left', 0);
+    tryRecordAnimatedEdit('transform.crop.right', 0);
     updateSelectedClipTransform({ crop: { top: 0, bottom: 0, left: 0, right: 0 } });
   }
 
@@ -416,6 +448,14 @@ export function useClipTransform(options: UseClipTransformOptions) {
     tryRecordAnimatedEdit('transform.position.x', 0);
     tryRecordAnimatedEdit('transform.position.y', 0);
     tryRecordAnimatedEdit('transform.rotationDeg', 0);
+    tryRecordAnimatedEdit('transform.anchor.x', 0.5);
+    tryRecordAnimatedEdit('transform.anchor.y', 0.5);
+    tryRecordAnimatedEdit('transform.crop.top', 0);
+    tryRecordAnimatedEdit('transform.crop.bottom', 0);
+    tryRecordAnimatedEdit('transform.crop.left', 0);
+    tryRecordAnimatedEdit('transform.crop.right', 0);
+    tryRecordAnimatedEdit('transform.flipHorizontal', 0);
+    tryRecordAnimatedEdit('transform.flipVertical', 0);
     options.updateTransform({
       scale: { x: 1, y: 1, linked: true },
       position: { x: 0, y: 0 },
@@ -428,13 +468,31 @@ export function useClipTransform(options: UseClipTransformOptions) {
   }
 
   const transformFlipHorizontal = computed({
-    get: () => Boolean(getSafeTransform(options.clip.value).flipHorizontal),
-    set: (val: boolean) => updateSelectedClipTransform({ flipHorizontal: Boolean(val) }),
+    get: () => {
+      const staticValue = getSafeTransform(options.clip.value).flipHorizontal ? 1 : 0;
+      return (
+        (options.getAnimatedDisplayValue?.('transform.flipHorizontal', staticValue) ??
+          staticValue) >= 0.5
+      );
+    },
+    set: (val: boolean) => {
+      if (tryRecordAnimatedEdit('transform.flipHorizontal', val ? 1 : 0)) return;
+      updateSelectedClipTransform({ flipHorizontal: Boolean(val) });
+    },
   });
 
   const transformFlipVertical = computed({
-    get: () => Boolean(getSafeTransform(options.clip.value).flipVertical),
-    set: (val: boolean) => updateSelectedClipTransform({ flipVertical: Boolean(val) }),
+    get: () => {
+      const staticValue = getSafeTransform(options.clip.value).flipVertical ? 1 : 0;
+      return (
+        (options.getAnimatedDisplayValue?.('transform.flipVertical', staticValue) ??
+          staticValue) >= 0.5
+      );
+    },
+    set: (val: boolean) => {
+      if (tryRecordAnimatedEdit('transform.flipVertical', val ? 1 : 0)) return;
+      updateSelectedClipTransform({ flipVertical: Boolean(val) });
+    },
   });
 
   return {

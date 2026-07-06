@@ -167,7 +167,12 @@
         "navNext": "Go to next keyframe",
         "navPrev": "Go to previous keyframe",
         "pasteKeyframe": "Paste keyframe at playhead",
+        "fadeInPreset": "Fade in preset",
+        "fadeOutPreset": "Fade out preset",
+        "kenBurnsPreset": "Ken Burns preset",
+        "presetsTitle": "Animation presets",
         "removeKeyframe": "Remove keyframe at playhead",
+        "slideInPreset": "Slide in preset",
         "stopwatchTitle": "Animate over time",
         "stopwatchTitleActive": "Animated — click to remove all keyframes"
       },

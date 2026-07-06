@@ -157,10 +157,24 @@ function handleResetAll() {
 const SCALE_PATHS: FixedAnimatableParamPath[] = ['transform.scale.x', 'transform.scale.y'];
 const POSITION_PATHS: FixedAnimatableParamPath[] = ['transform.position.x', 'transform.position.y'];
 const ROTATION_PATHS: FixedAnimatableParamPath[] = ['transform.rotationDeg'];
+const ANCHOR_PATHS: FixedAnimatableParamPath[] = ['transform.anchor.x', 'transform.anchor.y'];
+const CROP_PATHS: FixedAnimatableParamPath[] = [
+  'transform.crop.top',
+  'transform.crop.bottom',
+  'transform.crop.left',
+  'transform.crop.right',
+];
+const FLIP_PATHS: FixedAnimatableParamPath[] = [
+  'transform.flipHorizontal',
+  'transform.flipVertical',
+];
 
 const isScaleAnimated = computed(() => SCALE_PATHS.some((p) => isParamAnimated(p)));
 const isPositionAnimated = computed(() => POSITION_PATHS.some((p) => isParamAnimated(p)));
 const isRotationAnimated = computed(() => ROTATION_PATHS.some((p) => isParamAnimated(p)));
+const isAnchorAnimated = computed(() => ANCHOR_PATHS.some((p) => isParamAnimated(p)));
+const isCropAnimated = computed(() => CROP_PATHS.some((p) => isParamAnimated(p)));
+const isFlipAnimated = computed(() => FLIP_PATHS.some((p) => isParamAnimated(p)));
 </script>
 
 <template>
@@ -188,13 +202,20 @@ const isRotationAnimated = computed(() => ROTATION_PATHS.some((p) => isParamAnim
         <div class="space-y-1">
           <div class="flex items-center justify-between">
             <span class="text-xs text-ui-text-muted">{{ t('fastcat.clip.transform.anchor') }}</span>
-            <button
-              class="p-1 rounded hover:bg-ui-border-elevated text-ui-text-muted hover:text-ui-text disabled:opacity-50"
-              :disabled="!isEnabled"
-              @click="resetAnchor"
-            >
-              <UIcon name="i-heroicons-arrow-path" class="w-3.5 h-3.5 block" />
-            </button>
+            <div class="flex items-center gap-1">
+              <ClipAnimationStopwatchButton
+                :active="isAnchorAnimated"
+                :disabled="!isEnabled"
+                @toggle="emit('toggleParamAnimation', ANCHOR_PATHS)"
+              />
+              <button
+                class="p-1 rounded hover:bg-ui-border-elevated text-ui-text-muted hover:text-ui-text disabled:opacity-50"
+                :disabled="!isEnabled"
+                @click="resetAnchor"
+              >
+                <UIcon name="i-heroicons-arrow-path" class="w-3.5 h-3.5 block" />
+              </button>
+            </div>
           </div>
           <UiSelect
             v-model="transformAnchorPreset"
@@ -245,6 +266,11 @@ const isRotationAnimated = computed(() => ROTATION_PATHS.some((p) => isParamAnim
           <span class="text-xs text-ui-text-muted mr-1">{{
             t('fastcat.clip.transform.reflect')
           }}</span>
+          <ClipAnimationStopwatchButton
+            :active="isFlipAnimated"
+            :disabled="!isEnabled"
+            @toggle="emit('toggleParamAnimation', FLIP_PATHS)"
+          />
           <UiActionButton
             icon="i-heroicons-arrows-right-left"
             size="xs"
@@ -416,13 +442,20 @@ const isRotationAnimated = computed(() => ROTATION_PATHS.some((p) => isParamAnim
             <span class="text-xs font-semibold text-ui-text uppercase tracking-wide">
               {{ t('fastcat.clip.transform.crop') }}
             </span>
-            <button
-              class="p-1 rounded hover:bg-ui-border-elevated text-ui-text-muted hover:text-ui-text disabled:opacity-50"
-              :disabled="!isEnabled"
-              @click="resetCrop"
-            >
-              <UIcon name="i-heroicons-arrow-path" class="w-3.5 h-3.5 block" />
-            </button>
+            <div class="flex items-center gap-1">
+              <ClipAnimationStopwatchButton
+                :active="isCropAnimated"
+                :disabled="!isEnabled"
+                @toggle="emit('toggleParamAnimation', CROP_PATHS)"
+              />
+              <button
+                class="p-1 rounded hover:bg-ui-border-elevated text-ui-text-muted hover:text-ui-text disabled:opacity-50"
+                :disabled="!isEnabled"
+                @click="resetCrop"
+              >
+                <UIcon name="i-heroicons-arrow-path" class="w-3.5 h-3.5 block" />
+              </button>
+            </div>
           </div>
           <div class="grid grid-cols-2 gap-x-4 gap-y-2">
             <div class="flex flex-col gap-0.5">

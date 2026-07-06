@@ -6,4 +6,4 @@ export type SceneAudioLayer = { id: string, track_id?: string, path: string, tim
 /**
  * Length of the available source range in the source. Needed for speed/reverse clamp.
  */
-source_range_duration_sec: number, speed: number, audio_gain: number, audio_balance: number, audio_fade_in_sec: number, audio_fade_out_sec: number, audio_fade_in_curve: AudioFadeCurve, audio_fade_out_curve: AudioFadeCurve, audio_effects: Array<AudioEffectSpec>, };
+source_range_duration_sec: number, speed: number, audio_gain: number, audio_balance: number, animations?: import('~/timeline/types').ClipAnimations, audio_fade_in_sec: number, audio_fade_out_sec: number, audio_fade_in_curve: AudioFadeCurve, audio_fade_out_curve: AudioFadeCurve, audio_effects: Array<AudioEffectSpec>, };

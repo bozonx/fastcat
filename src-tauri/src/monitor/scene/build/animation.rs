@@ -271,9 +271,28 @@ pub fn resolve_animation_override(
     let sx = anims.eval("transform.scale.x", animation_t_us);
     let sy = anims.eval("transform.scale.y", animation_t_us);
     let rot = anims.eval("transform.rotationDeg", animation_t_us);
+    let anchor_x = anims.eval("transform.anchor.x", animation_t_us);
+    let anchor_y = anims.eval("transform.anchor.y", animation_t_us);
+    let crop_top = anims.eval("transform.crop.top", animation_t_us);
+    let crop_bottom = anims.eval("transform.crop.bottom", animation_t_us);
+    let crop_left = anims.eval("transform.crop.left", animation_t_us);
+    let crop_right = anims.eval("transform.crop.right", animation_t_us);
+    let flip_horizontal = anims.eval("transform.flipHorizontal", animation_t_us);
+    let flip_vertical = anims.eval("transform.flipVertical", animation_t_us);
 
-    let has_transform =
-        px.is_some() || py.is_some() || sx.is_some() || sy.is_some() || rot.is_some();
+    let has_transform = px.is_some()
+        || py.is_some()
+        || sx.is_some()
+        || sy.is_some()
+        || rot.is_some()
+        || anchor_x.is_some()
+        || anchor_y.is_some()
+        || crop_top.is_some()
+        || crop_bottom.is_some()
+        || crop_left.is_some()
+        || crop_right.is_some()
+        || flip_horizontal.is_some()
+        || flip_vertical.is_some();
 
     let transform = if has_transform {
         let scene_w = scene_size.0 as f64;
@@ -296,6 +315,30 @@ pub fn resolve_animation_override(
         }
         if let Some(rot) = rot {
             t.rotation_deg = rot;
+        }
+        if let Some(anchor_x) = anchor_x {
+            t.anchor_x = anchor_x.clamp(-10.0, 10.0);
+        }
+        if let Some(anchor_y) = anchor_y {
+            t.anchor_y = anchor_y.clamp(-10.0, 10.0);
+        }
+        if let Some(crop_top) = crop_top {
+            t.crop_top = crop_top.clamp(0.0, 100.0);
+        }
+        if let Some(crop_bottom) = crop_bottom {
+            t.crop_bottom = crop_bottom.clamp(0.0, 100.0);
+        }
+        if let Some(crop_left) = crop_left {
+            t.crop_left = crop_left.clamp(0.0, 100.0);
+        }
+        if let Some(crop_right) = crop_right {
+            t.crop_right = crop_right.clamp(0.0, 100.0);
+        }
+        if let Some(flip_horizontal) = flip_horizontal {
+            t.flip_horizontal = flip_horizontal >= 0.5;
+        }
+        if let Some(flip_vertical) = flip_vertical {
+            t.flip_vertical = flip_vertical >= 0.5;
         }
         Some(t)
     } else {

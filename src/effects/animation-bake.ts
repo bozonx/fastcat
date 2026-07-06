@@ -1,6 +1,7 @@
 import type { ClipAnimations, ClipEffect, Keyframe, KeyframeTrack } from '~/timeline/types';
 import type { VideoEffectSpec } from '~/types/generated/native-monitor/VideoEffectSpec';
 import { evalTrackAt, parseEffectParamPath } from '~/timeline/animation/evaluate';
+import { normalizeHexColor } from '~/utils/color';
 import { buildEffectSpecs } from './build-specs';
 
 /**
@@ -58,6 +59,65 @@ function isBakeableField(value: unknown): value is FieldValue {
   return typeof value === 'number' || typeof value === 'boolean';
 }
 
+function numericFieldAt(spec: Record<string, unknown> | undefined, field: string): number | undefined {
+  const [root, indexRaw] = field.split('.', 2);
+  if (!root) return undefined;
+  if (indexRaw !== undefined) {
+    const arr = spec?.[root];
+    const index = Number(indexRaw);
+    return Array.isArray(arr) && Number.isInteger(index) ? numericFieldValue(arr[index]) : undefined;
+  }
+  return numericFieldValue(spec?.[field]);
+}
+
+function setSpecField(spec: Record<string, unknown>, field: string, value: unknown): void {
+  const [root, indexRaw] = field.split('.', 2);
+  if (!root || indexRaw === undefined) {
+    spec[field] = value;
+    return;
+  }
+  const index = Number(indexRaw);
+  if (!Number.isInteger(index)) return;
+  const current = spec[root];
+  const arr = Array.isArray(current) ? [...current] : [];
+  arr[index] = value;
+  spec[root] = arr;
+}
+
+function colorChannelToHex(value: unknown): string {
+  const n = typeof value === 'number' && Number.isFinite(value) ? value : Number(value);
+  return Math.max(0, Math.min(255, Math.round(n || 0)))
+    .toString(16)
+    .padStart(2, '0');
+}
+
+function setNestedAnimatedParam(next: Record<string, unknown>, key: string, value: number): void {
+  const [root, channel] = key.split('.', 2);
+  if (!root || !channel) {
+    next[key] = typeof next[key] === 'boolean' ? value >= 0.5 : value;
+    return;
+  }
+
+  if (
+    typeof next[root] === 'string' &&
+    (channel === 'r' || channel === 'g' || channel === 'b')
+  ) {
+    const hex = normalizeHexColor(next[root], '#000000').slice(1);
+    const rgb = {
+      r: Number.parseInt(hex.slice(0, 2), 16),
+      g: Number.parseInt(hex.slice(2, 4), 16),
+      b: Number.parseInt(hex.slice(4, 6), 16),
+      [channel]: value,
+    };
+    next[root] = `#${colorChannelToHex(rgb.r)}${colorChannelToHex(rgb.g)}${colorChannelToHex(rgb.b)}`;
+    return;
+  }
+
+  const current = next[root];
+  const obj = current && typeof current === 'object' && !Array.isArray(current) ? current : {};
+  next[root] = { ...(obj as Record<string, unknown>), [channel]: value };
+}
+
 /** Apply the animated params of one effect at time `t` (flat keys only). */
 function overrideEffect(
   effect: ClipEffect,
@@ -67,12 +127,9 @@ function overrideEffect(
   if (!params || params.size === 0) return effect;
   const next: Record<string, unknown> = { ...effect };
   for (const [key, track] of params) {
-    // Colour channels (`tintColor.r`) need structured assembly — deferred.
-    if (key.includes('.')) continue;
     const value = evalTrackAt(track, t);
     if (value === undefined) continue;
-    // Boolean params must stay booleans — manifests test `values.x === true`.
-    next[key] = typeof next[key] === 'boolean' ? value >= 0.5 : value;
+    setNestedAnimatedParam(next, key, value);
   }
   return next as ClipEffect;
 }
@@ -175,15 +232,28 @@ function diffFields(
 
   for (let specIndex = 0; specIndex < baseSpecs.length; specIndex++) {
     const base = baseSpecs[specIndex] as unknown as Record<string, unknown>;
+    const fieldNames: string[] = [];
     for (const field of Object.keys(base)) {
+      const value = base[field];
+      if (Array.isArray(value)) {
+        for (let index = 0; index < value.length; index += 1) {
+          if (typeof value[index] === 'number') fieldNames.push(`${field}.${index}`);
+        }
+      } else {
+        fieldNames.push(field);
+      }
+    }
+    for (const rawField of fieldNames) {
+      const field = String(rawField);
       if (field === 'type') continue;
-      const baseValue = base[field];
-      if (!isBakeableField(baseValue)) continue;
+      const isArrayField = field.includes('.');
+      const rawBaseValue = isArrayField ? numericFieldAt(base, field) : base[field];
+      if (!isBakeableField(rawBaseValue)) continue;
 
-      const kind: 'number' | 'bool' = typeof baseValue === 'boolean' ? 'bool' : 'number';
+      const kind: 'number' | 'bool' = typeof rawBaseValue === 'boolean' ? 'bool' : 'number';
       const raw = samples.map((s) => {
         const spec = s.specs[specIndex] as unknown as Record<string, unknown> | undefined;
-        return numericFieldValue(spec?.[field]);
+        return numericFieldAt(spec, field);
       });
       const filled = fillPresence(times, raw);
       if (!filled) continue;
@@ -272,7 +342,7 @@ export function patchBakedEffectSpecs(
     if (!spec) continue;
     const value = evalTrackAt({ keyframes: f.keyframes }, localTimeUs);
     if (value === undefined) continue;
-    spec[f.field] = f.kind === 'bool' ? value >= 0.5 : value;
+    setSpecField(spec, f.field, f.kind === 'bool' ? value >= 0.5 : value);
   }
   return specs;
 }

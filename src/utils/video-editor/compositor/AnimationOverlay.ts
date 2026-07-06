@@ -60,6 +60,43 @@ function buildAnimatedTransform(
     next.rotationDeg = rot;
   }
 
+  const ax = sampled['transform.anchor.x'];
+  const ay = sampled['transform.anchor.y'];
+  if (ax !== undefined || ay !== undefined) {
+    next.anchor = {
+      preset: 'custom',
+      x: ax ?? base?.anchor?.x ?? 0.5,
+      y: ay ?? base?.anchor?.y ?? 0.5,
+    };
+  }
+
+  const cropTop = sampled['transform.crop.top'];
+  const cropBottom = sampled['transform.crop.bottom'];
+  const cropLeft = sampled['transform.crop.left'];
+  const cropRight = sampled['transform.crop.right'];
+  if (
+    cropTop !== undefined ||
+    cropBottom !== undefined ||
+    cropLeft !== undefined ||
+    cropRight !== undefined
+  ) {
+    next.crop = {
+      top: cropTop ?? base?.crop?.top ?? 0,
+      bottom: cropBottom ?? base?.crop?.bottom ?? 0,
+      left: cropLeft ?? base?.crop?.left ?? 0,
+      right: cropRight ?? base?.crop?.right ?? 0,
+    };
+  }
+
+  const flipHorizontal = sampled['transform.flipHorizontal'];
+  const flipVertical = sampled['transform.flipVertical'];
+  if (flipHorizontal !== undefined) {
+    next.flipHorizontal = flipHorizontal >= 0.5;
+  }
+  if (flipVertical !== undefined) {
+    next.flipVertical = flipVertical >= 0.5;
+  }
+
   return next;
 }
 
@@ -106,7 +143,15 @@ export function resolveClipAnimationOverlay(clip: CompositorClip, timeUs: number
     sampled['transform.position.y'] !== undefined ||
     sampled['transform.scale.x'] !== undefined ||
     sampled['transform.scale.y'] !== undefined ||
-    sampled['transform.rotationDeg'] !== undefined;
+    sampled['transform.rotationDeg'] !== undefined ||
+    sampled['transform.anchor.x'] !== undefined ||
+    sampled['transform.anchor.y'] !== undefined ||
+    sampled['transform.crop.top'] !== undefined ||
+    sampled['transform.crop.bottom'] !== undefined ||
+    sampled['transform.crop.left'] !== undefined ||
+    sampled['transform.crop.right'] !== undefined ||
+    sampled['transform.flipHorizontal'] !== undefined ||
+    sampled['transform.flipVertical'] !== undefined;
 
   clip.animatedTransform = hasTransformKey
     ? buildAnimatedTransform(clip.transform, sampled)

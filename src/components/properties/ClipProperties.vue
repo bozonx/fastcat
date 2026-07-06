@@ -51,6 +51,8 @@ import { useClipHudProperties } from '~/composables/properties/useClipHudPropert
 import { useClipParametersClipboard } from '~/composables/editor/useClipParametersClipboard';
 import { useClipKeyframes } from '~/composables/timeline/useClipKeyframes';
 import ClipEffectsEditor from '~/components/effects/ClipEffectsEditor.vue';
+import { normalizeHexColor } from '~/utils/color';
+import { upsertKeyframe } from '~/timeline/animation/ops';
 
 const props = defineProps<{
   clip: TimelineClipItem;
@@ -307,6 +309,35 @@ function handlePasteKeyframeMoment() {
   if (moment) clipKeyframes.pasteMomentAtPlayhead(moment);
 }
 
+type AnimationPreset = 'fade-in' | 'fade-out' | 'ken-burns' | 'slide-in';
+
+function handleApplyAnimationPreset(preset: AnimationPreset) {
+  const durationUs = Math.max(1, props.clip.sourceRange.durationUs || props.clip.timelineRange.durationUs);
+  const presetSpanUs = Math.min(1_000_000, durationUs);
+  let next = props.clip.animations;
+
+  if (preset === 'fade-in') {
+    next = upsertKeyframe(next, 'opacity', props.clip.sourceRange.startUs, 0, 'linear');
+    next = upsertKeyframe(next, 'opacity', props.clip.sourceRange.startUs + presetSpanUs, 1, 'linear');
+  } else if (preset === 'fade-out') {
+    const endUs = props.clip.sourceRange.startUs + durationUs;
+    next = upsertKeyframe(next, 'opacity', Math.max(props.clip.sourceRange.startUs, endUs - presetSpanUs), 1, 'linear');
+    next = upsertKeyframe(next, 'opacity', endUs, 0, 'linear');
+  } else if (preset === 'ken-burns') {
+    next = upsertKeyframe(next, 'transform.scale.x', props.clip.sourceRange.startUs, 1, 'ease');
+    next = upsertKeyframe(next, 'transform.scale.y', props.clip.sourceRange.startUs, 1, 'ease');
+    next = upsertKeyframe(next, 'transform.scale.x', props.clip.sourceRange.startUs + durationUs, 1.12, 'linear');
+    next = upsertKeyframe(next, 'transform.scale.y', props.clip.sourceRange.startUs + durationUs, 1.12, 'linear');
+  } else if (preset === 'slide-in') {
+    next = upsertKeyframe(next, 'transform.position.x', props.clip.sourceRange.startUs, -400, 'ease');
+    next = upsertKeyframe(next, 'transform.position.x', props.clip.sourceRange.startUs + presetSpanUs, 0, 'linear');
+    next = upsertKeyframe(next, 'opacity', props.clip.sourceRange.startUs, 0, 'linear');
+    next = upsertKeyframe(next, 'opacity', props.clip.sourceRange.startUs + presetSpanUs, 1, 'linear');
+  }
+
+  timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, { animations: next });
+}
+
 function handleUpdateOpacity(val: number) {
   const safe = typeof val === 'number' && Number.isFinite(val) ? val : 1;
   if (clipKeyframes.recordValue('opacity', safe)) return;
@@ -347,16 +378,57 @@ function handleUpdateMask(mask: unknown) {
 // Numbers seed/record directly; booleans map to 0/1. Interpolated values are
 // fed back through `displayValues` so the controls show what's playing.
 const clipEffectKeyframes = {
-  isAnimated: (effectId: string, key: string) => clipKeyframes.isEffectParamAnimated(effectId, key),
+  isAnimated: (effectId: string, key: string) =>
+    clipKeyframes.isEffectParamAnimated(effectId, key) ||
+    ['r', 'g', 'b'].some((channel) =>
+      clipKeyframes.isEffectParamAnimated(effectId, `${key}.${channel}`),
+    ),
   toggle: (effectId: string, key: string) => {
     const effect = (props.clip.effects ?? []).find(
       (e) => (e as Record<string, unknown>).id === effectId,
     ) as Record<string, unknown> | undefined;
     const cur = effect?.[key];
+    if (typeof cur === 'string') {
+      const hex = normalizeHexColor(cur, '#000000').slice(1);
+      for (const [channel, start, end] of [
+        ['r', 0, 2],
+        ['g', 2, 4],
+        ['b', 4, 6],
+      ] as const) {
+        clipKeyframes.toggleEffectParam(
+          effectId,
+          `${key}.${channel}`,
+          Number.parseInt(hex.slice(start, end), 16),
+        );
+      }
+      return;
+    }
     const seed = typeof cur === 'boolean' ? (cur ? 1 : 0) : Number(cur ?? 0);
     clipKeyframes.toggleEffectParam(effectId, key, Number.isFinite(seed) ? seed : 0);
   },
   recordEdit: (effectId: string, key: string, value: unknown) => {
+    if (typeof value === 'string') {
+      if (
+        !['r', 'g', 'b'].some((channel) =>
+          clipKeyframes.isEffectParamAnimated(effectId, `${key}.${channel}`),
+        )
+      ) {
+        return false;
+      }
+      const hex = normalizeHexColor(value, '#000000').slice(1);
+      for (const [channel, start, end] of [
+        ['r', 0, 2],
+        ['g', 2, 4],
+        ['b', 4, 6],
+      ] as const) {
+        clipKeyframes.recordEffectParam(
+          effectId,
+          `${key}.${channel}`,
+          Number.parseInt(hex.slice(start, end), 16),
+        );
+      }
+      return true;
+    }
     const num = typeof value === 'boolean' ? (value ? 1 : 0) : Number(value);
     if (!Number.isFinite(num)) return false;
     return clipKeyframes.recordEffectParam(effectId, key, num);
@@ -369,6 +441,34 @@ const clipEffectKeyframes = {
       const cur = effect[key];
       const staticNum = typeof cur === 'boolean' ? (cur ? 1 : 0) : Number(cur ?? 0);
       out[key] = clipKeyframes.effectParamDisplayValue(id, key, staticNum);
+    }
+    for (const [key, value] of Object.entries(effect)) {
+      if (typeof value !== 'string') continue;
+      const hex = normalizeHexColor(value, '#000000').slice(1);
+      const channels = {
+        r: Number.parseInt(hex.slice(0, 2), 16),
+        g: Number.parseInt(hex.slice(2, 4), 16),
+        b: Number.parseInt(hex.slice(4, 6), 16),
+      };
+      const sampled = {
+        r: clipKeyframes.effectParamDisplayValue(id, `${key}.r`, channels.r),
+        g: clipKeyframes.effectParamDisplayValue(id, `${key}.g`, channels.g),
+        b: clipKeyframes.effectParamDisplayValue(id, `${key}.b`, channels.b),
+      };
+      if (
+        sampled.r !== channels.r ||
+        sampled.g !== channels.g ||
+        sampled.b !== channels.b ||
+        ['r', 'g', 'b'].some((channel) =>
+          clipKeyframes.isEffectParamAnimated(id, `${key}.${channel}`),
+        )
+      ) {
+        const toHex = (n: number) =>
+          Math.max(0, Math.min(255, Math.round(n)))
+            .toString(16)
+            .padStart(2, '0');
+        out[key] = `#${toHex(sampled.r)}${toHex(sampled.g)}${toHex(sampled.b)}`;
+      }
     }
     return out;
   },
@@ -473,6 +573,9 @@ const {
     timelineStore.pushTimelineHistory(preState, commandType, labelKey);
   },
   getTimelineDoc: () => timelineStore.timelineDoc,
+  isParamAnimated: clipKeyframes.isAnimated,
+  onAnimatedParamEdit: clipKeyframes.recordValue,
+  getAnimatedDisplayValue: clipKeyframes.currentValue,
 });
 
 const effectsSectionRef = ref<HTMLElement | null>(null);
@@ -667,6 +770,46 @@ defineExpose({
 
     <!-- Tab: Video -->
     <div v-else-if="activeTab === 'video'" class="flex flex-col gap-2">
+      <div class="flex items-center justify-between px-1 py-1 rounded bg-ui-bg-elevated/30">
+        <span class="text-2xs text-ui-text-muted uppercase tracking-wide">{{
+          t('fastcat.clip.animation.presetsTitle')
+        }}</span>
+        <div class="flex items-center gap-0.5">
+          <button
+            type="button"
+            class="p-1 rounded text-ui-text-muted hover:text-ui-text hover:bg-ui-border-elevated"
+            :title="t('fastcat.clip.animation.fadeInPreset')"
+            @click="handleApplyAnimationPreset('fade-in')"
+          >
+            <UIcon name="i-heroicons-arrow-trending-up" class="w-3.5 h-3.5 block" />
+          </button>
+          <button
+            type="button"
+            class="p-1 rounded text-ui-text-muted hover:text-ui-text hover:bg-ui-border-elevated"
+            :title="t('fastcat.clip.animation.fadeOutPreset')"
+            @click="handleApplyAnimationPreset('fade-out')"
+          >
+            <UIcon name="i-heroicons-arrow-trending-down" class="w-3.5 h-3.5 block" />
+          </button>
+          <button
+            type="button"
+            class="p-1 rounded text-ui-text-muted hover:text-ui-text hover:bg-ui-border-elevated"
+            :title="t('fastcat.clip.animation.kenBurnsPreset')"
+            @click="handleApplyAnimationPreset('ken-burns')"
+          >
+            <UIcon name="i-heroicons-magnifying-glass-plus" class="w-3.5 h-3.5 block" />
+          </button>
+          <button
+            type="button"
+            class="p-1 rounded text-ui-text-muted hover:text-ui-text hover:bg-ui-border-elevated"
+            :title="t('fastcat.clip.animation.slideInPreset')"
+            @click="handleApplyAnimationPreset('slide-in')"
+          >
+            <UIcon name="i-heroicons-arrow-right" class="w-3.5 h-3.5 block" />
+          </button>
+        </div>
+      </div>
+
       <ClipBlendingModeSection
         v-model:enabled="isBlendingEnabled"
         :clip-type="clip.clipType"
@@ -775,8 +918,10 @@ defineExpose({
         :audio-fade-out-max-sec="audioFadeOutMaxSec"
         :audio-fade-in-curve="audioFadeInCurve"
         :audio-fade-out-curve="audioFadeOutCurve"
+        :is-param-animated="clipKeyframes.isAnimated"
         @update-audio-gain="updateAudioGain"
         @update-audio-balance="updateAudioBalance"
+        @toggle-param-animation="clipKeyframes.toggleAnimated"
         @update-audio-fade-in-curve="updateAudioFadeInCurve"
         @update-audio-fade-in-sec="updateAudioFadeInSec"
         @update-audio-fade-out-curve="updateAudioFadeOutCurve"

@@ -167,7 +167,12 @@
         "navNext": "К следующему ключу",
         "navPrev": "К предыдущему ключу",
         "pasteKeyframe": "Вставить ключ на позиции плейхеда",
+        "fadeInPreset": "Пресет появления",
+        "fadeOutPreset": "Пресет исчезновения",
+        "kenBurnsPreset": "Пресет Ken Burns",
+        "presetsTitle": "Пресеты анимации",
         "removeKeyframe": "Удалить ключ на позиции плейхеда",
+        "slideInPreset": "Пресет въезда",
         "stopwatchTitle": "Анимировать во времени",
         "stopwatchTitleActive": "Анимировано — нажмите, чтобы удалить все ключи"
       },

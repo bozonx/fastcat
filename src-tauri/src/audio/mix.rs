@@ -8,6 +8,7 @@ use parking_lot::{Condvar, Mutex};
 
 use crate::audio::decode::{decode_audio_chunk, spawn_window_fill, WindowFillPriority};
 use crate::audio::shared::{AudioRenderTarget, AudioShared, REFILL_MARGIN_SEC};
+use crate::monitor::scene::build::animation::ClipAnimations;
 use crate::monitor::scene::{AudioFadeCurve, SceneAudioLayer, SceneAudioTrack};
 
 /// Chunk size for the offline export mix. Much larger than the realtime
@@ -1010,7 +1011,16 @@ fn apply_layer_mix(params: ApplyLayerMixParams<'_>) {
         decoded.len() / channels
     );
     let stereo = channels >= 2;
-    let (ll, lr, rl, rr) = if stereo {
+    let anims = layer.animations.as_ref().and_then(ClipAnimations::from_value);
+    let has_volume_animation = anims
+        .as_ref()
+        .and_then(|a| a.eval("audio.volume", layer.source_start_sec * 1_000_000.0))
+        .is_some();
+    let has_pan_animation = anims
+        .as_ref()
+        .and_then(|a| a.eval("audio.pan", layer.source_start_sec * 1_000_000.0))
+        .is_some();
+    let (static_ll, static_lr, static_rl, static_rr) = if stereo {
         let (ll, lr, rl, rr) = stereo_pan_matrix(layer.audio_balance);
         (ll as f32, lr as f32, rl as f32, rr as f32)
     } else {
@@ -1023,18 +1033,19 @@ fn apply_layer_mix(params: ApplyLayerMixParams<'_>) {
     let (fade_in, fade_out) = effective_fades(layer, duration);
     let clip_start = (segment_start_sec - layer.timeline_start_sec).max(0.0);
     let clip_end = clip_start + frames_to_write.saturating_sub(1) as f64 / sample_rate as f64;
-    let constant_gain = duration > 0.0 && clip_start >= fade_in && {
+    let constant_gain = !has_volume_animation && duration > 0.0 && clip_start >= fade_in && {
         let fade_out_start = (duration - fade_out).max(0.0);
         fade_out <= 0.0 || clip_end < fade_out_start
     };
 
     for i in 0..frames_to_write {
+        let timeline_sec = segment_start_sec + i as f64 / sample_rate as f64;
+        let animation_t_us = layer.source_pts_at(timeline_sec) * 1_000_000.0;
         let gain = if constant_gain {
             layer.audio_gain.max(0.0) as f32
         } else {
-            let timeline_sec = segment_start_sec + i as f64 / sample_rate as f64;
             let clip_sec = (timeline_sec - layer.timeline_start_sec).max(0.0);
-            gain_at_clip_time(layer, clip_sec) as f32
+            gain_at_clip_time(layer, clip_sec, anims.as_ref(), animation_t_us) as f32
         };
         if gain == 0.0 {
             continue;
@@ -1042,6 +1053,17 @@ fn apply_layer_mix(params: ApplyLayerMixParams<'_>) {
         let src = i * channels;
         let dst = (write_start_frame + i) * channels;
         if stereo {
+            let (ll, lr, rl, rr) = if has_pan_animation {
+                let pan = anims
+                    .as_ref()
+                    .and_then(|a| a.eval("audio.pan", animation_t_us))
+                    .unwrap_or(layer.audio_balance)
+                    .clamp(-1.0, 1.0);
+                let (ll, lr, rl, rr) = stereo_pan_matrix(pan);
+                (ll as f32, lr as f32, rl as f32, rr as f32)
+            } else {
+                (static_ll, static_lr, static_rl, static_rr)
+            };
             let left = decoded[src] * gain;
             let right = decoded[src + 1] * gain;
             mixed[dst] += ll * left + lr * right;
@@ -1076,8 +1098,16 @@ fn effective_fades(layer: &SceneAudioLayer, duration: f64) -> (f64, f64) {
     }
 }
 
-fn gain_at_clip_time(layer: &SceneAudioLayer, clip_sec: f64) -> f64 {
-    let mut gain = layer.audio_gain.max(0.0);
+fn gain_at_clip_time(
+    layer: &SceneAudioLayer,
+    clip_sec: f64,
+    anims: Option<&ClipAnimations>,
+    animation_t_us: f64,
+) -> f64 {
+    let mut gain = anims
+        .and_then(|a| a.eval("audio.volume", animation_t_us))
+        .unwrap_or(layer.audio_gain)
+        .clamp(0.0, 10.0);
     let duration = (layer.timeline_end_sec - layer.timeline_start_sec).max(0.0);
     if duration <= 0.0 {
         return 0.0;
@@ -1343,6 +1373,7 @@ mod tests {
             speed: 1.0,
             audio_gain: 1.0,
             audio_balance: 0.0,
+            animations: None,
             audio_fade_in_sec: 2.0,
             audio_fade_out_sec: 2.0,
             audio_fade_in_curve: AudioFadeCurve::Linear,
@@ -1388,10 +1419,10 @@ mod tests {
     #[test]
     fn gain_envelope_applies_linear_fades() {
         let l = layer();
-        assert_eq!(gain_at_clip_time(&l, 0.0), 0.0);
-        assert!((gain_at_clip_time(&l, 1.0) - 0.5).abs() < 1e-9);
-        assert!((gain_at_clip_time(&l, 5.0) - 1.0).abs() < 1e-9);
-        assert!((gain_at_clip_time(&l, 9.0) - 0.5).abs() < 1e-9);
+        assert_eq!(gain_at_clip_time(&l, 0.0, None, 0.0), 0.0);
+        assert!((gain_at_clip_time(&l, 1.0, None, 0.0) - 0.5).abs() < 1e-9);
+        assert!((gain_at_clip_time(&l, 5.0, None, 0.0) - 1.0).abs() < 1e-9);
+        assert!((gain_at_clip_time(&l, 9.0, None, 0.0) - 0.5).abs() < 1e-9);
     }
 
     #[test]
@@ -1405,9 +1436,9 @@ mod tests {
         let mut l = layer();
         l.audio_fade_in_sec = 12.0;
         l.audio_fade_out_sec = 12.0;
-        assert!((gain_at_clip_time(&l, 5.0) - 1.0).abs() < 1e-9);
-        assert!((gain_at_clip_time(&l, 2.5) - 0.5).abs() < 1e-9);
-        assert!((gain_at_clip_time(&l, 7.5) - 0.5).abs() < 1e-9);
+        assert!((gain_at_clip_time(&l, 5.0, None, 0.0) - 1.0).abs() < 1e-9);
+        assert!((gain_at_clip_time(&l, 2.5, None, 0.0) - 0.5).abs() < 1e-9);
+        assert!((gain_at_clip_time(&l, 7.5, None, 0.0) - 0.5).abs() < 1e-9);
     }
 
     #[test]
@@ -2019,6 +2050,7 @@ mod tests {
             speed: 1.0,
             audio_gain: 1.0,
             audio_balance: 0.0,
+            animations: None,
             audio_fade_in_sec: 0.0,
             audio_fade_out_sec: 0.0,
             audio_fade_in_curve: AudioFadeCurve::Linear,

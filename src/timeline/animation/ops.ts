@@ -147,12 +147,20 @@ export function clearParamAnimation(
  * (the animation should not visibly jump when enabled).
  */
 export function getStaticParamValue(
-  clip: Pick<TimelineClipItem, 'opacity' | 'transform'>,
+  clip: Pick<TimelineClipItem, 'opacity' | 'transform' | 'audioGain' | 'audioBalance'>,
   path: FixedAnimatableParamPath,
 ): number {
   switch (path) {
     case 'opacity':
       return typeof clip.opacity === 'number' && Number.isFinite(clip.opacity) ? clip.opacity : 1;
+    case 'audio.volume':
+      return typeof clip.audioGain === 'number' && Number.isFinite(clip.audioGain)
+        ? clip.audioGain
+        : 1;
+    case 'audio.pan':
+      return typeof clip.audioBalance === 'number' && Number.isFinite(clip.audioBalance)
+        ? clip.audioBalance
+        : 0;
     case 'transform.position.x':
       return clip.transform?.position?.x ?? 0;
     case 'transform.position.y':
@@ -163,6 +171,22 @@ export function getStaticParamValue(
       return clip.transform?.scale?.y ?? 1;
     case 'transform.rotationDeg':
       return clip.transform?.rotationDeg ?? 0;
+    case 'transform.anchor.x':
+      return clip.transform?.anchor?.x ?? 0.5;
+    case 'transform.anchor.y':
+      return clip.transform?.anchor?.y ?? 0.5;
+    case 'transform.crop.top':
+      return clip.transform?.crop?.top ?? 0;
+    case 'transform.crop.bottom':
+      return clip.transform?.crop?.bottom ?? 0;
+    case 'transform.crop.left':
+      return clip.transform?.crop?.left ?? 0;
+    case 'transform.crop.right':
+      return clip.transform?.crop?.right ?? 0;
+    case 'transform.flipHorizontal':
+      return clip.transform?.flipHorizontal ? 1 : 0;
+    case 'transform.flipVertical':
+      return clip.transform?.flipVertical ? 1 : 0;
   }
 }
 

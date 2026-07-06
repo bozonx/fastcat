@@ -109,6 +109,44 @@ describe('resolveClipAnimationOverlay', () => {
     expect(c.animatedTransform?.crop?.top).toBe(5);
     expect(c.animatedTransform?.anchor?.preset).toBe('center');
   });
+
+  it('samples anchor, crop and flip transform keys', () => {
+    const c = clip({
+      transform: {
+        anchor: { preset: 'center' },
+        crop: { top: 0, bottom: 0, left: 0, right: 0 },
+        flipHorizontal: false,
+      },
+      animations: anims({
+        'transform.anchor.x': {
+          keyframes: [
+            { tUs: 0, value: 0, easing: 'linear' },
+            { tUs: 1000, value: 1, easing: 'linear' },
+          ],
+        },
+        'transform.crop.top': {
+          keyframes: [
+            { tUs: 0, value: 0, easing: 'linear' },
+            { tUs: 1000, value: 40, easing: 'linear' },
+          ],
+        },
+        'transform.flipHorizontal': {
+          keyframes: [
+            { tUs: 0, value: 0, easing: 'hold' },
+            { tUs: 1000, value: 1, easing: 'hold' },
+          ],
+        },
+      }),
+    });
+
+    resolveClipAnimationOverlay(c, 500);
+    expect(c.animatedTransform?.anchor).toEqual({ preset: 'custom', x: 0.5, y: 0.5 });
+    expect(c.animatedTransform?.crop?.top).toBeCloseTo(20);
+    expect(c.animatedTransform?.flipHorizontal).toBe(false);
+
+    resolveClipAnimationOverlay(c, 1000);
+    expect(c.animatedTransform?.flipHorizontal).toBe(true);
+  });
 });
 
 describe('effectiveClipTransform', () => {
