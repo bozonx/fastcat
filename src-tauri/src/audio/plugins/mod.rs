@@ -35,6 +35,7 @@
 use std::collections::{HashMap, HashSet};
 
 pub mod catalog;
+pub mod clap;
 
 /// Specification of a single audio effect, sent from the frontend.
 #[derive(Debug, Clone, PartialEq, serde::Deserialize, serde::Serialize, ts_rs::TS)]
@@ -204,7 +205,7 @@ impl PluginHost {
     pub fn new() -> Self {
         Self {
             instances: HashMap::new(),
-            backends: vec![Box::new(BuiltinBackend)],
+            backends: vec![Box::new(BuiltinBackend), Box::new(clap::ClapBackend)],
             scratch: Vec::new(),
             #[cfg(test)]
             reset_all_count: 0,

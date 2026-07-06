@@ -339,6 +339,18 @@ function teardown(info: { dropped: boolean; cancelled: boolean; nativeTakeover?:
   if (!drag) return;
   activeDrag = null;
 
+  if (drag.committed) {
+    const blockClick = (e: MouseEvent) => {
+      e.stopPropagation();
+      e.preventDefault();
+      window.removeEventListener('click', blockClick, true);
+    };
+    window.addEventListener('click', blockClick, true);
+    setTimeout(() => {
+      window.removeEventListener('click', blockClick, true);
+    }, 50);
+  }
+
   dndDebug('teardown', { committed: drag.committed, ...info });
 
   clearLongPress(drag);

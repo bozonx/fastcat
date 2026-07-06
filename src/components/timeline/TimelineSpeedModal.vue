@@ -12,6 +12,7 @@ const props = defineProps<{
   open: boolean;
   speed: number;
   hasAudio: boolean;
+  isAudioTrack?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -27,9 +28,18 @@ const speedValue = computed({
 
 const isOpen = useModalOpenModel(props, emit);
 
+const minSpeed = computed(() => props.isAudioTrack ? 0.1 : -10);
+
+const isSaveDisabled = computed(() => {
+  if (props.isAudioTrack) {
+    return props.speed < 0.1;
+  }
+  return Math.abs(props.speed) < 0.1;
+});
+
 const showNegativeSpeedAudioWarning = computed(() => props.speed < 0 && props.hasAudio);
 const showLowSpeedWarning = computed(
-  () => Math.abs(props.speed) > 0 && Math.abs(props.speed) < 0.1,
+  () => !props.isAudioTrack && Math.abs(props.speed) > 0 && Math.abs(props.speed) < 0.1,
 );
 
 const saveButtonRef = ref<import('vue').ComponentPublicInstance | null>(null);
@@ -73,7 +83,7 @@ watch(
       <UiSliderInput
         v-model="speedValue"
         :label="t('fastcat.timeline.speedValue')"
-        :min="-10"
+        :min="minSpeed"
         :max="10"
         :step="0.05"
         :unit="'x'"
@@ -102,7 +112,7 @@ watch(
         <UButton color="neutral" variant="ghost" @click="void (isOpen = false)">
           {{ t('common.cancel') }}
         </UButton>
-        <UButton ref="saveButtonRef" color="primary" autofocus @click="emit('save')">
+        <UButton ref="saveButtonRef" color="primary" autofocus :disabled="isSaveDisabled" @click="emit('save')">
           {{ t('common.save') }}
         </UButton>
       </div>

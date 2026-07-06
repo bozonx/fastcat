@@ -778,6 +778,40 @@ dependencies = [
 ]
 
 [[package]]
+name = "clack-common"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6cc803ecdd9db71036304f1e308bc23274e58bb9251c447c20ed2d0a30c69d6c"
+dependencies = [
+ "bitflags 2.11.1",
+ "clap-sys",
+]
+
+[[package]]
+name = "clack-extensions"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0f7a09059637aa2043aeaab65e1d95bc91f340da1f05512c0c00e6e0283e5d9b"
+dependencies = [
+ "bitflags 2.11.1",
+ "clack-common",
+ "clack-host",
+ "clap-sys",
+]
+
+[[package]]
+name = "clack-host"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2a3e2891319937507e5d1c85e853de54abbf1939bdee0aa81079fab2cbc5eb15"
+dependencies = [
+ "clack-common",
+ "clap-sys",
+ "libloading 0.8.9",
+ "objc2-foundation 0.3.2",
+]
+
+[[package]]
 name = "clang-sys"
 version = "1.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -787,6 +821,12 @@ dependencies = [
  "libc",
  "libloading 0.8.9",
 ]
+
+[[package]]
+name = "clap-sys"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a76abbdb2907f6fd97fb6bc0b7be96b77d328f2dd9669d1075cc03369ed22154"
 
 [[package]]
 name = "codespan-reporting"
@@ -1463,6 +1503,8 @@ version = "0.5.2"
 dependencies = [
  "anyhow",
  "bytemuck",
+ "clack-extensions",
+ "clack-host",
  "cpal",
  "ffmpeg-next",
  "ffmpeg-sys-next",

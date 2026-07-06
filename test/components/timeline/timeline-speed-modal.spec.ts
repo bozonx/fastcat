@@ -72,7 +72,7 @@ describe('TimelineSpeedModal', () => {
 
   it('shows negative speed audio warning when speed < 0 and hasAudio', async () => {
     const component = await mountSuspended(TimelineSpeedModal, {
-      props: { open: true, speed: -1, hasAudio: true },
+      props: { open: true, speed: -1, hasAudio: true, isAudioTrack: false },
     });
 
     expect(component.text()).toContain('fastcat.timeline.negativeSpeedAudioUnsupportedTitle');
@@ -80,25 +80,45 @@ describe('TimelineSpeedModal', () => {
 
   it('does not show negative speed audio warning when hasAudio is false', async () => {
     const component = await mountSuspended(TimelineSpeedModal, {
-      props: { open: true, speed: -1, hasAudio: false },
+      props: { open: true, speed: -1, hasAudio: false, isAudioTrack: false },
     });
 
     expect(component.text()).not.toContain('fastcat.timeline.negativeSpeedAudioUnsupportedTitle');
   });
 
-  it('shows low speed warning when speed is between 0 and 0.1', async () => {
+  it('shows low speed warning when speed is between 0 and 0.1 for video', async () => {
     const component = await mountSuspended(TimelineSpeedModal, {
-      props: { open: true, speed: 0.05, hasAudio: false },
+      props: { open: true, speed: 0.05, hasAudio: false, isAudioTrack: false },
     });
 
     expect(component.text()).toContain('fastcat.timeline.speedTooLowTitle');
   });
 
-  it('does not show low speed warning when speed is 0', async () => {
+  it('does not show low speed warning for audio track even when speed is between 0 and 0.1', async () => {
     const component = await mountSuspended(TimelineSpeedModal, {
-      props: { open: true, speed: 0, hasAudio: false },
+      props: { open: true, speed: 0.05, hasAudio: false, isAudioTrack: true },
     });
 
     expect(component.text()).not.toContain('fastcat.timeline.speedTooLowTitle');
+  });
+
+  it('sets slider min to 0.1 for audio track and -10 for video', async () => {
+    const audioComponent = await mountSuspended(TimelineSpeedModal, {
+      props: { open: true, speed: 1, hasAudio: true, isAudioTrack: true },
+    });
+    expect(audioComponent.find('input[type="range"]').attributes('min')).toBe('0.1');
+
+    const videoComponent = await mountSuspended(TimelineSpeedModal, {
+      props: { open: true, speed: 1, hasAudio: false, isAudioTrack: false },
+    });
+    expect(videoComponent.find('input[type="range"]').attributes('min')).toBe('-10');
+  });
+
+  it('disables save button for audio track if speed < 0.1', async () => {
+    const component = await mountSuspended(TimelineSpeedModal, {
+      props: { open: true, speed: 0.05, hasAudio: true, isAudioTrack: true },
+    });
+    const saveButton = component.findAll('button').find((b) => b.text().includes('common.save'));
+    expect(saveButton?.attributes('disabled')).toBeDefined();
   });
 });

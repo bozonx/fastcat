@@ -47,7 +47,7 @@ const iconName = computed(() => {
       return 'lucide:between-horizontal-start';
     case 'none':
     default:
-      return 'lucide:mouse-pointer-2';
+      return 'lucide:ban';
   }
 });
 

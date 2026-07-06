@@ -32,7 +32,15 @@ export function useTimelineSpeedModal(tracks: () => TimelineTrack[]) {
   async function saveSpeedModal() {
     if (!speedModal.value) return;
     const { trackId, itemId, speed } = speedModal.value;
-    if (Math.abs(speed) < 0.1) return;
+    const track = tracks().find((t) => t.id === trackId);
+    const isAudio = track?.kind === 'audio';
+
+    if (isAudio) {
+      if (speed < 0.1) return;
+    } else {
+      if (Math.abs(speed) < 0.1) return;
+    }
+
     timelineStore.updateClipProperties(trackId, itemId, { speed });
     speedModal.value.open = false;
     await timelineStore.requestTimelineSave({ immediate: true });
@@ -49,10 +57,17 @@ export function useTimelineSpeedModal(tracks: () => TimelineTrack[]) {
     return Boolean(clip.source?.path && mediaStore.getCachedMetadata(clip.source.path)?.audio);
   });
 
+  const speedModalTargetIsAudioTrack = computed(() => {
+    if (!speedModal.value) return false;
+    const track = tracks().find((t) => t.id === speedModal.value!.trackId);
+    return track?.kind === 'audio';
+  });
+
   return {
     speedModal,
     openSpeedModal,
     saveSpeedModal,
     speedModalTargetHasAudio,
+    speedModalTargetIsAudioTrack,
   };
 }

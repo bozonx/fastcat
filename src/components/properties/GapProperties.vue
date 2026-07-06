@@ -63,14 +63,16 @@ function deleteGap() {
   <div class="w-full flex flex-col gap-2 text-ui-text">
     <!-- Gap properties panel -->
     <PropertySection :title="t('fastcat.timeline.gap')">
-      <div class="px-2 py-1 text-xs text-ui-text-muted mb-2">
-        {{ t('fastcat.timeline.gapDescription') }}
-      </div>
       <PropertyRow :label="t('common.duration')" :value="formattedGapDuration" />
       <div v-if="!hideActions" class="mt-2 pt-2 border-t border-ui-border">
         <PropertyActionsBlock :additional-actions="gapActions" />
       </div>
     </PropertySection>
+
+    <!-- Track divider -->
+    <div v-if="track" class="text-xs font-bold text-ui-text-muted px-2 py-1 mt-2 uppercase tracking-wider">
+      {{ t('fastcat.track.trackName', { name: track.name }) }}
+    </div>
 
     <!-- Track properties below -->
     <TrackProperties v-if="track" :track="track" :hide-actions="hideActions" />

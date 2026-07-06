@@ -1107,6 +1107,7 @@
     },
     "track": {
       "actions": "Действия",
+      "trackName": "Дорожка: {name}",
       "audio": {
         "balance": "Баланс",
         "volume": "Громкость"

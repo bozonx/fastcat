@@ -97,12 +97,36 @@ describe('useTimelineSpeedModal', () => {
     expect(mockTimelineStore.updateClipProperties).not.toHaveBeenCalled();
   });
 
-  it('saveSpeedModal does nothing when speed is too small (< 0.1)', async () => {
+  it('saveSpeedModal does nothing when speed is too small (< 0.1) for video', async () => {
     result.speedModal.value = { open: true, trackId: 'v1', itemId: 'c1', speed: 0.05 };
 
     await result.saveSpeedModal();
 
     expect(mockTimelineStore.updateClipProperties).not.toHaveBeenCalled();
+  });
+
+  it('saveSpeedModal does nothing when speed is too small (< 0.1) for audio', async () => {
+    result.speedModal.value = { open: true, trackId: 'a1', itemId: 'a1', speed: 0.05 };
+
+    await result.saveSpeedModal();
+
+    expect(mockTimelineStore.updateClipProperties).not.toHaveBeenCalled();
+  });
+
+  it('saveSpeedModal does nothing when speed is negative for audio', async () => {
+    result.speedModal.value = { open: true, trackId: 'a1', itemId: 'a1', speed: -1 };
+
+    await result.saveSpeedModal();
+
+    expect(mockTimelineStore.updateClipProperties).not.toHaveBeenCalled();
+  });
+
+  it('saveSpeedModal calls updateClipProperties for audio clip when speed is valid (>= 0.1)', async () => {
+    result.speedModal.value = { open: true, trackId: 'a1', itemId: 'a1', speed: 1.5 };
+
+    await result.saveSpeedModal();
+
+    expect(mockTimelineStore.updateClipProperties).toHaveBeenCalledWith('a1', 'a1', { speed: 1.5 });
   });
 
   it('saveSpeedModal calls updateClipProperties and closes modal', async () => {

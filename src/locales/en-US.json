@@ -1107,6 +1107,7 @@
     },
     "track": {
       "actions": "Actions",
+      "trackName": "Track: {name}",
       "audio": {
         "balance": "Balance",
         "volume": "Volume"

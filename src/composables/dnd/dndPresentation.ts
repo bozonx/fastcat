@@ -62,7 +62,6 @@ export function getDndBadge(operation: DndOperation, t: DndTranslate): DndBadge 
       return { glyph: '⇄', color: 'green', label: t(getDndLabelKey(operation)), visible: true };
     case 'none':
     default:
-      // Active drag but not over a valid target: neutral "carrying" ghost.
-      return { glyph: '·', color: 'amber', label: '', visible: true };
+      return { glyph: '✕', color: 'red', label: t('videoEditor.fileManager.drag.notAllowed'), visible: true };
   }
 }

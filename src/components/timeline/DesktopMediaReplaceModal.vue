@@ -122,6 +122,7 @@ function handleSelectFile(entry: FsEntry) {
         disable-marquee
         isolated-selection
         hide-usage-indicators
+        hide-corrupt-files
         :allowed-media-types="allowedMediaTypes"
         :excluded-paths="excludedPaths"
         @select="handlePickerSelect"

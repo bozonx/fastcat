@@ -78,7 +78,7 @@ describe('GapProperties', () => {
     vi.clearAllMocks();
   });
 
-  it('renders description and gap duration correctly', async () => {
+  it('renders track name divider and gap duration correctly', async () => {
     const wrapper = await mountSuspended(GapProperties, {
       props: {
         trackId: 'track1',
@@ -87,8 +87,8 @@ describe('GapProperties', () => {
       },
     });
 
-    const description = wrapper.find('.text-ui-text-muted');
-    expect(description.text()).toBe('fastcat.timeline.gapDescription');
+    // Check that track name divider is rendered
+    expect(wrapper.text()).toContain('fastcat.track.trackName');
 
     const propertyRow = wrapper.find('[data-testid="property-row"]');
     expect(propertyRow.attributes('data-label')).toBe('common.duration');

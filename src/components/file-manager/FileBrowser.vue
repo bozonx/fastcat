@@ -62,6 +62,7 @@ const props = defineProps<{
   excludedPaths?: string[];
   isolatedSelection?: boolean;
   hideUsageIndicators?: boolean;
+  hideCorruptFiles?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -157,9 +158,17 @@ function getSelectedEntries(): FsEntry[] {
 }
 
 const excludedPathSet = computed(() => new Set(props.excludedPaths ?? []));
-const visibleEntries = computed(() =>
-  sortedEntries.value.filter((entry) => !entry.path || !excludedPathSet.value.has(entry.path)),
-);
+const visibleEntries = computed(() => {
+  let result = sortedEntries.value;
+  if (props.hideCorruptFiles) {
+    result = result.filter((entry) => {
+      if (!entry.path || entry.kind !== 'file') return true;
+      const status = fileCompatibility.value[entry.path]?.status;
+      return status !== 'corrupt';
+    });
+  }
+  return result.filter((entry) => !entry.path || !excludedPathSet.value.has(entry.path));
+});
 const selectedEntryPaths = computed(() =>
   props.isolatedSelection && isolatedSelectedEntry.value?.path
     ? [isolatedSelectedEntry.value.path]

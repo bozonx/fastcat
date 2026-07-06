@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
+import { useWorkspaceStore } from '~/stores/workspace.store';
 import type { TimelineTextClipItem } from '~/timeline/types';
 import PropertySection from '~/components/properties/PropertySection.vue';
 import PropertyField from '~/components/properties/PropertyField.vue';
@@ -29,6 +30,7 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
+const workspaceStore = useWorkspaceStore();
 
 const snapToPixelGrid = computed({
   get: () => Boolean(props.clip.snapToPixelGrid ?? true),
@@ -384,66 +386,68 @@ const fontWeightOptions = ['100', '200', '300', '400', '500', '600', '700', '800
           </PropertyField>
         </div>
 
-        <div class="grid grid-cols-2 gap-2">
-          <PropertyField :label="t('fastcat.textClip.widthMode')">
-            <div class="h-8 flex items-center justify-between gap-2">
-              <span class="text-xs text-ui-text-muted">{{ t('fastcat.textClip.autoWidth') }}</span>
-              <USwitch v-model="isAutoWidth" size="sm" color="error" />
-            </div>
-          </PropertyField>
-          <PropertyField :label="t('fastcat.textClip.heightMode')">
-            <div class="h-8 flex items-center justify-between gap-2">
-              <span class="text-xs text-ui-text-muted">{{ t('fastcat.textClip.autoHeight') }}</span>
-              <USwitch v-model="isAutoHeight" size="sm" color="error" />
-            </div>
-          </PropertyField>
-        </div>
+        <template v-if="workspaceStore.inDevelopmentFeaturesEnabled">
+          <div class="grid grid-cols-2 gap-2">
+            <PropertyField :label="t('fastcat.textClip.widthMode')">
+              <div class="h-8 flex items-center justify-between gap-2">
+                <span class="text-xs text-ui-text-muted">{{ t('fastcat.textClip.autoWidth') }}</span>
+                <USwitch v-model="isAutoWidth" size="sm" color="error" />
+              </div>
+            </PropertyField>
+            <PropertyField :label="t('fastcat.textClip.heightMode')">
+              <div class="h-8 flex items-center justify-between gap-2">
+                <span class="text-xs text-ui-text-muted">{{ t('fastcat.textClip.autoHeight') }}</span>
+                <USwitch v-model="isAutoHeight" size="sm" color="error" />
+              </div>
+            </PropertyField>
+          </div>
 
-        <div v-if="!isAutoWidth" class="grid grid-cols-2 gap-2">
-          <PropertyField :label="t('fastcat.textClip.widthPx')">
-            <UiWheelNumberInput
-              :model-value="Number(clip.style?.width ?? 400)"
-              size="sm"
-              :step="10"
-              :min="1"
-              full-width
-              @update:model-value="(v: any) => emit('updateTextStyle', { width: Number(v) })"
-            />
-          </PropertyField>
-          <PropertyField :label="t('fastcat.textClip.align')">
-            <UiSelect
-              :model-value="String(clip.style?.align ?? 'center')"
-              :items="alignOptions"
-              value-key="value"
-              label-key="label"
-              size="sm"
-              @update:model-value="(v: unknown) => emit('updateTextStyle', { align: v })"
-            />
-          </PropertyField>
-        </div>
+          <div v-if="!isAutoWidth" class="grid grid-cols-2 gap-2">
+            <PropertyField :label="t('fastcat.textClip.widthPx')">
+              <UiWheelNumberInput
+                :model-value="Number(clip.style?.width ?? 400)"
+                size="sm"
+                :step="10"
+                :min="1"
+                full-width
+                @update:model-value="(v: any) => emit('updateTextStyle', { width: Number(v) })"
+              />
+            </PropertyField>
+            <PropertyField :label="t('fastcat.textClip.align')">
+              <UiSelect
+                :model-value="String(clip.style?.align ?? 'center')"
+                :items="alignOptions"
+                value-key="value"
+                label-key="label"
+                size="sm"
+                @update:model-value="(v: unknown) => emit('updateTextStyle', { align: v })"
+              />
+            </PropertyField>
+          </div>
 
-        <div v-if="!isAutoHeight" class="grid grid-cols-2 gap-2">
-          <PropertyField :label="t('fastcat.textClip.heightPx')">
-            <UiWheelNumberInput
-              :model-value="Number(clip.style?.height ?? 240)"
-              size="sm"
-              :step="10"
-              :min="1"
-              full-width
-              @update:model-value="(v: any) => emit('updateTextStyle', { height: Number(v) })"
-            />
-          </PropertyField>
-          <PropertyField :label="t('fastcat.textClip.verticalAlign')">
-            <UiSelect
-              :model-value="String(clip.style?.verticalAlign ?? 'middle')"
-              :items="verticalAlignOptions"
-              value-key="value"
-              label-key="label"
-              size="sm"
-              @update:model-value="(v: unknown) => emit('updateTextStyle', { verticalAlign: v })"
-            />
-          </PropertyField>
-        </div>
+          <div v-if="!isAutoHeight" class="grid grid-cols-2 gap-2">
+            <PropertyField :label="t('fastcat.textClip.heightPx')">
+              <UiWheelNumberInput
+                :model-value="Number(clip.style?.height ?? 240)"
+                size="sm"
+                :step="10"
+                :min="1"
+                full-width
+                @update:model-value="(v: any) => emit('updateTextStyle', { height: Number(v) })"
+              />
+            </PropertyField>
+            <PropertyField :label="t('fastcat.textClip.verticalAlign')">
+              <UiSelect
+                :model-value="String(clip.style?.verticalAlign ?? 'middle')"
+                :items="verticalAlignOptions"
+                value-key="value"
+                label-key="label"
+                size="sm"
+                @update:model-value="(v: unknown) => emit('updateTextStyle', { verticalAlign: v })"
+              />
+            </PropertyField>
+          </div>
+        </template>
       </div>
     </PropertySection>
 

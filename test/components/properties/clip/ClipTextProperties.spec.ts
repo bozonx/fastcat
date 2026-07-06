@@ -17,6 +17,14 @@ vi.mock('~/utils/video-editor/text-layout', async (importOriginal) => {
   };
 });
 
+const mockWorkspaceStore = {
+  inDevelopmentFeaturesEnabled: true,
+};
+
+vi.mock('~/stores/workspace.store', () => ({
+  useWorkspaceStore: () => mockWorkspaceStore,
+}));
+
 const baseClip = {
   id: 'clip-1',
   kind: 'clip',

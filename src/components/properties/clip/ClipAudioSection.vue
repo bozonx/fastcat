@@ -227,6 +227,7 @@ function onVolumeUpdate(db: number) {
             :level-db="props.audioLevelDb"
             :disabled="!isEnabled"
             :max-db="6.0206"
+            :wheel-without-focus="true"
             @update:model-value="onVolumeUpdate"
             @drag-start="onVolumeDragStart"
             @drag-end="onVolumeDragEnd"

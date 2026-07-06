@@ -134,7 +134,7 @@ function handleAddEffect(type: string) {
     ...manifest.defaultValues,
   } as VideoClipEffect | AudioClipEffect;
 
-  setEffects([...safeEffects.value, newEffect]);
+  setEffects([newEffect, ...safeEffects.value]);
   isEffectModalOpen.value = false;
 }
 

@@ -101,6 +101,8 @@ pub fn scan_audio_plugins(request: AudioPluginScanRequest) -> AudioPluginScanRes
         plugins.extend(backend.discover(&paths));
     }
 
+    plugins = enrich_descriptors(plugins);
+
     plugins.sort_by(|a, b| a.name.cmp(&b.name).then_with(|| a.path.cmp(&b.path)));
 
     AudioPluginScanResult {
@@ -110,6 +112,66 @@ pub fn scan_audio_plugins(request: AudioPluginScanRequest) -> AudioPluginScanRes
             .map(|path| path.to_string_lossy().to_string())
             .collect(),
     }
+}
+
+/// Turn discovered candidates into concrete entries where a host backend can
+/// introspect them. For CLAP that means loading the bundle and enumerating the
+/// plugins it contains (a single `.clap` may expose several), filling in real
+/// name/vendor/version and marking them loadable. LV2/VST3 have no host backend
+/// yet, so they pass through unchanged as candidates.
+fn enrich_descriptors(plugins: Vec<AudioPluginDescriptor>) -> Vec<AudioPluginDescriptor> {
+    let mut out = Vec::with_capacity(plugins.len());
+    for descriptor in plugins {
+        if descriptor.format != AudioPluginFormat::Clap {
+            out.push(descriptor);
+            continue;
+        }
+
+        match super::clap::describe(Path::new(&descriptor.path)) {
+            Ok(contained) if !contained.is_empty() => {
+                let path_hash = stable_path_id(&descriptor.path);
+                for plugin in contained {
+                    out.push(AudioPluginDescriptor {
+                        id: format!("clap:{path_hash}:{}", plugin.id),
+                        format: AudioPluginFormat::Clap,
+                        path: descriptor.path.clone(),
+                        name: plugin.name.unwrap_or_else(|| descriptor.name.clone()),
+                        vendor: plugin.vendor,
+                        version: plugin.version,
+                        is_loadable: true,
+                        status: AudioPluginStatus {
+                            code: AudioPluginStatusCode::Candidate,
+                            message: format!("CLAP plugin ready ({})", plugin.id),
+                        },
+                    });
+                }
+            }
+            Ok(_) => out.push(with_status(
+                descriptor,
+                false,
+                "Bundle exposed no CLAP plugins",
+            )),
+            Err(err) => out.push(with_status(descriptor, false, &format!("Failed to load: {err}"))),
+        }
+    }
+    out
+}
+
+fn with_status(
+    mut descriptor: AudioPluginDescriptor,
+    is_loadable: bool,
+    message: &str,
+) -> AudioPluginDescriptor {
+    descriptor.is_loadable = is_loadable;
+    descriptor.status = AudioPluginStatus {
+        code: if is_loadable {
+            AudioPluginStatusCode::Candidate
+        } else {
+            AudioPluginStatusCode::HostUnavailable
+        },
+        message: message.to_string(),
+    };
+    descriptor
 }
 
 fn normalize_formats(formats: &[AudioPluginFormat]) -> Vec<AudioPluginFormat> {

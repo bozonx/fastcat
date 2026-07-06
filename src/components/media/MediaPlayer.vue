@@ -291,6 +291,14 @@ function resetIdle() {
   }, 2000);
 }
 
+function handleDblClick() {
+  if (props.isModal) {
+    emit('close-modal');
+  } else {
+    emit('open-modal');
+  }
+}
+
 function onGlobalMouseMove() {
   resetIdle();
 }
@@ -346,7 +354,7 @@ onUnmounted(() => {
           @ended="onPause"
           @error="onPlaybackError($event)"
           @click="togglePlay"
-          @dblclick.prevent="resetZoom"
+          @dblclick.prevent="handleDblClick"
         />
       </div>
     </UContextMenu>
@@ -442,7 +450,7 @@ onUnmounted(() => {
               size="sm"
               variant="solid"
               color="primary"
-              :icon="isPlaying ? 'i-heroicons-pause' : 'i-heroicons-play'"
+              :icon="isPlaying ? 'i-heroicons-pause-20-solid' : 'i-heroicons-play-20-solid'"
               @click="togglePlay"
             />
           </UiTooltip>
@@ -464,6 +472,7 @@ onUnmounted(() => {
             :compact="!isModal"
             orientation="horizontal"
             :max="1"
+            wheel-without-focus
           />
           <UiTooltip :text="getHotkeyTitle(t('fastcat.preview.fullscreen'), 'general.fullscreen')">
             <UiActionButton

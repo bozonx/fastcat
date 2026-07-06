@@ -67,7 +67,7 @@ const mediaStore = useMediaStore();
 const runtimeConfig = useRuntimeConfig();
 const { draggedFile } = useDraggedFile();
 
-const { speedModal, openSpeedModal, saveSpeedModal, speedModalTargetHasAudio } =
+const { speedModal, openSpeedModal, saveSpeedModal, speedModalTargetHasAudio, speedModalTargetIsAudioTrack } =
   useTimelineSpeedModal(() => tracks.value);
 
 interface TauriInternalFileDropDetail {
@@ -1118,6 +1118,7 @@ async function handleConfirmCreateVersion(newName: string) {
       v-model:open="speedModal.open"
       v-model:speed="speedModal.speed"
       :has-audio="speedModalTargetHasAudio"
+      :is-audio-track="speedModalTargetIsAudioTrack"
       @save="saveSpeedModal"
     />
 

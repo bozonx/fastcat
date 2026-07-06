@@ -168,7 +168,10 @@ function getCreateTransitionHandleStyle(edge: 'in' | 'out'): Record<string, stri
     [edge === 'in' ? 'left' : 'right']: `-${TRANSITION_CREATE_HANDLE_OUTSET_PX}px`,
     width: `${isHovered ? TRANSITION_CREATE_HANDLE_HOVER_WIDTH_PX : TRANSITION_CREATE_HANDLE_WIDTH_PX}px`,
     height: `${isHovered ? TRANSITION_CREATE_HANDLE_HOVER_HEIGHT_PX : TRANSITION_CREATE_HANDLE_HEIGHT_PX}px`,
-    zIndex: 'var(--z-clip-handles)',
+    // Must sit above the trim handles (also --z-clip-handles, later in the DOM):
+    // the trim handle yields to this triangle via isTransitionCreateHandleActive,
+    // which only works if the triangle can receive pointer events at all.
+    zIndex: 'calc(var(--z-clip-handles) + 1)',
   };
 }
 
