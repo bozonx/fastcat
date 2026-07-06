@@ -52,7 +52,7 @@
     "test:e2e:docker:shell": "docker compose --profile e2e run --rm playwright sh -c 'corepack enable && bash'",
     "test:e2e:docker:clean": "docker compose --profile e2e down -v",
     "test:e2e:tauri": "bash scripts/tauri-e2e.sh",
-    "test:e2e:report": "playwright show-report",
+    "test:e2e:report": "playwright show-report \"${PLAYWRIGHT_HTML_REPORT:-test-files/playwright/report}\"",
     "test:e2e:tauri:build": "FORCE_BUILD=1 bash scripts/tauri-e2e.sh",
     "tauri:build:e2e": "dotenv -e src-tauri/.env -- tauri build --no-bundle",
     "tauri": "dotenv -e src-tauri/.env -- tauri",

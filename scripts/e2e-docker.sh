@@ -25,10 +25,12 @@ docker compose --profile e2e run --rm \
   "corepack enable && pnpm install --frozen-lockfile && pnpm ${PNPM_SCRIPT} ${EXTRA_ARGS}"
 
 echo "==> Fixing artifact permissions created by root inside the container..."
+# Playwright output/report/results all live under test-files/ (see
+# playwright.config.ts); that is the only tree the container writes into.
 docker run --rm \
   -v "$(pwd):/app" \
   busybox \
-  chown -R "$(id -u):$(id -g)" /app/test-results /app/playwright-report \
+  chown -R "$(id -u):$(id -g)" /app/test-files \
   2>/dev/null || true
 
 echo "==> Done"
