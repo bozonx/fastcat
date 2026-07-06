@@ -389,20 +389,20 @@ const fontWeightOptions = ['100', '200', '300', '400', '500', '600', '700', '800
         <template v-if="workspaceStore.inDevelopmentFeaturesEnabled">
           <div class="grid grid-cols-2 gap-2">
             <PropertyField :label="t('fastcat.textClip.widthMode')">
-              <div class="h-8 flex items-center justify-between gap-2">
+              <label class="h-8 flex items-center justify-between gap-2 cursor-pointer select-none">
                 <span class="text-xs text-ui-text-muted">{{
                   t('fastcat.textClip.autoWidth')
                 }}</span>
                 <USwitch v-model="isAutoWidth" size="sm" color="error" />
-              </div>
+              </label>
             </PropertyField>
             <PropertyField :label="t('fastcat.textClip.heightMode')">
-              <div class="h-8 flex items-center justify-between gap-2">
+              <label class="h-8 flex items-center justify-between gap-2 cursor-pointer select-none">
                 <span class="text-xs text-ui-text-muted">{{
                   t('fastcat.textClip.autoHeight')
                 }}</span>
                 <USwitch v-model="isAutoHeight" size="sm" color="error" />
-              </div>
+              </label>
             </PropertyField>
           </div>
 
@@ -697,7 +697,7 @@ const fontWeightOptions = ['100', '200', '300', '400', '500', '600', '700', '800
     </PropertySection>
 
     <PropertySection :title="t('fastcat.shapeClip.geometry')">
-      <div class="flex items-center justify-between py-1">
+      <label class="flex items-center justify-between py-1 cursor-pointer select-none">
         <div class="flex items-center gap-1.5">
           <span class="text-xs text-ui-text font-medium">{{
             t('fastcat.textClip.snapToPixelGrid')
@@ -713,7 +713,7 @@ const fontWeightOptions = ['100', '200', '300', '400', '500', '600', '700', '800
           </UiTooltip>
         </div>
         <USwitch v-model="snapToPixelGrid" size="sm" />
-      </div>
+      </label>
     </PropertySection>
   </div>
 </template>

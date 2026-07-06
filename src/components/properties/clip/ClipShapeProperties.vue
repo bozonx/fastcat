@@ -316,7 +316,9 @@ const snapToPixelGrid = computed({
         </PropertyField>
       </template>
 
-      <div class="flex items-center justify-between py-1 pt-2 border-t border-ui-border">
+      <label
+        class="flex items-center justify-between py-1 pt-2 border-t border-ui-border cursor-pointer select-none"
+      >
         <div class="flex items-center gap-1.5">
           <span class="text-xs text-ui-text font-medium">{{
             t('fastcat.shapeClip.snapToPixelGrid')
@@ -332,7 +334,7 @@ const snapToPixelGrid = computed({
           </UiTooltip>
         </div>
         <USwitch v-model="snapToPixelGrid" size="sm" />
-      </div>
+      </label>
     </div>
   </PropertySection>
 </template>

@@ -39,20 +39,7 @@ const centeredOverlayStyle = computed(() => {
 
 <template>
   <div class="absolute inset-x-0 top-0 h-full pointer-events-none rounded overflow-hidden">
-    <!-- Top Right Status Indicators -->
-    <div
-      class="absolute top-1 right-1 flex items-center gap-1 pointer-events-none"
-      :style="{ zIndex: 'var(--z-clip-free-pos)' }"
-    >
-      <!-- Freeze Frame Indicator -->
-      <div
-        v-if="clipItem && typeof clipItem.freezeFrameSourceUs === 'number'"
-        class="flex items-center justify-center p-0.5 rounded bg-black/60 text-amber-400"
-        :title="t('fastcat.timeline.freezeFrameTitle')"
-      >
-        <UIcon name="i-heroicons-pause-circle" class="w-3.5 h-3.5" />
-      </div>
-    </div>
+
 
     <!-- Nested timeline badge: helps the user distinguish embedded sequences
          from regular media. Double-click on the clip opens the nested timeline

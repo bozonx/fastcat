@@ -146,7 +146,7 @@ const handleAfterEnter = () => {
           />
         </div>
 
-        <div class="flex items-center justify-between gap-3">
+        <label class="flex items-center justify-between gap-3 cursor-pointer select-none">
           <span class="text-sm text-ui-text">
             {{ t('fastcat.captions.splitOnPunctuation') }}
           </span>
@@ -154,7 +154,7 @@ const handleAfterEnter = () => {
             :model-value="settings.splitOnPunctuation"
             @update:model-value="(value) => (settings.splitOnPunctuation = Boolean(value))"
           />
-        </div>
+        </label>
       </div>
     </div>
 

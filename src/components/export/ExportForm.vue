@@ -409,7 +409,10 @@ const filenamePlaceholder = computed(() =>
 
         <!-- Resolution & FPS Settings (Video only) -->
         <div v-show="exportType === 'video'" class="space-y-4">
-          <div class="flex items-center justify-between gap-3">
+          <label
+            class="flex items-center justify-between gap-3 select-none"
+            :class="[isExporting ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer']"
+          >
             <span class="text-sm text-ui-text">
               {{ t('videoEditor.export.matchTimeline')
               }}<span v-if="matchTimeline" class="text-ui-text-muted font-normal"
@@ -417,7 +420,7 @@ const filenamePlaceholder = computed(() =>
               >
             </span>
             <USwitch v-model="matchTimeline" :disabled="isExporting" />
-          </div>
+          </label>
 
           <MediaResolutionSettings
             v-show="!matchTimeline"
@@ -483,12 +486,15 @@ const filenamePlaceholder = computed(() =>
         <div class="space-y-4">
           <UiFormSectionHeader :title="t('videoEditor.export.metadata')" />
 
-          <div class="flex items-center justify-between gap-3">
+          <label
+            class="flex items-center justify-between gap-3 select-none"
+            :class="[isExporting ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer']"
+          >
             <span class="text-sm text-ui-text">
               {{ t('videoEditor.export.includeMetadata') }}
             </span>
             <USwitch v-model="includeMetadata" :disabled="isExporting" />
-          </div>
+          </label>
 
           <div v-if="includeMetadata" class="space-y-4 pt-2">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">

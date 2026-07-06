@@ -93,7 +93,10 @@ async function handleSelectFile(entry: FsEntry) {
   if (!target) return;
 
   const mType = getMediaTypeFromFilename(entry.name);
-  if (!target.expectedType.includes(mType as any)) {
+  if (
+    !(mType === 'video' || mType === 'audio' || mType === 'image') ||
+    !target.expectedType.includes(mType)
+  ) {
     // optional: show toast or handle invalid selection
     return;
   }

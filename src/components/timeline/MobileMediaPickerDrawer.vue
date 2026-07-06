@@ -70,7 +70,12 @@ function isSelectableEntry(entry: FsEntry): boolean {
   if (!['video', 'audio', 'image', 'timeline'].includes(mediaType)) return false;
 
   if (props.isReplaceMode && uiStore.mediaReplaceTarget) {
-    if (!uiStore.mediaReplaceTarget.expectedType.includes(mediaType as any)) return false;
+    if (
+      !(mediaType === 'video' || mediaType === 'audio' || mediaType === 'image') ||
+      !uiStore.mediaReplaceTarget.expectedType.includes(mediaType)
+    ) {
+      return false;
+    }
 
     // Hide the file that is already set as the clip's source.
     const clip = timelineStore.timelineDoc?.tracks

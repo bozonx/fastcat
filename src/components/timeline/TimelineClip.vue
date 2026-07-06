@@ -537,6 +537,33 @@ const isFreePosition = computed(() => {
   return isClipFreePosition(clipItem.value, timelineContext.timelineDoc.value, fps || 30);
 });
 
+const speedOrFreezeBorderClass = computed(() => {
+  if (!clipItem.value || isMediaMissing.value) return '';
+
+  const isFreeze = typeof clipItem.value.freezeFrameSourceUs === 'number';
+  const speed = typeof clipItem.value.speed === 'number' ? clipItem.value.speed : 1;
+
+  if (isFreeze || speed === 0) {
+    return 'border-blue-500/80';
+  }
+
+  if (speed === 1) {
+    return '';
+  }
+
+  if (speed > 1) {
+    return 'border-lime-500/80';
+  }
+  if (speed > 0 && speed < 1) {
+    return 'border-green-500/80';
+  }
+  if (speed < 0) {
+    return 'border-green-800/80';
+  }
+
+  return '';
+});
+
 const isMediaMissing = computed(() => {
   if (
     !clipItem.value ||
@@ -852,9 +879,7 @@ function handleTransitionCreate(
           ? isMultiSelected
             ? 'outline-orange-400 outline-2 z-10 shadow-lg'
             : 'outline-(--color-primary) outline-2 z-10 shadow-lg'
-          : clipItem && typeof clipItem.freezeFrameSourceUs === 'number'
-            ? 'outline-(--color-warning) outline-2 z-10'
-            : 'outline-transparent',
+          : 'outline-transparent',
         isDisabled ? 'opacity-40' : '',
         isMediaMissing ? 'bg-red-600! border-red-800! text-white!' : '',
         !isMediaMissing && isUnsupported ? 'bg-amber-600/50! border-amber-700!' : '',
@@ -870,17 +895,12 @@ function handleTransitionCreate(
       @pointerleave="isHovered = false"
     >
       <template v-if="!isMovePreviewCurrentItem">
-        <!-- Speed Indicator (dashed border) -->
+        <!-- Speed/Freeze Indicator (dashed border) -->
         <div
-          v-if="
-            clipItem &&
-            typeof clipItem.speed === 'number' &&
-            clipItem.speed !== 1 &&
-            !isMediaMissing
-          "
+          v-if="speedOrFreezeBorderClass"
           class="absolute inset-0 rounded border-2 border-dashed pointer-events-none"
           :style="{ zIndex: 'var(--z-clip-speed)' }"
-          :class="clipItem.speed < 0 ? 'border-fuchsia-500/80' : 'border-blue-500/80'"
+          :class="speedOrFreezeBorderClass"
         />
 
         <!-- Free Position Indicator (dashed border) -->

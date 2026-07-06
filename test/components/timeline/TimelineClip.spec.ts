@@ -482,24 +482,50 @@ describe('TimelineClip', () => {
     // Looking at TimelineClip.vue: onClipDblClick calls handleSelectInFileManager()
   });
 
-  it('displays speed indicator when speed is not 1', async () => {
+  it('displays lime speed indicator when speed is greater than 1', async () => {
     const component = await mountClip({
       ...defaultProps,
       item: { ...baseItem, speed: 2 },
     });
 
-    const speedIndicator = component.find('.border-dashed.border-blue-500\\/80');
+    const speedIndicator = component.find('.border-dashed.border-lime-500\\/80');
     expect(speedIndicator.exists()).toBe(true);
   });
 
-  it('displays fuchsia/magenta speed indicator when speed is inverted', async () => {
+  it('displays green speed indicator when speed is between 0 and 1', async () => {
+    const component = await mountClip({
+      ...defaultProps,
+      item: { ...baseItem, speed: 0.5 },
+    });
+
+    const speedIndicator = component.find('.border-dashed.border-green-500\\/80');
+    expect(speedIndicator.exists()).toBe(true);
+  });
+
+  it('displays dark green speed indicator when speed is less than 0', async () => {
     const component = await mountClip({
       ...defaultProps,
       item: { ...baseItem, speed: -2 },
     });
 
-    const speedIndicator = component.find('.border-dashed.border-fuchsia-500\\/80');
+    const speedIndicator = component.find('.border-dashed.border-green-800\\/80');
     expect(speedIndicator.exists()).toBe(true);
+  });
+
+  it('displays blue speed indicator when speed is 0 or clip has freeze frame', async () => {
+    const componentSpeed0 = await mountClip({
+      ...defaultProps,
+      item: { ...baseItem, speed: 0 },
+    });
+    const speed0Indicator = componentSpeed0.find('.border-dashed.border-blue-500\\/80');
+    expect(speed0Indicator.exists()).toBe(true);
+
+    const componentFreeze = await mountClip({
+      ...defaultProps,
+      item: { ...baseItem, freezeFrameSourceUs: 500000 },
+    });
+    const freezeIndicator = componentFreeze.find('.border-dashed.border-blue-500\\/80');
+    expect(freezeIndicator.exists()).toBe(true);
   });
 
   it('displays group indicator when clip belongs to a group', async () => {

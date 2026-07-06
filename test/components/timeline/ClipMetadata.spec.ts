@@ -130,7 +130,7 @@ describe('ClipMetadata', () => {
     expect(component.find('[title="fastcat.timeline.freePositionHint"]').exists()).toBe(false);
   });
 
-  it('renders freeze frame indicator badge when freezeFrameSourceUs is present', async () => {
+  it('does not render freeze frame indicator badge when freezeFrameSourceUs is present', async () => {
     const freezeFrameItem = {
       kind: 'clip',
       id: 'c1',
@@ -147,7 +147,7 @@ describe('ClipMetadata', () => {
       },
     });
 
-    // Contains the pause circle icon wrapper with correct title
-    expect(component.find('[title="fastcat.timeline.freezeFrameTitle"]').exists()).toBe(true);
+    // Freeze frame pause indicator should not be rendered
+    expect(component.find('[title="fastcat.timeline.freezeFrameTitle"]').exists()).toBe(false);
   });
 });
