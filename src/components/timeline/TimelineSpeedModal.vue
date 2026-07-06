@@ -87,6 +87,7 @@ watch(
         :max="10"
         :step="0.05"
         :unit="'x'"
+        :default-value="1"
         show-input
       />
 

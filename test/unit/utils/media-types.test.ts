@@ -4,6 +4,7 @@ import {
   extOf,
   getMimeTypeFromFilename,
   getMediaTypeFromFilename,
+  getIconForMediaType,
   isImageMimeType,
   isImagePath,
   isOpenableProjectFileName,
@@ -110,5 +111,28 @@ describe('media-types', () => {
     expect(validateMediaTrackCompatibility('unknown', 'audio')).toBe(false);
     expect(validateMediaTrackCompatibility('text', 'video')).toBe(false);
     expect(validateMediaTrackCompatibility('text', 'audio')).toBe(false);
+  });
+
+  describe('getIconForMediaType', () => {
+    it('returns film icon for video', () => {
+      expect(getIconForMediaType('video')).toBe('i-heroicons-film');
+    });
+
+    it('returns musical note icon for audio', () => {
+      expect(getIconForMediaType('audio')).toBe('i-heroicons-musical-note');
+    });
+
+    it('returns photo icon for image', () => {
+      expect(getIconForMediaType('image')).toBe('i-heroicons-photo');
+    });
+
+    it('returns document-text icon for text and timeline', () => {
+      expect(getIconForMediaType('text')).toBe('i-heroicons-document-text');
+      expect(getIconForMediaType('timeline')).toBe('i-heroicons-document-text');
+    });
+
+    it('returns file-question-mark icon for unknown type', () => {
+      expect(getIconForMediaType('unknown')).toBe('i-lucide-file-question-mark');
+    });
   });
 });

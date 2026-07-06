@@ -117,7 +117,7 @@ export function getIconForMediaType(type: MediaType): string {
     case 'timeline':
       return 'i-heroicons-document-text';
     default:
-      return 'i-heroicons-document';
+      return 'i-lucide-file-question-mark';
   }
 }
 

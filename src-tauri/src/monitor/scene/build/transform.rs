@@ -12,6 +12,7 @@ impl From<&SceneLayerTransform> for Transform {
             scale_x: t.scale_x,
             scale_y: t.scale_y,
             rotation_deg: t.rotation_deg,
+            source_rotation: 0.0,
             anchor_x: t.anchor_x,
             anchor_y: t.anchor_y,
             crop_top: t.crop_top,

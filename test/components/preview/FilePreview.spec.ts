@@ -26,7 +26,7 @@ vi.mock('~/components/preview/TextEditor.vue', () => ({
   default: {
     name: 'TextEditor',
     template: '<div class="text-editor-mock">Text Editor</div>',
-    props: ['isModalOpen', 'filePath', 'fileName', 'initialContent', 'focusPanelId'],
+    props: ['isModalOpen', 'filePath', 'fileName', 'initialContent', 'focusPanelId', 'autofocus'],
     emits: ['update:isModalOpen'],
   },
 }));

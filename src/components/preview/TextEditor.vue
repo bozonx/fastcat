@@ -9,12 +9,18 @@ import { useFileManager } from '~/composables/file-manager/useFileManager';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 const log = createDevLogger('TextEditor');
 
-const props = defineProps<{
-  filePath: string;
-  fileName?: string;
-  focusPanelId?: PanelFocusId;
-  vfs?: IFileSystemAdapter;
-}>();
+const props = withDefaults(
+  defineProps<{
+    filePath: string;
+    fileName?: string;
+    focusPanelId?: PanelFocusId;
+    vfs?: IFileSystemAdapter;
+    autofocus?: boolean;
+  }>(),
+  {
+    autofocus: false,
+  }
+);
 
 const { locale } = useI18n();
 const focusStore = useFocusStore();
@@ -117,7 +123,7 @@ watch(isModalOpen, (isOpen, oldIsOpen) => {
 watch(
   isLoading,
   (loading) => {
-    if (!loading) {
+    if (!loading && props.autofocus) {
       nextTick(() => {
         textareaRef.value?.focus();
       });

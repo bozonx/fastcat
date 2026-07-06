@@ -112,6 +112,7 @@ onUnmounted(() => {
       :file-name="fileName"
       :alt="fileName"
       focus-panel-id="project"
+      :autofocus="true"
     />
   </div>
 </template>

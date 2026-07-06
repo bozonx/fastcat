@@ -442,6 +442,7 @@ pub struct Transform {
     pub scale_x: f64,
     pub scale_y: f64,
     pub rotation_deg: f64,
+    pub source_rotation: f64,
     pub anchor_x: f64,
     pub anchor_y: f64,
     pub crop_top: f64,
@@ -460,6 +461,7 @@ impl Transform {
             scale_x: 1.0,
             scale_y: 1.0,
             rotation_deg: 0.0,
+            source_rotation: 0.0,
             anchor_x: 0.0,
             anchor_y: 0.0,
             crop_top: 0.0,
@@ -482,6 +484,7 @@ impl Transform {
             scale_x: s,
             scale_y: s,
             rotation_deg: 0.0,
+            source_rotation: 0.0,
             anchor_x: 0.5,
             anchor_y: 0.5,
             crop_top: 0.0,
@@ -504,16 +507,26 @@ impl Transform {
         let flip_scale_x = if self.flip_horizontal { -1.0 } else { 1.0 };
         let flip_scale_y = if self.flip_vertical { -1.0 } else { 1.0 };
 
-        Affine::translate((self.x, self.y))
+        let is_quarter = (self.source_rotation.round() as i32 % 180) != 0;
+        let (oriented_w, oriented_h) = if is_quarter { (nh, nw) } else { (nw, nh) };
+        let (op_x, op_y) = if is_quarter { (padding.1, padding.0) } else { (padding.0, padding.1) };
+
+        let source_xform = Affine::translate((oriented_w / 2.0 + op_x, oriented_h / 2.0 + op_y))
+            * Affine::rotate(self.source_rotation.to_radians())
+            * Affine::translate((-nw / 2.0 - padding.0, -nh / 2.0 - padding.1));
+
+        let user_xform = Affine::translate((self.x, self.y))
             * Affine::rotate(self.rotation_deg.to_radians())
             * Affine::scale_non_uniform(self.scale_x, self.scale_y)
             * Affine::translate((
-                -self.anchor_x * nw - padding.0,
-                -self.anchor_y * nh - padding.1,
+                -self.anchor_x * oriented_w - op_x,
+                -self.anchor_y * oriented_h - op_y,
             ))
-            * Affine::translate((nw / 2.0 + padding.0, nh / 2.0 + padding.1))
+            * Affine::translate((oriented_w / 2.0 + op_x, oriented_h / 2.0 + op_y))
             * Affine::scale_non_uniform(flip_scale_x, flip_scale_y)
-            * Affine::translate((-nw / 2.0 - padding.0, -nh / 2.0 - padding.1))
+            * Affine::translate((-oriented_w / 2.0 - op_x, -oriented_h / 2.0 - op_y));
+
+        user_xform * source_xform
     }
 
     /// Visible crop rectangle in the layer's natural (local) space, from the four
@@ -1868,6 +1881,7 @@ mod tests {
             scale_x: 1.0,
             scale_y: 1.0,
             rotation_deg: 90.0,
+            source_rotation: 0.0,
             anchor_x: 0.0,
             anchor_y: 0.0,
             crop_top: 0.0,

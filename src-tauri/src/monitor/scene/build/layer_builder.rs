@@ -497,14 +497,19 @@ pub fn finalize_layer(
             let crop = local_crop_from_display_transform(t, source_rotation, is_raster_layer);
             // Text anchoring is finalized here, where the parley-measured natural
             // size is authoritative (the front-end cannot reproduce glyph shaping).
+            let oriented_size = if is_raster_layer && is_quarter_turn(source_rotation) {
+                (media_size.1, media_size.0)
+            } else {
+                media_size
+            };
             let (anchor_dx, anchor_dy) =
-                text_anchor_offset(&kind, media_size, t.anchor_x, t.anchor_y);
+                text_anchor_offset(&kind, oriented_size, t.anchor_x, t.anchor_y);
             let mut transform = Transform::from(t);
             transform.x += anchor_dx;
             transform.y += anchor_dy;
             transform.scale_x *= fit;
             transform.scale_y *= fit;
-            transform.rotation_deg += source_rotation;
+            transform.source_rotation = source_rotation;
             transform.crop_top = crop.top;
             transform.crop_bottom = crop.bottom;
             transform.crop_left = crop.left;
@@ -519,7 +524,7 @@ pub fn finalize_layer(
                     media_size
                 };
                 Transform {
-                    rotation_deg: source_rotation,
+                    source_rotation,
                     ..Transform::center_fit(fit_media_size, scene_size)
                 }
             } else {
@@ -531,7 +536,7 @@ pub fn finalize_layer(
                     y: scene_size.1 as f64 / 2.0 + anchor_dy,
                     scale_x: 1.0,
                     scale_y: 1.0,
-                    rotation_deg: source_rotation,
+                    source_rotation,
                     anchor_x: 0.5,
                     anchor_y: 0.5,
                     ..Default::default()

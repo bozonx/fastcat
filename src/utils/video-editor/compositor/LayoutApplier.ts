@@ -7,7 +7,7 @@ import {
 } from '../clip-layout';
 import { computeTextLayoutMetrics } from '../text-layout';
 import type { CompositorClip } from './types';
-import { Graphics } from 'pixi.js';
+import { Graphics, Matrix } from 'pixi.js';
 
 import { isTransformSnapSafe, snapRectToPixelGrid } from '../../pixel-grid-snap';
 import { effectiveClipTransform } from './AnimationOverlay';
@@ -163,10 +163,7 @@ export class LayoutApplier {
       canvasWidth: this.context.width,
       canvasHeight: this.context.height,
       fitRotationDeg: sourceRotation,
-      transform: {
-        ...(clipTransform ?? {}),
-        rotationDeg: (clipTransform?.rotationDeg ?? 0) + sourceRotation,
-      },
+      transform: clipTransform,
     });
 
     // The blur "bleed" path pads the effect output around the frame. The
@@ -200,6 +197,7 @@ export class LayoutApplier {
       disableCrop: ignoreClipTransform,
       flipHorizontal: layout.flipHorizontal,
       flipVertical: layout.flipVertical,
+      sourceRotation,
     });
   }
 
@@ -270,6 +268,7 @@ export class LayoutApplier {
     flipHorizontal?: boolean;
     flipVertical?: boolean;
     isSnapActive?: boolean;
+    sourceRotation?: number;
   }) {
     const sprite = input.clip.sprite;
     if (!sprite) return;
@@ -282,13 +281,41 @@ export class LayoutApplier {
     const paddedW = fW + 2 * padX;
     const paddedH = fH + 2 * padY;
 
-    const fitScaleX = input.targetW / fW;
-    const fitScaleY = input.targetH / fH;
+    const sourceRot = input.sourceRotation ?? 0;
+    const isQuarter = Math.round(sourceRot) % 180 !== 0;
+    const orientedW = isQuarter ? fH : fW;
+    const orientedH = isQuarter ? fW : fH;
+    const opX = isQuarter ? padY : padX;
+    const opY = isQuarter ? padX : padY;
 
-    const anchorX =
-      paddedW > 0 ? (input.normalizedAnchor.x * fW + padX) / paddedW : input.normalizedAnchor.x;
-    const anchorY =
-      paddedH > 0 ? (input.normalizedAnchor.y * fH + padY) / paddedH : input.normalizedAnchor.y;
+    const fitScaleX = orientedW > 0 ? input.targetW / orientedW : 1;
+    const fitScaleY = orientedH > 0 ? input.targetH / orientedH : 1;
+
+    // C_raw (center of raw padded frame)
+    const rawCX = fW / 2 + padX;
+    const rawCY = fH / 2 + padY;
+
+    // C_oriented (center of oriented padded frame)
+    const orientedCX = orientedW / 2 + opX;
+    const orientedCY = orientedH / 2 + opY;
+
+    // A_oriented (user's anchor point in oriented padded frame)
+    const orientedAX = input.normalizedAnchor.x * orientedW + opX;
+    const orientedAY = input.normalizedAnchor.y * orientedH + opY;
+
+    // Rotate A_oriented back to raw space by -sourceRot:
+    const radS = (sourceRot * Math.PI) / 180;
+    const cosS = Math.cos(-radS);
+    const sinS = Math.sin(-radS);
+
+    const dx = orientedAX - orientedCX;
+    const dy = orientedAY - orientedCY;
+
+    const rawAX = cosS * dx - sinS * dy + rawCX;
+    const rawAY = sinS * dx + cosS * dy + rawCY;
+
+    const anchorX = paddedW > 0 ? rawAX / paddedW : input.normalizedAnchor.x;
+    const anchorY = paddedH > 0 ? rawAY / paddedH : input.normalizedAnchor.y;
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (sprite as any).anchor?.set?.(anchorX, anchorY);
@@ -321,7 +348,7 @@ export class LayoutApplier {
       }
     }
 
-    sprite.rotation = (input.rotationDeg * Math.PI) / 180;
+    sprite.rotation = ((input.rotationDeg + sourceRot) * Math.PI) / 180;
 
     // Compensation for flipping around the geometric center instead of the anchor point
     const flipOffsetX = flipHorizontal ? 2 * (0.5 - anchorX) * targetDisplayW * input.scaleX : 0;

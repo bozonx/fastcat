@@ -21,7 +21,7 @@ vi.mock('~/components/ui/UiSliderInput.vue', () => ({
     props: ['modelValue', 'label', 'min', 'max', 'step', 'unit', 'showInput', 'defaultValue'],
     emits: ['update:modelValue'],
     template:
-      '<input type="range" :value="modelValue" :min="min" :max="max" :step="step" @input="$emit(\'update:modelValue\', Number($event.target.value))" />',
+      '<input type="range" :value="modelValue" :min="min" :max="max" :step="step" :data-default-value="defaultValue" @input="$emit(\'update:modelValue\', Number($event.target.value))" />',
   },
 }));
 
@@ -120,5 +120,12 @@ describe('TimelineSpeedModal', () => {
     });
     const saveButton = component.findAll('button').find((b) => b.text().includes('common.save'));
     expect(saveButton?.attributes('disabled')).toBeDefined();
+  });
+
+  it('passes defaultValue of 1 to slider input', async () => {
+    const component = await mountSuspended(TimelineSpeedModal, {
+      props: { open: true, speed: 1, hasAudio: false },
+    });
+    expect(component.find('input[type="range"]').attributes('data-default-value')).toBe('1');
   });
 });

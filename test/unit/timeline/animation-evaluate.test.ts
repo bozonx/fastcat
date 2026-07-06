@@ -163,7 +163,7 @@ describe('helpers', () => {
   it('exposes the closed set of animatable paths', () => {
     expect(ANIMATABLE_PARAM_PATHS).toContain('opacity');
     expect(ANIMATABLE_PARAM_PATHS).toContain('transform.rotationDeg');
-    expect(ANIMATABLE_PARAM_PATHS.length).toBe(6);
+    expect(ANIMATABLE_PARAM_PATHS.length).toBe(16);
   });
 });
 

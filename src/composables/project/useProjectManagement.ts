@@ -1,5 +1,5 @@
 import { createDevLogger } from '~/utils/dev-logger';
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectStore } from '~/stores/project.store';
 import { isValidFsEntryName } from '~/file-manager/core/rules';
@@ -87,7 +87,19 @@ export function useProjectManagement(options: { isMobile?: boolean } = {}) {
     );
   }
 
-  const createError = computed<ValidationErrorKey | null>(() => {
+  const isCreateNameTouched = ref(false);
+
+  watch(
+    () => projectCreationSettings.value.name,
+    (newVal) => {
+      if (newVal) {
+        isCreateNameTouched.value = true;
+      }
+    },
+    { flush: 'sync' },
+  );
+
+  const rawCreateError = computed<ValidationErrorKey | null>(() => {
     const name = projectCreationSettings.value.name;
     const validationError = getProjectNameValidationError(name);
     if (validationError) return validationError;
@@ -95,7 +107,11 @@ export function useProjectManagement(options: { isMobile?: boolean } = {}) {
     return null;
   });
 
-  const isCreateNameValid = computed(() => !createError.value);
+  const createError = computed<ValidationErrorKey | null>(() => {
+    return isCreateNameTouched.value ? rawCreateError.value : null;
+  });
+
+  const isCreateNameValid = computed(() => !rawCreateError.value);
 
   const renameError = computed<ValidationErrorKey | null>(() => {
     const name = renameValue.value;
@@ -135,6 +151,7 @@ export function useProjectManagement(options: { isMobile?: boolean } = {}) {
   async function createNewProject() {
     if (workspaceStore.isLoading) return;
     const name = projectCreationSettings.value.name.trim();
+    isCreateNameTouched.value = true;
     if (!isCreateNameValid.value) return;
 
     isCreateModalOpen.value = false;
@@ -186,6 +203,7 @@ export function useProjectManagement(options: { isMobile?: boolean } = {}) {
 
   function startCreateProject() {
     workspaceStore.error = null;
+    isCreateNameTouched.value = false;
     projectCreationSettings.value = createProjectCreationState(workspaceStore);
     isCreateModalOpen.value = true;
   }
@@ -413,6 +431,7 @@ export function useProjectManagement(options: { isMobile?: boolean } = {}) {
     duplicateValue,
     duplicateTargetProject,
     duplicateLocation,
+    isCreateNameTouched,
     createError,
     isCreateNameValid,
     renameError,

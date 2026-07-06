@@ -110,6 +110,26 @@ describe('useProjectManagement', () => {
   });
 
   describe('create validation', () => {
+    it('does not show validation error initially when untouched', () => {
+      const { createError, isCreateNameTouched, isCreateNameValid } = useProjectManagement();
+      expect(isCreateNameTouched.value).toBe(false);
+      expect(createError.value).toBeNull();
+      expect(isCreateNameValid.value).toBe(false);
+    });
+
+    it('shows validation error after createNewProject is called even if untouched', async () => {
+      const { createError, createNewProject, isCreateNameTouched, isCreateNameValid } =
+        useProjectManagement();
+      expect(isCreateNameTouched.value).toBe(false);
+      expect(createError.value).toBeNull();
+
+      await createNewProject();
+
+      expect(isCreateNameTouched.value).toBe(true);
+      expect(createError.value).toBe('fastcat.projects.nameRequired');
+      expect(isCreateNameValid.value).toBe(false);
+    });
+
     it('reports nameRequired for empty project name', () => {
       const { projectCreationSettings, createError, isCreateNameValid } = useProjectManagement();
       projectCreationSettings.value.name = '   ';

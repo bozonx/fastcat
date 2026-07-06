@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { ref } from 'vue';
+import { flushPromises } from '@vue/test-utils';
 import { mountWithNuxt } from '../../utils/mount';
 import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import FileProperties from '~/components/properties/FileProperties.vue';
@@ -12,7 +13,7 @@ mockNuxtImport('useDevice', () => {
 vi.mock('~/components/preview/TextEditor.vue', () => ({
   default: {
     name: 'TextEditor',
-    props: ['filePath', 'fileName'],
+    props: ['filePath', 'fileName', 'autofocus'],
     template: '<div data-testid="text-editor-stub">{{ fileName }}|{{ filePath }}</div>',
   },
 }));
@@ -776,5 +777,36 @@ describe('FileProperties.vue', () => {
     expect(component.text()).not.toContain('videoEditor.fileManager.actions.title');
 
     mockIsMobile.value = false;
+  });
+
+  it('resets expanded accordion states when selectedFsEntry changes', async () => {
+    const component = await mountWithNuxt(FileProperties, {
+      props: {
+        selectedFsEntry: { kind: 'file', name: 'test.mp4', path: '/projects/test.mp4' } as any,
+        previewMode: 'original',
+        hasProxy: false,
+      },
+    });
+
+    const expandableSection = component.findComponent({ name: 'ExpandableYamlSection' });
+    expect(expandableSection.exists()).toBe(true);
+    console.log('EXPANDABLE_PROPS_IN_TEST:', expandableSection.props());
+    expect(expandableSection.props('expanded')).toBe(false);
+
+    // Toggle to expand
+    await expandableSection.props('onToggle')();
+    await flushPromises();
+
+    // Check expanded state by finding component again to avoid caching issues in vue-test-utils wrapper
+    expect(component.findComponent({ name: 'ExpandableYamlSection' }).props('expanded')).toBe(true);
+
+    // Switch to another file path
+    await component.setProps({
+      selectedFsEntry: { kind: 'file', name: 'test2.mp4', path: '/projects/test2.mp4' } as any,
+    });
+    await flushPromises();
+
+    // States should be reset to false
+    expect(component.findComponent({ name: 'ExpandableYamlSection' }).props('expanded')).toBe(false);
   });
 });

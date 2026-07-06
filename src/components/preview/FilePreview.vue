@@ -35,16 +35,22 @@ const effectiveHotkeys = computed(() =>
 const hotkeyLookup = computed(() => createHotkeyLookup(effectiveHotkeys.value, commandOrder));
 const defaultHotkeyLookup = computed(() => createDefaultHotkeyLookup(commandOrder));
 
-const props = defineProps<{
-  url?: string | null;
-  mediaType: 'video' | 'audio' | 'image' | 'text' | 'unknown' | null;
-  textContent?: string;
-  alt?: string;
-  filePath?: string;
-  fileName?: string;
-  focusPanelId?: PanelFocusId;
-  vfs?: IFileSystemAdapter;
-}>();
+const props = withDefaults(
+  defineProps<{
+    url?: string | null;
+    mediaType: 'video' | 'audio' | 'image' | 'text' | 'unknown' | null;
+    textContent?: string;
+    alt?: string;
+    filePath?: string;
+    fileName?: string;
+    focusPanelId?: PanelFocusId;
+    vfs?: IFileSystemAdapter;
+    autofocus?: boolean;
+  }>(),
+  {
+    autofocus: false,
+  }
+);
 
 const isMediaModalOpen = ref(false);
 const isTextModalOpen = ref(false);
@@ -167,6 +173,7 @@ onUnmounted(() => {
       :file-name="props.fileName"
       :focus-panel-id="props.focusPanelId"
       :vfs="props.vfs"
+      :autofocus="props.autofocus"
       class="w-full h-full"
     />
 

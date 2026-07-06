@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { createDevLogger } from '~/utils/dev-logger';
 
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useMediaStore, type MediaMetadata } from '~/stores/media.store';
 import { useProxyStore } from '~/stores/proxy.store';
 import { useProjectStore } from '~/stores/project.store';
@@ -90,6 +90,21 @@ const runtimeConfig = useRuntimeConfig();
 const isMetaExpanded = ref(false);
 const isExifExpanded = ref(false);
 const isRenameModalOpen = ref(false);
+
+watch(
+  () => props.selectedFsEntry?.path,
+  (newPath, oldPath) => {
+    console.log('WATCH_TRIGGERED', { newPath, oldPath });
+    isMetaExpanded.value = false;
+    isExifExpanded.value = false;
+  },
+);
+
+function toggleMeta() {
+  console.log('TOGGLE_META_BEFORE', isMetaExpanded.value);
+  isMetaExpanded.value = !isMetaExpanded.value;
+  console.log('TOGGLE_META_AFTER', isMetaExpanded.value);
+}
 
 async function handleRenameConfirm(newName: string) {
   const entry = props.selectedFsEntry;
@@ -863,7 +878,7 @@ const hasVisibleSecondaryActions = (actions: unknown) => {
         :title="t('common.meta')"
         :content="metadataYaml"
         :expanded="isMetaExpanded"
-        :on-toggle="() => (isMetaExpanded = !isMetaExpanded)"
+        :on-toggle="toggleMeta"
         :on-copy="copyToClipboard"
       />
 

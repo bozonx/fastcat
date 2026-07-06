@@ -131,10 +131,7 @@ const layout = computed(() => {
     canvasWidth: props.renderWidth,
     canvasHeight: props.renderHeight,
     fitRotationDeg: sourceRotation.value,
-    transform: {
-      ...(transform ?? {}),
-      rotationDeg: (transform?.rotationDeg ?? 0) + sourceRotation.value,
-    },
+    transform: transform ?? {},
   });
 
   // For shape clips, the layout in compositor handles centering via baseX/baseY, but

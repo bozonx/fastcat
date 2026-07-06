@@ -267,15 +267,20 @@ export function computeClipBoxLayout(input: ClipBoxLayoutInput): ClipBoxLayout {
   const safeCanvasWidth = Math.max(1, input.canvasWidth);
   const safeCanvasHeight = Math.max(1, input.canvasHeight);
 
+  const fitRotation = clampFinite(input.fitRotationDeg, 0);
   const fitScale = orientedFitScale(
     safeFrameWidth,
     safeFrameHeight,
     safeCanvasWidth,
     safeCanvasHeight,
-    clampFinite(input.fitRotationDeg, 0),
+    fitRotation,
   );
-  const targetWidth = safeFrameWidth * fitScale;
-  const targetHeight = safeFrameHeight * fitScale;
+  const isQuarter = isQuarterTurn(fitRotation);
+  const orientedW = isQuarter ? safeFrameHeight : safeFrameWidth;
+  const orientedH = isQuarter ? safeFrameWidth : safeFrameHeight;
+
+  const targetWidth = orientedW * fitScale;
+  const targetHeight = orientedH * fitScale;
   const baseX = (safeCanvasWidth - targetWidth) / 2;
   const baseY = (safeCanvasHeight - targetHeight) / 2;
 

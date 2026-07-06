@@ -153,10 +153,7 @@ const bboxItems = computed(() => {
         canvasWidth: props.renderWidth,
         canvasHeight: props.renderHeight,
         fitRotationDeg: rotation,
-        transform: {
-          ...(transform ?? {}),
-          rotationDeg: (transform?.rotationDeg ?? 0) + rotation,
-        },
+        transform: transform ?? {},
       });
 
       items.push({
