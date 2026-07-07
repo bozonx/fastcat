@@ -29,6 +29,7 @@ const props = withDefaults(
     square?: boolean;
     noToggle?: boolean;
     iconClass?: string;
+    activeIconClass?: string;
     class?: string;
   }>(),
   {
@@ -49,6 +50,7 @@ const props = withDefaults(
     square: false,
     noToggle: false,
     iconClass: undefined,
+    activeIconClass: undefined,
     class: undefined,
   },
 );
@@ -93,8 +95,10 @@ const computedStyle = computed(() => {
 });
 
 const computedUi = computed(() => {
-  if (!props.iconClass) return undefined;
-  return { leadingIcon: props.iconClass, trailingIcon: props.iconClass };
+  const resolved =
+    props.modelValue && props.activeIconClass ? props.activeIconClass : props.iconClass;
+  if (!resolved) return undefined;
+  return { leadingIcon: resolved, trailingIcon: resolved };
 });
 
 const isIconOnly = computed(() => !!computedIcon.value && !props.label);

@@ -310,6 +310,7 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
         | 'showWaveform'
         | 'showThumbnails'
         | 'sourceRange'
+        | 'timelineRange'
         | 'sourceDurationUs'
         | 'linkedGroupId'
         | 'source'

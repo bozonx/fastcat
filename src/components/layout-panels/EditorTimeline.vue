@@ -1214,6 +1214,7 @@ async function handleConfirmCreateVersion(newName: string) {
                 :icon="button.icon"
                 variant="solid"
                 size="xs"
+                :ui="{ leadingIcon: 'size-3' }"
                 :class="['w-5 h-5 p-0! rounded-full', button.class]"
                 :style="{ backgroundColor: button.color, color: button.textColor }"
                 @click="button.onClick"

@@ -14,6 +14,7 @@ import { useI18n } from 'vue-i18n';
 import type { FsEntry } from '~/types/fs';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 import { useMediaStore } from '~/stores/media.store';
+import { buildReplaceMediaPatch } from '~/utils/timeline/replace-media';
 
 const uiStore = useUiStore();
 const timelineStore = useTimelineStore();
@@ -106,22 +107,33 @@ async function handleSelectFile(entry: FsEntry) {
   isVerifying.value = true;
   try {
     const track = timelineStore.timelineDoc?.tracks.find((track) => track.id === target.trackId);
-    if (track?.kind === 'audio') {
-      const metadata = await mediaStore.getOrFetchMetadataByPath(entry.path);
-      if (!metadata || !metadata.audio) {
-        toast.add({
-          color: 'error',
-          title: t('common.error'),
-          description: t('fastcat.timeline.noAudioTrackInVideo'),
-        });
-        return;
-      }
+    // Preload the replacement's metadata for every track kind: it drives the
+    // audio-stream guard, the synchronous source-duration hydration and the
+    // range clamping below, and lets the waveform re-extract immediately.
+    const metadata = await mediaStore.getOrFetchMetadataByPath(entry.path);
+
+    if (track?.kind === 'audio' && (!metadata || !metadata.audio)) {
+      toast.add({
+        color: 'error',
+        title: t('common.error'),
+        description: t('fastcat.timeline.noAudioTrackInVideo'),
+      });
+      return;
     }
 
-    // Update clip source
-    timelineStore.updateClipProperties(target.trackId, target.itemId, {
-      source: { path: entry.path },
-    });
+    const clip = track?.items.find((it) => it.id === target.itemId);
+    const durationS = Number(metadata?.duration);
+    const newSourceDurationUs =
+      metadata && Number.isFinite(durationS) && durationS > 0
+        ? Math.floor(durationS * 1_000_000)
+        : 0;
+
+    const properties =
+      clip && clip.kind === 'clip' && clip.clipType === 'media'
+        ? buildReplaceMediaPatch({ clip, newPath: entry.path!, newSourceDurationUs })
+        : { source: { path: entry.path! } };
+
+    timelineStore.updateClipProperties(target.trackId, target.itemId, properties);
 
     uiStore.mediaReplaceTarget = null;
     uiStore.isMediaReplaceModalOpen = false;

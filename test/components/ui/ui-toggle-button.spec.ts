@@ -164,7 +164,7 @@ describe('UiToggleButton', () => {
     expect(button.classes()).toContain('hover:text-ui-text');
   });
 
-  it('passes iconClass to UButton via ui prop', async () => {
+  it('passes iconClass to UButton via ui prop when inactive', async () => {
     const component = await mountSuspended(UiToggleButton, {
       props: {
         modelValue: false,
@@ -173,12 +173,11 @@ describe('UiToggleButton', () => {
       },
     });
 
-    const button = component.find('button');
-    // ui prop is an object, serialized to "[object Object]" in HTML attributes
-    expect(button.attributes('ui')).toBe('[object Object]');
+    // ui prop object serializes to "[object Object]" in HTML attributes
+    expect(component.find('button').attributes('ui')).toBe('[object Object]');
   });
 
-  it('does not pass ui prop when iconClass is not set', async () => {
+  it('does not pass ui prop when neither iconClass nor activeIconClass is set', async () => {
     const component = await mountSuspended(UiToggleButton, {
       props: {
         modelValue: false,
@@ -186,7 +185,30 @@ describe('UiToggleButton', () => {
       },
     });
 
-    const button = component.find('button');
-    expect(button.attributes('ui')).toBeUndefined();
+    expect(component.find('button').attributes('ui')).toBeUndefined();
+  });
+
+  it('passes ui prop when active with activeIconClass set', async () => {
+    const component = await mountSuspended(UiToggleButton, {
+      props: {
+        modelValue: true,
+        icon: 'i-heroicons-eye',
+        activeIconClass: 'size-3',
+      },
+    });
+
+    expect(component.find('button').attributes('ui')).toBe('[object Object]');
+  });
+
+  it('does not pass ui prop when inactive and only activeIconClass is set', async () => {
+    const component = await mountSuspended(UiToggleButton, {
+      props: {
+        modelValue: false,
+        icon: 'i-heroicons-eye',
+        activeIconClass: 'size-3',
+      },
+    });
+
+    expect(component.find('button').attributes('ui')).toBeUndefined();
   });
 });
