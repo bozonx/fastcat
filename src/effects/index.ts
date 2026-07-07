@@ -51,6 +51,7 @@ export * from './core/registry';
 export * from './video-manifests';
 export * from './build-specs';
 export * from './animation-bake';
+export * from './native-audio-manifests';
 export * from './audio/compressor/manifest';
 export * from './audio/echo/manifest';
 export * from './audio/flanger/manifest';

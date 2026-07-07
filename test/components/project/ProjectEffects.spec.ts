@@ -50,6 +50,7 @@ vi.mock('~/effects', () => ({
   ]),
   getAllAudioEffectManifests: vi.fn(() => []),
   getEffectManifest: vi.fn(() => null),
+  isNativeAudioEffectManifestSupported: vi.fn(() => false),
 }));
 
 vi.mock('~/transitions', () => ({

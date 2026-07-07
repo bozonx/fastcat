@@ -3,10 +3,12 @@ import {
   getAllAudioEffectManifests,
   getAllVideoEffectManifests,
   getEffectManifest,
+  isNativeAudioEffectManifestSupported,
   type EffectManifest,
 } from '~/effects';
 import { usePresetsStore } from '~/stores/presets.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
+import { isTauriRuntime } from '~/utils/runtime';
 
 export interface EffectManifestGroups {
   basic: EffectManifest[];
@@ -33,6 +35,14 @@ export function useEffectManifestGroups(
       resolvedTarget === 'video' ? getAllVideoEffectManifests() : getAllAudioEffectManifests();
 
     return manifests.filter((manifest) => {
+      if (
+        resolvedTarget === 'audio' &&
+        isTauriRuntime() &&
+        !isNativeAudioEffectManifestSupported(manifest)
+      ) {
+        return false;
+      }
+
       return !manifest.experimental || workspaceStore.inDevelopmentFeaturesEnabled;
     });
   });
@@ -53,6 +63,14 @@ export function useEffectManifestGroups(
         const manifest = getEffectManifest(preset.id);
         if (!manifest) return null;
         return { ...manifest, name: preset.name };
+      })
+      .filter((manifest) => {
+        if (!manifest) return false;
+        return (
+          resolvedTarget !== 'audio' ||
+          !isTauriRuntime() ||
+          isNativeAudioEffectManifestSupported(manifest)
+        );
       })
       .filter((manifest): manifest is EffectManifest => Boolean(manifest));
 

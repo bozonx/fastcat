@@ -34,6 +34,7 @@
 
 use std::collections::{HashMap, HashSet};
 
+mod builtin;
 pub mod catalog;
 pub mod clap;
 
@@ -106,18 +107,6 @@ impl PluginInstance for PassthroughPlugin {
     fn reset(&mut self) {}
 }
 
-struct MultiplyPlugin;
-
-impl PluginInstance for MultiplyPlugin {
-    fn set_params(&mut self, _spec: &AudioEffectSpec) {}
-    fn process(&mut self, buffer: &mut [f32], _channels: usize) {
-        for sample in buffer.iter_mut() {
-            *sample *= 2.0;
-        }
-    }
-    fn reset(&mut self) {}
-}
-
 /// A factory that turns an [`AudioEffectSpec`] into a live [`PluginInstance`]
 /// for one class of effect — a built-in DSP block or an external plugin format
 /// (CLAP/LV2/VST3). This is the sole extension point for new host formats:
@@ -153,16 +142,16 @@ struct BuiltinBackend;
 
 impl PluginBackend for BuiltinBackend {
     fn can_handle(&self, spec: &AudioEffectSpec) -> bool {
-        spec.effect_type == "test-multiply"
+        builtin::can_handle(&spec.effect_type)
     }
 
     fn instantiate(
         &self,
-        _spec: &AudioEffectSpec,
-        _sample_rate: u32,
-        _channels: usize,
+        spec: &AudioEffectSpec,
+        sample_rate: u32,
+        channels: usize,
     ) -> Box<dyn PluginInstance> {
-        Box::new(MultiplyPlugin)
+        builtin::instantiate(spec, sample_rate, channels)
     }
 }
 
@@ -592,6 +581,56 @@ mod tests {
         let mut buf = vec![0.0f32; 4];
         host.apply_effects("layer-1", &mut buf, 48_000, 2, &[fx]);
         assert_eq!(buf, vec![1.0f32; 4]);
+    }
+
+    #[test]
+    fn builtin_effects_process_audio_in_plugin_host() {
+        let mut host = PluginHost::new();
+        let mut fx = spec("fx1");
+        fx.effect_type = "audio-distortion".into();
+        fx.params
+            .insert("distortion".into(), serde_json::json!(1.0));
+
+        let mut buf = vec![0.5f32, -0.5, 0.25, -0.25];
+        host.apply_effects("layer-1", &mut buf, 48_000, 2, &[fx]);
+
+        assert_ne!(buf, vec![0.5f32, -0.5, 0.25, -0.25]);
+        assert!(buf.iter().all(|sample| sample.is_finite()));
+    }
+
+    #[test]
+    fn external_backend_and_builtin_effects_chain_in_order() {
+        let mut host = PluginHost::new();
+        host.register_backend(Box::new(AddOneBackend));
+        let mut add = spec("add");
+        add.effect_type = "add-one".into();
+        let mut multiply = spec("multiply");
+        multiply.effect_type = "test-multiply".into();
+
+        let mut buf = vec![1.0f32; 4];
+        host.apply_effects("layer-1", &mut buf, 48_000, 2, &[add, multiply]);
+
+        assert_eq!(buf, vec![4.0f32; 4]);
+    }
+
+    #[test]
+    fn echo_builtin_keeps_delay_state_across_chunks() {
+        let mut host = PluginHost::new();
+        let mut fx = spec("echo");
+        fx.effect_type = "audio-echo".into();
+        fx.params
+            .insert("delayTime".into(), serde_json::json!(0.02));
+        fx.params.insert("feedback".into(), serde_json::json!(0.0));
+        fx.params.insert("tone".into(), serde_json::json!(6000.0));
+
+        let mut first = vec![0.0f32; 10];
+        first[0] = 1.0;
+        host.apply_effects("layer-1", &mut first, 1_000, 1, std::slice::from_ref(&fx));
+        assert_eq!(first, vec![0.0f32; 10]);
+
+        let mut second = vec![0.0f32; 12];
+        host.apply_effects("layer-1", &mut second, 1_000, 1, &[fx]);
+        assert!(second.iter().any(|sample| *sample > 0.9));
     }
 
     #[test]
