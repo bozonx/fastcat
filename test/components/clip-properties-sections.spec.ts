@@ -73,4 +73,18 @@ describe('clip properties sections', () => {
     expect(wrapper.text()).toContain('30');
     expect(wrapper.text()).toContain('48000 Hz');
   });
+
+  it('shows clip duration as read-only text above start and end timecodes', async () => {
+    const wrapper = await mountWithNuxt(ClipInfoSection, {
+      props: {
+        clip: createClip(),
+        mediaMeta: null,
+        showSource: false,
+      },
+    });
+
+    expect(wrapper.text()).toContain('00:00:02:00');
+    expect(wrapper.findAll('input')).toHaveLength(2);
+    expect(wrapper.emitted('updateDuration')).toBeUndefined();
+  });
 });

@@ -5,7 +5,7 @@ import { useSelectionStore } from '~/stores/selection.store';
 import PropertySection from '~/components/properties/PropertySection.vue';
 import PropertyActionsBlock from '~/components/properties/PropertyActionsBlock.vue';
 import PropertyTimecode from '~/components/properties/PropertyTimecode.vue';
-import { formatTimecode } from '~/utils/time';
+import PropertyDuration from '~/components/properties/PropertyDuration.vue';
 
 defineProps<{
   hideActions?: boolean;
@@ -18,11 +18,12 @@ const selectionStore = useSelectionStore();
 
 const selectionRange = computed(() => timelineStore.getSelectionRange());
 
-const selectionRangeDurationText = computed(() => {
+const timelineFps = computed(() => timelineStore.timelineFormat?.fps ?? timelineStore.fps);
+
+const selectionRangeDurationUs = computed(() => {
   const range = selectionRange.value;
-  if (!range) return '';
-  const fps = timelineStore.timelineFormat?.fps ?? timelineStore.fps;
-  return formatTimecode(Math.max(0, range.endUs - range.startUs), fps);
+  if (!range) return 0;
+  return Math.max(0, range.endUs - range.startUs);
 });
 
 function handleUpdateStartTime(val: number | string) {
@@ -102,6 +103,12 @@ const mainActions = computed(() => [
     </PropertySection>
 
     <PropertySection :title="t('fastcat.selectionRange.info')">
+      <PropertyDuration
+        :label="t('common.duration')"
+        :model-value="selectionRangeDurationUs"
+        :fps="timelineFps"
+      />
+
       <PropertyTimecode
         :label="t('common.start')"
         :model-value="selectionRange.startUs"
@@ -113,13 +120,6 @@ const mainActions = computed(() => [
         :model-value="selectionRange.endUs"
         @update:model-value="handleUpdateEndTime"
       />
-
-      <div class="flex flex-col gap-0.5 mt-2">
-        <span class="text-xs text-ui-text-muted">{{ t('common.duration') }}</span>
-        <span class="text-sm font-mono tabular-nums text-ui-text">
-          {{ selectionRangeDurationText }}
-        </span>
-      </div>
     </PropertySection>
   </div>
 </template>

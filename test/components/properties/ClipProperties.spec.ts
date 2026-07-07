@@ -35,7 +35,7 @@ vi.mock('~/components/properties/clip/ClipActionsSection.vue', () => ({
 vi.mock('~/components/properties/clip/ClipInfoSection.vue', () => ({
   default: {
     name: 'ClipInfoSection',
-    emits: ['update-start-time', 'update-end-time', 'update-duration'],
+    emits: ['update-start-time', 'update-end-time'],
     template: '<div></div>',
   },
 }));
@@ -354,7 +354,7 @@ describe('ClipProperties.vue', () => {
     });
   });
 
-  it('updates clip properties for start time, end time, and duration correctly', async () => {
+  it('updates clip properties for start time and end time correctly', async () => {
     const clip = createClip();
     const wrapper = await mountComponent({ clip });
 
@@ -387,18 +387,7 @@ describe('ClipProperties.vue', () => {
       { historyMode: 'debounced' },
     );
 
-    infoSection.vm.$emit('update-duration', 4000000);
-    await nextTick();
-    expect(mockTimelineStore.applyTimeline).toHaveBeenCalledWith(
-      {
-        type: 'trim_item',
-        trackId: 'track-1',
-        itemId: 'clip-1',
-        edge: 'end',
-        deltaUs: -1000000,
-      },
-      { historyMode: 'debounced' },
-    );
+    expect(infoSection.vm.$.emitsOptions).not.toHaveProperty('update-duration');
   });
 
   it('updates opacity and blendMode correctly', async () => {

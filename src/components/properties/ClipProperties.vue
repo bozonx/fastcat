@@ -273,22 +273,6 @@ function handleUpdateEndTime(val: number) {
   );
 }
 
-function handleUpdateDuration(val: number) {
-  const newDurationUs = Math.max(1, Math.round(val));
-  const currentDurationUs = props.clip.timelineRange.durationUs;
-  if (newDurationUs === currentDurationUs) return;
-  timelineStore.applyTimeline(
-    {
-      type: 'trim_item',
-      trackId: props.clip.trackId,
-      itemId: props.clip.id,
-      edge: 'end',
-      deltaUs: newDurationUs - currentDurationUs,
-    },
-    { historyMode: 'debounced' },
-  );
-}
-
 // Keyframe animation (v1: opacity + transform). The playhead-driven "current
 // value" and "record edit as keyframe" logic lives in the shared composable so
 // the timeline's keyframe lane and this panel stay in sync.
@@ -751,7 +735,6 @@ defineExpose({
         :show-source="false"
         @update-start-time="handleUpdateStartTime"
         @update-end-time="handleUpdateEndTime"
-        @update-duration="handleUpdateDuration"
       />
     </template>
 
@@ -774,7 +757,6 @@ defineExpose({
         :show-source="false"
         @update-start-time="handleUpdateStartTime"
         @update-end-time="handleUpdateEndTime"
-        @update-duration="handleUpdateDuration"
       />
 
       <ClipTypeSection

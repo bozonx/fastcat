@@ -3,7 +3,10 @@ import type { TimelineClipItem } from '~/timeline/types';
 import PropertySection from '~/components/properties/PropertySection.vue';
 import PropertyRow from '~/components/properties/PropertyRow.vue';
 import PropertyTimecode from '~/components/properties/PropertyTimecode.vue';
+import PropertyDuration from '~/components/properties/PropertyDuration.vue';
 import MediaMetadataList from '~/components/properties/MediaMetadataList.vue';
+import { computed } from 'vue';
+import { useTimelineStore } from '~/stores/timeline.store';
 
 const props = withDefaults(
   defineProps<{
@@ -24,10 +27,11 @@ const props = withDefaults(
 const emit = defineEmits<{
   updateStartTime: [val: number];
   updateEndTime: [val: number];
-  updateDuration: [val: number];
 }>();
 
 const { t } = useI18n();
+const timelineStore = useTimelineStore();
+const timelineFps = computed(() => timelineStore.timelineFormat?.fps ?? timelineStore.fps);
 </script>
 
 <template>
@@ -40,10 +44,10 @@ const { t } = useI18n();
   </PropertySection>
 
   <PropertySection v-if="props.showInfo">
-    <PropertyTimecode
+    <PropertyDuration
       :label="t('common.duration')"
       :model-value="props.clip.timelineRange.durationUs"
-      @update:model-value="emit('updateDuration', $event)"
+      :fps="timelineFps"
     />
 
     <PropertyTimecode

@@ -237,6 +237,40 @@ describe('timeline/commands trim_item — source material bounds', () => {
     expect(c1.timelineRange.startUs).toBe(3_000_000);
     expect(c1.timelineRange.durationUs).toBe(5_000_000);
   });
+
+  it('rejects a shrink below one frame instead of producing a zero-length clip', () => {
+    const doc = makeDoc({
+      id: 'v1',
+      kind: 'video',
+      name: 'V1',
+      items: [
+        {
+          kind: 'clip',
+          clipType: 'media',
+          id: 'c1',
+          trackId: 'v1',
+          name: 'C1',
+          source: { path: 'a.mp4' },
+          isImage: false,
+          sourceDurationUs: 5_000_000,
+          sourceRange: { startUs: 0, durationUs: 1_000_000 },
+          timelineRange: { startUs: 0, durationUs: 1_000_000 },
+          speed: 1,
+        },
+      ],
+    });
+
+    const { next } = applyTimelineCommand(doc, {
+      type: 'trim_item',
+      trackId: 'v1',
+      itemId: 'c1',
+      edge: 'end',
+      deltaUs: -2_000_000,
+    });
+
+    const c1 = findClip(next, 'c1');
+    expect(c1.timelineRange.durationUs).toBe(1_000_000);
+  });
 });
 
 describe('timeline/commands overlay_trim_item — guards parity with trim_item', () => {
