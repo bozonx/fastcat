@@ -79,17 +79,17 @@ function createAudioSectionProps() {
 }
 
 describe('ClipAudioSection', () => {
-  it('resets audio parameters when toggled off', async () => {
+  it('keeps audio parameter values when toggled off', async () => {
     const wrapper = await mountWithNuxt(ClipAudioSection, {
       props: createAudioSectionProps(),
     });
 
     await wrapper.setProps({ enabled: false });
 
-    expect(wrapper.emitted('updateAudioBalance')).toEqual([[0]]);
-    expect(wrapper.emitted('updateAudioFadeInSec')).toEqual([[0]]);
-    expect(wrapper.emitted('updateAudioFadeOutSec')).toEqual([[0]]);
-    expect(wrapper.emitted('updateAudioGain')).toEqual([[1]]);
+    expect(wrapper.emitted('updateAudioBalance')).toBeUndefined();
+    expect(wrapper.emitted('updateAudioFadeInSec')).toBeUndefined();
+    expect(wrapper.emitted('updateAudioFadeOutSec')).toBeUndefined();
+    expect(wrapper.emitted('updateAudioGain')).toBeUndefined();
   });
 
   it('keeps volume and balance enabled when fades are toggled off', async () => {

@@ -8,6 +8,7 @@ import type {
   TimelineSelectionRange,
   TimelineBlendMode,
   ClipEffect,
+  ClipAnimations,
   TimelineDocument,
 } from '~/timeline/types';
 import { isClipItem } from '~/timeline/types';
@@ -688,17 +689,21 @@ function finalizeNestedClips(params: {
         : null),
       audioFadeInUs: mergeFadeInUs({
         childFadeInUs: resolvedNClip.audioFadeInUs,
-        parentFadeInUs: item.audioFadeInUs,
+        parentFadeInUs: item.audioFadesActive !== false ? item.audioFadeInUs : undefined,
         parentLocalStartUs: clipWindow.parentLocalStartUs,
       }),
       audioFadeOutUs: mergeFadeOutUs({
         childFadeOutUs: resolvedNClip.audioFadeOutUs,
-        parentFadeOutUs: item.audioFadeOutUs,
+        parentFadeOutUs: item.audioFadesActive !== false ? item.audioFadeOutUs : undefined,
         parentLocalEndUs: clipWindow.parentLocalEndUs,
         parentDurationUs,
       }),
-      audioFadeInCurve: resolvedNClip.audioFadeInCurve ?? item.audioFadeInCurve,
-      audioFadeOutCurve: resolvedNClip.audioFadeOutCurve ?? item.audioFadeOutCurve,
+      audioFadeInCurve:
+        resolvedNClip.audioFadeInCurve ??
+        (item.audioFadesActive !== false ? item.audioFadeInCurve : undefined),
+      audioFadeOutCurve:
+        resolvedNClip.audioFadeOutCurve ??
+        (item.audioFadesActive !== false ? item.audioFadeOutCurve : undefined),
     });
   }
 
@@ -710,6 +715,24 @@ function finalizeNestedClips(params: {
  * fields (source/text/shape/hud/background) are added by the callers so the
  * discriminated union stays clean.
  */
+function cloneAudioBlockAnimations(item: TimelineClipItem): ClipAnimations | undefined {
+  const animations = clonePlain(item.animations) as ClipAnimations | undefined;
+  if (item.audioFadesActive !== false || !animations) return animations;
+
+  delete animations['audio.volume'];
+  delete animations['audio.pan'];
+
+  return Object.keys(animations).length > 0 ? animations : undefined;
+}
+
+function getEffectiveClipAudioGain(item: TimelineClipItem): number {
+  return item.audioFadesActive === false ? 1 : (item.audioGain ?? 1);
+}
+
+function getEffectiveClipAudioBalance(item: TimelineClipItem): number {
+  return item.audioFadesActive === false ? 0 : (item.audioBalance ?? 0);
+}
+
 function buildBaseWorkerClip(params: {
   item: TimelineClipItem;
   clipType: 'timeline' | WorkerTimelineClip['clipType'];
@@ -723,6 +746,12 @@ function buildBaseWorkerClip(params: {
   workspaceStore: WorkerPayloadWorkspaceContext;
 }): WorkerTimelineClip {
   const { item, projectStore, workspaceStore } = params;
+  const audioBlockActive = item.audioFadesActive !== false;
+  const clipAudioGain = getEffectiveClipAudioGain(item);
+  const clipAudioBalance = getEffectiveClipAudioBalance(item);
+  const originalAudioGain = audioBlockActive ? item.originalAudioGain : 1;
+  const originalAudioBalance = audioBlockActive ? item.originalAudioBalance : 0;
+
   return {
     kind: 'clip',
     clipType: toWorkerClipType(params.clipType),
@@ -730,19 +759,19 @@ function buildBaseWorkerClip(params: {
     trackId: item.trackId,
     layer: params.layer,
     speed: item.speedActive !== false ? item.speed : undefined,
-    audioGain: mergeGain(params.parentAudioGain, item.audioGain),
-    audioBalance: mergeBalance(params.parentAudioBalance, item.audioBalance),
+    audioGain: mergeGain(params.parentAudioGain, clipAudioGain),
+    audioBalance: mergeBalance(params.parentAudioBalance, clipAudioBalance),
     // Clip-only gain/balance (track bus excluded). The native mixer applies the
     // owning track's gain/balance separately on its bus, so the layer must not
     // also carry it — otherwise track gain/balance is applied twice. The
     // `audioGain`/`audioBalance` above are the merged track×clip value the web
     // mixer needs; the originals are the clip's own value.
-    originalAudioGain: mergeGain(params.parentAudioGain, item.originalAudioGain),
-    originalAudioBalance: mergeBalance(params.parentAudioBalance, item.originalAudioBalance),
-    audioFadeInUs: item.audioFadesActive !== false ? item.audioFadeInUs : undefined,
-    audioFadeOutUs: item.audioFadesActive !== false ? item.audioFadeOutUs : undefined,
-    audioFadeInCurve: item.audioFadesActive !== false ? item.audioFadeInCurve : undefined,
-    audioFadeOutCurve: item.audioFadesActive !== false ? item.audioFadeOutCurve : undefined,
+    originalAudioGain: mergeGain(params.parentAudioGain, originalAudioGain),
+    originalAudioBalance: mergeBalance(params.parentAudioBalance, originalAudioBalance),
+    audioFadeInUs: audioBlockActive ? item.audioFadeInUs : undefined,
+    audioFadeOutUs: audioBlockActive ? item.audioFadeOutUs : undefined,
+    audioFadeInCurve: audioBlockActive ? item.audioFadeInCurve : undefined,
+    audioFadeOutCurve: audioBlockActive ? item.audioFadeOutCurve : undefined,
     audioDeclickDurationUs: projectStore.projectSettings.project.audioDeclickDurationUs,
     defaultAudioFadeCurve: workspaceStore.userSettings.projectDefaults.defaultAudioFadeCurve,
     opacity: item.opacityActive !== false ? params.combinedOpacity : undefined,
@@ -752,7 +781,7 @@ function buildBaseWorkerClip(params: {
     transform: item.transformActive !== false ? clonePlain(item.transform) : undefined,
     // Keyframe tracks always pass through: animating a param implies intent, so
     // they apply regardless of the static transform/opacity `*Active` toggles.
-    animations: clonePlain(item.animations),
+    animations: cloneAudioBlockAnimations(item),
     sourceOrientation: item.transformActive !== false ? item.sourceOrientation : undefined,
     transitionIn: clonePlain(item.transitionIn),
     transitionOut: clonePlain(item.transitionOut),
@@ -967,8 +996,8 @@ async function expandNestedTimeline(params: {
         parentOpacity: combinedOpacity,
         parentBlendMode: combinedBlendMode,
         parentEffects: combinedEffects,
-        parentAudioGain: mergeGain(parentAudioGain, item.audioGain),
-        parentAudioBalance: mergeBalance(parentAudioBalance, item.audioBalance),
+        parentAudioGain: mergeGain(parentAudioGain, getEffectiveClipAudioGain(item)),
+        parentAudioBalance: mergeBalance(parentAudioBalance, getEffectiveClipAudioBalance(item)),
         onWarning: options?.onWarning,
         nestedTimelinePath: path,
         nestedDocCache,

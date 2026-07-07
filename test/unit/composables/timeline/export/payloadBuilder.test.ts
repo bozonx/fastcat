@@ -775,6 +775,54 @@ describe('toWorkerTimelineClips', () => {
     expect(nested[0]?.layer).toBe(3);
   });
 
+  it('uses default audio parameters in payload when the clip audio block is disabled', async () => {
+    const item = {
+      kind: 'clip',
+      clipType: 'media',
+      id: 'c1',
+      trackId: 't1',
+      name: 'Clip 1',
+      source: { path: '/video.mp4' },
+      sourceDurationUs: 1_000_000,
+      timelineRange: { startUs: 0, durationUs: 1_000_000 },
+      sourceRange: { startUs: 0, durationUs: 1_000_000 },
+      audioFadesActive: false,
+      audioGain: 0.25,
+      audioBalance: -0.5,
+      audioFadeInUs: 120_000,
+      audioFadeOutUs: 340_000,
+      audioFadeInCurve: 'logarithmic',
+      audioFadeOutCurve: 'logarithmic',
+      animations: {
+        'audio.volume': { keyframes: [{ timeUs: 0, value: 0.25 }] },
+        'audio.pan': { keyframes: [{ timeUs: 0, value: -0.5 }] },
+        opacity: { keyframes: [{ timeUs: 0, value: 0.75 }] },
+      },
+    } as any;
+    const projectStoreMock = {
+      getFileHandleByPath: async () => null,
+      projectSettings: { project: { audioDeclickDurationUs: 5000 } },
+    } as any;
+
+    const clips = await toWorkerTimelineClips([item], projectStoreMock, wsMock);
+
+    expect(clips[0]).toMatchObject({
+      audioGain: 1,
+      audioBalance: 0,
+      originalAudioGain: 1,
+      originalAudioBalance: 0,
+    });
+    expect(clips[0]?.audioFadeInUs).toBeUndefined();
+    expect(clips[0]?.audioFadeOutUs).toBeUndefined();
+    expect(clips[0]?.audioFadeInCurve).toBeUndefined();
+    expect(clips[0]?.audioFadeOutCurve).toBeUndefined();
+    expect(clips[0]?.animations?.['audio.volume']).toBeUndefined();
+    expect(clips[0]?.animations?.['audio.pan']).toBeUndefined();
+    expect(clips[0]?.animations?.opacity).toEqual({ keyframes: [{ timeUs: 0, value: 0.75 }] });
+    expect(item.audioGain).toBe(0.25);
+    expect(item.audioFadeInUs).toBe(120_000);
+  });
+
   it('serializes HUD frame and masks into video worker payloads', async () => {
     const tracks = [
       {

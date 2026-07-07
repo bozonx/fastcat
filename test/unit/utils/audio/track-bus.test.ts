@@ -35,6 +35,52 @@ describe('buildEffectiveAudioClipItems', () => {
     expect(result.items[0]!.audioGain).toBe(3); // 1.5 * 2 = 3
   });
 
+  it('uses default clip audio parameters when the clip audio block is disabled', () => {
+    const item = {
+      kind: 'clip',
+      clipType: 'media',
+      id: 'c1',
+      trackId: 'a1',
+      name: 'clip1',
+      timelineRange: { startUs: 0, durationUs: 1_000_000 },
+      sourceRange: { startUs: 0, durationUs: 1_000_000 },
+      source: { path: 'audio/y.mp3' },
+      sourceDurationUs: 1_000_000,
+      audioFadesActive: false,
+      audioGain: 0.25,
+      audioBalance: -0.5,
+      audioFadeInUs: 100_000,
+      audioFadeOutUs: 200_000,
+      audioFadeInCurve: 'logarithmic',
+      audioFadeOutCurve: 'logarithmic',
+    };
+    const audioTrack = {
+      id: 'a1',
+      kind: 'audio',
+      name: 'A1',
+      items: [item],
+      audioGain: 1.5,
+      audioBalance: 0.25,
+    };
+
+    const result = buildEffectiveAudioClipItems({
+      audioTracks: [audioTrack as any],
+      videoTracks: [],
+    });
+
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]!.audioGain).toBe(1.5);
+    expect(result.items[0]!.audioBalance).toBe(0.25);
+    expect(result.items[0]!.originalAudioGain).toBe(1);
+    expect(result.items[0]!.originalAudioBalance).toBe(0);
+    expect(result.items[0]!.audioFadeInUs).toBeUndefined();
+    expect(result.items[0]!.audioFadeOutUs).toBeUndefined();
+    expect(result.items[0]!.audioFadeInCurve).toBeUndefined();
+    expect(result.items[0]!.audioFadeOutCurve).toBeUndefined();
+    expect(item.audioGain).toBe(0.25);
+    expect(item.audioFadeInUs).toBe(100_000);
+  });
+
   it('builds effective items from video tracks when audio from video is enabled', () => {
     const videoTrack = {
       id: 'v1',

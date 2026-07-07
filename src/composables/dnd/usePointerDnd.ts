@@ -4,9 +4,10 @@
  * A drag *source* calls {@link armPointerDnd} from its `pointerdown` handler.
  * The engine then:
  *   1. Arms a gesture watcher that distinguishes a click/tap/scroll from a drag
- *      (movement threshold for mouse/pen, long-press for touch). Until a drag
- *      actually commits it never calls `preventDefault`, so normal clicks and
- *      touch scrolling keep working.
+ *      (movement threshold for mouse/pen, long-press for touch). Mouse/pen
+ *      sources suppress the browser's native drag/focus handling immediately;
+ *      touch keeps its default behavior until the long-press commits so normal
+ *      scrolling keeps working.
  *   2. On commit: captures the pointer, marks the global dnd state active, and
  *      binds window-level pointermove/up/cancel + keydown(Escape) + blur.
  *   3. On every move: hit-tests `elementFromPoint`, resolves the drop zone, and
@@ -544,6 +545,10 @@ export function armPointerDnd(e: PointerEvent, options: ArmPointerDndOptions): v
   const pointerType = normalizePointerType(e.pointerType);
   const secondaryOk = options.acceptSecondaryButton === true && e.button === 2;
   if (!secondaryOk && !isPrimaryPointer(pointerType, e.button)) return;
+
+  if (pointerType !== 'touch') {
+    e.preventDefault();
+  }
 
   // Cancel any stale drag (e.g. a previous gesture that never released).
   if (activeDrag) teardown({ dropped: false, cancelled: true });

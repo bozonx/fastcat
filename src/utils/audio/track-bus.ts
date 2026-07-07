@@ -1,4 +1,9 @@
-import type { TimelineTrack, TimelineTrackItem, ClipEffect } from '~/timeline/types';
+import type {
+  TimelineTrack,
+  TimelineTrackItem,
+  TimelineClipItem,
+  ClipEffect,
+} from '~/timeline/types';
 import { mergeBalance, mergeGain } from '~/utils/audio/envelope';
 import { cloneEffects } from '~/utils/video-editor/worker-clip-utils';
 import { isImagePath } from '~/utils/media-types';
@@ -12,6 +17,30 @@ export interface BuildEffectiveAudioClipItemsParams {
 export interface EffectiveAudioClipItemsResult {
   items: TimelineTrackItem[];
   masterAudioEffects: ClipEffect[];
+}
+
+function getEffectiveClipAudioGain(item: TimelineClipItem): number {
+  return item.audioFadesActive === false ? 1 : (item.audioGain ?? 1);
+}
+
+function getEffectiveClipAudioBalance(item: TimelineClipItem): number {
+  return item.audioFadesActive === false ? 0 : (item.audioBalance ?? 0);
+}
+
+function getEffectiveClipAudioFadeProps(item: TimelineClipItem) {
+  return item.audioFadesActive === false
+    ? {
+        audioFadeInUs: undefined,
+        audioFadeOutUs: undefined,
+        audioFadeInCurve: undefined,
+        audioFadeOutCurve: undefined,
+      }
+    : {
+        audioFadeInUs: item.audioFadeInUs,
+        audioFadeOutUs: item.audioFadeOutUs,
+        audioFadeInCurve: item.audioFadeInCurve,
+        audioFadeOutCurve: item.audioFadeOutCurve,
+      };
 }
 
 export function buildEffectiveAudioClipItems(
@@ -51,12 +80,13 @@ export function buildEffectiveAudioClipItems(
 
       items.push({
         ...item,
+        ...getEffectiveClipAudioFadeProps(item),
         clipType,
         source: { path },
-        audioGain: mergeGain(track.audioGain, item.audioGain),
-        audioBalance: mergeBalance(track.audioBalance, item.audioBalance),
-        originalAudioGain: item.audioGain,
-        originalAudioBalance: item.audioBalance,
+        audioGain: mergeGain(track.audioGain, getEffectiveClipAudioGain(item)),
+        audioBalance: mergeBalance(track.audioBalance, getEffectiveClipAudioBalance(item)),
+        originalAudioGain: getEffectiveClipAudioGain(item),
+        originalAudioBalance: getEffectiveClipAudioBalance(item),
         effects: combinedEffects.length > 0 ? combinedEffects : undefined,
       } as import('~/timeline/types').TimelineClipItem);
     }
@@ -83,13 +113,14 @@ export function buildEffectiveAudioClipItems(
 
       items.push({
         ...item,
+        ...getEffectiveClipAudioFadeProps(item),
         clipType,
         id: `${item.id}__audio`,
         source: { path },
-        audioGain: mergeGain(track.audioGain, item.audioGain),
-        audioBalance: mergeBalance(track.audioBalance, item.audioBalance),
-        originalAudioGain: item.audioGain,
-        originalAudioBalance: item.audioBalance,
+        audioGain: mergeGain(track.audioGain, getEffectiveClipAudioGain(item)),
+        audioBalance: mergeBalance(track.audioBalance, getEffectiveClipAudioBalance(item)),
+        originalAudioGain: getEffectiveClipAudioGain(item),
+        originalAudioBalance: getEffectiveClipAudioBalance(item),
         effects: combinedEffects.length > 0 ? combinedEffects : undefined,
       } as import('~/timeline/types').TimelineClipItem);
     }

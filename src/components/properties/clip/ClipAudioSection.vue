@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, ref } from 'vue';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import DbSlider from '~/components/audio/DbSlider.vue';
 import UiSliderInput from '~/components/ui/UiSliderInput.vue';
@@ -74,10 +74,6 @@ function resetAudioParameters() {
   emit('updateAudioFadeOutSec', 0);
   emit('updateAudioGain', 1);
 }
-
-watch(isEnabled, (enabled, previousEnabled) => {
-  if (!enabled && previousEnabled) resetAudioParameters();
-});
 </script>
 
 <template>
