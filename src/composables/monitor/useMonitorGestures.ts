@@ -196,7 +196,7 @@ export function useMonitorGestures(input: {
     applyViewportAction(action);
   }
 
-  function onViewportDoubleClick(event?: MouseEvent): 'fullscreen' | void {
+  function onViewportDoubleClick(event?: MouseEvent): 'fullscreen' | undefined {
     if (event && event.button !== 0) return;
 
     const settings = workspaceStore.userSettings.mouse.monitor;

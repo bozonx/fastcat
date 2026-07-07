@@ -59,7 +59,7 @@ describe('MonitorTransformBox', () => {
     });
   });
 
-  it('renders a vertical transform box for a landscape-coded video with 90 degree rotation', () => {
+  it('renders a vertical transform box for an auto-oriented video', () => {
     rawWorkerTimelineClips.value[0] = {
       ...rawWorkerTimelineClips.value[0],
       sourceOrientation: 'auto',
@@ -87,9 +87,9 @@ describe('MonitorTransformBox', () => {
     });
 
     const rect = wrapper.get('rect');
-    expect(Number(rect.attributes('width'))).toBeCloseTo(1920);
-    expect(Number(rect.attributes('height'))).toBeCloseTo(1080);
-    expect(wrapper.findAll('g')[1]?.attributes('transform')).toContain('rotate(90');
+    expect(Number(rect.attributes('width'))).toBeCloseTo(1080);
+    expect(Number(rect.attributes('height'))).toBeCloseTo(1920);
+    expect(wrapper.findAll('g')[1]?.attributes('transform')).toContain('rotate(0)');
   });
 
   it('renders transform box for selected clip', () => {

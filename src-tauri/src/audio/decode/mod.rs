@@ -2263,6 +2263,23 @@ mod tests {
         false
     }
 
+    fn wait_for_no_window_fill(
+        shared: &Arc<(Mutex<AudioShared>, Condvar)>,
+        layer_id: &str,
+    ) -> bool {
+        for _ in 0..200 {
+            let state = shared.0.lock();
+            if state.active_window_fill_count == 0
+                && !state.window_fill_in_flight.contains_key(layer_id)
+            {
+                return true;
+            }
+            drop(state);
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+        false
+    }
+
     #[test]
     fn window_hit_serves_memcpy() -> anyhow::Result<()> {
         let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
@@ -2916,8 +2933,7 @@ mod tests {
         );
 
         // The fill runs but the result must be discarded: no window installed.
-        // Wait long enough for the decode to finish.
-        std::thread::sleep(std::time::Duration::from_millis(200));
+        assert!(wait_for_no_window_fill(&shared, "ghost"));
         assert!(
             !shared.0.lock().layer_windows.contains_key("ghost"),
             "window for a layer removed from the scene must not be installed"

@@ -4,6 +4,13 @@ import { mountSuspended } from '@nuxt/test-utils/runtime';
 import MultiMarkerProperties from '~/components/properties/MultiMarkerProperties.vue';
 
 vi.mock('vue-i18n', () => ({
+  createI18n: vi.fn(() => ({
+    global: {
+      locale: ref('en-US'),
+      t: (key: string) => key,
+    },
+    install: vi.fn(),
+  })),
   useI18n: vi.fn(() => ({
     t: vi.fn((key: string, params?: Record<string, unknown>) =>
       params?.count === undefined ? key : `${key}:${params.count}`,
@@ -80,10 +87,13 @@ describe('MultiMarkerProperties', () => {
 
     await wrapper.find('[data-testid="color-picker"]').trigger('click');
 
-    expect(timelineStore.batchApplyTimeline).toHaveBeenCalledWith([
-      { type: 'update_marker', id: 'm1', color: '#ff0000' },
-      { type: 'update_marker', id: 'm3', color: '#ff0000' },
-    ]);
+    expect(timelineStore.batchApplyTimeline).toHaveBeenCalledWith(
+      [
+        { type: 'update_marker', id: 'm1', color: '#ff0000' },
+        { type: 'update_marker', id: 'm3', color: '#ff0000' },
+      ],
+      { historyMode: 'debounced' },
+    );
   });
 
   it('uses the shared color when selected markers have the same color', async () => {

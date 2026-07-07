@@ -341,14 +341,15 @@ function teardown(info: { dropped: boolean; cancelled: boolean; nativeTakeover?:
   activeDrag = null;
 
   if (drag.committed) {
+    const ownerWindow = window;
     const blockClick = (e: MouseEvent) => {
       e.stopPropagation();
       e.preventDefault();
-      window.removeEventListener('click', blockClick, true);
+      ownerWindow.removeEventListener('click', blockClick, true);
     };
-    window.addEventListener('click', blockClick, true);
+    ownerWindow.addEventListener('click', blockClick, true);
     setTimeout(() => {
-      window.removeEventListener('click', blockClick, true);
+      ownerWindow.removeEventListener('click', blockClick, true);
     }, 50);
   }
 

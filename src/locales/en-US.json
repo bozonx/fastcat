@@ -1941,7 +1941,6 @@
       "mouseActionZoomVertical": "Vertical Zoom",
       "mouseHorizontalMovement": "Horizontal mouse movement",
       "mouseMonitor": "Viewer / Monitor",
-      "mouseMonitorDoubleClick": "Double-click in monitor",
       "mouseMonitorMiddleClick": "Middle Mouse Button Click",
       "mouseMonitorWheel": "Wheel",
       "mouseMonitorWheelShift": "Wheel + {modifier1}",

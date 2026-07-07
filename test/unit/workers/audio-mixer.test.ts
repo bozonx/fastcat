@@ -145,6 +145,7 @@ describe('mixProcessedChunk', () => {
       planes: [new Float32Array([1, 2]), new Float32Array([3, 4])],
       frames: 2,
       gainEnvelope: new Float32Array([1, 1]),
+      panEnvelope: new Float32Array([0, 0]),
       audioBalance: 0,
     };
 

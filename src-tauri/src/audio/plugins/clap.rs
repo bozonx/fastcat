@@ -621,6 +621,12 @@ impl ClapBackend {
     }
 }
 
+impl Default for ClapBackend {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PluginBackend for ClapBackend {
     fn can_handle(&self, spec: &AudioEffectSpec) -> bool {
         spec.plugin

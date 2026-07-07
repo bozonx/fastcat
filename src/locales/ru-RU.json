@@ -1941,7 +1941,6 @@
       "mouseActionZoomVertical": "Вертикальный зум",
       "mouseHorizontalMovement": "Горизонтальное движение мышкой",
       "mouseMonitor": "Просмотр / монитор",
-      "mouseMonitorDoubleClick": "Двойной клик в мониторе",
       "mouseMonitorMiddleClick": "Одинарный клик средней кнопкой",
       "mouseMonitorWheel": "Колесо",
       "mouseMonitorWheelShift": "Колесо + {modifier1}",

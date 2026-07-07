@@ -6,19 +6,33 @@ describe('StageTextureRenderer', () => {
     vi.unstubAllGlobals();
   });
 
+  function stubImageData() {
+    class TestImageData {
+      constructor(
+        public readonly data: Uint8ClampedArray,
+        public readonly width: number,
+        public readonly height: number,
+      ) {}
+    }
+
+    vi.stubGlobal('ImageData', TestImageData);
+    return TestImageData;
+  }
+
   it('insets and restores the adjustment capture to the project size', async () => {
+    const TestImageData = stubImageData();
     const bitmap = { width: 1920, height: 1080 } as ImageBitmap;
     const createImageBitmapMock = vi.fn().mockResolvedValue(bitmap);
     vi.stubGlobal('createImageBitmap', createImageBitmapMock);
 
     const lower = { visible: true, __trackId: 'lower' };
     const upper = { visible: true, __trackId: 'upper' };
-    const canvas = { width: 1920, height: 1080 };
+    const pixels = new Uint8ClampedArray(1920 * 1080 * 4);
+    const extractPixels = vi.fn(() => ({ pixels, width: 1920, height: 1080 }));
     const renderer = new StageTextureRenderer({
       app: {
-        canvas,
         stage: { children: [lower, upper] },
-        renderer: { render: vi.fn() },
+        renderer: { render: vi.fn(), extract: { pixels: extractPixels } },
       } as any,
       width: 1920,
       height: 1080,
@@ -30,7 +44,11 @@ describe('StageTextureRenderer', () => {
 
     await renderer.renderLowerLayersToBitmap(1, { edgeInsetPixels: 2 });
 
-    expect(createImageBitmapMock).toHaveBeenCalledWith(canvas, 2, 2, 1916, 1076, {
+    expect(extractPixels).toHaveBeenCalledOnce();
+    const [imageData, sx, sy, sw, sh, options] = createImageBitmapMock.mock.calls[0] ?? [];
+    expect(imageData).toBeInstanceOf(TestImageData);
+    expect([sx, sy, sw, sh]).toEqual([2, 2, 1916, 1076]);
+    expect(options).toEqual({
       resizeWidth: 1920,
       resizeHeight: 1080,
       resizeQuality: 'low',
@@ -39,18 +57,19 @@ describe('StageTextureRenderer', () => {
     expect(upper.visible).toBe(true);
   });
 
-  it('captures a render texture through the renderer canvas without pixel extraction', async () => {
+  it('captures a render texture through pixel extraction', async () => {
+    const TestImageData = stubImageData();
     const bitmap = { width: 640, height: 360 } as ImageBitmap;
     const createImageBitmapMock = vi.fn().mockResolvedValue(bitmap);
     vi.stubGlobal('createImageBitmap', createImageBitmapMock);
 
-    const canvas = { width: 640, height: 360 };
     const render = vi.fn();
+    const pixels = new Uint8ClampedArray(640 * 360 * 4);
+    const extractPixels = vi.fn(() => ({ pixels, width: 640, height: 360 }));
     const renderer = new StageTextureRenderer({
       app: {
-        canvas,
         stage: { children: [] },
-        renderer: { render },
+        renderer: { render, extract: { pixels: extractPixels } },
       } as any,
       width: 640,
       height: 360,
@@ -61,12 +80,11 @@ describe('StageTextureRenderer', () => {
     const result = await renderer.renderTextureToBitmap(texture);
 
     expect(result).toBe(bitmap);
-    expect(render).toHaveBeenCalledWith({
-      container: expect.objectContaining({
-        texture,
-      }),
-      clear: true,
-    });
-    expect(createImageBitmapMock).toHaveBeenCalledWith(canvas);
+    const renderCall = render.mock.calls[0]?.[0];
+    expect(renderCall.clear).toBe(true);
+    expect(renderCall.target).toBeTruthy();
+    expect(renderCall.container.texture).toBe(texture);
+    expect(extractPixels).toHaveBeenCalledWith(expect.anything());
+    expect(createImageBitmapMock.mock.calls[0]?.[0]).toBeInstanceOf(TestImageData);
   });
 });

@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mountWithNuxt } from '../../utils/mount';
 import ImageViewer from '~/components/preview/ImageViewer.vue';
 import { useUiStore } from '~/stores/ui.store';
+import { useWorkspaceStore } from '~/stores/workspace.store';
 
 // Mock pan zoom composable
 vi.mock('~/composables/preview/useImagePanZoom', () => ({
@@ -39,27 +40,35 @@ describe('ImageViewer.vue', () => {
     expect(img.attributes('alt')).toBe('test alt');
   });
 
-  it('emits open-modal on click in non-modal mode', async () => {
+  it('emits open-modal on fullscreen double-click in non-modal mode', async () => {
     const component = await mountWithNuxt(ImageViewer, {
       props: {
         src: 'http://example.com/test.jpg',
         isModal: false,
       },
     });
+    useWorkspaceStore().userSettings.mouse.monitor.leftDoubleClick = 'fullscreen';
 
-    await component.find('.image-viewer-container').trigger('click');
+    component
+      .find('.image-viewer-container')
+      .element.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, button: 0 }));
+    await component.vm.$nextTick();
     expect(component.emitted('open-modal')).toBeTruthy();
   });
 
-  it('emits close-modal on click in modal mode', async () => {
+  it('emits close-modal on fullscreen double-click in modal mode', async () => {
     const component = await mountWithNuxt(ImageViewer, {
       props: {
         src: 'http://example.com/test.jpg',
         isModal: true,
       },
     });
+    useWorkspaceStore().userSettings.mouse.monitor.leftDoubleClick = 'fullscreen';
 
-    await component.find('.image-viewer-container').trigger('click');
+    component
+      .find('.image-viewer-container')
+      .element.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, button: 0 }));
+    await component.vm.$nextTick();
     expect(component.emitted('close-modal')).toBeTruthy();
   });
 
