@@ -3,5 +3,8 @@
 
 fn main() {
     app_lib::init_env_vars();
+    if app_lib::audio::plugins::clap::run_describe_helper_from_args(std::env::args_os()) {
+        return;
+    }
     app_lib::run();
 }

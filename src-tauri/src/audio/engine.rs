@@ -285,6 +285,23 @@ impl NativeAudioEngine {
                 .map(|(layer_id, specs)| (layer_id.as_str(), specs.as_slice())),
             &audio_master_effects,
         );
+        {
+            let mut host = plugin_host.lock();
+            for (layer_id, specs) in &plugin_specs {
+                host.prewarm_specs(
+                    layer_id,
+                    self.sample_rate,
+                    self.device_channels as usize,
+                    specs,
+                );
+            }
+            host.prewarm_specs(
+                "__master_bus",
+                self.sample_rate,
+                self.device_channels as usize,
+                &audio_master_effects,
+            );
+        }
         if needs_flush {
             plugin_host.lock().reset_all();
         }

@@ -21,13 +21,15 @@
 //! left as follow-ups — the spec carries only a `params` map today and no UI
 //! produces CLAP params yet.
 
-use std::collections::HashMap;
-use std::path::{Path, PathBuf};
-use std::sync::mpsc::{channel, Receiver, Sender};
-use std::sync::OnceLock;
-
 use clack_extensions::audio_ports::{AudioPortInfoBuffer, PluginAudioPorts};
+use clack_extensions::latency::PluginLatency;
 use clack_host::prelude::*;
+use std::collections::HashMap;
+use std::ffi::OsString;
+use std::io::Write;
+use std::path::{Path, PathBuf};
+use std::process::{Command as ProcessCommand, Stdio};
+use std::sync::mpsc::{channel, Receiver, Sender};
 // `clack_host::prelude` also exports a `PluginInstance`; alias it so it does not
 // clash with our own `PluginInstance` trait (imported from `super`).
 use clack_host::prelude::PluginInstance as ClapPluginInstance;
@@ -59,18 +61,22 @@ impl HostHandlers for FastcatClapHost {
 }
 
 /// Metadata for one plugin inside a bundle, returned by [`describe`].
-#[derive(Debug, Clone)]
+const DESCRIBE_HELPER_ARG: &str = "--fastcat-clap-describe";
+
+#[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
 pub struct ClapPluginDesc {
     pub id: String,
     pub name: Option<String>,
     pub vendor: Option<String>,
     pub version: Option<String>,
+    pub features: Vec<String>,
 }
 
 /// A live, activated CLAP plugin owned by the worker thread. Holds the `!Send`
 /// clack handles plus reusable de-interleave scratch so steady-state processing
 /// allocates nothing.
 struct LiveClap {
+    path: PathBuf,
     instance: ClapPluginInstance<FastcatClapHost>,
     /// `None` once activation/processing has failed; the worker then passes
     /// audio through untouched so a broken plugin is inert, not fatal.
@@ -81,6 +87,8 @@ struct LiveClap {
     out_scratch: Vec<Vec<f32>>,
     port_in: usize,
     port_out: usize,
+    latency_samples: u32,
+    steady_time: u64,
 }
 
 impl LiveClap {
@@ -89,7 +97,12 @@ impl LiveClap {
     /// counts are adapted to the plugin's declared main-port width: extra plugin
     /// input channels are fed silence, and output channels beyond the plugin's
     /// width reuse its last channel.
-    fn process_into(&mut self, interleaved: &mut [f32], channels: usize) {
+    fn process_into(
+        &mut self,
+        interleaved: &mut [f32],
+        channels: usize,
+        context: super::PluginProcessContext,
+    ) -> Result<(), ()> {
         let LiveClap {
             processor,
             input_ports,
@@ -98,15 +111,17 @@ impl LiveClap {
             out_scratch,
             port_in,
             port_out,
+            steady_time,
             ..
         } = self;
         let Some(processor) = processor.as_mut() else {
-            return; // inert → passthrough (interleaved already holds the dry signal)
+            return Ok(()); // inert -> passthrough (interleaved already holds the dry signal)
         };
         let channels = channels.max(1);
         let frames_total = interleaved.len() / channels;
         let port_in = *port_in;
         let port_out = *port_out;
+        let transport = context.transport_event();
 
         let mut offset = 0;
         while offset < frames_total {
@@ -114,7 +129,13 @@ impl LiveClap {
 
             for c in 0..port_in {
                 let dst = &mut in_scratch[c][..n];
-                if c < channels {
+                if port_in == 1 && channels > 1 {
+                    for (f, slot) in dst.iter_mut().enumerate() {
+                        let base = (offset + f) * channels;
+                        let sum = (0..channels).map(|ch| interleaved[base + ch]).sum::<f32>();
+                        *slot = sum / channels as f32;
+                    }
+                } else if c < channels {
                     for (f, slot) in dst.iter_mut().enumerate() {
                         *slot = interleaved[(offset + f) * channels + c];
                     }
@@ -149,11 +170,11 @@ impl LiveClap {
                 &mut output_audio,
                 &input_events,
                 &mut output_events,
-                None,
-                None,
+                Some(steady_time.wrapping_add(offset as u64)),
+                transport.as_ref(),
             );
             if status.is_err() {
-                return; // leave the remaining frames as the dry signal
+                return Err(());
             }
 
             for c in 0..channels {
@@ -166,12 +187,15 @@ impl LiveClap {
 
             offset += n;
         }
+        *steady_time = steady_time.wrapping_add(frames_total as u64);
+        Ok(())
     }
 
     fn reset(&mut self) {
         if let Some(processor) = self.processor.as_mut() {
             processor.reset();
         }
+        self.steady_time = 0;
     }
 
     fn deactivate(&mut self) {
@@ -201,10 +225,15 @@ enum Command {
         id: u64,
         channels: usize,
         buffer: Vec<f32>,
-        resp: Sender<Vec<f32>>,
+        context: super::PluginProcessContext,
+        resp: Sender<Result<Vec<f32>, Vec<f32>>>,
     },
     Reset {
         id: u64,
+    },
+    GetLatency {
+        id: u64,
+        resp: Sender<u32>,
     },
     Destroy {
         id: u64,
@@ -217,15 +246,6 @@ pub struct ClapEngine {
     tx: Sender<Command>,
 }
 
-static ENGINE: OnceLock<ClapEngine> = OnceLock::new();
-
-/// The global CLAP worker, spawned on first use. If the worker thread cannot be
-/// spawned the returned handle wraps a pre-closed channel, so every `send`
-/// fails and callers fall back to passthrough.
-fn engine() -> &'static ClapEngine {
-    ENGINE.get_or_init(|| ClapEngine::spawn().unwrap_or_else(|_| ClapEngine { tx: dead_channel() }))
-}
-
 /// A pre-closed channel used as a placeholder when the worker thread fails to
 /// spawn, so `engine()` can hand back a handle whose sends simply fail.
 fn dead_channel() -> Sender<Command> {
@@ -234,10 +254,10 @@ fn dead_channel() -> Sender<Command> {
 }
 
 impl ClapEngine {
-    fn spawn() -> std::io::Result<Self> {
+    fn spawn(name: &str) -> std::io::Result<Self> {
         let (tx, rx) = channel::<Command>();
         std::thread::Builder::new()
-            .name("fastcat-clap-host".to_string())
+            .name(name.to_string())
             .spawn(move || worker_loop(rx))?;
         Ok(Self { tx })
     }
@@ -251,7 +271,9 @@ impl ClapEngine {
 /// catalog scan. Returns an error string on any load/enumeration failure.
 pub fn describe(path: &Path) -> Result<Vec<ClapPluginDesc>, String> {
     let (resp, rx) = channel();
-    engine()
+    let engine = ClapEngine::spawn("fastcat-clap-scan")
+        .map_err(|err| format!("CLAP scan thread unavailable: {err}"))?;
+    engine
         .send(Command::Describe {
             path: path.to_path_buf(),
             resp,
@@ -259,6 +281,65 @@ pub fn describe(path: &Path) -> Result<Vec<ClapPluginDesc>, String> {
         .map_err(|_| "CLAP host thread unavailable".to_string())?;
     rx.recv()
         .map_err(|_| "CLAP host thread stopped".to_string())?
+}
+
+pub fn describe_isolated(path: &Path) -> Result<Vec<ClapPluginDesc>, String> {
+    let exe = std::env::current_exe().map_err(|err| format!("locate helper executable: {err}"))?;
+    let output = ProcessCommand::new(exe)
+        .arg(DESCRIBE_HELPER_ARG)
+        .arg(path)
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()
+        .map_err(|err| format!("run CLAP scan helper: {err}"))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!(
+            "CLAP scan helper exited with {}{}",
+            output.status,
+            if stderr.trim().is_empty() {
+                String::new()
+            } else {
+                format!(": {}", stderr.trim())
+            }
+        ));
+    }
+
+    serde_json::from_slice(&output.stdout).map_err(|err| format!("parse CLAP scan helper: {err}"))
+}
+
+pub fn run_describe_helper_from_args<I>(args: I) -> bool
+where
+    I: IntoIterator<Item = OsString>,
+{
+    let mut args = args.into_iter();
+    let _exe = args.next();
+    let Some(mode) = args.next() else {
+        return false;
+    };
+    if mode != DESCRIBE_HELPER_ARG {
+        return false;
+    }
+
+    let Some(path) = args.next() else {
+        let _ = writeln!(std::io::stderr(), "missing CLAP bundle path");
+        std::process::exit(2);
+    };
+    match describe(Path::new(&path)) {
+        Ok(plugins) => {
+            if let Err(err) = serde_json::to_writer(std::io::stdout(), &plugins) {
+                let _ = writeln!(std::io::stderr(), "write CLAP description: {err}");
+                std::process::exit(1);
+            }
+            true
+        }
+        Err(err) => {
+            let _ = writeln!(std::io::stderr(), "{err}");
+            std::process::exit(1);
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -305,23 +386,38 @@ fn worker_loop(rx: Receiver<Command>) {
                 id,
                 channels,
                 mut buffer,
+                context,
                 resp,
             } => {
-                if let Some(live) = instances.get_mut(&id) {
-                    live.process_into(&mut buffer, channels);
-                }
-                // Always return the buffer so the caller never blocks forever;
-                // if the instance is gone the audio passes through untouched.
-                let _ = resp.send(buffer);
+                let result = if let Some(live) = instances.get_mut(&id) {
+                    match live.process_into(&mut buffer, channels, context) {
+                        Ok(()) => Ok(buffer),
+                        Err(()) => Err(buffer),
+                    }
+                } else {
+                    Ok(buffer)
+                };
+                let _ = resp.send(result);
             }
             Command::Reset { id } => {
                 if let Some(live) = instances.get_mut(&id) {
                     live.reset();
                 }
             }
+            Command::GetLatency { id, resp } => {
+                let latency = instances
+                    .get(&id)
+                    .map(|live| live.latency_samples)
+                    .unwrap_or(0);
+                let _ = resp.send(latency);
+            }
             Command::Destroy { id } => {
                 if let Some(mut live) = instances.remove(&id) {
+                    let path = live.path.clone();
                     live.deactivate();
+                    if !instances.values().any(|other| other.path == path) {
+                        entries.remove(&path);
+                    }
                 }
             }
         }
@@ -361,11 +457,19 @@ fn describe_bundle(
     let mut out = Vec::new();
     for descriptor in factory.plugin_descriptors() {
         let Some(id) = descriptor.id() else { continue };
+        let features = descriptor
+            .features()
+            .map(cstr_to_string)
+            .collect::<Vec<_>>();
+        if !is_supported_audio_effect_features(&features) {
+            continue;
+        }
         out.push(ClapPluginDesc {
             id: id.to_string_lossy().into_owned(),
             name: descriptor.name().map(cstr_to_string),
             vendor: descriptor.vendor().map(cstr_to_string),
             version: descriptor.version().map(cstr_to_string),
+            features,
         });
     }
     Ok(out)
@@ -403,6 +507,13 @@ fn create_live(
     let descriptor_id = descriptor
         .id()
         .ok_or_else(|| "plugin descriptor has no id".to_string())?;
+    let features = descriptor
+        .features()
+        .map(cstr_to_string)
+        .collect::<Vec<_>>();
+    if !is_supported_audio_effect_features(&features) {
+        return Err("CLAP instruments and non-audio effects are not supported".to_string());
+    }
 
     let mut instance = ClapPluginInstance::<FastcatClapHost>::new(
         |_| FastcatClapHostShared,
@@ -414,6 +525,7 @@ fn create_live(
     .map_err(|e| format!("instantiate: {e}"))?;
 
     let (port_in, port_out) = query_port_channels(&mut instance, channels);
+    let latency_samples = query_latency_samples(&mut instance);
 
     let config = PluginAudioConfiguration {
         sample_rate: f64::from(sample_rate),
@@ -428,6 +540,7 @@ fn create_live(
         .map_err(|e| format!("start_processing: {e}"))?;
 
     Ok(LiveClap {
+        path: path.to_path_buf(),
         instance,
         processor: Some(started),
         input_ports: AudioPorts::with_capacity(port_in, 1),
@@ -436,6 +549,8 @@ fn create_live(
         out_scratch: vec![vec![0.0; MAX_BLOCK]; port_out],
         port_in,
         port_out,
+        latency_samples,
+        steady_time: 0,
     })
 }
 
@@ -469,6 +584,20 @@ fn query_port_channels(
     (port_in, port_out)
 }
 
+fn query_latency_samples(instance: &mut ClapPluginInstance<FastcatClapHost>) -> u32 {
+    let mut handle = instance.plugin_handle();
+    handle
+        .shared()
+        .get_extension::<PluginLatency>()
+        .map(|latency| latency.get(&mut handle))
+        .unwrap_or(0)
+}
+
+fn is_supported_audio_effect_features(features: &[String]) -> bool {
+    features.iter().any(|feature| feature == "audio-effect")
+        && !features.iter().any(|feature| feature == "instrument")
+}
+
 fn cstr_to_string(value: &std::ffi::CStr) -> String {
     value.to_string_lossy().into_owned()
 }
@@ -479,7 +608,18 @@ fn cstr_to_string(value: &std::ffi::CStr) -> String {
 
 /// [`PluginBackend`] that hosts CLAP plugins referenced by a spec whose
 /// `plugin.format` is [`AudioPluginFormat::Clap`].
-pub struct ClapBackend;
+pub struct ClapBackend {
+    engine: ClapEngine,
+}
+
+impl ClapBackend {
+    pub fn new() -> Self {
+        Self {
+            engine: ClapEngine::spawn("fastcat-clap-host")
+                .unwrap_or_else(|_| ClapEngine { tx: dead_channel() }),
+        }
+    }
+}
 
 impl PluginBackend for ClapBackend {
     fn can_handle(&self, spec: &AudioEffectSpec) -> bool {
@@ -494,7 +634,7 @@ impl PluginBackend for ClapBackend {
         sample_rate: u32,
         channels: usize,
     ) -> Box<dyn PluginInstance> {
-        Box::new(ClapInstance::new(spec, sample_rate, channels))
+        Box::new(ClapInstance::new(&self.engine, spec, sample_rate, channels))
     }
 }
 
@@ -504,15 +644,16 @@ impl PluginBackend for ClapBackend {
 struct ClapInstance {
     id: u64,
     tx: Option<Sender<Command>>,
-    proc_tx: Sender<Vec<f32>>,
-    proc_rx: Receiver<Vec<f32>>,
+    proc_tx: Sender<Result<Vec<f32>, Vec<f32>>>,
+    proc_rx: Receiver<Result<Vec<f32>, Vec<f32>>>,
     scratch: Vec<f32>,
     alive: bool,
+    latency_samples: u32,
 }
 
 impl ClapInstance {
-    fn new(spec: &AudioEffectSpec, sample_rate: u32, channels: usize) -> Self {
-        let (proc_tx, proc_rx) = channel::<Vec<f32>>();
+    fn new(engine: &ClapEngine, spec: &AudioEffectSpec, sample_rate: u32, channels: usize) -> Self {
+        let (proc_tx, proc_rx) = channel::<Result<Vec<f32>, Vec<f32>>>();
         let mut instance = Self {
             id: 0,
             tx: None,
@@ -520,6 +661,7 @@ impl ClapInstance {
             proc_rx,
             scratch: Vec::new(),
             alive: false,
+            latency_samples: 0,
         };
 
         let Some(plugin) = spec.plugin.as_ref() else {
@@ -529,8 +671,6 @@ impl ClapInstance {
             );
             return instance;
         };
-        let engine = engine();
-
         let (resp, rx) = channel();
         let sent = engine.send(Command::Create {
             path: PathBuf::from(&plugin.path),
@@ -548,6 +688,7 @@ impl ClapInstance {
                 instance.id = id;
                 instance.tx = Some(engine.tx.clone());
                 instance.alive = true;
+                instance.latency_samples = query_instance_latency(engine, id).unwrap_or(0);
             }
             Ok(Err(err)) => {
                 log::warn!(
@@ -567,7 +708,16 @@ impl PluginInstance for ClapInstance {
         // yet and no UI produces them.
     }
 
-    fn process(&mut self, buffer: &mut [f32], channels: usize) {
+    fn latency_samples(&self) -> u32 {
+        self.latency_samples
+    }
+
+    fn process(
+        &mut self,
+        buffer: &mut [f32],
+        channels: usize,
+        context: super::PluginProcessContext,
+    ) {
         if !self.alive {
             return;
         }
@@ -584,6 +734,7 @@ impl PluginInstance for ClapInstance {
                 id: self.id,
                 channels,
                 buffer: payload,
+                context,
                 resp: self.proc_tx.clone(),
             })
             .is_err()
@@ -593,10 +744,14 @@ impl PluginInstance for ClapInstance {
         }
 
         match self.proc_rx.recv() {
-            Ok(out) => {
+            Ok(Ok(out)) => {
                 if out.len() == buffer.len() {
                     buffer.copy_from_slice(&out);
                 }
+                self.scratch = out;
+            }
+            Ok(Err(out)) => {
+                self.alive = false;
                 self.scratch = out;
             }
             Err(_) => {
@@ -610,6 +765,12 @@ impl PluginInstance for ClapInstance {
             let _ = tx.send(Command::Reset { id: self.id });
         }
     }
+}
+
+fn query_instance_latency(engine: &ClapEngine, id: u64) -> Result<u32, ()> {
+    let (resp, rx) = channel();
+    engine.send(Command::GetLatency { id, resp })?;
+    rx.recv().map_err(|_| ())
 }
 
 impl Drop for ClapInstance {
@@ -643,7 +804,7 @@ mod tests {
 
     #[test]
     fn backend_claims_only_specs_with_a_clap_plugin_ref() {
-        let backend = ClapBackend;
+        let backend = ClapBackend::new();
         assert!(backend.can_handle(&clap_spec("/x.clap")));
 
         let mut without_ref = clap_spec("/x.clap");
@@ -655,18 +816,38 @@ mod tests {
     fn missing_plugin_binary_passes_audio_through() {
         // Loading a nonexistent bundle must fail gracefully: the instance goes
         // inert and leaves the buffer untouched rather than erroring or silencing.
-        let backend = ClapBackend;
+        let backend = ClapBackend::new();
         let mut instance =
             backend.instantiate(&clap_spec("/nonexistent/fastcat-test.clap"), 48_000, 2);
         let original = vec![0.25f32, -0.5, 0.75, -1.0];
         let mut buffer = original.clone();
-        instance.process(&mut buffer, 2);
+        instance.process(
+            &mut buffer,
+            2,
+            crate::audio::plugins::PluginProcessContext::at(0.0, 48_000),
+        );
         assert_eq!(buffer, original);
     }
 
     #[test]
     fn describe_missing_bundle_is_error_not_panic() {
         assert!(describe(Path::new("/nonexistent/fastcat-test.clap")).is_err());
+    }
+
+    #[test]
+    fn feature_filter_allows_audio_effects_only() {
+        assert!(is_supported_audio_effect_features(&[
+            "audio-effect".to_string(),
+            "stereo".to_string(),
+        ]));
+        assert!(!is_supported_audio_effect_features(&[
+            "instrument".to_string(),
+            "synthesizer".to_string(),
+        ]));
+        assert!(!is_supported_audio_effect_features(&[
+            "audio-effect".to_string(),
+            "instrument".to_string(),
+        ]));
     }
 
     #[test]
@@ -680,10 +861,14 @@ mod tests {
         assert!(!described.is_empty(), "bundle should expose a plugin");
         eprintln!("described: {described:?}");
 
-        let backend = ClapBackend;
+        let backend = ClapBackend::new();
         let mut instance = backend.instantiate(&clap_spec(&path), 48_000, 2);
         let mut buffer = vec![0.1f32; 2 * 512];
-        instance.process(&mut buffer, 2);
+        instance.process(
+            &mut buffer,
+            2,
+            crate::audio::plugins::PluginProcessContext::at(0.0, 48_000),
+        );
         assert!(
             buffer.iter().all(|s| s.is_finite()),
             "output must be finite"

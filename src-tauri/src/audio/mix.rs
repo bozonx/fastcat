@@ -82,6 +82,24 @@ pub fn render_scene_to_wav(params: WavRenderParams<'_>) -> anyhow::Result<()> {
     let mut chunk_bytes: Vec<u8> = Vec::new();
 
     let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
+    {
+        let plugin_host = { shared.0.lock().plugin_host.clone() };
+        let mut host = plugin_host.lock();
+        for layer in params.scene {
+            host.prewarm_specs(
+                &layer.id,
+                target.sample_rate,
+                target.channels,
+                &layer.audio_effects,
+            );
+        }
+        host.prewarm_specs(
+            "__master_bus",
+            target.sample_rate,
+            target.channels,
+            params.audio_master_effects,
+        );
+    }
 
     let mut written_frames = 0u64;
     while written_frames < estimated_frames {
@@ -475,11 +493,12 @@ fn mix_chunk_ramped_result(
     // Apply master audio effects post-mix (compressor / limiter / reverb etc.)
     if !audio_master_effects.is_empty() {
         let plugin_host = { shared.0.lock().plugin_host.clone() };
-        plugin_host.lock().apply_master_effects(
+        plugin_host.lock().apply_master_effects_with_context(
             &mut mixed,
             sample_rate,
             output_channels,
             audio_master_effects,
+            crate::audio::plugins::PluginProcessContext::at(chunk_start_sec, sample_rate),
         );
     }
 
@@ -688,7 +707,7 @@ struct DecodePrepareParams<'a> {
     output_channels: usize,
     target: AudioRenderTarget,
     shared: &'a Arc<(Mutex<AudioShared>, Condvar)>,
-    chunk_start_sec: f64,
+    effect_start_sec: f64,
 }
 
 /// Decodes one layer's chunk, applying per-layer audio effects.
@@ -707,7 +726,7 @@ fn decode_and_prepare_layer(
         output_channels,
         target,
         shared,
-        chunk_start_sec,
+        effect_start_sec,
     } = params;
 
     let mut decoded = match decode_audio_chunk(crate::audio::decode::DecodeAudioChunkParams {
@@ -743,10 +762,10 @@ fn decode_and_prepare_layer(
                 state.diagnostics.decode_errors_total =
                     state.diagnostics.decode_errors_total.saturating_add(1);
                 state.diagnostics.last_skipped_layer_id = Some(layer.id.clone());
-                state.diagnostics.last_skip_timeline_sec = Some(chunk_start_sec);
+                state.diagnostics.last_skip_timeline_sec = Some(effect_start_sec);
             }
             log::warn!(
-                "[audio] skipping layer {} at {chunk_start_sec:.3}s: {error:?}",
+                "[audio] skipping layer {} at {effect_start_sec:.3}s: {error:?}",
                 layer.id
             );
             return Ok(None);
@@ -758,12 +777,13 @@ fn decode_and_prepare_layer(
     // transport commands, cache updates, or producer state publication.
     if !layer.audio_effects.is_empty() {
         let plugin_host = { shared.0.lock().plugin_host.clone() };
-        plugin_host.lock().apply_effects(
+        plugin_host.lock().apply_effects_with_context(
             &layer.id,
             &mut decoded,
             sample_rate,
             output_channels,
             &layer.audio_effects,
+            crate::audio::plugins::PluginProcessContext::at(effect_start_sec, sample_rate),
         );
     }
 
@@ -821,7 +841,7 @@ fn mix_layer_into(
             output_channels,
             target,
             shared,
-            chunk_start_sec,
+            effect_start_sec: segment.segment_start,
         },
         decode_error_policy,
     )?

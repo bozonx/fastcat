@@ -1503,6 +1503,7 @@ version = "0.5.2"
 dependencies = [
  "anyhow",
  "bytemuck",
+ "clack-common",
  "clack-extensions",
  "clack-host",
  "cpal",

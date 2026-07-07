@@ -127,7 +127,7 @@ fn enrich_descriptors(plugins: Vec<AudioPluginDescriptor>) -> Vec<AudioPluginDes
             continue;
         }
 
-        match super::clap::describe(Path::new(&descriptor.path)) {
+        match super::clap::describe_isolated(Path::new(&descriptor.path)) {
             Ok(contained) if !contained.is_empty() => {
                 let path_hash = stable_path_id(&descriptor.path);
                 for plugin in contained {

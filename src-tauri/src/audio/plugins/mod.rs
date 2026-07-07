@@ -32,11 +32,13 @@
 //!    destroyed on every knob tweak. Instances are removed only when the effect
 //!    leaves the scene ([`PluginHost::retain_scene_specs`]).
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet, VecDeque};
 
 mod builtin;
 pub mod catalog;
 pub mod clap;
+
+const DEFAULT_TRANSPORT_TEMPO_BPM: f64 = 120.0;
 
 /// Specification of a single audio effect, sent from the frontend.
 #[derive(Debug, Clone, PartialEq, serde::Deserialize, serde::Serialize, ts_rs::TS)]
@@ -81,6 +83,62 @@ pub struct AudioPluginRef {
     pub plugin_id: Option<String>,
 }
 
+#[derive(Debug, Clone, Copy)]
+pub struct PluginProcessContext {
+    pub timeline_sec: f64,
+    pub sample_rate: u32,
+    pub playing: bool,
+}
+
+impl PluginProcessContext {
+    pub fn at(timeline_sec: f64, sample_rate: u32) -> Self {
+        Self {
+            timeline_sec: timeline_sec.max(0.0),
+            sample_rate: sample_rate.max(1),
+            playing: true,
+        }
+    }
+
+    pub(crate) fn transport_event(
+        self,
+    ) -> Option<clack_common::events::event_types::TransportEvent> {
+        use clack_common::events::event_types::{TransportEvent, TransportFlags};
+        use clack_common::events::{EventFlags, EventHeader};
+        use clack_common::utils::{BeatTime, SecondsTime};
+
+        if !self.timeline_sec.is_finite() {
+            return None;
+        }
+
+        let tempo = DEFAULT_TRANSPORT_TEMPO_BPM;
+        let beats = self.timeline_sec * tempo / 60.0;
+        let mut flags = TransportFlags::HAS_TEMPO
+            | TransportFlags::HAS_BEATS_TIMELINE
+            | TransportFlags::HAS_SECONDS_TIMELINE
+            | TransportFlags::HAS_TIME_SIGNATURE;
+        if self.playing {
+            flags |= TransportFlags::IS_PLAYING;
+        }
+
+        Some(TransportEvent {
+            header: EventHeader::new_core(0, EventFlags::IS_LIVE),
+            flags,
+            song_pos_beats: BeatTime::from_float(beats),
+            song_pos_seconds: SecondsTime::from_float(self.timeline_sec),
+            tempo,
+            tempo_inc: 0.0,
+            loop_start_beats: BeatTime::from_float(0.0),
+            loop_end_beats: BeatTime::from_float(0.0),
+            loop_start_seconds: SecondsTime::from_float(0.0),
+            loop_end_seconds: SecondsTime::from_float(0.0),
+            bar_start: BeatTime::from_float((beats / 4.0).floor() * 4.0),
+            bar_number: (beats / 4.0).floor() as i32,
+            time_signature_numerator: 4,
+            time_signature_denominator: 4,
+        })
+    }
+}
+
 /// A live, stateful plugin instance.
 pub trait PluginInstance: Send {
     /// Push the current parameter values into the instance. Called once on
@@ -90,7 +148,11 @@ pub trait PluginInstance: Send {
 
     /// Process `buffer` of interleaved f32 audio in-place. `channels` is the
     /// interleaved channel count (the sample rate is fixed at instantiation).
-    fn process(&mut self, buffer: &mut [f32], channels: usize);
+    fn latency_samples(&self) -> u32 {
+        0
+    }
+
+    fn process(&mut self, buffer: &mut [f32], channels: usize, context: PluginProcessContext);
 
     /// Reset internal state (delay lines, envelopes, etc.) while keeping the
     /// instance alive. Called on seek/discontinuity so the plugin doesn't
@@ -103,7 +165,7 @@ struct PassthroughPlugin;
 
 impl PluginInstance for PassthroughPlugin {
     fn set_params(&mut self, _spec: &AudioEffectSpec) {}
-    fn process(&mut self, _buffer: &mut [f32], _channels: usize) {}
+    fn process(&mut self, _buffer: &mut [f32], _channels: usize, _context: PluginProcessContext) {}
     fn reset(&mut self) {}
 }
 
@@ -171,6 +233,42 @@ struct CachedInstance {
     applied_spec: AudioEffectSpec,
 }
 
+struct DryDelay {
+    latency_samples: usize,
+    channels: usize,
+    queued: VecDeque<f32>,
+    output: Vec<f32>,
+}
+
+impl DryDelay {
+    fn new(latency_samples: usize, channels: usize) -> Self {
+        let channels = channels.max(1);
+        let latency_samples = latency_samples.saturating_mul(channels);
+        Self {
+            latency_samples,
+            channels,
+            queued: VecDeque::from(vec![0.0; latency_samples]),
+            output: Vec::new(),
+        }
+    }
+
+    fn process(&mut self, input: &[f32], channels: usize, latency_samples: usize) -> &[f32] {
+        let channels = channels.max(1);
+        let latency_samples = latency_samples.saturating_mul(channels);
+        if self.channels != channels || self.latency_samples != latency_samples {
+            *self = Self::new(latency_samples / channels, channels);
+        }
+
+        self.output.clear();
+        self.output.reserve(input.len());
+        for sample in input {
+            self.queued.push_back(*sample);
+            self.output.push(self.queued.pop_front().unwrap_or(0.0));
+        }
+        &self.output
+    }
+}
+
 /// Host that owns and reuses plugin instances across chunks.
 pub struct PluginHost {
     instances: HashMap<InstanceKey, CachedInstance>,
@@ -180,6 +278,7 @@ pub struct PluginHost {
     /// Reused dry-signal buffer for wet/dry blending; grows to the largest
     /// chunk seen and is then reused without reallocating.
     scratch: Vec<f32>,
+    dry_delay: HashMap<InstanceKey, DryDelay>,
     #[cfg(test)]
     pub reset_all_count: usize,
 }
@@ -194,8 +293,9 @@ impl PluginHost {
     pub fn new() -> Self {
         Self {
             instances: HashMap::new(),
-            backends: vec![Box::new(BuiltinBackend), Box::new(clap::ClapBackend)],
+            backends: vec![Box::new(BuiltinBackend), Box::new(clap::ClapBackend::new())],
             scratch: Vec::new(),
+            dry_delay: HashMap::new(),
             #[cfg(test)]
             reset_all_count: 0,
         }
@@ -275,12 +375,32 @@ impl PluginHost {
         channels: usize,
         specs: &[AudioEffectSpec],
     ) {
+        self.apply_effects_with_context(
+            layer_id,
+            buffer,
+            sample_rate,
+            channels,
+            specs,
+            PluginProcessContext::at(0.0, sample_rate),
+        );
+    }
+
+    pub fn apply_effects_with_context(
+        &mut self,
+        layer_id: &str,
+        buffer: &mut [f32],
+        sample_rate: u32,
+        channels: usize,
+        specs: &[AudioEffectSpec],
+        context: PluginProcessContext,
+    ) {
         // Split-borrow so the wet/dry blend can touch `scratch` while a cached
         // instance is mutably borrowed out of `instances`.
         let Self {
             instances,
             scratch,
             backends,
+            dry_delay,
             ..
         } = self;
 
@@ -293,7 +413,7 @@ impl PluginHost {
             };
 
             let cached = instances
-                .entry(key)
+                .entry(key.clone())
                 .or_insert_with(|| Self::build_instance(backends, spec, sample_rate, channels));
 
             // Parameters changed → push them into the live instance instead of
@@ -305,14 +425,23 @@ impl PluginHost {
 
             let wet = (spec.wet as f32).clamp(0.0, 1.0);
             if wet >= 1.0 {
-                cached.instance.process(buffer, channels);
+                cached.instance.process(buffer, channels, context);
             } else {
                 // Keep the dry signal, process the wet path, then blend. The
                 // plugin still runs at wet == 0 so its internal state advances.
                 scratch.clear();
                 scratch.extend_from_slice(buffer);
-                cached.instance.process(buffer, channels);
-                for (out, dry) in buffer.iter_mut().zip(scratch.iter()) {
+                let latency_samples = cached.instance.latency_samples() as usize;
+                cached.instance.process(buffer, channels, context);
+                let dry = if latency_samples > 0 {
+                    dry_delay
+                        .entry(key)
+                        .or_insert_with(|| DryDelay::new(latency_samples, channels))
+                        .process(scratch, channels, latency_samples)
+                } else {
+                    scratch.as_slice()
+                };
+                for (out, dry) in buffer.iter_mut().zip(dry.iter()) {
                     *out = *dry * (1.0 - wet) + *out * wet;
                 }
             }
@@ -329,6 +458,24 @@ impl PluginHost {
         specs: &[AudioEffectSpec],
     ) {
         self.apply_effects("__master_bus", buffer, sample_rate, channels, specs);
+    }
+
+    pub fn apply_master_effects_with_context(
+        &mut self,
+        buffer: &mut [f32],
+        sample_rate: u32,
+        channels: usize,
+        specs: &[AudioEffectSpec],
+        context: PluginProcessContext,
+    ) {
+        self.apply_effects_with_context(
+            "__master_bus",
+            buffer,
+            sample_rate,
+            channels,
+            specs,
+            context,
+        );
     }
 
     /// Reset internal state of all instances belonging to `layer_id` while
@@ -372,6 +519,8 @@ impl PluginHost {
 
         self.instances
             .retain(|key, _| active.contains(&(key.layer_id.as_str(), key.effect_id.as_str())));
+        self.dry_delay
+            .retain(|key, _| active.contains(&(key.layer_id.as_str(), key.effect_id.as_str())));
     }
 }
 
@@ -395,7 +544,7 @@ mod tests {
         let mut plugin = PassthroughPlugin;
         let original = vec![0.5f32, -0.5f32, 1.0f32, -1.0f32];
         let mut buf = original.clone();
-        plugin.process(&mut buf, 2);
+        plugin.process(&mut buf, 2, PluginProcessContext::at(0.0, 48_000));
         assert_eq!(buf, original);
     }
 
@@ -542,6 +691,16 @@ mod tests {
         assert_eq!(buf, vec![0.25f32, -0.5, 0.75, -1.0]);
     }
 
+    #[test]
+    fn dry_delay_offsets_signal_by_latency_frames() {
+        let mut delay = DryDelay::new(1, 2);
+        let first = delay.process(&[1.0, 2.0, 3.0, 4.0], 2, 1).to_vec();
+        assert_eq!(first, vec![0.0, 0.0, 1.0, 2.0]);
+
+        let second = delay.process(&[5.0, 6.0], 2, 1).to_vec();
+        assert_eq!(second, vec![3.0, 4.0]);
+    }
+
     /// A stand-in for a future format backend (CLAP/LV2/VST3): claims its own
     /// `effect_type` and produces an instance that adds 1.0 so the test can
     /// prove the registry, not a hardcoded branch, selected it.
@@ -561,7 +720,12 @@ mod tests {
             struct AddOne;
             impl PluginInstance for AddOne {
                 fn set_params(&mut self, _spec: &AudioEffectSpec) {}
-                fn process(&mut self, buffer: &mut [f32], _channels: usize) {
+                fn process(
+                    &mut self,
+                    buffer: &mut [f32],
+                    _channels: usize,
+                    _context: PluginProcessContext,
+                ) {
                     for sample in buffer.iter_mut() {
                         *sample += 1.0;
                     }

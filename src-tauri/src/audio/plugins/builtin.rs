@@ -37,7 +37,13 @@ struct PassthroughBuiltin;
 
 impl PluginInstance for PassthroughBuiltin {
     fn set_params(&mut self, _spec: &AudioEffectSpec) {}
-    fn process(&mut self, _buffer: &mut [f32], _channels: usize) {}
+    fn process(
+        &mut self,
+        _buffer: &mut [f32],
+        _channels: usize,
+        _context: crate::audio::plugins::PluginProcessContext,
+    ) {
+    }
     fn reset(&mut self) {}
 }
 
@@ -45,7 +51,12 @@ struct MultiplyPlugin;
 
 impl PluginInstance for MultiplyPlugin {
     fn set_params(&mut self, _spec: &AudioEffectSpec) {}
-    fn process(&mut self, buffer: &mut [f32], _channels: usize) {
+    fn process(
+        &mut self,
+        buffer: &mut [f32],
+        _channels: usize,
+        _context: crate::audio::plugins::PluginProcessContext,
+    ) {
         for sample in buffer.iter_mut() {
             *sample *= 2.0;
         }
@@ -241,7 +252,12 @@ impl PluginInstance for EchoEffect {
             .set_cutoff(self.tone, self.sample_rate, self.channels);
     }
 
-    fn process(&mut self, buffer: &mut [f32], channels: usize) {
+    fn process(
+        &mut self,
+        buffer: &mut [f32],
+        channels: usize,
+        _context: crate::audio::plugins::PluginProcessContext,
+    ) {
         self.channels = channels.max(1);
         self.delay.resize(1.05, self.sample_rate, self.channels);
         self.tone_filter.resize(self.channels);
@@ -284,7 +300,12 @@ impl PluginInstance for DistortionEffect {
         self.drive = (clamp(param_f64(spec, "distortion", 0.4), 0.0, 1.0) * 400.0) as f32;
     }
 
-    fn process(&mut self, buffer: &mut [f32], _channels: usize) {
+    fn process(
+        &mut self,
+        buffer: &mut [f32],
+        _channels: usize,
+        _context: crate::audio::plugins::PluginProcessContext,
+    ) {
         let k = self.drive;
         for sample in buffer.iter_mut() {
             let x = *sample;
@@ -326,7 +347,12 @@ impl PluginInstance for TremoloEffect {
         self.depth = clamp(param_f64(spec, "depth", 0.6), 0.0, 1.0) as f32;
     }
 
-    fn process(&mut self, buffer: &mut [f32], channels: usize) {
+    fn process(
+        &mut self,
+        buffer: &mut [f32],
+        channels: usize,
+        _context: crate::audio::plugins::PluginProcessContext,
+    ) {
         let channels = channels.max(1);
         let phase_step = std::f64::consts::TAU * self.rate / self.sample_rate as f64;
         for frame in buffer.chunks_exact_mut(channels) {
@@ -373,7 +399,12 @@ impl PluginInstance for MuffledEffect {
             .set_cutoff(self.cutoff, self.sample_rate, self.channels);
     }
 
-    fn process(&mut self, buffer: &mut [f32], channels: usize) {
+    fn process(
+        &mut self,
+        buffer: &mut [f32],
+        channels: usize,
+        _context: crate::audio::plugins::PluginProcessContext,
+    ) {
         self.channels = channels.max(1);
         self.lowpass.resize(self.channels);
         for frame in buffer.chunks_exact_mut(self.channels) {
@@ -415,7 +446,12 @@ impl PluginInstance for UnderwaterEffect {
             .set_cutoff(self.cutoff, self.sample_rate, self.channels);
     }
 
-    fn process(&mut self, buffer: &mut [f32], channels: usize) {
+    fn process(
+        &mut self,
+        buffer: &mut [f32],
+        channels: usize,
+        _context: crate::audio::plugins::PluginProcessContext,
+    ) {
         self.channels = channels.max(1);
         self.lowpass.resize(self.channels);
         for frame in buffer.chunks_exact_mut(self.channels) {
@@ -463,7 +499,12 @@ impl PluginInstance for TelephoneEffect {
             .set_cutoff(lpf, self.sample_rate, self.channels);
     }
 
-    fn process(&mut self, buffer: &mut [f32], channels: usize) {
+    fn process(
+        &mut self,
+        buffer: &mut [f32],
+        channels: usize,
+        _context: crate::audio::plugins::PluginProcessContext,
+    ) {
         self.channels = channels.max(1);
         self.highpass.resize(self.channels);
         self.lowpass.resize(self.channels);
@@ -517,7 +558,12 @@ impl PluginInstance for BehindWallEffect {
             .set_cutoff(self.muffling_cutoff, self.sample_rate, self.channels);
     }
 
-    fn process(&mut self, buffer: &mut [f32], channels: usize) {
+    fn process(
+        &mut self,
+        buffer: &mut [f32],
+        channels: usize,
+        _context: crate::audio::plugins::PluginProcessContext,
+    ) {
         self.channels = channels.max(1);
         self.lowpass.resize(self.channels);
         self.delay.resize(0.35, self.sample_rate, self.channels);
