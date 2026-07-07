@@ -139,10 +139,11 @@ function handleAddEffect(type: string) {
 
   const manifest = isAudio.value ? getAudioEffectManifest(type) : getVideoEffectManifest(type);
   if (!manifest) return;
+  const appliedType = manifest.isCustom && manifest.baseType ? manifest.baseType : type;
 
   const newEffect = {
     id: isAudio.value ? `audio_effect_${genUuid()}` : `effect_${Date.now()}`,
-    type,
+    type: appliedType,
     enabled: true,
     target: props.target,
     ...manifest.defaultValues,

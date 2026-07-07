@@ -84,6 +84,8 @@ describe('clip properties sections', () => {
     });
 
     expect(wrapper.text()).toContain('00:00:02:00');
+    expect(wrapper.text()).toContain('common.position');
+    expect(wrapper.text()).toContain('common.end');
     expect(wrapper.findAll('input')).toHaveLength(2);
     expect(wrapper.emitted('updateDuration')).toBeUndefined();
   });

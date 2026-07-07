@@ -6,6 +6,7 @@ import {
   DEFAULT_TRANSITION_MODE,
   DEFAULT_TRANSITION_CURVE,
   normalizeTransitionParams,
+  resolveAppliedTransitionPreset,
 } from '~/transitions';
 import { useDndDropZone } from '~/composables/dnd/useDndDropZone';
 import type { DndDragContext, DndPayload } from '~/composables/dnd/dndTypes';
@@ -109,10 +110,12 @@ export function useClipDrop(options: UseClipDropOptions) {
     }
 
     if (!manifest) return;
+    const appliedEffectType =
+      manifest.isCustom && manifest.baseType ? manifest.baseType : effectType;
 
     const newEffect = {
       id: `effect_${Date.now()}`,
-      type: effectType,
+      type: appliedEffectType,
       enabled: true,
       target,
       ...manifest.defaultValues,
@@ -149,12 +152,15 @@ export function useClipDrop(options: UseClipDropOptions) {
     );
     const durationUs = Math.min(defaultUs, Math.round(clip.timelineRange.durationUs * 0.3));
 
+    const appliedTransition = resolveAppliedTransitionPreset(transitionType);
     const transition = {
-      type: transitionType,
+      type: appliedTransition.type,
       durationUs,
       mode: DEFAULT_TRANSITION_MODE,
       curve: DEFAULT_TRANSITION_CURVE,
-      params: normalizeTransitionParams(transitionType) as Record<string, unknown> | undefined,
+      params: (appliedTransition.params ?? normalizeTransitionParams(appliedTransition.type)) as
+        | Record<string, unknown>
+        | undefined,
     } satisfies import('~/timeline/types').ClipTransition;
 
     options.updateClipTransition(

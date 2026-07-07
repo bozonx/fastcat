@@ -296,6 +296,24 @@ export function normalizeTransitionParams<T = Record<string, unknown>>(
   return normalized;
 }
 
+export function resolveAppliedTransitionPreset(type: TransitionType): {
+  type: TransitionType;
+  params?: Record<string, unknown>;
+} {
+  const manifest = getTransitionManifest(type);
+  if (!manifest?.isCustom || !manifest.baseType) {
+    return { type };
+  }
+
+  return {
+    type: manifest.baseType,
+    params: normalizeTransitionParams(
+      manifest.baseType,
+      manifest.defaultParams as Record<string, unknown>,
+    ) as Record<string, unknown> | undefined,
+  };
+}
+
 export function getAllTransitionManifests(): TransitionManifest<Record<string, unknown>>[] {
   const custom = Array.from(registry.values()).filter((manifest) => manifest.isCustom);
   return [...transitionManifests, ...custom] as TransitionManifest<Record<string, unknown>>[];

@@ -3,7 +3,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { ref } from 'vue';
 import { useClipTransitionPanel } from '~/composables/timeline/useClipTransitionPanel';
 import type { ClipTransition } from '~/timeline/types';
-import { initTransitions } from '~/transitions';
+import { initTransitions, registerTransition } from '~/transitions';
 
 describe('useClipTransitionPanel', () => {
   initTransitions();
@@ -97,6 +97,57 @@ describe('useClipTransitionPanel', () => {
           edgeMode: 'gap',
           gap: 0.05,
           gapColor: '#ff00ff',
+          blur: 2,
+        },
+      },
+    });
+  });
+
+  it('applies a custom transition preset as the base transition type', async () => {
+    const onUpdate = vi.fn();
+
+    registerTransition({
+      type: 'custom_wipe_fast',
+      name: 'Fast Wipe',
+      icon: 'i-test',
+      baseType: 'wipe',
+      isCustom: true,
+      defaultDurationUs: 500_000,
+      defaultParams: {
+        direction: 'left',
+        edgeMode: 'gap',
+        gap: 0.08,
+        gapColor: '#00ff00',
+      },
+      computeInOpacity: () => 1,
+      computeOutOpacity: () => 1,
+    });
+
+    const api = useClipTransitionPanel({
+      edge: ref<'in' | 'out'>('in'),
+      trackId: ref('v1'),
+      itemId: ref('c1'),
+      transition: ref<ClipTransition | undefined>({
+        type: 'dissolve',
+        durationUs: 1_000_000,
+        mode: 'transparent',
+        curve: 'linear',
+      }),
+      onUpdate,
+      debounceMs: 0,
+    });
+
+    api.selectedType.value = 'custom_wipe_fast';
+    await Promise.resolve();
+
+    expect(onUpdate.mock.calls.at(-1)?.[0]).toMatchObject({
+      transition: {
+        type: 'wipe',
+        params: {
+          direction: 'left',
+          edgeMode: 'gap',
+          gap: 0.08,
+          gapColor: '#00ff00',
           blur: 2,
         },
       },

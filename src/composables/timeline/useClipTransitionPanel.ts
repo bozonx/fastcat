@@ -6,6 +6,7 @@ import {
   DEFAULT_TRANSITION_MODE,
   getTransitionManifest,
   normalizeTransitionParams,
+  resolveAppliedTransitionPreset,
 } from '~/transitions';
 import type { TransitionCurve, TransitionMode } from '~/transitions/core/registry';
 
@@ -120,7 +121,10 @@ export function useClipTransitionPanel(options: UseClipTransitionPanelOptions) {
       isOverridden.value = true;
     }
 
-    const normalizedParams = normalizeTransitionParams(selectedType.value, selectedParams.value) as
+    const appliedTransition = resolveAppliedTransitionPreset(selectedType.value);
+    const transitionType = appliedTransition.type;
+    const paramsSource = appliedTransition.params ?? selectedParams.value;
+    const normalizedParams = normalizeTransitionParams(transitionType, paramsSource) as
       | Record<string, unknown>
       | undefined;
 
@@ -129,7 +133,7 @@ export function useClipTransitionPanel(options: UseClipTransitionPanelOptions) {
       itemId: options.itemId.value,
       edge: options.edge.value,
       transition: {
-        type: selectedType.value,
+        type: transitionType,
         durationUs: Math.round(durationSec.value * 1_000_000),
         mode: selectedMode.value,
         curve: selectedCurve.value,

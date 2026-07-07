@@ -11,7 +11,16 @@ vi.mock('~/effects', () => ({
     type === 'echo' ? { type: 'echo', defaultValues: { delay: 0.25 } } : undefined,
   ),
   getVideoEffectManifest: vi.fn((type: string) =>
-    type === 'blur' ? { type: 'blur', defaultValues: { strength: 12 } } : undefined,
+    type === 'blur'
+      ? { type: 'blur', defaultValues: { strength: 12 } }
+      : type === 'custom_blur'
+        ? {
+            type: 'custom_blur',
+            baseType: 'blur',
+            isCustom: true,
+            defaultValues: { strength: 18 },
+          }
+        : undefined,
   ),
 }));
 
@@ -19,9 +28,21 @@ vi.mock('~/transitions', () => ({
   DEFAULT_TRANSITION_CURVE: 'linear',
   DEFAULT_TRANSITION_MODE: 'adjacent',
   getTransitionManifest: vi.fn((type: string) =>
-    type === 'dissolve' ? { type: 'dissolve' } : undefined,
+    type === 'dissolve'
+      ? { type: 'dissolve' }
+      : type === 'custom_dissolve'
+        ? {
+            type: 'custom_dissolve',
+            baseType: 'dissolve',
+            isCustom: true,
+            defaultParams: { softness: 0.5 },
+          }
+        : undefined,
   ),
   normalizeTransitionParams: vi.fn(() => ({})),
+  resolveAppliedTransitionPreset: vi.fn((type: string) =>
+    type === 'custom_dissolve' ? { type: 'dissolve', params: { softness: 0.5 } } : { type },
+  ),
 }));
 
 const baseClip: TimelineClipItem = {
@@ -180,6 +201,28 @@ describe('useClipDrop', () => {
     drop.scope.stop();
   });
 
+  it('applies a custom effect preset drop as the base effect type', () => {
+    vi.useFakeTimers();
+    const drop = setupDropZone();
+    const payload: DndPayload = { source: 'effect', data: { type: 'custom_blur' } };
+
+    expect(drop.handlers.canAccept?.(payload)).toBe(true);
+    drop.handlers.onDrop?.(makeContext(payload));
+
+    expect(drop.updateClipProperties).toHaveBeenCalledWith('track-1', 'clip-1', {
+      effects: [
+        expect.objectContaining({
+          type: 'blur',
+          enabled: true,
+          target: 'video',
+          strength: 18,
+        }),
+      ],
+    });
+    vi.runAllTimers();
+    drop.scope.stop();
+  });
+
   it('rejects video-only effects and visual transitions on audio clips', () => {
     const audioTrack: TimelineTrack = {
       ...baseVideoTrack,
@@ -241,6 +284,30 @@ describe('useClipDrop', () => {
       }),
     });
     expect(drop.selectTimelineTransition).toHaveBeenLastCalledWith('track-1', 'clip-1', 'out');
+    drop.scope.stop();
+  });
+
+  it('applies a custom transition preset drop as the base transition type', () => {
+    const drop = setupDropZone({ defaultTransitionDurationUs: 2_000_000 });
+    const payload: DndPayload = { source: 'transition', data: { type: 'custom_dissolve' } };
+    const clipEl = makeClipElement({ left: 10, width: 100 });
+
+    expect(drop.handlers.canAccept?.(payload)).toBe(true);
+
+    drop.handlers.onDrop?.({
+      ...makeContext(payload, clipEl),
+      pointer: {
+        ...makeContext(payload).pointer,
+        clientX: 35,
+      },
+    });
+
+    expect(drop.updateClipTransition).toHaveBeenLastCalledWith('track-1', 'clip-1', {
+      transitionIn: expect.objectContaining({
+        type: 'dissolve',
+        params: { softness: 0.5 },
+      }),
+    });
     drop.scope.stop();
   });
 });

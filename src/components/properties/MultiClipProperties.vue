@@ -15,7 +15,11 @@ import { useSelectionStore } from '~/stores/selection.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useAppClipboard } from '~/composables/useAppClipboard';
 import { BLEND_MODE_OPTIONS as RAW_BLEND_MODE_OPTIONS } from '~/utils/constants';
-import { DEFAULT_TRANSITION_CURVE, DEFAULT_TRANSITION_MODE } from '~/transitions';
+import {
+  DEFAULT_TRANSITION_CURVE,
+  DEFAULT_TRANSITION_MODE,
+  resolveAppliedTransitionPreset,
+} from '~/transitions';
 import type { PropertyAction } from '~/components/properties/PropertyActionList.vue';
 import type {
   TimelineBlendMode,
@@ -310,17 +314,22 @@ function handleBatchUpdateTransitionType(edge: 'in' | 'out', type: string) {
   const doc = timelineStore.timelineDoc;
   if (!doc) return;
   const cmds: import('~/timeline/commands').TimelineCommand[] = [];
+  const appliedTransition = resolveAppliedTransitionPreset(type);
   for (const { track, clip } of visualClipRefs.value) {
     const current = edge === 'in' ? clip.transitionIn : clip.transitionOut;
     if (!current) continue;
+
+    const transition = {
+      ...current,
+      type: appliedTransition.type,
+      ...(appliedTransition.params ? { params: appliedTransition.params } : {}),
+    };
 
     cmds.push({
       type: 'update_clip_transition',
       trackId: track.id,
       itemId: clip.id,
-      ...(edge === 'in'
-        ? { transitionIn: { ...current, type } }
-        : { transitionOut: { ...current, type } }),
+      ...(edge === 'in' ? { transitionIn: transition } : { transitionOut: transition }),
     });
   }
   if (cmds.length > 0) timelineStore.batchApplyTimeline(cmds);

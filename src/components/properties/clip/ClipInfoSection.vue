@@ -51,7 +51,7 @@ const timelineFps = computed(() => timelineStore.timelineFormat?.fps ?? timeline
     />
 
     <PropertyTimecode
-      :label="t('common.start')"
+      :label="t('common.position')"
       :model-value="props.clip.timelineRange.startUs"
       @update:model-value="emit('updateStartTime', $event)"
     />

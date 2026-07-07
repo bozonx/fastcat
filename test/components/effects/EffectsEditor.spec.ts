@@ -42,6 +42,15 @@ vi.mock('~/effects', async (importOriginal) => {
     getVideoEffectManifest: (type: string) => {
       if (type === 'blur')
         return { name: 'Blur Effect', type: 'blur', defaultValues: { radius: 5 }, controls: [] };
+      if (type === 'custom_blur')
+        return {
+          name: 'Saved Blur',
+          type: 'custom_blur',
+          baseType: 'blur',
+          isCustom: true,
+          defaultValues: { radius: 12 },
+          controls: [],
+        };
       return null;
     },
     getAudioEffectManifest: () => null,
@@ -146,6 +155,40 @@ describe('ClipEffectsEditor (video target)', () => {
         enabled: true,
         target: 'video',
         radius: 5,
+      }),
+    ]);
+  });
+
+  it('applies a custom effect preset as the base effect type', async () => {
+    const component = await mountSuspended(ClipEffectsEditor, {
+      props: { target: 'video', effects: [] },
+    });
+    const zoneId = component.find(`[${DND_ZONE_ATTR}]`).attributes(DND_ZONE_ATTR);
+    const handlers = getDndZone(zoneId!);
+    const payload: DndPayload = { source: 'effect', data: { type: 'custom_blur' } };
+
+    await handlers?.onDrop?.({
+      payload,
+      pointer: {
+        clientX: 0,
+        clientY: 0,
+        pointerType: 'mouse',
+        altKey: false,
+        ctrlKey: false,
+        metaKey: false,
+        shiftKey: false,
+      },
+      zoneId: zoneId!,
+      targetEl: null,
+      setOperation: vi.fn(),
+    } satisfies DndDragContext);
+
+    expect(component.emitted('update:effects')?.[0][0]).toEqual([
+      expect.objectContaining({
+        type: 'blur',
+        enabled: true,
+        target: 'video',
+        radius: 12,
       }),
     ]);
   });

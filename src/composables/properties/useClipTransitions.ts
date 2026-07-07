@@ -1,6 +1,10 @@
 import { computed, type Ref } from 'vue';
 import type { TimelineClipItem } from '~/timeline/types';
-import { DEFAULT_TRANSITION_CURVE, DEFAULT_TRANSITION_MODE } from '~/transitions';
+import {
+  DEFAULT_TRANSITION_CURVE,
+  DEFAULT_TRANSITION_MODE,
+  resolveAppliedTransitionPreset,
+} from '~/transitions';
 
 interface UseClipTransitionsOptions {
   clip: Ref<TimelineClipItem | null>;
@@ -109,6 +113,7 @@ export function useClipTransitions(options: UseClipTransitionsOptions) {
     if (!clip) return;
     const current = getClipTransition(clip, edge);
     if (!current || !type) return;
+    const appliedTransition = resolveAppliedTransitionPreset(type);
 
     handleTransitionUpdate({
       trackId: clip.trackId,
@@ -116,7 +121,8 @@ export function useClipTransitions(options: UseClipTransitionsOptions) {
       edge,
       transition: {
         ...current,
-        type,
+        type: appliedTransition.type,
+        ...(appliedTransition.params ? { params: appliedTransition.params } : {}),
       },
     });
   }
