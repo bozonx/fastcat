@@ -127,7 +127,7 @@ docker compose up -d --build
 docker compose logs -f
 ```
 
-The application will be available at `http://localhost:3000`.
+The application will be available at `http://localhost:3008`.
 
 ## Desktop (Tauri)
 
@@ -577,7 +577,7 @@ Cross-Origin-Embedder-Policy: require-corp
 To develop and test the embedded editor layout:
 
 1. **Start the dev server**: `pnpm dev`
-2. **Access the test page**: Open `http://localhost:3000/test/embedded`.
+2. **Access the test page**: Open `http://localhost:3008/test/embedded`.
    - This page uses `FastcatEmbeddedLayout.vue` directly in a Nuxt context.
    - It preloads a sample asset to verify the loading logic.
 3. **Core Component**: The main entry point for the embedded UI is `src/components/embedded/FastcatEmbeddedLayout.vue`.

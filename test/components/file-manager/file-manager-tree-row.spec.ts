@@ -107,6 +107,7 @@ describe('FileManagerTreeRow', () => {
     });
 
     const row = component.find('[data-entry-path]');
-    expect(row.classes()).toContain('bg-ui-bg-elevated');
+    expect(row.classes()).toContain('bg-(--selection-range-bg)');
+    expect(row.classes()).toContain('hover:bg-(--selection-range-bg)');
   });
 });

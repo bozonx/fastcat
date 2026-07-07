@@ -508,6 +508,10 @@ const { selectSingle } = useFileManagerSelection({
 async function onEntrySelect(entry: FsEntry) {
   selectSingle(entry);
 
+  if (props.isFilesPage && entry.kind === 'directory') {
+    fileManagerStore.openFolder(entry);
+  }
+
   focusStore.setTempFocus('files-sidebar');
   if (!props.isExternal && entry.kind === 'file' && entry.path?.toLowerCase().endsWith('.otio')) {
     await loadTimeline(entry.path);

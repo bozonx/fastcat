@@ -198,6 +198,53 @@ const isFlipAnimated = computed(() => FLIP_PATHS.some((p) => isParamAnimated(p))
 
     <div class="flex flex-col gap-4" :class="{ 'opacity-50 pointer-events-none': !isEnabled }">
       <div v-if="canEditTransform" class="space-y-4">
+        <!-- Reflect -->
+        <div v-if="canEditSourceLayout" class="space-y-1">
+          <span class="text-xs text-ui-text-muted">{{
+            t('fastcat.clip.transform.sourceOrientation')
+          }}</span>
+          <UiSelect
+            v-model="sourceOrientation"
+            :items="sourceOrientationOptions"
+            value-key="value"
+            label-key="label"
+            size="sm"
+            full-width
+            :disabled="!isEnabled"
+          />
+        </div>
+
+        <div class="flex items-center gap-2">
+          <span class="text-xs text-ui-text-muted mr-1">{{
+            t('fastcat.clip.transform.reflect')
+          }}</span>
+          <ClipAnimationStopwatchButton
+            :active="isFlipAnimated"
+            :disabled="!isEnabled"
+            @toggle="emit('toggleParamAnimation', FLIP_PATHS)"
+          />
+          <UiActionButton
+            icon="i-heroicons-arrows-right-left"
+            size="xs"
+            :color="transformFlipHorizontal ? 'primary' : 'neutral'"
+            :variant="transformFlipHorizontal ? 'soft' : 'ghost'"
+            class="text-ui-text-muted hover:text-ui-text"
+            :title="t('fastcat.clip.transform.flipHorizontal')"
+            :disabled="!isEnabled"
+            @click="toggleFlipHorizontal"
+          />
+          <UiActionButton
+            icon="i-heroicons-arrows-up-down"
+            size="xs"
+            :color="transformFlipVertical ? 'primary' : 'neutral'"
+            :variant="transformFlipVertical ? 'soft' : 'ghost'"
+            class="text-ui-text-muted hover:text-ui-text"
+            :title="t('fastcat.clip.transform.flipVertical')"
+            :disabled="!isEnabled"
+            @click="toggleFlipVertical"
+          />
+        </div>
+
         <!-- Anchor -->
         <div class="space-y-1">
           <div class="flex items-center justify-between">
@@ -244,53 +291,6 @@ const isFlipAnimated = computed(() => FLIP_PATHS.some((p) => isParamAnimated(p))
               :disabled="!isEnabled"
             />
           </div>
-        </div>
-
-        <!-- Reflect -->
-        <div v-if="canEditSourceLayout" class="space-y-1">
-          <span class="text-xs text-ui-text-muted">{{
-            t('fastcat.clip.transform.sourceOrientation')
-          }}</span>
-          <UiSelect
-            v-model="sourceOrientation"
-            :items="sourceOrientationOptions"
-            value-key="value"
-            label-key="label"
-            size="sm"
-            full-width
-            :disabled="!isEnabled"
-          />
-        </div>
-
-        <div class="flex items-center gap-2">
-          <span class="text-xs text-ui-text-muted mr-1">{{
-            t('fastcat.clip.transform.reflect')
-          }}</span>
-          <ClipAnimationStopwatchButton
-            :active="isFlipAnimated"
-            :disabled="!isEnabled"
-            @toggle="emit('toggleParamAnimation', FLIP_PATHS)"
-          />
-          <UiActionButton
-            icon="i-heroicons-arrows-right-left"
-            size="xs"
-            :color="transformFlipHorizontal ? 'primary' : 'neutral'"
-            :variant="transformFlipHorizontal ? 'soft' : 'ghost'"
-            class="text-ui-text-muted hover:text-ui-text"
-            :title="t('fastcat.clip.transform.flipHorizontal')"
-            :disabled="!isEnabled"
-            @click="toggleFlipHorizontal"
-          />
-          <UiActionButton
-            icon="i-heroicons-arrows-up-down"
-            size="xs"
-            :color="transformFlipVertical ? 'primary' : 'neutral'"
-            :variant="transformFlipVertical ? 'soft' : 'ghost'"
-            class="text-ui-text-muted hover:text-ui-text"
-            :title="t('fastcat.clip.transform.flipVertical')"
-            :disabled="!isEnabled"
-            @click="toggleFlipVertical"
-          />
         </div>
 
         <div class="space-y-1">

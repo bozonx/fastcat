@@ -225,7 +225,11 @@ export function usePlaybackHotkeys(
           : focusStore.canUsePlaybackHotkeys;
       if (!canUse) return false;
 
-      if (cmd !== 'playback.backward1' && isPreviewLikeFocus(focusStore.effectiveFocus) && uiStore.hasActivePreviewPlayer) {
+      if (
+        cmd !== 'playback.backward1' &&
+        isPreviewLikeFocus(focusStore.effectiveFocus) &&
+        uiStore.hasActivePreviewPlayer
+      ) {
         if (speedCmd.direction === 'backward') {
           return true; // ignored but consumed
         }

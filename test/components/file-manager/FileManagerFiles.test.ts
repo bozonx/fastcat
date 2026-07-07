@@ -3,6 +3,7 @@ import { defineComponent, h, ref, reactive, nextTick } from 'vue';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
 import FileManagerFiles from '~/components/file-manager/FileManagerFiles.vue';
 import { useEditorHotkeys } from '~/composables/editor/useEditorHotkeys';
+import { useFileManagerStore } from '~/stores/file-manager.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useUiStore } from '~/stores/ui.store';
@@ -67,6 +68,14 @@ vi.mock('~/stores/workspace.store', () => ({
         ),
       },
     },
+    batchUpdateWorkspaceState: vi.fn((updater) => {
+      updater({
+        fileBrowser: {
+          activeTab: 'computer',
+          instances: {},
+        },
+      });
+    }),
   })),
 }));
 
@@ -125,6 +134,7 @@ function createFmProps(params: {
     mediaCache: { hasProxy: () => false },
     moveEntry: async () => {},
     copyEntry: async () => {},
+    reloadDirectory: async () => {},
     getProjectRootDirHandle,
     handleFiles: async () => {},
   };
@@ -134,14 +144,18 @@ async function createWrapper(params: {
   projectName: string;
   rootEntries?: any[];
   getProjectRootDirHandle?: () => Promise<FileSystemDirectoryHandle | null>;
+  isFilesPage?: boolean;
 }) {
   mockUiStore.selectedFsEntry = null;
   mockUiStore.fileBrowserSelectAllTrigger = 0;
   mockSelectionStore.selectedEntity = null;
   mockSelectionStore.selectFsEntry.mockClear();
   mockSelectionStore.selectFsEntries.mockClear();
+  const fileManagerStore = useFileManagerStore();
+  fileManagerStore.selectedFolder = null;
 
   const fmProps = createFmProps(params);
+  fmProps.isFilesPage = params.isFilesPage;
 
   const Harness = defineComponent({
     setup() {
@@ -239,6 +253,20 @@ describe('FileManagerFiles', () => {
       false,
     );
     expect(mockSelectionStore.selectFsEntries).not.toHaveBeenCalled();
+  });
+
+  it('opens the clicked folder immediately on the files page tree', async () => {
+    const wrapper = await createWrapper({
+      projectName: 'MyProject',
+      isFilesPage: true,
+      rootEntries: [{ name: '_timelines', kind: 'directory', path: '_timelines' }] as any,
+    });
+
+    await wrapper.get('[data-test="tree-entry"]').trigger('click');
+
+    expect(useFileManagerStore().selectedFolder).toEqual(
+      expect.objectContaining({ path: '_timelines' }),
+    );
   });
 
   it('falls back to resolveEntryByPath for move requests when source is absent in loaded tree', async () => {
