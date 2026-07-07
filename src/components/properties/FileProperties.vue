@@ -94,16 +94,19 @@ const isRenameModalOpen = ref(false);
 watch(
   () => props.selectedFsEntry?.path,
   (newPath, oldPath) => {
-    console.log('WATCH_TRIGGERED', { newPath, oldPath });
-    isMetaExpanded.value = false;
-    isExifExpanded.value = false;
+    if (oldPath && newPath !== oldPath) {
+      isMetaExpanded.value = false;
+      isExifExpanded.value = false;
+    }
   },
 );
 
 function toggleMeta() {
-  console.log('TOGGLE_META_BEFORE', isMetaExpanded.value);
   isMetaExpanded.value = !isMetaExpanded.value;
-  console.log('TOGGLE_META_AFTER', isMetaExpanded.value);
+}
+
+function toggleExif() {
+  isExifExpanded.value = !isExifExpanded.value;
 }
 
 async function handleRenameConfirm(newName: string) {
@@ -893,7 +896,7 @@ const hasVisibleSecondaryActions = (actions: unknown) => {
         title="EXIF"
         :content="exifYaml"
         :expanded="isExifExpanded"
-        :on-toggle="() => (isExifExpanded = !isExifExpanded)"
+        :on-toggle="toggleExif"
         :on-copy="copyToClipboard"
       />
 

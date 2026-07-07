@@ -1110,7 +1110,8 @@
       "zoneMarkerEnd": "Zone marker end",
       "zoneMarkerStart": "Zone marker start",
       "zoomToFit": "Fit to Project",
-      "itemOverlap": "Item overlaps with another item"
+      "itemOverlap": "Item overlaps with another item",
+      "cannotCopyClip": "Failed to copy clip"
     },
     "track": {
       "actions": "Actions",

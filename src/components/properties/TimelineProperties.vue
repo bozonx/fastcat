@@ -615,6 +615,7 @@ const addTrackActions = computed(() => [
       :default-value="fsEntry?.name"
       :select-without-extension="true"
       :validate="validateSaveAs"
+      :hide-error-if-unmodified="true"
       @confirm="handleSaveAsConfirm"
     />
   </div>

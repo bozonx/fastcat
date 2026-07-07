@@ -780,6 +780,42 @@ describe('FileProperties.vue', () => {
   });
 
   it('resets expanded accordion states when selectedFsEntry changes', async () => {
+    const { useEntryPreview } = await import('~/composables/file-manager/useEntryPreview');
+    const { useFilePropertiesBasics } = await import('~/composables/properties/useFilePropertiesBasics');
+
+    vi.mocked(useEntryPreview).mockReturnValue({
+      currentUrl: ref('http://example.com/test.mp4'),
+      mediaType: ref('video'),
+      textContent: ref(''),
+      fileInfo: ref({
+        kind: 'file',
+        name: 'test.mp4',
+        size: 1024 * 1024 * 100, // 100MB
+        lastModified: Date.now(),
+        mimeType: 'video/mp4',
+      }),
+      exifData: ref(null),
+      exifYaml: ref(null),
+      imageDimensions: ref(null),
+      timelineDocSummary: ref(null),
+      lineCount: ref(null),
+      metadataYaml: ref('Format: MPEG-4\nDuration: 00:01:00\n'),
+      isUnknown: ref(false),
+      isOtio: ref(false),
+    } as any);
+
+    vi.mocked(useFilePropertiesBasics).mockReturnValue({
+      generalInfoTitle: 'General Info',
+      isHidden: ref(false),
+      mediaMeta: ref({}),
+      selectedPath: ref('/projects/test.mp4'),
+      isBloggerDogProject: ref(false),
+      isBloggerDogGroup: ref(false),
+      isBloggerDogContentItem: ref(false),
+      isBloggerDogMedia: ref(false),
+      bloggerDogDeepLink: ref(null),
+    } as any);
+
     const component = await mountWithNuxt(FileProperties, {
       props: {
         selectedFsEntry: { kind: 'file', name: 'test.mp4', path: '/projects/test.mp4' } as any,
@@ -788,18 +824,17 @@ describe('FileProperties.vue', () => {
       },
     });
 
-    const expandableSection = component.findComponent({ name: 'ExpandableYamlSection' });
+    const ExpandableYamlSection = (await import('../../../src/components/properties/file/ExpandableYamlSection.vue')).default;
+    const expandableSection = component.findComponent(ExpandableYamlSection);
     expect(expandableSection.exists()).toBe(true);
-    console.log('EXPANDABLE_PROPS_IN_TEST:', expandableSection.props());
     expect(expandableSection.props('expanded')).toBe(false);
 
-    // Toggle to expand by clicking the button
-    const toggleButton = expandableSection.find('button');
-    await toggleButton.trigger('click');
-    await nextTick();
+    // Toggle to expand
+    await expandableSection.props('onToggle')();
+    await flushPromises();
 
-    // Check expanded state by finding component again to avoid caching issues in vue-test-utils wrapper
-    expect(component.findComponent({ name: 'ExpandableYamlSection' }).props('expanded')).toBe(true);
+    // Check expanded state
+    expect(component.findComponent(ExpandableYamlSection).props('expanded')).toBe(true);
 
     // Switch to another file path
     await component.setProps({
@@ -808,6 +843,6 @@ describe('FileProperties.vue', () => {
     await flushPromises();
 
     // States should be reset to false
-    expect(component.findComponent({ name: 'ExpandableYamlSection' }).props('expanded')).toBe(false);
+    expect(component.findComponent(ExpandableYamlSection).props('expanded')).toBe(false);
   });
 });

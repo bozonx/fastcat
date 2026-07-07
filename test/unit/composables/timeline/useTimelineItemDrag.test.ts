@@ -2,8 +2,13 @@
 import { computed, ref } from 'vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useTimelineItemDrag } from '~/composables/timeline/useTimelineItemDrag';
+import { useToast } from '#ui/composables/useToast';
 
 const bindSessionMock = vi.fn();
+const toastAddMock = vi.fn();
+vi.stubGlobal('useI18n', () => ({
+  t: (key: string) => key,
+}));
 const clearSessionMock = vi.fn();
 const scheduleUpdateMock = vi.fn((update: () => void) => update());
 const historyPushMock = vi.fn();
@@ -119,6 +124,10 @@ vi.mock('~/composables/timeline/useTimelinePointerSession', () => ({
 
 describe('useTimelineItemDrag', () => {
   beforeEach(() => {
+    vi.mocked(useToast).mockReturnValue({
+      add: toastAddMock,
+      remove: vi.fn(),
+    });
     vi.clearAllMocks();
     Object.defineProperty(document, 'elementsFromPoint', {
       configurable: true,
@@ -967,5 +976,144 @@ describe('useTimelineItemDrag', () => {
     }
 
     expect(clearSessionMock).toHaveBeenCalled();
+  });
+
+  it('identifies collision when copy-dragging clip over itself and shows toast on release', () => {
+    timelineStoreMock.selectedItemIds = ['clip-1'];
+
+    const scrollEl = ref({
+      scrollLeft: 0,
+    } as HTMLElement);
+    const tracks = computed(() => timelineStoreMock.timelineDoc.tracks);
+    const { startMoveItem, movePreview } = useTimelineItemDrag(scrollEl, tracks);
+
+    const pointerTarget = {
+      setPointerCapture: vi.fn(),
+      releasePointerCapture: vi.fn(),
+    };
+
+    // Start drag with button = 2 (right mouse button drag, which resolves to copy)
+    startMoveItem(
+      {
+        button: 2,
+        buttons: 2,
+        clientX: 100,
+        clientY: 20,
+        pointerId: 12,
+        pointerType: 'mouse',
+        currentTarget: pointerTarget,
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn(),
+      } as unknown as PointerEvent,
+      {
+        trackId: 'track-1',
+        itemId: 'clip-1',
+        startUs: 1_000_000,
+        mode: 'move',
+      },
+    );
+
+    const handlers = bindSessionMock.mock.calls[0]?.[0];
+
+    // Drag slightly so it overlaps with the original position (1_000_000)
+    // clientX = 110 at zoom 50 means pxToDeltaUs(10, 50) is 10 / 50 * 1_000_000 = 200_000us
+    // So new position is 1_200_000us. Since original clip is [1_000_000, 6_000_000], they overlap!
+    handlers.onPointerMove({
+      buttons: 2,
+      button: 2,
+      clientX: 110,
+      clientY: 20,
+    } as PointerEvent);
+
+    expect(movePreview.value[0]?.isCollision).toBe(true);
+
+    handlers.onPointerUp({
+      button: 2,
+      clientX: 110,
+      clientY: 20,
+      pointerId: 12,
+      currentTarget: pointerTarget,
+    } as PointerEvent);
+
+    // Should NOT call pasteClips
+    expect(pasteClipsMock).not.toHaveBeenCalled();
+
+    // Should raise cannotCopyClip toast
+    expect(toastAddMock).toHaveBeenCalledWith({
+      title: 'fastcat.timeline.cannotCopyClip',
+      color: 'error',
+    });
+  });
+
+  it('does not identify collision when copy-dragging to a free space and pastes clip on release', () => {
+    timelineStoreMock.selectedItemIds = ['clip-1'];
+
+    const scrollEl = ref({
+      scrollLeft: 0,
+    } as HTMLElement);
+    const tracks = computed(() => timelineStoreMock.timelineDoc.tracks);
+    const { startMoveItem, movePreview } = useTimelineItemDrag(scrollEl, tracks);
+
+    const pointerTarget = {
+      setPointerCapture: vi.fn(),
+      releasePointerCapture: vi.fn(),
+    };
+
+    // Start copy-drag (button = 2)
+    startMoveItem(
+      {
+        button: 2,
+        buttons: 2,
+        clientX: 100,
+        clientY: 20,
+        pointerId: 12,
+        pointerType: 'mouse',
+        currentTarget: pointerTarget,
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn(),
+      } as unknown as PointerEvent,
+      {
+        trackId: 'track-1',
+        itemId: 'clip-1',
+        startUs: 1_000_000,
+        mode: 'move',
+      },
+    );
+
+    const handlers = bindSessionMock.mock.calls[0]?.[0];
+
+    // Drag far enough (clientX = 500)
+    // pxToDeltaUs(400, 50) is 8_000_000us
+    // So new position is 9_000_000us. Since track-1 has clip-1 [1_000_000, 6_000_000] and clip-2 [7_000_000, 9_000_000],
+    // a 5-sec clip starting at 9_000_000 will be [9_000_000, 14_000_000] which is free.
+    handlers.onPointerMove({
+      buttons: 2,
+      button: 2,
+      clientX: 500,
+      clientY: 20,
+    } as PointerEvent);
+
+    expect(movePreview.value[0]?.isCollision).toBe(false);
+
+    handlers.onPointerUp({
+      button: 2,
+      clientX: 500,
+      clientY: 20,
+      pointerId: 12,
+      currentTarget: pointerTarget,
+    } as PointerEvent);
+
+    // Should call pasteClips
+    expect(pasteClipsMock).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({
+          clip: expect.objectContaining({ id: 'clip-1' }),
+        })
+      ]),
+      expect.objectContaining({
+        targetTrackId: 'track-1',
+        insertStartUs: 41_000_000,
+      })
+    );
   });
 });

@@ -127,4 +127,32 @@ describe('UiEntityCreationModal', () => {
     await component.vm.$nextTick();
     expect(component.find('.error-msg').exists()).toBe(false);
   });
+
+  it('does not show error when hideErrorIfUnmodified is true and name is unmodified', async () => {
+    const component = await mountSuspended(UiEntityCreationModal, {
+      props: {
+        open: true,
+        title: 'Create',
+        defaultValue: 'existing',
+        validate: () => 'Already exists',
+        hideErrorIfUnmodified: true,
+      },
+      global: { stubs },
+    });
+
+    await component.vm.$nextTick();
+    expect(component.find('.error-msg').exists()).toBe(false);
+
+    // After modifying the name, the error should be shown
+    const input = component.find('input');
+    await input.setValue('existing_modified');
+    await component.vm.$nextTick();
+    expect(component.find('.error-msg').exists()).toBe(true);
+    expect(component.find('.error-msg').text()).toBe('Already exists');
+
+    // Changing it back to original name should hide the error again
+    await input.setValue('existing');
+    await component.vm.$nextTick();
+    expect(component.find('.error-msg').exists()).toBe(false);
+  });
 });

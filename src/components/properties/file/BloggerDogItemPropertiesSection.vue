@@ -29,6 +29,10 @@ const duration = computed(() => {
 });
 
 const isMetaExpanded = ref(false);
+
+function toggleMeta() {
+  isMetaExpanded.value = !isMetaExpanded.value;
+}
 const rawMetaYaml = computed(() => {
   if (!props.item.meta) return null;
   const { duration, updatedAt, note, ...rest } = props.item.meta as Record<string, unknown>;
@@ -124,7 +128,7 @@ async function copyToClipboard(text: string) {
         :title="t('common.meta')"
         :content="rawMetaYaml"
         :expanded="isMetaExpanded"
-        :on-toggle="() => (isMetaExpanded = !isMetaExpanded)"
+        :on-toggle="toggleMeta"
         :on-copy="copyToClipboard"
       />
 

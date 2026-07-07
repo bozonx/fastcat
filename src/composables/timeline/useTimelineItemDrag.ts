@@ -86,6 +86,8 @@ export function useTimelineItemDrag(
   const selectionStore = useSelectionStore();
   const workspaceStore = useWorkspaceStore();
   const { bindSession, clearSession, scheduleUpdate } = useTimelinePointerSession();
+  const toast = useToast();
+  const { t } = useI18n();
 
   const draggingItemId = ref<string | null>(null);
   const draggingTrackId = ref<string | null>(null);
@@ -582,7 +584,7 @@ export function useTimelineItemDrag(
             if (!targetTrack || !previewItem || previewItem.kind !== 'clip') continue;
             const endUs = move.startUs + previewItem.timelineRange.durationUs;
             for (const it of targetTrack.items) {
-              if (movingIds.has(it.id) || it.kind !== 'clip') continue;
+              if ((movingIds.has(it.id) && !dragIsCopyOverride.value) || it.kind !== 'clip') continue;
               const itStart = it.timelineRange.startUs;
               const itEnd = itStart + it.timelineRange.durationUs;
               if (move.startUs < itEnd && itStart < endUs) {
@@ -620,7 +622,7 @@ export function useTimelineItemDrag(
       if (targetTrack) {
         const endUs = startUs + dragAnchorDurationUs.value;
         for (const it of targetTrack.items) {
-          if (it.id === itemId) continue;
+          if (it.id === itemId && !dragIsCopyOverride.value) continue;
           if (it.kind !== 'clip') continue;
           const itStart = it.timelineRange.startUs;
           const itEnd = itStart + it.timelineRange.durationUs;
@@ -1120,19 +1122,29 @@ export function useTimelineItemDrag(
       timelineStore.duration = selectTimelineDurationUs(snapshot);
     }
 
-    if (!cancel && shouldCopyDraggedClip && snapshot && copiedSingleClipPayload) {
-      timelineStore.timelineDoc = snapshot;
-      timelineStore.duration = selectTimelineDurationUs(snapshot);
-      const copyClip = copiedSingleClipPayload.clip;
-      void timelineStore.pasteClips(
-        [{ sourceTrackId: copiedSingleClipPayload.sourceTrackId, clip: copyClip }],
-        {
-          targetTrackId: copiedSingleClipPayload.targetTrackId,
-          insertStartUs: copiedSingleClipPayload.targetStartUs,
-          respectToolbarModes: true,
-        },
-      );
-      hasPendingTimelinePersist.value = true;
+    if (!cancel && shouldCopyDraggedClip && snapshot) {
+      const commit = pendingMoveCommit.value;
+      const isCollision = commit?.isCollision ?? false;
+
+      if (isCollision) {
+        toast.add({
+          title: t('fastcat.timeline.cannotCopyClip'),
+          color: 'error',
+        });
+      } else if (copiedSingleClipPayload) {
+        timelineStore.timelineDoc = snapshot;
+        timelineStore.duration = selectTimelineDurationUs(snapshot);
+        const copyClip = copiedSingleClipPayload.clip;
+        void timelineStore.pasteClips(
+          [{ sourceTrackId: copiedSingleClipPayload.sourceTrackId, clip: copyClip }],
+          {
+            targetTrackId: copiedSingleClipPayload.targetTrackId,
+            insertStartUs: copiedSingleClipPayload.targetStartUs,
+            respectToolbarModes: true,
+          },
+        );
+        hasPendingTimelinePersist.value = true;
+      }
     }
 
     const shouldPersistTimeline = !cancel && hasPendingTimelinePersist.value;
