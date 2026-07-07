@@ -151,7 +151,7 @@ function runBuild(e2ePort) {
 async function main() {
   cleanPlaywrightFiles();
 
-  const requestedPort = Number(process.env.E2E_PORT ?? 37107);
+  const requestedPort = Number(process.env.E2E_PORT ?? 3007);
   const e2ePort = process.env.E2E_BASE_URL ? requestedPort : await findAvailablePort(requestedPort);
   const baseURL = process.env.E2E_BASE_URL ?? `http://${e2eHost}:${e2ePort}`;
 

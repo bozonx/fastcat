@@ -7,6 +7,7 @@ import UiKnob from '~/components/ui/editor/UiKnob.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
 import UiTextInput from '~/components/ui/UiTextInput.vue';
 import UiTextarea from '~/components/ui/UiTextarea.vue';
+import UiColorBlendPicker from '~/components/ui/UiColorBlendPicker.vue';
 import ClipAnimationStopwatchButton from '~/components/properties/clip/ClipAnimationStopwatchButton.vue';
 import type {
   ButtonGroupParamControl,
@@ -634,14 +635,12 @@ function handleArrayItemUpdate(
         >
           {{ entry.label }}
         </span>
-        <UColorPicker
-          :model-value="entry.stringValue"
-          format="hex"
-          :size="size"
+        <UiColorBlendPicker
+          :color="entry.stringValue"
           :disabled="entry.disabled"
-          @update:model-value="
-            (value: unknown) => updateValue(entry.control.key, String(value ?? ''))
-          "
+          :show-alpha="false"
+          :show-blend-mode="false"
+          @update:color="(value: string) => updateValue(entry.control.key, value)"
         />
       </div>
 

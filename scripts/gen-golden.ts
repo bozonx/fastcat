@@ -26,7 +26,7 @@ import { loadAllScenes } from '../test/golden-helpers/scene-loader';
 import { staticPreviewServerArgs, waitForServer } from './lib/preview-server.mjs';
 
 const E2E_HOST = process.env.E2E_HOST ?? '127.0.0.1';
-const E2E_PORT = Number(process.env.E2E_PORT ?? 37107);
+const E2E_PORT = Number(process.env.E2E_PORT ?? 3007);
 const BASE_URL = process.env.E2E_BASE_URL ?? `http://${E2E_HOST}:${E2E_PORT}`;
 const GOLDEN_GEN_FILES_ROOT = resolve(process.cwd(), 'test-files', 'golden-gen');
 const E2E_OUTPUT_DIR = process.env.E2E_OUTPUT_DIR ?? join('test-files', 'golden-gen', 'output');

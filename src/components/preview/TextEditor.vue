@@ -18,8 +18,11 @@ const props = withDefaults(
     autofocus?: boolean;
   }>(),
   {
+    fileName: undefined,
+    focusPanelId: undefined,
+    vfs: undefined,
     autofocus: false,
-  }
+  },
 );
 
 const { locale } = useI18n();

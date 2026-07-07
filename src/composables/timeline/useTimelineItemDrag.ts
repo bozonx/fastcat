@@ -584,7 +584,8 @@ export function useTimelineItemDrag(
             if (!targetTrack || !previewItem || previewItem.kind !== 'clip') continue;
             const endUs = move.startUs + previewItem.timelineRange.durationUs;
             for (const it of targetTrack.items) {
-              if ((movingIds.has(it.id) && !dragIsCopyOverride.value) || it.kind !== 'clip') continue;
+              if ((movingIds.has(it.id) && !dragIsCopyOverride.value) || it.kind !== 'clip')
+                continue;
               const itStart = it.timelineRange.startUs;
               const itEnd = itStart + it.timelineRange.durationUs;
               if (move.startUs < itEnd && itStart < endUs) {

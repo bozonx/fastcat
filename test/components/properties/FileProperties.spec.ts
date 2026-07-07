@@ -781,7 +781,8 @@ describe('FileProperties.vue', () => {
 
   it('resets expanded accordion states when selectedFsEntry changes', async () => {
     const { useEntryPreview } = await import('~/composables/file-manager/useEntryPreview');
-    const { useFilePropertiesBasics } = await import('~/composables/properties/useFilePropertiesBasics');
+    const { useFilePropertiesBasics } =
+      await import('~/composables/properties/useFilePropertiesBasics');
 
     vi.mocked(useEntryPreview).mockReturnValue({
       currentUrl: ref('http://example.com/test.mp4'),
@@ -824,7 +825,9 @@ describe('FileProperties.vue', () => {
       },
     });
 
-    const ExpandableYamlSection = (await import('../../../src/components/properties/file/ExpandableYamlSection.vue')).default;
+    const ExpandableYamlSection = (
+      await import('../../../src/components/properties/file/ExpandableYamlSection.vue')
+    ).default;
     const expandableSection = component.findComponent(ExpandableYamlSection);
     expect(expandableSection.exists()).toBe(true);
     expect(expandableSection.props('expanded')).toBe(false);

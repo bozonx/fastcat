@@ -4,13 +4,13 @@ import UiColorBlendPicker from '~/components/ui/UiColorBlendPicker.vue';
 
 const stubs = {
   UColorPicker: {
-    props: ['modelValue', 'format', 'size'],
+    props: ['modelValue', 'format', 'size', 'disabled'],
     emits: ['update:modelValue'],
     template:
       '<div class="color-picker-mock" @click="$emit(\'update:modelValue\', \'#ff0000\')" />',
   },
   UiSelect: {
-    props: ['modelValue', 'items', 'valueKey', 'labelKey', 'size', 'fullWidth'],
+    props: ['modelValue', 'items', 'valueKey', 'labelKey', 'size', 'fullWidth', 'disabled'],
     emits: ['update:modelValue'],
     template:
       '<select @change="$emit(\'update:modelValue\', $event.target.value)"><option value="normal">Normal</option></select>',
@@ -26,13 +26,14 @@ const stubs = {
       'decimals',
       'defaultValue',
       'showInput',
+      'disabled',
     ],
     emits: ['update:modelValue'],
     template:
       '<input type="range" :value="modelValue" :data-default-value="defaultValue" @input="$emit(\'update:modelValue\', Number($event.target.value))" />',
   },
   UiTextInput: {
-    props: ['modelValue', 'placeholder', 'size', 'fullWidth', 'mono'],
+    props: ['modelValue', 'placeholder', 'size', 'fullWidth', 'mono', 'disabled'],
     emits: ['update:modelValue', 'blur', 'keydown'],
     template:
       '<input :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" @blur="$emit(\'blur\')" @keydown.enter="$emit(\'keydown\', $event)" />',
@@ -72,6 +73,15 @@ describe('UiColorBlendPicker', () => {
     await slider.setValue(80);
 
     expect(component.emitted('update:alpha')).toBeTruthy();
+  });
+
+  it('hides alpha controls when showAlpha is false', async () => {
+    const component = await mountSuspended(UiColorBlendPicker, {
+      props: { color: '#ff0000', alpha: 0.5, showAlpha: false },
+      global: { stubs },
+    });
+
+    expect(component.find('input[type="range"]').exists()).toBe(false);
   });
 
   it('passes defaultValue percent to UiSliderInput', async () => {

@@ -54,7 +54,7 @@ const TestHost = {
 describe('MediaResolutionSettings', () => {
   it('renders correctly and propagates disabled class to custom resolution switch and form field', async () => {
     const wrapper = await mountSuspended(TestHost);
-    
+
     // Check initially not disabled (no cursor-not-allowed)
     const formField = wrapper.findComponent({ name: 'UiFormField' });
     const switchComponent = wrapper.findComponent({ name: 'USwitch' });

@@ -876,7 +876,7 @@ describe('TimelineStore', () => {
   describe('Selection Range History Restore', () => {
     it('restores selection range when applying restored snapshot with selection range', async () => {
       const selectionStore = useSelectionStore();
-      
+
       selectionStore.selectTimelineSelectionRange();
       expect(selectionStore.selectedEntity?.kind).toBe('selection-range');
 
@@ -884,9 +884,9 @@ describe('TimelineStore', () => {
         ...store.timelineDoc,
         metadata: {
           fastcat: {
-            selectionRange: { startUs: 1000, endUs: 2000 }
-          }
-        }
+            selectionRange: { startUs: 1000, endUs: 2000 },
+          },
+        },
       };
 
       store.applyRestoredSnapshot(snapWithRange as any);
@@ -898,7 +898,7 @@ describe('TimelineStore', () => {
 
     it('clears selection in UI when applying restored snapshot without selection range', async () => {
       const selectionStore = useSelectionStore();
-      
+
       store.createSelectionRange({ startUs: 1000, endUs: 2000 });
       await nextTick();
       expect(store.selectionRange).toEqual({ startUs: 1000, endUs: 2000 });
@@ -908,9 +908,9 @@ describe('TimelineStore', () => {
         ...store.timelineDoc,
         metadata: {
           fastcat: {
-            selectionRange: null
-          }
-        }
+            selectionRange: null,
+          },
+        },
       };
 
       store.applyRestoredSnapshot(snapWithoutRange as any);

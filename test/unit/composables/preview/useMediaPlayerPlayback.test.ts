@@ -1,6 +1,6 @@
-/** @vitest-environment node */
+/** @vitest-environment happy-dom */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { ref, reactive, nextTick } from 'vue';
+import { ref, reactive, nextTick, effectScope } from 'vue';
 import { useMediaPlayerPlayback } from '~/composables/preview/useMediaPlayerPlayback';
 
 let mockState: any = null;
@@ -15,12 +15,15 @@ if (typeof global.cancelAnimationFrame === 'undefined') {
   global.cancelAnimationFrame = (id: any) => clearTimeout(id);
 }
 
+const mockUiStore = reactive({
+  hasActivePreviewPlayer: false,
+  get previewPlaybackTrigger() {
+    return mockState?.trigger;
+  },
+});
+
 vi.mock('~/stores/ui.store', () => ({
-  useUiStore: () => ({
-    get previewPlaybackTrigger() {
-      return mockState?.trigger;
-    },
-  }),
+  useUiStore: () => mockUiStore,
 }));
 
 vi.mock('~/stores/timeline.store', () => ({
@@ -48,6 +51,7 @@ describe('useMediaPlayerPlayback', () => {
       trigger: null,
     });
     mockTimelineStore.isPlaying = false;
+    mockUiStore.hasActivePreviewPlayer = false;
   });
 
   it('initializes with default state', () => {
@@ -443,19 +447,17 @@ describe('useMediaPlayerPlayback', () => {
 
     mockTimelineStore.isPlaying = true;
 
-    const { isPlaying } = useMediaPlayerPlayback(
-      mediaEl,
-      { src: '' },
-      volume,
-      isMuted,
-      focusStore,
-    );
+    const scope = effectScope();
+    const { isPlaying } = scope.run(() =>
+      useMediaPlayerPlayback(mediaEl, { src: '' }, volume, isMuted, focusStore),
+    )!;
 
     isPlaying.value = true;
 
     await nextTick();
 
     expect(mockTimelineStore.isPlaying).toBe(false);
+    scope.stop();
   });
 
   it('pauses preview playback when timeline playback starts', async () => {
@@ -465,17 +467,16 @@ describe('useMediaPlayerPlayback', () => {
     const isMuted = ref(false);
     const focusStore = { canUsePreviewHotkeys: true, effectiveFocus: null };
 
-    const { isPlaying, onPlay } = useMediaPlayerPlayback(
-      mediaEl,
-      { src: '' },
-      volume,
-      isMuted,
-      focusStore,
-    );
+    const scope = effectScope();
+    const { isPlaying, onPlay } = scope.run(() =>
+      useMediaPlayerPlayback(mediaEl, { src: '' }, volume, isMuted, focusStore),
+    )!;
 
     // Start playing preview
     onPlay();
     expect(isPlaying.value).toBe(true);
+
+    await nextTick();
 
     // Start timeline playback
     mockTimelineStore.isPlaying = true;
@@ -485,5 +486,6 @@ describe('useMediaPlayerPlayback', () => {
     // Preview playback should be paused
     expect(isPlaying.value).toBe(false);
     expect(el.pause).toHaveBeenCalled();
+    scope.stop();
   });
 });

@@ -399,7 +399,7 @@ Before running E2E tests for the first time, install the Playwright browser:
 pnpm test:e2e:install
 ```
 
-E2E tests use `127.0.0.1:37107` by default. Override it with
+E2E tests use `127.0.0.1:3007` by default. Override it with
 `E2E_HOST=127.0.0.1 E2E_PORT=3010 pnpm test:e2e`.
 `test:e2e`, `test:e2e:smoke`, and `test:golden:web` run Playwright through
 `scripts/run-playwright-with-preview.mjs`, which builds the app (skipped when

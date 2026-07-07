@@ -19,7 +19,7 @@ services:
     environment:
       - CI=true
       - E2E_TEST=1
-      - E2E_PORT=3008
+      - E2E_PORT=3007
       - E2E_OUTPUT_DIR=/tmp/fastcat-e2e-output
 
 volumes:

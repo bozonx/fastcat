@@ -129,8 +129,15 @@ watch([localWidth, localHeight, localIsCustom], ([w, h, isCustom]) => {
 
 <template>
   <div class="flex flex-col gap-4">
-    <UiFormField :label="t('videoEditor.resolution.customResolution')" :class="{ 'cursor-not-allowed': disabled }">
-      <USwitch v-model="localIsCustom" :disabled="disabled" :class="{ 'cursor-not-allowed': disabled }" />
+    <UiFormField
+      :label="t('videoEditor.resolution.customResolution')"
+      :class="{ 'cursor-not-allowed': disabled }"
+    >
+      <USwitch
+        v-model="localIsCustom"
+        :disabled="disabled"
+        :class="{ 'cursor-not-allowed': disabled }"
+      />
     </UiFormField>
 
     <!-- Preset Mode -->

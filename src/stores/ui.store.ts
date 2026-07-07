@@ -149,6 +149,7 @@ export const useUiStore = defineStore('ui', () => {
     }
   }
 
+  const hasActivePreviewPlayer = ref(false);
   const previewZoomTrigger = ref({ dir: 0, timestamp: 0 });
   const previewZoomResetTrigger = ref(0);
   const previewZoomFitTrigger = ref(0);
@@ -298,6 +299,7 @@ export const useUiStore = defineStore('ui', () => {
     monitorZoomTrigger,
     monitorZoomResetTrigger,
     monitorZoomFitTrigger,
+    hasActivePreviewPlayer,
     previewPlaybackTrigger,
     previewFullscreenToggleTrigger,
     fileBrowserSelectAllTrigger,

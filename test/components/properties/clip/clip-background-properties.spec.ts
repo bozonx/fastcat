@@ -10,11 +10,11 @@ vi.mock('~/components/properties/PropertySection.vue', () => ({
 }));
 
 const stubs = {
-  UColorPicker: {
-    props: ['modelValue', 'format', 'size'],
-    emits: ['update:modelValue'],
+  UiColorBlendPicker: {
+    props: ['color', 'showAlpha', 'showBlendMode'],
+    emits: ['update:color'],
     template:
-      '<input type="color" class="color-picker-mock" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" />',
+      '<input type="color" class="color-picker-mock" :value="color" :data-show-alpha="showAlpha" :data-show-blend-mode="showBlendMode" @input="$emit(\'update:color\', $event.target.value)" />',
   },
 };
 
@@ -28,13 +28,16 @@ describe('ClipBackgroundProperties', () => {
     expect(component.find('.section-mock').exists()).toBe(true);
   });
 
-  it('displays background color value', async () => {
+  it('passes background color into shared color picker without alpha', async () => {
     const component = await mountSuspended(ClipBackgroundProperties, {
       props: { clip: { backgroundColor: '#ff0000' } as any },
       global: { stubs },
     });
 
-    expect(component.text()).toContain('#ff0000');
+    const picker = component.find('.color-picker-mock');
+    expect(picker.attributes('value')).toBe('#ff0000');
+    expect(picker.attributes('data-show-alpha')).toBe('false');
+    expect(picker.attributes('data-show-blend-mode')).toBe('false');
   });
 
   it('emits updateBackgroundColor when color changes', async () => {

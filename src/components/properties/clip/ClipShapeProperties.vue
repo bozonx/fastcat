@@ -5,6 +5,7 @@ import PropertyField from '~/components/properties/PropertyField.vue';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
 import UiTooltip from '~/components/ui/UiTooltip.vue';
+import UiColorBlendPicker from '~/components/ui/UiColorBlendPicker.vue';
 
 const props = defineProps<{
   clip: TimelineShapeClipItem;
@@ -88,20 +89,20 @@ const snapToPixelGrid = computed({
       </PropertyField>
 
       <PropertyField :label="t('fastcat.shapeClip.fillColor')">
-        <UColorPicker
-          :model-value="String(clip.fillColor ?? '#ffffff')"
-          format="hex"
-          size="sm"
-          @update:model-value="(v: unknown) => emit('updateFillColor', String(v))"
+        <UiColorBlendPicker
+          :color="String(clip.fillColor ?? '#ffffff')"
+          :show-alpha="false"
+          :show-blend-mode="false"
+          @update:color="emit('updateFillColor', $event)"
         />
       </PropertyField>
 
       <PropertyField :label="t('fastcat.shapeClip.strokeColor')">
-        <UColorPicker
-          :model-value="String(clip.strokeColor ?? '#000000')"
-          format="hex"
-          size="sm"
-          @update:model-value="(v: unknown) => emit('updateStrokeColor', String(v))"
+        <UiColorBlendPicker
+          :color="String(clip.strokeColor ?? '#000000')"
+          :show-alpha="false"
+          :show-blend-mode="false"
+          @update:color="emit('updateStrokeColor', $event)"
         />
       </PropertyField>
 

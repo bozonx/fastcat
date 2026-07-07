@@ -7,16 +7,21 @@ import UiTextInput from './UiTextInput.vue';
 
 interface Props {
   color: string;
-  alpha: number;
+  alpha?: number;
   blendMode?: TimelineBlendMode;
   blendModeOptions?: Array<{ value: TimelineBlendMode; label: string }>;
+  disabled?: boolean;
+  showAlpha?: boolean;
   showBlendMode?: boolean;
   defaultAlpha?: number;
 }
 
 const props = withDefaults(defineProps<Props>(), {
+  alpha: undefined,
   blendMode: 'normal',
   blendModeOptions: () => [],
+  disabled: false,
+  showAlpha: true,
   showBlendMode: true,
   defaultAlpha: 1,
 });
@@ -30,7 +35,7 @@ const emit = defineEmits<{
 const { t } = useI18n();
 
 const alphaPercent = computed({
-  get: () => Math.round(Math.max(0, Math.min(1, props.alpha)) * 100),
+  get: () => Math.round(Math.max(0, Math.min(1, props.alpha ?? props.defaultAlpha)) * 100),
   set: (v: number) => emit('update:alpha', Math.max(0, Math.min(100, Number(v))) / 100),
 });
 
@@ -91,6 +96,7 @@ function commitColorText() {
           :model-value="props.color"
           format="hex"
           size="sm"
+          :disabled="props.disabled"
           @update:model-value="onColorPickerUpdate"
         />
       </div>
@@ -100,6 +106,7 @@ function commitColorText() {
     </div>
     <div class="flex flex-col gap-2 min-w-0">
       <UiSliderInput
+        v-if="props.showAlpha"
         v-model="alphaPercent"
         :label="t('fastcat.textClip.opacity')"
         :min="0"
@@ -108,6 +115,7 @@ function commitColorText() {
         unit="%"
         :decimals="0"
         :default-value="defaultAlphaPercent"
+        :disabled="props.disabled"
       />
       <div class="flex flex-col gap-0.5">
         <span class="text-xs text-ui-text-muted">{{ t('fastcat.textClip.webColor') }}</span>
@@ -117,6 +125,7 @@ function commitColorText() {
           size="xs"
           full-width
           mono
+          :disabled="props.disabled"
           @blur="commitColorText"
           @keydown.enter="commitColorText"
         />
@@ -130,6 +139,7 @@ function commitColorText() {
           label-key="label"
           size="xs"
           full-width
+          :disabled="props.disabled"
         />
       </div>
     </div>

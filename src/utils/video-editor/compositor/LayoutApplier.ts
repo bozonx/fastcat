@@ -7,7 +7,7 @@ import {
 } from '../clip-layout';
 import { computeTextLayoutMetrics } from '../text-layout';
 import type { CompositorClip } from './types';
-import { Graphics, Matrix } from 'pixi.js';
+import { Graphics } from 'pixi.js';
 
 import { isTransformSnapSafe, snapRectToPixelGrid } from '../../pixel-grid-snap';
 import { effectiveClipTransform } from './AnimationOverlay';

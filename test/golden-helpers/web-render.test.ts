@@ -3,7 +3,7 @@ import { describe, it, expect, vi, type Mock } from 'vitest';
 import { renderWebFrames, type WebFrameResult } from './web-render';
 import type { Page } from '@playwright/test';
 
-const defaultGoldenUrl = 'http://127.0.0.1:37107/test/golden';
+const defaultGoldenUrl = 'http://127.0.0.1:3007/test/golden';
 
 interface MockPage {
   page: Page;

@@ -2,7 +2,7 @@ import { defineConfig, devices } from '@playwright/test';
 import { staticPreviewServerCommand } from './scripts/lib/preview-server.mjs';
 
 const e2eHost = process.env.E2E_HOST ?? '127.0.0.1';
-const e2ePort = Number(process.env.E2E_PORT ?? 37107);
+const e2ePort = Number(process.env.E2E_PORT ?? 3007);
 const e2eWorkers = Number(process.env.E2E_WORKERS ?? 1);
 const baseURL = process.env.E2E_BASE_URL ?? `http://${e2eHost}:${e2ePort}`;
 const e2eOutputDir = process.env.E2E_OUTPUT_DIR ?? 'test-files/playwright/output';

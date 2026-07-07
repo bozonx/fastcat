@@ -22,7 +22,7 @@ export function usePlaybackHotkeys(
     'playback.toggle': () => {
       if (!canUsePlaybackOrTimelineFocus()) return false;
 
-      if (isPreviewLikeFocus(focusStore.effectiveFocus)) {
+      if (isPreviewLikeFocus(focusStore.effectiveFocus) && uiStore.hasActivePreviewPlayer) {
         uiStore.triggerPreviewPlayback('toggle');
         return true;
       }
@@ -34,7 +34,7 @@ export function usePlaybackHotkeys(
     'playback.toggle1': () => {
       if (!canUsePlaybackOrTimelineFocus()) return false;
 
-      if (isPreviewLikeFocus(focusStore.effectiveFocus)) {
+      if (isPreviewLikeFocus(focusStore.effectiveFocus) && uiStore.hasActivePreviewPlayer) {
         uiStore.triggerPreviewPlayback('toggle1');
         return true;
       }
@@ -52,7 +52,7 @@ export function usePlaybackHotkeys(
     'playback.toStart': () => {
       if (!focusStore.canUsePlaybackHotkeys) return false;
 
-      if (isPreviewLikeFocus(focusStore.effectiveFocus)) {
+      if (isPreviewLikeFocus(focusStore.effectiveFocus) && uiStore.hasActivePreviewPlayer) {
         uiStore.triggerPreviewPlayback('toStart');
         return true;
       }
@@ -64,7 +64,7 @@ export function usePlaybackHotkeys(
     'playback.toEnd': () => {
       if (!focusStore.canUsePlaybackHotkeys) return false;
 
-      if (isPreviewLikeFocus(focusStore.effectiveFocus)) {
+      if (isPreviewLikeFocus(focusStore.effectiveFocus) && uiStore.hasActivePreviewPlayer) {
         uiStore.triggerPreviewPlayback('toEnd');
         return true;
       }
@@ -225,7 +225,7 @@ export function usePlaybackHotkeys(
           : focusStore.canUsePlaybackHotkeys;
       if (!canUse) return false;
 
-      if (cmd !== 'playback.backward1' && isPreviewLikeFocus(focusStore.effectiveFocus)) {
+      if (cmd !== 'playback.backward1' && isPreviewLikeFocus(focusStore.effectiveFocus) && uiStore.hasActivePreviewPlayer) {
         if (speedCmd.direction === 'backward') {
           return true; // ignored but consumed
         }

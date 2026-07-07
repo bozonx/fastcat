@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { TimelineBackgroundClipItem } from '~/timeline/types';
 import PropertySection from '~/components/properties/PropertySection.vue';
+import UiColorBlendPicker from '~/components/ui/UiColorBlendPicker.vue';
 
 defineProps<{
   clip: TimelineBackgroundClipItem;
@@ -15,14 +16,11 @@ const { t } = useI18n();
 
 <template>
   <PropertySection :title="t('common.color')">
-    <div class="flex items-center justify-between gap-3">
-      <span class="font-mono text-xs text-ui-text">{{ String(clip.backgroundColor) }}</span>
-      <UColorPicker
-        :model-value="String(clip.backgroundColor)"
-        format="hex"
-        size="sm"
-        @update:model-value="emit('updateBackgroundColor', String($event))"
-      />
-    </div>
+    <UiColorBlendPicker
+      :color="String(clip.backgroundColor)"
+      :show-alpha="false"
+      :show-blend-mode="false"
+      @update:color="emit('updateBackgroundColor', $event)"
+    />
   </PropertySection>
 </template>

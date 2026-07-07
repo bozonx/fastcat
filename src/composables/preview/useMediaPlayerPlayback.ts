@@ -237,11 +237,11 @@ export function useMediaPlayerPlayback(
   watch(
     () => timelineStore.isPlaying,
     (timelinePlaying) => {
-      console.log('TIMELINE PLAYING WATCHER TRIGGERED:', timelinePlaying, 'isPlaying:', isPlaying.value);
       if (timelinePlaying && isPlaying.value) {
         pauseAndClearPlayback();
+        isPlaying.value = false;
       }
-    }
+    },
   );
 
   onUnmounted(() => {

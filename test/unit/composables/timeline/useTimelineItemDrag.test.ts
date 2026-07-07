@@ -1108,12 +1108,12 @@ describe('useTimelineItemDrag', () => {
       expect.arrayContaining([
         expect.objectContaining({
           clip: expect.objectContaining({ id: 'clip-1' }),
-        })
+        }),
       ]),
       expect.objectContaining({
         targetTrackId: 'track-1',
         insertStartUs: 41_000_000,
-      })
+      }),
     );
   });
 });

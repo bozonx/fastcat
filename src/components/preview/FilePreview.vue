@@ -48,8 +48,15 @@ const props = withDefaults(
     autofocus?: boolean;
   }>(),
   {
+    url: null,
+    textContent: '',
+    alt: '',
+    filePath: undefined,
+    fileName: undefined,
+    focusPanelId: undefined,
+    vfs: undefined,
     autofocus: false,
-  }
+  },
 );
 
 const isMediaModalOpen = ref(false);

@@ -40,10 +40,10 @@ function stubs() {
       props: ['modelValue', 'items', 'valueKey', 'labelKey'],
       emits: ['update:modelValue'],
     },
-    UColorPicker: {
-      template: '<div class="u-color-picker"></div>',
-      props: ['modelValue'],
-      emits: ['update:modelValue'],
+    UiColorBlendPicker: {
+      template: '<div class="ui-color-blend-picker"></div>',
+      props: ['color', 'showAlpha', 'showBlendMode'],
+      emits: ['update:color'],
     },
     UButton: {
       template: '<button class="u-button"><slot /></button>',
