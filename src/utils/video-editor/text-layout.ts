@@ -180,8 +180,6 @@ export function getFontStack(fontFamily: string): string {
     Montserrat: '"Montserrat", sans-serif',
     Oswald: '"Oswald", sans-serif',
     'Noto Sans': '"Noto Sans", sans-serif',
-    'Open Sans': '"Open Sans", sans-serif',
-    Lato: '"Lato", sans-serif',
     'Playfair Display': '"Playfair Display", serif',
     Arial: 'Arial, sans-serif',
     'Arial Black': '"Arial Black", "Arial Bold", sans-serif',

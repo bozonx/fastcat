@@ -92,6 +92,11 @@ function handleConvertToSelectionRange() {
   timelineStore.convertMarkerToSelectionRange(marker.value.id);
 }
 
+function handleCreateSelectionRangeFromMarker() {
+  if (!marker.value || !isZone.value) return;
+  timelineStore.createSelectionRangeFromMarker(marker.value.id);
+}
+
 const commonActions = computed(() => [
   {
     id: 'delete',
@@ -119,6 +124,12 @@ const mainActions = computed<PropertyAction[]>(() => {
       label: t('fastcat.timeline.convertZoneToSelection'),
       icon: 'i-heroicons-rectangle-group',
       onClick: handleConvertToSelectionRange,
+    });
+    list.push({
+      id: 'create-selection-from-zone',
+      label: t('fastcat.timeline.createSelectionFromZone'),
+      icon: 'i-heroicons-sparkles',
+      onClick: handleCreateSelectionRangeFromMarker,
     });
   }
   return list;

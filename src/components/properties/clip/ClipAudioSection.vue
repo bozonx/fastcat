@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import DbSlider from '~/components/audio/DbSlider.vue';
 import UiSliderInput from '~/components/ui/UiSliderInput.vue';
@@ -67,6 +67,17 @@ function onVolumeDragEnd() {
 function onVolumeUpdate(db: number) {
   emit('updateAudioGain', dbToLinear(db), { skipHistory: isDragging.value });
 }
+
+function resetAudioParameters() {
+  emit('updateAudioBalance', 0);
+  emit('updateAudioFadeInSec', 0);
+  emit('updateAudioFadeOutSec', 0);
+  emit('updateAudioGain', 1);
+}
+
+watch(isEnabled, (enabled, previousEnabled) => {
+  if (!enabled && previousEnabled) resetAudioParameters();
+});
 </script>
 
 <template>
@@ -79,23 +90,16 @@ function onVolumeUpdate(db: number) {
     :title="t('fastcat.clip.audioFade.title')"
     has-toggle
     show-reset
-    :on-reset="
-      () => {
-        emit('updateAudioBalance', 0);
-        emit('updateAudioFadeInSec', 0);
-        emit('updateAudioFadeOutSec', 0);
-        emit('updateAudioGain', 1);
-      }
-    "
+    :disable-reset="false"
+    :on-reset="resetAudioParameters"
   >
-    <div class="flex gap-4" :class="{ 'opacity-50 pointer-events-none': !isEnabled }">
+    <div class="flex gap-4">
       <!-- Left column: Balance and Fades -->
       <div class="flex-1 flex flex-col gap-4">
         <div v-if="props.canEditAudioBalance" class="flex items-end gap-1">
           <div class="pb-1">
             <ClipAnimationStopwatchButton
               :active="isPanAnimated"
-              :disabled="!isEnabled"
               @toggle="emit('toggleParamAnimation', PAN_PATHS)"
             />
           </div>
@@ -106,12 +110,11 @@ function onVolumeUpdate(db: number) {
             :max="1"
             :step="0.01"
             :default-value="0"
-            :disabled="!isEnabled"
             @update:model-value="(v: number) => emit('updateAudioBalance', v)"
           />
         </div>
 
-        <div class="flex flex-col gap-3">
+        <div class="flex flex-col gap-3" :class="{ 'opacity-50 pointer-events-none': !isEnabled }">
           <!-- Fade In -->
           <div class="flex flex-col gap-1">
             <span class="text-xs text-ui-text-muted font-medium">{{
@@ -229,7 +232,6 @@ function onVolumeUpdate(db: number) {
           <div class="flex items-center gap-1">
             <ClipAnimationStopwatchButton
               :active="isVolumeAnimated"
-              :disabled="!isEnabled"
               @toggle="emit('toggleParamAnimation', VOLUME_PATHS)"
             />
             <span class="text-[10px] font-bold text-ui-text-muted/70 leading-tight line-clamp-1">{{
@@ -239,7 +241,7 @@ function onVolumeUpdate(db: number) {
           <span
             class="text-xs font-mono text-ui-text-muted cursor-pointer hover:text-primary-400 tabular-nums whitespace-nowrap"
             :title="t('common.actions.reset')"
-            @click="if (isEnabled) audioGainDb = 0;"
+            @click="audioGainDb = 0"
           >
             {{ audioGainDb <= -59.9 ? '-∞' : audioGainDb.toFixed(1)
             }}<span class="text-[10px] ml-0.5 opacity-50">dB</span>
@@ -249,7 +251,6 @@ function onVolumeUpdate(db: number) {
           <DbSlider
             :model-value="audioGainDb"
             :level-db="props.audioLevelDb"
-            :disabled="!isEnabled"
             :max-db="6.0206"
             :wheel-without-focus="true"
             @update:model-value="onVolumeUpdate"

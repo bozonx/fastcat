@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import PresetSaveModal from '~/components/properties/PresetSaveModal.vue';
 
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { VueDraggable } from 'vue-draggable-plus';
 import SelectEffectModal from '~/components/effects/SelectEffectModal.vue';
 import ParamsRenderer from '~/components/properties/ParamsRenderer.vue';
@@ -50,7 +50,7 @@ const emit = defineEmits<{
   'update:effects': [effects: Array<VideoClipEffect | AudioClipEffect>];
 }>();
 
-const isEnabled = defineModel<boolean>('enabled');
+const isEnabled = defineModel<boolean>('enabled', { default: true });
 
 const { t } = useI18n();
 const presetsStore = usePresetsStore();
@@ -119,6 +119,20 @@ const { zoneAttrs: dropZoneAttrs } = useDndDropZone(
 function setEffects(next: Array<VideoClipEffect | AudioClipEffect>) {
   emit('update:effects', next);
 }
+
+function setAllEffectsEnabled(enabled: boolean) {
+  const next = safeEffects.value.map((effect) => {
+    if (effect.enabled === enabled) return effect;
+    return { ...effect, enabled } as VideoClipEffect | AudioClipEffect;
+  });
+  if (next.every((effect, index) => effect === safeEffects.value[index])) return;
+  setEffects(next);
+}
+
+watch(isEnabled, (enabled, previousEnabled) => {
+  if (!props.hasToggle || enabled === previousEnabled || typeof enabled !== 'boolean') return;
+  setAllEffectsEnabled(enabled);
+});
 
 function handleAddEffect(type: string) {
   if (props.disabled) return;

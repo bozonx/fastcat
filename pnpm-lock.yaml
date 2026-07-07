@@ -23,18 +23,12 @@ importers:
       '@fontsource/jetbrains-mono':
         specifier: ^5.2.8
         version: 5.2.8
-      '@fontsource/lato':
-        specifier: ^5.2.7
-        version: 5.2.7
       '@fontsource/montserrat':
         specifier: ^5.2.8
         version: 5.2.8
       '@fontsource/noto-sans':
         specifier: ^5.2.10
         version: 5.2.10
-      '@fontsource/open-sans':
-        specifier: ^5.2.7
-        version: 5.2.7
       '@fontsource/oswald':
         specifier: ^5.2.8
         version: 5.2.8
@@ -1199,17 +1193,11 @@ packages:
   '@fontsource/jetbrains-mono@5.2.8':
     resolution: {integrity: sha512-6w8/SG4kqvIMu7xd7wt6x3idn1Qux3p9N62s6G3rfldOUYHpWcc2FKrqf+Vo44jRvqWj2oAtTHrZXEP23oSKwQ==}
 
-  '@fontsource/lato@5.2.7':
-    resolution: {integrity: sha512-k5mum1ADbDW5cTw1Ett1eQVWeoZ6gq0ct6SFBibEhB4LRxhniChJZTBgd6ph5yBxLkN1fcnsnmicBNA4S/3nbw==}
-
   '@fontsource/montserrat@5.2.8':
     resolution: {integrity: sha512-xTjLxSbSfCycDB0pwmNsfNvdfWPaDaRQ2LC6yt/ZI7SdvXG52zHnzNYC/09mzuAuWNJyShkteutfCoDgym56hQ==}
 
   '@fontsource/noto-sans@5.2.10':
     resolution: {integrity: sha512-J58RVfS/C0Z2VBF+PoU260Tx8cdRGYuS+e3yQe4hYaIYDl0sEVn5CzlLo5zVRvQD0HaIUTV8AZMfqR7rtdEpqQ==}
-
-  '@fontsource/open-sans@5.2.7':
-    resolution: {integrity: sha512-8yfgDYjE5O0vmTPdrcjV35y4yMnctsokmi9gN49Gcsr0sjzkMkR97AnKDe6OqZh2SFkYlR28fxOvi21bYEgMSw==}
 
   '@fontsource/oswald@5.2.8':
     resolution: {integrity: sha512-DFoPK1BqsFIQhVjs2xgO/oL9veF9oUJgFojEWIU+nazUrfqsBDtAMI4n9L9CZFX3kQNDLcCyzKx1xoEDvQT4WQ==}
@@ -9010,13 +8998,9 @@ snapshots:
 
   '@fontsource/jetbrains-mono@5.2.8': {}
 
-  '@fontsource/lato@5.2.7': {}
-
   '@fontsource/montserrat@5.2.8': {}
 
   '@fontsource/noto-sans@5.2.10': {}
-
-  '@fontsource/open-sans@5.2.7': {}
 
   '@fontsource/oswald@5.2.8': {}
 

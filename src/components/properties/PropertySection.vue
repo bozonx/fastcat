@@ -6,6 +6,7 @@ const props = defineProps<{
   hasToggle?: boolean;
   showReset?: boolean;
   onReset?: () => void;
+  disableReset?: boolean;
 }>();
 
 const isEnabled = defineModel<boolean>('enabled', { default: true });
@@ -29,7 +30,7 @@ const isEnabled = defineModel<boolean>('enabled', { default: true });
           v-if="props.showReset && props.onReset"
           class="flex items-center gap-1 text-2xs text-ui-text-muted hover:text-ui-text disabled:opacity-50"
           :title="$t('common.actions.reset')"
-          :disabled="!isEnabled"
+          :disabled="props.disableReset ?? !isEnabled"
           @click="props.onReset"
         >
           <UIcon name="i-heroicons-arrow-path" class="w-3.5 h-3.5 block" />

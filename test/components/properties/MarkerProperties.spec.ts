@@ -84,6 +84,7 @@ const timelineStore = reactive({
   convertMarkerToZone: vi.fn(),
   convertZoneToMarker: vi.fn(),
   convertMarkerToSelectionRange: vi.fn(),
+  createSelectionRangeFromMarker: vi.fn(),
 });
 
 vi.mock('~/stores/timeline.store', () => ({ useTimelineStore: () => timelineStore }));
@@ -171,9 +172,13 @@ describe('MarkerProperties', () => {
 
     await wrapper.find('[data-testid="additional-action-convert"]').trigger('click');
     await wrapper.find('[data-testid="additional-action-convert-to-selection"]').trigger('click');
+    await wrapper
+      .find('[data-testid="additional-action-create-selection-from-zone"]')
+      .trigger('click');
 
     expect(timelineStore.convertZoneToMarker).toHaveBeenCalledWith('zone');
     expect(timelineStore.convertMarkerToSelectionRange).toHaveBeenCalledWith('zone');
+    expect(timelineStore.createSelectionRangeFromMarker).toHaveBeenCalledWith('zone');
   });
 
   it('hides desktop-only actions and color picker when requested', async () => {

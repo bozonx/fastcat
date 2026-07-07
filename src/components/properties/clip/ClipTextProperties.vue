@@ -196,8 +196,6 @@ const webFontFamilyOptions = [
   { value: 'Montserrat', label: 'Montserrat' },
   { value: 'Oswald', label: 'Oswald' },
   { value: 'Noto Sans', label: 'Noto Sans' },
-  { value: 'Open Sans', label: 'Open Sans' },
-  { value: 'Lato', label: 'Lato' },
   { value: 'Playfair Display', label: 'Playfair Display' },
   { value: 'Arial', label: 'Arial' },
   { value: 'Arial Black', label: 'Arial Black' },

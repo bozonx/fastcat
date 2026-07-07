@@ -76,6 +76,21 @@ describe('ClipEffectsEditor (video target)', () => {
     expect(toggle.exists()).toBe(true);
   });
 
+  it('emits disabled effects when the section toggle is turned off', async () => {
+    const component = await mountSuspended(ClipEffectsEditor, {
+      props: { target: 'video', effects: sampleEffects, hasToggle: true, enabled: true },
+    });
+
+    await component.setProps({ enabled: false });
+
+    expect(component.emitted('update:effects')?.[0][0]).toEqual([
+      {
+        ...sampleEffects[0],
+        enabled: false,
+      },
+    ]);
+  });
+
   it('emits update:effects when removing an effect', async () => {
     const component = await mountSuspended(ClipEffectsEditor, {
       props: { target: 'video', effects: sampleEffects },
