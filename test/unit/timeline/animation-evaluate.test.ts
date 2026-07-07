@@ -118,10 +118,14 @@ describe('evalTrackAt', () => {
 });
 
 describe('clampAnimatedValue', () => {
-  it('clamps opacity to [0,1] and scale to non-negative', () => {
+  it('clamps opacity to [0,1] and takes scale magnitude', () => {
     expect(clampAnimatedValue('opacity', 1.5)).toBe(1);
     expect(clampAnimatedValue('opacity', -0.2)).toBe(0);
-    expect(clampAnimatedValue('transform.scale.x', -3)).toBe(0);
+    // Scale takes the magnitude (abs) rather than collapsing to zero, matching
+    // the static transform path and the native evaluator (reflection is a
+    // separate flip flag).
+    expect(clampAnimatedValue('transform.scale.x', -3)).toBe(3);
+    expect(clampAnimatedValue('transform.scale.y', -0.5)).toBe(0.5);
   });
 
   it('passes finite position/rotation through unbounded', () => {

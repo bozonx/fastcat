@@ -8,6 +8,10 @@ export interface ScheduleGainCurveParams {
   startAtS: number;
   endAtS: number;
   getGainAtClipTime: (clipTimeS: number) => number;
+  // Curve sample count. Defaults to 64 — enough for the short fade regions this
+  // was written for. Full-clip volume/pan keyframe curves pass a higher,
+  // duration-scaled count so mid-clip automation isn't blurred to ~1s steps.
+  steps?: number;
 }
 
 export interface StopNodeCollectionOptions {
@@ -29,7 +33,7 @@ export function scheduleGainCurve(params: ScheduleGainCurveParams) {
     return;
   }
 
-  const steps = 64;
+  const steps = Math.max(2, Math.min(2048, Math.round(params.steps ?? 64)));
   const values = new Float32Array(steps);
   for (let i = 0; i < steps; i += 1) {
     const progress = steps <= 1 ? 1 : i / (steps - 1);

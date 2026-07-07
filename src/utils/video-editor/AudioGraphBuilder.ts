@@ -15,6 +15,10 @@ export interface BuildClipAudioGraphParams {
 
 export interface BuildClipAudioGraphResult {
   destroy: () => Promise<void>;
+  // The per-clip stereo panner, or null when the environment lacks
+  // StereoPannerNode. Exposed so callers can schedule an `audio.pan` keyframe
+  // curve on `panner.pan`; when unanimated it keeps the static balance set here.
+  panner: StereoPannerNode | null;
 }
 
 export class AudioGraphBuilder {
@@ -79,6 +83,7 @@ export class AudioGraphBuilder {
     }
 
     return {
+      panner,
       destroy: async () => {
         await destroy();
         if (panner) {

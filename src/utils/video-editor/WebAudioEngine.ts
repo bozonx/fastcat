@@ -14,7 +14,11 @@ import { scheduleGainCurve, stopNodeCollection } from '~/utils/video-editor/audi
 import {
   buildClipPlaybackWindow,
   getSourceTimeForClipLocal,
+  hasPanAnimation,
+  hasVolumeAnimation,
   isReversedClip,
+  resolveAnimatedBaseGain,
+  resolveAnimatedPan,
 } from '~/utils/video-editor/audio-playback-window';
 
 import type {
@@ -36,6 +40,14 @@ const CHUNK_EDGE_FADE_S = 0.005;
 // Equal-power seam curves, computed once and reused for every chunk boundary.
 const EQUAL_POWER_FADE_IN_CURVE = equalPowerCurve('in');
 const EQUAL_POWER_FADE_OUT_CURVE = equalPowerCurve('out');
+
+// Sample density (per clip-local second) for full-clip volume/pan keyframe
+// curves. ~32/s keeps keyframe automation smooth without over-scheduling; the
+// [2, 2048] clamp in scheduleGainCurve bounds the extremes.
+const AUTOMATION_CURVE_STEPS_PER_S = 32;
+function automationCurveSteps(spanClipS: number): number {
+  return Math.round(Math.max(0, spanClipS) * AUTOMATION_CURVE_STEPS_PER_S);
+}
 
 export interface ForwardSeamGainParams {
   t0: number;
@@ -141,7 +153,9 @@ export function applyClipGainEnvelope(params: ClipGainEnvelopeParams) {
       fadeOutS: window.fadeOutS,
       fadeInCurve: window.fadeInCurve,
       fadeOutCurve: window.fadeOutCurve,
-      baseGain: window.audioGain,
+      // Animated volume replaces the static gain as the pre-fade base; fades
+      // still multiply on top (mirrors the export mixer + native engine).
+      baseGain: resolveAnimatedBaseGain(window, tClipS),
       tClipS,
     });
 
@@ -155,6 +169,23 @@ export function applyClipGainEnvelope(params: ClipGainEnvelopeParams) {
 
   gainParam.cancelScheduledValues?.(ctxCurrentTime);
   gainParam.setValueAtTime?.(gainAtClipTime(t0), startAtS);
+
+  // A keyframed volume makes the gain vary across the whole clip, not just in
+  // the fade regions — schedule one continuous curve over the played span so
+  // the mid-clip automation is heard (the fade branches below only cover the
+  // edges and would otherwise hold a constant mid value).
+  if (hasVolumeAnimation(window)) {
+    scheduleGainCurve({
+      gainParam,
+      startClipS: t0,
+      endClipS: t1,
+      startAtS,
+      endAtS: clipLocalToCtxS(t1),
+      getGainAtClipTime: gainAtClipTime,
+      steps: automationCurveSteps(t1 - t0),
+    });
+    return;
+  }
 
   if (window.fadeInS > 0 && t0 < window.fadeInS && t1 > 0) {
     const rampEndClipS = Math.min(window.fadeInS, t1);
@@ -182,6 +213,44 @@ export function applyClipGainEnvelope(params: ClipGainEnvelopeParams) {
       endAtS: Math.max(rampStartAtS, startAtS + (t1 - window.currentClipLocalS) / globalSpeed),
       getGainAtClipTime: gainAtClipTime,
     });
+  }
+}
+
+/**
+ * Schedule an `audio.pan` keyframe curve onto a clip's stereo panner across the
+ * played span. No-op when the clip has no pan animation (the static balance set
+ * by the graph builder stands) or the environment lacks a panner. Sampled at the
+ * source-relative time, matching the export mixer + native engine.
+ */
+export function applyClipPanEnvelope(params: {
+  window: ClipPlaybackWindow;
+  panner: StereoPannerNode | null;
+  startAtS: number;
+  ctxCurrentTime: number;
+}) {
+  const { window, panner, startAtS, ctxCurrentTime } = params;
+  if (!panner || !hasPanAnimation(window)) return;
+
+  const globalSpeed = Math.max(1e-9, window.globalSpeed);
+  const t0 = window.currentClipLocalS;
+  const t1 = window.currentClipLocalS + window.remainingInClipS;
+  const panParam: AudioParam = panner.pan;
+
+  try {
+    panParam.cancelScheduledValues?.(ctxCurrentTime);
+    panParam.setValueAtTime?.(resolveAnimatedPan(window, t0), startAtS);
+    scheduleGainCurve({
+      gainParam: panParam,
+      startClipS: t0,
+      endClipS: t1,
+      startAtS,
+      endAtS: startAtS + (t1 - t0) / globalSpeed,
+      getGainAtClipTime: (tClipS) => resolveAnimatedPan(window, tClipS),
+      steps: automationCurveSteps(t1 - t0),
+    });
+  } catch {
+    // A rejected automation must not break playback — the panner keeps the
+    // static balance already set on it.
   }
 }
 
@@ -499,7 +568,7 @@ export class WebAudioEngine implements IAudioEngine {
     const clipInputNode = this.ctx.createGain();
     const clipGain = this.ctx.createGain();
 
-    const { destroy: destroyEffects } = await this.graphBuilder.buildClipGraph({
+    const { destroy: destroyEffects, panner } = await this.graphBuilder.buildClipGraph({
       audioContext: this.ctx,
       sourceNode: clipInputNode,
       audioBalance: window.audioBalance,
@@ -515,6 +584,13 @@ export class WebAudioEngine implements IAudioEngine {
     applyClipGainEnvelope({
       window,
       clipGain,
+      startAtS,
+      ctxCurrentTime: this.ctx.currentTime,
+    });
+
+    applyClipPanEnvelope({
+      window,
+      panner,
       startAtS,
       ctxCurrentTime: this.ctx.currentTime,
     });
@@ -1072,6 +1148,12 @@ export class WebAudioEngine implements IAudioEngine {
         analyserNodes: this.levelMeter.analyserNodes,
       });
       destroyEffects = graph.destroy;
+      applyClipPanEnvelope({
+        window,
+        panner: graph.panner,
+        startAtS: playStartS,
+        ctxCurrentTime: ctx.currentTime,
+      });
     } catch (err) {
       logger.error('Failed to build clip audio graph', err);
       try {

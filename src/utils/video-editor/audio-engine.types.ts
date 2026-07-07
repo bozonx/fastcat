@@ -19,6 +19,10 @@ export interface ClipPlaybackWindow {
   audioBalance: number;
   effectiveSpeed: number;
   globalSpeed: number;
+  // Keyframe tracks carried through so the gain/pan envelopes can honour
+  // `audio.volume` / `audio.pan` animation in realtime playback (matching the
+  // export mixer + native engine). Undefined when the clip has no keyframes.
+  animations?: ClipAnimations;
 }
 
 export interface AudioEngineClip {

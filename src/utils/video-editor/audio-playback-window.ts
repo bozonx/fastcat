@@ -3,6 +3,7 @@ import {
   normalizeGain,
   resolveEffectiveFadeDurationsSeconds,
 } from '~/utils/audio/envelope';
+import { evalTrackAt } from '~/timeline/animation/evaluate';
 
 import type { AudioEngineClip, ClipPlaybackWindow } from '~/utils/video-editor/audio-engine.types';
 
@@ -25,6 +26,42 @@ export function isReversedClip(clip: AudioEngineClip): boolean {
 
 export function getSourceTimeForClipLocal(window: ClipPlaybackWindow, clipLocalS: number): number {
   return window.effectiveSourceStartS + clipLocalS * window.clipSpeed;
+}
+
+/** True when the window carries an `audio.volume` keyframe track. */
+export function hasVolumeAnimation(window: ClipPlaybackWindow): boolean {
+  return !!window.animations?.['audio.volume']?.keyframes.length;
+}
+
+/** True when the window carries an `audio.pan` keyframe track. */
+export function hasPanAnimation(window: ClipPlaybackWindow): boolean {
+  return !!window.animations?.['audio.pan']?.keyframes.length;
+}
+
+/**
+ * Base clip gain at a clip-local time, honouring an `audio.volume` keyframe
+ * track (sampled at the source-relative time, same as the export mixer +
+ * native engine). Falls back to the clip's static gain when unanimated. This is
+ * the pre-fade base — {@link getGainAtClipTime} applies fades on top.
+ */
+export function resolveAnimatedBaseGain(window: ClipPlaybackWindow, clipLocalS: number): number {
+  const track = window.animations?.['audio.volume'];
+  if (!track?.keyframes.length) return window.audioGain;
+  const sourceUs = Math.round(getSourceTimeForClipLocal(window, clipLocalS) * 1_000_000);
+  const value = evalTrackAt(track, sourceUs);
+  return value === undefined ? window.audioGain : Math.max(0, Math.min(10, value));
+}
+
+/**
+ * Balance (pan) at a clip-local time, honouring an `audio.pan` keyframe track.
+ * Falls back to the clip's static balance when unanimated.
+ */
+export function resolveAnimatedPan(window: ClipPlaybackWindow, clipLocalS: number): number {
+  const track = window.animations?.['audio.pan'];
+  if (!track?.keyframes.length) return window.audioBalance;
+  const sourceUs = Math.round(getSourceTimeForClipLocal(window, clipLocalS) * 1_000_000);
+  const value = evalTrackAt(track, sourceUs);
+  return value === undefined ? window.audioBalance : Math.max(-1, Math.min(1, value));
 }
 
 export function buildClipPlaybackWindow(
@@ -109,5 +146,6 @@ export function buildClipPlaybackWindow(
     audioBalance,
     effectiveSpeed,
     globalSpeed: speed,
+    animations: clip.animations,
   };
 }

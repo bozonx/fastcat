@@ -91,17 +91,19 @@ export interface ResolveClipAnimationTimeUsParams {
 /**
  * Per-path hard clamp applied to every interpolated value before it reaches the
  * renderer. Mirrors the static-value expectations of each field: opacity is a
- * `[0, 1]` alpha multiplier and scale must stay non-negative (reflection is a
- * separate flip flag). Position/rotation are unbounded (any finite value).
+ * `[0, 1]` alpha multiplier. Scale takes the magnitude (`abs`) — reflection is a
+ * separate flip flag — matching both the static transform path and the native
+ * evaluator (`animation.rs`); a negative keyed scale must NOT collapse the clip
+ * to zero. Position/rotation are unbounded (any finite value).
  */
-const PARAM_CLAMP: Record<FixedAnimatableParamPath, { min: number; max: number }> = {
+const PARAM_CLAMP: Record<FixedAnimatableParamPath, { min: number; max: number; abs?: boolean }> = {
   opacity: { min: 0, max: 1 },
   'audio.volume': { min: 0, max: 10 },
   'audio.pan': { min: -1, max: 1 },
   'transform.position.x': { min: -Infinity, max: Infinity },
   'transform.position.y': { min: -Infinity, max: Infinity },
-  'transform.scale.x': { min: 0, max: Infinity },
-  'transform.scale.y': { min: 0, max: Infinity },
+  'transform.scale.x': { min: 0, max: Infinity, abs: true },
+  'transform.scale.y': { min: 0, max: Infinity, abs: true },
   'transform.rotationDeg': { min: -Infinity, max: Infinity },
   'transform.anchor.x': { min: -10, max: 10 },
   'transform.anchor.y': { min: -10, max: 10 },
@@ -123,7 +125,8 @@ export function clampAnimatedValue(path: AnimatableParamPath, value: number): nu
     return clampFinite(value, 0);
   }
   const range = PARAM_CLAMP[path];
-  return clamp(clampFinite(value, range.min === -Infinity ? 0 : range.min), range.min, range.max);
+  const finite = clampFinite(value, range.min === -Infinity ? 0 : range.min);
+  return clamp(range.abs ? Math.abs(finite) : finite, range.min, range.max);
 }
 
 /** Smooth ease-in-out (smoothstep) on a normalized `[0, 1]` fraction. */

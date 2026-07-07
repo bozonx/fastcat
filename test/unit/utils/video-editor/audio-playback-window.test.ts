@@ -3,9 +3,13 @@ import { describe, expect, it } from 'vitest';
 import {
   buildClipPlaybackWindow,
   getSourceTimeForClipLocal,
+  hasPanAnimation,
+  hasVolumeAnimation,
+  resolveAnimatedBaseGain,
+  resolveAnimatedPan,
 } from '~/utils/video-editor/audio-playback-window';
 
-import type { AudioEngineClip } from '~/utils/video-editor/audio-engine.types';
+import type { AudioEngineClip, ClipPlaybackWindow } from '~/utils/video-editor/audio-engine.types';
 
 function createClip(overrides: Partial<AudioEngineClip> = {}): AudioEngineClip {
   return {
@@ -59,5 +63,98 @@ describe('audio playback window', () => {
     expect(window?.effectiveSourceStartS).toBeCloseTo(4);
     expect(window?.remainingInClipS).toBeCloseTo(2.5);
     expect(window?.effectiveSourceEndS).toBeCloseTo(9.5);
+  });
+
+  it('carries keyframe tracks onto the window', () => {
+    const window = buildClipPlaybackWindow({
+      clip: createClip({
+        animations: {
+          'audio.volume': {
+            keyframes: [
+              { tUs: 5_000_000, value: 1, easing: 'linear' },
+              { tUs: 7_000_000, value: 0, easing: 'linear' },
+            ],
+          },
+        },
+      }),
+      currentTimeS: 1,
+      speed: 1,
+      startAtS: 0,
+      adjacentClips: { previousClip: null, nextClip: null },
+    });
+    expect(window).not.toBeNull();
+    expect(hasVolumeAnimation(window!)).toBe(true);
+    expect(hasPanAnimation(window!)).toBe(false);
+  });
+});
+
+function windowWith(overrides: Partial<ClipPlaybackWindow>): ClipPlaybackWindow {
+  return {
+    currentTimeS: 0,
+    startAtS: 0,
+    currentClipLocalS: 0,
+    remainingInClipS: 2,
+    effectiveStartS: 0,
+    effectiveSourceStartS: 5, // source starts at 5s
+    effectiveSourceEndS: 7,
+    clipDurationS: 2,
+    clipSpeed: 1,
+    fadeInS: 0,
+    fadeOutS: 0,
+    fadeInCurve: 'linear',
+    fadeOutCurve: 'linear',
+    audioGain: 0.5,
+    audioBalance: -0.25,
+    effectiveSpeed: 1,
+    globalSpeed: 1,
+    ...overrides,
+  };
+}
+
+describe('resolveAnimatedBaseGain', () => {
+  it('falls back to the static gain when unanimated', () => {
+    const window = windowWith({});
+    expect(resolveAnimatedBaseGain(window, 0)).toBe(0.5);
+    expect(resolveAnimatedBaseGain(window, 1)).toBe(0.5);
+  });
+
+  it('samples the volume track at the source-relative time', () => {
+    // Source runs 5s..7s; keyframes 1 -> 0 over that span. Clip-local 0 -> source 5s
+    // -> value 1; clip-local 1 -> source 6s -> value 0.5; clip-local 2 -> 0.
+    const window = windowWith({
+      animations: {
+        'audio.volume': {
+          keyframes: [
+            { tUs: 5_000_000, value: 1, easing: 'linear' },
+            { tUs: 7_000_000, value: 0, easing: 'linear' },
+          ],
+        },
+      },
+    });
+    expect(resolveAnimatedBaseGain(window, 0)).toBeCloseTo(1);
+    expect(resolveAnimatedBaseGain(window, 1)).toBeCloseTo(0.5);
+    expect(resolveAnimatedBaseGain(window, 2)).toBeCloseTo(0);
+  });
+});
+
+describe('resolveAnimatedPan', () => {
+  it('falls back to the static balance when unanimated', () => {
+    expect(resolveAnimatedPan(windowWith({}), 1)).toBe(-0.25);
+  });
+
+  it('samples and clamps the pan track', () => {
+    const window = windowWith({
+      animations: {
+        'audio.pan': {
+          keyframes: [
+            { tUs: 5_000_000, value: -1, easing: 'linear' },
+            { tUs: 7_000_000, value: 1, easing: 'linear' },
+          ],
+        },
+      },
+    });
+    expect(resolveAnimatedPan(window, 0)).toBeCloseTo(-1);
+    expect(resolveAnimatedPan(window, 1)).toBeCloseTo(0);
+    expect(resolveAnimatedPan(window, 2)).toBeCloseTo(1);
   });
 });

@@ -3,6 +3,7 @@ import { describe, it, expect, vi } from 'vitest';
 import {
   applyForwardSeamGain,
   applyClipGainEnvelope,
+  applyClipPanEnvelope,
   deepEqualEffects,
 } from '~/utils/video-editor/WebAudioEngine';
 import type { ClipPlaybackWindow } from '~/utils/video-editor/audio-engine.types';
@@ -338,6 +339,137 @@ describe('applyClipGainEnvelope', () => {
     // The curve duration should be 0.5s (1.0 / 2)
     const fadeInCurve = curveCalls[0];
     expect(fadeInCurve!.args[2]).toBeCloseTo(0.5, 5);
+  });
+
+  it('schedules a full-span volume curve when the clip has an audio.volume track', () => {
+    const { node, calls } = createMockGainNode();
+
+    applyClipGainEnvelope({
+      window: makeWindow({
+        currentClipLocalS: 0,
+        remainingInClipS: 2,
+        clipDurationS: 2,
+        fadeInS: 0,
+        fadeOutS: 0,
+        audioGain: 1,
+        effectiveSourceStartS: 0,
+        animations: {
+          'audio.volume': {
+            keyframes: [
+              { tUs: 0, value: 1, easing: 'linear' },
+              { tUs: 2_000_000, value: 0, easing: 'linear' },
+            ],
+          },
+        },
+      }),
+      clipGain: node,
+      startAtS: 10,
+      ctxCurrentTime: 9,
+    });
+
+    // One continuous curve across the whole played span [10, 12].
+    const curveCalls = calls.filter((c) => c.method === 'setValueCurveAtTime');
+    expect(curveCalls.length).toBe(1);
+    const [curve, startT, dur] = curveCalls[0]!.args as [number[], number, number];
+    expect(startT).toBe(10);
+    expect(dur).toBeCloseTo(2, 5);
+    // Ramps from full gain down to silence following the keyframes.
+    expect(curve[0]).toBeCloseTo(1, 3);
+    expect(curve[curve.length - 1]).toBeCloseTo(0, 3);
+    expect(curve[Math.floor(curve.length / 2)]).toBeCloseTo(0.5, 1);
+  });
+});
+
+function createMockPanner() {
+  const calls: Array<{ method: string; args: unknown[] }> = [];
+  const pan = {
+    value: 0,
+    setValueAtTime: vi.fn((v: number, t: number) => {
+      calls.push({ method: 'setValueAtTime', args: [v, t] });
+      return pan;
+    }),
+    linearRampToValueAtTime: vi.fn(),
+    setValueCurveAtTime: vi.fn((curve: Float32Array, t: number, dur: number) => {
+      calls.push({ method: 'setValueCurveAtTime', args: [Array.from(curve), t, dur] });
+      return pan;
+    }),
+    cancelScheduledValues: vi.fn((t: number) => {
+      calls.push({ method: 'cancelScheduledValues', args: [t] });
+      return pan;
+    }),
+  };
+  const panner = { pan };
+  return { panner: panner as unknown as StereoPannerNode, calls };
+}
+
+describe('applyClipPanEnvelope', () => {
+  function makeWindow(overrides: Partial<ClipPlaybackWindow> = {}): ClipPlaybackWindow {
+    return {
+      currentTimeS: 0,
+      startAtS: 0,
+      currentClipLocalS: 0,
+      remainingInClipS: 2,
+      effectiveStartS: 0,
+      effectiveSourceStartS: 0,
+      effectiveSourceEndS: 2,
+      clipDurationS: 2,
+      clipSpeed: 1,
+      fadeInS: 0,
+      fadeOutS: 0,
+      fadeInCurve: 'linear' as any,
+      fadeOutCurve: 'linear' as any,
+      audioGain: 1,
+      audioBalance: 0,
+      effectiveSpeed: 1,
+      globalSpeed: 1,
+      ...overrides,
+    };
+  }
+
+  it('is a no-op when there is no pan animation', () => {
+    const { panner, calls } = createMockPanner();
+    applyClipPanEnvelope({ window: makeWindow(), panner, startAtS: 10, ctxCurrentTime: 9 });
+    expect(calls.length).toBe(0);
+  });
+
+  it('is a no-op when the panner is null', () => {
+    // Must not throw.
+    applyClipPanEnvelope({
+      window: makeWindow({
+        animations: { 'audio.pan': { keyframes: [{ tUs: 0, value: 1, easing: 'linear' }] } },
+      }),
+      panner: null,
+      startAtS: 10,
+      ctxCurrentTime: 9,
+    });
+  });
+
+  it('schedules a pan curve from the audio.pan track', () => {
+    const { panner, calls } = createMockPanner();
+    applyClipPanEnvelope({
+      window: makeWindow({
+        animations: {
+          'audio.pan': {
+            keyframes: [
+              { tUs: 0, value: -1, easing: 'linear' },
+              { tUs: 2_000_000, value: 1, easing: 'linear' },
+            ],
+          },
+        },
+      }),
+      panner,
+      startAtS: 10,
+      ctxCurrentTime: 9,
+    });
+
+    const curveCalls = calls.filter((c) => c.method === 'setValueCurveAtTime');
+    expect(curveCalls.length).toBe(1);
+    const [curve, startT, dur] = curveCalls[0]!.args as [number[], number, number];
+    expect(startT).toBe(10);
+    expect(dur).toBeCloseTo(2, 5);
+    expect(curve[0]).toBeCloseTo(-1, 3);
+    expect(curve[curve.length - 1]).toBeCloseTo(1, 3);
+    expect(curve[Math.floor(curve.length / 2)]).toBeCloseTo(0, 1);
   });
 });
 
