@@ -168,19 +168,7 @@ export function useMonitorGestures(input: {
     input.projectStore.activeMonitor.panY = 0;
   }
 
-  function onViewportAuxClick(event: MouseEvent) {
-    if (event.button !== 1) return;
-
-    if (middlePointerDown.value?.moved) {
-      middlePointerDown.value = null;
-      return;
-    }
-
-    middlePointerDown.value = null;
-
-    const settings = workspaceStore.userSettings.mouse.monitor;
-    const action = settings.middleClick;
-
+  function applyViewportAction(action: string) {
     if (action === 'fit') {
       fitMonitor();
     } else if (action === 'center') {
@@ -192,19 +180,33 @@ export function useMonitorGestures(input: {
     }
   }
 
-  function onViewportDoubleClick() {
-    const settings = workspaceStore.userSettings.mouse.monitor;
-    const action = settings.doubleClick;
+  function onViewportAuxClick(event: MouseEvent) {
+    if (event.button !== 1) return;
+    event.preventDefault();
 
-    if (action === 'fit') {
-      fitMonitor();
-    } else if (action === 'center') {
-      centerMonitor();
-    } else if (action === 'reset_zoom') {
-      resetZoom();
-    } else if (action === 'reset_zoom_center') {
-      resetView();
+    if (middlePointerDown.value?.moved) {
+      middlePointerDown.value = null;
+      return;
     }
+
+    middlePointerDown.value = null;
+
+    const settings = workspaceStore.userSettings.mouse.monitor;
+    const action = event.detail >= 2 ? settings.middleDoubleClick : settings.middleClick;
+    applyViewportAction(action);
+  }
+
+  function onViewportDoubleClick(event?: MouseEvent): 'fullscreen' | void {
+    if (event && event.button !== 0) return;
+
+    const settings = workspaceStore.userSettings.mouse.monitor;
+    const action = settings.leftDoubleClick;
+
+    if (action === 'fullscreen') {
+      return 'fullscreen';
+    }
+
+    applyViewportAction(action);
   }
 
   function onViewportContextMenu(event: MouseEvent) {

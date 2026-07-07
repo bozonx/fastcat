@@ -194,6 +194,7 @@ export function useImagePanZoom(containerRef: Ref<HTMLElement | null>) {
 
   function onAuxClick(e: MouseEvent) {
     if (e.button !== 1) return;
+    e.preventDefault();
 
     if (middlePointerDown.value?.moved) {
       middlePointerDown.value = null;
@@ -203,7 +204,7 @@ export function useImagePanZoom(containerRef: Ref<HTMLElement | null>) {
     middlePointerDown.value = null;
 
     const settings = workspaceStore.userSettings.mouse.monitor;
-    const action = settings.middleClick;
+    const action = e.detail >= 2 ? settings.middleDoubleClick : settings.middleClick;
 
     if (action === 'fit') {
       fitToContainer();

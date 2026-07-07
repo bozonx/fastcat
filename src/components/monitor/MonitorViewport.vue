@@ -36,6 +36,10 @@ const props = withDefaults(
   },
 );
 
+const emit = defineEmits<{
+  (e: 'toggle-fullscreen'): void;
+}>();
+
 const projectStore = useProjectStore();
 const timelineStore = useTimelineStore();
 const { showTimecode, showTransparencyGrid, showMarkerTexts } = useMonitorSettings();
@@ -108,6 +112,12 @@ const selectionRangeDurationText = computed(() => {
   return formatTimecode(durationUs, fps);
 });
 
+function handleViewportDoubleClick(event: MouseEvent) {
+  if (onViewportDoubleClick(event) === 'fullscreen') {
+    emit('toggle-fullscreen');
+  }
+}
+
 const markersBottomClass = computed(() => {
   if (props.effectiveFullscreen) {
     return hasActiveSelectionRange.value ? 'bottom-48 right-8' : 'bottom-32 right-8';
@@ -137,7 +147,7 @@ defineExpose({
     @pointerup="stopPan"
     @pointercancel="stopPan"
     @auxclick="onViewportAuxClick"
-    @dblclick="onViewportDoubleClick"
+    @dblclick="handleViewportDoubleClick"
   >
     <div class="absolute inset-0">
       <!-- Transformed workspace: pan + zoom applied here -->

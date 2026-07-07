@@ -35,6 +35,8 @@ describe('DEFAULT_USER_SETTINGS', () => {
   it('has mouse defaults', () => {
     expect(DEFAULT_USER_SETTINGS.mouse.timeline.click).toBe('select_item');
     expect(DEFAULT_USER_SETTINGS.mouse.ruler.click).toBe('seek');
+    expect(DEFAULT_USER_SETTINGS.mouse.monitor.leftDoubleClick).toBe('fullscreen');
+    expect(DEFAULT_USER_SETTINGS.mouse.monitor.middleDoubleClick).toBe('fit');
   });
 
   it('has experimental features disabled by default', () => {

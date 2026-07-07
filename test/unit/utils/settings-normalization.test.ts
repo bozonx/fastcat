@@ -243,6 +243,8 @@ describe('settings normalization', () => {
           wheel: 'scroll_vertical',
           wheelShift: 'invalid_action',
           middleClick: 'none',
+          leftDoubleClick: 'reset_zoom_center',
+          middleDoubleClick: 'center',
         },
       },
     });
@@ -268,6 +270,21 @@ describe('settings normalization', () => {
     expect(normalized.mouse.monitor.wheel).toBe('scroll_vertical');
     expect(normalized.mouse.monitor.wheelShift).toBe('scroll_horizontal');
     expect(normalized.mouse.monitor.middleClick).toBe('none');
+    expect(normalized.mouse.monitor.leftDoubleClick).toBe('reset_zoom_center');
+    expect(normalized.mouse.monitor.middleDoubleClick).toBe('center');
+  });
+
+  it('migrates legacy monitor double click to left double click', () => {
+    const normalized = normalizeUserSettings({
+      mouse: {
+        monitor: {
+          doubleClick: 'fit',
+        },
+      },
+    });
+
+    expect(normalized.mouse.monitor.leftDoubleClick).toBe('fit');
+    expect(normalized.mouse.monitor.middleDoubleClick).toBe('fit');
   });
 
   it('normalizes playhead click snapping settings', () => {

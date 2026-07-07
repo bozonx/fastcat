@@ -9,6 +9,7 @@ import UiVolumeControl from '~/components/ui/editor/UiVolumeControl.vue';
 import UiTooltip from '~/components/ui/UiTooltip.vue';
 import { useUiStore } from '~/stores/ui.store';
 import { useFocusStore, type PanelFocusId } from '~/stores/focus.store';
+import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useHotkeyLabel } from '~/composables/useHotkeyLabel';
 
 interface MediaPlaybackTransferState {
@@ -21,6 +22,7 @@ interface MediaPlaybackTransferState {
 const { t } = useI18n();
 const uiStore = useUiStore();
 const focusStore = useFocusStore();
+const workspaceStore = useWorkspaceStore();
 const { volume, isMuted } = useMediaPlayerVolume();
 const { getHotkeyTitle } = useHotkeyLabel();
 
@@ -285,12 +287,24 @@ function resetIdle() {
   }, 2000);
 }
 
-function handleDblClick() {
-  if (props.isModal) {
-    emit('close-modal');
-  } else {
-    emit('open-modal');
+function toggleModalFullscreen() {
+  if (props.isModal) emit('close-modal');
+  else emit('open-modal');
+}
+
+function applyViewerAction(action: string) {
+  if (action === 'fullscreen') {
+    toggleModalFullscreen();
+  } else if (action === 'fit') {
+    fitToContainer();
+  } else if (action === 'reset_zoom' || action === 'reset_zoom_center') {
+    resetZoom();
   }
+}
+
+function handleDblClick(e: MouseEvent) {
+  if (e.button !== 0) return;
+  applyViewerAction(workspaceStore.userSettings.mouse.monitor.leftDoubleClick);
 }
 
 function onGlobalMouseMove() {
@@ -475,7 +489,7 @@ onUnmounted(() => {
               variant="ghost"
               color="neutral"
               :icon="isModal ? 'i-heroicons-arrows-pointing-in' : 'i-heroicons-arrows-pointing-out'"
-              @click="isModal ? emit('close-modal') : emit('open-modal')"
+              @click="toggleModalFullscreen"
             />
           </UiTooltip>
         </div>

@@ -66,6 +66,7 @@ describe('MonitorViewport', () => {
     mockSelectionRange.value = null;
     mockFps.value = 30;
     mockTimelineFormat.value = null;
+    vi.clearAllMocks();
   });
 
   it('renders slots correctly', () => {
@@ -160,6 +161,20 @@ describe('MonitorViewport', () => {
 
     await wrapper.trigger('dblclick');
     expect(mockGestures.onViewportDoubleClick).toHaveBeenCalled();
+  });
+
+  it('emits toggle-fullscreen when double click action requests fullscreen', async () => {
+    mockGestures.onViewportDoubleClick.mockReturnValueOnce('fullscreen');
+    const wrapper = mount(MonitorViewport, {
+      props: {
+        renderWidth: 100,
+        renderHeight: 100,
+      },
+    });
+
+    await wrapper.trigger('dblclick');
+
+    expect(wrapper.emitted('toggle-fullscreen')).toHaveLength(1);
   });
 
   it('applies checkerboard-bg class when showTransparencyGrid is true', () => {

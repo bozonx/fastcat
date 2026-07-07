@@ -3,6 +3,7 @@ import { DEFAULT_USER_SETTINGS, type FastCatUserSettings } from '../defaults';
 import {
   CLICK_ACTIONS,
   MONITOR_CLICK_ACTIONS,
+  MONITOR_LEFT_DOUBLE_CLICK_ACTIONS,
   MONITOR_DRAG_ACTIONS,
   MONITOR_WHEEL_ACTIONS,
   MOUSE_HORIZONTAL_MOVEMENT_ACTIONS,
@@ -302,6 +303,7 @@ export function normalizeMouseSettings(raw: unknown): FastCatUserSettings['mouse
   const thWheelEnum = z.enum(TRACK_HEADERS_WHEEL_ACTIONS);
   const mWheelEnum = z.enum(MONITOR_WHEEL_ACTIONS);
   const mClickEnum = z.enum(MONITOR_CLICK_ACTIONS);
+  const mLeftDoubleClickEnum = z.enum(MONITOR_LEFT_DOUBLE_CLICK_ACTIONS);
   const mDragEnum = z.enum(MONITOR_DRAG_ACTIONS);
 
   const rulerWheelFallbacks = {
@@ -381,8 +383,19 @@ export function normalizeMouseSettings(raw: unknown): FastCatUserSettings['mouse
             DEFAULT_USER_SETTINGS.mouse.monitor.wheelSecondaryShift,
           ),
           middleClick: mClickEnum.catch(DEFAULT_USER_SETTINGS.mouse.monitor.middleClick),
-          doubleClick: mClickEnum.catch(DEFAULT_USER_SETTINGS.mouse.monitor.doubleClick),
+          doubleClick: mClickEnum.optional().catch(undefined),
+          leftDoubleClick: mLeftDoubleClickEnum.optional().catch(undefined),
+          middleDoubleClick: mClickEnum.catch(
+            DEFAULT_USER_SETTINGS.mouse.monitor.middleDoubleClick,
+          ),
           middleDrag: mDragEnum.catch(DEFAULT_USER_SETTINGS.mouse.monitor.middleDrag),
+        })
+        .transform((monitor) => {
+          const { doubleClick, ...normalized } = monitor;
+          return {
+            ...normalized,
+            leftDoubleClick: monitor.leftDoubleClick ?? doubleClick ?? 'fullscreen',
+          };
         })
         .catch(DEFAULT_USER_SETTINGS.mouse.monitor),
     })

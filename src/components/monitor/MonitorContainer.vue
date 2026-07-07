@@ -312,6 +312,15 @@ function onMonitorKeyDown(event: KeyboardEvent) {
   }
 }
 
+function toggleBrowserFullscreen() {
+  if (effectiveFullscreen.value) {
+    void exitBrowserFullscreen();
+    return;
+  }
+
+  void enterBrowserFullscreen();
+}
+
 const isIdle = ref(false);
 let idleTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -500,6 +509,7 @@ watch(viewportRef, (vp) => {
               :timecode-offset-class="bottomOverlayOffsetClass"
               :markers-offset-class="bottomOverlayOffsetClass"
               @pointerdown.capture="closeMonitorMenus"
+              @toggle-fullscreen="toggleBrowserFullscreen"
             >
               <template #canvas>
                 <div ref="containerEl" class="absolute inset-0" style="pointer-events: none" />

@@ -6,6 +6,7 @@ import type {
   TimelineClickAction,
   MonitorWheelAction,
   MonitorClickAction,
+  MonitorLeftDoubleClickAction,
   MonitorDragAction,
   TrackHeadersWheelAction,
   RulerDragAction,
@@ -194,7 +195,8 @@ export interface FastCatUserSettings {
       wheelSecondary: MonitorWheelAction;
       wheelSecondaryShift: MonitorWheelAction;
       middleClick: MonitorClickAction;
-      doubleClick: MonitorClickAction;
+      leftDoubleClick: MonitorLeftDoubleClickAction;
+      middleDoubleClick: MonitorClickAction;
       middleDrag: MonitorDragAction;
     };
   };
@@ -367,7 +369,8 @@ export const DEFAULT_USER_SETTINGS: FastCatUserSettings = {
       wheelSecondary: 'scroll_horizontal',
       wheelSecondaryShift: 'scroll_vertical',
       middleClick: 'center',
-      doubleClick: 'fit',
+      leftDoubleClick: 'fullscreen',
+      middleDoubleClick: 'fit',
       middleDrag: 'pan',
     },
   },

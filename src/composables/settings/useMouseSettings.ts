@@ -4,6 +4,7 @@ import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
 import {
   MONITOR_CLICK_ACTIONS,
   MONITOR_DRAG_ACTIONS,
+  MONITOR_LEFT_DOUBLE_CLICK_ACTIONS,
   MONITOR_WHEEL_ACTIONS,
   MOUSE_HORIZONTAL_MOVEMENT_ACTIONS,
   RULER_WHEEL_ACTIONS,
@@ -155,6 +156,16 @@ export function useMouseSettings() {
       reset_zoom: t('videoEditor.settings.mouseActionResetZoom'),
       reset_zoom_center: t('videoEditor.settings.mouseActionResetZoomCenter'),
       center: t('videoEditor.settings.mouseActionCenter'),
+      none: t('videoEditor.settings.mouseActionNone'),
+    }),
+  );
+  const monitorLeftDoubleClickOptions = computed(() =>
+    formatOptions(MONITOR_LEFT_DOUBLE_CLICK_ACTIONS, {
+      fit: t('videoEditor.settings.mouseActionFit'),
+      reset_zoom: t('videoEditor.settings.mouseActionResetZoom'),
+      reset_zoom_center: t('videoEditor.settings.mouseActionResetZoomCenter'),
+      center: t('videoEditor.settings.mouseActionCenter'),
+      fullscreen: t('videoEditor.settings.mouseActionFullscreen'),
       none: t('videoEditor.settings.mouseActionNone'),
     }),
   );
@@ -415,8 +426,13 @@ export function useMouseSettings() {
               options: monitorMiddleClickOptions.value,
             },
             {
-              key: 'doubleClick',
-              label: t('videoEditor.settings.mouseMonitorDoubleClick'),
+              key: 'leftDoubleClick',
+              label: t('videoEditor.settings.mouseViewerLeftDoubleClick'),
+              options: monitorLeftDoubleClickOptions.value,
+            },
+            {
+              key: 'middleDoubleClick',
+              label: t('videoEditor.settings.mouseViewerMiddleDoubleClick'),
               options: monitorMiddleClickOptions.value,
             },
           ],

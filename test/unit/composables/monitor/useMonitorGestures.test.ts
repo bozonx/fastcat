@@ -53,8 +53,8 @@ describe('useMonitorGestures', () => {
     expect(projectStore.activeMonitor.zoom).toBe(1);
   });
 
-  it('handles double click based on settings', () => {
-    mockWorkspaceStore.userSettings.mouse.monitor.doubleClick = 'reset_zoom_center';
+  it('handles left double click based on shared viewer settings', () => {
+    mockWorkspaceStore.userSettings.mouse.monitor.leftDoubleClick = 'reset_zoom_center';
     const gestures = useMonitorGestures({
       projectStore,
       viewportEl,
@@ -64,6 +64,36 @@ describe('useMonitorGestures', () => {
 
     projectStore.activeMonitor.panX = 50;
     gestures.onViewportDoubleClick({ button: 0 } as MouseEvent);
+    expect(projectStore.activeMonitor.panX).toBe(0);
+  });
+
+  it('returns fullscreen for default left double click action', () => {
+    const gestures = useMonitorGestures({
+      projectStore,
+      viewportEl,
+      renderWidth: ref(1920),
+      renderHeight: ref(1080),
+    });
+
+    expect(gestures.onViewportDoubleClick({ button: 0 } as MouseEvent)).toBe('fullscreen');
+  });
+
+  it('uses middle double click action for aux double click', () => {
+    mockWorkspaceStore.userSettings.mouse.monitor.middleDoubleClick = 'reset_zoom_center';
+    const gestures = useMonitorGestures({
+      projectStore,
+      viewportEl,
+      renderWidth: ref(1920),
+      renderHeight: ref(1080),
+    });
+
+    projectStore.activeMonitor.panX = 50;
+    gestures.onViewportAuxClick({
+      button: 1,
+      detail: 2,
+      preventDefault: vi.fn(),
+    } as unknown as MouseEvent);
+
     expect(projectStore.activeMonitor.panX).toBe(0);
   });
 

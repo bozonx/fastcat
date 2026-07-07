@@ -67,4 +67,32 @@ describe('useImagePanZoom', () => {
 
     expect(panZoom.scale.value).toBeGreaterThan(initialScale);
   });
+
+  it('uses middle double click action for shared viewer fit', () => {
+    mockWorkspaceStore.userSettings.mouse.monitor.middleDoubleClick = 'fit';
+    const containerRef = ref<HTMLElement | null>(createContainer());
+    const panZoom = useImagePanZoom(containerRef);
+
+    panZoom.fitToContainer();
+    panZoom.onWheel({
+      deltaX: 0,
+      deltaY: -100,
+      clientX: 400,
+      clientY: 300,
+      preventDefault: vi.fn(),
+      ctrlKey: false,
+      shiftKey: false,
+    } as unknown as WheelEvent);
+    expect(panZoom.scale.value).toBeGreaterThan(1);
+
+    panZoom.onAuxClick({
+      button: 1,
+      detail: 2,
+      preventDefault: vi.fn(),
+    } as unknown as MouseEvent);
+
+    expect(panZoom.scale.value).toBe(1);
+    expect(panZoom.translateX.value).toBe(0);
+    expect(panZoom.translateY.value).toBe(0);
+  });
 });

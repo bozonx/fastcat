@@ -52,6 +52,8 @@ export const MONITOR_CLICK_ACTIONS = [
   'none',
 ] as const;
 
+export const MONITOR_LEFT_DOUBLE_CLICK_ACTIONS = ['fullscreen', ...MONITOR_CLICK_ACTIONS] as const;
+
 export const MONITOR_DRAG_ACTIONS = ['pan', 'none'] as const;
 
 export type ClickAction = (typeof CLICK_ACTIONS)[number];
@@ -91,6 +93,7 @@ export type MouseHorizontalMovementAction = (typeof MOUSE_HORIZONTAL_MOVEMENT_AC
 
 export type MonitorWheelAction = (typeof MONITOR_WHEEL_ACTIONS)[number];
 export type MonitorClickAction = (typeof MONITOR_CLICK_ACTIONS)[number];
+export type MonitorLeftDoubleClickAction = (typeof MONITOR_LEFT_DOUBLE_CLICK_ACTIONS)[number];
 export type MonitorDragAction = (typeof MONITOR_DRAG_ACTIONS)[number];
 export type TrackHeadersWheelAction = (typeof TRACK_HEADERS_WHEEL_ACTIONS)[number];
 
