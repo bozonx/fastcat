@@ -434,6 +434,7 @@ export function serializeTimelineToOtio(doc: TimelineDocument): string {
           docId: doc.id,
           timebase: { fps },
           format,
+          selectionRange: fastcatMeta?.selectionRange,
         },
         audio: {
           masterGain: fastcatMeta?.masterGain,
@@ -460,6 +461,7 @@ function parseDocumentMetadata(raw: unknown): {
   masterGain?: number;
   masterMuted?: boolean;
   masterEffects?: ClipEffect[];
+  selectionRange?: { startUs: number; endUs: number } | null;
   markers?: TimelineMarker[];
   version?: number;
 } {
@@ -479,6 +481,7 @@ function parseDocumentMetadata(raw: unknown): {
     masterGain: grouped.audio?.masterGain,
     masterMuted: grouped.audio?.masterMuted,
     masterEffects: grouped.audio?.masterEffects as ClipEffect[] | undefined,
+    selectionRange: grouped.document?.selectionRange ?? grouped.selectionRange,
     version: grouped.version,
   };
 }
@@ -702,6 +705,7 @@ export function parseTimelineFromOtio(
   const masterEffects = docMeta.masterEffects;
   const masterGain = docMeta.masterGain;
   const masterMuted = docMeta.masterMuted;
+  const selectionRange = docMeta.selectionRange;
 
   if (normalizedTracks.length === 0) {
     report.warn('no_tracks', 'No valid tracks found; creating default timeline.');
@@ -715,6 +719,7 @@ export function parseTimelineFromOtio(
         timebase: { fps: format.fps },
         format,
         markers,
+        selectionRange,
         masterEffects,
         masterGain,
         masterMuted,
@@ -739,6 +744,7 @@ export function parseTimelineFromOtio(
         timebase: { fps: format.fps },
         format,
         markers,
+        selectionRange,
         masterEffects,
         masterGain,
         masterMuted,

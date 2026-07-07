@@ -41,7 +41,6 @@ function createMockDeps() {
     markTimelineAsDirty: vi.fn(),
     selectTimelineItems: vi.fn(),
     selectGlobalTimelineItems: vi.fn(),
-    clearSelectionRange: vi.fn(),
     isReadOnly: ref(false),
   };
 }
@@ -132,12 +131,24 @@ describe('TimelineDispatcherModule', () => {
     expect(deps.requestTimelineSave).toHaveBeenCalledWith({ immediate: true });
   });
 
-  it('applyRestoredSnapshot clears selection range', () => {
+  it('applyRestoredSnapshot notifies dependents with the restored document before pruning', () => {
     const deps = createMockDeps();
-    const mod = createTimelineDispatcherModule(deps);
-    const snap = { id: 'snap', tracks: [] };
+    const calls: string[] = [];
+    const snap = {
+      id: 'snap',
+      tracks: [],
+      metadata: { fastcat: { selectionRange: { startUs: 1000, endUs: 2000 } } },
+    };
+    const mod = createTimelineDispatcherModule({
+      ...deps,
+      onDocumentRestored: vi.fn(() => calls.push('restored')),
+      pruneSelection: vi.fn(() => calls.push('pruned')),
+    });
+
     mod.applyRestoredSnapshot(snap as any);
-    expect(deps.clearSelectionRange).toHaveBeenCalled();
+
+    expect(deps.timelineDoc.value).toEqual(snap);
+    expect(calls).toEqual(['restored', 'pruned']);
   });
 
   it('applyTimeline is blocked when isReadOnly is true', () => {

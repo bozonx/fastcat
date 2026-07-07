@@ -74,17 +74,13 @@ vi.mock('~/components/properties/clip/ClipParametersPasteModal.vue', () => ({
   default: { name: 'ClipParametersPasteModal', template: '<div></div>' },
 }));
 vi.mock('~/components/effects/ClipEffectsEditor.vue', () => ({
-  default: { name: 'ClipEffectsEditor', props: ['target'], template: '<div></div>' },
-}));
-vi.mock('~/components/properties/clip/ClipEffectsSection.vue', () => ({
   default: {
-    name: 'ClipEffectsSection',
-    props: ['showAudioEffects', 'showVideoEffects'],
-    template:
-      '<div><div v-if="showVideoEffects !== false" data-testid="video-effects"></div><div v-if="showAudioEffects" data-testid="audio-effects"></div></div>',
+    name: 'ClipEffectsEditor',
+    props: ['target', 'effects', 'hasToggle', 'disabled'],
+    emits: ['update:effects', 'update:enabled'],
+    template: '<div :data-testid="`clip-effects-${target}`"></div>',
   },
 }));
-
 const mockTimelineStore = reactive({
   timelineDoc: {
     tracks: [{ id: 'track-1', kind: 'video', items: [] }],
@@ -250,6 +246,7 @@ describe('ClipProperties.vue', () => {
     mockTimelineStore.copySelectedClips = vi.fn(() => []);
     mockTimelineStore.cutSelectedClips = vi.fn(() => []);
     mockTimelineStore.selectTransition = vi.fn();
+    mockTimelineStore.timelineDoc.tracks = [{ id: 'track-1', kind: 'video', items: [] }];
   });
 
   const createClip = (overrides = {}) => ({
@@ -550,9 +547,9 @@ describe('ClipProperties.vue', () => {
     // Tabs should not be rendered for adjustment clips
     expect(wrapper.find('.tabs-stub').exists()).toBe(false);
 
-    // Effects section should be rendered
-    const effectsSection = wrapper.findComponent({ name: 'ClipEffectsSection' });
-    expect(effectsSection.exists()).toBe(true);
+    // Effects editor should be rendered
+    const effectsEditor = wrapper.findComponent({ name: 'ClipEffectsEditor' });
+    expect(effectsEditor.exists()).toBe(true);
 
     // Transitions section should be rendered (non-mobile)
     const transitionsSection = wrapper.findComponent({ name: 'ClipTransitionsSection' });
@@ -567,6 +564,89 @@ describe('ClipProperties.vue', () => {
     expect(infoSection.exists()).toBe(true);
   });
 
+  it('shows video effects for a clip with existing video effects even on a non-video track', async () => {
+    mockTimelineStore.timelineDoc.tracks = [{ id: 'track-1', kind: 'audio', items: [] }];
+    const clip = createClip({
+      effects: [{ id: 'effect-1', type: 'blur', enabled: true, target: 'video', radius: 10 }],
+    });
+    const wrapper = await mountComponent({ clip });
+
+    const videoTab = wrapper.find('[data-tab="video"]');
+    expect(videoTab.exists()).toBe(true);
+
+    await videoTab.trigger('click');
+    await nextTick();
+
+    const effectsEditor = wrapper.findComponent({ name: 'ClipEffectsEditor' });
+    expect(effectsEditor.exists()).toBe(true);
+    expect(effectsEditor.props('target')).toBe('video');
+    expect(effectsEditor.props('effects')).toEqual(clip.effects);
+  });
+
+  it('preserves video effect order when clip properties update the video effects stack', async () => {
+    const audioEffect = { id: 'audio-1', type: 'echo', enabled: true, target: 'audio' };
+    const clip = createClip({
+      effects: [{ id: 'video-1', type: 'brightness', enabled: true, target: 'video' }, audioEffect],
+    });
+    const wrapper = await mountComponent({ clip });
+
+    await wrapper.find('[data-tab="video"]').trigger('click');
+    await nextTick();
+
+    const nextVideoEffects = [
+      { id: 'video-1', type: 'brightness', enabled: true, target: 'video' },
+      { id: 'video-2', type: 'blur', enabled: true, target: 'video' },
+    ];
+    wrapper
+      .findAllComponents({ name: 'ClipEffectsEditor' })
+      .find((c) => c.props('target') === 'video')
+      ?.vm.$emit('update:effects', nextVideoEffects);
+    await nextTick();
+
+    expect(mockTimelineStore.updateClipProperties).toHaveBeenCalledWith('track-1', 'clip-1', {
+      effects: [...nextVideoEffects, audioEffect],
+    });
+  });
+
+  it('renders video effects after transitions in the video tab', async () => {
+    mockWorkspaceStore.inDevelopmentFeaturesEnabled = true;
+    const wrapper = await mountComponent({ clip: createClip() });
+
+    await wrapper.find('[data-tab="video"]').trigger('click');
+    await nextTick();
+
+    const effects = wrapper
+      .findAllComponents({ name: 'ClipEffectsEditor' })
+      .find((c) => c.props('target') === 'video');
+    const blending = wrapper.findComponent({ name: 'ClipBlendingModeSection' });
+    const opacity = wrapper.findComponent({ name: 'ClipOpacitySection' });
+    const transform = wrapper.findComponent({ name: 'ClipTransformSection' });
+    const mask = wrapper.findComponent({ name: 'ClipMaskSection' });
+    const transitions = wrapper.findComponent({ name: 'ClipTransitionsSection' });
+
+    expect(effects?.exists()).toBe(true);
+    expect(blending.exists()).toBe(true);
+    expect(opacity.exists()).toBe(true);
+    expect(transform.exists()).toBe(true);
+    expect(mask.exists()).toBe(true);
+    expect(transitions.exists()).toBe(true);
+    expect(blending.element.compareDocumentPosition(effects!.element)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+    expect(opacity.element.compareDocumentPosition(effects!.element)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+    expect(transform.element.compareDocumentPosition(effects!.element)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+    expect(mask.element.compareDocumentPosition(effects!.element)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+    expect(transitions.element.compareDocumentPosition(effects!.element)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+  });
+
   it('hides audio effects editor when in-development features are disabled', async () => {
     const clip = createClip();
     const wrapper = await mountComponent({ clip });
@@ -574,10 +654,10 @@ describe('ClipProperties.vue', () => {
     await wrapper.find('[data-tab="audio"]').trigger('click');
     await nextTick();
 
-    const audioEffectsSection = wrapper
-      .findAllComponents({ name: 'ClipEffectsSection' })
-      .find((c) => c.props('showAudioEffects') === true);
-    expect(audioEffectsSection).toBeUndefined();
+    const audioEffectsEditor = wrapper
+      .findAllComponents({ name: 'ClipEffectsEditor' })
+      .find((c) => c.props('target') === 'audio');
+    expect(audioEffectsEditor).toBeUndefined();
   });
 
   it('shows audio effects editor when in-development features are enabled', async () => {
@@ -588,9 +668,9 @@ describe('ClipProperties.vue', () => {
     await wrapper.find('[data-tab="audio"]').trigger('click');
     await nextTick();
 
-    const audioEffectsSection = wrapper
-      .findAllComponents({ name: 'ClipEffectsSection' })
-      .find((c) => c.props('showAudioEffects') === true);
-    expect(audioEffectsSection).toBeDefined();
+    const audioEffectsEditor = wrapper
+      .findAllComponents({ name: 'ClipEffectsEditor' })
+      .find((c) => c.props('target') === 'audio');
+    expect(audioEffectsEditor).toBeDefined();
   });
 });

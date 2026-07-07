@@ -621,8 +621,7 @@ export const useTimelineStore = defineStore('timeline', () => {
   // and gap selection live exclusively in the global selection store, so a
   // document restore (undo, redo, version/backup restore) can otherwise leave the
   // properties panel pointing at a marker/gap that no longer exists — showing a
-  // stale, blank panel. Clear or repair those here. (Selection-range staleness is
-  // handled separately via `clearSelectionRange`.)
+  // stale, blank panel. Clear or repair those here.
   function pruneNonItemSelectionForDoc(doc: TimelineDocument) {
     const entity = selectionStore.selectedEntity;
     if (!entity || entity.source !== 'timeline') return;
@@ -650,6 +649,12 @@ export const useTimelineStore = defineStore('timeline', () => {
           track.items.some((item) => item.id === entity.itemId && item.kind === 'gap'),
       );
       if (!exists) selectionStore.clearSelection();
+      return;
+    }
+
+    if (entity.kind === 'selection-range') {
+      const hasRange = !!doc.metadata?.fastcat?.selectionRange;
+      if (!hasRange) selectionStore.clearSelection();
     }
   }
 
@@ -681,7 +686,11 @@ export const useTimelineStore = defineStore('timeline', () => {
       selection.pruneSelectionForDoc(doc);
       pruneNonItemSelectionForDoc(doc);
     },
-    clearSelectionRange: () => selectionRangeModule.removeSelectionRange(),
+    onDocumentRestored: (doc) => {
+      const restoredRange = doc.metadata?.fastcat?.selectionRange;
+      selectionRangeModule.setPreviewSelectionRange(null);
+      selectionRange.value = restoredRange ? { ...restoredRange } : null;
+    },
     notifyWarning: (messageKey: string) => {
       toast.add({
         title: t(messageKey),

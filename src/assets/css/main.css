@@ -275,6 +275,24 @@ summary:not(:disabled) {
   cursor: pointer;
 }
 
+button:disabled,
+[type='button']:disabled,
+[type='submit']:disabled,
+[type='reset']:disabled,
+[type='checkbox']:disabled,
+[type='radio']:disabled,
+[role='button'][aria-disabled='true'],
+[role='checkbox'][aria-disabled='true'],
+[role='radio'][aria-disabled='true'],
+[role='switch'][aria-disabled='true'],
+[role='switch']:disabled,
+label:has(> input[type='checkbox']:disabled),
+label:has(> input[type='radio']:disabled),
+summary:disabled {
+  cursor: not-allowed !important;
+}
+
+
 /* Range inputs */
 input[type='range'] {
   -webkit-appearance: none;

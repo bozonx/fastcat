@@ -150,6 +150,36 @@ describe('useClipDrop', () => {
     drop.scope.stop();
   });
 
+  it('appends a compatible video effect to the end of the existing effects list', () => {
+    vi.useFakeTimers();
+    const existingEffect = { id: 'effect-1', type: 'echo', enabled: true, target: 'audio' };
+    const clipWithEffects: TimelineClipItem = {
+      ...baseClip,
+      effects: [existingEffect],
+    };
+    const drop = setupDropZone({
+      clip: clipWithEffects,
+    });
+    const payload: DndPayload = { source: 'effect', data: { type: 'blur' } };
+
+    expect(drop.handlers.canAccept?.(payload)).toBe(true);
+    drop.handlers.onDrop?.(makeContext(payload));
+
+    expect(drop.updateClipProperties).toHaveBeenCalledWith('track-1', 'clip-1', {
+      effects: [
+        existingEffect,
+        expect.objectContaining({
+          type: 'blur',
+          enabled: true,
+          target: 'video',
+          strength: 12,
+        }),
+      ],
+    });
+    vi.runAllTimers();
+    drop.scope.stop();
+  });
+
   it('rejects video-only effects and visual transitions on audio clips', () => {
     const audioTrack: TimelineTrack = {
       ...baseVideoTrack,

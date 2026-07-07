@@ -119,7 +119,7 @@ export function useClipDrop(options: UseClipDropOptions) {
     };
 
     options.updateClipProperties(options.track.value.id, clip.id, {
-      effects: [newEffect, ...((clip as { effects?: unknown[] }).effects ?? [])],
+      effects: [...((clip as { effects?: unknown[] }).effects ?? []), newEffect],
     });
     options.selectTimelineItem(options.track.value.id, clip.id, 'clip');
 

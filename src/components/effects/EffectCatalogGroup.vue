@@ -62,6 +62,7 @@ function handleUpdateOrder(items: unknown[]) {
       <EffectCard
         v-for="item in props.items"
         :key="item.type"
+        :data-testid="`select-effect-${item.type}`"
         :manifest="item"
         :is-selected="props.selectedType === item.type"
         :is-draggable="props.draggable"
@@ -78,6 +79,7 @@ function handleUpdateOrder(items: unknown[]) {
       <EffectCard
         v-for="item in props.items"
         :key="item.type"
+        :data-testid="`select-effect-${item.type}`"
         :manifest="item"
         :is-selected="props.selectedType === item.type"
         :is-draggable="props.draggable"

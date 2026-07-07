@@ -41,6 +41,35 @@ describe('timeline OTIO roundtrip', () => {
     expect(clip?.source?.path).toBe('_video/clip.mp4');
   });
 
+  it('preserves the timeline selection range after serializing and parsing a saved timeline', () => {
+    const base = createDefaultTimelineDocument({
+      id: 'doc-1',
+      name: 'Timeline',
+      format: { fps: 30, width: 1920, height: 1080 },
+    });
+    const doc = {
+      ...base,
+      metadata: {
+        ...base.metadata,
+        fastcat: {
+          ...base.metadata?.fastcat,
+          selectionRange: { startUs: 1_000_000, endUs: 3_000_000 },
+        },
+      },
+    };
+
+    const parsed = parseTimelineFromOtio(serializeTimelineToOtio(doc), {
+      id: 'fallback',
+      name: 'Fallback',
+      format: { fps: 30, width: 1920, height: 1080 },
+    });
+
+    expect(parsed.metadata?.fastcat?.selectionRange).toEqual({
+      startUs: 1_000_000,
+      endUs: 3_000_000,
+    });
+  });
+
   it('preserves keyframe animations through save + parse', () => {
     const base = createDefaultTimelineDocument({
       id: 'doc-1',

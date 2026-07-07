@@ -42,7 +42,7 @@ import ClipTypeSection from '~/components/properties/clip/ClipTypeSection.vue';
 import ClipMaskSection from '~/components/properties/clip/ClipMaskSection.vue';
 import ClipParametersPasteModal from '~/components/properties/clip/ClipParametersPasteModal.vue';
 import ClipBackgroundProperties from '~/components/properties/clip/ClipBackgroundProperties.vue';
-import ClipEffectsSection from '~/components/properties/clip/ClipEffectsSection.vue';
+import ClipEffectsEditor from '~/components/effects/ClipEffectsEditor.vue';
 import { useClipAudio } from '~/composables/properties/useClipAudio';
 import { useClipTransitions } from '~/composables/properties/useClipTransitions';
 import { useClipPropertiesActions } from '~/composables/properties/useClipPropertiesActions';
@@ -104,7 +104,7 @@ const tabs = computed(() => [
         },
       ]
     : []),
-  ...(isVideoTrack.value
+  ...(hasVideoProperties.value
     ? [
         {
           label: t('fastcat.clip.tabs.video'),
@@ -171,6 +171,11 @@ const blendModeOptions = computed<Array<{ value: TimelineBlendMode; label: strin
 );
 
 const isVideoTrack = computed(() => clipTrackKind.value === 'video');
+
+const hasVideoProperties = computed(
+  () =>
+    isVideoTrack.value || (props.clip.effects ?? []).some((effect) => effect?.target !== 'audio'),
+);
 
 function handleCopyClip() {
   clipboardStore.setClipboardPayload({
@@ -702,13 +707,17 @@ defineExpose({
     <!-- Adjustment clip: flat layout without tabs -->
     <template v-if="clip.clipType === 'adjustment'">
       <div ref="effectsSectionRef">
-        <ClipEffectsSection
-          v-model:video-enabled="isVideoEffectsEnabled"
-          :video-effects="clipVideoEffects"
-          :audio-effects="clipAudioEffects"
-          :video-keyframes="clipEffectKeyframes"
-          :show-audio-effects="false"
-          @update-video-effects="handleUpdateClipEffects"
+        <ClipEffectsEditor
+          v-model:enabled="isVideoEffectsEnabled"
+          target="video"
+          :effects="clipVideoEffects"
+          :keyframes="clipEffectKeyframes"
+          :title="t('fastcat.effects.videoTitle')"
+          :add-label="t('fastcat.effects.add')"
+          :empty-label="t('fastcat.effects.empty')"
+          :has-toggle="true"
+          :disabled="!isVideoEffectsEnabled"
+          @update:effects="handleUpdateClipEffects"
         />
       </div>
 
@@ -928,13 +937,17 @@ defineExpose({
       />
 
       <div ref="effectsSectionRef">
-        <ClipEffectsSection
-          v-model:video-enabled="isVideoEffectsEnabled"
-          :video-effects="clipVideoEffects"
-          :audio-effects="clipAudioEffects"
-          :video-keyframes="clipEffectKeyframes"
-          :show-audio-effects="false"
-          @update-video-effects="handleUpdateClipEffects"
+        <ClipEffectsEditor
+          v-model:enabled="isVideoEffectsEnabled"
+          target="video"
+          :effects="clipVideoEffects"
+          :keyframes="clipEffectKeyframes"
+          :title="t('fastcat.effects.videoTitle')"
+          :add-label="t('fastcat.effects.add')"
+          :empty-label="t('fastcat.effects.empty')"
+          :has-toggle="true"
+          :disabled="!isVideoEffectsEnabled"
+          @update:effects="handleUpdateClipEffects"
         />
       </div>
     </div>
@@ -967,14 +980,14 @@ defineExpose({
         @volume-drag-end="onVolumeDragEnd"
       />
 
-      <ClipEffectsSection
+      <ClipEffectsEditor
         v-if="isAudioEffectsFeatureEnabled && canEditAudioEffects"
-        v-model:audio-enabled="isAudioEffectsEnabled"
-        :video-effects="clipVideoEffects"
-        :audio-effects="clipAudioEffects"
-        :show-video-effects="false"
-        :show-audio-effects="true"
-        @update-audio-effects="handleUpdateClipAudioEffects"
+        v-model:enabled="isAudioEffectsEnabled"
+        target="audio"
+        :effects="clipAudioEffects"
+        :has-toggle="true"
+        :disabled="!isAudioEffectsEnabled"
+        @update:effects="handleUpdateClipAudioEffects"
       />
     </div>
 

@@ -2,10 +2,11 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { useTimelineStore } from '~/stores/timeline.store';
+import { useSelectionStore } from '~/stores/selection.store';
 import { createTestTimeline } from '../utils/timeline-builder';
 import { parseTimelineFromOtio } from '~/timeline/otio-serializer';
 
-import { ref } from 'vue';
+import { ref, nextTick } from 'vue';
 
 global.Worker = class {
   postMessage(data: any) {
@@ -869,6 +870,54 @@ describe('TimelineStore', () => {
         mobileTrackHeightsEnlarged: {},
         selectionRange: undefined,
       });
+    });
+  });
+
+  describe('Selection Range History Restore', () => {
+    it('restores selection range when applying restored snapshot with selection range', async () => {
+      const selectionStore = useSelectionStore();
+      
+      selectionStore.selectTimelineSelectionRange();
+      expect(selectionStore.selectedEntity?.kind).toBe('selection-range');
+
+      const snapWithRange = {
+        ...store.timelineDoc,
+        metadata: {
+          fastcat: {
+            selectionRange: { startUs: 1000, endUs: 2000 }
+          }
+        }
+      };
+
+      store.applyRestoredSnapshot(snapWithRange as any);
+      await nextTick();
+
+      expect(store.selectionRange).toEqual({ startUs: 1000, endUs: 2000 });
+      expect(selectionStore.selectedEntity?.kind).toBe('selection-range');
+    });
+
+    it('clears selection in UI when applying restored snapshot without selection range', async () => {
+      const selectionStore = useSelectionStore();
+      
+      store.createSelectionRange({ startUs: 1000, endUs: 2000 });
+      await nextTick();
+      expect(store.selectionRange).toEqual({ startUs: 1000, endUs: 2000 });
+      expect(selectionStore.selectedEntity?.kind).toBe('selection-range');
+
+      const snapWithoutRange = {
+        ...store.timelineDoc,
+        metadata: {
+          fastcat: {
+            selectionRange: null
+          }
+        }
+      };
+
+      store.applyRestoredSnapshot(snapWithoutRange as any);
+      await nextTick();
+
+      expect(store.selectionRange).toBeNull();
+      expect(selectionStore.selectedEntity).toBeNull();
     });
   });
 });

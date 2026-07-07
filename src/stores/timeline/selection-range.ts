@@ -85,8 +85,6 @@ export function createTimelineSelectionRangeModule(
         }
       : null;
 
-    params.selectionRange.value = nextRange;
-
     params.applyTimeline(
       {
         type: 'update_timeline_properties',
@@ -96,6 +94,8 @@ export function createTimelineSelectionRangeModule(
       },
       options,
     );
+
+    params.selectionRange.value = nextRange ? { ...nextRange } : null;
   }
 
   function createSelectionRangeAtPlayhead(durationUs?: number) {

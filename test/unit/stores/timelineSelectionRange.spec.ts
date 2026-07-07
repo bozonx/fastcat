@@ -15,6 +15,7 @@ describe('timeline-selection-range', () => {
   let trimming: any;
   let applyTimeline: ReturnType<typeof vi.fn>;
   let selectionRange: any;
+  let selectionRangeRef: any;
 
   beforeEach(() => {
     timelineDoc = ref<TimelineDocument | null>({
@@ -36,7 +37,7 @@ describe('timeline-selection-range', () => {
       rippleDeleteRange: vi.fn(),
     };
     applyTimeline = vi.fn();
-    const selectionRangeRef = ref<TimelineSelectionRange | null>(null);
+    selectionRangeRef = ref<TimelineSelectionRange | null>(null);
 
     selectionRange = createTimelineSelectionRangeModule({
       timelineDoc,
@@ -60,6 +61,26 @@ describe('timeline-selection-range', () => {
   it('updates selection range', () => {
     selectionRange.updateSelectionRange({ startUs: 1000000, endUs: 3000000 });
     expect(selectionRange.getSelectionRange()).toEqual({ startUs: 1000000, endUs: 3000000 });
+  });
+
+  it('keeps the previous committed range available while applying an update', () => {
+    selectionRangeRef.value = { startUs: 1000000, endUs: 3000000 };
+    applyTimeline.mockImplementationOnce(() => {
+      expect(selectionRangeRef.value).toEqual({ startUs: 1000000, endUs: 3000000 });
+    });
+
+    selectionRange.updateSelectionRange({ startUs: 1500000, endUs: 3000000 });
+
+    expect(applyTimeline).toHaveBeenCalledWith(
+      {
+        type: 'update_timeline_properties',
+        properties: {
+          selectionRange: { startUs: 1500000, endUs: 3000000 },
+        },
+      },
+      undefined,
+    );
+    expect(selectionRange.getSelectionRange()).toEqual({ startUs: 1500000, endUs: 3000000 });
   });
 
   it('removes selection range', () => {

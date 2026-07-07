@@ -135,6 +135,41 @@ describe('ClipEffectsEditor (video target)', () => {
     ]);
   });
 
+  it('appends an effect from a pointer-DnD drop after existing effects', async () => {
+    const component = await mountSuspended(ClipEffectsEditor, {
+      props: { target: 'video', effects: sampleEffects },
+    });
+    const zoneId = component.find(`[${DND_ZONE_ATTR}]`).attributes(DND_ZONE_ATTR);
+    const handlers = getDndZone(zoneId!);
+    const payload: DndPayload = { source: 'effect', data: { type: 'blur' } };
+
+    await handlers?.onDrop?.({
+      payload,
+      pointer: {
+        clientX: 0,
+        clientY: 0,
+        pointerType: 'mouse',
+        altKey: false,
+        ctrlKey: false,
+        metaKey: false,
+        shiftKey: false,
+      },
+      zoneId: zoneId!,
+      targetEl: null,
+      setOperation: vi.fn(),
+    } satisfies DndDragContext);
+
+    expect(component.emitted('update:effects')?.[0][0]).toEqual([
+      sampleEffects[0],
+      expect.objectContaining({
+        type: 'blur',
+        enabled: true,
+        target: 'video',
+        radius: 5,
+      }),
+    ]);
+  });
+
   it('rejects pointer-DnD drops when the editor is disabled', async () => {
     const component = await mountSuspended(ClipEffectsEditor, {
       props: { target: 'video', effects: [], disabled: true },

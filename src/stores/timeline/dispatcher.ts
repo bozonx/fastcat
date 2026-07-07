@@ -40,7 +40,7 @@ export interface TimelineDispatcherDeps {
   selectTimelineItems: (itemIds: string[]) => void;
   selectGlobalTimelineItems: (itemIds: string[], doc: TimelineDocument) => void;
   pruneSelection?: (doc: TimelineDocument) => void;
-  clearSelectionRange?: () => void;
+  onDocumentRestored?: (doc: TimelineDocument) => void;
   notifyWarning?: (messageKey: string) => void;
   isReadOnly?: Ref<boolean>;
 }
@@ -263,8 +263,8 @@ export function createTimelineDispatcherModule(
       deps.duration.value = nextDuration;
     }
     deps.markTimelineAsDirty();
+    deps.onDocumentRestored?.(snapshot);
     deps.pruneSelection?.(snapshot);
-    deps.clearSelectionRange?.();
     void deps.requestTimelineSave({ immediate: true });
   }
 
