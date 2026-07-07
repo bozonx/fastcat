@@ -95,15 +95,6 @@ const hasActiveSelectionRange = computed(() => {
   return !!timelineStore.selectionRange;
 });
 
-const selectionRangeText = computed(() => {
-  const range = timelineStore.selectionRange;
-  if (!range) return '';
-  const fps = timelineStore.timelineFormat?.fps ?? timelineStore.fps;
-  const start = formatTimecode(range.startUs, fps);
-  const end = formatTimecode(range.endUs, fps);
-  return `${start} / ${end}`;
-});
-
 const selectionRangeDurationText = computed(() => {
   const range = timelineStore.selectionRange;
   if (!range) return '';
@@ -221,8 +212,7 @@ defineExpose({
             timecodeOffsetClass,
           ]"
         >
-          <span class="text-blue-400">{{ selectionRangeText }}</span>
-          <span class="text-[10px] text-ui-text-muted">{{ selectionRangeDurationText }}</span>
+          <span class="text-blue-400">{{ selectionRangeDurationText }}</span>
         </div>
 
         <!-- Timecode -->

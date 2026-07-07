@@ -203,7 +203,7 @@ describe('MonitorViewport', () => {
     expect(canvasWrapper.classes()).not.toContain('checkerboard-bg');
   });
 
-  it('renders selection range and duration when selectionRange is active', () => {
+  it('renders only selection duration in selection color when selectionRange is active', () => {
     mockSelectionRange.value = { startUs: 1_000_000, endUs: 4_000_000 };
     mockFps.value = 30;
 
@@ -216,12 +216,9 @@ describe('MonitorViewport', () => {
 
     const overlay = wrapper.find('.text-blue-400');
     expect(overlay.exists()).toBe(true);
-    expect(overlay.text()).toContain('00:00:01:00');
-    expect(overlay.text()).toContain('00:00:04:00');
-
-    const duration = wrapper.find('.text-ui-text-muted');
-    expect(duration.exists()).toBe(true);
-    expect(duration.text()).toBe('00:00:03:00');
+    expect(overlay.text()).toBe('00:00:03:00');
+    expect(wrapper.text()).not.toContain('00:00:01:00');
+    expect(wrapper.text()).not.toContain('00:00:04:00');
   });
 
   it('keeps timecode element in DOM when showTimecode is toggled', async () => {
