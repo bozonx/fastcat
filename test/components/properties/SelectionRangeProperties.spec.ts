@@ -26,6 +26,8 @@ const mockTimelineStore = reactive({
     tracks: [],
     metadata: { fastcat: {} },
   },
+  fps: 30,
+  timelineFormat: null as { fps: number } | null,
   getSelectionRange: vi.fn(() => ({ startUs: 1_000_000, endUs: 5_000_000 })),
   updateSelectionRange: vi.fn(),
   convertSelectionRangeToMarker: vi.fn(),
@@ -45,6 +47,8 @@ describe('SelectionRangeProperties', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockTimelineStore.getSelectionRange.mockReturnValue({ startUs: 1_000_000, endUs: 5_000_000 });
+    mockTimelineStore.fps = 30;
+    mockTimelineStore.timelineFormat = null;
   });
 
   it('shows convert and ripple-trim in mainActions on desktop', async () => {
@@ -75,5 +79,11 @@ describe('SelectionRangeProperties', () => {
 
     const sections = wrapper.findAll('section');
     expect(sections.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('shows selection duration below start and end timecodes', async () => {
+    const wrapper = await mountSuspended(SelectionRangeProperties);
+
+    expect(wrapper.text()).toContain('00:00:04:00');
   });
 });

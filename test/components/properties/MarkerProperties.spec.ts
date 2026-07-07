@@ -75,6 +75,8 @@ vi.mock('~/components/ui/editor/UiTimecode.vue', () => ({
 }));
 
 const timelineStore = reactive({
+  fps: 30,
+  timelineFormat: null as { fps: number } | null,
   markers: [
     { id: 'point', timeUs: 1_000_000, text: 'Point', color: '#eab308' },
     { id: 'zone', timeUs: 2_000_000, durationUs: 4_000_000, text: 'Zone', color: '#4a90e2' },
@@ -92,6 +94,8 @@ vi.mock('~/stores/timeline.store', () => ({ useTimelineStore: () => timelineStor
 describe('MarkerProperties', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    timelineStore.fps = 30;
+    timelineStore.timelineFormat = null;
     timelineStore.markers = [
       { id: 'point', timeUs: 1_000_000, text: 'Point', color: '#eab308' },
       { id: 'zone', timeUs: 2_000_000, durationUs: 4_000_000, text: 'Zone', color: '#4a90e2' },
@@ -151,6 +155,24 @@ describe('MarkerProperties', () => {
     expect(timelineStore.updateMarker).toHaveBeenCalledWith('zone', {
       durationUs: 5_000_000,
     });
+  });
+
+  it('shows zone duration below start and end timecodes', async () => {
+    const wrapper = await mountSuspended(MarkerProperties, {
+      props: { markerId: 'zone' },
+    });
+
+    expect(wrapper.text()).toContain('common.duration');
+    expect(wrapper.text()).toContain('00:00:04:00');
+  });
+
+  it('does not show duration for point markers', async () => {
+    const wrapper = await mountSuspended(MarkerProperties, {
+      props: { markerId: 'point' },
+    });
+
+    expect(wrapper.text()).not.toContain('common.duration');
+    expect(wrapper.text()).not.toContain('00:00:04:00');
   });
 
   it('deletes and converts point markers', async () => {

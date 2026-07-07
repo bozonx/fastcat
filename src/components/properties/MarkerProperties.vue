@@ -7,6 +7,7 @@ import PropertyActionsBlock from '~/components/properties/PropertyActionsBlock.v
 import type { PropertyAction } from '~/components/properties/PropertyActionList.vue';
 import UiTimecode from '~/components/ui/editor/UiTimecode.vue';
 import UiTextarea from '~/components/ui/UiTextarea.vue';
+import { formatTimecode } from '~/utils/time';
 
 const props = defineProps<{
   markerId: string;
@@ -23,6 +24,12 @@ const marker = computed<TimelineMarker | null>(() => {
 
 const isZone = computed(() => {
   return typeof marker.value?.durationUs === 'number';
+});
+
+const zoneDurationText = computed(() => {
+  if (!isZone.value) return '';
+  const fps = timelineStore.timelineFormat?.fps ?? timelineStore.fps;
+  return formatTimecode(Math.max(0, marker.value?.durationUs ?? 0), fps);
 });
 
 function handleUpdateText(val: string | undefined) {
@@ -178,6 +185,11 @@ const mainActions = computed<PropertyAction[]>(() => {
           :model-value="marker.timeUs + (marker.durationUs || 0)"
           @update:model-value="handleUpdateEndTime"
         />
+      </div>
+
+      <div v-if="isZone" class="flex flex-col gap-0.5 mt-2">
+        <span class="text-xs text-ui-text-muted">{{ t('common.duration') }}</span>
+        <span class="text-sm font-mono tabular-nums text-ui-text">{{ zoneDurationText }}</span>
       </div>
     </PropertySection>
   </div>

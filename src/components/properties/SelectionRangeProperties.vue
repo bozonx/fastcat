@@ -5,6 +5,7 @@ import { useSelectionStore } from '~/stores/selection.store';
 import PropertySection from '~/components/properties/PropertySection.vue';
 import PropertyActionsBlock from '~/components/properties/PropertyActionsBlock.vue';
 import PropertyTimecode from '~/components/properties/PropertyTimecode.vue';
+import { formatTimecode } from '~/utils/time';
 
 defineProps<{
   hideActions?: boolean;
@@ -16,6 +17,13 @@ const timelineStore = useTimelineStore();
 const selectionStore = useSelectionStore();
 
 const selectionRange = computed(() => timelineStore.getSelectionRange());
+
+const selectionRangeDurationText = computed(() => {
+  const range = selectionRange.value;
+  if (!range) return '';
+  const fps = timelineStore.timelineFormat?.fps ?? timelineStore.fps;
+  return formatTimecode(Math.max(0, range.endUs - range.startUs), fps);
+});
 
 function handleUpdateStartTime(val: number | string) {
   const range = selectionRange.value;
@@ -105,6 +113,13 @@ const mainActions = computed(() => [
         :model-value="selectionRange.endUs"
         @update:model-value="handleUpdateEndTime"
       />
+
+      <div class="flex flex-col gap-0.5 mt-2">
+        <span class="text-xs text-ui-text-muted">{{ t('common.duration') }}</span>
+        <span class="text-sm font-mono tabular-nums text-ui-text">
+          {{ selectionRangeDurationText }}
+        </span>
+      </div>
     </PropertySection>
   </div>
 </template>
