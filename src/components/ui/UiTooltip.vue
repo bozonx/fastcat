@@ -7,12 +7,14 @@ const props = withDefaults(
     placement?: 'top' | 'bottom' | 'left' | 'right';
     disabled?: boolean;
     openOnClick?: boolean;
+    triggerClass?: string;
   }>(),
   {
     text: '',
     placement: 'top',
     disabled: false,
     openOnClick: false,
+    triggerClass: '',
   },
 );
 
@@ -90,7 +92,7 @@ onBeforeUnmount(() => {
   >
     <span
       ref="root"
-      class="inline-flex [&>*]:flex-1 [&>*]:min-w-0"
+      :class="['inline-flex [&>*]:flex-1 [&>*]:min-w-0', triggerClass]"
       :aria-describedby="isOpen ? tooltipId : undefined"
       @pointerenter="openHover"
       @pointerleave="closeHover"

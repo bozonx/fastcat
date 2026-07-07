@@ -73,5 +73,15 @@ test.describe('Web timeline transitions', () => {
     expect(doc.allClips[0]?.transitionOut).toMatchObject({
       type: 'dissolve',
     });
+
+    const clipLocator = page.locator(`[data-clip-id="${clipId}"]`);
+    const transitionOut = clipLocator.getByTestId('transition-out');
+    await expect(transitionOut).toBeVisible();
+    await expect
+      .poll(async () => {
+        const box = await transitionOut.boundingBox();
+        return Boolean(box && box.width > 0 && box.height > 0);
+      })
+      .toBe(true);
   });
 });

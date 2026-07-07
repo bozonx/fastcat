@@ -284,7 +284,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="absolute inset-0 pointer-events-none">
+  <div class="absolute inset-0 pointer-events-none" style="z-index: var(--z-clip-guide)">
     <div class="absolute inset-0 overflow-hidden rounded" style="z-index: 25">
       <!-- Transition In -->
       <div
@@ -295,8 +295,10 @@ onBeforeUnmount(() => {
         <UiTooltip
           :text="getTransitionButtonTitle('in')"
           :disabled="!getTransitionButtonTitle('in')"
+          trigger-class="w-full h-full"
         >
           <button
+            data-testid="transition-in"
             type="button"
             :class="[
               'w-full h-full overflow-hidden group/trans',
@@ -379,8 +381,10 @@ onBeforeUnmount(() => {
         <UiTooltip
           :text="getTransitionButtonTitle('out')"
           :disabled="!getTransitionButtonTitle('out')"
+          trigger-class="w-full h-full"
         >
           <button
+            data-testid="transition-out"
             type="button"
             :class="[
               'w-full h-full overflow-hidden group/trans',

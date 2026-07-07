@@ -108,6 +108,26 @@ describe('ClipTransitions', () => {
     expect(widthContainer?.style.width).toContain('px');
   });
 
+  it('keeps transition overlays above clip content and tooltip triggers full-size', async () => {
+    const component = await mountSuspended(ClipTransitions, {
+      props: {
+        ...defaultProps,
+        clip: {
+          ...baseItem,
+          transitionOut: { durationUs: 1_000_000, type: 'dissolve', mode: 'transparent' },
+        },
+      },
+    });
+
+    const root = component.get('.pointer-events-none');
+    const transitionOut = component.get('button');
+    const trigger = transitionOut.element.parentElement;
+
+    expect(root.attributes('style')).toContain('z-index: var(--z-clip-guide)');
+    expect(trigger?.classList.contains('w-full')).toBe(true);
+    expect(trigger?.classList.contains('h-full')).toBe(true);
+  });
+
   it('emits select when transition is clicked', async () => {
     const component = await mountSuspended(ClipTransitions, {
       props: {

@@ -933,33 +933,6 @@ function handleTransitionCreate(
           class="absolute inset-0 muted-track-dots pointer-events-none rounded opacity-80"
         />
 
-        <!-- Sub-components for Transitions and Fades -->
-        <ClipTransitions
-          v-if="clipItem"
-          :clip="clipItem"
-          :track="track"
-          :zoom="timelineContext.zoom.value"
-          :clip-width-px="clipWidthPx"
-          :track-height="trackHeight"
-          :selected-transition="selectedTransition"
-          :can-edit="canEditClipContent"
-          :is-mobile="isMobile"
-          :is-clip-hovered="isHovered"
-          :is-trimming="myTrimPreview !== null"
-          @select="(e, payload) => emit('selectTransition', e, payload)"
-          @resize="
-            (e, payload) =>
-              emit('startResizeTransition', e, {
-                trackId: track.id,
-                itemId: item.id,
-                edge: payload.edge,
-                durationUs: payload.durationUs,
-              })
-          "
-          @create-transition="handleTransitionCreate"
-          @create-transition-handle-active="isTransitionCreateHandleActive = $event"
-        />
-
         <ClipAudioFades
           v-if="clipItem && clipHasAudio(item, track, timelineContext.mediaMetadata.value)"
           :clip="clipItem"
@@ -1018,6 +991,33 @@ function handleTransitionCreate(
           :is-header-only="isClipHeaderOnly"
           :transition-in-overlay-guide-style="transitionInOverlayGuideStyle"
           :transition-out-overlay-guide-style="transitionOutOverlayGuideStyle"
+        />
+
+        <!-- Transition overlays must be after content so their SVG masks are not painted under it. -->
+        <ClipTransitions
+          v-if="clipItem"
+          :clip="clipItem"
+          :track="track"
+          :zoom="timelineContext.zoom.value"
+          :clip-width-px="clipWidthPx"
+          :track-height="trackHeight"
+          :selected-transition="selectedTransition"
+          :can-edit="canEditClipContent"
+          :is-mobile="isMobile"
+          :is-clip-hovered="isHovered"
+          :is-trimming="myTrimPreview !== null"
+          @select="(e, payload) => emit('selectTransition', e, payload)"
+          @resize="
+            (e, payload) =>
+              emit('startResizeTransition', e, {
+                trackId: track.id,
+                itemId: item.id,
+                edge: payload.edge,
+                durationUs: payload.durationUs,
+              })
+          "
+          @create-transition="handleTransitionCreate"
+          @create-transition-handle-active="isTransitionCreateHandleActive = $event"
         />
 
         <!-- Trim Handles -->
