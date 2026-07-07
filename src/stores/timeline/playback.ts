@@ -4,6 +4,7 @@ import {
   MAX_TIMELINE_ZOOM_POSITION,
   MIN_TIMELINE_ZOOM_POSITION,
 } from '~/utils/zoom';
+import { clampGain } from '~/utils/audio/clamp';
 
 export interface TimelinePlaybackDeps {
   currentTime: Ref<number>;
@@ -80,7 +81,7 @@ export function createTimelinePlaybackModule(deps: TimelinePlaybackDeps): Timeli
   function setAudioVolume(next: number) {
     const parsed = Number(next);
     if (!Number.isFinite(parsed)) return;
-    deps.audioVolume.value = Math.min(10, Math.max(0, parsed));
+    deps.audioVolume.value = clampGain(parsed);
     if (deps.audioVolume.value > 0 && deps.audioMuted.value) {
       deps.audioMuted.value = false;
     }

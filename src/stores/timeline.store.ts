@@ -28,6 +28,7 @@ import { createTimelineCommandsModule } from '~/stores/timeline/commands';
 import { createTimelineLifecycleModule } from '~/stores/timeline/lifecycle';
 import { createTimelineBackupModule } from '~/stores/timeline/backup';
 import type { TimelinePreviewBackupInfo } from '~/stores/timeline/backup';
+import { clampGain } from '~/utils/audio/clamp';
 
 import { getDocFps } from '~/timeline/commands/utils';
 import {
@@ -304,6 +305,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     deleteTrack: (trackId, options) => tracks.deleteTrack(trackId, options),
     selectTrack: (trackId) => selection.selectTrack(trackId),
     getHotkeyTargetClip: () => selection.getHotkeyTargetClip(),
+    getSelectedOrActiveTrackId: () => selection.getSelectedOrActiveTrackId(),
     ensureNoNestedTimelineCycle: (path) =>
       commands.commandService.ensureNoNestedTimelineCycle(path),
     resolvePastePlacement: ({
@@ -1139,9 +1141,10 @@ export const useTimelineStore = defineStore('timeline', () => {
     requestTimelineSave: lifecycle.requestTimelineSave,
     applyTimeline,
     setMasterGain: (gain: number) => {
-      masterGain.value = gain;
-      applyTimeline({ type: 'update_master_gain', gain });
-      if (gain > 0 && audioMuted.value) {
+      const clampedGain = clampGain(gain);
+      masterGain.value = clampedGain;
+      applyTimeline({ type: 'update_master_gain', gain: clampedGain });
+      if (clampedGain > 0 && audioMuted.value) {
         setMasterMuted(false);
       }
     },

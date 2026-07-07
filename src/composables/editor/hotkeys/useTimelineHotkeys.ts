@@ -20,6 +20,7 @@ import {
 } from '~/utils/timeline/clip-capabilities';
 
 const AUDIO_MIXER_GAIN_STEP = 0.05;
+const AUDIO_MIXER_GAIN_MAX = 2;
 
 export function useTimelineHotkeys(
   navigationHoldRunner: ReturnType<typeof createHotkeyHoldRunner>,
@@ -43,12 +44,18 @@ export function useTimelineHotkeys(
     if (trackId) {
       const track = timelineStore.timelineDoc?.tracks.find((item) => item.id === trackId);
       if (!track) return false;
-      const nextGain = Math.max(0, Number(track.audioGain ?? 1) + delta);
+      const nextGain = Math.max(
+        0,
+        Math.min(AUDIO_MIXER_GAIN_MAX, Number(track.audioGain ?? 1) + delta),
+      );
       timelineStore.updateTrackProperties(trackId, { audioGain: nextGain });
       return true;
     }
 
-    const nextMasterGain = Math.max(0, Number(timelineStore.masterGain ?? 1) + delta);
+    const nextMasterGain = Math.max(
+      0,
+      Math.min(AUDIO_MIXER_GAIN_MAX, Number(timelineStore.masterGain ?? 1) + delta),
+    );
     timelineStore.setMasterGain(nextMasterGain);
     return true;
   }

@@ -132,9 +132,9 @@ describe('WebAudioEngine', () => {
     it('setMasterVolume clamps and updates gain node', async () => {
       const engine = new WebAudioEngine();
       await engine.init();
-      engine.setMasterVolume(5);
+      engine.setMasterVolume(2);
       const masterGain = (engine as any).masterGain;
-      expect(masterGain.gain.setTargetAtTime).toHaveBeenCalledWith(5, 0, 0.02);
+      expect(masterGain.gain.setTargetAtTime).toHaveBeenCalledWith(2, 0, 0.02);
     });
 
     it('setMonitorVolume uses setTargetAtTime for smooth transition', async () => {
@@ -150,10 +150,9 @@ describe('WebAudioEngine', () => {
       await engine.init();
       engine.setMonitorVolume(999);
       const monitorGain = (engine as any).monitorGain;
-      // clampGain limits to [0, 10]
+      // clampGain limits user-facing monitor volume to [0, 2].
       const calledValue = monitorGain.gain.setTargetAtTime.mock.calls[0][0];
-      expect(calledValue).toBeLessThanOrEqual(10);
-      expect(calledValue).toBeLessThan(999);
+      expect(calledValue).toBe(2);
     });
   });
 

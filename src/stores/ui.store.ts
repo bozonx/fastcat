@@ -11,6 +11,7 @@ import {
 import { createUiFileTreePersistenceModule } from '~/stores/ui/uiFileTreePersistence';
 import type { FsEntry } from '~/types/fs';
 import type { RemoteFsEntry } from '~/utils/remote-vfs';
+import { clampGain } from '~/utils/audio/clamp';
 
 export interface FsEntrySelection {
   kind: 'file' | 'directory';
@@ -33,14 +34,19 @@ export interface PendingRemoteDownloadRequest {
 export const useUiStore = defineStore('ui', () => {
   const workspaceStore = useWorkspaceStore();
   const selectedFsEntry = ref<FsEntrySelection | null>(null);
-  const monitorVolume = ref(readLocalStorageJson(STORAGE_KEYS.UI.MONITOR_VOLUME, 1));
+  const monitorVolume = ref(clampGain(readLocalStorageJson(STORAGE_KEYS.UI.MONITOR_VOLUME, 1)));
   const monitorMuted = ref(readLocalStorageJson(STORAGE_KEYS.UI.MONITOR_MUTED, false));
 
   watch(
     () => monitorVolume.value,
     (val) => {
+      const clamped = clampGain(val);
+      if (!Object.is(clamped, val)) {
+        monitorVolume.value = clamped;
+        return;
+      }
       if (workspaceStore.isEphemeral) return;
-      writeLocalStorageJson(STORAGE_KEYS.UI.MONITOR_VOLUME, val);
+      writeLocalStorageJson(STORAGE_KEYS.UI.MONITOR_VOLUME, clamped);
     },
   );
 

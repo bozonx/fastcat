@@ -1560,7 +1560,9 @@ impl Default for Compositor {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::compositor::effects::EffectQuality;
     use crate::compositor::scene::{BlendMode, Layer, LayerKind, RasterSource, Transform};
+    use vello::peniko::{Blob, ImageAlphaType, ImageFormat};
 
     fn raster_layer(natural: (u32, u32), transform: Transform) -> Layer {
         Layer {
@@ -1588,6 +1590,74 @@ mod tests {
             mask: None,
             effects: Vec::new(),
             transition: None,
+        }
+    }
+
+    fn solid_pixel_layer(id: &str, rgba: [u8; 4], blend: BlendMode) -> Layer {
+        Layer {
+            id: id.into(),
+            kind: LayerKind::Raster {
+                source: RasterSource::Image(vello::peniko::ImageData {
+                    data: Blob::new(Arc::new(rgba.to_vec())),
+                    format: ImageFormat::Rgba8,
+                    alpha_type: ImageAlphaType::Alpha,
+                    width: 1,
+                    height: 1,
+                }),
+                natural_size: (1, 1),
+                padding: None,
+            },
+            transform: Transform::identity(),
+            opacity: 1.0,
+            blend,
+            mask: None,
+            effects: Vec::new(),
+            transition: None,
+        }
+    }
+
+    fn blend_test_scene(blend: BlendMode) -> Scene {
+        Scene {
+            width: 1,
+            height: 1,
+            time: 0.0,
+            background: Color::TRANSPARENT,
+            layers: vec![
+                solid_pixel_layer("bottom", [80, 120, 200, 255], BlendMode::Normal),
+                solid_pixel_layer("top", [160, 100, 60, 255], blend),
+            ],
+            video_tracks: Vec::new(),
+            master_effects: Vec::new(),
+            effect_quality: EffectQuality::default(),
+        }
+    }
+
+    #[test]
+    fn render_scene_to_pixels_applies_all_non_normal_blend_modes() {
+        if !Compositor::is_gpu_available() {
+            return;
+        }
+
+        let mut compositor = Compositor::new();
+        let dev_id = compositor
+            .ensure_offscreen_device()
+            .expect("offscreen device");
+        let normal = compositor
+            .render_scene_to_pixels(dev_id, &blend_test_scene(BlendMode::Normal), 1, 1)
+            .expect("render normal blend");
+
+        for mode in BlendMode::ALL {
+            if matches!(mode, BlendMode::Normal) {
+                continue;
+            }
+
+            let pixels = compositor
+                .render_scene_to_pixels(dev_id, &blend_test_scene(mode), 1, 1)
+                .unwrap_or_else(|err| panic!("render {mode:?} blend: {err}"));
+            assert_ne!(
+                pixels, normal,
+                "{mode:?} rendered identically to normal; blend mode was not visually applied"
+            );
         }
     }
 

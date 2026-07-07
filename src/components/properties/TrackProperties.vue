@@ -35,17 +35,26 @@ function handleRenameTrack(name: string) {
 
 const canDeleteWithoutConfirm = computed(() => (props.track.items?.length ?? 0) === 0);
 
-const trackAudioGain = computed({
+const TRACK_AUDIO_GAIN_MAX = 2;
+const GAIN_PERCENT_MAX = TRACK_AUDIO_GAIN_MAX * 100;
+
+function gainToPercent(gain: unknown): number {
+  const value = typeof gain === 'number' && Number.isFinite(gain) ? gain : 1;
+  return Math.round(Math.max(0, Math.min(TRACK_AUDIO_GAIN_MAX, value)) * 100);
+}
+
+function percentToGain(percent: number): number {
+  const value = Number(percent);
+  if (!Number.isFinite(value)) return 1;
+  return Math.max(0, Math.min(GAIN_PERCENT_MAX, value)) / 100;
+}
+
+const trackAudioGainPercent = computed({
   get: () => {
-    const v =
-      typeof props.track?.audioGain === 'number' && Number.isFinite(props.track.audioGain)
-        ? props.track.audioGain
-        : 1;
-    return Math.max(0, Math.min(4, v));
+    return gainToPercent(props.track?.audioGain);
   },
   set: (val: number) => {
-    const v = Math.max(0, Math.min(4, Number(val)));
-    timelineStore.updateTrackProperties(props.track.id, { audioGain: v });
+    timelineStore.updateTrackProperties(props.track.id, { audioGain: percentToGain(val) });
   },
 });
 
@@ -220,14 +229,16 @@ const clipCount = computed(
     >
       <div class="flex flex-col w-full gap-3 py-1">
         <UiSliderInput
-          v-model="trackAudioGain"
+          v-model="trackAudioGainPercent"
           :label="t('fastcat.track.audio.volume')"
           :min="0"
-          :max="2"
-          :step="0.001"
-          :wheel-step-multiplier="10"
-          :default-value="1"
-          unit="x"
+          :max="200"
+          :step="1"
+          :wheel-step-multiplier="1"
+          :default-value="100"
+          :decimals="0"
+          unit="%"
+          show-input-unit
         />
 
         <UiSliderInput

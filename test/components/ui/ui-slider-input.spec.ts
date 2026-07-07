@@ -63,6 +63,20 @@ describe('UiSliderInput', () => {
     expect(component.text()).toContain('25px');
   });
 
+  it('can display unit next to the number input', async () => {
+    const component = await mountSuspended(UiSliderInput, {
+      props: {
+        modelValue: 150,
+        min: 0,
+        max: 200,
+        unit: '%',
+        showInputUnit: true,
+      },
+    });
+
+    expect(component.text()).toContain('%');
+  });
+
   it('emits update:modelValue when input value changes', async () => {
     const component = await mountSuspended(UiSliderInput, {
       props: {

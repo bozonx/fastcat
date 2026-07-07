@@ -226,6 +226,12 @@ describe('TimelineStore', () => {
     expect(store.audioMuted).toBe(false);
   });
 
+  it('clamps master gain to 200%', () => {
+    store.setMasterGain(5);
+
+    expect(store.masterGain).toBe(2);
+  });
+
   it('toggles playback', () => {
     expect(store.isPlaying).toBe(false);
     store.togglePlayback();

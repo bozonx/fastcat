@@ -793,9 +793,10 @@ describe('FileProperties.vue', () => {
     console.log('EXPANDABLE_PROPS_IN_TEST:', expandableSection.props());
     expect(expandableSection.props('expanded')).toBe(false);
 
-    // Toggle to expand
-    await expandableSection.props('onToggle')();
-    await flushPromises();
+    // Toggle to expand by clicking the button
+    const toggleButton = expandableSection.find('button');
+    await toggleButton.trigger('click');
+    await nextTick();
 
     // Check expanded state by finding component again to avoid caching issues in vue-test-utils wrapper
     expect(component.findComponent({ name: 'ExpandableYamlSection' }).props('expanded')).toBe(true);

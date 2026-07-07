@@ -509,7 +509,11 @@ impl Transform {
 
         let is_quarter = (self.source_rotation.round() as i32 % 180) != 0;
         let (oriented_w, oriented_h) = if is_quarter { (nh, nw) } else { (nw, nh) };
-        let (op_x, op_y) = if is_quarter { (padding.1, padding.0) } else { (padding.0, padding.1) };
+        let (op_x, op_y) = if is_quarter {
+            (padding.1, padding.0)
+        } else {
+            (padding.0, padding.1)
+        };
 
         let source_xform = Affine::translate((oriented_w / 2.0 + op_x, oriented_h / 2.0 + op_y))
             * Affine::rotate(self.source_rotation.to_radians())

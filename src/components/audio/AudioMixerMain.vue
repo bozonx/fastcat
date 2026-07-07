@@ -17,18 +17,21 @@ const workspaceStore = useWorkspaceStore();
 const { t } = useI18n();
 
 const isAudioEffectsEnabled = computed(() => workspaceStore.inDevelopmentFeaturesEnabled);
+const MAX_GAIN_DB = 6.0206;
 
 const volumeDb = computed({
   get: () => linearToDb(timelineStore.masterGain),
   set: (val: number) => {
-    timelineStore.setAudioVolume(dbToLinear(val));
+    const clampedDb = Math.max(-60, Math.min(MAX_GAIN_DB, Number(val)));
+    timelineStore.setAudioVolume(dbToLinear(clampedDb));
   },
 });
 
 function onVolumeDragEnd() {
+  const clampedDb = Math.max(-60, Math.min(MAX_GAIN_DB, volumeDb.value));
   timelineStore.applyTimeline({
     type: 'update_master_gain',
-    gain: dbToLinear(volumeDb.value),
+    gain: dbToLinear(clampedDb),
   });
 }
 
@@ -103,6 +106,7 @@ const {
       <DbSlider
         v-model="volumeDb"
         :level-db="timelineStore.audioLevels?.['master']?.peakDb"
+        :max-db="MAX_GAIN_DB"
         @drag-end="onVolumeDragEnd"
       />
     </div>

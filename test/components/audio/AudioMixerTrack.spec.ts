@@ -16,7 +16,7 @@ vi.mock('~/components/audio/DbSlider.vue', () => ({
   default: {
     name: 'DbSlider',
     template: '<div><input type="range" class="mock-db-slider" /></div>',
-    props: ['modelValue', 'levelDb'],
+    props: ['modelValue', 'levelDb', 'maxDb'],
   },
 }));
 vi.mock('~/components/effects/SelectEffectModal.vue', () => ({
@@ -118,6 +118,16 @@ describe('AudioMixerTrack', () => {
     expect(calls).toHaveLength(1);
     expect(calls[0]![0]).toBe('track-1');
     expect(calls[0]![1].audioGain).toBeCloseTo(dbToLinear(-6), 2);
+  });
+
+  it('limits track gain slider to 200%', async () => {
+    const component = await mountSuspended(AudioMixerTrack, {
+      props: { track: baseTrack },
+    });
+
+    const dbSlider = component.findComponent({ name: 'DbSlider' });
+
+    expect(dbSlider.props('maxDb')).toBe(6.0206);
   });
 
   it('updates track pan via UiWheelSlider', async () => {

@@ -1011,7 +1011,10 @@ fn apply_layer_mix(params: ApplyLayerMixParams<'_>) {
         decoded.len() / channels
     );
     let stereo = channels >= 2;
-    let anims = layer.animations.as_ref().and_then(ClipAnimations::from_value);
+    let anims = layer
+        .animations
+        .as_ref()
+        .and_then(ClipAnimations::from_value);
     let has_volume_animation = anims
         .as_ref()
         .and_then(|a| a.eval("audio.volume", layer.source_start_sec * 1_000_000.0))

@@ -21,6 +21,7 @@ const workspaceStore = useWorkspaceStore();
 const { t } = useI18n();
 
 const isAudioEffectsEnabled = computed(() => workspaceStore.inDevelopmentFeaturesEnabled);
+const MAX_GAIN_DB = 6.0206;
 
 const trackName = computed(() => props.track.name || props.track.id);
 const isMuted = computed(() => Boolean(props.track.audioMuted));
@@ -29,7 +30,8 @@ const isSolo = computed(() => Boolean(props.track.audioSolo));
 const volumeDb = computed({
   get: () => linearToDb(props.track.audioGain ?? 1),
   set: (val: number) => {
-    timelineStore.updateTrackProperties(props.track.id, { audioGain: dbToLinear(val) });
+    const clampedDb = Math.max(-60, Math.min(MAX_GAIN_DB, Number(val)));
+    timelineStore.updateTrackProperties(props.track.id, { audioGain: dbToLinear(clampedDb) });
   },
 });
 
@@ -141,6 +143,7 @@ const {
       <DbSlider
         v-model="volumeDb"
         wheel-without-focus
+        :max-db="MAX_GAIN_DB"
         :level-db="timelineStore.audioLevels?.[props.track.id]?.peakDb"
       />
     </div>

@@ -9,12 +9,12 @@ export function clampAudioParam(
   return clampNumber(value, min, max) ?? defaultValue;
 }
 
-/** Lowest/highest output-gain multiplier accepted by both audio engines. */
+/** Lowest/highest user-facing monitor/listening gain multiplier. */
 export const GAIN_MIN = 0;
-export const GAIN_MAX = 10;
+export const GAIN_MAX = 2;
 
 /**
- * Clamp a monitor/listening volume multiplier to the shared `[0, 10]` range. This
+ * Clamp a monitor/listening volume multiplier to the shared `[0, 2]` range. This
  * is a playback-only level (how loud you hear the mix) and is not baked into the
  * exported file, so it is not subject to the master limiter. Non-finite input
  * falls back to unity gain so a bad value can never silence or blow up the output.
@@ -33,9 +33,9 @@ export function clampGain(volume: unknown): number {
  *
  * Cross-engine parity contract: mirrors the native `sanitize_master_gain`
  * (src-tauri/src/audio/mix.rs, `MAX_MASTER_GAIN`), pinned by
- * `shared/parity/audio-master-gain.cases.json`. The master-gain UI slider tops
- * out at +12 dB (≈3.98×), so this cap only ever engages for an out-of-range
- * payload value — but it must engage identically on both engines.
+ * `shared/parity/audio-master-gain.cases.json`. User-facing monitor/master
+ * controls are intentionally tighter and top out at 200%, so this cap mostly
+ * protects old project data and out-of-range scene payloads.
  */
 export const MASTER_GAIN_MAX = 8;
 

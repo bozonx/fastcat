@@ -170,6 +170,18 @@ describe('MediaPlayer.vue', () => {
     expect(video.volume).toBe(0.5);
   });
 
+  it('allows preview player volume amplification up to 200%', async () => {
+    const component = await mountWithNuxt(MediaPlayer, {
+      props: {
+        src: 'http://example.com/test.mp4',
+        type: 'video',
+      },
+    });
+
+    const volumeControl = component.findComponent(UiVolumeControl);
+    expect(volumeControl.props('max')).toBe(2);
+  });
+
   it('toggles mute on button click', async () => {
     const component = await mountWithNuxt(MediaPlayer, {
       props: {

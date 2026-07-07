@@ -63,6 +63,7 @@ export interface TimelineClipsDeps {
   deleteTrack: (trackId: string, options?: { allowNonEmpty?: boolean }) => void;
   selectTrack: (trackId: string | null) => void;
   getHotkeyTargetClip: () => { trackId: string; itemId: string } | null;
+  getSelectedOrActiveTrackId: () => string | null;
   ensureNoNestedTimelineCycle?: (path: string) => Promise<void>;
   /**
    * Resolve toolbar-mode-aware paste placement (overlap vs normal, snapping,
@@ -603,8 +604,17 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
       if (items.length === 0) return [];
     }
 
+    const selectedOrActiveTrackId = deps.getSelectedOrActiveTrackId();
+    const sourceTrackId = items.find((item) =>
+      doc.tracks.some((track) => track.id === item.sourceTrackId),
+    )?.sourceTrackId;
+
     // 1. Determine the base target track
-    const baseTargetTrackId = options?.targetTrackId ?? deps.resolveTargetVideoTrackIdForInsert();
+    const baseTargetTrackId =
+      options?.targetTrackId ??
+      selectedOrActiveTrackId ??
+      sourceTrackId ??
+      deps.resolveTargetVideoTrackIdForInsert();
     const baseTargetTrackIndex = doc.tracks.findIndex((track) => track.id === baseTargetTrackId);
     if (baseTargetTrackIndex === -1) return [];
 

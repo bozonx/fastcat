@@ -26,13 +26,12 @@ describe('clampGain', () => {
   it('passes through in-range gains', () => {
     expect(clampGain(0)).toBe(0);
     expect(clampGain(1)).toBe(1);
-    expect(clampGain(5)).toBe(5);
-    expect(clampGain(10)).toBe(10);
+    expect(clampGain(2)).toBe(2);
   });
 
-  it('clamps to the shared [0, 10] range', () => {
+  it('clamps to the shared [0, 2] range', () => {
     expect(clampGain(-5)).toBe(0);
-    expect(clampGain(15)).toBe(10);
+    expect(clampGain(15)).toBe(2);
   });
 
   it('falls back to unity gain for non-finite input', () => {

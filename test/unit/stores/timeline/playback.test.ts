@@ -79,6 +79,15 @@ describe('TimelinePlaybackModule', () => {
     expect(deps.audioMuted.value).toBe(false);
   });
 
+  it('clamps audio volume to 200%', () => {
+    const deps = createMockDeps();
+    const mod = createTimelinePlaybackModule(deps);
+
+    mod.setAudioVolume(5);
+
+    expect(deps.audioVolume.value).toBe(2);
+  });
+
   it('toggles audio muted state', () => {
     const deps = createMockDeps();
     const mod = createTimelinePlaybackModule(deps);

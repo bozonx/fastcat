@@ -141,6 +141,12 @@ pub struct VideoLayerRt {
     /// active. It may hold a small preroll cache, but must not free-run until the
     /// playhead actually enters the clip.
     play_deferred_until_active: bool,
+    /// Sanitized absolute per-clip speed factor. Warm-up frame counts are scaled by this
+    /// so a fast clip keeps the same *timeline*-time head start (at 2× the source PTS
+    /// advances 2× per timeline second, so twice as many source frames must be prewarmed
+    /// to cover the same wall-clock horizon). Captured once at construction — safe because
+    /// `speed_bits` is part of `VideoRuntimeKey`, so a speed edit rebuilds the runtime.
+    playback_speed_abs: f64,
 }
 
 impl VideoLayerRt {
@@ -166,7 +172,18 @@ impl VideoLayerRt {
             last_newest_pts: None,
             last_pump_seek_pts: None,
             play_deferred_until_active: false,
+            playback_speed_abs: 1.0,
         }
+    }
+
+    /// Sets the sanitized absolute per-clip speed used to scale warm-up depth.
+    /// Callers pass `sanitize_clip_speed(layer.speed).abs()`.
+    pub fn set_playback_speed_abs(&mut self, abs_speed: f64) {
+        self.playback_speed_abs = if abs_speed.is_finite() && abs_speed > 0.0 {
+            abs_speed
+        } else {
+            1.0
+        };
     }
 
     pub fn set_play_deferred_until_active(&mut self, deferred: bool) {
@@ -327,7 +344,8 @@ impl VideoLayerRt {
     /// would only be evicted). A disabled cache still warms `MIN_PREROLL_FRAMES`.
     pub fn warm_ahead_frame_count(&self) -> u32 {
         let fps = self.pump.info.effective_fps();
-        let by_lookahead = (WARM_AHEAD_LOOKAHEAD_SEC * fps).ceil() as u32 + 1;
+        let by_lookahead =
+            (WARM_AHEAD_LOOKAHEAD_SEC * fps * self.playback_speed_abs).ceil() as u32 + 1;
         let cap = self.cache.capacity().max(MIN_PREROLL_FRAMES as usize) as u32;
         by_lookahead.clamp(MIN_PREROLL_FRAMES, cap)
     }
@@ -356,7 +374,8 @@ impl VideoLayerRt {
     /// `MIN_PREROLL_FRAMES`.
     pub fn preroll_frame_count(&self, lookahead_sec: f64) -> u32 {
         let fps = self.pump.info.effective_fps();
-        let by_lookahead = (lookahead_sec.max(0.0) * fps).ceil() as u32 + 1;
+        let by_lookahead =
+            (lookahead_sec.max(0.0) * fps * self.playback_speed_abs).ceil() as u32 + 1;
         let frame_bytes = (self.media_size.0 as usize)
             .saturating_mul(self.media_size.1 as usize)
             .saturating_mul(4)
@@ -840,6 +859,61 @@ mod tests {
         assert_eq!(big_frames, MIN_PREROLL_FRAMES);
         let expected_big = (MIN_PREROLL_FRAMES as f64 - 0.5) / fps;
         assert!((rt_big.expected_preroll_duration() - expected_big).abs() < 1e-9);
+    }
+
+    /// Warm-up depth must scale with |clip speed|: at 2× the source PTS advances twice as
+    /// fast per timeline second, so twice as many source frames must be prewarmed to keep
+    /// the same timeline-time head start. Without this a fast clip runs the cache dry and
+    /// stutters at its start. Mirrors the web engine's `|speed|` scaling of decode-ahead.
+    #[test]
+    fn warm_up_depth_scales_with_clip_speed() {
+        let mut rt = fixture_video_rt();
+
+        // Default (1×) baseline.
+        let base_warm = rt.warm_ahead_frame_count();
+        let base_preroll = rt.preroll_frame_count(PREROLL_LOOKAHEAD_SEC);
+
+        // Explicit 1× is unchanged from the default (regression guard).
+        rt.set_playback_speed_abs(1.0);
+        assert_eq!(rt.warm_ahead_frame_count(), base_warm);
+        assert_eq!(rt.preroll_frame_count(PREROLL_LOOKAHEAD_SEC), base_preroll);
+
+        // 2× warms strictly more (cache capacity for the 720p fixture is well above the
+        // doubled count, so it is not clamped).
+        rt.set_playback_speed_abs(2.0);
+        let warm_2x = rt.warm_ahead_frame_count();
+        assert!(
+            warm_2x > base_warm,
+            "2× must warm more frames than 1× ({warm_2x} vs {base_warm})"
+        );
+        // Preroll grows too (may hit MAX_PREROLL_FRAMES, so only require ≥).
+        assert!(rt.preroll_frame_count(PREROLL_LOOKAHEAD_SEC) >= base_preroll);
+    }
+
+    /// Reverse (negative speed) must scale warm-up by |speed|, identically to the forward
+    /// clip at the same magnitude — the decoder still streams source frames forward.
+    #[test]
+    fn warm_up_depth_uses_abs_speed_for_reverse() {
+        let mut rt = fixture_video_rt();
+
+        rt.set_playback_speed_abs(2.0);
+        let warm_forward = rt.warm_ahead_frame_count();
+
+        // Callers pass the sanitized abs, so a reversed -2× clip arrives here as 2.0.
+        rt.set_playback_speed_abs((-2.0_f64).abs());
+        assert_eq!(rt.warm_ahead_frame_count(), warm_forward);
+    }
+
+    /// Invalid speeds (0, non-finite) fall back to 1× so warm-up is never zeroed out.
+    #[test]
+    fn set_playback_speed_abs_rejects_invalid() {
+        let mut rt = fixture_video_rt();
+        let base_warm = rt.warm_ahead_frame_count();
+
+        rt.set_playback_speed_abs(0.0);
+        assert_eq!(rt.warm_ahead_frame_count(), base_warm);
+        rt.set_playback_speed_abs(f64::NAN);
+        assert_eq!(rt.warm_ahead_frame_count(), base_warm);
     }
 
     #[test]

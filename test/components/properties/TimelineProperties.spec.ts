@@ -67,12 +67,14 @@ const mockTimelineStore = reactive({
     isCustomResolution: false,
     sampleRate: 48000,
   },
+  masterGain: 1,
   applyTimeline: vi.fn(),
   saveTimelineAs: vi.fn(),
   duplicateCurrentTimeline: vi.fn(),
   loadTimeline: vi.fn(),
   loadTimelineMetadata: vi.fn(),
   addTrack: vi.fn(),
+  setAudioVolume: vi.fn(),
   previewMode: false,
 });
 
@@ -182,6 +184,7 @@ describe('TimelineProperties', () => {
     mockProjectStore.currentTimelinePath = 'timelines/main.otio';
     mockProjectStore.isReadOnly = false;
     mockTimelineStore.previewMode = false;
+    mockTimelineStore.masterGain = 1;
   });
 
   it('renders save-as action in additional actions when fsEntry is present', async () => {
@@ -207,6 +210,23 @@ describe('TimelineProperties', () => {
     expect(saveAsAction).toBeDefined();
     expect(saveAsAction.label).toBeDefined();
     expect(saveAsAction.icon).toBeDefined();
+  });
+
+  it('shows and edits master volume as percent while storing gain', async () => {
+    mockTimelineStore.masterGain = 1.76;
+
+    const wrapper = await mountSuspended(TimelineProperties);
+
+    const volumeSlider = wrapper.findComponent({ name: 'UiSliderInput' });
+
+    expect(volumeSlider.props('modelValue')).toBe(176);
+    expect(volumeSlider.props('max')).toBe(200);
+    expect(volumeSlider.props('unit')).toBe('%');
+    expect(volumeSlider.props('showInputUnit')).toBe(true);
+
+    await volumeSlider.vm.$emit('update:modelValue', 150);
+
+    expect(mockTimelineStore.setAudioVolume).toHaveBeenCalledWith(1.5);
   });
 
   it('opens save-as modal when save-as action is clicked', async () => {

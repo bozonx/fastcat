@@ -86,30 +86,27 @@ describe('TauriAudioEngine', () => {
     expect((engine as any).scheduler.getGlobalSpeed()).toBe(2);
   });
 
-  it('setMasterVolume clamps to [0, 8] (shared master-gain bound)', async () => {
+  it('setMasterVolume clamps user-facing gain to [0, 2]', async () => {
     const engine = await createEngine();
-    engine.setMasterVolume(5);
-    expect((engine as any).currentMasterVolume).toBe(5);
+    engine.setMasterVolume(1.5);
+    expect((engine as any).currentMasterVolume).toBe(1.5);
     engine.setMasterVolume(-1);
     expect((engine as any).currentMasterVolume).toBe(0);
-    // Master gain is baked into the mix, so it shares the tighter [0, 8] cap with
-    // the native engine (sanitizeMasterGain / sanitize_master_gain), not the [0, 10]
-    // monitor range.
     engine.setMasterVolume(15);
-    expect((engine as any).currentMasterVolume).toBe(8);
-    expect(setMasterGainMock).toHaveBeenNthCalledWith(1, 5);
+    expect((engine as any).currentMasterVolume).toBe(2);
+    expect(setMasterGainMock).toHaveBeenNthCalledWith(1, 1.5);
     expect(setMasterGainMock).toHaveBeenNthCalledWith(2, 0);
-    expect(setMasterGainMock).toHaveBeenNthCalledWith(3, 8);
+    expect(setMasterGainMock).toHaveBeenNthCalledWith(3, 2);
   });
 
-  it('setMonitorVolume clamps to [0, 10]', async () => {
+  it('setMonitorVolume clamps to [0, 2]', async () => {
     const engine = await createEngine();
-    engine.setMonitorVolume(3);
-    expect((engine as any).currentMonitorVolume).toBe(3);
+    engine.setMonitorVolume(1.5);
+    expect((engine as any).currentMonitorVolume).toBe(1.5);
     engine.setMonitorVolume(-5);
     expect((engine as any).currentMonitorVolume).toBe(0);
     engine.setMonitorVolume(20);
-    expect((engine as any).currentMonitorVolume).toBe(10);
+    expect((engine as any).currentMonitorVolume).toBe(2);
   });
 
   it('setMonitorVolume forwards the effective gain to native output', async () => {
@@ -121,7 +118,7 @@ describe('TauriAudioEngine', () => {
 
     expect(setOutputGainMock).toHaveBeenNthCalledWith(1, 0.25);
     expect(setOutputGainMock).toHaveBeenNthCalledWith(2, 0);
-    expect(setOutputGainMock).toHaveBeenNthCalledWith(3, 10);
+    expect(setOutputGainMock).toHaveBeenNthCalledWith(3, 2);
   });
 
   it('getLevels returns native master levels and track levels when present', async () => {

@@ -19,6 +19,7 @@ const props = withDefaults(
     wheelWithoutFocus?: boolean;
     disabled?: boolean;
     showInput?: boolean;
+    showInputUnit?: boolean;
   }>(),
   {
     label: undefined,
@@ -33,6 +34,7 @@ const props = withDefaults(
     wheelWithoutFocus: false,
     disabled: false,
     showInput: true,
+    showInputUnit: false,
   },
 );
 
@@ -99,6 +101,12 @@ function onInputUpdate(value: unknown) {
           :disabled="disabled"
           @update:model-value="onInputUpdate"
         />
+        <span
+          v-if="showInputUnit && unit"
+          class="text-2xs text-ui-text-muted font-mono select-none"
+        >
+          {{ unit }}
+        </span>
       </div>
     </div>
   </div>

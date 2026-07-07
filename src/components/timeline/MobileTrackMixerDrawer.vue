@@ -26,6 +26,7 @@ const { t } = useI18n();
 const timelineStore = useTimelineStore();
 const mediaStore = useMediaStore();
 const workspaceStore = useWorkspaceStore();
+const MAX_GAIN_DB = 6.0206;
 
 const isAudioEffectsEnabled = computed(() => workspaceStore.inDevelopmentFeaturesEnabled);
 
@@ -79,8 +80,9 @@ function toggleSolo(trackId: string) {
 }
 
 function handleTrackGainDbInput(trackId: string, dbVal: number) {
+  const clampedDb = Math.max(-60, Math.min(MAX_GAIN_DB, Number(dbVal)));
   timelineStore.updateTrackProperties(trackId, {
-    audioGain: dbToLinear(dbVal),
+    audioGain: dbToLinear(clampedDb),
   });
 }
 
@@ -132,14 +134,16 @@ function getAudioEffectsCount(track: TimelineTrack) {
 const masterVolumeDb = computed({
   get: () => linearToDb(timelineStore.masterGain ?? 1),
   set: (value: number) => {
-    timelineStore.setAudioVolume(dbToLinear(value));
+    const clampedDb = Math.max(-60, Math.min(MAX_GAIN_DB, Number(value)));
+    timelineStore.setAudioVolume(dbToLinear(clampedDb));
   },
 });
 
 function onMasterVolumeDragEnd() {
+  const clampedDb = Math.max(-60, Math.min(MAX_GAIN_DB, masterVolumeDb.value));
   timelineStore.applyTimeline({
     type: 'update_master_gain',
-    gain: dbToLinear(masterVolumeDb.value),
+    gain: dbToLinear(clampedDb),
   });
 }
 
@@ -230,6 +234,7 @@ function handleRenameTrack(name: string) {
             <DbSlider
               v-model="masterVolumeDb"
               :level-db="timelineStore.audioLevels?.master?.peakDb"
+              :max-db="MAX_GAIN_DB"
               @drag-end="onMasterVolumeDragEnd"
             />
           </div>
@@ -321,6 +326,7 @@ function handleRenameTrack(name: string) {
             <DbSlider
               :model-value="linearToDb(getTrackGain(track))"
               :level-db="timelineStore.audioLevels?.[track.id]?.peakDb"
+              :max-db="MAX_GAIN_DB"
               @update:model-value="handleTrackGainDbInput(track.id, $event)"
             />
           </div>

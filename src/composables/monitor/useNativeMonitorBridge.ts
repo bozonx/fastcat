@@ -17,6 +17,7 @@ import { createDevLogger } from '~/utils/dev-logger';
 import { isTauriRuntime } from '~/utils/runtime';
 import { isTimelinePerfEnabled, markTimeline } from '~/utils/timeline/perf';
 import { buildNativeMonitorScene, type NativeMonitorScene } from '~/utils/native-monitor-scene';
+import { clampGain } from '~/utils/audio/clamp';
 import {
   isNativeMonitorDisabled,
   markNativeMonitorInitFailure,
@@ -230,7 +231,7 @@ export function useNativeMonitorBridge(): void {
         video_tracks: [],
         audio_layers: [],
         audio_tracks: [],
-        audio_master_gain: Math.max(0, Number(timelineStore.masterGain ?? 1)),
+        audio_master_gain: clampGain(timelineStore.masterGain),
         audio_master_muted: Boolean(timelineStore.audioMuted),
         audio_master_effects: [],
         width: fmt?.width ?? 1920,

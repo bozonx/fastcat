@@ -8,7 +8,7 @@ vi.mock('~/components/audio/DbSlider.vue', () => ({
   default: {
     name: 'DbSlider',
     template: '<div><input type="range" class="mock-db-slider" /></div>',
-    props: ['modelValue', 'levelDb'],
+    props: ['modelValue', 'levelDb', 'maxDb'],
   },
 }));
 vi.mock('~/components/effects/SelectEffectModal.vue', () => ({
@@ -47,6 +47,14 @@ describe('AudioMixerMain', () => {
 
     expect(component.text()).toContain('0.0 dB');
     expect(component.text()).toContain('fastcat.audioMixer.main'); // Title
+  });
+
+  it('limits master gain slider to 200%', async () => {
+    const component = await mountSuspended(AudioMixerMain);
+
+    const dbSlider = component.findComponent({ name: 'DbSlider' });
+
+    expect(dbSlider.props('maxDb')).toBe(6.0206);
   });
 
   it('toggles master mute', async () => {

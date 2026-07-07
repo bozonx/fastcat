@@ -23,7 +23,9 @@ use winit::event_loop::EventLoopProxy;
 use super::handle::MonitorCommand;
 use super::layer_runtime::*;
 use super::scene::build::{build_compositor_scene, rasterize_svg};
-use super::scene::{LayerKind, MonitorScene, NativeFrameCacheMode, PreviewSyncMode, SceneLayer};
+use super::scene::{
+    sanitize_clip_speed, LayerKind, MonitorScene, NativeFrameCacheMode, PreviewSyncMode, SceneLayer,
+};
 use crate::compositor::scene::Scene;
 use crate::media::decode::gate::decoder_load_gate;
 use crate::media::decode::thread::DecodePump;
@@ -795,6 +797,15 @@ impl LayerRuntimeManager {
             concurrent,
         );
         let mut rt = VideoLayerRt::new(pump, media_size, source_rotation, cache_budget_bytes);
+        // Scale warm-up depth by |clip speed| so a fast clip prewarms enough source frames
+        // to cover the same timeline-time head start as a 1× clip.
+        let clip_speed_abs = self
+            .scene
+            .iter()
+            .find(|l| l.id == id)
+            .map(|l| sanitize_clip_speed(l.speed).abs())
+            .unwrap_or(1.0);
+        rt.set_playback_speed_abs(clip_speed_abs);
         let is_active_at_playhead = self
             .scene
             .iter()

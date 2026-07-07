@@ -321,6 +321,18 @@ const computedSummary = computed(() => {
 
 let pendingMasterGain: number | null = null;
 let masterGainDebounceTimer: number | null = null;
+const MASTER_GAIN_PERCENT_MAX = 200;
+
+function gainToPercent(gain: unknown): number {
+  const value = typeof gain === 'number' && Number.isFinite(gain) ? gain : 1;
+  return Math.round(Math.max(0, Math.min(MASTER_GAIN_PERCENT_MAX / 100, value)) * 100);
+}
+
+function percentToGain(percent: number): number {
+  const value = Number(percent);
+  if (!Number.isFinite(value)) return 1;
+  return Math.max(0, Math.min(MASTER_GAIN_PERCENT_MAX, value)) / 100;
+}
 
 function debouncedApplyMasterGain(val: number) {
   pendingMasterGain = val;
@@ -339,11 +351,12 @@ function debouncedApplyMasterGain(val: number) {
   }, 300);
 }
 
-const masterGain = computed({
-  get: () => timelineStore.masterGain ?? 1,
+const masterGainPercent = computed({
+  get: () => gainToPercent(timelineStore.masterGain),
   set: (val: number) => {
-    timelineStore.setAudioVolume(val);
-    debouncedApplyMasterGain(val);
+    const gain = percentToGain(val);
+    timelineStore.setAudioVolume(gain);
+    debouncedApplyMasterGain(gain);
   },
 });
 
@@ -546,14 +559,16 @@ const addTrackActions = computed(() => [
     <PropertySection v-if="!finalIsReadOnly">
       <div class="flex flex-col gap-3 py-1">
         <UiSliderInput
-          v-model="masterGain"
+          v-model="masterGainPercent"
           :label="t('fastcat.timeline.properties.masterVolume')"
           :min="0"
-          :max="2"
-          :step="0.001"
-          :wheel-step-multiplier="10"
-          :default-value="1"
-          unit="x"
+          :max="200"
+          :step="1"
+          :wheel-step-multiplier="1"
+          :default-value="100"
+          :decimals="0"
+          unit="%"
+          show-input-unit
         />
       </div>
     </PropertySection>

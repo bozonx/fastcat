@@ -56,6 +56,7 @@ describe('MonitorAudioControl', () => {
     // Initial state
     expect(volumeControl.props('volume')).toBe(0.5);
     expect(volumeControl.props('isMuted')).toBe(false);
+    expect(volumeControl.props('max')).toBe(2);
 
     // Update from store
     uiStore.monitorVolume = 0.8;

@@ -3,6 +3,7 @@ import { ref, watch, computed, onMounted, onUnmounted, nextTick } from 'vue';
 import { useImagePanZoom } from '~/composables/preview/useImagePanZoom';
 import { useMediaPlayerVolume } from '~/composables/preview/useMediaPlayerVolume';
 import { useMediaPlayerPlayback } from '~/composables/preview/useMediaPlayerPlayback';
+import { useMediaElementGain } from '~/composables/preview/useMediaElementGain';
 import { formatTime } from '~/utils/time';
 import UiVolumeControl from '~/components/ui/editor/UiVolumeControl.vue';
 import UiTooltip from '~/components/ui/UiTooltip.vue';
@@ -44,6 +45,7 @@ const emit = defineEmits<{
 
 const mediaElement = ref<HTMLVideoElement | HTMLAudioElement | null>(null);
 const playerRootEl = ref<HTMLElement | null>(null);
+const { applyVolume } = useMediaElementGain(mediaElement, volume, isMuted, { maxGain: 2 });
 
 const {
   isPlaying,
@@ -64,6 +66,11 @@ const {
 function onTimeUpdate() {
   playOnTimeUpdate(isDragging);
   emitPlaybackState();
+}
+
+function handleLoadedMetadata() {
+  onLoadedMetadata();
+  applyVolume();
 }
 
 const playbackErrorMessage = computed(() => {
@@ -200,23 +207,10 @@ watch(
     await nextTick();
 
     if (mediaElement.value) {
-      mediaElement.value.volume = Math.min(1, Math.max(0, volume.value));
-      mediaElement.value.muted = isMuted.value;
+      applyVolume();
     }
   },
 );
-
-watch(volume, (v) => {
-  if (mediaElement.value) {
-    mediaElement.value.volume = Math.min(1, Math.max(0, v));
-  }
-});
-
-watch(isMuted, (m) => {
-  if (mediaElement.value) {
-    mediaElement.value.muted = m;
-  }
-});
 
 watch(
   () => props.forcePaused,
@@ -346,7 +340,7 @@ onUnmounted(() => {
           :style="mediaStyle"
           @timeupdate="onTimeUpdate"
           @loadedmetadata="
-            onLoadedMetadata();
+            handleLoadedMetadata();
             fitToContainer();
           "
           @play="onPlay"
@@ -366,7 +360,7 @@ onUnmounted(() => {
         :src="src"
         class="hidden"
         @timeupdate="onTimeUpdate"
-        @loadedmetadata="onLoadedMetadata"
+        @loadedmetadata="handleLoadedMetadata"
         @play="onPlay"
         @pause="onPause"
         @ended="onPause"
@@ -471,7 +465,7 @@ onUnmounted(() => {
             v-model:is-muted="isMuted"
             :compact="!isModal"
             orientation="horizontal"
-            :max="1"
+            :max="2"
             wheel-without-focus
           />
           <UiTooltip :text="getHotkeyTitle(t('fastcat.preview.fullscreen'), 'general.fullscreen')">

@@ -556,7 +556,7 @@ fn compute_source_pts_at(
     (source_start_sec + source_offset).max(0.0)
 }
 
-fn sanitize_clip_speed(speed: f64) -> f64 {
+pub(crate) fn sanitize_clip_speed(speed: f64) -> f64 {
     if speed.is_finite() && speed != 0.0 {
         speed.clamp(-10.0, 10.0)
     } else {

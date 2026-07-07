@@ -80,6 +80,54 @@ describe('TimelineStore Copy/Paste', () => {
     expect(track.items.find((it: any) => it.id === 'clip1')).toBeUndefined();
   });
 
+  it('pastes copied clips back to their active source track when no target is passed', async () => {
+    const store = useTimelineStore();
+    const builder = new TimelineBuilder();
+    store.timelineDoc = builder
+      .withTrack('v1', 'video', 'Video 1')
+      .withTrack('v2', 'video', 'Video 2')
+      .withClip('clip1', 'v2', { startUs: 0, durationUs: 1_000_000 })
+      .build() as any;
+
+    store.selectTrack(null);
+    store.selectedItemIds = ['clip1'];
+    const copiedItems = store.copySelectedClips();
+
+    store.currentTime = 2_000_000;
+    const [pasted] = await store.pasteClips(copiedItems);
+
+    expect(pasted?.trackId).toBe('v2');
+    const sourceTrack = store.timelineDoc.tracks.find((track: any) => track.id === 'v2')!;
+    const topTrack = store.timelineDoc.tracks.find((track: any) => track.id === 'v1')!;
+    expect(sourceTrack.items.some((item: any) => item.id === pasted?.itemId)).toBe(true);
+    expect(topTrack.items.some((item: any) => item.id === pasted?.itemId)).toBe(false);
+  });
+
+  it('pastes cut clips back to their source track after cut clears the selection', async () => {
+    const store = useTimelineStore();
+    const builder = new TimelineBuilder();
+    store.timelineDoc = builder
+      .withTrack('v1', 'video', 'Video 1')
+      .withTrack('v2', 'video', 'Video 2')
+      .withClip('clip1', 'v2', { startUs: 0, durationUs: 1_000_000 })
+      .build() as any;
+
+    store.selectTrack(null);
+    store.selectedItemIds = ['clip1'];
+    const cutItems = store.cutSelectedClips();
+
+    expect(store.selectedItemIds).toEqual([]);
+
+    store.currentTime = 2_000_000;
+    const [pasted] = await store.pasteClips(cutItems);
+
+    expect(pasted?.trackId).toBe('v2');
+    const sourceTrack = store.timelineDoc.tracks.find((track: any) => track.id === 'v2')!;
+    const topTrack = store.timelineDoc.tracks.find((track: any) => track.id === 'v1')!;
+    expect(sourceTrack.items.some((item: any) => item.id === pasted?.itemId)).toBe(true);
+    expect(topTrack.items.some((item: any) => item.id === pasted?.itemId)).toBe(false);
+  });
+
   it('pastes multiple clips across multiple tracks correctly', async () => {
     const store = useTimelineStore();
     const builder = new TimelineBuilder();

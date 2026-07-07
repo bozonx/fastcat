@@ -151,7 +151,11 @@ fn enrich_descriptors(plugins: Vec<AudioPluginDescriptor>) -> Vec<AudioPluginDes
                 false,
                 "Bundle exposed no CLAP plugins",
             )),
-            Err(err) => out.push(with_status(descriptor, false, &format!("Failed to load: {err}"))),
+            Err(err) => out.push(with_status(
+                descriptor,
+                false,
+                &format!("Failed to load: {err}"),
+            )),
         }
     }
     out

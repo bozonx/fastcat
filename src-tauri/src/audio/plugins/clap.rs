@@ -282,7 +282,13 @@ fn worker_loop(rx: Receiver<Command>) {
                 channels,
                 resp,
             } => {
-                let result = create_live(&mut entries, &path, plugin_id.as_deref(), sample_rate, channels);
+                let result = create_live(
+                    &mut entries,
+                    &path,
+                    plugin_id.as_deref(),
+                    sample_rate,
+                    channels,
+                );
                 match result {
                     Ok(live) => {
                         let id = next_id;
@@ -372,8 +378,13 @@ fn create_live(
     sample_rate: u32,
     channels: usize,
 ) -> Result<LiveClap, String> {
-    let host_info = HostInfo::new("FastCat", "FastCat", "https://fastcat.app", env!("CARGO_PKG_VERSION"))
-        .map_err(|e| format!("host info: {e}"))?;
+    let host_info = HostInfo::new(
+        "FastCat",
+        "FastCat",
+        "https://fastcat.app",
+        env!("CARGO_PKG_VERSION"),
+    )
+    .map_err(|e| format!("host info: {e}"))?;
 
     let entry = get_or_load_entry(entries, path)?;
     let factory = entry
@@ -430,7 +441,10 @@ fn create_live(
 
 /// Query the plugin's main input/output audio-port channel counts, falling back
 /// to `fallback` when the audio-ports extension is absent or empty.
-fn query_port_channels(instance: &mut ClapPluginInstance<FastcatClapHost>, fallback: usize) -> (usize, usize) {
+fn query_port_channels(
+    instance: &mut ClapPluginInstance<FastcatClapHost>,
+    fallback: usize,
+) -> (usize, usize) {
     let mut handle = instance.plugin_handle();
     let Some(ports) = handle.shared().get_extension::<PluginAudioPorts>() else {
         return (fallback.max(1), fallback.max(1));
@@ -509,7 +523,10 @@ impl ClapInstance {
         };
 
         let Some(plugin) = spec.plugin.as_ref() else {
-            log::warn!("CLAP effect {} has no plugin reference; passing audio through", spec.id);
+            log::warn!(
+                "CLAP effect {} has no plugin reference; passing audio through",
+                spec.id
+            );
             return instance;
         };
         let engine = engine();
@@ -533,7 +550,10 @@ impl ClapInstance {
                 instance.alive = true;
             }
             Ok(Err(err)) => {
-                log::warn!("CLAP plugin {} failed to load ({err}); passing audio through", plugin.path);
+                log::warn!(
+                    "CLAP plugin {} failed to load ({err}); passing audio through",
+                    plugin.path
+                );
             }
             Err(_) => {}
         }
@@ -664,7 +684,10 @@ mod tests {
         let mut instance = backend.instantiate(&clap_spec(&path), 48_000, 2);
         let mut buffer = vec![0.1f32; 2 * 512];
         instance.process(&mut buffer, 2);
-        assert!(buffer.iter().all(|s| s.is_finite()), "output must be finite");
+        assert!(
+            buffer.iter().all(|s| s.is_finite()),
+            "output must be finite"
+        );
         eprintln!("processed 512 stereo frames without panic");
     }
 }

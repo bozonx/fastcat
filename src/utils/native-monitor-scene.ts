@@ -17,6 +17,7 @@ import type { SceneVideoTrack } from '~/types/generated/native-monitor/SceneVide
 import type { TimelineFormatInput } from '~/timeline/format';
 import { getTimelineFormat, normalizeTimelineFormat } from '~/timeline/format';
 import { buildEffectiveAudioClipItems } from '~/utils/audio/track-bus';
+import { clampGain } from '~/utils/audio/clamp';
 import {
   buildCanonicalAudioClipDescriptor,
   toNativeSceneAudioLayer,
@@ -826,7 +827,7 @@ export async function buildNativeMonitorScene(
             proxy,
           }),
     audio_tracks,
-    audio_master_gain: Math.max(0, clampFinite(params.masterGain, 1)),
+    audio_master_gain: clampGain(params.masterGain),
     audio_master_muted: Boolean(params.masterMuted),
     audio_master_effects: buildNativeAudioEffectSpecs(
       params.timelineDoc.metadata?.fastcat?.masterEffects,
