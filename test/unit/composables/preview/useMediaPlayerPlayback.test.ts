@@ -1,9 +1,12 @@
 /** @vitest-environment node */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { ref, reactive } from 'vue';
+import { ref, reactive, nextTick } from 'vue';
 import { useMediaPlayerPlayback } from '~/composables/preview/useMediaPlayerPlayback';
 
 let mockState: any = null;
+const mockTimelineStore = reactive({
+  isPlaying: false,
+});
 
 if (typeof global.requestAnimationFrame === 'undefined') {
   global.requestAnimationFrame = (callback: any) => setTimeout(callback, 0) as any;
@@ -18,6 +21,10 @@ vi.mock('~/stores/ui.store', () => ({
       return mockState?.trigger;
     },
   }),
+}));
+
+vi.mock('~/stores/timeline.store', () => ({
+  useTimelineStore: () => mockTimelineStore,
 }));
 
 function makeMediaElement(overrides?: Partial<HTMLVideoElement>): HTMLVideoElement {
@@ -40,6 +47,7 @@ describe('useMediaPlayerPlayback', () => {
     mockState = reactive({
       trigger: null,
     });
+    mockTimelineStore.isPlaying = false;
   });
 
   it('initializes with default state', () => {
@@ -424,5 +432,58 @@ describe('useMediaPlayerPlayback', () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(playbackSpeed.value).toBe(-1);
+  });
+
+  it('stops timeline playback when preview playback starts', async () => {
+    const el = makeMediaElement();
+    const mediaEl = ref(el);
+    const volume = ref(1);
+    const isMuted = ref(false);
+    const focusStore = { canUsePreviewHotkeys: true, effectiveFocus: null };
+
+    mockTimelineStore.isPlaying = true;
+
+    const { isPlaying } = useMediaPlayerPlayback(
+      mediaEl,
+      { src: '' },
+      volume,
+      isMuted,
+      focusStore,
+    );
+
+    isPlaying.value = true;
+
+    await nextTick();
+
+    expect(mockTimelineStore.isPlaying).toBe(false);
+  });
+
+  it('pauses preview playback when timeline playback starts', async () => {
+    const el = makeMediaElement();
+    const mediaEl = ref(el);
+    const volume = ref(1);
+    const isMuted = ref(false);
+    const focusStore = { canUsePreviewHotkeys: true, effectiveFocus: null };
+
+    const { isPlaying, onPlay } = useMediaPlayerPlayback(
+      mediaEl,
+      { src: '' },
+      volume,
+      isMuted,
+      focusStore,
+    );
+
+    // Start playing preview
+    onPlay();
+    expect(isPlaying.value).toBe(true);
+
+    // Start timeline playback
+    mockTimelineStore.isPlaying = true;
+
+    await nextTick();
+
+    // Preview playback should be paused
+    expect(isPlaying.value).toBe(false);
+    expect(el.pause).toHaveBeenCalled();
   });
 });

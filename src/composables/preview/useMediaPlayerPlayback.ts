@@ -1,5 +1,6 @@
 import { ref, watch, onUnmounted, type Ref } from 'vue';
 import { useUiStore } from '~/stores/ui.store';
+import { useTimelineStore } from '~/stores/timeline.store';
 import { createDevLogger } from '~/utils/dev-logger';
 
 const log = createDevLogger('mediaPlayerPlayback');
@@ -12,6 +13,7 @@ export function useMediaPlayerPlayback(
   focusStore: { canUsePreviewHotkeys: boolean; effectiveFocus: string | null },
 ) {
   const uiStore = useUiStore();
+  const timelineStore = useTimelineStore();
   const isPlaying = ref(false);
   const currentTime = ref(0);
   const duration = ref(0);
@@ -224,6 +226,22 @@ export function useMediaPlayerPlayback(
       }
     },
     { deep: true },
+  );
+
+  watch(isPlaying, (playing) => {
+    if (playing) {
+      timelineStore.isPlaying = false;
+    }
+  });
+
+  watch(
+    () => timelineStore.isPlaying,
+    (timelinePlaying) => {
+      console.log('TIMELINE PLAYING WATCHER TRIGGERED:', timelinePlaying, 'isPlaying:', isPlaying.value);
+      if (timelinePlaying && isPlaying.value) {
+        pauseAndClearPlayback();
+      }
+    }
   );
 
   onUnmounted(() => {
