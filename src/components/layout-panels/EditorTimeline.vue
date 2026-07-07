@@ -1198,6 +1198,7 @@ async function handleConfirmCreateVersion(newName: string) {
           <UiTimecode
             class="flex-1"
             :model-value="timelineStore.currentTime"
+            :min="0"
             wheel-without-focus
             @update:model-value="timelineStore.setCurrentTimeUs($event)"
           />

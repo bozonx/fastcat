@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { mountWithNuxt } from '../utils/mount';
 import ClipActionsSection from '~/components/properties/clip/ClipActionsSection.vue';
 import ClipInfoSection from '~/components/properties/clip/ClipInfoSection.vue';
+import PropertyTimecode from '~/components/properties/PropertyTimecode.vue';
 import type { TimelineClipItem } from '~/timeline/types';
 
 function createClip(overrides: Partial<TimelineClipItem> = {}): TimelineClipItem {
@@ -88,5 +89,57 @@ describe('clip properties sections', () => {
     expect(wrapper.text()).toContain('common.end');
     expect(wrapper.findAll('input')).toHaveLength(2);
     expect(wrapper.emitted('updateDuration')).toBeUndefined();
+  });
+
+  it('caps the End field at startUs + sourceDurationUs for media clips', async () => {
+    const clip = createClip({
+      timelineRange: { startUs: 1_000_000, durationUs: 2_000_000 },
+      sourceDurationUs: 10_000_000,
+      speed: 1.0,
+    });
+    const wrapper = await mountWithNuxt(ClipInfoSection, {
+      props: { clip, mediaMeta: null, showSource: false },
+    });
+
+    const timecodes = wrapper.findAllComponents(PropertyTimecode);
+    // [0] = position, [1] = end
+    const endField = timecodes[1]!;
+    // max = startUs (1_000_000) + sourceDurationUs (10_000_000)
+    expect(endField.props('max')).toBe(11_000_000);
+    expect(endField.props('min')).toBe(0);
+    expect(timecodes[0]!.props('min')).toBe(0);
+  });
+
+  it('leaves the End field unbounded for image clips', async () => {
+    const clip = createClip({
+      clipType: 'media',
+      isImage: true,
+      timelineRange: { startUs: 0, durationUs: 2_000_000 },
+      sourceDurationUs: 10_000_000,
+      speed: 1.0,
+    });
+    const wrapper = await mountWithNuxt(ClipInfoSection, {
+      props: { clip, mediaMeta: null, showSource: false },
+    });
+
+    const timecodes = wrapper.findAllComponents(PropertyTimecode);
+    const endField = timecodes[1]!;
+    // images have no source limit -> max is Infinity
+    expect(endField.props('max')).toBe(Number.POSITIVE_INFINITY);
+  });
+
+  it('scales the End cap by speed (2x -> half duration)', async () => {
+    const clip = createClip({
+      timelineRange: { startUs: 0, durationUs: 2_000_000 },
+      sourceDurationUs: 10_000_000,
+      speed: 2.0,
+    });
+    const wrapper = await mountWithNuxt(ClipInfoSection, {
+      props: { clip, mediaMeta: null, showSource: false },
+    });
+
+    const timecodes = wrapper.findAllComponents(PropertyTimecode);
+    // max = 0 + (10_000_000 / 2) = 5_000_000
+    expect(timecodes[1]!.props('max')).toBe(5_000_000);
   });
 });

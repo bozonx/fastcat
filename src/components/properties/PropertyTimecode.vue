@@ -5,6 +5,8 @@ import UiTimecode from '~/components/ui/editor/UiTimecode.vue';
 const props = defineProps<{
   label: string;
   modelValue: number;
+  min?: number;
+  max?: number;
 }>();
 
 const emit = defineEmits<{
@@ -16,6 +18,8 @@ const emit = defineEmits<{
   <PropertyField :label="props.label" class="mt-2">
     <UiTimecode
       :model-value="props.modelValue"
+      :min="props.min"
+      :max="props.max"
       @update:model-value="emit('update:modelValue', $event)"
     />
   </PropertyField>

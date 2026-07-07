@@ -7,6 +7,7 @@ import PropertyDuration from '~/components/properties/PropertyDuration.vue';
 import MediaMetadataList from '~/components/properties/MediaMetadataList.vue';
 import { computed } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
+import { getClipMaxTimelineDurationUs } from '~/utils/timeline/clip';
 
 const props = withDefaults(
   defineProps<{
@@ -32,6 +33,11 @@ const emit = defineEmits<{
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
 const timelineFps = computed(() => timelineStore.timelineFormat?.fps ?? timelineStore.fps);
+
+// The end timecode may never exceed the clip's source material. For images and
+// virtual clips getClipMaxTimelineDurationUs returns Infinity (no upper bound).
+const clipMaxDurationUs = computed(() => getClipMaxTimelineDurationUs(props.clip));
+const endMaxUs = computed(() => props.clip.timelineRange.startUs + clipMaxDurationUs.value);
 </script>
 
 <template>
@@ -53,12 +59,15 @@ const timelineFps = computed(() => timelineStore.timelineFormat?.fps ?? timeline
     <PropertyTimecode
       :label="t('common.position')"
       :model-value="props.clip.timelineRange.startUs"
+      :min="0"
       @update:model-value="emit('updateStartTime', $event)"
     />
 
     <PropertyTimecode
       :label="t('common.end')"
       :model-value="props.clip.timelineRange.startUs + props.clip.timelineRange.durationUs"
+      :min="0"
+      :max="endMaxUs"
       @update:model-value="emit('updateEndTime', $event)"
     />
   </PropertySection>

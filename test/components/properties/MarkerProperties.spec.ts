@@ -67,10 +67,10 @@ vi.mock('~/components/ui/UiColorPicker.vue', () => ({
 vi.mock('~/components/ui/editor/UiTimecode.vue', () => ({
   default: {
     name: 'UiTimecode',
-    props: ['modelValue'],
+    props: ['modelValue', 'min'],
     emits: ['update:modelValue'],
     template:
-      '<button class="timecode" :data-value="modelValue" @click="$emit(\'update:modelValue\', Number(modelValue) + 1000000)">timecode</button>',
+      '<button class="timecode" :data-value="modelValue" :data-min="min" @click="$emit(\'update:modelValue\', Number(modelValue) + 1000000)">timecode</button>',
   },
 }));
 
@@ -210,5 +210,18 @@ describe('MarkerProperties', () => {
 
     expect(wrapper.find('[data-testid="quick-action-delete"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="marker-color"]').exists()).toBe(false);
+  });
+
+  it('binds min=0 to position and zone-end timecode fields', async () => {
+    const wrapper = await mountSuspended(MarkerProperties, {
+      props: { markerId: 'zone' },
+    });
+
+    const timecodes = wrapper.findAll('.timecode');
+    // zone marker has two fields: position + zone-end
+    expect(timecodes).toHaveLength(2);
+    for (const field of timecodes) {
+      expect(field.attributes('data-min')).toBe('0');
+    }
   });
 });

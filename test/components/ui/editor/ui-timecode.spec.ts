@@ -158,4 +158,97 @@ describe('UiTimecode', () => {
     await input.trigger('wheel', { deltaY: -100 });
     expect(component.emitted('update:modelValue')).toBeTruthy();
   });
+
+  describe('bounds (min/max)', () => {
+    const frameUs = 1_000_000 / 30;
+
+    it('clamps manual entry to max on Enter', async () => {
+      const component = await mountSuspended(UiTimecode, {
+        props: { modelValue: 1_000_000, max: 2_000_000 },
+      });
+
+      const input = component.find('input');
+      await input.trigger('focus');
+      await input.setValue('00:00:10:00'); // 10s, well above 2s max
+      await input.trigger('keydown', { key: 'Enter' });
+
+      expect(component.emitted('update:modelValue')?.[0]).toEqual([2_000_000]);
+      expect((input.element as HTMLInputElement).value).toBe('00:00:02:00');
+    });
+
+    it('clamps manual entry to min on Enter', async () => {
+      const component = await mountSuspended(UiTimecode, {
+        props: { modelValue: 1_000_000, min: 500_000 },
+      });
+
+      const input = component.find('input');
+      await input.trigger('focus');
+      await input.setValue('00:00:00:00'); // 0, below min 500ms
+      await input.trigger('keydown', { key: 'Enter' });
+
+      expect(component.emitted('update:modelValue')?.[0]).toEqual([500_000]);
+    });
+
+    it('clamps step (up button) to max', async () => {
+      const component = await mountSuspended(UiTimecode, {
+        props: { modelValue: 1_990_000, max: 2_000_000 },
+      });
+
+      const input = component.find('input');
+      await input.trigger('focus');
+      // up arrow adds one frame; 1.99s + 1 frame (~33ms) exceeds the 2s cap
+      await input.trigger('keydown', { key: 'ArrowUp' });
+
+      expect(component.emitted('update:modelValue')?.[0]).toEqual([2_000_000]);
+    });
+
+    it('clamps step (down) to min at 0', async () => {
+      const component = await mountSuspended(UiTimecode, {
+        props: { modelValue: 0, min: 0 },
+      });
+
+      const buttons = component.findAll('button');
+      // Unfocused step emits unconditionally; 0 - 1 frame is clamped to 0.
+      await buttons[1]!.trigger('click');
+
+      expect(component.emitted('update:modelValue')?.[0]).toEqual([0]);
+    });
+
+    it('does not clamp when max is Infinity/omitted', async () => {
+      const component = await mountSuspended(UiTimecode, {
+        props: { modelValue: 1_000_000 },
+      });
+
+      const input = component.find('input');
+      await input.trigger('focus');
+      await input.setValue('00:10:00:00'); // 10 minutes
+      await input.trigger('keydown', { key: 'Enter' });
+
+      expect(component.emitted('update:modelValue')?.[0]).toEqual([600_000_000]);
+    });
+
+    it('defaults lower bound to 0 when allowNegative is false', async () => {
+      const component = await mountSuspended(UiTimecode, {
+        props: { modelValue: 0 },
+      });
+
+      const buttons = component.findAll('button');
+      await buttons[1]!.trigger('click'); // down by one frame
+
+      expect(component.emitted('update:modelValue')?.[0]).toEqual([0]);
+    });
+
+    it('allows negative values when allowNegative is true and no min', async () => {
+      const component = await mountSuspended(UiTimecode, {
+        props: { modelValue: 0, allowNegative: true },
+      });
+
+      const input = component.find('input');
+      await input.trigger('focus');
+      await input.setValue('-00:00:01:00');
+      await input.trigger('keydown', { key: 'Enter' });
+
+      expect(component.emitted('update:modelValue')?.[0]).toEqual([-1_000_000]);
+    });
+  });
 });

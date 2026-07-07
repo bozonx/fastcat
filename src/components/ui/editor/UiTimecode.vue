@@ -12,10 +12,16 @@ const props = withDefaults(
     modelValue: number; // Time in microseconds
     allowNegative?: boolean;
     wheelWithoutFocus?: boolean;
+    /** Lower bound in microseconds. Defaults to 0 when allowNegative is false. */
+    min?: number;
+    /** Upper bound in microseconds. Infinity/undefined = no limit. */
+    max?: number;
   }>(),
   {
     allowNegative: false,
     wheelWithoutFocus: false,
+    min: undefined,
+    max: undefined,
   },
 );
 
@@ -33,6 +39,22 @@ const wrapperRef = ref<HTMLElement | null>(null);
 useBlurOnPointerDownOutside(wrapperRef);
 
 let lastCommittedValue = props.modelValue;
+
+// Effective bounds. When allowNegative is false the lower bound is at least 0
+// (unless an explicit, finite min is provided). max is only applied when finite.
+const effectiveMin = computed(() => {
+  if (Number.isFinite(props.min)) return props.min as number;
+  return props.allowNegative ? Number.NEGATIVE_INFINITY : 0;
+});
+const effectiveMax = computed(() =>
+  Number.isFinite(props.max) ? (props.max as number) : Number.POSITIVE_INFINITY,
+);
+
+// Clamp a microsecond value into [effectiveMin, effectiveMax].
+function clampValue(value: number): number {
+  if (!Number.isFinite(value)) return value;
+  return Math.min(effectiveMax.value, Math.max(effectiveMin.value, value));
+}
 
 // Parse HH:MM:SS:FF or MM:SS:FF or SS:FF or just SS to microseconds
 function parseTimecode(tc: string, fpsValue: number): number {
@@ -89,11 +111,14 @@ watch(
 function commitValue() {
   const parsed = parseTimecode(localValue.value, fps.value);
   if (!isNaN(parsed) && (props.allowNegative || parsed >= 0)) {
-    if (parsed !== lastCommittedValue) {
-      emit('update:modelValue', parsed);
-      lastCommittedValue = parsed;
+    // Clamp into the allowed [min, max] window before emitting so consumers
+    // never receive out-of-range values from manual entry.
+    const clamped = clampValue(parsed);
+    if (clamped !== lastCommittedValue) {
+      emit('update:modelValue', clamped);
+      lastCommittedValue = clamped;
     }
-    localValue.value = formatTimecode(parsed, fps.value);
+    localValue.value = formatTimecode(clamped, fps.value);
   } else {
     // Revert to valid prop value
     localValue.value = formatTimecode(props.modelValue, fps.value);
@@ -153,9 +178,7 @@ function stepValue(direction: number, isFrame: boolean) {
   const stepUs = isFrame ? frameUs : 1_000_000; // frame or 1 second
 
   let newUs = validUs + direction * stepUs;
-  if (!props.allowNegative) {
-    newUs = Math.max(0, newUs);
-  }
+  newUs = clampValue(newUs);
 
   if (isFocused.value) {
     localValue.value = formatTimecode(newUs, fps.value);

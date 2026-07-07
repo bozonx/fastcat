@@ -4,6 +4,7 @@ import {
   clampHandlePx,
   getClipHeadTimelineHandleUs,
   getClipTailTimelineHandleUs,
+  getClipMaxTimelineDurationUs,
 } from '~/utils/timeline/clip';
 import type { TimelineClipItem } from '~/timeline/types';
 
@@ -73,6 +74,60 @@ describe('utils/timeline/clip', () => {
       const clip = { ...baseClip, speed: 0 } as TimelineClipItem;
       expect(getClipHeadTimelineHandleUs(clip)).toBe(Number.POSITIVE_INFINITY);
       expect(getClipTailTimelineHandleUs(clip)).toBe(Number.POSITIVE_INFINITY);
+    });
+  });
+
+  describe('getClipMaxTimelineDurationUs', () => {
+    it('returns sourceDurationUs / absSpeed for media clips', () => {
+      const clip = { ...baseClip, speed: 1.0, sourceDurationUs: 10_000 } as TimelineClipItem;
+      expect(getClipMaxTimelineDurationUs(clip)).toBe(10_000);
+    });
+
+    it('scales by speed (2.0 -> half duration)', () => {
+      const clip = { ...baseClip, speed: 2.0, sourceDurationUs: 10_000 } as TimelineClipItem;
+      expect(getClipMaxTimelineDurationUs(clip)).toBe(5_000);
+    });
+
+    it('scales by abs speed for reverse (-2.0)', () => {
+      const clip = { ...baseClip, speed: -2.0, sourceDurationUs: 10_000 } as TimelineClipItem;
+      expect(getClipMaxTimelineDurationUs(clip)).toBe(5_000);
+    });
+
+    it('returns Infinity for image clips even with sourceDurationUs', () => {
+      const clip = {
+        ...baseClip,
+        speed: 1.0,
+        sourceDurationUs: 10_000,
+        isImage: true,
+      } as TimelineClipItem;
+      expect(getClipMaxTimelineDurationUs(clip)).toBe(Number.POSITIVE_INFINITY);
+    });
+
+    it('returns Infinity for virtual clips (text/shape/background)', () => {
+      const textClip = { ...baseClip, clipType: 'text', speed: 1.0 } as TimelineClipItem;
+      expect(getClipMaxTimelineDurationUs(textClip)).toBe(Number.POSITIVE_INFINITY);
+    });
+
+    it('returns Infinity for timeline clip type', () => {
+      const timelineClip = {
+        ...baseClip,
+        clipType: 'timeline',
+        speed: 1.0,
+        sourceDurationUs: 8_000,
+      } as TimelineClipItem;
+      expect(getClipMaxTimelineDurationUs(timelineClip)).toBe(8_000);
+    });
+
+    it('returns Infinity when sourceDurationUs is missing/invalid', () => {
+      const noDuration = {
+        ...baseClip,
+        speed: 1.0,
+        sourceDurationUs: undefined,
+      } as TimelineClipItem;
+      expect(getClipMaxTimelineDurationUs(noDuration)).toBe(Number.POSITIVE_INFINITY);
+
+      const zeroDuration = { ...baseClip, speed: 1.0, sourceDurationUs: 0 } as TimelineClipItem;
+      expect(getClipMaxTimelineDurationUs(zeroDuration)).toBe(Number.POSITIVE_INFINITY);
     });
   });
 });

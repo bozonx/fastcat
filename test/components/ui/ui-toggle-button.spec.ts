@@ -163,4 +163,30 @@ describe('UiToggleButton', () => {
     expect(button.classes()).toContain('text-ui-text-muted');
     expect(button.classes()).toContain('hover:text-ui-text');
   });
+
+  it('passes iconClass to UButton via ui prop', async () => {
+    const component = await mountSuspended(UiToggleButton, {
+      props: {
+        modelValue: false,
+        icon: 'i-heroicons-eye',
+        iconClass: 'size-3',
+      },
+    });
+
+    const button = component.find('button');
+    // ui prop is an object, serialized to "[object Object]" in HTML attributes
+    expect(button.attributes('ui')).toBe('[object Object]');
+  });
+
+  it('does not pass ui prop when iconClass is not set', async () => {
+    const component = await mountSuspended(UiToggleButton, {
+      props: {
+        modelValue: false,
+        icon: 'i-heroicons-eye',
+      },
+    });
+
+    const button = component.find('button');
+    expect(button.attributes('ui')).toBeUndefined();
+  });
 });

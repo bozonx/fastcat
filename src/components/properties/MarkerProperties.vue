@@ -181,13 +181,18 @@ const mainActions = computed<PropertyAction[]>(() => {
         <span class="text-xs text-ui-text-muted">{{
           isZone ? t('common.start') : t('common.position')
         }}</span>
-        <UiTimecode :model-value="marker.timeUs" @update:model-value="handleUpdateStartTime" />
+        <UiTimecode
+          :model-value="marker.timeUs"
+          :min="0"
+          @update:model-value="handleUpdateStartTime"
+        />
       </div>
 
       <div v-if="isZone" class="flex flex-col gap-0.5 mt-2">
         <span class="text-xs text-ui-text-muted">{{ t('common.end') }}</span>
         <UiTimecode
           :model-value="marker.timeUs + (marker.durationUs || 0)"
+          :min="0"
           @update:model-value="handleUpdateEndTime"
         />
       </div>

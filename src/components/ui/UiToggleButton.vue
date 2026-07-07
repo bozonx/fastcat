@@ -28,6 +28,7 @@ const props = withDefaults(
     title?: string;
     square?: boolean;
     noToggle?: boolean;
+    iconClass?: string;
     class?: string;
   }>(),
   {
@@ -47,6 +48,7 @@ const props = withDefaults(
     title: undefined,
     square: false,
     noToggle: false,
+    iconClass: undefined,
     class: undefined,
   },
 );
@@ -88,6 +90,11 @@ const computedStyle = computed(() => {
   }
 
   return Object.keys(style).length ? style : undefined;
+});
+
+const computedUi = computed(() => {
+  if (!props.iconClass) return undefined;
+  return { leadingIcon: props.iconClass, trailingIcon: props.iconClass };
 });
 
 const isIconOnly = computed(() => !!computedIcon.value && !props.label);
@@ -135,6 +142,7 @@ const iconButtonToneClass = computed(() => {
     :disabled="disabled"
     :title="title"
     :style="computedStyle"
+    :ui="computedUi"
     :aria-pressed="modelValue"
     :data-state="modelValue ? 'on' : 'off'"
     class="transition-all duration-200"

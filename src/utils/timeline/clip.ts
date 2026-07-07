@@ -281,6 +281,24 @@ export function getClipTailTimelineHandleUs(clip: TimelineClipItem): number {
   return sourceHandleUs / absSpeed;
 }
 
+/**
+ * Maximum timeline duration a clip may grow to, given its source material.
+ * Material-backed clips (media non-image, nested timelines) are bounded by
+ * `sourceDurationUs / abs(speed)`. Images and virtual clips (text/shape/...)
+ * have no source limit and may be extended freely (returns Infinity).
+ */
+export function getClipMaxTimelineDurationUs(clip: TimelineClipItem): number {
+  if (clip.clipType !== 'media' && clip.clipType !== 'timeline') return Number.POSITIVE_INFINITY;
+  if (clip.isImage) return Number.POSITIVE_INFINITY;
+  const speed = clip.speed ?? 1;
+  const absSpeed = Math.abs(speed) || 1;
+  const rawSourceDurationUs = Number(clip.sourceDurationUs);
+  if (!Number.isFinite(rawSourceDurationUs) || rawSourceDurationUs <= 0) {
+    return Number.POSITIVE_INFINITY;
+  }
+  return Math.round(rawSourceDurationUs / absSpeed);
+}
+
 export function getOverlayGuideOffsetPx(
   track: TimelineTrack,
   clipItem: TimelineClipItem | null,

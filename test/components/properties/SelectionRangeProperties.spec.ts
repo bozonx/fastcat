@@ -18,7 +18,11 @@ vi.mock('~/components/properties/PropertyActionsBlock.vue', () => ({
 }));
 
 vi.mock('~/components/properties/PropertyTimecode.vue', () => ({
-  default: { name: 'PropertyTimecode', props: ['label', 'modelValue'], template: '<div></div>' },
+  default: {
+    name: 'PropertyTimecode',
+    props: ['label', 'modelValue', 'min', 'max'],
+    template: '<div></div>',
+  },
 }));
 
 const mockTimelineStore = reactive({
@@ -85,5 +89,15 @@ describe('SelectionRangeProperties', () => {
     const wrapper = await mountSuspended(SelectionRangeProperties);
 
     expect(wrapper.text()).toContain('00:00:04:00');
+  });
+
+  it('binds min=0 to start and end timecode fields', async () => {
+    const wrapper = await mountSuspended(SelectionRangeProperties);
+
+    const fields = wrapper.findAllComponents({ name: 'PropertyTimecode' });
+    expect(fields).toHaveLength(2);
+    for (const field of fields) {
+      expect(field.props('min')).toBe(0);
+    }
   });
 });

@@ -112,12 +112,14 @@ const mainActions = computed(() => [
       <PropertyTimecode
         :label="t('common.start')"
         :model-value="selectionRange.startUs"
+        :min="0"
         @update:model-value="handleUpdateStartTime"
       />
 
       <PropertyTimecode
         :label="t('common.end')"
         :model-value="selectionRange.endUs"
+        :min="0"
         @update:model-value="handleUpdateEndTime"
       />
     </PropertySection>

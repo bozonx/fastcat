@@ -42,6 +42,7 @@ import ClipTypeSection from '~/components/properties/clip/ClipTypeSection.vue';
 import ClipMaskSection from '~/components/properties/clip/ClipMaskSection.vue';
 import ClipParametersPasteModal from '~/components/properties/clip/ClipParametersPasteModal.vue';
 import ClipBackgroundProperties from '~/components/properties/clip/ClipBackgroundProperties.vue';
+import { getClipMaxTimelineDurationUs } from '~/utils/timeline/clip';
 import ClipEffectsEditor from '~/components/effects/ClipEffectsEditor.vue';
 import { useClipAudio } from '~/composables/properties/useClipAudio';
 import { useClipTransitions } from '~/composables/properties/useClipTransitions';
@@ -258,8 +259,17 @@ function handleUpdateStartTime(val: number) {
 }
 
 function handleUpdateEndTime(val: number) {
-  const newEndUs = Math.max(0, Math.round(val));
-  const currentEndUs = props.clip.timelineRange.startUs + props.clip.timelineRange.durationUs;
+  const startUs = props.clip.timelineRange.startUs;
+  // Clamp into the clip's allowed [start, start + maxDuration] window as a
+  // second line of defense — the UI input already clamps, but this guards any
+  // programmatic callers and prevents a manual entry from exceeding the clip's
+  // source material (which would otherwise trigger a source-window slip).
+  const maxEndUs = startUs + getClipMaxTimelineDurationUs(props.clip);
+  const newEndUs = Math.min(
+    Math.max(startUs, Math.round(val)),
+    Number.isFinite(maxEndUs) ? maxEndUs : Number.POSITIVE_INFINITY,
+  );
+  const currentEndUs = startUs + props.clip.timelineRange.durationUs;
   if (newEndUs === currentEndUs) return;
   timelineStore.applyTimeline(
     {
