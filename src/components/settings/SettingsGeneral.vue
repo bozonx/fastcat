@@ -119,6 +119,15 @@ const stopFramesQualityOptions = [
       </label>
     </UiFormField>
 
+    <UiFormField>
+      <label class="flex items-center justify-between gap-3 cursor-pointer select-none w-full">
+        <span class="text-sm text-ui-text">
+          {{ t('videoEditor.settings.deleteWithoutConfirmation') }}
+        </span>
+        <USwitch v-model="workspaceStore.userSettings.deleteWithoutConfirmation" />
+      </label>
+    </UiFormField>
+
     <UiFormField :label="t('videoEditor.settings.defaultTransitionDuration')">
       <UiWheelNumberInput
         :model-value="workspaceStore.userSettings.timeline.defaultTransitionDurationUs / 1000000"
@@ -173,13 +182,6 @@ const stopFramesQualityOptions = [
         <span class="text-xs text-ui-text-muted whitespace-nowrap">%</span>
       </div>
     </UiFormField>
-
-    <label class="flex items-center justify-between gap-3 px-1 cursor-pointer select-none">
-      <span class="text-sm text-ui-text">
-        {{ t('videoEditor.settings.deleteWithoutConfirmation') }}
-      </span>
-      <USwitch v-model="workspaceStore.userSettings.deleteWithoutConfirmation" />
-    </label>
 
     <UiAccordion :title="t('videoEditor.settings.advancedSection')">
       <div class="flex flex-col gap-6 pt-2">
