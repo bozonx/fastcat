@@ -13,7 +13,6 @@ vi.mock('~/stores/workspace.store', () => ({
         proxyVideoBitrateMbps: 1,
         proxyAudioBitrateKbps: 96,
         proxyCopyOpusAudio: false,
-        proxyConcurrency: 2,
       },
     },
   })),

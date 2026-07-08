@@ -1906,8 +1906,6 @@
       "integrationSttProvider": "Провайдер",
       "integrationSuccessDesc": "Теперь вы можете спокойно закрыть эту вкладку.",
       "integrationSuccessTitle": "Подключение успешно!",
-      "mediaTaskConcurrency": "Конкурентность медиа-задач",
-      "mediaTaskConcurrencyHelp": "Ограничивает количество одновременно выполняемых тяжелых операций (генерация прокси, миниатюр, конвертация).",
       "mouseActionAddMarker": "Добавить маркер",
       "mouseActionCenter": "Центрировать",
       "mouseActionClearSelection": "Сбросить выделение",

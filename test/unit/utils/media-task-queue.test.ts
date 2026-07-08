@@ -1,22 +1,9 @@
 /** @vitest-environment node */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const workspaceStore = vi.hoisted(() => ({
-  userSettings: {
-    optimization: {
-      mediaTaskConcurrency: 1,
-    },
-  },
-}));
-
-vi.mock('~/stores/workspace.store', () => ({
-  useWorkspaceStore: () => workspaceStore,
-}));
-
 describe('media-task-queue', () => {
   beforeEach(() => {
     vi.resetModules();
-    workspaceStore.userSettings.optimization.mediaTaskConcurrency = 1;
   });
 
   it('exports priorities', async () => {
@@ -35,7 +22,9 @@ describe('media-task-queue', () => {
   });
 
   it('does not start an aborted pending task', async () => {
-    const { addMediaTask } = await import('~/utils/media-task-queue');
+    const { addMediaTask, __resetMediaTaskQueueForTesting } =
+      await import('~/utils/media-task-queue');
+    __resetMediaTaskQueueForTesting(1);
     let releaseFirstTask!: () => void;
     const controller = new AbortController();
     const pendingTask = vi.fn().mockResolvedValue(undefined);
@@ -57,7 +46,9 @@ describe('media-task-queue', () => {
   });
 
   it('only runs the latest keyed task', async () => {
-    const { addLatestMediaTask } = await import('~/utils/media-task-queue');
+    const { addLatestMediaTask, __resetMediaTaskQueueForTesting } =
+      await import('~/utils/media-task-queue');
+    __resetMediaTaskQueueForTesting(1);
     let releaseFirstTask!: () => void;
     const first = vi.fn().mockResolvedValue(undefined);
     const second = vi.fn().mockResolvedValue(undefined);

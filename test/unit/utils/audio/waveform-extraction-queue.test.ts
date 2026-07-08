@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
+  WAVEFORM_EXTRACTION_PRIORITIES,
   runQueuedPeakExtraction,
   __resetWaveformExtractionQueueForTesting,
 } from '~/utils/audio/waveform-extraction-queue';
@@ -16,7 +17,7 @@ function createDeferred<T>() {
 
 describe('waveform extraction queue', () => {
   beforeEach(() => {
-    __resetWaveformExtractionQueueForTesting();
+    __resetWaveformExtractionQueueForTesting(1);
   });
 
   it('runs peak extraction tasks one file at a time', async () => {
@@ -80,5 +81,46 @@ describe('waveform extraction queue', () => {
     await expect(second).resolves.toHaveLength(1);
     expect(low).toHaveBeenCalledTimes(1);
     expect(high).toHaveBeenCalledTimes(1);
+  });
+
+  it('starts higher-priority pending extractions first', async () => {
+    const firstGate = createDeferred<Float32Array[] | null>();
+    const events: string[] = [];
+
+    const first = runQueuedPeakExtraction({
+      path: 'video/current.mp4',
+      task: async () => {
+        events.push('current:start');
+        return await firstGate.promise;
+      },
+    });
+
+    const prefetch = runQueuedPeakExtraction({
+      path: 'video/prefetch.mp4',
+      priority: WAVEFORM_EXTRACTION_PRIORITIES.prefetch,
+      task: async () => {
+        events.push('prefetch:start');
+        return [new Float32Array([2])];
+      },
+    });
+
+    const selected = runQueuedPeakExtraction({
+      path: 'video/selected.mp4',
+      priority: WAVEFORM_EXTRACTION_PRIORITIES.selectedClip,
+      task: async () => {
+        events.push('selected:start');
+        return [new Float32Array([3])];
+      },
+    });
+
+    await vi.waitFor(() => {
+      expect(events).toEqual(['current:start']);
+    });
+
+    firstGate.resolve([new Float32Array([1])]);
+    await expect(first).resolves.toHaveLength(1);
+    await expect(selected).resolves.toHaveLength(1);
+    await expect(prefetch).resolves.toHaveLength(1);
+    expect(events).toEqual(['current:start', 'selected:start', 'prefetch:start']);
   });
 });

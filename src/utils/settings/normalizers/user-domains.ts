@@ -157,11 +157,6 @@ export function normalizeOptimizationSettings(raw: unknown): FastCatUserSettings
         .catch(DEFAULT_USER_SETTINGS.optimization.proxyAudioBitrateKbps),
       proxyCopyOpusAudio: z.boolean().catch(DEFAULT_USER_SETTINGS.optimization.proxyCopyOpusAudio),
       autoCreateProxies: z.boolean().catch(DEFAULT_USER_SETTINGS.optimization.autoCreateProxies),
-      mediaTaskConcurrency: z.coerce
-        .number()
-        .min(1)
-        .max(16)
-        .catch(DEFAULT_USER_SETTINGS.optimization.mediaTaskConcurrency),
       pixiRenderer: z
         .enum(['webgl', 'webgpu'])
         .catch(DEFAULT_USER_SETTINGS.optimization.pixiRenderer),
@@ -196,7 +191,6 @@ export function normalizeOptimizationSettings(raw: unknown): FastCatUserSettings
   return schema.parse({
     ...opt,
     proxyMaxPixels,
-    mediaTaskConcurrency: opt.mediaTaskConcurrency ?? opt.proxyConcurrency,
   });
 }
 

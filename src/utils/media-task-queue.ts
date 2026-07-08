@@ -1,8 +1,9 @@
-import { markRaw, ref, watch } from 'vue';
+import { markRaw, ref } from 'vue';
 import PQueue from 'p-queue';
-import { useWorkspaceStore } from '~/stores/workspace.store';
+import { isTauriRuntime } from '~/utils/runtime';
 
-const DEFAULT_MEDIA_TASK_CONCURRENCY = 2;
+const BROWSER_MEDIA_TASK_CONCURRENCY = 2;
+const TAURI_BACKGROUND_MEDIA_TASK_CONCURRENCY = 3;
 const keyedTaskVersions = new Map<string, number>();
 
 export const MEDIA_TASK_PRIORITIES = {
@@ -16,37 +17,18 @@ export const MEDIA_TASK_PRIORITIES = {
 const mediaTaskQueue = ref(
   markRaw(
     new PQueue({
-      concurrency: DEFAULT_MEDIA_TASK_CONCURRENCY,
+      concurrency: resolveMediaTaskConcurrency(),
     }),
   ),
 );
 
-let isMediaTaskQueueInitialized = false;
-
-function normalizeConcurrency(value: number | null | undefined) {
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed) || parsed <= 0) {
-    return DEFAULT_MEDIA_TASK_CONCURRENCY;
-  }
-
-  return Math.max(1, Math.round(parsed));
+function resolveMediaTaskConcurrency(): number {
+  return isTauriRuntime()
+    ? TAURI_BACKGROUND_MEDIA_TASK_CONCURRENCY
+    : BROWSER_MEDIA_TASK_CONCURRENCY;
 }
 
 export function getMediaTaskQueue() {
-  if (!isMediaTaskQueueInitialized) {
-    isMediaTaskQueueInitialized = true;
-
-    const workspaceStore = useWorkspaceStore();
-
-    watch(
-      () => workspaceStore.userSettings?.optimization?.mediaTaskConcurrency,
-      (value) => {
-        mediaTaskQueue.value.concurrency = normalizeConcurrency(value);
-      },
-      { immediate: true },
-    );
-  }
-
   return mediaTaskQueue;
 }
 
@@ -64,14 +46,13 @@ export function addMediaTask<T>(
 }
 
 /**
- * Test-only helper: clear pending tasks, the keyed-task version map, and the
- * lazy-init flag so a spec can exercise the queue without the watch/state that
- * a previous spec left behind.
+ * Test-only helper: clear pending tasks, the keyed-task version map, and reset
+ * the queue concurrency so specs can exercise pending-task behaviour deterministically.
  */
-export function __resetMediaTaskQueueForTesting(): void {
+export function __resetMediaTaskQueueForTesting(concurrency = resolveMediaTaskConcurrency()): void {
   mediaTaskQueue.value.clear();
+  mediaTaskQueue.value.concurrency = concurrency;
   keyedTaskVersions.clear();
-  isMediaTaskQueueInitialized = false;
 }
 
 export function addLatestMediaTask(input: {

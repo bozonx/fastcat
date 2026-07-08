@@ -138,7 +138,7 @@ const { mediaFsMock, extractMetadataMock } = vi.hoisted(() => {
 vi.mock('~/stores/workspace.store', () => ({
   useWorkspaceStore: vi.fn(() => ({
     workspaceHandle: mediaFsMock.workspaceHandle,
-    userSettings: { optimization: { proxyConcurrency: 2 } },
+    userSettings: { optimization: {} },
     resolvedStorageTopology: { tempRoot: '' },
   })),
 }));

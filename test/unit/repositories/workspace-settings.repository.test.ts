@@ -34,7 +34,6 @@ describe('workspace-settings.repository', () => {
         proxyAudioBitrateKbps: 128,
         proxyCopyOpusAudio: true,
         autoCreateProxies: true,
-        proxyConcurrency: 2,
       },
       projectDefaults: {
         width: 1920,

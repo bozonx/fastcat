@@ -187,7 +187,7 @@ const workspaceMock = {
     projectDefaults: { audioDeclickDurationUs: 5000, defaultAudioFadeCurve: 'logarithmic' },
     projectPresets: createDefaultProjectPresets(),
     exportPresets: createDefaultExportPresets(),
-    optimization: { proxyConcurrency: 2 },
+    optimization: {},
     timeline: { defaultStaticClipDurationUs: 5000000, snapThresholdPx: 8 },
   },
   workspaceState: { fileBrowser: { instances: {} } },

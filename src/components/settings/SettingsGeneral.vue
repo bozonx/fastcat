@@ -31,8 +31,6 @@ function resetGeneralDefaults() {
   // Reset other specific fields shown in this form
   workspaceStore.userSettings.stopFrames.qualityPercent =
     DEFAULT_USER_SETTINGS.stopFrames.qualityPercent;
-  workspaceStore.userSettings.optimization.mediaTaskConcurrency =
-    DEFAULT_USER_SETTINGS.optimization.mediaTaskConcurrency;
   workspaceStore.userSettings.deleteWithoutConfirmation =
     DEFAULT_USER_SETTINGS.deleteWithoutConfirmation;
   workspaceStore.userSettings.history.maxEntries = DEFAULT_USER_SETTINGS.history.maxEntries;
@@ -185,19 +183,6 @@ const stopFramesQualityOptions = [
 
     <UiAccordion :title="t('videoEditor.settings.advancedSection')">
       <div class="flex flex-col gap-6 pt-2">
-        <UiFormField
-          :label="t('videoEditor.settings.mediaTaskConcurrency')"
-          :help="t('videoEditor.settings.mediaTaskConcurrencyHelp')"
-        >
-          <UiWheelNumberInput
-            v-model="workspaceStore.userSettings.optimization.mediaTaskConcurrency"
-            :min="1"
-            :max="20"
-            :step="1"
-            :wheel-step-multiplier="5"
-          />
-        </UiFormField>
-
         <UiFormField v-if="isDesktop" :label="t('videoEditor.settings.historyMaxEntries')">
           <UiWheelNumberInput
             v-model="workspaceStore.userSettings.history.maxEntries"

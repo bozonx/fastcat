@@ -31,6 +31,7 @@ const mockTimelineStore = reactive({
   timelineDoc: { tracks: [] },
   isPlaying: false,
   audioMuted: false,
+  selectedItemIds: [] as string[],
 });
 
 const mockProjectStore = reactive({
@@ -50,6 +51,12 @@ vi.mock('~/composables/file-manager/useFileManager', () => ({
 
 // Suppress canvas and ResizeObserver-dependent logic for unit tests
 vi.mock('~/utils/audio/waveform-extraction-queue', () => ({
+  WAVEFORM_EXTRACTION_PRIORITIES: {
+    prefetch: 0,
+    nestedTimeline: 1,
+    visibleClip: 2,
+    selectedClip: 3,
+  },
   runQueuedPeakExtraction: vi.fn(),
 }));
 

@@ -1,9 +1,33 @@
+import PQueue from 'p-queue';
+import { isTauriRuntime } from '~/utils/runtime';
+
+const BROWSER_WAVEFORM_EXTRACTION_CONCURRENCY = 1;
+const TAURI_WAVEFORM_EXTRACTION_CONCURRENCY = 2;
+
+export const WAVEFORM_EXTRACTION_PRIORITIES = {
+  prefetch: 0,
+  nestedTimeline: 1,
+  visibleClip: 2,
+  selectedClip: 3,
+} as const;
+
 const peakExtractionsByPath = new Map<string, Promise<Float32Array[] | null>>();
-let peakExtractionQueue = Promise.resolve();
+let peakExtractionQueue = createPeakExtractionQueue();
+
+function resolveWaveformExtractionConcurrency(): number {
+  return isTauriRuntime()
+    ? TAURI_WAVEFORM_EXTRACTION_CONCURRENCY
+    : BROWSER_WAVEFORM_EXTRACTION_CONCURRENCY;
+}
+
+function createPeakExtractionQueue(concurrency = resolveWaveformExtractionConcurrency()): PQueue {
+  return new PQueue({ concurrency });
+}
 
 export function runQueuedPeakExtraction(params: {
   path: string;
   cacheKey?: string;
+  priority?: number;
   shouldCancel?: () => boolean;
   task: () => Promise<Float32Array[] | null>;
 }): Promise<Float32Array[] | null> {
@@ -11,18 +35,14 @@ export function runQueuedPeakExtraction(params: {
   const existing = peakExtractionsByPath.get(key);
   if (existing) return existing;
 
-  const queued = peakExtractionQueue
-    .catch(() => {
-      // Keep the queue alive after a failed extraction.
-    })
-    .then(async () => {
+  const queued = peakExtractionQueue.add(
+    async () => {
       if (params.shouldCancel?.()) return null;
       return await params.task();
-    });
-
-  peakExtractionQueue = queued.then(
-    () => undefined,
-    () => undefined,
+    },
+    {
+      priority: params.priority ?? WAVEFORM_EXTRACTION_PRIORITIES.visibleClip,
+    },
   );
 
   peakExtractionsByPath.set(key, queued);
@@ -46,7 +66,10 @@ export function runQueuedPeakExtraction(params: {
  * Test-only helper: drop the in-flight dedup map and reset the serial queue so
  * each spec starts from a clean state without re-importing the module.
  */
-export function __resetWaveformExtractionQueueForTesting(): void {
+export function __resetWaveformExtractionQueueForTesting(
+  concurrency = resolveWaveformExtractionConcurrency(),
+): void {
+  peakExtractionQueue.clear();
   peakExtractionsByPath.clear();
-  peakExtractionQueue = Promise.resolve();
+  peakExtractionQueue = createPeakExtractionQueue(concurrency);
 }

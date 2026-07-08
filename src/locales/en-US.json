@@ -1906,8 +1906,6 @@
       "integrationSttProvider": "Provider",
       "integrationSuccessDesc": "You can safely close this tab now.",
       "integrationSuccessTitle": "Successfully connected!",
-      "mediaTaskConcurrency": "Media tasks concurrency",
-      "mediaTaskConcurrencyHelp": "Limits the number of simultaneous heavy media operations (proxy generation, thumbnails, conversion).",
       "mouseActionAddMarker": "Add Marker",
       "mouseActionCenter": "Center",
       "mouseActionClearSelection": "Clear Selection",

@@ -23,7 +23,10 @@ import {
   scheduleWaveformRedraw,
   cancelWaveformRedraw,
 } from '~/utils/audio/waveform-render-scheduler';
-import { runQueuedPeakExtraction } from '~/utils/audio/waveform-extraction-queue';
+import {
+  WAVEFORM_EXTRACTION_PRIORITIES,
+  runQueuedPeakExtraction,
+} from '~/utils/audio/waveform-extraction-queue';
 import { timeUsToPx } from '~/utils/timeline/geometry';
 import { isTauriRuntime } from '~/utils/runtime';
 import { normalizeProjectPath } from '~/utils/video-editor/worker-clip-utils';
@@ -124,9 +127,10 @@ async function ensureMediaPeaks(params: {
   path: string;
   maxLength: number;
   durationS?: number;
+  priority?: number;
   shouldCancel?: () => boolean;
 }): Promise<Float32Array[] | null> {
-  const { path, maxLength, durationS, shouldCancel } = params;
+  const { path, maxLength, durationS, priority, shouldCancel } = params;
   const existingMeta = mediaStore.getCachedMetadata(path);
   const existing = existingMeta?.audioPeaks;
   if (hasSufficientPeaks(existing, maxLength)) return existing || null;
@@ -147,6 +151,7 @@ async function ensureMediaPeaks(params: {
   return await runQueuedPeakExtraction({
     path,
     cacheKey: `${path}:${maxLength}:${durationS ?? 0}`,
+    priority,
     shouldCancel,
     task: async () => {
       const cached = mediaStore.getCachedMetadata(path)?.audioPeaks;
@@ -273,7 +278,11 @@ const extractPeaks = async () => {
             format: { fps: 25 },
           });
         },
-        ensureMediaPeaks,
+        ensureMediaPeaks: (params) =>
+          ensureMediaPeaks({
+            ...params,
+            priority: WAVEFORM_EXTRACTION_PRIORITIES.nestedTimeline,
+          }),
       });
 
       if (shouldCancel()) {
@@ -294,6 +303,9 @@ const extractPeaks = async () => {
       path: fileUrl.value,
       maxLength,
       durationS: effectiveSourceDurationUs.value / 1_000_000,
+      priority: timelineStore.selectedItemIds?.includes(props.item.id)
+        ? WAVEFORM_EXTRACTION_PRIORITIES.selectedClip
+        : WAVEFORM_EXTRACTION_PRIORITIES.visibleClip,
       shouldCancel,
     });
 

@@ -118,7 +118,6 @@ export interface FastCatUserSettings {
     proxyAudioBitrateKbps: number;
     proxyCopyOpusAudio: boolean;
     autoCreateProxies: boolean;
-    mediaTaskConcurrency: number;
     pixiRenderer: 'webgl' | 'webgpu';
     videoFrameCacheMb: number;
     nativeFrameCacheMode: 'auto' | 'low' | 'balanced' | 'high' | 'custom';
@@ -268,7 +267,6 @@ export const DEFAULT_USER_SETTINGS: FastCatUserSettings = {
     proxyAudioBitrateKbps: 128,
     proxyCopyOpusAudio: true,
     autoCreateProxies: false,
-    mediaTaskConcurrency: 2,
     pixiRenderer: 'webgl',
     videoFrameCacheMb: 256,
     nativeFrameCacheMode: 'auto',
