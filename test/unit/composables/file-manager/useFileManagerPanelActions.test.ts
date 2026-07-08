@@ -32,6 +32,10 @@ const timelineStore = {
   loadTimelineMetadata: vi.fn(),
 };
 
+const timelineMediaUsageStore = {
+  refreshUsage: vi.fn().mockResolvedValue(undefined),
+};
+
 const selectionStore = {
   selectFsEntry: vi.fn(),
 };
@@ -60,6 +64,9 @@ vi.mock('~/stores/selection.store', () => ({ useSelectionStore: () => selectionS
 vi.mock('~/stores/proxy.store', () => ({ useProxyStore: () => proxyStore }));
 vi.mock('~/stores/ui.store', () => ({ useUiStore: () => uiStore }));
 vi.mock('~/stores/focus.store', () => ({ useFocusStore: () => focusStore }));
+vi.mock('~/stores/timeline-media-usage.store', () => ({
+  useTimelineMediaUsageStore: () => timelineMediaUsageStore,
+}));
 vi.mock('~/file-manager/application/fileManagerCommands', () => ({ createTimelineCommand }));
 vi.mock('~/utils/media-types', () => ({
   getMediaTypeFromFilename: vi.fn(() => 'video'),
@@ -74,6 +81,7 @@ describe('useFileManagerPanelActions', () => {
     projectStore.openTimelineFile.mockClear();
     timelineStore.loadTimeline.mockClear();
     timelineStore.loadTimelineMetadata.mockClear();
+    timelineMediaUsageStore.refreshUsage.mockClear();
     selectionStore.selectFsEntry.mockClear();
     focusStore.setActiveTimelinePath.mockClear();
     uiStore.selectedFsEntry = null;
@@ -115,6 +123,7 @@ describe('useFileManagerPanelActions', () => {
     expect(projectStore.openTimelineFile).toHaveBeenCalledWith('timelines/demo.otio');
     expect(focusStore.setActiveTimelinePath).toHaveBeenCalledWith('timelines/demo.otio');
     expect(timelineStore.loadTimeline).toHaveBeenCalledTimes(1);
+    expect(timelineMediaUsageStore.refreshUsage).toHaveBeenCalledTimes(1);
   });
 
   it('delegates createFolder with existing names callback', async () => {

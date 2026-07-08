@@ -3,6 +3,7 @@ import { useSelectionStore } from '~/stores/selection.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
+import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
 import {
   createTimelineCommand,
   createMarkdownCommand,
@@ -33,6 +34,7 @@ export function useFileBrowserCreateActions({
   const uiStore = useUiStore();
   const projectStore = useProjectStore();
   const timelineStore = useTimelineStore();
+  const timelineMediaUsageStore = useTimelineMediaUsageStore();
 
   async function createTimelineInDirectory(entry: FsEntry) {
     if (entry.kind !== 'directory') return;
@@ -54,6 +56,7 @@ export function useFileBrowserCreateActions({
     }
     await projectStore.openTimelineFile(createdPath);
     await timelineStore.loadTimeline();
+    void timelineMediaUsageStore.refreshUsage();
     void timelineStore.loadTimelineMetadata();
   }
 

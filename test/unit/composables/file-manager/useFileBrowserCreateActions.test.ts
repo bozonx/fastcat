@@ -35,10 +35,17 @@ const timelineStore = {
   loadTimelineMetadata: vi.fn(),
 };
 
+const timelineMediaUsageStore = {
+  refreshUsage: vi.fn().mockResolvedValue(undefined),
+};
+
 vi.mock('~/stores/selection.store', () => ({ useSelectionStore: () => selectionStore }));
 vi.mock('~/stores/ui.store', () => ({ useUiStore: () => uiStore }));
 vi.mock('~/stores/project.store', () => ({ useProjectStore: () => projectStore }));
 vi.mock('~/stores/timeline.store', () => ({ useTimelineStore: () => timelineStore }));
+vi.mock('~/stores/timeline-media-usage.store', () => ({
+  useTimelineMediaUsageStore: () => timelineMediaUsageStore,
+}));
 vi.mock('~/file-manager/application/fileManagerCommands', () => ({
   createTimelineCommand,
   createMarkdownCommand,
@@ -49,6 +56,7 @@ describe('useFileBrowserCreateActions', () => {
     vi.clearAllMocks();
     projectStore.openTimelineFile.mockResolvedValue(undefined);
     timelineStore.loadTimeline.mockResolvedValue(undefined);
+    timelineMediaUsageStore.refreshUsage.mockResolvedValue(undefined);
   });
 
   it('creates timeline in directory and selects new entry', async () => {
@@ -86,6 +94,7 @@ describe('useFileBrowserCreateActions', () => {
     );
     expect(projectStore.openTimelineFile).toHaveBeenCalledWith('dir/new.otio');
     expect(timelineStore.loadTimeline).toHaveBeenCalledTimes(1);
+    expect(timelineMediaUsageStore.refreshUsage).toHaveBeenCalledTimes(1);
     expect(timelineStore.loadTimelineMetadata).toHaveBeenCalledTimes(1);
   });
 

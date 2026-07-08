@@ -10,7 +10,12 @@ mockComponent('UContextMenu', {
 
 // Mock subcomponents
 vi.mock('~/components/timeline/ClipTransitions.vue', () => ({
-  default: { name: 'ClipTransitions', template: '<div data-testid="clip-transitions"></div>' },
+  default: {
+    name: 'ClipTransitions',
+    props: ['topInsetPx', 'bottomInsetPx'],
+    template:
+      '<div data-testid="clip-transitions" :style="{ top: `${topInsetPx ?? 0}px`, bottom: `${bottomInsetPx ?? 0}px`, zIndex: `calc(var(--z-clip-handles) + 1)` }"></div>',
+  },
 }));
 vi.mock('~/components/timeline/ClipAudioFades.vue', () => ({
   default: {
@@ -362,7 +367,7 @@ describe('TimelineClip', () => {
     });
   });
 
-  it('renders transition overlays above clip content and below trim handles', async () => {
+  it('renders transition overlays in the content band above trim handles', async () => {
     const component = await mountClip({
       ...defaultProps,
       item: {
@@ -384,6 +389,11 @@ describe('TimelineClip', () => {
     expect(contentIndex).toBeGreaterThanOrEqual(0);
     expect(transitionIndex).toBeGreaterThan(contentIndex);
     expect(trimIndex).toBeGreaterThan(transitionIndex);
+    expect((transitionOverlay as HTMLElement).style.top).toBe('20px');
+    expect((transitionOverlay as HTMLElement).style.bottom).toBe('0px');
+    expect((transitionOverlay as HTMLElement).style.zIndex).toBe(
+      'calc(var(--z-clip-handles) + 1)',
+    );
   });
 
   it('computes dynamic trim handle widths based on clip width to prevent blocking narrow clips', async () => {

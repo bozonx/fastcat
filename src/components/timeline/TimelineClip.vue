@@ -1006,6 +1006,8 @@ function handleTransitionCreate(
           :is-mobile="isMobile"
           :is-clip-hovered="isHovered"
           :is-trimming="myTrimPreview !== null"
+          :top-inset-px="clipContentInset.top"
+          :bottom-inset-px="clipContentInset.bottom"
           @select="(e, payload) => emit('selectTransition', e, payload)"
           @resize="
             (e, payload) =>

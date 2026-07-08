@@ -108,10 +108,12 @@ describe('ClipTransitions', () => {
     expect(widthContainer?.style.width).toContain('px');
   });
 
-  it('keeps transition overlays above clip content and tooltip triggers full-size', async () => {
+  it('keeps transition overlays in the content band above trim handles', async () => {
     const component = await mountSuspended(ClipTransitions, {
       props: {
         ...defaultProps,
+        topInsetPx: 20,
+        bottomInsetPx: 10,
         clip: {
           ...baseItem,
           transitionOut: { durationUs: 1_000_000, type: 'dissolve', mode: 'transparent' },
@@ -123,9 +125,27 @@ describe('ClipTransitions', () => {
     const transitionOut = component.get('button');
     const trigger = transitionOut.element.parentElement;
 
-    expect(root.attributes('style')).toContain('z-index: var(--z-clip-guide)');
+    expect(root.attributes('style')).toContain('top: 20px');
+    expect(root.attributes('style')).toContain('bottom: 10px');
+    expect(root.attributes('style')).toContain('z-index: calc(var(--z-clip-handles) + 1)');
     expect(trigger?.classList.contains('w-full')).toBe(true);
     expect(trigger?.classList.contains('h-full')).toBe(true);
+  });
+
+  it('positions transition create handles 20 percent above the content band bottom', async () => {
+    const component = await mountSuspended(ClipTransitions, {
+      props: {
+        ...defaultProps,
+        trackHeight: 100,
+        topInsetPx: 20,
+        bottomInsetPx: 10,
+      },
+    });
+
+    const handle = component.get('[data-testid="transition-create-in"]');
+
+    expect(handle.attributes('style')).toContain('bottom: 14px');
+    expect(handle.attributes('style')).toContain('z-index: calc(var(--z-clip-handles) + 1)');
   });
 
   it('emits select when transition is clicked', async () => {

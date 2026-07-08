@@ -7,10 +7,12 @@ import {
   createTimelineFormatFromProjectDefaults,
   DEFAULT_TIMELINE_FORMAT,
 } from '~/timeline/format';
+import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
 import type { FileManagerContext } from './fileManagerContext';
 
 export function createFileManagerCreate(ctx: FileManagerContext) {
   const { deps, runWithUiFeedback, notifyFileManagerUpdate, reloadDirectory } = ctx;
+  const timelineMediaUsageStore = useTimelineMediaUsageStore();
 
   async function createTimeline(parentPath?: string): Promise<string | null> {
     const createdPath = await runWithUiFeedback({
@@ -31,6 +33,7 @@ export function createFileManagerCreate(ctx: FileManagerContext) {
     });
     if (createdPath) {
       notifyFileManagerUpdate();
+      void timelineMediaUsageStore.refreshUsage();
     }
     return createdPath;
   }

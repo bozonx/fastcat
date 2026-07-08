@@ -77,24 +77,29 @@ export interface TimelineLifecycleModule {
 export function createTimelineLifecycleModule(
   deps: TimelineLifecycleDeps,
 ): TimelineLifecycleModule {
+  function syncLiveMediaUsage() {
+    const doc = deps.timelineDoc.value;
+    const path = deps.currentTimelinePath.value;
+
+    if (!doc || !path) {
+      deps.timelineMediaUsageStore.setLiveUsage(null, {});
+      return;
+    }
+
+    const name = path.split('/').pop() ?? path;
+    const usage = computeMediaUsageByTimelineDocs([
+      { timelinePath: path, timelineDoc: doc, timelineName: name },
+    ]);
+    deps.timelineMediaUsageStore.setLiveUsage(path, usage.mediaPathToTimelines);
+  }
+
   // Shallow watcher: applyTimeline/batchApplyTimeline always replaces
   // timelineDoc.value with a new document object, so identity-level tracking
   // is enough. A deep watcher used to fire on every micro-mutation of the
   // doc tree, dragging O(N) work into the hot path of long timelines.
   watch(
     [() => deps.timelineDoc.value, () => deps.currentTimelinePath.value],
-    ([doc, path]) => {
-      if (!doc || !path) {
-        deps.timelineMediaUsageStore.setLiveUsage(null, {});
-        return;
-      }
-
-      const name = path.split('/').pop() ?? path;
-      const usage = computeMediaUsageByTimelineDocs([
-        { timelinePath: path, timelineDoc: doc, timelineName: name },
-      ]);
-      deps.timelineMediaUsageStore.setLiveUsage(path, usage.mediaPathToTimelines);
-    },
+    () => syncLiveMediaUsage(),
     { immediate: true, flush: 'post' },
   );
 
@@ -159,6 +164,7 @@ export function createTimelineLifecycleModule(
     // here would wipe the outgoing stack before it could be parked.
 
     await deps.persistence.loadTimeline();
+    syncLiveMediaUsage();
   }
 
   async function saveTimeline() {

@@ -3,10 +3,14 @@ import { describe, it, expect, vi } from 'vitest';
 import { ref } from 'vue';
 import { createTimelineLifecycleModule } from '~/stores/timeline/lifecycle';
 
-vi.mock('~/utils/timeline-media-usage', () => ({
-  computeMediaUsageByTimelineDocs: vi.fn(() => ({
+const { computeMediaUsageByTimelineDocsMock } = vi.hoisted(() => ({
+  computeMediaUsageByTimelineDocsMock: vi.fn(() => ({
     mediaPathToTimelines: {},
   })),
+}));
+
+vi.mock('~/utils/timeline-media-usage', () => ({
+  computeMediaUsageByTimelineDocs: computeMediaUsageByTimelineDocsMock,
 }));
 
 vi.mock('~/timeline/timeline-thumbnail', () => ({
@@ -150,6 +154,46 @@ describe('createTimelineLifecycleModule', () => {
     expect(deps.selection.selectTrack).toHaveBeenCalledWith(null);
     expect(deps.isPlaying.value).toBe(false);
     expect(deps.persistence.loadTimeline).toHaveBeenCalled();
+  });
+
+  it('loadTimeline syncs live media usage immediately after loading a new timeline', async () => {
+    const usage = {
+      'media/video.mp4': [{ timelinePath: 'timelines/new.otio', timelineName: 'new.otio' }],
+    };
+    computeMediaUsageByTimelineDocsMock.mockReturnValueOnce({
+      mediaPathToTimelines: usage,
+    });
+    const deps = makeDeps();
+    const timelineDoc = {
+      tracks: [
+        {
+          id: 'v1',
+          kind: 'video',
+          items: [{ kind: 'clip', source: { path: 'media/video.mp4' } }],
+        },
+      ],
+    };
+    deps.persistence.loadTimeline = vi.fn(async () => {
+      deps.currentTimelinePath.value = 'timelines/new.otio';
+      deps.timelineDoc.value = timelineDoc;
+    });
+
+    const mod = createTimelineLifecycleModule(deps);
+    deps.timelineMediaUsageStore.setLiveUsage.mockClear();
+
+    await mod.loadTimeline();
+
+    expect(computeMediaUsageByTimelineDocsMock).toHaveBeenCalledWith([
+      {
+        timelinePath: 'timelines/new.otio',
+        timelineName: 'new.otio',
+        timelineDoc,
+      },
+    ]);
+    expect(deps.timelineMediaUsageStore.setLiveUsage).toHaveBeenCalledWith(
+      'timelines/new.otio',
+      usage,
+    );
   });
 
   it('saveTimeline delegates to persistence', async () => {

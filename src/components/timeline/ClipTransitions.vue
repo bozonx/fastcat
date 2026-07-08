@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onBeforeUnmount, ref } from 'vue';
+import { computed, onBeforeUnmount, ref } from 'vue';
 import type { TimelineTrack, TimelineClipItem } from '~/timeline/types';
 import { timeUsToPx } from '~/utils/timeline/geometry';
 import {
@@ -19,9 +19,9 @@ const TRANSITION_CREATE_HANDLE_WIDTH_PX = 9;
 const TRANSITION_CREATE_HANDLE_HEIGHT_PX = 11;
 const TRANSITION_CREATE_HANDLE_HOVER_WIDTH_PX = 13;
 const TRANSITION_CREATE_HANDLE_HOVER_HEIGHT_PX = 16;
-const TRANSITION_CREATE_HANDLE_BOTTOM_PX = -4;
 const TRANSITION_CREATE_HANDLE_OUTSET_PX = 2;
 const MIN_TRANSITION_CREATE_HANDLE_TRACK_HEIGHT_PX = 24;
+const TRANSITION_CREATE_HANDLE_BOTTOM_RATIO = 0.2;
 
 const props = defineProps<{
   clip: TimelineClipItem;
@@ -34,6 +34,9 @@ const props = defineProps<{
   isMobile?: boolean;
   isClipHovered?: boolean;
   isTrimming?: boolean;
+  /** Vertical insets (px) so transitions cover only the content band, not the header/keyframes lane. */
+  topInsetPx?: number;
+  bottomInsetPx?: number;
 }>();
 
 const emit = defineEmits<{
@@ -54,6 +57,10 @@ const emit = defineEmits<{
 function transitionUsToPx(us: number) {
   return timeUsToPx(us, props.zoom);
 }
+
+const contentBandHeightPx = computed(() =>
+  Math.max(0, props.trackHeight - (props.topInsetPx ?? 0) - (props.bottomInsetPx ?? 0)),
+);
 
 function getTransitionButtonClass(selected: boolean, hasProblem: boolean, edge: 'in' | 'out') {
   return [
@@ -156,7 +163,7 @@ function canShowCreateTransitionHandle() {
     // under the trim handle and just get in the way — hide them until trim ends.
     !props.isTrimming &&
     props.clipWidthPx >= 30 &&
-    props.trackHeight >= MIN_TRANSITION_CREATE_HANDLE_TRACK_HEIGHT_PX
+    contentBandHeightPx.value >= MIN_TRANSITION_CREATE_HANDLE_TRACK_HEIGHT_PX
   );
 }
 
@@ -164,7 +171,7 @@ function getCreateTransitionHandleStyle(edge: 'in' | 'out'): Record<string, stri
   const isHovered = hoveredCreateHandleEdge.value === edge;
 
   return {
-    bottom: `${TRANSITION_CREATE_HANDLE_BOTTOM_PX}px`,
+    bottom: `${contentBandHeightPx.value * TRANSITION_CREATE_HANDLE_BOTTOM_RATIO}px`,
     [edge === 'in' ? 'left' : 'right']: `-${TRANSITION_CREATE_HANDLE_OUTSET_PX}px`,
     width: `${isHovered ? TRANSITION_CREATE_HANDLE_HOVER_WIDTH_PX : TRANSITION_CREATE_HANDLE_WIDTH_PX}px`,
     height: `${isHovered ? TRANSITION_CREATE_HANDLE_HOVER_HEIGHT_PX : TRANSITION_CREATE_HANDLE_HEIGHT_PX}px`,
@@ -284,7 +291,14 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="absolute inset-0 pointer-events-none" style="z-index: var(--z-clip-guide)">
+  <div
+    class="absolute left-0 right-0 pointer-events-none"
+    :style="{
+      top: `${topInsetPx ?? 0}px`,
+      bottom: `${bottomInsetPx ?? 0}px`,
+      zIndex: 'calc(var(--z-clip-handles) + 1)',
+    }"
+  >
     <div class="absolute inset-0 overflow-hidden rounded" style="z-index: 25">
       <!-- Transition In -->
       <div

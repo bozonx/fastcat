@@ -6,6 +6,7 @@ import { useSelectionStore } from '~/stores/selection.store';
 import { useProxyStore } from '~/stores/proxy.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useFocusStore } from '~/stores/focus.store';
+import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
 import { createTimelineCommand } from '~/file-manager/application/fileManagerCommands';
 import { createTimelineFormatFromProjectDefaults } from '~/timeline/format';
 import { getMediaTypeFromFilename, isOpenableProjectFileName } from '~/utils/media-types';
@@ -65,6 +66,7 @@ export function useFileManagerPanelActions({
   const proxyStore = useProxyStore();
   const uiStore = useUiStore();
   const focusStore = useFocusStore();
+  const timelineMediaUsageStore = useTimelineMediaUsageStore();
   const toast = useToast();
 
   async function createTimelineInDirectory(entry: FsEntry) {
@@ -89,6 +91,7 @@ export function useFileManagerPanelActions({
         await projectStore.openTimelineFile(createdPath);
         focusStore.setActiveTimelinePath(createdPath);
         await timelineStore.loadTimeline();
+        void timelineMediaUsageStore.refreshUsage();
         void timelineStore.loadTimelineMetadata();
       }
     } catch (e: unknown) {
