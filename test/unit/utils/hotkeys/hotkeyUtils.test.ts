@@ -6,7 +6,6 @@ import {
   normalizeHotkeyCombo,
   isEditableTarget,
   hotkeyFromKeyboardEvent,
-  hotkeyFromMouseEvent,
 } from '~/utils/hotkeys/hotkeyUtils';
 
 describe('stringifyHotkey', () => {
@@ -199,25 +198,5 @@ describe('hotkeyFromKeyboardEvent', () => {
 
     // The combo itself is still resolved; protection happens in canExecuteHotkeyCommand
     expect(hotkeyFromKeyboardEvent(hEvent)).toBe('H');
-  });
-});
-
-describe('hotkeyFromMouseEvent', () => {
-  it('returns MouseBack for button 3', () => {
-    const ev = new MouseEvent('mousedown', { button: 3, bubbles: true });
-    expect(hotkeyFromMouseEvent(ev)).toBe('MouseBack');
-  });
-
-  it('returns MouseForward for button 4', () => {
-    const ev = new MouseEvent('mousedown', { button: 4, bubbles: true });
-    expect(hotkeyFromMouseEvent(ev)).toBe('MouseForward');
-  });
-
-  it('returns null for other buttons', () => {
-    const evLeft = new MouseEvent('mousedown', { button: 0, bubbles: true });
-    expect(hotkeyFromMouseEvent(evLeft)).toBeNull();
-
-    const evRight = new MouseEvent('mousedown', { button: 2, bubbles: true });
-    expect(hotkeyFromMouseEvent(evRight)).toBeNull();
   });
 });

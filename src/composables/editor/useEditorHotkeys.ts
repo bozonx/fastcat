@@ -5,11 +5,7 @@ import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { getActiveElement } from '~/utils/browser-api';
 import { useEffectiveHotkeys } from '~/composables/editor/hotkeys/useEffectiveHotkeys';
-import {
-  hotkeyFromKeyboardEvent,
-  hotkeyFromMouseEvent,
-  isEditableTarget,
-} from '~/utils/hotkeys/hotkeyUtils';
+import { hotkeyFromKeyboardEvent, isEditableTarget } from '~/utils/hotkeys/hotkeyUtils';
 import type { HotkeyCommandId, HotkeyCombo } from '~/utils/hotkeys/defaultHotkeys';
 import { createHotkeyHoldRunner } from '~/utils/hotkeys/holdRunner';
 import {
@@ -208,21 +204,6 @@ export function useEditorHotkeys() {
   }
 
   function onGlobalPointerDown(e: PointerEvent) {
-    // Handle mouse back/forward buttons as hotkeys
-    if (e.button === 3 || e.button === 4) {
-      e.preventDefault();
-      e.stopPropagation();
-
-      const combo = hotkeyFromMouseEvent(e);
-      if (!combo) return;
-
-      const matched = getMatchedHotkeyCommands({ combo, lookup: hotkeyLookup.value });
-      if (matched.length === 0) return;
-
-      dispatchMatchedCommands(matched, combo, e);
-      return;
-    }
-
     const target = e.target as HTMLElement;
     if (
       target instanceof HTMLButtonElement ||
