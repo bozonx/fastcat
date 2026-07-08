@@ -124,6 +124,20 @@ describe('TimelineSelectionModule', () => {
     expect(deps.selectedItemIds.value.sort()).toEqual(['clip-1', 'clip-2', 'clip-3']);
   });
 
+  it('selectAllTimelineItems selects every clip and gap', () => {
+    const deps = createMockDeps();
+    const mod = createTimelineSelectionModule(deps);
+
+    mod.selectAllTimelineItems();
+    expect(deps.selectedItemIds.value.sort()).toEqual(['clip-1', 'clip-2', 'clip-3', 'gap-1']);
+    expect(deps.selectionStore.selectTimelineItems).toHaveBeenCalledWith([
+      { trackId: 'track-1', itemId: 'clip-1', kind: 'clip' },
+      { trackId: 'track-2', itemId: 'clip-3', kind: 'clip' },
+      { trackId: 'track-1', itemId: 'clip-2', kind: 'clip' },
+      { trackId: 'track-1', itemId: 'gap-1', kind: 'gap' },
+    ]);
+  });
+
   it('selectAllClipsOnTrack selects clips on the given track and expands linked groups across tracks', () => {
     const deps = createMockDeps();
     const mod = createTimelineSelectionModule(deps);

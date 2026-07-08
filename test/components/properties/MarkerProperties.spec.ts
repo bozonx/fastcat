@@ -74,6 +74,14 @@ vi.mock('~/components/ui/editor/UiTimecode.vue', () => ({
   },
 }));
 
+vi.mock('~/components/ui/UiTooltip.vue', () => ({
+  default: {
+    name: 'UiTooltip',
+    props: ['text', 'openOnClick'],
+    template: '<span class="ui-tooltip" :data-text="text"><slot /></span>',
+  },
+}));
+
 const timelineStore = reactive({
   fps: 30,
   timelineFormat: null as { fps: number } | null,
@@ -173,6 +181,23 @@ describe('MarkerProperties', () => {
 
     expect(wrapper.text()).not.toContain('common.duration');
     expect(wrapper.text()).not.toContain('00:00:04:00');
+  });
+
+  it('shows the zone start tooltip hint only for zones', async () => {
+    const zoneWrapper = await mountSuspended(MarkerProperties, {
+      props: { markerId: 'zone' },
+    });
+
+    const zoneTooltip = zoneWrapper.find('.ui-tooltip[data-text="fastcat.marker.zoneStartTooltip"]');
+    expect(zoneTooltip.exists()).toBe(true);
+
+    const pointWrapper = await mountSuspended(MarkerProperties, {
+      props: { markerId: 'point' },
+    });
+
+    expect(
+      pointWrapper.find('.ui-tooltip[data-text="fastcat.marker.zoneStartTooltip"]').exists(),
+    ).toBe(false);
   });
 
   it('deletes and converts point markers', async () => {

@@ -336,6 +336,56 @@ describe('useEditorHotkeys', () => {
     input.remove();
   });
 
+  it('selects every timeline item with Ctrl+A even when a track is selected', async () => {
+    wrapper = mount(HotkeysHarness, { attachTo: document.body });
+    const focusStore = useFocusStore();
+    const projectStore = useProjectStore();
+    const timelineStore = useTimelineStore() as any;
+
+    projectStore.setView('cut');
+    focusStore.setMainFocus('timeline');
+    timelineStore.timelineDoc = {
+      id: 'doc-1',
+      tracks: [
+        {
+          id: 'track-1',
+          items: [
+            { id: 'clip-1', kind: 'clip', timelineRange: { startUs: 0, durationUs: 1_000_000 } },
+            {
+              id: 'gap-1',
+              kind: 'gap',
+              timelineRange: { startUs: 1_000_000, durationUs: 1_000_000 },
+            },
+          ],
+        },
+        {
+          id: 'track-2',
+          items: [
+            {
+              id: 'clip-2',
+              kind: 'clip',
+              timelineRange: { startUs: 0, durationUs: 1_000_000 },
+            },
+          ],
+        },
+      ],
+    };
+    timelineStore.selectTrack('track-1');
+
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key: 'a',
+        code: 'KeyA',
+        ctrlKey: true,
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
+
+    expect(timelineStore.selectedTrackId).toBeNull();
+    expect(timelineStore.selectedItemIds.sort()).toEqual(['clip-1', 'clip-2', 'gap-1']);
+  });
+
   it('blocks non-escape global hotkeys while modal state is active', async () => {
     wrapper = mount(HotkeysHarness);
     const focusStore = useFocusStore();

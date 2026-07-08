@@ -202,47 +202,6 @@ export function useGeneralHotkeys(
     return projectTabsStore.activeTabId === tabId;
   }
 
-  function toggleTimelineSelectAll() {
-    const trackId = timelineStore.getSelectedOrActiveTrackId();
-    if (trackId) {
-      const track = timelineStore.timelineDoc?.tracks.find((item) => item.id === trackId);
-      const trackClipIds =
-        track?.items.filter((item) => item.kind === 'clip').map((item) => item.id) ?? [];
-      const selectedIds = timelineStore.selectedItemIds;
-      const isAllSelected =
-        trackClipIds.length > 0 &&
-        selectedIds.length === trackClipIds.length &&
-        trackClipIds.every((id) => selectedIds.includes(id));
-
-      if (isAllSelected) {
-        timelineStore.clearSelection();
-        timelineStore.selectTrack(null);
-        return;
-      }
-
-      timelineStore.selectAllClipsOnTrack(trackId);
-      return;
-    }
-
-    const allClipIds =
-      timelineStore.timelineDoc?.tracks.flatMap((track) =>
-        track.items.filter((item) => item.kind === 'clip').map((item) => item.id),
-      ) ?? [];
-    const selectedIds = timelineStore.selectedItemIds;
-    const isAllSelected =
-      allClipIds.length > 0 &&
-      selectedIds.length === allClipIds.length &&
-      allClipIds.every((id) => selectedIds.includes(id));
-
-    if (isAllSelected) {
-      timelineStore.clearSelection();
-      timelineStore.selectTrack(null);
-      return;
-    }
-
-    timelineStore.selectAllClips();
-  }
-
   const handlers: Partial<Record<HotkeyCommandId, (e: KeyboardEvent) => boolean>> = {
     'general.focus': () => {
       if (projectStore.currentView === 'files') {
@@ -551,7 +510,8 @@ export function useGeneralHotkeys(
     },
     'general.selectAll': () => {
       if (focusStore.effectiveFocus === 'timeline') {
-        toggleTimelineSelectAll();
+        timelineStore.selectTrack(null);
+        timelineStore.selectAllTimelineItems();
         return true;
       }
       if (

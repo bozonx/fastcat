@@ -1282,6 +1282,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     clearSelection: selection.clearSelection,
     selectAllClipsOnTrack: selection.selectAllClipsOnTrack,
     selectAllClips: selection.selectAllClips,
+    selectAllTimelineItems: selection.selectAllTimelineItems,
     selectClipsRelativeToPlayhead: selection.selectClipsRelativeToPlayhead,
     getSelectedOrActiveTrackId: selection.getSelectedOrActiveTrackId,
     getHotkeyTargetClip: selection.getHotkeyTargetClip,

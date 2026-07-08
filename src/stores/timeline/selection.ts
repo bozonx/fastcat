@@ -3,6 +3,12 @@ import { computed, type Ref } from 'vue';
 import type { TimelineDocument } from '~/timeline/types';
 import { getLinkedClipGroupItemIds } from '~/timeline/commands/utils';
 
+interface TimelineSelectableItem {
+  trackId: string;
+  itemId: string;
+  kind: 'clip' | 'gap';
+}
+
 export interface TimelineSelectionDeps {
   timelineDoc: Ref<TimelineDocument | null>;
   currentTime: Ref<number>;
@@ -36,6 +42,7 @@ export interface TimelineSelectionModule {
   removeFromSelection: (itemIds: string[]) => void;
   selectAllClipsOnTrack: (trackId: string, options?: { append?: boolean }) => void;
   selectAllClips: () => void;
+  selectAllTimelineItems: () => void;
   selectClipsRelativeToPlayhead: (params: {
     direction: 'left' | 'right';
     trackId?: string | null;
@@ -51,13 +58,13 @@ export function createTimelineSelectionModule(
   deps: TimelineSelectionDeps,
 ): TimelineSelectionModule {
   const itemToTrackMap = computed(() => {
-    const map = new Map<string, string>();
+    const map = new Map<string, TimelineSelectableItem>();
     const doc = deps.timelineDoc.value;
     if (!doc) return map;
     for (const track of doc.tracks) {
       for (const item of track.items) {
-        if (item.kind === 'clip') {
-          map.set(item.id, track.id);
+        if (item.kind === 'clip' || item.kind === 'gap') {
+          map.set(item.id, { trackId: track.id, itemId: item.id, kind: item.kind });
         }
       }
     }
@@ -143,9 +150,9 @@ export function createTimelineSelectionModule(
 
       const expandedObjects: { trackId: string; itemId: string; kind?: 'clip' | 'gap' }[] = [];
       for (const id of nextIds) {
-        const trackId = itemToTrackMap.value.get(id);
-        if (trackId) {
-          expandedObjects.push({ trackId, itemId: id, kind: 'clip' });
+        const item = itemToTrackMap.value.get(id);
+        if (item) {
+          expandedObjects.push(item);
         }
       }
       if (expandedObjects.length > 0) {
@@ -166,9 +173,9 @@ export function createTimelineSelectionModule(
 
       const expandedObjects: { trackId: string; itemId: string; kind?: 'clip' | 'gap' }[] = [];
       for (const id of nextIds) {
-        const trackId = itemToTrackMap.value.get(id);
-        if (trackId) {
-          expandedObjects.push({ trackId, itemId: id, kind: 'clip' });
+        const item = itemToTrackMap.value.get(id);
+        if (item) {
+          expandedObjects.push(item);
         }
       }
       if (expandedObjects.length > 0) {
@@ -196,9 +203,9 @@ export function createTimelineSelectionModule(
       const allObjects: { trackId: string; itemId: string; kind: 'clip' }[] = [];
       const mergedIds = new Set([...deps.selectedItemIds.value, ...ids]);
       for (const id of mergedIds) {
-        const itemTrackId = itemToTrackMap.value.get(id);
-        if (itemTrackId) {
-          allObjects.push({ trackId: itemTrackId, itemId: id, kind: 'clip' });
+        const item = itemToTrackMap.value.get(id);
+        if (item?.kind === 'clip') {
+          allObjects.push({ trackId: item.trackId, itemId: item.itemId, kind: 'clip' });
         }
       }
       selectTimelineItems(allObjects, { append: false });
@@ -215,6 +222,18 @@ export function createTimelineSelectionModule(
       track.items.filter((item) => item.kind === 'clip').map((item) => item.id),
     );
     selectTimelineItems(ids);
+  }
+
+  function selectAllTimelineItems() {
+    const doc = deps.timelineDoc.value;
+    if (!doc) return;
+
+    const items = doc.tracks.flatMap((track) =>
+      track.items
+        .filter((item) => item.kind === 'clip' || item.kind === 'gap')
+        .map((item) => ({ trackId: track.id, itemId: item.id, kind: item.kind })),
+    );
+    selectTimelineItems(items);
   }
 
   function selectClipsRelativeToPlayhead(params: {
@@ -254,9 +273,9 @@ export function createTimelineSelectionModule(
 
     const selectedId = deps.selectedItemIds.value[0];
     if (selectedId) {
-      const trackId = itemToTrackMap.value.get(selectedId);
-      if (trackId) {
-        return { trackId, itemId: selectedId };
+      const item = itemToTrackMap.value.get(selectedId);
+      if (item?.kind === 'clip') {
+        return { trackId: item.trackId, itemId: selectedId };
       }
     }
 
@@ -284,7 +303,7 @@ export function createTimelineSelectionModule(
     for (const track of doc.tracks) {
       validTrackIds.add(track.id);
       for (const item of track.items) {
-        if (item.kind === 'clip') validItemIds.add(item.id);
+        if (item.kind === 'clip' || item.kind === 'gap') validItemIds.add(item.id);
       }
     }
 
@@ -295,10 +314,10 @@ export function createTimelineSelectionModule(
         clearSelection();
       } else {
         // Rebuild as {trackId,itemId} objects so the global selection store stays in sync.
-        const objects: { trackId: string; itemId: string; kind: 'clip' }[] = [];
+        const objects: TimelineSelectableItem[] = [];
         for (const id of filteredItemIds) {
-          const trackId = itemToTrackMap.value.get(id);
-          if (trackId) objects.push({ trackId, itemId: id, kind: 'clip' });
+          const item = itemToTrackMap.value.get(id);
+          if (item) objects.push(item);
         }
         if (objects.length > 0) {
           selectTimelineItems(objects);
@@ -326,8 +345,8 @@ export function createTimelineSelectionModule(
 
     const selectedId = deps.selectedItemIds.value[0];
     if (selectedId) {
-      const trackId = itemToTrackMap.value.get(selectedId);
-      if (trackId) return trackId;
+      const item = itemToTrackMap.value.get(selectedId);
+      if (item) return item.trackId;
     }
 
     return deps.selectedTrackId.value;
@@ -343,6 +362,7 @@ export function createTimelineSelectionModule(
     removeFromSelection,
     selectAllClipsOnTrack,
     selectAllClips,
+    selectAllTimelineItems,
     selectClipsRelativeToPlayhead,
     pruneSelectionForDoc,
     getHotkeyTargetClip,

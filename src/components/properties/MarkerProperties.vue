@@ -5,6 +5,7 @@ import type { TimelineMarker } from '~/timeline/types';
 import PropertySection from '~/components/properties/PropertySection.vue';
 import PropertyActionsBlock from '~/components/properties/PropertyActionsBlock.vue';
 import type { PropertyAction } from '~/components/properties/PropertyActionList.vue';
+import UiTooltip from '~/components/ui/UiTooltip.vue';
 import UiTimecode from '~/components/ui/editor/UiTimecode.vue';
 import UiTextarea from '~/components/ui/UiTextarea.vue';
 import PropertyDuration from '~/components/properties/PropertyDuration.vue';
@@ -178,9 +179,20 @@ const mainActions = computed<PropertyAction[]>(() => {
       />
 
       <div class="flex flex-col gap-0.5 mt-2">
-        <span class="text-xs text-ui-text-muted">{{
-          isZone ? t('common.start') : t('common.position')
-        }}</span>
+        <div class="flex items-center gap-1.5">
+          <span class="text-xs text-ui-text-muted">{{
+            isZone ? t('common.start') : t('common.position')
+          }}</span>
+          <UiTooltip v-if="isZone" :text="t('fastcat.marker.zoneStartTooltip')" open-on-click>
+            <button
+              type="button"
+              class="inline-flex items-center justify-center rounded p-0.5 text-ui-text-muted hover:text-ui-text focus:outline-none"
+              :aria-label="t('fastcat.marker.zoneStartTooltip')"
+            >
+              <UIcon name="i-heroicons-information-circle" class="w-3.5 h-3.5" />
+            </button>
+          </UiTooltip>
+        </div>
         <UiTimecode
           :model-value="marker.timeUs"
           :min="0"
