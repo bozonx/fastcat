@@ -3,7 +3,17 @@ import { mountSuspended } from '@nuxt/test-utils/runtime';
 import ClipEffectsSection from '~/components/properties/clip/ClipEffectsSection.vue';
 
 const ClipEffectsEditorStub = {
-  props: ['target', 'effects', 'keyframes', 'title', 'addLabel', 'emptyLabel', 'hasToggle', 'disabled', 'enabled'],
+  props: [
+    'target',
+    'effects',
+    'keyframes',
+    'title',
+    'addLabel',
+    'emptyLabel',
+    'hasToggle',
+    'disabled',
+    'enabled',
+  ],
   emits: ['update:effects', 'update:enabled'],
   template:
     '<div class="editor-mock" :data-target="target" :data-disabled="disabled"><button class="emit-effects" @click="$emit(\'update:effects\', [{ type: target === \'audio\' ? \'reverb\' : \'blur\', target }])" /></div>',
@@ -25,7 +35,11 @@ describe('ClipEffectsSection', () => {
   });
 
   it('renders both video and audio editors when showAudioEffects is true', async () => {
-    const component = await mountSection({ videoEffects: [], audioEffects: [], showAudioEffects: true });
+    const component = await mountSection({
+      videoEffects: [],
+      audioEffects: [],
+      showAudioEffects: true,
+    });
 
     const targets = component.findAll('.editor-mock').map((e) => e.attributes('data-target'));
     expect(targets).toContain('video');
@@ -51,16 +65,26 @@ describe('ClipEffectsSection', () => {
     await component.find('.emit-effects').trigger('click');
 
     expect(component.emitted('updateVideoEffects')).toBeTruthy();
-    expect(component.emitted('updateVideoEffects')![0]).toEqual([[{ type: 'blur', target: 'video' }]]);
+    expect(component.emitted('updateVideoEffects')![0]).toEqual([
+      [{ type: 'blur', target: 'video' }],
+    ]);
   });
 
   it('forwards updateAudioEffects on audio editor update', async () => {
-    const component = await mountSection({ videoEffects: [], audioEffects: [], showAudioEffects: true });
+    const component = await mountSection({
+      videoEffects: [],
+      audioEffects: [],
+      showAudioEffects: true,
+    });
 
-    const audioEditor = component.findAll('.editor-mock').filter((e) => e.attributes('data-target') === 'audio')[0]!;
+    const audioEditor = component
+      .findAll('.editor-mock')
+      .filter((e) => e.attributes('data-target') === 'audio')[0]!;
     await audioEditor.find('.emit-effects').trigger('click');
 
     expect(component.emitted('updateAudioEffects')).toBeTruthy();
-    expect(component.emitted('updateAudioEffects')![0]).toEqual([[{ type: 'reverb', target: 'audio' }]]);
+    expect(component.emitted('updateAudioEffects')![0]).toEqual([
+      [{ type: 'reverb', target: 'audio' }],
+    ]);
   });
 });

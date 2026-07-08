@@ -6,7 +6,9 @@ import TimelineClipThumbnails from '~/components/timeline/TimelineClipThumbnails
 
 const imageUrlRef = ref<string | null>(null);
 const isImageRef = ref(false);
-const thumbnailTilesRef = ref<Array<{ key: string; url: string; leftPx: number; widthPx: number }>>([]);
+const thumbnailTilesRef = ref<Array<{ key: string; url: string; leftPx: number; widthPx: number }>>(
+  [],
+);
 const trimOffsetPxRef = ref(0);
 
 vi.mock('~/composables/timeline/useTimelineClipThumbnails', () => ({
@@ -36,7 +38,14 @@ function createClip(): TimelineClipItem {
 
 function mountThumbnails(props: Partial<any> = {}) {
   return mountSuspended(TimelineClipThumbnails, {
-    props: { item: createClip(), width: 200, scrollLeft: 0, viewportWidth: 800, clipStartPx: 0, ...props },
+    props: {
+      item: createClip(),
+      width: 200,
+      scrollLeft: 0,
+      viewportWidth: 800,
+      clipStartPx: 0,
+      ...props,
+    },
   });
 }
 

@@ -221,10 +221,12 @@ describe('useBatchConversion', () => {
 
   it('cancels the active web conversion task id', async () => {
     let cancelBackgroundTask!: () => Promise<void>;
-    mockBackgroundTasksStore.addTask.mockImplementation((input: { cancel: () => Promise<void> }) => {
-      cancelBackgroundTask = input.cancel;
-      return 'task-1';
-    });
+    mockBackgroundTasksStore.addTask.mockImplementation(
+      (input: { cancel: () => Promise<void> }) => {
+        cancelBackgroundTask = input.cancel;
+        return 'task-1';
+      },
+    );
 
     vi.mocked(executeMediaConversion).mockImplementationOnce(
       async (params: { signal?: AbortSignal }) => {

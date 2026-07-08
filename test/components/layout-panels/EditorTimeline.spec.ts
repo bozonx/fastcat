@@ -11,11 +11,21 @@ mockNuxtImport('useRuntimeConfig', () => () => ({
 
 mockComponent(
   'UContextMenu',
-  defineComponent({ setup: (_, { slots }) => () => (slots.default ? slots.default() : null) }),
+  defineComponent({
+    setup:
+      (_, { slots }) =>
+      () =>
+        slots.default ? slots.default() : null,
+  }),
 );
 mockComponent(
   'UDropdownMenu',
-  defineComponent({ setup: (_, { slots }) => () => (slots.default ? slots.default() : null) }),
+  defineComponent({
+    setup:
+      (_, { slots }) =>
+      () =>
+        slots.default ? slots.default() : null,
+  }),
 );
 mockComponent(
   'UButton',
@@ -146,7 +156,11 @@ describe('EditorTimeline — E2E bridge', () => {
     const timelineStore = setupTimelineStore();
     await mountSuspended(EditorTimeline);
 
-    const result = await (window as any).__fastcatE2eAddTextClip({ text: 'Hi', style: {}, durationUs: 1_000_000 });
+    const result = await (window as any).__fastcatE2eAddTextClip({
+      text: 'Hi',
+      style: {},
+      durationUs: 1_000_000,
+    });
 
     expect(timelineStore.addTextClipAtPlayhead).toHaveBeenCalled();
     expect(result).toEqual(['text-1']);
@@ -157,11 +171,21 @@ describe('EditorTimeline — E2E bridge', () => {
     const timelineStore = setupTimelineStore();
     await mountSuspended(EditorTimeline);
 
-    const id = await (window as any).__fastcatE2eAddMarker({ timeUs: 1_000_000, text: 'M', color: '#fff' });
+    const id = await (window as any).__fastcatE2eAddMarker({
+      timeUs: 1_000_000,
+      text: 'M',
+      color: '#fff',
+    });
 
     expect(id).toBeTruthy();
     expect(timelineStore.applyTimeline).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'add_marker', timeUs: 1_000_000, text: 'M', color: '#fff', id }),
+      expect.objectContaining({
+        type: 'add_marker',
+        timeUs: 1_000_000,
+        text: 'M',
+        color: '#fff',
+        id,
+      }),
     );
   });
 
@@ -185,7 +209,10 @@ describe('EditorTimeline — E2E bridge', () => {
     const timelineStore = setupTimelineStore();
     await mountSuspended(EditorTimeline);
 
-    await (window as any).__fastcatE2eUpdateMarker({ markerId: 'mk-1', patch: { text: 'updated' } });
+    await (window as any).__fastcatE2eUpdateMarker({
+      markerId: 'mk-1',
+      patch: { text: 'updated' },
+    });
 
     expect(timelineStore.updateMarker).toHaveBeenCalledWith('mk-1', { text: 'updated' });
   });
@@ -226,10 +253,18 @@ describe('EditorTimeline — E2E bridge', () => {
     const timelineStore = setupTimelineStore();
     await mountSuspended(EditorTimeline);
 
-    await (window as any).__fastcatE2eAddProjectFileToTrack({ path: '/media/clip.mp4', trackId: 'v1' });
+    await (window as any).__fastcatE2eAddProjectFileToTrack({
+      path: '/media/clip.mp4',
+      trackId: 'v1',
+    });
 
     expect(timelineStore.addClipToTimelineFromPath).toHaveBeenCalledWith(
-      expect.objectContaining({ path: '/media/clip.mp4', trackId: 'v1', name: 'clip.mp4', startUs: 0 }),
+      expect.objectContaining({
+        path: '/media/clip.mp4',
+        trackId: 'v1',
+        name: 'clip.mp4',
+        startUs: 0,
+      }),
     );
   });
 

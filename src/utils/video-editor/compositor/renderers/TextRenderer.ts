@@ -143,8 +143,7 @@ export class TextRenderer {
       frameH = snappedFrame.height;
     }
 
-    const shouldRenderSeparateBorderShadow =
-      borderWidthPx > 0 && borderOffsetPx >= 2;
+    const shouldRenderSeparateBorderShadow = borderWidthPx > 0 && borderOffsetPx >= 2;
 
     if (normalizedStyle.backgroundEnabled && normalizedStyle.backgroundShadowEnabled) {
       const bgShadowOutsetPx = shouldRenderSeparateBorderShadow

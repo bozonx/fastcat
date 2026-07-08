@@ -6,7 +6,9 @@ const applyTimelineMock = vi.fn();
 
 vi.mock('~/stores/timeline.store', () => ({
   useTimelineStore: () => ({
-    timelineDoc: { metadata: { fastcat: { masterEffects: [{ id: 'efx-1', type: 'reverb', target: 'audio' }] } } },
+    timelineDoc: {
+      metadata: { fastcat: { masterEffects: [{ id: 'efx-1', type: 'reverb', target: 'audio' }] } },
+    },
     applyTimeline: applyTimelineMock,
   }),
 }));
@@ -15,13 +17,14 @@ const ClipEffectsEditorStub = {
   props: ['target', 'effects'],
   emits: ['update:effects'],
   template:
-    '<div class="editor-stub" :data-target="target"><button class="emit-update" @click="$emit(\'update:effects\', [{ type: \'reverb\', target: \'audio\' }, { type: \'eq\', target: \'video\' }])" /></div>',
+    "<div class=\"editor-stub\" :data-target=\"target\"><button class=\"emit-update\" @click=\"$emit('update:effects', [{ type: 'reverb', target: 'audio' }, { type: 'eq', target: 'video' }])\" /></div>",
 };
 
 const UiModalStub = {
   props: ['open', 'title'],
   emits: ['update:open'],
-  template: '<div v-if="open" class="ui-modal-mock"><h2>{{ title }}</h2><slot /><slot name="footer" /></div>',
+  template:
+    '<div v-if="open" class="ui-modal-mock"><h2>{{ title }}</h2><slot /><slot name="footer" /></div>',
 };
 
 describe('MasterAudioEffectsModal', () => {

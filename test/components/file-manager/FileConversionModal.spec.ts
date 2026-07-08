@@ -86,7 +86,8 @@ const childStubs = {
   UiModal: {
     props: ['open', 'title', 'ui'],
     emits: ['update:open'],
-    template: '<div v-if="open" class="ui-modal-mock"><h2>{{ title }}</h2><slot /><slot name="footer" /></div>',
+    template:
+      '<div v-if="open" class="ui-modal-mock"><h2>{{ title }}</h2><slot /><slot name="footer" /></div>',
   },
   MediaResolutionSettings: { template: '<div class="resolution-stub" />' },
   VideoEncodingForm: { template: '<div class="video-encoding-stub" />' },
@@ -110,7 +111,8 @@ const childStubs = {
   UButton: {
     props: ['color', 'variant', 'icon', 'size', 'disabled', 'loading'],
     emits: ['click'],
-    template: '<button class="u-button" :disabled="disabled" @click="$emit(\'click\')"><slot /></button>',
+    template:
+      '<button class="u-button" :disabled="disabled" @click="$emit(\'click\')"><slot /></button>',
   },
   UIcon: { props: ['name'], template: '<span class="icon-mock" />' },
 };

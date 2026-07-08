@@ -188,7 +188,9 @@ describe('MarkerProperties', () => {
       props: { markerId: 'zone' },
     });
 
-    const zoneTooltip = zoneWrapper.find('.ui-tooltip[data-text="fastcat.marker.zoneStartTooltip"]');
+    const zoneTooltip = zoneWrapper.find(
+      '.ui-tooltip[data-text="fastcat.marker.zoneStartTooltip"]',
+    );
     expect(zoneTooltip.exists()).toBe(true);
 
     const pointWrapper = await mountSuspended(MarkerProperties, {

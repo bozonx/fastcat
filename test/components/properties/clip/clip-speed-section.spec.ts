@@ -5,7 +5,17 @@ import ClipSpeedSection from '~/components/properties/clip/ClipSpeedSection.vue'
 
 vi.mock('~/components/ui/UiSliderInput.vue', () => ({
   default: {
-    props: ['modelValue', 'min', 'max', 'step', 'unit', 'defaultValue', 'disabled', 'label', 'wheelStepMultiplier'],
+    props: [
+      'modelValue',
+      'min',
+      'max',
+      'step',
+      'unit',
+      'defaultValue',
+      'disabled',
+      'label',
+      'wheelStepMultiplier',
+    ],
     emits: ['update:modelValue'],
     template:
       '<input type="range" class="slider-mock" :value="modelValue" :disabled="disabled" @input="$emit(\'update:modelValue\', Number($event.target.value))" />',
@@ -58,7 +68,11 @@ describe('ClipSpeedSection', () => {
 
   it('passes speed value (rounded) to slider', async () => {
     const component = await mountSuspended(ClipSpeedSection, {
-      props: { clip: createClip({ speed: 1.236 } as any), canEditReversed: true, trackKind: 'video' },
+      props: {
+        clip: createClip({ speed: 1.236 } as any),
+        canEditReversed: true,
+        trackKind: 'video',
+      },
     });
 
     expect(component.find('.slider-mock').attributes('value')).toBe('1.24');

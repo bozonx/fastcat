@@ -31,7 +31,14 @@ vi.mock('~/effects', () => ({
 // Stub children. ProjectPresetProperties forwards v-models + save/rename events.
 const ProjectPresetPropertiesStub = {
   props: ['manifest', 'actions', 'saveOpen', 'renameOpen', 'newName', 'renamingName'],
-  emits: ['update:saveOpen', 'update:renameOpen', 'update:newName', 'update:renamingName', 'save', 'rename'],
+  emits: [
+    'update:saveOpen',
+    'update:renameOpen',
+    'update:newName',
+    'update:renamingName',
+    'save',
+    'rename',
+  ],
   template: '<div class="ppp-stub" :data-manifest-name="manifest?.name"><slot /></div>',
 };
 

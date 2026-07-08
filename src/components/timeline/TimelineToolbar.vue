@@ -351,10 +351,8 @@ const {
   isContextMenuOpen: isToolbarEmptyContextMenuOpen,
   setContextMenuOpen: setToolbarEmptyContextMenuOpen,
 } = useExclusiveContextMenu();
-const {
-  isContextMenuOpen: isTextContextMenuOpen,
-  setContextMenuOpen: setTextContextMenuOpen,
-} = useExclusiveContextMenu();
+const { isContextMenuOpen: isTextContextMenuOpen, setContextMenuOpen: setTextContextMenuOpen } =
+  useExclusiveContextMenu();
 
 function onToolbarContextMenu(e: MouseEvent) {
   e.stopPropagation();

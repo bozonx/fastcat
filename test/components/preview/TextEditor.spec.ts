@@ -47,7 +47,10 @@ describe('TextEditor', () => {
   const stubs = {
     TextEditorModal: TextEditorModalStub,
     UiTextarea: UiTextareaStub,
-    UButton: { props: ['icon', 'variant', 'size', 'color'], template: '<button class="u-button"><slot /></button>' },
+    UButton: {
+      props: ['icon', 'variant', 'size', 'color'],
+      template: '<button class="u-button"><slot /></button>',
+    },
   };
 
   beforeEach(() => {

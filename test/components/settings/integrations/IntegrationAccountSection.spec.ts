@@ -3,13 +3,17 @@ import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { reactive, nextTick } from 'vue';
 import IntegrationAccountSection from '~/components/settings/integrations/IntegrationAccountSection.vue';
 
-const { getFastCatPublicadorConnectUrlMock, getFastCatPublicadorHealthUrlMock, resolveFastCatConnectScopesMock, runExternalHealthCheckMock } =
-  vi.hoisted(() => ({
-    getFastCatPublicadorConnectUrlMock: vi.fn(() => 'https://connect.example.com/oauth'),
-    getFastCatPublicadorHealthUrlMock: vi.fn(() => 'https://api.example.com/health'),
-    resolveFastCatConnectScopesMock: vi.fn(() => ['read']),
-    runExternalHealthCheckMock: vi.fn(),
-  }));
+const {
+  getFastCatPublicadorConnectUrlMock,
+  getFastCatPublicadorHealthUrlMock,
+  resolveFastCatConnectScopesMock,
+  runExternalHealthCheckMock,
+} = vi.hoisted(() => ({
+  getFastCatPublicadorConnectUrlMock: vi.fn(() => 'https://connect.example.com/oauth'),
+  getFastCatPublicadorHealthUrlMock: vi.fn(() => 'https://api.example.com/health'),
+  resolveFastCatConnectScopesMock: vi.fn(() => ['read']),
+  runExternalHealthCheckMock: vi.fn(),
+}));
 
 const mockIntegrations = reactive({
   fastcatAccount: { enabled: false, bearerToken: '' },
@@ -127,7 +131,9 @@ describe('IntegrationAccountSection', () => {
       global: { stubs },
     });
 
-    const disconnectBtn = component.findAll('button.u-button').find((b) => b.text().includes('integrationBreakConnection'))!;
+    const disconnectBtn = component
+      .findAll('button.u-button')
+      .find((b) => b.text().includes('integrationBreakConnection'))!;
     await disconnectBtn.trigger('click');
 
     await nextTick();

@@ -391,9 +391,7 @@ describe('TimelineClip', () => {
     expect(trimIndex).toBeGreaterThan(transitionIndex);
     expect((transitionOverlay as HTMLElement).style.top).toBe('20px');
     expect((transitionOverlay as HTMLElement).style.bottom).toBe('0px');
-    expect((transitionOverlay as HTMLElement).style.zIndex).toBe(
-      'calc(var(--z-clip-handles) + 1)',
-    );
+    expect((transitionOverlay as HTMLElement).style.zIndex).toBe('calc(var(--z-clip-handles) + 1)');
   });
 
   it('computes dynamic trim handle widths based on clip width to prevent blocking narrow clips', async () => {

@@ -79,7 +79,12 @@ describe('TimelineClipKeyframeLane', () => {
     keyframeTimesRef.value = [1_000_000, 2_000_000];
     const component = await mountLane(
       createClip({
-        opacity: { keyframes: [{ tUs: 1_000_000, easing: 'linear' }, { tUs: 2_000_000, easing: 'ease-in' }] },
+        opacity: {
+          keyframes: [
+            { tUs: 1_000_000, easing: 'linear' },
+            { tUs: 2_000_000, easing: 'ease-in' },
+          ],
+        },
       } as any),
     );
     expect(component.findAll('button').length).toBe(2);
@@ -100,7 +105,18 @@ describe('TimelineClipKeyframeLane', () => {
     const lane = component.find('.relative');
     const el = lane.element as HTMLElement;
     // getBoundingClientRect is used inside onLaneClick; ensure it returns a rect.
-    el.getBoundingClientRect = () => ({ left: 0, top: 0, right: 100, bottom: 100, width: 100, height: 100, x: 0, y: 0, toJSON: () => {} }) as DOMRect;
+    el.getBoundingClientRect = () =>
+      ({
+        left: 0,
+        top: 0,
+        right: 100,
+        bottom: 100,
+        width: 100,
+        height: 100,
+        x: 0,
+        y: 0,
+        toJSON: () => {},
+      }) as DOMRect;
     // Dispatch a native click so e.target === e.currentTarget is the lane element.
     el.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: 50, clientY: 10 }));
 
@@ -113,7 +129,18 @@ describe('TimelineClipKeyframeLane', () => {
 
     const lane = component.find('.relative');
     const el = lane.element as HTMLElement;
-    el.getBoundingClientRect = () => ({ left: 0, top: 0, right: 100, bottom: 100, width: 100, height: 100, x: 0, y: 0, toJSON: () => {} }) as DOMRect;
+    el.getBoundingClientRect = () =>
+      ({
+        left: 0,
+        top: 0,
+        right: 100,
+        bottom: 100,
+        width: 100,
+        height: 100,
+        x: 0,
+        y: 0,
+        toJSON: () => {},
+      }) as DOMRect;
     // Dispatch from a child element so target !== currentTarget.
     const child = document.createElement('div');
     el.appendChild(child);
@@ -124,7 +151,9 @@ describe('TimelineClipKeyframeLane', () => {
 
   it('calls deleteKeyframeMomentAt on diamond double-click', async () => {
     keyframeTimesRef.value = [1_000_000];
-    const clip = createClip({ opacity: { keyframes: [{ tUs: 1_000_000, easing: 'linear' }] } } as any);
+    const clip = createClip({
+      opacity: { keyframes: [{ tUs: 1_000_000, easing: 'linear' }] },
+    } as any);
     const component = await mountLane(clip);
 
     const diamond = component.find('button');
@@ -135,7 +164,9 @@ describe('TimelineClipKeyframeLane', () => {
 
   it('calls setKeyframeMomentEasingAt on diamond context-menu', async () => {
     keyframeTimesRef.value = [1_000_000];
-    const clip = createClip({ opacity: { keyframes: [{ tUs: 1_000_000, easing: 'linear' }] } } as any);
+    const clip = createClip({
+      opacity: { keyframes: [{ tUs: 1_000_000, easing: 'linear' }] },
+    } as any);
     const component = await mountLane(clip);
 
     const diamond = component.find('button');
@@ -146,7 +177,9 @@ describe('TimelineClipKeyframeLane', () => {
 
   it('positions diamonds via diamondLeftPx style', async () => {
     keyframeTimesRef.value = [1_000_000];
-    const clip = createClip({ opacity: { keyframes: [{ tUs: 1_000_000, easing: 'linear' }] } } as any);
+    const clip = createClip({
+      opacity: { keyframes: [{ tUs: 1_000_000, easing: 'linear' }] },
+    } as any);
     const component = await mountLane(clip);
 
     const diamond = component.find('button');

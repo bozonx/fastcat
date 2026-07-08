@@ -3,7 +3,10 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import { buildVideoWorkerPayloadFromTracks } from '~/timeline/application/workerPayloadBuilder';
 import { getTimelineFormat, resolveEffectiveTimelineFormat } from '~/timeline/format';
 import { createProjectHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
-import { getThumbnailWorkerClient, runWithThumbnailHostApi } from '~/utils/video-editor/worker-client';
+import {
+  getThumbnailWorkerClient,
+  runWithThumbnailHostApi,
+} from '~/utils/video-editor/worker-client';
 import { fitDimensions } from './media-processor.utils';
 import type {
   ExtractTimelineFrameBlobOptions,

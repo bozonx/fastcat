@@ -22,7 +22,7 @@ vi.mock('~/components/properties/ParamsRenderer.vue', () => ({
     props: ['controls', 'values', 'disabled'],
     emits: ['update:value'],
     template:
-      '<div class="params-mock"><button class="emit-source" @click="$emit(\'update:value\', \'sourcePath\', \'/foo\')" /><button class="emit-empty" @click="$emit(\'update:value\', \'sourcePath\', \'\')" /><button class="emit-mode" @click="$emit(\'update:value\', \'mode\', \'luma\')" /><button class="emit-invert" @click="$emit(\'update:value\', \'invert\', true)" /></div>',
+      "<div class=\"params-mock\"><button class=\"emit-source\" @click=\"$emit('update:value', 'sourcePath', '/foo')\" /><button class=\"emit-empty\" @click=\"$emit('update:value', 'sourcePath', '')\" /><button class=\"emit-mode\" @click=\"$emit('update:value', 'mode', 'luma')\" /><button class=\"emit-invert\" @click=\"$emit('update:value', 'invert', true)\" /></div>",
   },
 }));
 
@@ -50,7 +50,9 @@ describe('ClipMaskSection', () => {
 
   it('emits updateMask undefined when reset clicked', async () => {
     const component = await mountSuspended(ClipMaskSection, {
-      props: { clip: createClip({ mask: { source: { path: '/x' }, mode: 'alpha', invert: false } } as any) },
+      props: {
+        clip: createClip({ mask: { source: { path: '/x' }, mode: 'alpha', invert: false } } as any),
+      },
     });
 
     await component.find('.reset-btn').trigger('click');
@@ -66,9 +68,7 @@ describe('ClipMaskSection', () => {
 
     await component.find('.emit-source').trigger('click');
 
-    expect(component.emitted('updateMask')![0]).toEqual([
-      { source: { path: '/foo' } },
-    ]);
+    expect(component.emitted('updateMask')![0]).toEqual([{ source: { path: '/foo' } }]);
   });
 
   it('emits updateMask undefined when sourcePath cleared', async () => {
@@ -88,9 +88,7 @@ describe('ClipMaskSection', () => {
 
     await component.find('.emit-mode').trigger('click');
 
-    expect(component.emitted('updateMask')![0]).toEqual([
-      { source: { path: '/x' }, mode: 'luma' },
-    ]);
+    expect(component.emitted('updateMask')![0]).toEqual([{ source: { path: '/x' }, mode: 'luma' }]);
   });
 
   it('emits updateMask with invert when invert value changes', async () => {

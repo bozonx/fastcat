@@ -9,7 +9,9 @@ const renamePresetMock = vi.fn();
 const removePresetMock = vi.fn();
 const clearSelectionMock = vi.fn();
 
-const mockCustomPresets = reactive<Array<{ id: string; name: string; baseType: string; category: string }>>([]);
+const mockCustomPresets = reactive<
+  Array<{ id: string; name: string; baseType: string; category: string }>
+>([]);
 
 vi.mock('~/stores/presets.store', () => ({
   usePresetsStore: () => ({
@@ -42,7 +44,13 @@ const ClipTextPropertiesStub = {
 
 const ClipShapePropertiesStub = {
   props: ['clip', 'presets', 'hidePresets'],
-  emits: ['update-shape-type', 'update-fill-color', 'update-stroke-color', 'update-stroke-width', 'update-shape-config'],
+  emits: [
+    'update-shape-type',
+    'update-fill-color',
+    'update-stroke-color',
+    'update-stroke-width',
+    'update-shape-config',
+  ],
   template:
     '<div class="shape-stub"><button class="s-type" @click="$emit(\'update-shape-type\', \'circle\')" /><button class="s-fill" @click="$emit(\'update-fill-color\', \'#fff\')" /><button class="s-config" @click="$emit(\'update-shape-config\', { sides: 5 })" /></div>',
 };
@@ -90,7 +98,11 @@ describe('ProjectLibraryProperties', () => {
 
   it('renders ClipTextProperties for itemKind text', async () => {
     const component = await mountSuspended(ProjectLibraryProperties, {
-      props: { itemKind: 'text', itemId: 'text', presetParams: { text: 'hello', style: { color: 'blue' } } },
+      props: {
+        itemKind: 'text',
+        itemId: 'text',
+        presetParams: { text: 'hello', style: { color: 'blue' } },
+      },
       global: { stubs },
     });
 
@@ -108,7 +120,11 @@ describe('ProjectLibraryProperties', () => {
 
   it('renders ClipHudProperties for itemKind hud', async () => {
     const component = await mountSuspended(ProjectLibraryProperties, {
-      props: { itemKind: 'hud', itemId: 'tracker', presetParams: { background: { c: 1 }, content: { o: 2 } } },
+      props: {
+        itemKind: 'hud',
+        itemId: 'tracker',
+        presetParams: { background: { c: 1 }, content: { o: 2 } },
+      },
       global: { stubs },
     });
 
@@ -179,7 +195,12 @@ describe('ProjectLibraryProperties', () => {
   });
 
   it('shows update/rename/delete actions for custom preset and resolves baseType', async () => {
-    mockCustomPresets.push({ id: 'custom_text_1', name: 'Custom Text', baseType: 'text', category: 'text' });
+    mockCustomPresets.push({
+      id: 'custom_text_1',
+      name: 'Custom Text',
+      baseType: 'text',
+      category: 'text',
+    });
     const component = await mountSuspended(ProjectLibraryProperties, {
       props: { itemKind: 'text', itemId: 'custom_text_1', presetParams: { text: 'hi' } },
       global: { stubs },
@@ -195,7 +216,12 @@ describe('ProjectLibraryProperties', () => {
   });
 
   it('isRecentlySaved flips true then false after 1500ms', async () => {
-    mockCustomPresets.push({ id: 'custom_text_1', name: 'Custom Text', baseType: 'text', category: 'text' });
+    mockCustomPresets.push({
+      id: 'custom_text_1',
+      name: 'Custom Text',
+      baseType: 'text',
+      category: 'text',
+    });
     const component = await mountSuspended(ProjectLibraryProperties, {
       props: { itemKind: 'text', itemId: 'custom_text_1', presetParams: { text: 'hi' } },
       global: { stubs },
@@ -213,7 +239,12 @@ describe('ProjectLibraryProperties', () => {
   });
 
   it('rename action opens rename modal and calls renamePreset', async () => {
-    mockCustomPresets.push({ id: 'custom_text_1', name: 'Old Name', baseType: 'text', category: 'text' });
+    mockCustomPresets.push({
+      id: 'custom_text_1',
+      name: 'Old Name',
+      baseType: 'text',
+      category: 'text',
+    });
     const component = await mountSuspended(ProjectLibraryProperties, {
       props: { itemKind: 'text', itemId: 'custom_text_1', presetParams: {} },
       global: { stubs },
@@ -227,7 +258,12 @@ describe('ProjectLibraryProperties', () => {
   });
 
   it('delete action calls removePreset and clearSelection', async () => {
-    mockCustomPresets.push({ id: 'custom_text_1', name: 'To Delete', baseType: 'text', category: 'text' });
+    mockCustomPresets.push({
+      id: 'custom_text_1',
+      name: 'To Delete',
+      baseType: 'text',
+      category: 'text',
+    });
     const component = await mountSuspended(ProjectLibraryProperties, {
       props: { itemKind: 'text', itemId: 'custom_text_1', presetParams: {} },
       global: { stubs },
@@ -252,6 +288,11 @@ describe('ProjectLibraryProperties', () => {
     await component.find('.modal-name').setValue('P');
     await component.find('.modal-save').trigger('click');
 
-    expect(saveAsPresetMock).toHaveBeenCalledWith('text', 'text', 'P', expect.objectContaining({ text: 'second' }));
+    expect(saveAsPresetMock).toHaveBeenCalledWith(
+      'text',
+      'text',
+      'P',
+      expect.objectContaining({ text: 'second' }),
+    );
   });
 });

@@ -154,7 +154,12 @@ export async function executeMediaConversion(params: {
               };
             }
 
-            await client.transcodeMedia(sourceFile, params.targetHandle, exportOptions, params.taskId);
+            await client.transcodeMedia(
+              sourceFile,
+              params.targetHandle,
+              exportOptions,
+              params.taskId,
+            );
           } finally {
             unregisterExportTaskHostApi(params.taskId);
           }

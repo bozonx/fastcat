@@ -236,9 +236,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div
-    class="timeline-tabs flex h-full min-w-0 flex-1 select-none items-end self-stretch pt-1"
-  >
+  <div class="timeline-tabs flex h-full min-w-0 flex-1 select-none items-end self-stretch pt-1">
     <div
       ref="scrollContainer"
       class="flex h-[30px] w-full min-w-0 items-end overflow-x-auto no-scrollbar"

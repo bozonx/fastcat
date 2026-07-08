@@ -17,8 +17,10 @@ const getClipTailTimelineHandleUsMock = vi.fn(() => 1_000_000);
 const getClipHeadTimelineHandleUsMock = vi.fn(() => 1_000_000);
 
 vi.mock('~/utils/timeline/clip', () => ({
-  getPrevClipForItem: (...args: unknown[]) => getPrevClipForItemMock(...(args as [TimelineTrack, TimelineClipItem])),
-  getNextClipForItem: (...args: unknown[]) => getNextClipForItemMock(...(args as [TimelineTrack, TimelineClipItem])),
+  getPrevClipForItem: (...args: unknown[]) =>
+    getPrevClipForItemMock(...(args as [TimelineTrack, TimelineClipItem])),
+  getNextClipForItem: (...args: unknown[]) =>
+    getNextClipForItemMock(...(args as [TimelineTrack, TimelineClipItem])),
   getClipTailTimelineHandleUs: (c: TimelineClipItem) => getClipTailTimelineHandleUsMock(c),
   getClipHeadTimelineHandleUs: (c: TimelineClipItem) => getClipHeadTimelineHandleUsMock(c),
 }));

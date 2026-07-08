@@ -5,12 +5,23 @@ import ClipTypeSection from '~/components/properties/clip/ClipTypeSection.vue';
 
 const mockSaveAsPreset = vi.fn();
 const mockCustomPresets = [
-  { id: 'preset-text-1', category: 'text', name: 'Text Preset', params: { style: { color: 'red' } } },
+  {
+    id: 'preset-text-1',
+    category: 'text',
+    name: 'Text Preset',
+    params: { style: { color: 'red' } },
+  },
   {
     id: 'preset-shape-1',
     category: 'shape',
     name: 'Shape Preset',
-    params: { shapeType: 'circle', fillColor: '#fff', strokeColor: '#000', strokeWidth: 2, shapeConfig: { sides: 5 } },
+    params: {
+      shapeType: 'circle',
+      fillColor: '#fff',
+      strokeColor: '#000',
+      strokeWidth: 2,
+      shapeConfig: { sides: 5 },
+    },
   },
   {
     id: 'preset-hud-1',
@@ -37,13 +48,29 @@ const PresetSaveModalStub = {
 
 const ClipTextPropertiesStub = {
   props: ['clip', 'presets'],
-  emits: ['update-text', 'update-text-style', 'update-snap-to-pixel-grid', 'load-preset', 'save-preset'],
-  template: '<div class="text-stub" :data-presets="presets.length"><button class="t-style" @click="$emit(\'update-text-style\', { color: \'red\' })" /><button class="t-save" @click="$emit(\'save-preset\')" /></div>',
+  emits: [
+    'update-text',
+    'update-text-style',
+    'update-snap-to-pixel-grid',
+    'load-preset',
+    'save-preset',
+  ],
+  template:
+    '<div class="text-stub" :data-presets="presets.length"><button class="t-style" @click="$emit(\'update-text-style\', { color: \'red\' })" /><button class="t-save" @click="$emit(\'save-preset\')" /></div>',
 };
 
 const ClipShapePropertiesStub = {
   props: ['clip', 'presets'],
-  emits: ['update-shape-type', 'update-fill-color', 'update-stroke-color', 'update-stroke-width', 'update-shape-config', 'update-snap-to-pixel-grid', 'load-preset', 'save-preset'],
+  emits: [
+    'update-shape-type',
+    'update-fill-color',
+    'update-stroke-color',
+    'update-stroke-width',
+    'update-shape-config',
+    'update-snap-to-pixel-grid',
+    'load-preset',
+    'save-preset',
+  ],
   template:
     '<div class="shape-stub"><button class="s-type" @click="$emit(\'update-shape-type\', \'circle\')" /><button class="s-save" @click="$emit(\'save-preset\')" /></div>',
 };
@@ -107,7 +134,12 @@ describe('ClipTypeSection', () => {
 
   it('renders ClipHudProperties when clipType is hud and hudFeatureEnabled', async () => {
     const component = await mountSuspended(ClipTypeSection, {
-      props: { clip: createClip('hud'), hudManifest: { controls: [] }, hudControlValues: {}, hudFeatureEnabled: true },
+      props: {
+        clip: createClip('hud'),
+        hudManifest: { controls: [] },
+        hudControlValues: {},
+        hudFeatureEnabled: true,
+      },
       global: { stubs },
     });
 
@@ -116,7 +148,12 @@ describe('ClipTypeSection', () => {
 
   it('does not render ClipHudProperties when hudFeatureEnabled is false', async () => {
     const component = await mountSuspended(ClipTypeSection, {
-      props: { clip: createClip('hud'), hudManifest: null, hudControlValues: {}, hudFeatureEnabled: false },
+      props: {
+        clip: createClip('hud'),
+        hudManifest: null,
+        hudControlValues: {},
+        hudFeatureEnabled: false,
+      },
       global: { stubs },
     });
 
@@ -149,7 +186,12 @@ describe('ClipTypeSection', () => {
 
   it('forwards updateHudControl from hud properties', async () => {
     const component = await mountSuspended(ClipTypeSection, {
-      props: { clip: createClip('hud'), hudManifest: { controls: [] }, hudControlValues: {}, hudFeatureEnabled: true },
+      props: {
+        clip: createClip('hud'),
+        hudManifest: { controls: [] },
+        hudControlValues: {},
+        hudFeatureEnabled: true,
+      },
       global: { stubs },
     });
 
@@ -161,21 +203,34 @@ describe('ClipTypeSection', () => {
 
   it('opens save modal with clip name and saves text preset', async () => {
     const component = await mountSuspended(ClipTypeSection, {
-      props: { clip: createClip('text', { style: { color: 'red' } } as any), hudManifest: null, hudControlValues: {} },
+      props: {
+        clip: createClip('text', { style: { color: 'red' } } as any),
+        hudManifest: null,
+        hudControlValues: {},
+      },
       global: { stubs },
     });
 
     await component.find('.t-save').trigger('click');
     await component.find('.preset-confirm').trigger('click');
 
-    expect(mockSaveAsPreset).toHaveBeenCalledWith('text', 'custom', 'My Clip', { style: { color: 'red' }, text: undefined });
+    expect(mockSaveAsPreset).toHaveBeenCalledWith('text', 'custom', 'My Clip', {
+      style: { color: 'red' },
+      text: undefined,
+    });
   });
 
   it('saves shape preset with shape params', async () => {
     mockSaveAsPreset.mockClear();
     const component = await mountSuspended(ClipTypeSection, {
       props: {
-        clip: createClip('shape', { shapeType: 'square', fillColor: '#abc', strokeColor: '#def', strokeWidth: 3, shapeConfig: { sides: 4 } } as any),
+        clip: createClip('shape', {
+          shapeType: 'square',
+          fillColor: '#abc',
+          strokeColor: '#def',
+          strokeWidth: 3,
+          shapeConfig: { sides: 4 },
+        } as any),
         hudManifest: null,
         hudControlValues: {},
       },
@@ -198,7 +253,12 @@ describe('ClipTypeSection', () => {
     mockSaveAsPreset.mockClear();
     const component = await mountSuspended(ClipTypeSection, {
       props: {
-        clip: createClip('hud', { hudType: 'tracker', background: { c: 1 }, content: { o: 2 }, frame: { f: 3 } } as any),
+        clip: createClip('hud', {
+          hudType: 'tracker',
+          background: { c: 1 },
+          content: { o: 2 },
+          frame: { f: 3 },
+        } as any),
         hudManifest: { controls: [] },
         hudControlValues: {},
         hudFeatureEnabled: true,
@@ -220,7 +280,11 @@ describe('ClipTypeSection', () => {
   it('does not save preset when name is empty', async () => {
     mockSaveAsPreset.mockClear();
     const component = await mountSuspended(ClipTypeSection, {
-      props: { clip: createClip('text', { name: '   ' } as any), hudManifest: null, hudControlValues: {} },
+      props: {
+        clip: createClip('text', { name: '   ' } as any),
+        hudManifest: null,
+        hudControlValues: {},
+      },
       global: { stubs },
     });
 
