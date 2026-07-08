@@ -32,6 +32,7 @@ import { useTimelineMovePreviews } from '~/composables/timeline/useTimelineMoveP
 import { useTimelineAutoMontage } from '~/composables/timeline/useTimelineAutoMontage';
 import { useTimelineTrackContextMenu } from '~/composables/timeline/useTimelineTrackContextMenu';
 import { useTimelinePasteParameters } from '~/composables/timeline/useTimelinePasteParameters';
+import { useExclusiveContextMenu } from '~/composables/ui/useExclusiveContextMenu';
 import type { TimelineTrimPreview } from '~/composables/timeline/useTimelineItemDrag';
 
 import { isLayer1Active, isLayer2Active } from '~/utils/hotkeys/layerUtils';
@@ -263,6 +264,10 @@ const { emptyAreaContextMenuItems: timelineEmptyAreaContextMenuItems } =
   useTimelineEmptyAreaContextMenu({
     onZoomToFit: () => props.onZoomToFit?.(),
   });
+const {
+  isContextMenuOpen: isTimelineEmptyContextMenuOpen,
+  setContextMenuOpen: setTimelineEmptyContextMenuOpen,
+} = useExclusiveContextMenu();
 
 const {
   isTrackRenameModalOpen,
@@ -411,7 +416,12 @@ watch(
 </script>
 
 <template>
-  <UContextMenu :items="timelineEmptyAreaContextMenuItems" :disabled="isMobile">
+  <UContextMenu
+    :open="isTimelineEmptyContextMenuOpen"
+    :items="timelineEmptyAreaContextMenuItems"
+    :disabled="isMobile"
+    @update:open="setTimelineEmptyContextMenuOpen"
+  >
     <div
       ref="containerRef"
       tabindex="-1"

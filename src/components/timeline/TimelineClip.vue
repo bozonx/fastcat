@@ -27,6 +27,7 @@ import { sanitizeFps } from '~/timeline/commands/utils';
 import { isClipFreePosition } from '~/utils/timeline/clip-checks';
 import { cloneValue } from '~/utils/clone';
 import { useClipContextMenu } from '~/composables/timeline/useClipContextMenu';
+import { useExclusiveContextMenu } from '~/composables/ui/useExclusiveContextMenu';
 import { useHotkeyLabel } from '~/composables/useHotkeyLabel';
 import {
   getClipClass,
@@ -686,7 +687,7 @@ const { contextMenuItems } = useClipContextMenu({
 // Build the context-menu tree only while the menu is open. Binding the computed
 // directly forced a full menu rebuild on every render of every visible clip.
 const EMPTY_MENU_ITEMS: typeof contextMenuItems.value = [];
-const isContextMenuOpen = ref(false);
+const { isContextMenuOpen, setContextMenuOpen } = useExclusiveContextMenu();
 const lazyContextMenuItems = computed(() =>
   isContextMenuOpen.value ? contextMenuItems.value : EMPTY_MENU_ITEMS,
 );
@@ -845,9 +846,10 @@ function handleTransitionCreate(
 
 <template>
   <UContextMenu
+    :open="isContextMenuOpen"
     :items="lazyContextMenuItems"
     :disabled="props.isMobile || rightClickPointerActive || rightClickDragTriggered"
-    @update:open="isContextMenuOpen = $event"
+    @update:open="setContextMenuOpen"
   >
     <div
       ref="clipContainerRef"

@@ -14,6 +14,7 @@ import { useTimelineRulerMarkerDrag } from '~/composables/timeline/useTimelineRu
 import { useTimelineRulerSelectionDrag } from '~/composables/timeline/useTimelineRulerSelectionDrag';
 import { useTimelineRulerDraw } from '~/composables/timeline/useTimelineRulerDraw';
 import { useTimelineRulerInteractions } from '~/composables/timeline/useTimelineRulerInteractions';
+import { useExclusiveContextMenu } from '~/composables/ui/useExclusiveContextMenu';
 import {
   computeSnapTargetsUs,
   resolvePlayheadClickTimeUs,
@@ -36,6 +37,7 @@ const emit = defineEmits<{
 
 const canvasRef = ref<HTMLCanvasElement | null>(null);
 const containerRef = ref<HTMLElement | null>(null);
+const { isContextMenuOpen, setContextMenuOpen } = useExclusiveContextMenu();
 
 const timelineStore = useTimelineStore();
 const selectionStore = useSelectionStore();
@@ -319,6 +321,11 @@ const {
   emit,
 });
 
+function setRulerContextMenuOpen(open: boolean) {
+  setContextMenuOpen(open);
+  onContextMenuOpenChange(open);
+}
+
 const {
   rulerContextMenuItems,
   getZoneMarkerMenuItems,
@@ -408,9 +415,10 @@ function onMobilePointerUp() {
 
 <template>
   <UContextMenu
+    :open="isContextMenuOpen"
     :items="rulerContextMenuItems"
     class="w-full h-full"
-    @update:open="onContextMenuOpenChange"
+    @update:open="setRulerContextMenuOpen"
   >
     <div
       ref="containerRef"

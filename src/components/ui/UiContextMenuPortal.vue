@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, onUnmounted, nextTick } from 'vue';
+import { useExclusiveContextMenu } from '~/composables/ui/useExclusiveContextMenu';
 
 defineOptions({
   inheritAttrs: false,
@@ -23,7 +24,7 @@ const props = withDefaults(
   },
 );
 
-const isOpen = ref(false);
+const { isContextMenuOpen, setContextMenuOpen, closeContextMenu } = useExclusiveContextMenu();
 const menuX = ref(0);
 const menuY = ref(0);
 const menuEl = ref<HTMLElement | null>(null);
@@ -37,7 +38,7 @@ function open(e: MouseEvent) {
   const rect = target.getBoundingClientRect();
   menuX.value = e.clientX - rect.left;
   menuY.value = e.clientY - rect.top;
-  isOpen.value = true;
+  setContextMenuOpen(true);
 
   void nextTick(() => {
     if (!menuEl.value) return;
@@ -53,7 +54,7 @@ function open(e: MouseEvent) {
 }
 
 function close() {
-  isOpen.value = false;
+  closeContextMenu();
 }
 
 function onGlobalPointerDown(e: PointerEvent) {
@@ -107,7 +108,7 @@ defineExpose({ open, close });
 </script>
 
 <template>
-  <Teleport v-if="targetEl && isOpen" :to="targetEl">
+  <Teleport v-if="targetEl && isContextMenuOpen" :to="targetEl">
     <div
       ref="menuEl"
       class="absolute z-99999 min-w-40 rounded-md border border-ui-border bg-ui-bg shadow-lg py-1 select-none"

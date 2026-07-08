@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, nextTick, onScopeDispose, ref } from 'vue';
 import type { TimelineTrack, TimelineTrackItem } from '~/timeline/types';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useSelectionStore } from '~/stores/selection.store';
@@ -9,6 +9,7 @@ import { timelineRangeToRoundedPx } from '~/utils/timeline/geometry';
 import { isLayer1Active, isLayer2Active } from '~/utils/hotkeys/layerUtils';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useTrackContextMenu } from '~/composables/timeline/useTrackContextMenu';
+import { useExclusiveContextMenu } from '~/composables/ui/useExclusiveContextMenu';
 import UiRenameModal from '~/components/ui/UiRenameModal.vue';
 
 const { t } = useI18n();
@@ -17,6 +18,7 @@ const selectionStore = useSelectionStore();
 const clipboardStore = useAppClipboard();
 
 const hasTimelineClipboard = computed(() => clipboardStore.hasTimelinePayload);
+const { isContextMenuOpen, setContextMenuOpen } = useExclusiveContextMenu();
 
 function onPaste() {
   const payload = clipboardStore.clipboardPayload;
@@ -69,6 +71,8 @@ const emit = defineEmits<{
 
 let pointerStartX = 0;
 let pointerStartY = 0;
+let rightClickCleanup: (() => void) | null = null;
+const gapRef = ref<HTMLElement | null>(null);
 
 const style = computed(() => {
   const geometry = timelineRangeToRoundedPx(
@@ -127,6 +131,37 @@ function shouldStartMarquee(e: PointerEvent): boolean {
   return action === 'move_clips' || action === 'select_area';
 }
 
+function openContextMenuFromRightClick(e: PointerEvent) {
+  if (rightClickCleanup) rightClickCleanup();
+
+  const clientX = e.clientX;
+  const clientY = e.clientY;
+
+  const cleanup = () => {
+    window.removeEventListener('pointerup', onPointerUp);
+    window.removeEventListener('pointercancel', cleanup);
+    rightClickCleanup = null;
+  };
+
+  const onPointerUp = () => {
+    cleanup();
+    void nextTick().then(() => {
+      gapRef.value?.dispatchEvent(
+        new MouseEvent('contextmenu', {
+          bubbles: true,
+          cancelable: true,
+          clientX,
+          clientY,
+        }),
+      );
+    });
+  };
+
+  rightClickCleanup = cleanup;
+  window.addEventListener('pointerup', onPointerUp, { once: true });
+  window.addEventListener('pointercancel', cleanup, { once: true });
+}
+
 function onPointerdown(e: PointerEvent) {
   if (shouldStartMarquee(e)) {
     // Emit marqueeStart directly so startMarquee handles click vs drag distinction:
@@ -139,6 +174,12 @@ function onPointerdown(e: PointerEvent) {
   if (e.button === 1) return;
 
   e.stopPropagation();
+
+  if (e.button === 2) {
+    e.preventDefault();
+    openContextMenuFromRightClick(e);
+    return;
+  }
 
   if (props.isMobile && e.pointerType === 'touch' && e.button === 0) {
     // On mobile, record position for movement check — actual selection happens in onClick
@@ -160,10 +201,21 @@ function onClick(e: MouseEvent) {
   if (dx > 5 || dy > 5) return;
   emit('select', e as unknown as PointerEvent);
 }
+
+function onContextMenu(e: MouseEvent) {
+  if (!e.isTrusted) return;
+  e.preventDefault();
+  e.stopPropagation();
+}
+
+onScopeDispose(() => {
+  if (rightClickCleanup) rightClickCleanup();
+});
 </script>
 
 <template>
   <UContextMenu
+    :open="isContextMenuOpen"
     :items="[
       [
         {
@@ -181,8 +233,10 @@ function onClick(e: MouseEvent) {
       ...trackContextMenuItems,
     ]"
     :disabled="isMobile"
+    @update:open="setContextMenuOpen"
   >
     <div
+      ref="gapRef"
       :data-gap-id="item.id"
       class="absolute top-0.5 bottom-0.5 rounded border border-dashed transition-colors z-10 cursor-pointer select-none"
       :class="[
@@ -194,7 +248,7 @@ function onClick(e: MouseEvent) {
       :style="style"
       @pointerdown="onPointerdown"
       @click.stop="onClick"
-      @contextmenu.prevent
+      @contextmenu="onContextMenu"
     />
   </UContextMenu>
 

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
-import { reactive } from 'vue';
+import { nextTick, reactive } from 'vue';
 import TimelineGap from '~/components/timeline/TimelineGap.vue';
 
 const mockTimelineStore = reactive({
@@ -120,20 +120,36 @@ describe('TimelineGap', () => {
     expect(div.classes()).toContain('border-primary-500');
   });
 
-  it('lets the contextmenu event bubble up so the gap context menu can open', async () => {
+  it('dispatches a synthetic contextmenu on right click so the gap menu can open', async () => {
     const component = await mountSuspended(TimelineGap, {
       props: { item, trackId: 'v1' },
       attachTo: document.body,
     });
 
     const gapElement = component.find('div.absolute');
-    const event = new MouseEvent('contextmenu', { bubbles: true, cancelable: true });
-    (gapElement.element as HTMLElement).dispatchEvent(event);
+    const contextMenuHandler = vi.fn();
+    gapElement.element.addEventListener('contextmenu', contextMenuHandler);
 
-    // preventDefault is called (suppresses native browser menu) but propagation must continue
-    expect(event.defaultPrevented).toBe(true);
-    expect(event.cancelBubble).toBe(false);
+    const pointerDownEvent = new MouseEvent('pointerdown', {
+      bubbles: true,
+      cancelable: true,
+      button: 2,
+      clientX: 32,
+      clientY: 16,
+    });
+    gapElement.element.dispatchEvent(pointerDownEvent);
+    window.dispatchEvent(new Event('pointerup'));
+    await nextTick();
+    await Promise.resolve();
 
+    expect(pointerDownEvent.defaultPrevented).toBe(true);
+    expect(contextMenuHandler).toHaveBeenCalledTimes(1);
+    expect(contextMenuHandler.mock.calls[0]?.[0]).toMatchObject({
+      clientX: 32,
+      clientY: 16,
+    });
+
+    gapElement.element.removeEventListener('contextmenu', contextMenuHandler);
     component.unmount();
   });
 });

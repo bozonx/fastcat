@@ -12,6 +12,7 @@ import TimelineTrackLabelItem from '~/components/timeline/TimelineTrackLabelItem
 import UiContextMenuPortal from '~/components/ui/UiContextMenuPortal.vue';
 import { useTimelineEmptyAreaContextMenu } from '~/composables/timeline/useTimelineEmptyAreaContextMenu';
 import { useTrackContextMenu } from '~/composables/timeline/useTrackContextMenu';
+import { useExclusiveContextMenu } from '~/composables/ui/useExclusiveContextMenu';
 
 const { t } = useI18n();
 
@@ -195,10 +196,18 @@ const activeTrackContextMenuItems = computed(() => {
 const { emptyAreaContextMenuItems: propertiesContextMenuItems } = useTimelineEmptyAreaContextMenu({
   onZoomToFit: () => props.onZoomToFit?.(),
 });
+const {
+  isContextMenuOpen: isPropertiesContextMenuOpen,
+  setContextMenuOpen: setPropertiesContextMenuOpen,
+} = useExclusiveContextMenu();
 </script>
 
 <template>
-  <UContextMenu :items="propertiesContextMenuItems">
+  <UContextMenu
+    :open="isPropertiesContextMenuOpen"
+    :items="propertiesContextMenuItems"
+    @update:open="setPropertiesContextMenuOpen"
+  >
     <div
       v-bind="$attrs"
       ref="labelsScrollContainer"
