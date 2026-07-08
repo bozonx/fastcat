@@ -108,12 +108,18 @@ describe('DEFAULT_HOTKEYS', () => {
   });
 
   it('has updated defaults for timeline trim and selection actions', () => {
-    expect(DEFAULT_HOTKEYS.bindings['timeline.selectClipsLeftOfPlayhead']).toEqual(['C']);
-    expect(DEFAULT_HOTKEYS.bindings['timeline.selectClipsRightOfPlayhead']).toEqual(['V']);
+    expect(DEFAULT_HOTKEYS.bindings['timeline.selectClipsLeftOfPlayhead']).toEqual(['Shift+D']);
+    expect(DEFAULT_HOTKEYS.bindings['timeline.selectClipsRightOfPlayhead']).toEqual(['Shift+F']);
+    expect(DEFAULT_HOTKEYS.bindings['timeline.trimToPlayheadLeft']).toEqual(['C']);
+    expect(DEFAULT_HOTKEYS.bindings['timeline.trimToPlayheadRight']).toEqual(['V']);
     expect(DEFAULT_HOTKEYS.bindings['timeline.rippleTrimLeft']).toEqual(['Shift+E']);
     expect(DEFAULT_HOTKEYS.bindings['timeline.rippleTrimRight']).toEqual(['Shift+R']);
-    expect(DEFAULT_HOTKEYS.bindings['timeline.toggleShowWaveform']).toEqual(['Shift+D']);
-    expect(DEFAULT_HOTKEYS.bindings['timeline.toggleShowThumbnails']).toEqual(['Shift+F']);
+  });
+
+  it('has updated defaults for waveform and thumbnail toggles', () => {
+    expect(DEFAULT_HOTKEYS.bindings['timeline.toggleWaveformMode']).toEqual([',']);
+    expect(DEFAULT_HOTKEYS.bindings['timeline.toggleShowWaveform']).toEqual(['.']);
+    expect(DEFAULT_HOTKEYS.bindings['timeline.toggleShowThumbnails']).toEqual(['Shift+X']);
   });
 
   it('has defaults for timeline creation and mode shortcuts', () => {

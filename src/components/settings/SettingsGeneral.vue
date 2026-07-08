@@ -242,7 +242,7 @@ const stopFramesQualityOptions = [
               <UiScaleSlider
                 :model-value="workspaceStore.userSettings.backup.count"
                 :min="1"
-                :max="5"
+                :max="10"
                 with-input
                 :default-value="5"
                 @update:model-value="workspaceStore.userSettings.backup.count = $event as number"
