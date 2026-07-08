@@ -105,6 +105,10 @@ interface ActiveDrag extends ArmPointerDndOptions {
   startY: number;
   committed: boolean;
   longPressTimer: number | null;
+  // Safety-net timer that removes the click-block listener added on a committed
+  // drag. Tracked so teardown can clear it — otherwise the callback fires after
+  // the drag (and, in tests, after `window`) is gone.
+  clickBlockTimer: number | null;
   currentZoneId: string | null;
   lastPointer: DndPointer;
   rafId: number;
@@ -348,7 +352,8 @@ function teardown(info: { dropped: boolean; cancelled: boolean; nativeTakeover?:
       ownerWindow.removeEventListener('click', blockClick, true);
     };
     ownerWindow.addEventListener('click', blockClick, true);
-    setTimeout(() => {
+    drag.clickBlockTimer = window.setTimeout(() => {
+      drag.clickBlockTimer = null;
       ownerWindow.removeEventListener('click', blockClick, true);
     }, 50);
   }
@@ -356,6 +361,10 @@ function teardown(info: { dropped: boolean; cancelled: boolean; nativeTakeover?:
   dndDebug('teardown', { committed: drag.committed, ...info });
 
   clearLongPress(drag);
+  if (drag.clickBlockTimer !== null) {
+    window.clearTimeout(drag.clickBlockTimer);
+    drag.clickBlockTimer = null;
+  }
   if (drag.rafId !== 0) cancelAnimationFrame(drag.rafId);
 
   window.removeEventListener('pointermove', onWindowPointerMove, true);
@@ -571,6 +580,7 @@ export function armPointerDnd(e: PointerEvent, options: ArmPointerDndOptions): v
     startY: e.clientY,
     committed: false,
     longPressTimer: null,
+    clickBlockTimer: null,
     currentZoneId: null,
     lastPointer: initialPointer,
     rafId: 0,

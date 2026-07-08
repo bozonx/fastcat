@@ -20,7 +20,14 @@ const TRANSITION_CREATE_HANDLE_HEIGHT_PX = 11;
 const TRANSITION_CREATE_HANDLE_HOVER_WIDTH_PX = 13;
 const TRANSITION_CREATE_HANDLE_HOVER_HEIGHT_PX = 16;
 const TRANSITION_CREATE_HANDLE_OUTSET_PX = 2;
-const MIN_TRANSITION_CREATE_HANDLE_TRACK_HEIGHT_PX = 24;
+// The create-transition triangles are anchored to the clip's content band
+// (track height minus the clip header). The default track height (40px) leaves a
+// 20px content band, so gating on the *content* band with a threshold above 20
+// hid the handles on every standard-height track. Gate on the full track height
+// instead — this matches the clip-header collapse rule (`trackHeight < 36`) and
+// keeps the handles visible whenever the track is tall enough to render a clip
+// body at all.
+const MIN_TRANSITION_CREATE_HANDLE_TRACK_HEIGHT_PX = 40;
 const TRANSITION_CREATE_HANDLE_BOTTOM_RATIO = 0.2;
 
 const props = defineProps<{
@@ -163,7 +170,7 @@ function canShowCreateTransitionHandle() {
     // under the trim handle and just get in the way — hide them until trim ends.
     !props.isTrimming &&
     props.clipWidthPx >= 30 &&
-    contentBandHeightPx.value >= MIN_TRANSITION_CREATE_HANDLE_TRACK_HEIGHT_PX
+    props.trackHeight >= MIN_TRANSITION_CREATE_HANDLE_TRACK_HEIGHT_PX
   );
 }
 

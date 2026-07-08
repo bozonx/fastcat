@@ -20,9 +20,13 @@ vi.mock('~/composables/timeline/useTimelineClipThumbnails', () => ({
   }),
 }));
 
-vi.mock('@vueuse/core', () => ({
-  useResizeObserver: () => {},
-}));
+vi.mock('@vueuse/core', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@vueuse/core')>();
+  return {
+    ...actual,
+    useResizeObserver: () => {},
+  };
+});
 
 function createClip(): TimelineClipItem {
   return {

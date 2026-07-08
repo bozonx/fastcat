@@ -33,6 +33,11 @@ command -v WebKitWebDriver >/dev/null 2>&1 || {
   exit 1
 }
 
+# The build and the test run both read TMPDIR (pnpm/tauri resolve it via
+# `realpathSync`, which throws ENOENT on a missing path). Create the temp roots
+# before anything that might need them.
+mkdir -p "$TAURI_E2E_TEMP_ROOT" "$TMPDIR"
+
 if [ "${FORCE_BUILD:-0}" = "1" ] || [ ! -x "$BIN" ]; then
   echo "==> Building release binary (pnpm tauri build --no-bundle)"
   pnpm tauri build --no-bundle

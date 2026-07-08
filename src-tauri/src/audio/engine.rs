@@ -1279,15 +1279,35 @@ mod tests {
         engine.set_scene(&[l], &[], 1.0, &[]);
         engine.start_priming(0.0);
 
+        // The producer thread fills the ring asynchronously (even with silence for a
+        // missing file), so without stopping it the ring fill races this assertion
+        // and the test flakes under load. Stop the producer, then pin the exact
+        // state `is_primed` is meant to gate on: a priming scene whose ring has not
+        // yet reached the prebuffer target.
+        stop_producer(&engine);
+        {
+            let mut state = engine.shared.0.lock();
+            // The producer may already have consumed the pending clear; reset it to
+            // false so `is_primed` reaches the ring-level check instead of the
+            // short-circuit `pending_ring_clear` branch (covered by its own test).
+            state.pending_ring_clear = false;
+        }
+        engine.ring.clear();
+
         assert!(
             !engine.is_primed(),
             "with a non-empty scene and empty ring, primed must be false"
         );
 
-        // (We don't push to the ring here: the producer thread is already running
-        // and SPSC rings have exactly one writer. Filling from the test thread races
-        // with the producer, corrupting ring state. The "ring full → primed" path
-        // is covered by the integration of producer + engine in real playback.)
+        // Push enough silence to cross the prebuffer target: now `is_primed` must
+        // flip true. The producer is stopped, so pushing from this thread is safe.
+        let target = engine.prebuffer_target_samples();
+        let fill = vec![0.0f32; target];
+        engine.ring.push_slice(&fill);
+        assert!(
+            engine.is_primed(),
+            "once the ring reaches the prebuffer target, primed must be true"
+        );
     }
 
     #[test]
