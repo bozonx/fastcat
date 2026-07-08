@@ -61,6 +61,13 @@ const props = defineProps<{
   trimOverlay: ClipPreviewOverlay | null;
   transitionInOverlayGuideStyle: Record<string, string> | null;
   transitionOutOverlayGuideStyle: Record<string, string> | null;
+  canAddTransitionIn?: boolean;
+  canAddTransitionOut?: boolean;
+  showHeaderActions?: boolean;
+}>();
+
+const emit = defineEmits<{
+  addTransition: [edge: 'in' | 'out'];
 }>();
 </script>
 
@@ -78,7 +85,7 @@ const props = defineProps<{
       :class="isHeaderOnly ? 'flex-1 min-h-0' : 'h-5'"
       :style="{ zIndex: 'var(--z-clip-name)' }"
     >
-      <div class="flex items-center gap-1 min-w-0 max-w-[calc(100%-22px)]">
+      <div class="flex items-center gap-1 min-w-0 flex-1">
         <UIcon
           :name="
             isVideo(item, track)
@@ -97,28 +104,59 @@ const props = defineProps<{
         </span>
       </div>
 
-      <!-- Sits above the trim handles (z > --z-clip-trim) so it stays clickable
-           even where a handle overlaps it. -->
-      <button
+      <div
         v-if="!isHeaderOnly"
-        type="button"
-        class="p-0.5 rounded transition-colors flex items-center justify-center shrink-0 pointer-events-auto"
-        :class="
-          isKeyframesExpanded
-            ? 'text-amber-400 bg-amber-400/20'
-            : 'text-white/40 hover:text-white/90 hover:bg-white/10'
-        "
+        class="flex items-center gap-0.5 shrink-0 pointer-events-auto transition-opacity"
+        :class="showHeaderActions ? 'opacity-100' : 'opacity-0 group-hover/clip:opacity-100'"
         :style="{ zIndex: 'calc(var(--z-clip-trim) + 1)' }"
-        :title="t('fastcat.timeline.keyframesTitle')"
-        :aria-label="t('fastcat.timeline.keyframesTitle')"
-        :aria-pressed="isKeyframesExpanded"
-        @pointerdown.stop
-        @click.stop="isKeyframesExpanded = !isKeyframesExpanded"
       >
-        <svg class="w-2.5 h-2.5 fill-current" viewBox="0 0 24 24">
-          <path :d="KEYFRAME_DIAMOND_PATH" />
-        </svg>
-      </button>
+        <UiTooltip v-if="canAddTransitionIn" :text="t('fastcat.timeline.addTransitionIn')">
+          <button
+            data-testid="clip-add-transition-in"
+            type="button"
+            class="size-4 rounded flex items-center justify-center text-white/55 hover:text-white hover:bg-white/10 transition-colors"
+            :aria-label="t('fastcat.timeline.addTransitionIn')"
+            @pointerdown.stop
+            @click.stop="emit('addTransition', 'in')"
+          >
+            <UIcon name="i-heroicons-arrow-left-end-on-rectangle" class="size-3" />
+          </button>
+        </UiTooltip>
+
+        <UiTooltip v-if="canAddTransitionOut" :text="t('fastcat.timeline.addTransitionOut')">
+          <button
+            data-testid="clip-add-transition-out"
+            type="button"
+            class="size-4 rounded flex items-center justify-center text-white/55 hover:text-white hover:bg-white/10 transition-colors"
+            :aria-label="t('fastcat.timeline.addTransitionOut')"
+            @pointerdown.stop
+            @click.stop="emit('addTransition', 'out')"
+          >
+            <UIcon name="i-heroicons-arrow-right-end-on-rectangle" class="size-3" />
+          </button>
+        </UiTooltip>
+
+        <!-- Sits above the trim handles (z > --z-clip-trim) so it stays clickable
+             even where a handle overlaps it. -->
+        <button
+          type="button"
+          class="size-4 rounded transition-colors flex items-center justify-center shrink-0"
+          :class="
+            isKeyframesExpanded
+              ? 'text-amber-400 bg-amber-400/20'
+              : 'text-white/40 hover:text-white/90 hover:bg-white/10'
+          "
+          :title="t('fastcat.timeline.keyframesTitle')"
+          :aria-label="t('fastcat.timeline.keyframesTitle')"
+          :aria-pressed="isKeyframesExpanded"
+          @pointerdown.stop
+          @click.stop="isKeyframesExpanded = !isKeyframesExpanded"
+        >
+          <svg class="size-2.5 fill-current" viewBox="0 0 24 24">
+            <path :d="KEYFRAME_DIAMOND_PATH" />
+          </svg>
+        </button>
+      </div>
     </div>
 
     <!-- Main Content (Thumbnails / Waveform) -->

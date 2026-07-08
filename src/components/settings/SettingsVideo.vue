@@ -8,16 +8,12 @@ import {
   type VideoDiagnosticsSnapshot,
   type VideoDiagnosticsStatus,
 } from '~/utils/settings/videoDiagnostics';
-import {
-  broadcastPixiRendererPreference,
-  getPreviewWorkerClient,
-} from '~/utils/video-editor/worker-client';
+import { getPreviewWorkerClient } from '~/utils/video-editor/worker-client';
 import { getPlatformCapabilities } from '~/utils/capabilities';
 import { createDevLogger } from '~/utils/dev-logger';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import UiFormField from '~/components/ui/UiFormField.vue';
-import UiButtonGroup from '~/components/ui/UiButtonGroup.vue';
 import UiScaleSlider from '~/components/ui/UiScaleSlider.vue';
 
 const log = createDevLogger('SettingsVideo');
@@ -161,8 +157,6 @@ onMounted(async () => {
 function resetDefaults() {
   workspaceStore.userSettings.optimization.videoFrameCacheMb =
     DEFAULT_USER_SETTINGS.optimization.videoFrameCacheMb;
-  workspaceStore.userSettings.optimization.pixiRenderer =
-    DEFAULT_USER_SETTINGS.optimization.pixiRenderer;
   workspaceStore.userSettings.optimization.ffmpegPath =
     DEFAULT_USER_SETTINGS.optimization.ffmpegPath;
   workspaceStore.userSettings.optimization.ffprobePath =
@@ -179,13 +173,6 @@ function resetDefaults() {
     DEFAULT_USER_SETTINGS.optimization.nativeFrameCacheCustomMb;
   isResetConfirmOpen.value = false;
 }
-
-watch(
-  () => workspaceStore.userSettings.optimization.pixiRenderer,
-  async (preference) => {
-    await broadcastPixiRendererPreference(preference);
-  },
-);
 
 watch(
   () => [
@@ -265,21 +252,6 @@ const tauriVideoCodecs = computed(() => {
       <div class="flex flex-col gap-4">
         <!-- Web settings -->
         <template v-if="!isTauri">
-          <UiFormField
-            :label="t('videoEditor.settings.pixiRenderer')"
-            :help="t('videoEditor.settings.pixiRendererHelp')"
-          >
-            <UiButtonGroup
-              v-model="workspaceStore.userSettings.optimization.pixiRenderer"
-              :options="[
-                { label: 'WebGL', value: 'webgl' },
-                { label: 'WebGPU', value: 'webgpu' },
-              ]"
-              class="max-w-xs"
-              fluid
-            />
-          </UiFormField>
-
           <UiFormField
             :label="t('videoEditor.settings.videoFrameCacheMb')"
             :help="t('videoEditor.settings.videoFrameCacheMbHelp')"

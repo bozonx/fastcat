@@ -34,7 +34,7 @@ import {
 } from './video-core-helpers';
 import { extractMetadata, runExport, extractAudioStream } from './core/export';
 import { runTranscode } from './core/transcode';
-import { VIDEO_CORE_LIMITS } from '../utils/constants';
+import { PIXI_RENDERER_PREFERENCE, VIDEO_CORE_LIMITS } from '../utils/constants';
 import { loadFonts } from '../utils/video-editor/load-fonts';
 import { isTauriRuntime } from '~/utils/runtime';
 const log = createDevLogger('video-core.worker');
@@ -47,7 +47,7 @@ let hostClient: VideoCoreHostAPI | null = null;
 let compositor: VideoCompositor | null = null;
 let cancelExportRequested = false;
 let latestLoadTimelineRequestId = 0;
-let pixiRendererPreference: 'webgl' | 'webgpu' = 'webgl';
+let pixiRendererPreference: 'webgl' | 'webgpu' = PIXI_RENDERER_PREFERENCE;
 
 let renderInFlight = false;
 let latestRenderTimeUs: number | null = null;
@@ -158,7 +158,7 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
     width: number,
     height: number,
     bgColor: string,
-    rendererPreference: 'webgl' | 'webgpu' = 'webgl',
+    rendererPreference: 'webgl' | 'webgpu' = PIXI_RENDERER_PREFERENCE,
     designWidth?: number,
     designHeight?: number,
   ) {

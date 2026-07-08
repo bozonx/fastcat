@@ -394,6 +394,44 @@ describe('TimelineClip', () => {
     expect((transitionOverlay as HTMLElement).style.zIndex).toBe('calc(var(--z-clip-handles) + 1)');
   });
 
+  it('creates a transition from the clip header button with the default duration', async () => {
+    const component = await mountClip();
+
+    await component.get('[data-testid="clip-add-transition-in"]').trigger('click');
+
+    expect(mockTimelineStore.updateClipTransition).toHaveBeenCalledWith('track-1', 'clip-1', {
+      transitionIn: {
+        type: 'dissolve',
+        durationUs: 1_000_000,
+        mode: 'transparent',
+        curve: 'linear',
+      },
+    });
+    expect(mockTimelineStore.selectTransition).toHaveBeenCalledWith({
+      trackId: 'track-1',
+      itemId: 'clip-1',
+      edge: 'in',
+    });
+    expect(mockSelectionStore.selectTimelineTransition).toHaveBeenCalledWith(
+      'track-1',
+      'clip-1',
+      'in',
+    );
+  });
+
+  it('hides a header transition button when that edge already has a transition', async () => {
+    const component = await mountClip({
+      ...defaultProps,
+      item: {
+        ...baseItem,
+        transitionIn: { type: 'dissolve', durationUs: 1_000_000, mode: 'adjacent' },
+      },
+    });
+
+    expect(component.find('[data-testid="clip-add-transition-in"]').exists()).toBe(false);
+    expect(component.find('[data-testid="clip-add-transition-out"]').exists()).toBe(true);
+  });
+
   it('computes dynamic trim handle widths based on clip width to prevent blocking narrow clips', async () => {
     // Zoom 50 corresponds to exactly 10 pixels per second
     mockTimelineStore.timelineZoom = 50;

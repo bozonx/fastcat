@@ -14,7 +14,7 @@ import { waitForTimelineDoc } from '../../utils/e2e/otio';
 
 /**
  * Transitions interactive setup and manipulation on timeline clips.
- * Verifies create-handles, transition presence, and OTIO persistence.
+ * Verifies header creation buttons, transition presence, and OTIO persistence.
  */
 test.describe('Web timeline transitions', () => {
   test.slow();
@@ -38,17 +38,34 @@ test.describe('Web timeline transitions', () => {
     return clipId;
   }
 
-  test('renders transition create handles on clip hover', async ({ page, e2eProject }) => {
+  test('creates a transition from the clip header button', async ({
+    page,
+    e2eProject,
+  }) => {
     const clipId = await projectWithVideoClip(page, e2eProject);
     const clipLocator = page.locator(`[data-clip-id="${clipId}"]`);
 
     await hoverClipAt(page, clipLocator);
 
-    const createHandleIn = clipLocator.locator('[data-testid="transition-create-in"]');
-    const createHandleOut = clipLocator.locator('[data-testid="transition-create-out"]');
+    const createButtonIn = clipLocator.getByTestId('clip-add-transition-in');
+    const createButtonOut = clipLocator.getByTestId('clip-add-transition-out');
 
-    await expect(createHandleIn).toHaveClass(/opacity-100/);
-    await expect(createHandleOut).toHaveClass(/opacity-100/);
+    await expect(createButtonIn).toBeVisible();
+    await expect(createButtonOut).toBeVisible();
+    await expect(clipLocator.locator('[data-testid^="transition-create-"]')).toHaveCount(0);
+
+    await createButtonOut.click();
+
+    const doc = await waitForTimelineDoc(
+      page,
+      e2eProject,
+      (timelineDoc) => timelineDoc.allClips[0]?.transitionOut?.type === 'dissolve',
+    );
+    expect(doc.allClips[0]?.transitionOut).toMatchObject({
+      type: 'dissolve',
+    });
+    await expect(clipLocator.getByTestId('transition-out')).toBeVisible();
+    await expect(createButtonOut).toHaveCount(0);
   });
 
   test('creates transition through timeline command path', async ({ page, e2eProject }) => {

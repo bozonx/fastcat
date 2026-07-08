@@ -27,7 +27,7 @@ const projectStoreMock = {
 const workspaceStoreMock = {
   workspaceHandle: null,
   resolvedStorageTopology: null,
-  userSettings: { optimization: { pixiRenderer: 'webgl' as const } },
+  userSettings: { optimization: { pixiRenderer: 'webgpu' as const } },
 };
 
 vi.mock('~/stores/workspace.store', () => ({

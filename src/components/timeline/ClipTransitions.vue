@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref } from 'vue';
+import { computed } from 'vue';
 import type { TimelineTrack, TimelineClipItem } from '~/timeline/types';
 import { timeUsToPx } from '~/utils/timeline/geometry';
 import {
@@ -15,21 +15,6 @@ import { DEFAULT_TRANSITION_CURVE, DEFAULT_TRANSITION_MODE } from '~/transitions
 
 const { t } = useI18n();
 
-const TRANSITION_CREATE_HANDLE_WIDTH_PX = 9;
-const TRANSITION_CREATE_HANDLE_HEIGHT_PX = 11;
-const TRANSITION_CREATE_HANDLE_HOVER_WIDTH_PX = 13;
-const TRANSITION_CREATE_HANDLE_HOVER_HEIGHT_PX = 16;
-const TRANSITION_CREATE_HANDLE_OUTSET_PX = 2;
-// The create-transition triangles are anchored to the clip's content band
-// (track height minus the clip header). The default track height (40px) leaves a
-// 20px content band, so gating on the *content* band with a threshold above 20
-// hid the handles on every standard-height track. Gate on the full track height
-// instead — this matches the clip-header collapse rule (`trackHeight < 36`) and
-// keeps the handles visible whenever the track is tall enough to render a clip
-// body at all.
-const MIN_TRANSITION_CREATE_HANDLE_TRACK_HEIGHT_PX = 40;
-const TRANSITION_CREATE_HANDLE_BOTTOM_RATIO = 0.2;
-
 const props = defineProps<{
   clip: TimelineClipItem;
   track: TimelineTrack;
@@ -39,8 +24,6 @@ const props = defineProps<{
   canEdit: boolean;
   trackHeight: number;
   isMobile?: boolean;
-  isClipHovered?: boolean;
-  isTrimming?: boolean;
   /** Vertical insets (px) so transitions cover only the content band, not the header/keyframes lane. */
   topInsetPx?: number;
   bottomInsetPx?: number;
@@ -53,21 +36,11 @@ const emit = defineEmits<{
     payload: { trackId: string; itemId: string; edge: 'in' | 'out' },
   ): void;
   (e: 'resize', event: PointerEvent, payload: { edge: 'in' | 'out'; durationUs: number }): void;
-  (
-    e: 'createTransition',
-    event: PointerEvent,
-    payload: { edge: 'in' | 'out'; drag: boolean; pointerStartClientX?: number },
-  ): void;
-  (e: 'createTransitionHandleActive', active: boolean): void;
 }>();
 
 function transitionUsToPx(us: number) {
   return timeUsToPx(us, props.zoom);
 }
-
-const contentBandHeightPx = computed(() =>
-  Math.max(0, props.trackHeight - (props.topInsetPx ?? 0) - (props.bottomInsetPx ?? 0)),
-);
 
 function getTransitionButtonClass(selected: boolean, hasProblem: boolean, edge: 'in' | 'out') {
   return [
@@ -163,138 +136,6 @@ function getTransitionSvgFill(edge: 'in' | 'out', hasProblem: boolean) {
   return 'var(--clip-lower-tri)';
 }
 
-function canShowCreateTransitionHandle() {
-  return (
-    !props.isMobile &&
-    // While the clip is being trimmed, the create-transition triangles sit right
-    // under the trim handle and just get in the way — hide them until trim ends.
-    !props.isTrimming &&
-    props.clipWidthPx >= 30 &&
-    props.trackHeight >= MIN_TRANSITION_CREATE_HANDLE_TRACK_HEIGHT_PX
-  );
-}
-
-function getCreateTransitionHandleStyle(edge: 'in' | 'out'): Record<string, string> {
-  const isHovered = hoveredCreateHandleEdge.value === edge;
-
-  return {
-    bottom: `${contentBandHeightPx.value * TRANSITION_CREATE_HANDLE_BOTTOM_RATIO}px`,
-    [edge === 'in' ? 'left' : 'right']: `-${TRANSITION_CREATE_HANDLE_OUTSET_PX}px`,
-    width: `${isHovered ? TRANSITION_CREATE_HANDLE_HOVER_WIDTH_PX : TRANSITION_CREATE_HANDLE_WIDTH_PX}px`,
-    height: `${isHovered ? TRANSITION_CREATE_HANDLE_HOVER_HEIGHT_PX : TRANSITION_CREATE_HANDLE_HEIGHT_PX}px`,
-    // Must sit above the trim handles (also --z-clip-handles, later in the DOM):
-    // the trim handle yields to this triangle via isTransitionCreateHandleActive,
-    // which only works if the triangle can receive pointer events at all.
-    zIndex: 'calc(var(--z-clip-handles) + 1)',
-  };
-}
-
-function getCreateTransitionHandleClass(edge: 'in' | 'out') {
-  if (!canShowCreateTransitionHandle()) {
-    return 'hidden pointer-events-none';
-  }
-
-  return props.isClipHovered || hoveredCreateHandleEdge.value === edge
-    ? 'cursor-pointer opacity-100'
-    : 'cursor-pointer opacity-0 group-hover/clip:opacity-100';
-}
-
-// Active pointer-drag cleanup, so unmounting mid-drag doesn't leak window listeners.
-let activeCleanup: (() => void) | null = null;
-let releaseHandleActiveCleanup: (() => void) | null = null;
-let isPointerDownOnCreateHandle = false;
-const hoveredCreateHandleEdge = ref<'in' | 'out' | null>(null);
-
-function setCreateTransitionHandleActive(active: boolean) {
-  emit('createTransitionHandleActive', active);
-}
-
-function setCreateTransitionHandleHover(edge: 'in' | 'out' | null) {
-  hoveredCreateHandleEdge.value = edge;
-  setCreateTransitionHandleActive(edge !== null);
-}
-
-function cleanupReleaseHandleActive() {
-  if (releaseHandleActiveCleanup) {
-    releaseHandleActiveCleanup();
-    releaseHandleActiveCleanup = null;
-  }
-}
-
-function bindReleaseHandleActive() {
-  cleanupReleaseHandleActive();
-
-  const release = () => {
-    isPointerDownOnCreateHandle = false;
-    hoveredCreateHandleEdge.value = null;
-    cleanupReleaseHandleActive();
-    setCreateTransitionHandleActive(false);
-  };
-
-  releaseHandleActiveCleanup = () => {
-    window.removeEventListener('pointerup', release);
-    window.removeEventListener('pointercancel', release);
-  };
-
-  window.addEventListener('pointerup', release);
-  window.addEventListener('pointercancel', release);
-}
-
-function handleTransitionCreatePointerDown(e: PointerEvent, edge: 'in' | 'out') {
-  if (props.isMobile) return;
-  if (!props.canEdit || props.clip.locked || props.track.locked) return;
-  e.stopPropagation();
-  e.preventDefault();
-  isPointerDownOnCreateHandle = true;
-  setCreateTransitionHandleActive(true);
-  bindReleaseHandleActive();
-
-  // If a previous drag is still pending, drop its listeners first.
-  if (activeCleanup) activeCleanup();
-
-  const startX = e.clientX;
-  const startY = e.clientY;
-  let isDragging = false;
-
-  const onPointerMove = (moveEvent: PointerEvent) => {
-    if (isDragging) return;
-    if (Math.abs(moveEvent.clientX - startX) > 3 || Math.abs(moveEvent.clientY - startY) > 3) {
-      isDragging = true;
-      cleanup();
-      emit('createTransition', moveEvent, { edge, drag: true, pointerStartClientX: startX });
-    }
-  };
-
-  const onPointerUp = (upEvent: PointerEvent) => {
-    cleanup();
-    if (!isDragging) {
-      emit('createTransition', upEvent, { edge, drag: false });
-    }
-  };
-
-  const cleanup = () => {
-    window.removeEventListener('pointermove', onPointerMove);
-    window.removeEventListener('pointerup', onPointerUp);
-    window.removeEventListener('pointercancel', onPointerUp);
-    if (activeCleanup === cleanup) activeCleanup = null;
-  };
-
-  activeCleanup = cleanup;
-  window.addEventListener('pointermove', onPointerMove);
-  window.addEventListener('pointerup', onPointerUp);
-  window.addEventListener('pointercancel', onPointerUp);
-}
-
-onBeforeUnmount(() => {
-  if (activeCleanup) {
-    activeCleanup();
-    activeCleanup = null;
-  }
-  isPointerDownOnCreateHandle = false;
-  hoveredCreateHandleEdge.value = null;
-  setCreateTransitionHandleActive(false);
-  cleanupReleaseHandleActive();
-});
 </script>
 
 <template>
@@ -478,42 +319,6 @@ onBeforeUnmount(() => {
           </button>
         </UiTooltip>
       </div>
-    </div>
-
-    <!-- Create Transition In Handle -->
-    <div
-      v-if="!clip.transitionIn && canEdit && !clip.locked && !track.locked"
-      class="absolute transition-[opacity,width,height] pointer-events-auto"
-      :style="getCreateTransitionHandleStyle('in')"
-      :class="getCreateTransitionHandleClass('in')"
-      data-testid="transition-create-in"
-      @pointerenter="setCreateTransitionHandleHover('in')"
-      @pointerleave="!isPointerDownOnCreateHandle && setCreateTransitionHandleHover(null)"
-      @pointerdown.stop="handleTransitionCreatePointerDown($event, 'in')"
-      @click.stop
-    >
-      <div
-        class="w-full h-full origin-bottom bg-white border border-black/30 shadow-sm hover:bg-yellow-400 transition-colors"
-        style="clip-path: polygon(0 0, 100% 50%, 0 100%)"
-      ></div>
-    </div>
-
-    <!-- Create Transition Out Handle -->
-    <div
-      v-if="!clip.transitionOut && canEdit && !clip.locked && !track.locked"
-      class="absolute transition-[opacity,width,height] pointer-events-auto"
-      :style="getCreateTransitionHandleStyle('out')"
-      :class="getCreateTransitionHandleClass('out')"
-      data-testid="transition-create-out"
-      @pointerenter="setCreateTransitionHandleHover('out')"
-      @pointerleave="!isPointerDownOnCreateHandle && setCreateTransitionHandleHover(null)"
-      @pointerdown.stop="handleTransitionCreatePointerDown($event, 'out')"
-      @click.stop
-    >
-      <div
-        class="w-full h-full origin-bottom bg-white border border-black/30 shadow-sm hover:bg-yellow-400 transition-colors"
-        style="clip-path: polygon(0 50%, 100% 0, 100% 100%)"
-      ></div>
     </div>
   </div>
 </template>

@@ -6,7 +6,6 @@ describe('TimelineClipTrimHandles', () => {
   it('renders two trim handle divs', async () => {
     const component = await mountSuspended(TimelineClipTrimHandles, {
       props: {
-        isTransitionCreateHandleActive: false,
         clipWidthPx: 100,
       },
     });
@@ -18,7 +17,6 @@ describe('TimelineClipTrimHandles', () => {
   it('emits trimStart on pointerdown of first handle', async () => {
     const component = await mountSuspended(TimelineClipTrimHandles, {
       props: {
-        isTransitionCreateHandleActive: false,
         clipWidthPx: 100,
       },
     });
@@ -32,7 +30,6 @@ describe('TimelineClipTrimHandles', () => {
   it('emits trimEnd on pointerdown of second handle', async () => {
     const component = await mountSuspended(TimelineClipTrimHandles, {
       props: {
-        isTransitionCreateHandleActive: false,
         clipWidthPx: 100,
       },
     });
@@ -46,7 +43,6 @@ describe('TimelineClipTrimHandles', () => {
   it('calculates handle width as 25% of clip width clamped to 4-14px', async () => {
     const component = await mountSuspended(TimelineClipTrimHandles, {
       props: {
-        isTransitionCreateHandleActive: false,
         clipWidthPx: 200,
       },
     });
@@ -59,7 +55,6 @@ describe('TimelineClipTrimHandles', () => {
   it('clamps handle width to minimum 4px for very small clips', async () => {
     const component = await mountSuspended(TimelineClipTrimHandles, {
       props: {
-        isTransitionCreateHandleActive: false,
         clipWidthPx: 8,
       },
     });
@@ -69,15 +64,14 @@ describe('TimelineClipTrimHandles', () => {
     expect(widthStyle).toContain('width: 4px');
   });
 
-  it('does not apply hover:bg-white/15 when transition create handle is active', async () => {
+  it('keeps trim hover feedback available', async () => {
     const component = await mountSuspended(TimelineClipTrimHandles, {
       props: {
-        isTransitionCreateHandleActive: true,
         clipWidthPx: 100,
       },
     });
 
     const firstHandle = component.findAll('.cursor-ew-resize')[0];
-    expect(firstHandle.classes()).not.toContain('hover:bg-white/15');
+    expect(firstHandle.classes()).toContain('hover:bg-white/15');
   });
 });

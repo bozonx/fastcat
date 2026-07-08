@@ -387,7 +387,22 @@ pub fn generate_proxy(
             }
             Ok(())
         }
-        Err(e) if hw_encode != HwAccelMode::None && !e.to_string().contains("cancelled") => {
+        Err(e) if proxy_uses_copied_opus_audio(&metadata, &options) && !is_cancelled_error(&e) => {
+            log::warn!(
+                "[native-media] Opus audio copy for proxy failed ({e}), falling back to libopus encode"
+            );
+            let mut transcode_audio_options = options.clone();
+            transcode_audio_options.copy_opus_audio = false;
+            generate_proxy(
+                tasks,
+                task_id,
+                source_path,
+                target_path,
+                transcode_audio_options,
+                on_progress,
+            )
+        }
+        Err(e) if hw_encode != HwAccelMode::None && !is_cancelled_error(&e) => {
             log::warn!("[native-media] HW proxy failed ({e}), falling back to software encoding");
             let mut sw_options = options.clone();
             sw_options.hw.enable_hardware_encoding = Some(false);
@@ -402,6 +417,24 @@ pub fn generate_proxy(
         }
         Err(e) => Err(e),
     }
+}
+
+fn is_cancelled_error(error: &anyhow::Error) -> bool {
+    error.to_string().contains("cancelled")
+}
+
+fn proxy_uses_copied_opus_audio(
+    metadata: &NativeMediaMetadata,
+    options: &NativeProxyOptions,
+) -> bool {
+    if !options.copy_opus_audio {
+        return false;
+    }
+
+    metadata
+        .audio
+        .as_ref()
+        .is_some_and(|audio| audio.codec.to_lowercase().starts_with("opus"))
 }
 
 pub fn convert_media(
@@ -1270,6 +1303,47 @@ mod tests {
             args.windows(2).any(|pair| pair == ["-c:a", "libopus"]),
             "AAC source should re-encode to libopus"
         );
+    }
+
+    #[test]
+    fn proxy_opus_copy_fallback_predicate_matches_only_requested_opus_copy() {
+        let mut metadata = NativeMediaMetadata {
+            duration: 10.0,
+            container: "matroska".into(),
+            video: Some(NativeVideoMetadata {
+                width: 1920,
+                height: 1080,
+                fps: 30.0,
+                codec: "h264".into(),
+                bitrate: None,
+                rotation: 0,
+                can_decode: None,
+            }),
+            audio: Some(NativeAudioMetadata {
+                codec: "opus".into(),
+                bitrate: None,
+                sample_rate: Some(48_000),
+                channels: Some(2),
+                can_decode: None,
+            }),
+        };
+        let mut options = NativeProxyOptions {
+            max_pixels: 1920 * 1080,
+            video_bitrate_bps: 2_000_000,
+            audio_bitrate_bps: 128_000,
+            video_codec: "h264".into(),
+            copy_opus_audio: true,
+            hw: FfmpegHwOptions::default(),
+        };
+
+        assert!(proxy_uses_copied_opus_audio(&metadata, &options));
+
+        options.copy_opus_audio = false;
+        assert!(!proxy_uses_copied_opus_audio(&metadata, &options));
+
+        options.copy_opus_audio = true;
+        metadata.audio.as_mut().expect("audio").codec = "aac".into();
+        assert!(!proxy_uses_copied_opus_audio(&metadata, &options));
     }
 
     #[test]

@@ -1,4 +1,5 @@
 import { createDevLogger } from '~/utils/dev-logger';
+import { PIXI_RENDERER_PREFERENCE } from '~/utils/constants';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
@@ -277,7 +278,7 @@ export function useExportProcess(
         return;
       }
 
-      await broadcastPixiRendererPreference(workspaceStore.userSettings.optimization.pixiRenderer);
+      await broadcastPixiRendererPreference(PIXI_RENDERER_PREFERENCE);
 
       ensureNotCancelled();
       await runWithExportHostApi(createProjectHostApi(), async () => {

@@ -41,7 +41,7 @@ const mockWorkspaceStore = reactive({
       proxyAudioBitrateKbps: 128,
       proxyCopyOpusAudio: true,
       autoCreateProxies: false,
-      pixiRenderer: 'webgl',
+      pixiRenderer: 'webgpu',
       videoFrameCacheMb: 256,
       nativeFrameCacheMode: 'auto',
       nativeFrameCacheCustomMb: 512,

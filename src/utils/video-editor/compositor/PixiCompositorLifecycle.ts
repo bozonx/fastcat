@@ -1,6 +1,7 @@
 import type { Application } from 'pixi.js';
 import type { VideoCompositorInitOptions } from '../VideoCompositor';
 import { createPixiCompositorApplication } from './PixiCompositorBootstrap';
+import { PIXI_RENDERER_PREFERENCE } from '~/utils/constants';
 
 type PixiRendererPreference = NonNullable<VideoCompositorInitOptions['rendererPreference']>;
 
@@ -32,7 +33,7 @@ export class PixiCompositorLifecycle {
   public async init(
     params: PixiCompositorLifecycleInitParams,
   ): Promise<PixiCompositorLifecycleInitResult> {
-    const preferredRenderer = params.options.rendererPreference ?? 'webgl';
+    const preferredRenderer = params.options.rendererPreference ?? PIXI_RENDERER_PREFERENCE;
     const rendererPreferences: PixiRendererPreference[] =
       preferredRenderer === 'webgl' ? ['webgl', 'webgpu'] : ['webgpu', 'webgl'];
     const { app, canvas } = await createPixiCompositorApplication({

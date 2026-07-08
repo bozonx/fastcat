@@ -58,6 +58,16 @@ describe('settings normalization', () => {
     ).toBe('balanced');
   });
 
+  it('normalizes legacy Pixi renderer settings to WebGPU-first', () => {
+    expect(
+      normalizeUserSettings({ optimization: { pixiRenderer: 'webgl' } }).optimization.pixiRenderer,
+    ).toBe('webgpu');
+    expect(
+      normalizeUserSettings({ optimization: { pixiRenderer: 'invalid' } }).optimization
+        .pixiRenderer,
+    ).toBe('webgpu');
+  });
+
   it('normalizes native monitor frame cache settings', () => {
     expect(
       normalizeUserSettings({

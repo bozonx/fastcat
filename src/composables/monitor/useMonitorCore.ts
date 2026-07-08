@@ -1,4 +1,5 @@
 import { createDevLogger } from '~/utils/dev-logger';
+import { PIXI_RENDERER_PREFERENCE } from '~/utils/constants';
 import { useResizeObserver } from '@vueuse/core';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
@@ -181,13 +182,13 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
   );
 
   const pixiRenderer = computed(() => {
-    return workspaceStore.userSettings.optimization.pixiRenderer;
+    return PIXI_RENDERER_PREFERENCE;
   });
 
   function getPreviewRenderOptions() {
     return createPreviewRenderOptions({
       previewEffectsEnabled: previewEffectsEnabled.value,
-      pixiRenderer: workspaceStore.userSettings.optimization.pixiRenderer,
+      pixiRenderer: PIXI_RENDERER_PREFERENCE,
       videoFrameCacheMb: workspaceStore.userSettings.optimization.videoFrameCacheMb,
       monitorSyncMode: options.isMobile?.value
         ? 'balanced'
@@ -591,7 +592,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
       updateCanvasDisplaySize,
       scheduleBuild,
     });
-    void broadcastPixiRendererPreference(workspaceStore.userSettings.optimization.pixiRenderer);
+    void broadcastPixiRendererPreference(PIXI_RENDERER_PREFERENCE);
   });
 
   onBeforeUnmount(async () => {

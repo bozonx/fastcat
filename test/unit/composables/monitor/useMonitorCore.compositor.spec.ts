@@ -101,7 +101,7 @@ function makeOptions(client: unknown = null) {
       monitorScopes2Color: '#000000',
       showMonitorAudioMeter2: false,
       monitorAudioMeter2Color: '#000000',
-      pixiRenderer: 'webgl',
+      pixiRenderer: 'webgpu',
     }),
   };
 }
@@ -148,7 +148,7 @@ describe('createMonitorCompositorRuntime', () => {
       1920,
       1080,
       'transparent',
-      'webgl',
+      'webgpu',
       3840,
       2160,
     );

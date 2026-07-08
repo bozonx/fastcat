@@ -135,6 +135,8 @@ export const VIDEO_CORE_LIMITS = {
   BLEND_SHADOW_GAP_THRESHOLD_US: 200_000,
 };
 
+export const PIXI_RENDERER_PREFERENCE = 'webgpu' as const;
+
 /**
  * Per-method timeouts (ms) for worker RPC calls. A single coarse timeout is
  * wrong because methods have wildly different cost: a metadata probe should

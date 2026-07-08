@@ -1,4 +1,5 @@
 import { createDevLogger } from '~/utils/dev-logger';
+import { PIXI_RENDERER_PREFERENCE, VIDEO_CORE_LIMITS } from '~/utils/constants';
 import type { VideoCoreHostAPI } from '../../utils/video-editor/worker-client';
 import { VideoCompositor } from '../../utils/video-editor/VideoCompositor';
 import { loadFonts } from '../../utils/video-editor/load-fonts';
@@ -14,7 +15,6 @@ import {
 } from './export-helpers';
 import { usToS } from './time';
 import { yieldToEventLoop } from './yield-scheduler';
-import { VIDEO_CORE_LIMITS } from '~/utils/constants';
 import { initEffects } from '../../effects';
 import { initTransitions } from '../../transitions';
 import {
@@ -568,7 +568,7 @@ export async function runExport(
   reportExportWarning: (msg: string, taskId?: string) => Promise<void>,
   checkCancel: () => boolean,
   taskId?: string,
-  rendererPreference: 'webgl' | 'webgpu' = 'webgl',
+  rendererPreference: 'webgl' | 'webgpu' = PIXI_RENDERER_PREFERENCE,
   masterAudioEffects?: import('../../utils/audio/apply-audio-effects-offline').AudioEffectData[],
 ) {
   initEffects();

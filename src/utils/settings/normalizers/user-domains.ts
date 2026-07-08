@@ -159,7 +159,8 @@ export function normalizeOptimizationSettings(raw: unknown): FastCatUserSettings
       autoCreateProxies: z.boolean().catch(DEFAULT_USER_SETTINGS.optimization.autoCreateProxies),
       pixiRenderer: z
         .enum(['webgl', 'webgpu'])
-        .catch(DEFAULT_USER_SETTINGS.optimization.pixiRenderer),
+        .catch(DEFAULT_USER_SETTINGS.optimization.pixiRenderer)
+        .transform(() => DEFAULT_USER_SETTINGS.optimization.pixiRenderer),
       videoFrameCacheMb: z.coerce
         .number()
         .min(0)

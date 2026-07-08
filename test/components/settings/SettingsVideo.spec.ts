@@ -41,7 +41,7 @@ const mockWorkspaceStore = reactive({
       proxyAudioBitrateKbps: 128,
       proxyCopyOpusAudio: true,
       autoCreateProxies: false,
-      pixiRenderer: 'webgl',
+      pixiRenderer: 'webgpu',
       videoFrameCacheMb: 256,
       nativeFrameCacheMode: 'auto',
       nativeFrameCacheCustomMb: 512,
@@ -211,8 +211,7 @@ describe('SettingsVideo', () => {
 
     const wrapper = await mountSuspended(SettingsVideo);
 
-    // Should render pixiRenderer and videoFrameCacheMb settings
-    expect(wrapper.text()).toContain('videoEditor.settings.pixiRenderer');
+    // Should render browser video cache settings
     expect(wrapper.text()).toContain('videoEditor.settings.videoFrameCacheMb');
 
     // Should NOT render ffmpeg settings
@@ -254,8 +253,7 @@ describe('SettingsVideo', () => {
     // Wait for async rendering and mounted hooks to finish
     await new Promise((resolve) => setTimeout(resolve, 10));
 
-    // Should NOT render pixiRenderer and videoFrameCacheMb settings
-    expect(wrapper.text()).not.toContain('videoEditor.settings.pixiRenderer');
+    // Should NOT render browser-only settings
     expect(wrapper.text()).not.toContain('videoEditor.settings.videoFrameCacheMb');
 
     // Should render ffmpeg settings

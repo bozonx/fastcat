@@ -25,7 +25,6 @@ import {
 import { formatStopFrameTimecode } from '~/utils/stop-frames';
 import { sanitizeFps } from '~/timeline/commands/utils';
 import { isClipFreePosition } from '~/utils/timeline/clip-checks';
-import { cloneValue } from '~/utils/clone';
 import { useClipContextMenu } from '~/composables/timeline/useClipContextMenu';
 import { useExclusiveContextMenu } from '~/composables/ui/useExclusiveContextMenu';
 import { useHotkeyLabel } from '~/composables/useHotkeyLabel';
@@ -42,7 +41,7 @@ import {
 import { useClipDrop } from '~/composables/timeline/useClipDrop';
 import { useClipInteractions } from '~/composables/timeline/useClipInteractions';
 import { useClickOrDrag } from '~/composables/timeline/useClickOrDrag';
-import { DEFAULT_TRANSITION_MODE } from '~/transitions';
+import { DEFAULT_TRANSITION_CURVE, DEFAULT_TRANSITION_MODE } from '~/transitions';
 import { computeTrimGeometry } from '~/timeline/commands/item/trimGeometry';
 import type { TimelineTrimPreview } from '~/composables/timeline/useTimelineItemDrag';
 
@@ -161,7 +160,6 @@ const { t } = useI18n();
 const timelineContext = inject<TimelineContext>('timelineContext')!;
 
 const isHovered = ref(false);
-const isTransitionCreateHandleActive = ref(false);
 const clipContainerRef = ref<HTMLElement | null>(null);
 
 // O(1) selection check via the shared Set view; avoids Array.includes() scans on
@@ -594,6 +592,25 @@ const isUnsupported = computed(() => {
   return false;
 });
 
+const canShowTransitionHeaderActions = computed(() => {
+  return (
+    Boolean(clipItem.value) &&
+    props.track.kind === 'video' &&
+    props.canEditClipContent &&
+    !props.isMobile &&
+    !props.track.locked &&
+    !clipItem.value?.locked
+  );
+});
+
+const canAddTransitionIn = computed(
+  () => canShowTransitionHeaderActions.value && !clipItem.value?.transitionIn,
+);
+
+const canAddTransitionOut = computed(
+  () => canShowTransitionHeaderActions.value && !clipItem.value?.transitionOut,
+);
+
 const {
   isPasteParametersModalOpen,
   selectedParameterGroups,
@@ -762,10 +779,7 @@ function getClipPointerTimeUs(e: MouseEvent): number | null {
   });
 }
 
-function handleTransitionCreate(
-  e: PointerEvent,
-  payload: { edge: 'in' | 'out'; drag: boolean; pointerStartClientX?: number },
-) {
+function getDefaultTransitionDurationUs() {
   if (!clipItem.value || !props.canEditClipContent) return;
 
   const defaultUs = Math.max(
@@ -779,68 +793,31 @@ function handleTransitionCreate(
     Math.round(clipItem.value.timelineRange.durationUs * 0.3),
   );
 
-  if (payload.drag) {
-    // Create at 0 duration so the transition length matches the mouse position from the start.
-    // Capture snapshot BEFORE creating so undo restores to "no transition" state.
-    // History will be recorded on drag release by startResizeTransition.
-    // Clone upfront so the snapshot is independent of subsequent doc mutations.
-    const docBeforeDrag = cloneValue(timelineContext.timelineDoc.value);
+  return defaultDurationUs;
+}
 
-    const transitionPatch = {
-      type: 'dissolve',
-      durationUs: 0,
-      mode: DEFAULT_TRANSITION_MODE,
-      curve: 'linear' as const,
-    };
+function addTransition(edge: 'in' | 'out') {
+  if (!clipItem.value || !canShowTransitionHeaderActions.value) return;
+  if (edge === 'in' && clipItem.value.transitionIn) return;
+  if (edge === 'out' && clipItem.value.transitionOut) return;
 
-    timelineContext.updateClipTransition(
-      props.track.id,
-      props.item.id,
-      payload.edge === 'in'
-        ? { transitionIn: transitionPatch }
-        : { transitionOut: transitionPatch },
-      { skipHistory: true, saveMode: 'none' },
-    );
+  const durationUs = getDefaultTransitionDurationUs();
+  if (typeof durationUs !== 'number') return;
 
-    const pointerEventSnapshot = {
-      clientX: e.clientX,
-      clientY: e.clientY,
-      button: e.button,
-      buttons: e.buttons,
-      altKey: e.altKey,
-      ctrlKey: e.ctrlKey,
-      metaKey: e.metaKey,
-      shiftKey: e.shiftKey,
-      pointerId: e.pointerId,
-      pointerType: e.pointerType,
-      stopPropagation: () => {},
-      preventDefault: () => {},
-    } as PointerEvent;
+  const transitionPatch = {
+    type: 'dissolve' as const,
+    durationUs,
+    mode: DEFAULT_TRANSITION_MODE,
+    curve: DEFAULT_TRANSITION_CURVE,
+  };
 
-    emit('startResizeTransition', pointerEventSnapshot, {
-      trackId: props.track.id,
-      itemId: props.item.id,
-      edge: payload.edge,
-      durationUs: 0,
-      pointerStartClientX: payload.pointerStartClientX,
-      docBeforeDrag,
-    });
-  } else {
-    const transitionPatch = {
-      type: 'dissolve',
-      durationUs: defaultDurationUs,
-      mode: DEFAULT_TRANSITION_MODE,
-      curve: 'linear' as const,
-    };
-
-    timelineContext.updateClipTransition(
-      props.track.id,
-      props.item.id,
-      payload.edge === 'in'
-        ? { transitionIn: transitionPatch }
-        : { transitionOut: transitionPatch },
-    );
-  }
+  timelineContext.updateClipTransition(
+    props.track.id,
+    props.item.id,
+    edge === 'in' ? { transitionIn: transitionPatch } : { transitionOut: transitionPatch },
+  );
+  timelineContext.selectTransition({ trackId: props.track.id, itemId: props.item.id, edge });
+  timelineContext.selectTimelineTransition(props.track.id, props.item.id, edge);
 }
 </script>
 
@@ -993,6 +970,10 @@ function handleTransitionCreate(
           :is-header-only="isClipHeaderOnly"
           :transition-in-overlay-guide-style="transitionInOverlayGuideStyle"
           :transition-out-overlay-guide-style="transitionOutOverlayGuideStyle"
+          :can-add-transition-in="canAddTransitionIn"
+          :can-add-transition-out="canAddTransitionOut"
+          :show-header-actions="isSelected || isHovered"
+          @add-transition="addTransition"
         />
 
         <!-- Transition overlays must be after content so their SVG masks are not painted under it. -->
@@ -1006,8 +987,6 @@ function handleTransitionCreate(
           :selected-transition="selectedTransition"
           :can-edit="canEditClipContent"
           :is-mobile="isMobile"
-          :is-clip-hovered="isHovered"
-          :is-trimming="myTrimPreview !== null"
           :top-inset-px="clipContentInset.top"
           :bottom-inset-px="clipContentInset.bottom"
           @select="(e, payload) => emit('selectTransition', e, payload)"
@@ -1020,14 +999,11 @@ function handleTransitionCreate(
                 durationUs: payload.durationUs,
               })
           "
-          @create-transition="handleTransitionCreate"
-          @create-transition-handle-active="isTransitionCreateHandleActive = $event"
         />
 
         <!-- Trim Handles -->
         <TimelineClipTrimHandles
           v-if="clipItem && canEditClipContent && !clipItem.locked && !track.locked && !isMobile"
-          :is-transition-create-handle-active="isTransitionCreateHandleActive"
           :clip-width-px="clipWidthPx"
           :top-inset-px="clipContentInset.top"
           :bottom-inset-px="clipContentInset.bottom"

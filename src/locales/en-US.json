@@ -1975,8 +1975,6 @@
       "proxyCopyOpusAudioHelp": "Enabling this will skip audio transcoding if the source already has Opus audio, preserving quality and saving time.",
       "proxyInfo": "Proxy files are used to improve playback performance. They are generated in MP4 format with H.264 High profile video and Opus audio codec.",
       "proxyMaxPixels": "Max resolution",
-      "pixiRenderer": "Pixi renderer",
-      "pixiRendererHelp": "Preferred Pixi backend. Pixi will automatically fall back to an available renderer if the selected one is unsupported.",
       "proxyVideoBitrate": "Video bitrate (Mbps)",
       "resetAudioSettingsConfirmDesc": "This will restore all audio settings to their default values.",
       "resetAudioSettingsConfirmTitle": "Reset audio settings?",
