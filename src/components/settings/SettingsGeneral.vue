@@ -8,9 +8,11 @@ import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
 import UiAccordion from '~/components/ui/UiAccordion.vue';
 import { isTauriRuntime } from '~/utils/runtime';
+import { useMobileLayout } from '~/composables/useMobileLayout';
 
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
+const { isMobileLayout } = useMobileLayout();
 
 // Undo depth is only user-configurable on desktop; the web build pins it and the
 // snapshot memory budget is an internal cap on both (see history.store.ts).
@@ -194,6 +196,7 @@ const stopFramesQualityOptions = [
         </UiFormField>
 
         <UiFormField
+          v-if="!isMobileLayout"
           :label="t('videoEditor.settings.autosaveInterval')"
           :help="t('videoEditor.settings.autosaveIntervalHelp')"
         >

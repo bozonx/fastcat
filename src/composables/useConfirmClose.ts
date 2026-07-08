@@ -68,15 +68,29 @@ export function useConfirmClose() {
     }
   }
 
+  // Autosave is periodic, but when the app is backgrounded we flush immediately.
+  // This is especially important on mobile where autosave writes the canonical
+  // timeline file and the OS may kill the page without a full beforeunload flow.
+  function flushTimelineAutosaveForLifecycle() {
+    if (!timelineStore.isTimelineDirty) return;
+    void timelineStore.flushTimelineAutosave();
+  }
+
   function onBeforeUnload(e: BeforeUnloadEvent) {
     if (backgroundTasksStore.hasActiveTasks || timelineStore.hasAnyDirtyTimeline) {
       // Web can't show a custom dialog here; flush the sidecars so unsaved work
       // survives as recoverable state (never deleted on this path), and let the
       // browser show its generic confirm.
-      void timelineStore.flushTimelineAutosave();
+      flushTimelineAutosaveForLifecycle();
       e.preventDefault();
       // Modern browsers ignore the return value text and show a generic message
       e.returnValue = '';
+    }
+  }
+
+  function onVisibilityChange() {
+    if (document.hidden) {
+      flushTimelineAutosaveForLifecycle();
     }
   }
 
@@ -140,6 +154,10 @@ export function useConfirmClose() {
 
   onMounted(() => {
     window.addEventListener('beforeunload', onBeforeUnload);
+    window.addEventListener('blur', flushTimelineAutosaveForLifecycle);
+    window.addEventListener('pagehide', flushTimelineAutosaveForLifecycle);
+    document.addEventListener('freeze', flushTimelineAutosaveForLifecycle);
+    document.addEventListener('visibilitychange', onVisibilityChange);
     void setupTauriCloseHandler().catch((err) => {
       log.error('Failed to setup Tauri close handler:', err);
     });
@@ -147,6 +165,10 @@ export function useConfirmClose() {
 
   onUnmounted(() => {
     window.removeEventListener('beforeunload', onBeforeUnload);
+    window.removeEventListener('blur', flushTimelineAutosaveForLifecycle);
+    window.removeEventListener('pagehide', flushTimelineAutosaveForLifecycle);
+    document.removeEventListener('freeze', flushTimelineAutosaveForLifecycle);
+    document.removeEventListener('visibilitychange', onVisibilityChange);
     if (unlistenTauriClose) {
       unlistenTauriClose();
     }

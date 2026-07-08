@@ -453,7 +453,7 @@ export function createTimelinePersistenceModule(
       void flushTimelineAutosave();
       return;
     }
-    clearAutosaveTimer();
+    if (autosaveTimer !== null) return;
     autosaveTimer = window.setTimeout(() => {
       autosaveTimer = null;
       void flushTimelineAutosave();

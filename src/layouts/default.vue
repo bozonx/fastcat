@@ -2,12 +2,10 @@
 import { onMounted, watch } from 'vue';
 import { readLocalStorageString, STORAGE_KEYS } from '~/stores/ui/uiLocalStorage';
 import 'splitpanes/dist/splitpanes.css';
-import { useEventListener } from '@vueuse/core';
 
 // Stores
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectStore } from '~/stores/project.store';
-import { useTimelineStore } from '~/stores/timeline.store';
 import { useUiStore } from '~/stores/ui.store';
 
 // Composables
@@ -31,7 +29,6 @@ import { useFileManager } from '~/composables/file-manager/useFileManager';
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
 const projectStore = useProjectStore();
-const timelineStore = useTimelineStore();
 const uiStore = useUiStore();
 const route = useRoute();
 const toast = useToast();
@@ -163,20 +160,6 @@ useHead({
   title: t('navigation.fastcat'),
 });
 
-// Autosave is periodic, but when the window loses focus or is hidden we flush
-// the crash-recovery sidecar immediately so an unexpected exit can't lose more
-// than the edits made since the last flush. Applies to all platforms.
-function flushTimelineAutosaveOnHide() {
-  if (!timelineStore.isTimelineDirty) return;
-  void timelineStore.flushTimelineAutosave();
-}
-
-useEventListener(window, 'blur', flushTimelineAutosaveOnHide);
-useEventListener(document, 'visibilitychange', () => {
-  if (document.hidden) {
-    flushTimelineAutosaveOnHide();
-  }
-});
 </script>
 
 <template>

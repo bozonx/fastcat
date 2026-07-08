@@ -1,8 +1,10 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
-import { reactive, nextTick } from 'vue';
+import { reactive, nextTick, ref } from 'vue';
 import SettingsGeneral from '~/components/settings/SettingsGeneral.vue';
 import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
+
+const isMobileLayout = ref(false);
 
 const mockWorkspaceStore = {
   userSettings: reactive(JSON.parse(JSON.stringify(DEFAULT_USER_SETTINGS))),
@@ -13,11 +15,19 @@ vi.mock('~/stores/workspace.store', () => ({
   useWorkspaceStore: () => mockWorkspaceStore,
 }));
 
+vi.mock('~/composables/useMobileLayout', () => ({
+  useMobileLayout: () => ({ isMobileLayout }),
+}));
+
 vi.mock('~/stores/ui/uiLocalStorage', () => ({
   clearUiCache: vi.fn(),
 }));
 
 describe('SettingsGeneral', () => {
+  beforeEach(() => {
+    isMobileLayout.value = false;
+  });
+
   it('preserves locale when resetting general defaults', async () => {
     mockWorkspaceStore.userSettings.locale = 'ru-RU';
     mockWorkspaceStore.userSettings.openLastProjectOnStart = true;
@@ -75,5 +85,13 @@ describe('SettingsGeneral', () => {
     expect(mockWorkspaceStore.userSettings.autosave.intervalMinutes).toBe(
       DEFAULT_USER_SETTINGS.autosave.intervalMinutes,
     );
+  });
+
+  it('hides autosave interval setting in mobile layout', async () => {
+    isMobileLayout.value = true;
+
+    const wrapper = await mountSuspended(SettingsGeneral);
+
+    expect(wrapper.text()).not.toContain('videoEditor.settings.autosaveInterval');
   });
 });

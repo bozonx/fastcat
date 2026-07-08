@@ -302,6 +302,43 @@ describe('TimelinePersistenceModule', () => {
     );
   });
 
+  it('uses the configured desktop interval without resetting the timer on repeated edits', async () => {
+    vi.useFakeTimers();
+    const originalWindow = (globalThis as { window?: unknown }).window;
+    (globalThis as { window?: unknown }).window = {
+      setTimeout,
+      clearTimeout,
+    };
+
+    try {
+      const deps = createMockDeps({
+        timelineDoc: ref({ ...fallbackDoc }),
+        getAutosaveIntervalMs: () => 60_000,
+      });
+      const mod = createTimelinePersistenceModule(deps);
+
+      mod.markDirty();
+      await mod.requestTimelineSave();
+      await vi.advanceTimersByTimeAsync(30_000);
+
+      mod.markDirty();
+      await mod.requestTimelineSave();
+      await vi.advanceTimersByTimeAsync(29_999);
+      expect(deps.writeTimelineText).not.toHaveBeenCalled();
+
+      await vi.advanceTimersByTimeAsync(1);
+      await Promise.resolve();
+
+      expect(deps.writeTimelineText).toHaveBeenCalledWith(
+        '.fastcat/autosave/timeline.otio',
+        expect.any(String),
+      );
+    } finally {
+      (globalThis as { window?: unknown }).window = originalWindow;
+      vi.useRealTimers();
+    }
+  });
+
   it('requestTimelineSave({ immediate: true }) restores the live doc from the autosaved snapshot', async () => {
     const savedDoc = {
       ...fallbackDoc,
