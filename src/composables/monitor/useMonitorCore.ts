@@ -189,7 +189,6 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
     return createPreviewRenderOptions({
       previewEffectsEnabled: previewEffectsEnabled.value,
       pixiRenderer: PIXI_RENDERER_PREFERENCE,
-      videoFrameCacheMb: workspaceStore.userSettings.optimization.videoFrameCacheMb,
       monitorSyncMode: options.isMobile?.value
         ? 'balanced'
         : workspaceStore.userSettings.optimization.nativeMonitorSyncMode,

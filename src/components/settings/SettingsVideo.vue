@@ -155,8 +155,6 @@ onMounted(async () => {
 });
 
 function resetDefaults() {
-  workspaceStore.userSettings.optimization.videoFrameCacheMb =
-    DEFAULT_USER_SETTINGS.optimization.videoFrameCacheMb;
   workspaceStore.userSettings.optimization.ffmpegPath =
     DEFAULT_USER_SETTINGS.optimization.ffmpegPath;
   workspaceStore.userSettings.optimization.ffprobePath =
@@ -228,7 +226,7 @@ const tauriVideoCodecs = computed(() => {
       <div class="text-sm font-medium text-ui-text">
         {{ t('videoEditor.settings.video.performance') }}
       </div>
-      <div class="flex items-center gap-2">
+      <div v-if="isTauri" class="flex items-center gap-2">
         <UButton
           size="xs"
           color="neutral"
@@ -250,24 +248,8 @@ const tauriVideoCodecs = computed(() => {
       </div>
 
       <div class="flex flex-col gap-4">
-        <!-- Web settings -->
-        <template v-if="!isTauri">
-          <UiFormField
-            :label="t('videoEditor.settings.videoFrameCacheMb')"
-            :help="t('videoEditor.settings.videoFrameCacheMbHelp')"
-          >
-            <UiWheelNumberInput
-              v-model="workspaceStore.userSettings.optimization.videoFrameCacheMb"
-              :min="0"
-              :max="4096"
-              :step="16"
-              class="max-w-xs"
-            />
-          </UiFormField>
-        </template>
-
         <!-- Tauri / Desktop settings -->
-        <template v-else>
+        <template v-if="isTauri">
           <div class="border-b border-ui-border-muted/50 pb-3 mb-2">
             <div class="text-sm font-medium text-ui-text">
               {{ t('videoEditor.settings.video.ffmpegSettings') }}

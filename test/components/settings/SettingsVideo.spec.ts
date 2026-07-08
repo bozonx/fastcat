@@ -211,8 +211,9 @@ describe('SettingsVideo', () => {
 
     const wrapper = await mountSuspended(SettingsVideo);
 
-    // Should render browser video cache settings
-    expect(wrapper.text()).toContain('videoEditor.settings.videoFrameCacheMb');
+    // Should not expose browser video cache memory tuning
+    expect(wrapper.text()).not.toContain('videoEditor.settings.videoFrameCacheMb');
+    expect(wrapper.text()).not.toContain('videoEditor.settings.resetDefaults');
 
     // Should NOT render ffmpeg settings
     expect(wrapper.text()).not.toContain('videoEditor.settings.video.ffmpegSettings');
@@ -257,6 +258,7 @@ describe('SettingsVideo', () => {
     expect(wrapper.text()).not.toContain('videoEditor.settings.videoFrameCacheMb');
 
     // Should render ffmpeg settings
+    expect(wrapper.text()).toContain('videoEditor.settings.resetDefaults');
     expect(wrapper.text()).toContain('videoEditor.settings.video.ffmpegSettings');
     expect(wrapper.text()).toContain('videoEditor.settings.video.hwaccelMode');
     expect(wrapper.text()).toContain('videoEditor.settings.video.nativeFrameCacheMode');
