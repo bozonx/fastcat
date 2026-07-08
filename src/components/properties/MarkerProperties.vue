@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
+import { useMouseSettings } from '~/composables/settings/useMouseSettings';
 import type { TimelineMarker } from '~/timeline/types';
 import PropertySection from '~/components/properties/PropertySection.vue';
 import PropertyActionsBlock from '~/components/properties/PropertyActionsBlock.vue';
@@ -18,6 +19,7 @@ const props = defineProps<{
 
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
+const { modifier2Name } = useMouseSettings();
 
 const marker = computed<TimelineMarker | null>(() => {
   return timelineStore.markers.find((m) => m.id === props.markerId) ?? null;
@@ -183,11 +185,15 @@ const mainActions = computed<PropertyAction[]>(() => {
           <span class="text-xs text-ui-text-muted">{{
             isZone ? t('common.start') : t('common.position')
           }}</span>
-          <UiTooltip v-if="isZone" :text="t('fastcat.marker.zoneStartTooltip')" open-on-click>
+          <UiTooltip
+            v-if="isZone"
+            :text="t('fastcat.marker.zoneStartTooltip', { modifier2: modifier2Name })"
+            open-on-click
+          >
             <button
               type="button"
               class="inline-flex items-center justify-center rounded p-0.5 text-ui-text-muted hover:text-ui-text focus:outline-none"
-              :aria-label="t('fastcat.marker.zoneStartTooltip')"
+              :aria-label="t('fastcat.marker.zoneStartTooltip', { modifier2: modifier2Name })"
             >
               <UIcon name="i-heroicons-information-circle" class="w-3.5 h-3.5" />
             </button>

@@ -544,7 +544,7 @@
     "marker": {
       "actions": "Actions",
       "info": "Marker Info",
-      "zoneStartTooltip": "Zone start. You can drag the whole zone directly on the timeline ruler while holding Ctrl (the secondary modifier).",
+      "zoneStartTooltip": "Zone start. You can drag the whole zone directly on the timeline ruler while holding {modifier2}.",
       "text": "Text",
       "title": "Marker",
       "zoneMarker": "Zone Marker",
