@@ -7,7 +7,6 @@ import {
   readLocalStorageString,
   writeLocalStorageJson,
   writeLocalStorageString,
-  clearUiCache,
 } from '~/stores/ui/uiLocalStorage';
 
 describe('uiLocalStorage (node environment)', () => {
@@ -29,8 +28,5 @@ describe('uiLocalStorage (node environment)', () => {
 
     // 6. writeLocalStorageString
     expect(() => writeLocalStorageString('key', 'value')).not.toThrow();
-
-    // 7. clearUiCache
-    expect(() => clearUiCache()).not.toThrow();
   });
 });

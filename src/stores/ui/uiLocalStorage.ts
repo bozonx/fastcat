@@ -64,21 +64,3 @@ export function writeLocalStorageString(key: string, value: string) {
     return;
   }
 }
-
-export function clearUiCache() {
-  if (typeof window === 'undefined') return;
-  try {
-    const keysToRemove: string[] = [];
-    for (let i = 0; i < window.localStorage.length; i++) {
-      const key = window.localStorage.key(i);
-      if (key && key.startsWith('fastcat:')) {
-        keysToRemove.push(key);
-      }
-    }
-    for (const key of keysToRemove) {
-      window.localStorage.removeItem(key);
-    }
-  } catch {
-    // ignore
-  }
-}

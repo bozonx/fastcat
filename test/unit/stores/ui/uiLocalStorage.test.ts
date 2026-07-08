@@ -7,7 +7,6 @@ import {
   readLocalStorageString,
   writeLocalStorageJson,
   writeLocalStorageString,
-  clearUiCache,
 } from '~/stores/ui/uiLocalStorage';
 
 describe('uiLocalStorage', () => {
@@ -67,20 +66,6 @@ describe('uiLocalStorage', () => {
     });
   });
 
-  describe('clearUiCache', () => {
-    it('removes only keys starting with fastcat:', () => {
-      localStorage.setItem('fastcat:key1', 'val1');
-      localStorage.setItem('fastcat:key2', 'val2');
-      localStorage.setItem('other:key', 'val3');
-
-      clearUiCache();
-
-      expect(localStorage.getItem('fastcat:key1')).toBeNull();
-      expect(localStorage.getItem('fastcat:key2')).toBeNull();
-      expect(localStorage.getItem('other:key')).toBe('val3');
-    });
-  });
-
   describe('error handling', () => {
     let getItemSpy: any;
     let setItemSpy: any;
@@ -122,10 +107,6 @@ describe('uiLocalStorage', () => {
 
     it('handles writeLocalStorageString errors gracefully', () => {
       expect(() => writeLocalStorageString('any', 'value')).not.toThrow();
-    });
-
-    it('handles clearUiCache errors gracefully', () => {
-      expect(() => clearUiCache()).not.toThrow();
     });
   });
 });

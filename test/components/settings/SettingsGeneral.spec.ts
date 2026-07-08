@@ -19,10 +19,6 @@ vi.mock('~/composables/useMobileLayout', () => ({
   useMobileLayout: () => ({ isMobileLayout }),
 }));
 
-vi.mock('~/stores/ui/uiLocalStorage', () => ({
-  clearUiCache: vi.fn(),
-}));
-
 describe('SettingsGeneral', () => {
   beforeEach(() => {
     isMobileLayout.value = false;
