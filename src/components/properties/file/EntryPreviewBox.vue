@@ -19,6 +19,7 @@ const props = defineProps<{
   focusPanelId?: PanelFocusId;
   vfs?: IFileSystemAdapter;
   flexible?: boolean;
+  textEditorFocusRequest?: number;
 }>();
 </script>
 
@@ -93,6 +94,7 @@ const props = defineProps<{
         :file-name="props.fileName"
         :focus-panel-id="props.focusPanelId"
         :vfs="props.vfs"
+        :text-editor-focus-request="props.textEditorFocusRequest"
       />
     </div>
   </div>

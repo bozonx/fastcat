@@ -26,11 +26,17 @@ const timelineStore = {
   loadTimelineMetadata: vi.fn(),
 };
 
+const selectionStore = {
+  requestFileTextEditorFocus: vi.fn(),
+};
+
 vi.mock('~/stores/file-manager.store', () => ({ useFileManagerStore: () => filesPageStore }));
 vi.mock('~/stores/project.store', () => ({ useProjectStore: () => projectStore }));
 vi.mock('~/stores/timeline.store', () => ({ useTimelineStore: () => timelineStore }));
+vi.mock('~/stores/selection.store', () => ({ useSelectionStore: () => selectionStore }));
 vi.mock('~/utils/media-types', () => ({
   isOpenableProjectFileName: vi.fn((name: string) => name.endsWith('.txt')),
+  getMediaTypeFromFilename: vi.fn((name: string) => (name.endsWith('.txt') ? 'text' : 'video')),
 }));
 vi.mock('~/composables/file-manager/useFileManagerSelection', () => ({
   useFileManagerSelection: ({ onSingleSelect }: any) => ({
@@ -99,7 +105,7 @@ describe('useFileBrowserInteraction', () => {
     expect(timelineStore.loadTimeline).toHaveBeenCalled();
   });
 
-  it('handleEntryDoubleClick triggers openAsProjectTab for openable text files', () => {
+  it('handleEntryDoubleClick selects text files and focuses the properties editor', () => {
     const onFileAction = vi.fn();
     const { handleEntryDoubleClick } = useFileBrowserInteraction({
       isRemoteMode: ref(false),
@@ -112,21 +118,23 @@ describe('useFileBrowserInteraction', () => {
     });
 
     handleEntryDoubleClick({ kind: 'file', name: 'script.txt', path: 'script.txt' } as FsEntry);
-    expect(onFileAction).toHaveBeenCalledWith(
-      'openAsProjectTab',
+    expect(filesPageStore.selectItem).toHaveBeenCalledWith(
       expect.objectContaining({ name: 'script.txt' }),
     );
+    expect(selectionStore.requestFileTextEditorFocus).toHaveBeenCalledOnce();
+    expect(onFileAction).not.toHaveBeenCalled();
   });
 
-  it('handleEntryDoubleClick opens remote text files as project tabs', () => {
+  it('handleEntryDoubleClick selects remote text files and focuses the properties editor', () => {
     const onFileAction = vi.fn();
+    const setSelectedFsEntry = vi.fn();
     const { handleEntryDoubleClick } = useFileBrowserInteraction({
       isRemoteMode: ref(true),
       remoteCurrentFolder: ref(null),
       sortedEntries: ref([]),
       loadFolderContent: vi.fn(),
       loadParentFolders: vi.fn(),
-      setSelectedFsEntry: vi.fn(),
+      setSelectedFsEntry,
       onFileAction,
     });
 
@@ -137,10 +145,12 @@ describe('useFileBrowserInteraction', () => {
       source: 'remote',
     } as FsEntry);
 
-    expect(onFileAction).toHaveBeenCalledWith(
-      'openAsProjectTab',
+    expect(setSelectedFsEntry).toHaveBeenCalledWith(
       expect.objectContaining({ name: 'script.txt' }),
     );
+    expect(filesPageStore.selectItem).not.toHaveBeenCalled();
+    expect(selectionStore.requestFileTextEditorFocus).toHaveBeenCalledOnce();
+    expect(onFileAction).not.toHaveBeenCalled();
   });
 
   it('does not open external otio files as timeline', async () => {

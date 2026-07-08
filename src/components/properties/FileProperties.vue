@@ -65,6 +65,7 @@ const props = defineProps<{
   isFilesPage?: boolean;
   mobileTextMode?: boolean;
   hideActions?: boolean;
+  textEditorFocusRequest?: number;
 }>();
 
 const emit = defineEmits<{
@@ -598,6 +599,7 @@ const hasVisibleSecondaryActions = (actions: unknown) => {
       :thumbnail-url="thumbnailUrl"
       :is-otio="isOtio"
       :vfs="effectiveVfs"
+      :text-editor-focus-request="props.textEditorFocusRequest"
       :flexible="mobileTextMode && mediaType === 'text'"
     />
 

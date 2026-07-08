@@ -13,7 +13,7 @@ mockNuxtImport('useDevice', () => {
 vi.mock('~/components/preview/TextEditor.vue', () => ({
   default: {
     name: 'TextEditor',
-    props: ['filePath', 'fileName', 'autofocus'],
+    props: ['filePath', 'fileName', 'autofocus', 'focusRequest'],
     template: '<div data-testid="text-editor-stub">{{ fileName }}|{{ filePath }}</div>',
   },
 }));

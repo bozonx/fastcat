@@ -46,6 +46,7 @@ const props = withDefaults(
     focusPanelId?: PanelFocusId;
     vfs?: IFileSystemAdapter;
     autofocus?: boolean;
+    textEditorFocusRequest?: number;
   }>(),
   {
     url: null,
@@ -56,6 +57,7 @@ const props = withDefaults(
     focusPanelId: undefined,
     vfs: undefined,
     autofocus: false,
+    textEditorFocusRequest: 0,
   },
 );
 
@@ -181,6 +183,7 @@ onUnmounted(() => {
       :focus-panel-id="props.focusPanelId"
       :vfs="props.vfs"
       :autofocus="props.autofocus"
+      :focus-request="props.textEditorFocusRequest"
       class="w-full h-full"
     />
 

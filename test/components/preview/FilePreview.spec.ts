@@ -26,7 +26,15 @@ vi.mock('~/components/preview/TextEditor.vue', () => ({
   default: {
     name: 'TextEditor',
     template: '<div class="text-editor-mock">Text Editor</div>',
-    props: ['isModalOpen', 'filePath', 'fileName', 'initialContent', 'focusPanelId', 'autofocus'],
+    props: [
+      'isModalOpen',
+      'filePath',
+      'fileName',
+      'initialContent',
+      'focusPanelId',
+      'autofocus',
+      'focusRequest',
+    ],
     emits: ['update:isModalOpen'],
   },
 }));
@@ -71,6 +79,19 @@ describe('FilePreview.vue', () => {
     });
 
     expect(component.find('.text-editor-mock').exists()).toBe(true);
+  });
+
+  it('passes text editor focus requests to TextEditor', async () => {
+    const component = await mountWithNuxt(FilePreview, {
+      props: {
+        mediaType: 'text',
+        filePath: 'notes.txt',
+        textEditorFocusRequest: 3,
+      },
+    });
+
+    const textEditor = component.findComponent({ name: 'TextEditor' });
+    expect(textEditor.props('focusRequest')).toBe(3);
   });
 
   it('opens and closes media modal for images', async () => {

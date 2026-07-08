@@ -470,6 +470,7 @@ const headerTitle = computed(() => {
         :selected-fs-entry="selectedFsEntry"
         :has-proxy="hasProxy"
         :preview-mode="previewMode"
+        :text-editor-focus-request="selectionStore.fileTextEditorFocusRequest"
         :instance-id="selectedFileManagerInstanceId"
         :selection-origin="selectedFileManagerOrigin"
         :is-external="isExternal"

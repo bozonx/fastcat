@@ -2,11 +2,12 @@ import { ref, onUnmounted, inject } from 'vue';
 import type { Ref } from 'vue';
 import type { FsEntry } from '~/types/fs';
 import type { RemoteFsEntry } from '~/utils/remote-vfs';
-import { isOpenableProjectFileName } from '~/utils/media-types';
+import { getMediaTypeFromFilename, isOpenableProjectFileName } from '~/utils/media-types';
 import { useFileManagerStore, type FileSortField } from '~/stores/file-manager.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useFileManagerSelection } from '~/composables/file-manager/useFileManagerSelection';
+import { useSelectionStore } from '~/stores/selection.store';
 
 export interface FileBrowserInteractionOptions {
   isRemoteMode: Ref<boolean>;
@@ -45,6 +46,7 @@ export function useFileBrowserInteraction(options: FileBrowserInteractionOptions
     useFileManagerStore();
   const projectStore = useProjectStore();
   const timelineStore = useTimelineStore();
+  const selectionStore = useSelectionStore();
 
   const { handleEntryClick: handleSelectionClick, selectSingle } = useFileManagerSelection({
     getVisibleEntries: () => sortedEntries.value,
@@ -71,6 +73,23 @@ export function useFileBrowserInteraction(options: FileBrowserInteractionOptions
     }
   }
 
+  function selectEntryForProperties(entry: FsEntry) {
+    if (isRemoteMode.value || isolatedSelection) {
+      setSelectedFsEntry(entry);
+    } else {
+      selectSingle(entry);
+    }
+  }
+
+  function focusTextEditorInProperties(entry: FsEntry): boolean {
+    if (entry.kind !== 'file') return false;
+    if (getMediaTypeFromFilename(entry.name) !== 'text') return false;
+
+    selectEntryForProperties(entry);
+    selectionStore.requestFileTextEditorFocus();
+    return true;
+  }
+
   function handleEntryDoubleClick(entry: FsEntry) {
     if (entry.kind === 'file' && canInteractWithEntry && !canInteractWithEntry(entry)) return;
 
@@ -84,6 +103,7 @@ export function useFileBrowserInteraction(options: FileBrowserInteractionOptions
         void loadParentFolders();
         setSelectedFsEntry(entry);
       } else {
+        if (focusTextEditorInProperties(entry)) return;
         if (preventOpen || isExternal) return;
         if (!isOpenableProjectFileName(entry.name)) return;
         onFileAction('openAsProjectTab', entry);
@@ -105,6 +125,7 @@ export function useFileBrowserInteraction(options: FileBrowserInteractionOptions
           void timelineStore.loadTimelineMetadata();
         })();
       } else {
+        if (focusTextEditorInProperties(entry)) return;
         if (!isOpenableProjectFileName(entry.name)) return;
         onFileAction('openAsProjectTab', entry);
       }

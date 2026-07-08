@@ -124,6 +124,7 @@ export type SelectedEntity =
 
 export const useSelectionStore = defineStore('selection', () => {
   const selectedEntity = ref<SelectedEntity | null>(null);
+  const fileTextEditorFocusRequest = ref(0);
 
   function resolveFileManagerOrigin(
     entry: FsEntry,
@@ -294,6 +295,10 @@ export const useSelectionStore = defineStore('selection', () => {
     }
   }
 
+  function requestFileTextEditorFocus() {
+    fileTextEditorFocusRequest.value += 1;
+  }
+
   function selectTimelineProperties() {
     selectedEntity.value = {
       source: 'timeline',
@@ -353,6 +358,7 @@ export const useSelectionStore = defineStore('selection', () => {
 
   return {
     selectedEntity,
+    fileTextEditorFocusRequest,
     selectTimelineItem,
     selectTimelineItems,
     selectTimelineTrack,
@@ -365,6 +371,7 @@ export const useSelectionStore = defineStore('selection', () => {
     selectFsEntryWithUiUpdate,
     selectFsEntries,
     selectFsEntriesWithUiUpdate,
+    requestFileTextEditorFocus,
     selectTimelineProperties,
     selectProjectEffect,
     selectProjectTransition,

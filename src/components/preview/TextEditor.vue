@@ -16,12 +16,14 @@ const props = withDefaults(
     focusPanelId?: PanelFocusId;
     vfs?: IFileSystemAdapter;
     autofocus?: boolean;
+    focusRequest?: number;
   }>(),
   {
     fileName: undefined,
     focusPanelId: undefined,
     vfs: undefined,
     autofocus: false,
+    focusRequest: 0,
   },
 );
 
@@ -126,13 +128,23 @@ watch(isModalOpen, (isOpen, oldIsOpen) => {
 watch(
   isLoading,
   (loading) => {
-    if (!loading && props.autofocus) {
+    if (!loading && (props.autofocus || props.focusRequest > 0)) {
       nextTick(() => {
         textareaRef.value?.focus();
       });
     }
   },
   { immediate: true },
+);
+
+watch(
+  () => props.focusRequest,
+  (request) => {
+    if (!request) return;
+    nextTick(() => {
+      textareaRef.value?.focus();
+    });
+  },
 );
 
 onBeforeUnmount(() => {
