@@ -13,7 +13,7 @@ import {
   broadcastPixiRendererPreference,
   getExportWorkerClient,
   registerExportTaskHostApi,
-  setExportHostApi,
+  runWithExportHostApi,
   terminateExportWorker,
   unregisterExportTaskHostApi,
 } from '~/utils/video-editor/worker-client';
@@ -277,31 +277,35 @@ export function useExportProcess(
         return;
       }
 
-      const { client } = getExportWorkerClient();
       await broadcastPixiRendererPreference(workspaceStore.userSettings.optimization.pixiRenderer);
 
-      setExportHostApi(createProjectHostApi());
-      registerExportTaskHostApi(exportTaskId, {
-        onExportProgress: (progress) => onProgress(progress / 100),
-        onExportPhase: (phase) => {
-          exportPhase.value = phase as typeof exportPhase.value;
-        },
-        onExportWarning: (message) => {
-          reportWarning(message);
-        },
-      });
-
       ensureNotCancelled();
-      await client.exportTimeline(
-        fileHandle,
-        options,
-        videoPayload,
-        croppedAudioClips,
-        exportTaskId,
-        masterAudioEffects,
-      );
+      await runWithExportHostApi(createProjectHostApi(), async () => {
+        const { client } = getExportWorkerClient();
+        registerExportTaskHostApi(exportTaskId, {
+          onExportProgress: (progress) => onProgress(progress / 100),
+          onExportPhase: (phase) => {
+            exportPhase.value = phase as typeof exportPhase.value;
+          },
+          onExportWarning: (message) => {
+            reportWarning(message);
+          },
+        });
+
+        try {
+          await client.exportTimeline(
+            fileHandle,
+            options,
+            videoPayload,
+            croppedAudioClips,
+            exportTaskId,
+            masterAudioEffects,
+          );
+        } finally {
+          unregisterExportTaskHostApi(exportTaskId);
+        }
+      });
     } finally {
-      unregisterExportTaskHostApi(exportTaskId);
       if (activeExportTaskId.value === exportTaskId) {
         activeExportTaskId.value = null;
       }

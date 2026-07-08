@@ -34,6 +34,7 @@ const mockBackgroundTasksStore = {
 const mockToast = {
   add: vi.fn(),
 };
+const cancelExportMock = vi.fn().mockResolvedValue(undefined);
 
 vi.mock('~/stores/project.store', () => ({
   useProjectStore: () => mockProjectStore,
@@ -62,7 +63,7 @@ vi.mock('~/utils/conversion/image-conversion', () => ({
 vi.mock('~/utils/video-editor/worker-client', () => ({
   getExportWorkerClient: vi.fn(() => ({
     client: {
-      cancelExport: vi.fn(),
+      cancelExport: cancelExportMock,
     },
   })),
 }));
@@ -82,6 +83,8 @@ describe('useBatchConversion', () => {
     mockFileManager.vfs.writeFile.mockReset();
     mockFileManager.vfs.exists.mockReset();
     mockBackgroundTasksStore.addTask.mockReturnValue('task-1');
+    cancelExportMock.mockReset();
+    cancelExportMock.mockResolvedValue(undefined);
   });
 
   it('opens modal with filtered entries for the given type', () => {
@@ -214,5 +217,37 @@ describe('useBatchConversion', () => {
     await new Promise((resolve) => setTimeout(resolve, 10));
 
     expect(batch.state.reloadDirectory).toBeNull();
+  });
+
+  it('cancels the active web conversion task id', async () => {
+    let cancelBackgroundTask!: () => Promise<void>;
+    mockBackgroundTasksStore.addTask.mockImplementation((input: { cancel: () => Promise<void> }) => {
+      cancelBackgroundTask = input.cancel;
+      return 'task-1';
+    });
+
+    vi.mocked(executeMediaConversion).mockImplementationOnce(
+      async (params: { signal?: AbortSignal }) => {
+        await new Promise<void>((resolve) => {
+          params.signal?.addEventListener('abort', () => resolve(), { once: true });
+        });
+        const err = new Error('Cancelled');
+        err.name = 'AbortError';
+        throw err;
+      },
+    );
+
+    const batch = useBatchConversion();
+    batch.openModal('video', [{ kind: 'file', name: 'a.mp4', path: '/a.mp4' }] as any[], false);
+
+    mockProjectStore.getDirectoryHandleByPath.mockResolvedValue({
+      getFileHandle: vi.fn().mockResolvedValue({}),
+    });
+
+    await batch.startConversion();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await cancelBackgroundTask();
+
+    expect(cancelExportMock).toHaveBeenCalledWith(expect.stringMatching(/^file-conversion-/));
   });
 });

@@ -8,6 +8,7 @@ const {
   extractMetadata,
   extractAudio,
   setExportHostApi,
+  runWithExportHostApi,
   createVideoCoreHostApi,
   createProjectHostApi,
   isTauriRuntimeMock,
@@ -17,6 +18,7 @@ const {
   extractMetadata: vi.fn(),
   extractAudio: vi.fn(),
   setExportHostApi: vi.fn(),
+  runWithExportHostApi: vi.fn((_api: unknown, task: () => Promise<unknown>) => task()),
   createVideoCoreHostApi: vi.fn(() => ({})),
   createProjectHostApi: vi.fn(() => ({})),
   isTauriRuntimeMock: vi.fn(() => false),
@@ -62,6 +64,7 @@ vi.mock('~/utils/video-editor/worker-client', () => ({
     },
   }),
   setExportHostApi,
+  runWithExportHostApi,
 }));
 
 vi.mock('~/utils/video-editor/createVideoCoreHostApi', () => ({

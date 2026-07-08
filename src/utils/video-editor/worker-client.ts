@@ -56,6 +56,7 @@ interface WorkerChannelState {
   taskHostApis: Map<string, WorkerTaskHostApi>;
   callIdCounter: number;
   pendingCalls: Map<number, PendingCall>;
+  exclusiveTask: Promise<void>;
 }
 
 const channelStates: Record<WorkerChannel, WorkerChannelState> = {
@@ -66,6 +67,7 @@ const channelStates: Record<WorkerChannel, WorkerChannelState> = {
     taskHostApis: new Map(),
     callIdCounter: 0,
     pendingCalls: new Map(),
+    exclusiveTask: Promise.resolve(),
   },
   export: {
     workerInstance: null,
@@ -74,6 +76,7 @@ const channelStates: Record<WorkerChannel, WorkerChannelState> = {
     taskHostApis: new Map(),
     callIdCounter: 0,
     pendingCalls: new Map(),
+    exclusiveTask: Promise.resolve(),
   },
   proxy: {
     workerInstance: null,
@@ -82,6 +85,7 @@ const channelStates: Record<WorkerChannel, WorkerChannelState> = {
     taskHostApis: new Map(),
     callIdCounter: 0,
     pendingCalls: new Map(),
+    exclusiveTask: Promise.resolve(),
   },
   thumbnail: {
     workerInstance: null,
@@ -90,6 +94,7 @@ const channelStates: Record<WorkerChannel, WorkerChannelState> = {
     taskHostApis: new Map(),
     callIdCounter: 0,
     pendingCalls: new Map(),
+    exclusiveTask: Promise.resolve(),
   },
 };
 
@@ -235,6 +240,59 @@ function createRoutedHostApi(channel: WorkerChannel): VideoCoreHostAPI {
       );
     },
   };
+}
+
+interface ExclusiveHostTaskOptions {
+  taskId?: string;
+  taskHostApi?: WorkerTaskHostApi;
+}
+
+function setChannelHostApi(channel: WorkerChannel, api: VideoCoreHostAPI): void {
+  const state = channelStates[channel];
+  state.baseHostApi = api;
+  state.hostApiInstance = createRoutedHostApi(channel);
+}
+
+async function runWithChannelHostApi<T>(
+  channel: WorkerChannel,
+  api: VideoCoreHostAPI,
+  task: () => Promise<T>,
+  options?: ExclusiveHostTaskOptions,
+): Promise<T> {
+  const state = channelStates[channel];
+  const previousTask = state.exclusiveTask.catch(() => undefined);
+
+  const run = previousTask.then(async () => {
+    const previousBaseApi = state.baseHostApi;
+    const previousHostApi = state.hostApiInstance;
+    const previousTaskApi = options?.taskId ? state.taskHostApis.get(options.taskId) : undefined;
+
+    setChannelHostApi(channel, api);
+    if (options?.taskId && options.taskHostApi) {
+      state.taskHostApis.set(options.taskId, options.taskHostApi);
+    }
+
+    try {
+      return await task();
+    } finally {
+      if (options?.taskId) {
+        if (previousTaskApi) {
+          state.taskHostApis.set(options.taskId, previousTaskApi);
+        } else {
+          state.taskHostApis.delete(options.taskId);
+        }
+      }
+      state.baseHostApi = previousBaseApi;
+      state.hostApiInstance = previousHostApi;
+    }
+  });
+
+  state.exclusiveTask = run.then(
+    () => undefined,
+    () => undefined,
+  );
+
+  return await run;
 }
 
 function createWorker(channel: WorkerChannel): Worker {
@@ -407,23 +465,35 @@ function createChannelClient(channel: WorkerChannel): {
 }
 
 export function setPreviewHostApi(api: VideoCoreHostAPI) {
-  channelStates.preview.baseHostApi = api;
-  channelStates.preview.hostApiInstance = createRoutedHostApi('preview');
+  setChannelHostApi('preview', api);
 }
 
 export function setExportHostApi(api: VideoCoreHostAPI) {
-  channelStates.export.baseHostApi = api;
-  channelStates.export.hostApiInstance = createRoutedHostApi('export');
+  setChannelHostApi('export', api);
 }
 
 export function setProxyHostApi(api: VideoCoreHostAPI) {
-  channelStates.proxy.baseHostApi = api;
-  channelStates.proxy.hostApiInstance = createRoutedHostApi('proxy');
+  setChannelHostApi('proxy', api);
 }
 
 export function setThumbnailHostApi(api: VideoCoreHostAPI) {
-  channelStates.thumbnail.baseHostApi = api;
-  channelStates.thumbnail.hostApiInstance = createRoutedHostApi('thumbnail');
+  setChannelHostApi('thumbnail', api);
+}
+
+export function runWithExportHostApi<T>(
+  api: VideoCoreHostAPI,
+  task: () => Promise<T>,
+  options?: ExclusiveHostTaskOptions,
+): Promise<T> {
+  return runWithChannelHostApi('export', api, task, options);
+}
+
+export function runWithThumbnailHostApi<T>(
+  api: VideoCoreHostAPI,
+  task: () => Promise<T>,
+  options?: ExclusiveHostTaskOptions,
+): Promise<T> {
+  return runWithChannelHostApi('thumbnail', api, task, options);
 }
 
 export function registerExportTaskHostApi(taskId: string, api: WorkerTaskHostApi) {

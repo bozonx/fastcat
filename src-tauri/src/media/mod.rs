@@ -16,6 +16,7 @@ pub mod decode;
 pub mod ffmpeg;
 pub mod hwaccel;
 pub mod image_decode;
+pub mod job_gate;
 pub mod processing;
 pub mod tasks;
 pub mod temp;

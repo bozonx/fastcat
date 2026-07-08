@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   extractMetadata: vi.fn(),
   transcodeMedia: vi.fn(),
   setExportHostApi: vi.fn(),
+  runWithExportHostApi: vi.fn((_api: unknown, task: () => Promise<unknown>) => task()),
   registerExportTaskHostApi: vi.fn(),
   unregisterExportTaskHostApi: vi.fn(),
   updateTaskStatus: vi.fn(),
@@ -29,6 +30,7 @@ vi.mock('~/utils/video-editor/worker-client', () => ({
   }),
   registerExportTaskHostApi: mocks.registerExportTaskHostApi,
   restartExportWorker: mocks.restartExportWorker,
+  runWithExportHostApi: mocks.runWithExportHostApi,
   setExportHostApi: mocks.setExportHostApi,
   unregisterExportTaskHostApi: mocks.unregisterExportTaskHostApi,
 }));

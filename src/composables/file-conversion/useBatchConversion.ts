@@ -303,6 +303,7 @@ export function useBatchConversion() {
     const title = t('videoEditor.fileManager.batchConvert.taskTitle', { count: entries.length });
 
     const controller = new AbortController();
+    const activeTaskIds = new Set<string>();
     const bgTaskId = backgroundTasksStore.addTask({
       type: 'conversion',
       title,
@@ -310,13 +311,14 @@ export function useBatchConversion() {
       cancel: async () => {
         controller.abort();
         if (isTauriRuntime()) {
-          for (const _entry of entries) {
-            const taskId = createConversionTaskId();
+          for (const taskId of activeTaskIds) {
             await nativeCancelMediaTask(taskId).catch(() => {});
           }
         } else {
           const { client } = getExportWorkerClient();
-          await client.cancelExport('batch-conversion').catch(() => {});
+          for (const taskId of activeTaskIds) {
+            await client.cancelExport(taskId).catch(() => {});
+          }
         }
       },
     });
@@ -337,6 +339,7 @@ export function useBatchConversion() {
         }
 
         const taskId = createConversionTaskId();
+        activeTaskIds.add(taskId);
         const isCancelRequested = () => {
           const task = backgroundTasksStore.tasks.find((t) => t.id === bgTaskId);
           return task?.status === 'cancelled' || controller.signal.aborted;
@@ -362,6 +365,8 @@ export function useBatchConversion() {
           reportWarning(`${entry.name}: ${err instanceof Error ? err.message : String(err)}`);
           completed++;
           backgroundTasksStore.updateTaskProgress(bgTaskId, completed / total);
+        } finally {
+          activeTaskIds.delete(taskId);
         }
 
         if (entry.path) {

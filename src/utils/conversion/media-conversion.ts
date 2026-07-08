@@ -4,7 +4,7 @@ import {
   getExportWorkerClient,
   registerExportTaskHostApi,
   restartExportWorker,
-  setExportHostApi,
+  runWithExportHostApi,
   unregisterExportTaskHostApi,
 } from '~/utils/video-editor/worker-client';
 import { createProjectHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
@@ -67,9 +67,7 @@ export async function executeMediaConversion(params: {
       }
       backgroundTasksStore.updateTaskStatus(params.backgroundTaskId, 'running');
 
-      const { client } = getExportWorkerClient();
-
-      setExportHostApi(
+      await runWithExportHostApi(
         createProjectHostApi({
           getFileHandleByPath: async (path) =>
             params.isExternal
@@ -77,88 +75,91 @@ export async function executeMediaConversion(params: {
               : projectStore.getFileHandleByPath(path),
           getFileByPath: async (path) => await getSourceFile(path),
         }),
+        async () => {
+          const { client } = getExportWorkerClient();
+          registerExportTaskHostApi(params.taskId, {
+            onExportProgress: (progress) => {
+              const normalizedProgress = progress / 100;
+              backgroundTasksStore.updateTaskProgress(params.backgroundTaskId, normalizedProgress);
+            },
+            onExportPhase: (phase) => {
+              if (phase === 'finalizing') {
+                backgroundTasksStore.updateTaskProgress(params.backgroundTaskId, 0.99);
+              }
+            },
+            onExportWarning: (message) => {
+              log.warn(message);
+            },
+          });
+
+          try {
+            const sourceFile = await getSourceFile(params.request.entry.path);
+            if (!sourceFile) throw new Error('Failed to access source file');
+
+            let metadataTimeoutId: number | undefined;
+            const meta = await Promise.race([
+              client.extractMetadata(sourceFile),
+              new Promise<never>((_, reject) => {
+                metadataTimeoutId = window.setTimeout(() => {
+                  restartExportWorker();
+                  reject(new Error('Metadata extraction timed out'));
+                }, METADATA_TIMEOUT_MS);
+              }),
+            ]).finally(() => {
+              if (metadataTimeoutId !== undefined) {
+                window.clearTimeout(metadataTimeoutId);
+              }
+            });
+            const durationUs = Math.round((meta.duration || 0) * 1_000_000);
+            if (!durationUs && params.request.type === 'video') {
+              throw new Error('Invalid media duration');
+            }
+
+            let exportOptions: TranscodeOptions = {} as TranscodeOptions;
+
+            if (params.request.type === 'video' && params.request.video) {
+              exportOptions = {
+                format: params.request.video.format,
+                videoCodec: params.request.video.videoCodec,
+                bitrate: params.request.video.bitrateMbps * 1_000_000,
+                audioBitrate: params.request.video.audioBitrateKbps * 1000,
+                audio: !params.request.video.excludeAudio,
+                audioCodec:
+                  params.request.video.format === 'mp4' ? 'aac' : params.request.video.audioCodec,
+                width: Math.max(1, params.request.video.width ?? meta.video?.width ?? 1920),
+                height: Math.max(1, params.request.video.height ?? meta.video?.height ?? 1080),
+                fps: clampPositiveNumber(params.request.video.fps ?? Number(meta.video?.fps), 30),
+                bitrateMode: params.request.video.bitrateMode,
+                keyframeIntervalSec: params.request.video.keyframeIntervalSec,
+                exportAlpha: false,
+                fastStart: params.request.video.fastStart,
+                audioChannels,
+                audioSampleRate: params.request.sharedAudio.sampleRate || undefined,
+              };
+            } else if (params.request.audioOnly) {
+              exportOptions = {
+                format: resolveAudioOnlyContainerFormat(params.request.audioOnly.codec),
+                videoCodec: 'none',
+                bitrate: 100_000,
+                audioBitrate: params.request.audioOnly.bitrateKbps * 1000,
+                audio: true,
+                audioCodec: params.request.audioOnly.codec,
+                width: AUDIO_ONLY_EXPORT_PLACEHOLDER_DIMENSION,
+                height: AUDIO_ONLY_EXPORT_PLACEHOLDER_DIMENSION,
+                fps: AUDIO_ONLY_EXPORT_PLACEHOLDER_FPS,
+                audioChannels,
+                audioSampleRate: params.request.sharedAudio.sampleRate || undefined,
+                audioReverse: params.request.audioOnly.reverse,
+                audioDurationSec: meta.duration || undefined,
+              };
+            }
+
+            await client.transcodeMedia(sourceFile, params.targetHandle, exportOptions, params.taskId);
+          } finally {
+            unregisterExportTaskHostApi(params.taskId);
+          }
+        },
       );
-      registerExportTaskHostApi(params.taskId, {
-        onExportProgress: (progress) => {
-          const normalizedProgress = progress / 100;
-          backgroundTasksStore.updateTaskProgress(params.backgroundTaskId, normalizedProgress);
-        },
-        onExportPhase: (phase) => {
-          if (phase === 'finalizing') {
-            backgroundTasksStore.updateTaskProgress(params.backgroundTaskId, 0.99);
-          }
-        },
-        onExportWarning: (message) => {
-          log.warn(message);
-        },
-      });
-
-      try {
-        const sourceFile = await getSourceFile(params.request.entry.path);
-        if (!sourceFile) throw new Error('Failed to access source file');
-
-        let metadataTimeoutId: number | undefined;
-        const meta = await Promise.race([
-          client.extractMetadata(sourceFile),
-          new Promise<never>((_, reject) => {
-            metadataTimeoutId = window.setTimeout(() => {
-              restartExportWorker();
-              reject(new Error('Metadata extraction timed out'));
-            }, METADATA_TIMEOUT_MS);
-          }),
-        ]).finally(() => {
-          if (metadataTimeoutId !== undefined) {
-            window.clearTimeout(metadataTimeoutId);
-          }
-        });
-        const durationUs = Math.round((meta.duration || 0) * 1_000_000);
-        if (!durationUs && params.request.type === 'video') {
-          throw new Error('Invalid media duration');
-        }
-
-        let exportOptions: TranscodeOptions = {} as TranscodeOptions;
-
-        if (params.request.type === 'video' && params.request.video) {
-          exportOptions = {
-            format: params.request.video.format,
-            videoCodec: params.request.video.videoCodec,
-            bitrate: params.request.video.bitrateMbps * 1_000_000,
-            audioBitrate: params.request.video.audioBitrateKbps * 1000,
-            audio: !params.request.video.excludeAudio,
-            audioCodec:
-              params.request.video.format === 'mp4' ? 'aac' : params.request.video.audioCodec,
-            width: Math.max(1, params.request.video.width ?? meta.video?.width ?? 1920),
-            height: Math.max(1, params.request.video.height ?? meta.video?.height ?? 1080),
-            fps: clampPositiveNumber(params.request.video.fps ?? Number(meta.video?.fps), 30),
-            bitrateMode: params.request.video.bitrateMode,
-            keyframeIntervalSec: params.request.video.keyframeIntervalSec,
-            exportAlpha: false,
-            fastStart: params.request.video.fastStart,
-            audioChannels,
-            audioSampleRate: params.request.sharedAudio.sampleRate || undefined,
-          };
-        } else if (params.request.audioOnly) {
-          exportOptions = {
-            format: resolveAudioOnlyContainerFormat(params.request.audioOnly.codec),
-            videoCodec: 'none',
-            bitrate: 100_000,
-            audioBitrate: params.request.audioOnly.bitrateKbps * 1000,
-            audio: true,
-            audioCodec: params.request.audioOnly.codec,
-            width: AUDIO_ONLY_EXPORT_PLACEHOLDER_DIMENSION,
-            height: AUDIO_ONLY_EXPORT_PLACEHOLDER_DIMENSION,
-            fps: AUDIO_ONLY_EXPORT_PLACEHOLDER_FPS,
-            audioChannels,
-            audioSampleRate: params.request.sharedAudio.sampleRate || undefined,
-            audioReverse: params.request.audioOnly.reverse,
-            audioDurationSec: meta.duration || undefined,
-          };
-        }
-
-        await client.transcodeMedia(sourceFile, params.targetHandle, exportOptions, params.taskId);
-      } finally {
-        unregisterExportTaskHostApi(params.taskId);
-      }
     },
     {
       priority: MEDIA_TASK_PRIORITIES.conversionBackground,

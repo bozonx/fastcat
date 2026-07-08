@@ -3,7 +3,7 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import { buildVideoWorkerPayloadFromTracks } from '~/timeline/application/workerPayloadBuilder';
 import { getTimelineFormat, resolveEffectiveTimelineFormat } from '~/timeline/format';
 import { createProjectHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
-import { getThumbnailWorkerClient, setThumbnailHostApi } from '~/utils/video-editor/worker-client';
+import { getThumbnailWorkerClient, runWithThumbnailHostApi } from '~/utils/video-editor/worker-client';
 import { fitDimensions } from './media-processor.utils';
 import type {
   ExtractTimelineFrameBlobOptions,
@@ -35,16 +35,17 @@ export function createWebMediaProcessor(): IMediaProcessor {
         }
       }
 
-      setThumbnailHostApi(createProjectHostApi());
-      const { client } = getThumbnailWorkerClient();
-      const blobs = await client.extractVideoFrameBlobs(file, {
-        timesS: [timeSec],
-        maxWidth: options.maxWidth,
-        maxHeight: options.maxHeight,
-        quality: options.quality,
-        mimeType: 'image/webp',
-        taskId: `video-frame:${options.projectRelativePath}`,
-        keepAlive: false,
+      const blobs = await runWithThumbnailHostApi(createProjectHostApi(), async () => {
+        const { client } = getThumbnailWorkerClient();
+        return await client.extractVideoFrameBlobs(file, {
+          timesS: [timeSec],
+          maxWidth: options.maxWidth,
+          maxHeight: options.maxHeight,
+          quality: options.quality,
+          mimeType: 'image/webp',
+          taskId: `video-frame:${options.projectRelativePath}`,
+          keepAlive: false,
+        });
       });
       return blobs[0] ?? null;
     },
@@ -56,20 +57,21 @@ export function createWebMediaProcessor(): IMediaProcessor {
         throw new Error(`Source file not found: ${options.projectRelativePath}`);
       }
 
-      setThumbnailHostApi(createProjectHostApi());
-      const { client } = getThumbnailWorkerClient();
       if (options.taskId) {
         activeExtractorTaskIds.add(options.taskId);
       }
 
-      return await client.extractVideoFrameBlobs(file, {
-        timesS: options.timesSec,
-        maxWidth: options.maxWidth,
-        maxHeight: options.maxHeight,
-        quality: options.quality,
-        mimeType: options.mimeType ?? 'image/webp',
-        taskId: options.taskId,
-        keepAlive: options.keepAlive ?? false,
+      return await runWithThumbnailHostApi(createProjectHostApi(), async () => {
+        const { client } = getThumbnailWorkerClient();
+        return await client.extractVideoFrameBlobs(file, {
+          timesS: options.timesSec,
+          maxWidth: options.maxWidth,
+          maxHeight: options.maxHeight,
+          quality: options.quality,
+          mimeType: options.mimeType ?? 'image/webp',
+          taskId: options.taskId,
+          keepAlive: options.keepAlive ?? false,
+        });
       });
     },
 
@@ -94,17 +96,18 @@ export function createWebMediaProcessor(): IMediaProcessor {
       );
       const { width, height } = resolveTimelineFrameDimensions(format, options);
 
-      setThumbnailHostApi(createProjectHostApi());
-      const { client } = getThumbnailWorkerClient();
-      return await client.extractFrameToBlob(
-        options.timeUs,
-        width,
-        height,
-        clipsPayload,
-        options.quality ?? 0.8,
-        options.isTransparent,
-        options.effectQuality,
-      );
+      return await runWithThumbnailHostApi(createProjectHostApi(), async () => {
+        const { client } = getThumbnailWorkerClient();
+        return await client.extractFrameToBlob(
+          options.timeUs,
+          width,
+          height,
+          clipsPayload,
+          options.quality ?? 0.8,
+          options.isTransparent,
+          options.effectQuality,
+        );
+      });
     },
 
     async cancelVideoFrameExtraction(taskId: string): Promise<void> {

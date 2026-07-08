@@ -1,5 +1,5 @@
 import type { FsEntry } from '~/types/fs';
-import { getExportWorkerClient, setExportHostApi } from '~/utils/video-editor/worker-client';
+import { getExportWorkerClient, runWithExportHostApi } from '~/utils/video-editor/worker-client';
 import { createProjectHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectStore } from '~/stores/project.store';
@@ -97,13 +97,11 @@ export function useAudioExtractionCore() {
       }
       if (!sourceFile) throw new Error('Failed to access source file');
 
-      const { client } = getExportWorkerClient();
-
       // Worker host API must return native FileSystemFileHandle (clonable via postMessage).
       // For workspace context: resolve from workspace root directly to avoid
       // projectStore resolving into the project directory.
       // For project context: use projectStore (original behavior).
-      setExportHostApi(
+      meta = await runWithExportHostApi(
         createProjectHostApi({
           getFileHandleByPath: async (path) =>
             isExternal
@@ -123,9 +121,11 @@ export function useAudioExtractionCore() {
             return projectStore.getFileByPath(path);
           },
         }),
+        async () => {
+          const { client } = getExportWorkerClient();
+          return await client.extractMetadata(sourceFile);
+        },
       );
-
-      meta = await client.extractMetadata(sourceFile);
     }
 
     if (!meta.audio) {
@@ -181,8 +181,31 @@ export function useAudioExtractionCore() {
         targetPath: targetNativePath,
       });
     } else {
-      const { client } = getExportWorkerClient();
-      await client.extractAudio(entry.path, targetPath);
+      await runWithExportHostApi(
+        createProjectHostApi({
+          getFileHandleByPath: async (path) =>
+            isExternal
+              ? ((await getWorkspaceFileHandle(path)) ?? projectStore.getFileHandleByPath(path))
+              : projectStore.getFileHandleByPath(path),
+          getFileByPath: async (path) => {
+            if (isExternal) {
+              const handle = await getWorkspaceFileHandle(path);
+              if (handle) {
+                try {
+                  return await withFileIoSlot(() => handle.getFile());
+                } catch {
+                  /* fall through */
+                }
+              }
+            }
+            return projectStore.getFileByPath(path);
+          },
+        }),
+        async () => {
+          const { client } = getExportWorkerClient();
+          await client.extractAudio(entry.path, targetPath);
+        },
+      );
     }
 
     return { status: 'extracted', targetPath, newFileName, dirPath };

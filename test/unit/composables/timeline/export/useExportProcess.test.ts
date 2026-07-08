@@ -55,6 +55,7 @@ vi.mock('~/utils/video-editor/worker-client', () => ({
     worker: {},
   })),
   registerExportTaskHostApi: vi.fn(),
+  runWithExportHostApi: vi.fn((_api: unknown, task: () => Promise<unknown>) => task()),
   setExportHostApi: vi.fn(),
   unregisterExportTaskHostApi: vi.fn(),
 }));

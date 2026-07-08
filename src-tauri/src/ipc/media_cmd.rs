@@ -16,6 +16,7 @@ use crate::media::timeline_render::{
 use crate::monitor::MonitorScene;
 
 use crate::media::ffmpeg::hw::FfmpegHwOptions;
+use crate::media::job_gate::{media_job_gate, MediaJobPriority};
 
 /// Trait for structs that carry per-request hardware acceleration overrides.
 pub trait ApplyHwSettings {
@@ -93,6 +94,7 @@ impl NativeMediaService {
         options: NativeProxyOptions,
         on_progress: Option<&(dyn Fn(f64) + Send + Sync)>,
     ) -> anyhow::Result<()> {
+        let _permit = self.acquire_media_job(task_id, MediaJobPriority::Background)?;
         generate_proxy(
             &self.tasks,
             task_id,
@@ -112,6 +114,7 @@ impl NativeMediaService {
         warning: Option<&(dyn Fn(String) + Send + Sync)>,
         progress: Option<&(dyn Fn(f64) + Send + Sync)>,
     ) -> anyhow::Result<()> {
+        let _permit = self.acquire_media_job(task_id, MediaJobPriority::Background)?;
         convert_media_with_warnings(
             &self.tasks,
             task_id,
@@ -131,6 +134,7 @@ impl NativeMediaService {
         ffmpeg_path: &str,
         ffprobe_path: &str,
     ) -> anyhow::Result<()> {
+        let _permit = self.acquire_media_job(task_id, MediaJobPriority::Background)?;
         extract_audio_stream(
             &self.tasks,
             task_id,
@@ -154,6 +158,7 @@ impl NativeMediaService {
         progress: &(dyn Fn(f64, ExportProgressPhase) + Send + Sync),
         warning: &(dyn Fn(String) + Send + Sync),
     ) -> anyhow::Result<()> {
+        let _permit = self.acquire_media_job(task_id, MediaJobPriority::Foreground)?;
         export_timeline(
             &self.tasks,
             task_id,
@@ -172,6 +177,16 @@ impl NativeMediaService {
     ) -> anyhow::Result<Vec<u8>> {
         let peaks = crate::audio::peaks::extract_peaks(path, max_length)?;
         Ok(crate::audio::peaks::pack_peaks(&peaks))
+    }
+
+    fn acquire_media_job(
+        &self,
+        task_id: &str,
+        priority: MediaJobPriority,
+    ) -> anyhow::Result<crate::media::job_gate::MediaJobPermit<'static>> {
+        media_job_gate()
+            .acquire(priority, &|| self.tasks.was_cancelled(task_id))
+            .ok_or_else(|| anyhow::anyhow!("cancelled"))
     }
 }
 

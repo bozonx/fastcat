@@ -267,6 +267,57 @@ describe('worker client', () => {
     expect(baseProgress).toHaveBeenCalledWith(0.3, 'unknown-task');
   });
 
+  it('keeps export host API scoped while an exclusive task is running', async () => {
+    const { getExportWorkerClient, runWithExportHostApi } =
+      await import('~/utils/video-editor/worker-client');
+    const firstProject = vi.fn().mockResolvedValue('first-project');
+    const secondProject = vi.fn().mockResolvedValue('second-project');
+    const firstHostApi = createHostApi({ getCurrentProjectId: firstProject });
+    const secondHostApi = createHostApi({ getCurrentProjectId: secondProject });
+    let releaseFirst!: () => void;
+    const secondStarted = vi.fn();
+
+    const firstTask = runWithExportHostApi(firstHostApi, async () => {
+      const { client } = getExportWorkerClient();
+      const workerCall = client.setPixiRendererPreference('webgl');
+      const posted = mockWorker.posted.find(
+        (message) => (message as { method?: string }).method === 'setPixiRendererPreference',
+      ) as { id: number };
+      mockWorker.emit('message', { type: 'rpc-response', id: posted.id, result: undefined });
+      await workerCall;
+      await new Promise<void>((resolve) => {
+        releaseFirst = resolve;
+      });
+    });
+
+    await vi.advanceTimersByTimeAsync(0);
+
+    const secondTask = runWithExportHostApi(secondHostApi, async () => {
+      secondStarted();
+    });
+
+    await vi.advanceTimersByTimeAsync(0);
+    expect(secondStarted).not.toHaveBeenCalled();
+
+    mockWorker.emit('message', {
+      type: 'rpc-call',
+      id: 444,
+      method: 'getCurrentProjectId',
+      args: [],
+    });
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(firstProject).toHaveBeenCalledOnce();
+    expect(secondProject).not.toHaveBeenCalled();
+
+    releaseFirst();
+    await firstTask;
+    await vi.advanceTimersByTimeAsync(0);
+    await secondTask;
+
+    expect(secondStarted).toHaveBeenCalledOnce();
+  });
+
   it('throws when host API is not set and worker calls back', async () => {
     const { getPreviewWorkerClient } = await import('~/utils/video-editor/worker-client');
     const { client } = getPreviewWorkerClient();

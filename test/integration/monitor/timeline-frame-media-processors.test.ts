@@ -25,7 +25,9 @@ const workspaceStoreMock = vi.hoisted(() => ({
 
 const buildVideoWorkerPayloadFromTracksMock = vi.hoisted(() => vi.fn());
 const createProjectHostApiMock = vi.hoisted(() => vi.fn(() => ({ host: true })));
-const setThumbnailHostApiMock = vi.hoisted(() => vi.fn());
+const runWithThumbnailHostApiMock = vi.hoisted(() =>
+  vi.fn((_api: unknown, task: () => Promise<unknown>) => task()),
+);
 const extractFrameToBlobMock = vi.hoisted(() => vi.fn());
 const buildNativeMonitorSceneMock = vi.hoisted(() => vi.fn());
 const nativeRenderTimelineFrameWebpMock = vi.hoisted(() => vi.fn());
@@ -47,7 +49,7 @@ vi.mock('~/utils/video-editor/createVideoCoreHostApi', () => ({
 }));
 
 vi.mock('~/utils/video-editor/worker-client', () => ({
-  setThumbnailHostApi: setThumbnailHostApiMock,
+  runWithThumbnailHostApi: runWithThumbnailHostApiMock,
   getThumbnailWorkerClient: () => ({
     client: {
       extractFrameToBlob: extractFrameToBlobMock,
@@ -130,7 +132,7 @@ describe('timeline frame media processors', () => {
     });
 
     expect(blob).toBeInstanceOf(Blob);
-    expect(setThumbnailHostApiMock).toHaveBeenCalledWith({ host: true });
+    expect(runWithThumbnailHostApiMock).toHaveBeenCalledWith({ host: true }, expect.any(Function));
     expect(extractFrameToBlobMock).toHaveBeenCalledWith(
       2_000_000,
       3840,

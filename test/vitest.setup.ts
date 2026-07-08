@@ -377,6 +377,8 @@ vi.mock('~/utils/video-editor/worker-client', () => ({
   getPreviewWorkerClient: () => ({ client: {}, worker: {} }),
   setPreviewHostApi: vi.fn(),
   setProxyHostApi: vi.fn(),
+  runWithExportHostApi: (_api: unknown, task: () => Promise<unknown>) => task(),
+  runWithThumbnailHostApi: (_api: unknown, task: () => Promise<unknown>) => task(),
 }));
 
 vi.mock('#ui/utils', () => ({
