@@ -3,13 +3,20 @@ import type { AudioClipEffect, VideoClipEffect } from '~/timeline/types';
 import ClipEffectsEditor from '~/components/effects/ClipEffectsEditor.vue';
 import type { ClipEffectKeyframeHooks } from '~/components/effects/ClipEffectsEditor.vue';
 
-const props = defineProps<{
-  videoEffects: VideoClipEffect[];
-  audioEffects: AudioClipEffect[];
-  showVideoEffects?: boolean;
-  showAudioEffects?: boolean;
-  videoKeyframes?: ClipEffectKeyframeHooks;
-}>();
+const props = withDefaults(
+  defineProps<{
+    videoEffects: VideoClipEffect[];
+    audioEffects: AudioClipEffect[];
+    showVideoEffects?: boolean;
+    showAudioEffects?: boolean;
+    videoKeyframes?: ClipEffectKeyframeHooks;
+  }>(),
+  {
+    showVideoEffects: true,
+    showAudioEffects: false,
+    videoKeyframes: undefined,
+  },
+);
 
 const emit = defineEmits<{
   updateVideoEffects: [effects: Array<VideoClipEffect | AudioClipEffect>];

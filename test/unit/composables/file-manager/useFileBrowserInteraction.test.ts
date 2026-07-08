@@ -121,7 +121,7 @@ describe('useFileBrowserInteraction', () => {
     expect(filesPageStore.selectItem).toHaveBeenCalledWith(
       expect.objectContaining({ name: 'script.txt' }),
     );
-    expect(selectionStore.requestFileTextEditorFocus).toHaveBeenCalledOnce();
+    expect(selectionStore.requestFileTextEditorFocus).toHaveBeenCalledWith('script.txt');
     expect(onFileAction).not.toHaveBeenCalled();
   });
 
@@ -149,7 +149,9 @@ describe('useFileBrowserInteraction', () => {
       expect.objectContaining({ name: 'script.txt' }),
     );
     expect(filesPageStore.selectItem).not.toHaveBeenCalled();
-    expect(selectionStore.requestFileTextEditorFocus).toHaveBeenCalledOnce();
+    expect(selectionStore.requestFileTextEditorFocus).toHaveBeenCalledWith(
+      '/personal/item-1/script.txt',
+    );
     expect(onFileAction).not.toHaveBeenCalled();
   });
 

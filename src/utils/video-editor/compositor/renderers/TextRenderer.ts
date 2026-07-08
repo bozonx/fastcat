@@ -143,8 +143,13 @@ export class TextRenderer {
       frameH = snappedFrame.height;
     }
 
+    const shouldRenderSeparateBorderShadow =
+      borderWidthPx > 0 && borderOffsetPx >= 2;
+
     if (normalizedStyle.backgroundEnabled && normalizedStyle.backgroundShadowEnabled) {
-      const bgShadowOutsetPx = getTextBackgroundShadowOutsetPx(normalizedStyle, renderScale);
+      const bgShadowOutsetPx = shouldRenderSeparateBorderShadow
+        ? Math.max(0, Math.round(normalizedStyle.backgroundShadowSpread * renderScale))
+        : getTextBackgroundShadowOutsetPx(normalizedStyle, renderScale);
       const bgShadowRadius = Math.max(
         0,
         normalizedStyle.backgroundRadius * renderScale + bgShadowOutsetPx,
@@ -178,6 +183,49 @@ export class TextRenderer {
       );
       ctx.fill();
       ctx.restore();
+
+      if (shouldRenderSeparateBorderShadow) {
+        const inset = borderWidthPx / 2;
+        const off = inset + borderOffsetPx;
+        const borderShadowOutsetPx = Math.max(
+          0,
+          Math.round(normalizedStyle.backgroundShadowSpread * renderScale),
+        );
+        const borderShadowRadius = Math.max(
+          0,
+          normalizedStyle.backgroundRadius * renderScale + off + borderShadowOutsetPx,
+        );
+
+        ctx.save();
+        ctx.globalAlpha = normalizedStyle.backgroundShadowAlpha;
+        ctx.fillStyle = normalizedStyle.backgroundShadowColor;
+        ctx.shadowColor = this.toCanvasShadowColor(normalizedStyle.backgroundShadowColor, 1);
+        ctx.shadowBlur = normalizedStyle.backgroundShadowBlur * renderScale;
+        ctx.shadowOffsetX = normalizedStyle.backgroundShadowOffsetX * renderScale;
+        ctx.shadowOffsetY = normalizedStyle.backgroundShadowOffsetY * renderScale;
+        this.drawRoundedRect(
+          ctx,
+          frameX - off - borderShadowOutsetPx,
+          frameY - off - borderShadowOutsetPx,
+          Math.max(1, frameW + (off + borderShadowOutsetPx) * 2),
+          Math.max(1, frameH + (off + borderShadowOutsetPx) * 2),
+          borderShadowRadius,
+        );
+        ctx.fill();
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.shadowColor = 'transparent';
+        ctx.globalAlpha = 1;
+        this.drawRoundedRect(
+          ctx,
+          frameX,
+          frameY,
+          frameW,
+          frameH,
+          normalizedStyle.backgroundRadius * renderScale,
+        );
+        ctx.fill();
+        ctx.restore();
+      }
     }
 
     if (normalizedStyle.backgroundEnabled) {

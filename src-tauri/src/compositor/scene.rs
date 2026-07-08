@@ -762,6 +762,7 @@ fn draw_text(scene: &mut VelloScene, spec: &TextLayer, xform: Affine) {
         TextRenderMode::Full | TextRenderMode::WithoutTextShadow | TextRenderMode::BackgroundOnly
     ) {
         draw_text_background_shadow(scene, spec, xform, frame_x, frame_y);
+        draw_text_border_shadow(scene, spec, xform, frame_x, frame_y);
         draw_text_background(scene, spec, xform, frame_x, frame_y);
         draw_text_border(scene, spec, xform, frame_x, frame_y);
     }
@@ -853,7 +854,11 @@ fn draw_text_background_shadow(
     let shadow_x = frame_x + spec.bg_shadow_offset_x;
     let shadow_y = frame_y + spec.bg_shadow_offset_y;
 
-    let ext = text_background_shadow_outset(spec);
+    let ext = if uses_separate_border_shadow(spec) {
+        spec.bg_shadow_spread.max(0.0)
+    } else {
+        text_background_shadow_outset(spec)
+    };
     let rect = Rect::new(
         (shadow_x - ext) as f64,
         (shadow_y - ext) as f64,
@@ -875,6 +880,62 @@ fn draw_text_background_shadow(
             Brush::Solid(spec.bg_shadow_color),
             None,
             &path,
+        );
+    }
+}
+
+fn draw_text_border_shadow(
+    scene: &mut VelloScene,
+    spec: &TextLayer,
+    xform: Affine,
+    frame_x: f32,
+    frame_y: f32,
+) {
+    if !(spec.background_enabled
+        && spec.bg_shadow_enabled
+        && uses_separate_border_shadow(spec)
+        && spec.bg_shadow_color.to_rgba8().a > 0)
+    {
+        return;
+    }
+
+    let off = spec.border_width / 2.0 + spec.border_offset;
+    let ext = spec.bg_shadow_spread.max(0.0);
+    let shadow_x = frame_x + spec.bg_shadow_offset_x;
+    let shadow_y = frame_y + spec.bg_shadow_offset_y;
+    let rect = Rect::new(
+        (shadow_x - off - ext) as f64,
+        (shadow_y - off - ext) as f64,
+        (shadow_x + spec.frame_width + off + ext) as f64,
+        (shadow_y + spec.frame_height + off + ext) as f64,
+    );
+    let radius = (spec.background_radius + (off + ext) as f64).max(0.0);
+    let inner_rect = Rect::new(
+        frame_x as f64,
+        frame_y as f64,
+        (frame_x + spec.frame_width) as f64,
+        (frame_y + spec.frame_height) as f64,
+    );
+    let inner_radius = spec.background_radius.max(0.0);
+    let clip_path = rounded_rect_ring_path(rect, radius, inner_rect, inner_radius);
+
+    if spec.bg_shadow_blur > 0.0 {
+        let std_dev = (spec.bg_shadow_blur as f64) * 0.5;
+        scene.draw_blurred_rounded_rect_in(
+            &clip_path,
+            xform,
+            rect,
+            spec.bg_shadow_color,
+            radius,
+            std_dev,
+        );
+    } else {
+        scene.fill(
+            Fill::NonZero,
+            xform,
+            Brush::Solid(spec.bg_shadow_color),
+            None,
+            &clip_path,
         );
     }
 }
@@ -1174,12 +1235,62 @@ fn draw_main_text(
 
 fn text_background_shadow_outset(spec: &TextLayer) -> f32 {
     let border_outset = if spec.border_enabled && spec.border_width > 0.0 {
-        spec.border_width
+        spec.border_width + spec.border_offset
     } else {
         0.0
     };
 
     (border_outset + spec.bg_shadow_spread).max(0.0)
+}
+
+fn uses_separate_border_shadow(spec: &TextLayer) -> bool {
+    spec.border_enabled && spec.border_width > 0.0 && spec.border_offset >= 2.0
+}
+
+fn rounded_rect_ring_path(
+    outer: Rect,
+    outer_radius: f64,
+    inner: Rect,
+    inner_radius: f64,
+) -> BezPath {
+    let mut path = BezPath::new();
+    append_rounded_rect_clockwise(&mut path, outer, outer_radius);
+    append_rounded_rect_counter_clockwise(&mut path, inner, inner_radius);
+    path
+}
+
+fn append_rounded_rect_clockwise(path: &mut BezPath, rect: Rect, radius: f64) {
+    let radius = radius
+        .max(0.0)
+        .min(rect.width() * 0.5)
+        .min(rect.height() * 0.5);
+    path.move_to((rect.x0 + radius, rect.y0));
+    path.line_to((rect.x1 - radius, rect.y0));
+    path.quad_to((rect.x1, rect.y0), (rect.x1, rect.y0 + radius));
+    path.line_to((rect.x1, rect.y1 - radius));
+    path.quad_to((rect.x1, rect.y1), (rect.x1 - radius, rect.y1));
+    path.line_to((rect.x0 + radius, rect.y1));
+    path.quad_to((rect.x0, rect.y1), (rect.x0, rect.y1 - radius));
+    path.line_to((rect.x0, rect.y0 + radius));
+    path.quad_to((rect.x0, rect.y0), (rect.x0 + radius, rect.y0));
+    path.close_path();
+}
+
+fn append_rounded_rect_counter_clockwise(path: &mut BezPath, rect: Rect, radius: f64) {
+    let radius = radius
+        .max(0.0)
+        .min(rect.width() * 0.5)
+        .min(rect.height() * 0.5);
+    path.move_to((rect.x0 + radius, rect.y0));
+    path.quad_to((rect.x0, rect.y0), (rect.x0, rect.y0 + radius));
+    path.line_to((rect.x0, rect.y1 - radius));
+    path.quad_to((rect.x0, rect.y1), (rect.x0 + radius, rect.y1));
+    path.line_to((rect.x1 - radius, rect.y1));
+    path.quad_to((rect.x1, rect.y1), (rect.x1, rect.y1 - radius));
+    path.line_to((rect.x1, rect.y0 + radius));
+    path.quad_to((rect.x1, rect.y0), (rect.x1 - radius, rect.y0));
+    path.line_to((rect.x0 + radius, rect.y0));
+    path.close_path();
 }
 
 /// Discrete 2D Gaussian kernel taps for approximating text shadow blur

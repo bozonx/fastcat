@@ -309,6 +309,12 @@ const hasProxy = computed(() => {
   return proxyStore.existingProxies.has(normalizeMediaCachePath(selectedFsEntry.value.path));
 });
 
+const textEditorFocusRequestForSelectedFile = computed(() => {
+  if (!selectedFsEntry.value?.path) return 0;
+  if (selectionStore.fileTextEditorFocusRequestPath !== selectedFsEntry.value.path) return 0;
+  return selectionStore.fileTextEditorFocusRequest;
+});
+
 const clipRef = ref<InstanceType<typeof ClipProperties> | null>(null);
 const contentRef = ref<HTMLElement | null>(null);
 
@@ -470,7 +476,7 @@ const headerTitle = computed(() => {
         :selected-fs-entry="selectedFsEntry"
         :has-proxy="hasProxy"
         :preview-mode="previewMode"
-        :text-editor-focus-request="selectionStore.fileTextEditorFocusRequest"
+        :text-editor-focus-request="textEditorFocusRequestForSelectedFile"
         :instance-id="selectedFileManagerInstanceId"
         :selection-origin="selectedFileManagerOrigin"
         :is-external="isExternal"

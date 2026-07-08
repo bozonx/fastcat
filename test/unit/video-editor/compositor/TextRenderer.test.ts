@@ -33,6 +33,8 @@ class FakeCtx {
     y: number;
   }[] = [];
   fillCalls: { text: string; op: string; shadowOffsetX: number; x: number; y: number }[] = [];
+  shapeFillCalls: { op: string; shadowColor: string; shadowBlur: number; shadowOffsetX: number }[] =
+    [];
   private stateStack: Record<string, unknown>[] = [];
   private static readonly SAVED_PROPS = [
     'font',
@@ -65,8 +67,16 @@ class FakeCtx {
   closePath() {}
   moveTo() {}
   lineTo() {}
+  arcTo() {}
   quadraticCurveTo() {}
-  fill() {}
+  fill() {
+    this.shapeFillCalls.push({
+      op: this.globalCompositeOperation,
+      shadowColor: this.shadowColor,
+      shadowBlur: this.shadowBlur,
+      shadowOffsetX: this.shadowOffsetX,
+    });
+  }
   stroke() {}
   fillText(text: string, x: number, y: number) {
     this.fillCalls.push({
@@ -313,5 +323,59 @@ describe('TextRenderer + LayoutApplier integration', () => {
 
     expect(mainText).toBeDefined();
     expect(mainText!.y).not.toBe(Math.round(mainText!.y));
+  });
+
+  it('keeps one combined background shadow while border offset is below two pixels', () => {
+    const renderer = new TextRenderer({ designWidth: W, designHeight: H });
+    const clip = createTextClip('Text');
+    (clip as unknown as { style: Record<string, unknown> }).style = {
+      fontSize: 64,
+      lineHeight: 1.2,
+      backgroundEnabled: true,
+      backgroundColor: '#ffffff',
+      backgroundShadowEnabled: true,
+      backgroundShadowColor: '#000000',
+      backgroundShadowAlpha: 1,
+      backgroundShadowBlur: 8,
+      backgroundShadowSpread: 2,
+      borderEnabled: true,
+      borderWidth: 4,
+      borderOffset: 1,
+    };
+
+    renderer.draw(clip, W, H);
+    const ctx = clip.ctx as unknown as FakeCtx;
+    const shadowFills = ctx.shapeFillCalls.filter(
+      (c) => c.op === 'source-over' && c.shadowBlur > 0,
+    );
+
+    expect(shadowFills).toHaveLength(1);
+  });
+
+  it('renders a separate border shadow when border offset reaches two pixels', () => {
+    const renderer = new TextRenderer({ designWidth: W, designHeight: H });
+    const clip = createTextClip('Text');
+    (clip as unknown as { style: Record<string, unknown> }).style = {
+      fontSize: 64,
+      lineHeight: 1.2,
+      backgroundEnabled: true,
+      backgroundColor: '#ffffff',
+      backgroundShadowEnabled: true,
+      backgroundShadowColor: '#000000',
+      backgroundShadowAlpha: 1,
+      backgroundShadowBlur: 8,
+      backgroundShadowSpread: 2,
+      borderEnabled: true,
+      borderWidth: 4,
+      borderOffset: 2,
+    };
+
+    renderer.draw(clip, W, H);
+    const ctx = clip.ctx as unknown as FakeCtx;
+    const shadowFills = ctx.shapeFillCalls.filter(
+      (c) => c.op === 'source-over' && c.shadowBlur > 0,
+    );
+
+    expect(shadowFills).toHaveLength(2);
   });
 });

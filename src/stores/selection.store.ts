@@ -125,6 +125,7 @@ export type SelectedEntity =
 export const useSelectionStore = defineStore('selection', () => {
   const selectedEntity = ref<SelectedEntity | null>(null);
   const fileTextEditorFocusRequest = ref(0);
+  const fileTextEditorFocusRequestPath = ref<string | null>(null);
 
   function resolveFileManagerOrigin(
     entry: FsEntry,
@@ -295,7 +296,8 @@ export const useSelectionStore = defineStore('selection', () => {
     }
   }
 
-  function requestFileTextEditorFocus() {
+  function requestFileTextEditorFocus(path?: string) {
+    fileTextEditorFocusRequestPath.value = path ?? null;
     fileTextEditorFocusRequest.value += 1;
   }
 
@@ -359,6 +361,7 @@ export const useSelectionStore = defineStore('selection', () => {
   return {
     selectedEntity,
     fileTextEditorFocusRequest,
+    fileTextEditorFocusRequestPath,
     selectTimelineItem,
     selectTimelineItems,
     selectTimelineTrack,

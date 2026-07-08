@@ -86,7 +86,7 @@ export function useFileBrowserInteraction(options: FileBrowserInteractionOptions
     if (getMediaTypeFromFilename(entry.name) !== 'text') return false;
 
     selectEntryForProperties(entry);
-    selectionStore.requestFileTextEditorFocus();
+    selectionStore.requestFileTextEditorFocus(entry.path);
     return true;
   }
 
