@@ -236,15 +236,17 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="timeline-tabs flex items-center h-7 min-w-0 flex-1 select-none self-end">
+  <div
+    class="timeline-tabs flex h-full min-w-0 flex-1 select-none items-end self-stretch pt-1"
+  >
     <div
       ref="scrollContainer"
-      class="flex h-7 w-full overflow-x-auto no-scrollbar items-center min-w-0"
+      class="flex h-[30px] w-full min-w-0 items-end overflow-x-auto no-scrollbar"
     >
-      <UContextMenu :items="timelineTabContextMenuItems" class="flex h-7 min-w-max">
+      <UContextMenu :items="timelineTabContextMenuItems" class="flex h-[30px] min-w-max">
         <VueDraggable
           v-model="openPaths"
-          class="flex h-7 items-center"
+          class="flex h-[30px] items-end"
           :animation="150"
           ghost-class="tab-ghost"
         >
@@ -259,21 +261,16 @@ onBeforeUnmount(() => {
           >
             <div
               :data-path="path"
-              class="group relative flex items-center h-7 px-4 gap-2 border-r border-ui-border cursor-pointer min-w-[120px] max-w-[220px] transition-all duration-200 border-b"
+              class="group relative flex h-[30px] min-w-[120px] max-w-[220px] cursor-pointer items-center gap-2 border-x border-b border-t-[3px] px-4 transition-all duration-200"
               :class="[
                 isActive(path)
-                  ? 'active-tab text-selection-accent-400 border-b-transparent'
-                  : 'text-ui-text-muted bg-black/10 hover:bg-black/5 hover:text-ui-text border-b-ui-border',
+                  ? 'active-tab border-t-primary-500 border-x-ui-border border-b-transparent text-selection-accent-400'
+                  : 'border-t-transparent border-x-ui-border border-b-ui-border bg-black/10 text-ui-text-muted hover:bg-black/5 hover:text-ui-text',
               ]"
               @mousedown="onTabMouseDown($event)"
               @auxclick="onTabAuxClick($event, path)"
               @click="selectTab(path)"
             >
-              <div
-                v-if="isActive(path)"
-                class="absolute top-0 left-0 right-0 h-0.5 bg-primary-500"
-              />
-
               <UIcon
                 name="i-heroicons-film-20-solid"
                 class="w-4 h-4 shrink-0"

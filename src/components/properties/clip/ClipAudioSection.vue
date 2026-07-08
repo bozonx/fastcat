@@ -248,7 +248,6 @@ function resetAudioParameters() {
             :model-value="audioGainDb"
             :level-db="props.audioLevelDb"
             :max-db="6.0206"
-            :wheel-without-focus="true"
             @update:model-value="onVolumeUpdate"
             @drag-start="onVolumeDragStart"
             @drag-end="onVolumeDragEnd"

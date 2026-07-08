@@ -131,4 +131,14 @@ describe('ClipAudioSection', () => {
     const dbSliderInput = section.findComponent(DbSlider);
     expect(dbSliderInput.props('disabled')).toBeFalsy();
   });
+
+  it('does not update clip volume on mouse wheel without focus', async () => {
+    const wrapper = await mountWithNuxt(ClipAudioSection, {
+      props: createAudioSectionProps(),
+    });
+
+    const dbSliderInput = wrapper.findComponent(DbSlider);
+
+    expect(dbSliderInput.props('wheelWithoutFocus')).toBe(false);
+  });
 });

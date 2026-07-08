@@ -120,5 +120,13 @@ export default defineAppConfig({
         description: 'select-text',
       },
     },
+    toaster: {
+      slots: {
+        // Default viewport sits at z-[100], below every modal (1050) and drawer
+        // (1030), so toasts raised from inside a modal render under its overlay.
+        // Lift it above the modal/tooltip layers so notifications stay visible.
+        viewport: 'z-[var(--z-toast)]',
+      },
+    },
   },
 });
