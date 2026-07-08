@@ -165,7 +165,7 @@ export function useGeneralHotkeys(
           timelineStore.setTimelineZoom(
             stepTimelineZoomPosition(timelineStore.timelineZoom, params.direction),
           );
-        } else if (focusStore.effectiveFocus === 'monitor') {
+        } else if (focusStore.canUseMonitorHotkeys) {
           uiStore.triggerMonitorZoom(params.direction);
         } else if (isPreviewFocus()) {
           uiStore.triggerPreviewZoom(params.direction);
@@ -491,7 +491,7 @@ export function useGeneralHotkeys(
         fileManagerStore.setGridCardSize(FILE_BROWSER_GRID_SIZES[0] ?? 80);
       } else if (focusStore.effectiveFocus === 'timeline') {
         timelineStore.setTimelineZoom(DEFAULT_TIMELINE_ZOOM_POSITION);
-      } else if (focusStore.effectiveFocus === 'monitor') {
+      } else if (focusStore.canUseMonitorHotkeys) {
         uiStore.triggerMonitorZoomReset();
       } else if (isPreviewFocus()) {
         uiStore.triggerPreviewZoomReset();
@@ -501,7 +501,7 @@ export function useGeneralHotkeys(
     'general.zoomFit': () => {
       if (focusStore.effectiveFocus === 'timeline') {
         timelineStore.fitTimelineZoom();
-      } else if (focusStore.effectiveFocus === 'monitor') {
+      } else if (focusStore.canUseMonitorHotkeys) {
         uiStore.triggerMonitorZoomFit();
       } else if (isPreviewFocus()) {
         uiStore.triggerPreviewZoomFit();

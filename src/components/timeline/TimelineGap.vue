@@ -194,7 +194,7 @@ function onClick(e: MouseEvent) {
       :style="style"
       @pointerdown="onPointerdown"
       @click.stop="onClick"
-      @contextmenu.prevent.stop
+      @contextmenu.prevent
     />
   </UContextMenu>
 

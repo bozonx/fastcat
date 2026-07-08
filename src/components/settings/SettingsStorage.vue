@@ -136,23 +136,18 @@ function clearCache() {
         :label="t('videoEditor.settings.commonFilesFolder')"
         :help="t('videoEditor.settings.commonFilesFolderHelp')"
       >
-        <div class="flex flex-col gap-2">
-          <div class="flex gap-2">
-            <UiTextInput v-model="contentRootPath" full-width />
-            <UButton
-              color="neutral"
-              variant="soft"
-              icon="i-heroicons-folder-open"
-              @click="pickDesktopPath('content')"
-            />
-          </div>
-          <div class="text-xs text-ui-text-muted mt-0.5">
-            {{ t('videoEditor.settings.resolvedPathLabel') }}
-            <code
-              class="bg-ui-bg-elevated/40 px-1 py-0.5 rounded truncate inline-block max-w-full align-bottom"
-              >{{ workspaceStore.resolvedStorageTopology.commonRoot }}</code
-            >
-          </div>
+        <div class="flex gap-2">
+          <UiTextInput
+            v-model="contentRootPath"
+            full-width
+            :placeholder="workspaceStore.resolvedStorageTopology.commonRoot"
+          />
+          <UButton
+            color="neutral"
+            variant="soft"
+            icon="i-heroicons-folder-open"
+            @click="pickDesktopPath('content')"
+          />
         </div>
       </UiFormField>
 
@@ -161,23 +156,18 @@ function clearCache() {
         :label="t('videoEditor.settings.defaultProjectsFolder')"
         :help="t('videoEditor.settings.defaultProjectsFolderHelp')"
       >
-        <div class="flex flex-col gap-2">
-          <div class="flex gap-2">
-            <UiTextInput v-model="dataRootPath" full-width />
-            <UButton
-              color="neutral"
-              variant="soft"
-              icon="i-heroicons-folder-open"
-              @click="pickDesktopPath('data')"
-            />
-          </div>
-          <div class="text-xs text-ui-text-muted mt-0.5">
-            {{ t('videoEditor.settings.resolvedPathLabel') }}
-            <code
-              class="bg-ui-bg-elevated/40 px-1 py-0.5 rounded truncate inline-block max-w-full align-bottom"
-              >{{ workspaceStore.resolvedStorageTopology.projectsRoot }}</code
-            >
-          </div>
+        <div class="flex gap-2">
+          <UiTextInput
+            v-model="dataRootPath"
+            full-width
+            :placeholder="workspaceStore.resolvedStorageTopology.projectsRoot"
+          />
+          <UButton
+            color="neutral"
+            variant="soft"
+            icon="i-heroicons-folder-open"
+            @click="pickDesktopPath('data')"
+          />
         </div>
       </UiFormField>
 
@@ -186,23 +176,18 @@ function clearCache() {
         :label="t('videoEditor.settings.proxiesFolder')"
         :help="t('videoEditor.settings.proxiesFolderHelp')"
       >
-        <div class="flex flex-col gap-2">
-          <div class="flex gap-2">
-            <UiTextInput v-model="proxiesRootPath" full-width />
-            <UButton
-              color="neutral"
-              variant="soft"
-              icon="i-heroicons-folder-open"
-              @click="pickDesktopPath('proxies')"
-            />
-          </div>
-          <div class="text-xs text-ui-text-muted mt-0.5">
-            {{ t('videoEditor.settings.resolvedPathLabel') }}
-            <code
-              class="bg-ui-bg-elevated/40 px-1 py-0.5 rounded truncate inline-block max-w-full align-bottom"
-              >{{ workspaceStore.resolvedStorageTopology.proxiesRoot }}</code
-            >
-          </div>
+        <div class="flex gap-2">
+          <UiTextInput
+            v-model="proxiesRootPath"
+            full-width
+            :placeholder="workspaceStore.resolvedStorageTopology.proxiesRoot"
+          />
+          <UButton
+            color="neutral"
+            variant="soft"
+            icon="i-heroicons-folder-open"
+            @click="pickDesktopPath('proxies')"
+          />
         </div>
       </UiFormField>
 

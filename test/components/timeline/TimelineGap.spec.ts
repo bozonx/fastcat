@@ -119,4 +119,21 @@ describe('TimelineGap', () => {
     const div = component.find('div.absolute');
     expect(div.classes()).toContain('border-primary-500');
   });
+
+  it('lets the contextmenu event bubble up so the gap context menu can open', async () => {
+    const component = await mountSuspended(TimelineGap, {
+      props: { item, trackId: 'v1' },
+      attachTo: document.body,
+    });
+
+    const gapElement = component.find('div.absolute');
+    const event = new MouseEvent('contextmenu', { bubbles: true, cancelable: true });
+    (gapElement.element as HTMLElement).dispatchEvent(event);
+
+    // preventDefault is called (suppresses native browser menu) but propagation must continue
+    expect(event.defaultPrevented).toBe(true);
+    expect(event.cancelBubble).toBe(false);
+
+    component.unmount();
+  });
 });

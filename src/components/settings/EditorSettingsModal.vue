@@ -110,6 +110,19 @@ watch(
             @click="activeSection = 'user.general'"
           />
           <UiToggleButton
+            :model-value="activeSection === 'user.ui'"
+            :label="t('videoEditor.settings.userUi')"
+            inactive-color="neutral"
+            active-color="neutral"
+            :active-bg="'color-mix(in srgb, var(--selection-accent-500) 15%, transparent)'"
+            :active-text="'var(--selection-accent-400)'"
+            inactive-variant="ghost"
+            active-variant="soft"
+            no-toggle
+            class="justify-start"
+            @click="activeSection = 'user.ui'"
+          />
+          <UiToggleButton
             :model-value="activeSection === 'user.hotkeys'"
             :label="t('videoEditor.settings.userHotkeys')"
             inactive-color="neutral"
@@ -214,19 +227,6 @@ watch(
             no-toggle
             class="justify-start"
             @click="activeSection = 'user.integrations'"
-          />
-          <UiToggleButton
-            :model-value="activeSection === 'user.ui'"
-            :label="t('videoEditor.settings.userUi')"
-            inactive-color="neutral"
-            active-color="neutral"
-            :active-bg="'color-mix(in srgb, var(--selection-accent-500) 15%, transparent)'"
-            :active-text="'var(--selection-accent-400)'"
-            inactive-variant="ghost"
-            active-variant="soft"
-            no-toggle
-            class="justify-start"
-            @click="activeSection = 'user.ui'"
           />
           <UiToggleButton
             :model-value="activeSection === 'workspace.storage'"

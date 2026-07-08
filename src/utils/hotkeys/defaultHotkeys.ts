@@ -202,15 +202,15 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     { id: 'general.projectTabBackups', groupId: 'general', title: 'Switch to Backups tab' },
 
     // Табы таймлайна
-    { id: 'general.tab1', groupId: 'general', title: 'Switch to tab 1' },
-    { id: 'general.tab2', groupId: 'general', title: 'Switch to tab 2' },
-    { id: 'general.tab3', groupId: 'general', title: 'Switch to tab 3' },
-    { id: 'general.tab4', groupId: 'general', title: 'Switch to tab 4' },
-    { id: 'general.tab5', groupId: 'general', title: 'Switch to tab 5' },
-    { id: 'general.tab6', groupId: 'general', title: 'Switch to tab 6' },
-    { id: 'general.tab7', groupId: 'general', title: 'Switch to tab 7' },
-    { id: 'general.tab8', groupId: 'general', title: 'Switch to tab 8' },
-    { id: 'general.tab9', groupId: 'general', title: 'Switch to tab 9' },
+    { id: 'general.tab1', groupId: 'general', title: 'Switch to timeline tab 1' },
+    { id: 'general.tab2', groupId: 'general', title: 'Switch to timeline tab 2' },
+    { id: 'general.tab3', groupId: 'general', title: 'Switch to timeline tab 3' },
+    { id: 'general.tab4', groupId: 'general', title: 'Switch to timeline tab 4' },
+    { id: 'general.tab5', groupId: 'general', title: 'Switch to timeline tab 5' },
+    { id: 'general.tab6', groupId: 'general', title: 'Switch to timeline tab 6' },
+    { id: 'general.tab7', groupId: 'general', title: 'Switch to timeline tab 7' },
+    { id: 'general.tab8', groupId: 'general', title: 'Switch to timeline tab 8' },
+    { id: 'general.tab9', groupId: 'general', title: 'Switch to timeline tab 9' },
 
     // Прочие общие операции
     { id: 'general.fullscreen', groupId: 'general', title: 'Toggle fullscreen' },

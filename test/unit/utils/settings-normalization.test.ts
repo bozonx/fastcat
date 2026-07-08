@@ -252,7 +252,7 @@ describe('settings normalization', () => {
     expect(normalized.mouse.ruler.wheel).toBe('seek_frame');
     expect(normalized.mouse.ruler.wheelShift).toBe('seek_second');
     expect(normalized.mouse.ruler.wheelSecondary).toBe('zoom_horizontal');
-    expect(normalized.mouse.ruler.wheelSecondaryShift).toBe('zoom_horizontal');
+    expect(normalized.mouse.ruler.wheelSecondaryShift).toBe('zoom_horizontal_to_playhead');
     expect(normalized.mouse.ruler.middleClick).toBe('none');
     expect(normalized.mouse.ruler.doubleClick).toBe('add_marker');
 

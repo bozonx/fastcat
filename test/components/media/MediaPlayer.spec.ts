@@ -233,4 +233,33 @@ describe('MediaPlayer.vue', () => {
     await component.setProps({ src: 'http://example.com/new.mp4' });
     expect(resetState).toHaveBeenCalled();
   });
+
+  it('captures playback state for fullscreen transfers before pausing', async () => {
+    const component = await mountWithNuxt(MediaPlayer, {
+      props: {
+        src: 'http://example.com/test.mp4',
+        type: 'video',
+        instanceKey: 'inline',
+      },
+    });
+
+    const { useMediaPlayerPlayback } = await import('~/composables/preview/useMediaPlayerPlayback');
+    const playback = (useMediaPlayerPlayback as any).mock.results[0].value;
+    playback.isPlaying.value = true;
+    playback.currentTime.value = 12;
+
+    const video = component.find('video').element as HTMLVideoElement;
+    video.currentTime = 12;
+    const pause = vi.spyOn(video, 'pause').mockImplementation(() => undefined);
+
+    const snapshot = (component.vm as any).capturePlaybackStateForTransfer();
+
+    expect(snapshot).toEqual({
+      currentTime: 12,
+      isPlaying: true,
+      source: 'inline',
+    });
+    expect(component.emitted('sync-state')?.at(-1)?.[0]).toEqual(snapshot);
+    expect(pause).toHaveBeenCalled();
+  });
 });

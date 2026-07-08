@@ -23,6 +23,16 @@ interface MediaPlaybackTransferState {
   source: 'inline' | 'modal';
 }
 
+interface MediaPlaybackSnapshot {
+  currentTime: number;
+  isPlaying: boolean;
+  source: 'inline' | 'modal';
+}
+
+interface MediaPlayerTransferHandle {
+  capturePlaybackStateForTransfer?: () => MediaPlaybackSnapshot;
+}
+
 const { t } = useI18n();
 const uiStore = useUiStore();
 const workspaceStore = useWorkspaceStore();
@@ -64,6 +74,8 @@ const props = withDefaults(
 const isMediaModalOpen = ref(false);
 const isTextModalOpen = ref(false);
 const mediaPlaybackState = ref<MediaPlaybackTransferState | null>(null);
+const inlineMediaPlayer = ref<MediaPlayerTransferHandle | null>(null);
+const modalMediaPlayer = ref<MediaPlayerTransferHandle | null>(null);
 
 function blurActiveElement() {
   (document.activeElement as HTMLElement | null)?.blur?.();
@@ -71,12 +83,26 @@ function blurActiveElement() {
 
 function openMediaModal() {
   blurActiveElement();
+  captureMediaPlaybackState(inlineMediaPlayer.value);
   isMediaModalOpen.value = true;
 }
 
 function closeMediaModal() {
   blurActiveElement();
+  captureMediaPlaybackState(modalMediaPlayer.value);
   isMediaModalOpen.value = false;
+}
+
+function captureMediaPlaybackState(handle: MediaPlayerTransferHandle | null) {
+  if (props.mediaType !== 'video') return;
+
+  const snapshot = handle?.capturePlaybackStateForTransfer?.();
+  if (!snapshot) return;
+
+  mediaPlaybackState.value = {
+    ...snapshot,
+    token: Date.now(),
+  };
 }
 
 function onMediaSyncState(payload: {
@@ -100,7 +126,8 @@ watch(
     if (props.mediaType === 'text') {
       isTextModalOpen.value = !isTextModalOpen.value;
     } else if (props.mediaType !== 'audio') {
-      isMediaModalOpen.value = !isMediaModalOpen.value;
+      if (isMediaModalOpen.value) closeMediaModal();
+      else openMediaModal();
     }
   },
 );
@@ -162,6 +189,7 @@ onUnmounted(() => {
 
     <template v-else-if="(props.mediaType === 'video' || props.mediaType === 'audio') && props.url">
       <MediaPlayer
+        ref="inlineMediaPlayer"
         :src="props.url"
         :type="props.mediaType"
         :is-modal="false"
@@ -237,6 +265,7 @@ onUnmounted(() => {
 
         <template v-else-if="props.mediaType === 'video' && props.url">
           <MediaPlayer
+            ref="modalMediaPlayer"
             :src="props.url"
             type="video"
             :is-modal="true"

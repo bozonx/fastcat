@@ -1236,6 +1236,61 @@ describe('useEditorHotkeys', () => {
       },
     ]);
   });
+
+  it('routes global zoom hotkeys to monitor zoom when a dynamic monitor panel is focused', async () => {
+    wrapper = mount(HotkeysHarness);
+    const focusStore = useFocusStore();
+    const projectStore = useProjectStore();
+    const uiStore = useUiStore();
+
+    projectStore.setView('cut');
+    // Dynamic monitor panel focus (e.g. monitor detached into a dock panel)
+    focusStore.setPanelFocus('dynamic:monitor:detached');
+
+    const monitorZoomSpy = vi.spyOn(uiStore, 'triggerMonitorZoom');
+    const monitorZoomResetSpy = vi.spyOn(uiStore, 'triggerMonitorZoomReset');
+    const monitorZoomFitSpy = vi.spyOn(uiStore, 'triggerMonitorZoomFit');
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: '=', code: 'Equal', bubbles: true }));
+    expect(monitorZoomSpy).toHaveBeenCalledWith(1);
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: '-', code: 'Minus', bubbles: true }));
+    expect(monitorZoomSpy).toHaveBeenCalledWith(-1);
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: '0', code: 'Digit0', bubbles: true }));
+    expect(monitorZoomResetSpy).toHaveBeenCalledOnce();
+
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', { key: '0', code: 'Digit0', shiftKey: true, bubbles: true }),
+    );
+    expect(monitorZoomFitSpy).toHaveBeenCalledOnce();
+  });
+
+  it('sets selection in/out points globally regardless of focused panel', async () => {
+    wrapper = mount(HotkeysHarness);
+    const focusStore = useFocusStore();
+    const projectStore = useProjectStore();
+    const timelineStore = useTimelineStore() as any;
+
+    projectStore.setView('cut');
+    timelineStore.currentTime = 1_000_000;
+    const createSelectionRangeSpy = vi.fn();
+    timelineStore.getSelectionRange = vi.fn(() => null);
+    timelineStore.createSelectionRange = createSelectionRangeSpy;
+    timelineStore.updateSelectionRange = vi.fn();
+
+    // Focus an unrelated panel (e.g. properties) — I/O must still work.
+    focusStore.setPanelFocus('properties');
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'i', code: 'KeyI', bubbles: true }));
+    expect(createSelectionRangeSpy).toHaveBeenCalledOnce();
+
+    createSelectionRangeSpy.mockClear();
+    timelineStore.getSelectionRange = vi.fn(() => ({ startUs: 0, endUs: 2_000_000 }));
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'o', code: 'KeyO', bubbles: true }));
+    expect(timelineStore.updateSelectionRange).toHaveBeenCalledOnce();
+  });
 });
 
 describe('getActiveElement', () => {

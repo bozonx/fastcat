@@ -19,6 +19,17 @@ vi.mock('~/components/media/MediaPlayer.vue', () => ({
     template: '<div class="media-player-mock" @click="$emit(\'open-modal\')">Media Player</div>',
     props: ['src', 'type', 'isModal', 'focusPanelId', 'resumeState', 'instanceKey', 'forcePaused'],
     emits: ['open-modal', 'close-modal', 'sync-state'],
+    setup(props: any, { expose }: any) {
+      expose({
+        capturePlaybackStateForTransfer: () => ({
+          currentTime: props.isModal ? 22 : 10,
+          isPlaying: true,
+          source: props.instanceKey,
+        }),
+      });
+
+      return {};
+    },
   },
 }));
 
@@ -157,6 +168,33 @@ describe('FilePreview.vue', () => {
     // In modal, MediaPlayer should receive this state through resumeState prop
     // We can't easily check props of a component inside a v-if inside a Teleport
     // without more complex setup, but we verified the state update.
+  });
+
+  it('captures modal playback state before returning to inline player', async () => {
+    const component = await mountWithNuxt(FilePreview, {
+      props: {
+        url: 'http://example.com/test.mp4',
+        mediaType: 'video',
+      },
+    });
+
+    const mediaPlayer = component.findComponent({ name: 'MediaPlayer' });
+    await mediaPlayer.vm.$emit('open-modal');
+    await component.vm.$nextTick();
+
+    expect((component.vm as any).isMediaModalOpen).toBe(true);
+
+    await (component.vm as any).closeMediaModal();
+    await component.vm.$nextTick();
+
+    expect((component.vm as any).isMediaModalOpen).toBe(false);
+    expect((component.vm as any).mediaPlaybackState).toEqual(
+      expect.objectContaining({
+        currentTime: 22,
+        isPlaying: true,
+        source: 'modal',
+      }),
+    );
   });
 
   it('closes modal on Esc key', async () => {

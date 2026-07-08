@@ -19,6 +19,12 @@ interface MediaPlaybackTransferState {
   source: 'inline' | 'modal';
 }
 
+interface MediaPlaybackSnapshot {
+  currentTime: number;
+  isPlaying: boolean;
+  source: 'inline' | 'modal';
+}
+
 const { t } = useI18n();
 const uiStore = useUiStore();
 const focusStore = useFocusStore();
@@ -48,6 +54,7 @@ const emit = defineEmits<{
 const mediaElement = ref<HTMLVideoElement | HTMLAudioElement | null>(null);
 const playerRootEl = ref<HTMLElement | null>(null);
 const { applyVolume } = useMediaElementGain(mediaElement, volume, isMuted, { maxGain: 2 });
+let suppressNextTransferPauseSync = false;
 
 const {
   isPlaying,
@@ -135,6 +142,10 @@ const contextMenuItems = computed(() => [
 
 function emitPlaybackState() {
   if (props.forcePaused) return;
+  if (suppressNextTransferPauseSync) {
+    suppressNextTransferPauseSync = false;
+    return;
+  }
   emit('sync-state', {
     currentTime: currentTime.value,
     isPlaying: isPlaying.value,
@@ -198,6 +209,27 @@ function onSeekEnd() {
     mediaElement.value?.play();
   }
 }
+
+function capturePlaybackStateForTransfer(): MediaPlaybackSnapshot {
+  const snapshot = {
+    currentTime: mediaElement.value?.currentTime ?? currentTime.value,
+    isPlaying: isPlaying.value,
+    source: props.instanceKey ?? 'inline',
+  };
+
+  emit('sync-state', snapshot);
+
+  if (mediaElement.value && isPlaying.value) {
+    suppressNextTransferPauseSync = true;
+    mediaElement.value.pause();
+  }
+
+  return snapshot;
+}
+
+defineExpose({
+  capturePlaybackStateForTransfer,
+});
 
 // Reset state when src changes
 watch(

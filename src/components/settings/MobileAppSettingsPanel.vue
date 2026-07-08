@@ -31,13 +31,13 @@ const isNativeAudioPluginsAvailable = getPlatformCapabilities().nativeAudioPlugi
 
 const SETTINGS_SECTIONS: readonly SettingsSection[] = [
   'user.general',
+  'user.ui',
   'user.proxy',
   'user.export',
   'user.video',
   'user.audio',
   ...(isNativeAudioPluginsAvailable ? (['user.audioPlugins'] as const) : []),
   'user.integrations',
-  'user.ui',
   'workspace.storage',
 ];
 
@@ -58,6 +58,7 @@ watch(activeSection, (section) => {
 
 const sections = computed(() => [
   { value: 'user.general', label: t('videoEditor.settings.userGeneral') },
+  { value: 'user.ui', label: t('videoEditor.settings.userUi') },
   { value: 'user.proxy', label: t('videoEditor.settings.userProxy') },
   { value: 'user.export', label: t('videoEditor.settings.userExport') },
   { value: 'user.video', label: t('videoEditor.settings.userVideo') },
@@ -66,7 +67,6 @@ const sections = computed(() => [
     ? [{ value: 'user.audioPlugins', label: t('videoEditor.settings.userAudioPlugins') }]
     : []),
   { value: 'user.integrations', label: t('videoEditor.settings.userIntegrations') },
-  { value: 'user.ui', label: t('videoEditor.settings.userUi') },
   { value: 'workspace.storage', label: t('videoEditor.settings.workspaceStorage') },
 ]);
 
