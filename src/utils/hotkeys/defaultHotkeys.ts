@@ -566,9 +566,9 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     'general.tab9': ['Shift+9'],
 
     'timeline.duplicate': [`${Mod}+Shift+S`],
-    'general.navigateBack': ['Backspace', 'z'],
-    'general.navigateForward': ['Shift+Backspace'],
-    'general.navigateUp': [`${Mod}+ArrowUp`],
+    'general.navigateBack': ['z'],
+    'general.navigateForward': [],
+    'general.navigateUp': [`${Mod}+ArrowUp`, 'Backspace'],
     'general.createFolder': ['Ctrl+\\'],
 
     'timeline.addTextClipAtPlayhead': ['N'],

@@ -67,15 +67,20 @@ describe('DEFAULT_HOTKEYS', () => {
     expect(DEFAULT_HOTKEYS.bindings['timeline.centerPlayhead']).toContain('Shift+/');
   });
 
-  it('has navigateForward with Shift+Backspace', () => {
-    expect(DEFAULT_HOTKEYS.bindings['general.navigateForward']).toBeDefined();
-    expect(DEFAULT_HOTKEYS.bindings['general.navigateForward']).toContain('Shift+Backspace');
+  it('has navigateForward without Shift+Backspace', () => {
+    expect(DEFAULT_HOTKEYS.bindings['general.navigateForward'] ?? []).not.toContain('Shift+Backspace');
   });
 
-  it('has navigateBack with Backspace and z', () => {
+  it('has navigateBack with z only', () => {
     expect(DEFAULT_HOTKEYS.bindings['general.navigateBack']).toBeDefined();
-    expect(DEFAULT_HOTKEYS.bindings['general.navigateBack']).toContain('Backspace');
     expect(DEFAULT_HOTKEYS.bindings['general.navigateBack']).toContain('z');
+    expect(DEFAULT_HOTKEYS.bindings['general.navigateBack']).not.toContain('Backspace');
+  });
+
+  it('has navigateUp with Ctrl+ArrowUp and Backspace', () => {
+    expect(DEFAULT_HOTKEYS.bindings['general.navigateUp']).toBeDefined();
+    expect(DEFAULT_HOTKEYS.bindings['general.navigateUp']).toContain('Ctrl+ArrowUp');
+    expect(DEFAULT_HOTKEYS.bindings['general.navigateUp']).toContain('Backspace');
   });
 
   it('has jumpPrevBoundary with A and ArrowUp', () => {
