@@ -2238,7 +2238,10 @@ export class WebGpuComputeRunner {
       label: 'web-transition-output',
       size: { width, height },
       format: 'rgba8unorm',
-      usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.COPY_SRC,
+      usage:
+        GPUTextureUsage.TEXTURE_BINDING |
+        GPUTextureUsage.STORAGE_BINDING |
+        GPUTextureUsage.COPY_SRC,
     });
     if (!this.transUniformBuffer) {
       this.transUniformBuffer = this.device!.createBuffer({
