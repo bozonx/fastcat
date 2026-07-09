@@ -2,11 +2,38 @@ import { describe, it, expect, vi } from 'vitest';
 import {
   buildPasses,
   buildBlurFillPasses,
+  resolveEffectTextureSize,
   WebGpuComputeRunner,
 } from '~/utils/video-editor/compositor/WebGpuComputeRunner';
 import type { VideoEffectSpec } from '~/types/generated/native-monitor/VideoEffectSpec';
 
 describe('buildPasses', () => {
+  it('resolves padded texture size for bleed effects', () => {
+    const effects: VideoEffectSpec[] = [{ type: 'gaussian-blur', radius: 10, bleed: true }];
+
+    expect(resolveEffectTextureSize({ width: 128, height: 72, effects })).toEqual({
+      width: 132,
+      height: 76,
+      contentWidth: 128,
+      contentHeight: 72,
+      padding: 2,
+    });
+    expect(
+      resolveEffectTextureSize({
+        width: 128,
+        height: 72,
+        effects,
+        options: { enablePadding: false },
+      }),
+    ).toEqual({
+      width: 128,
+      height: 72,
+      contentWidth: 128,
+      contentHeight: 72,
+      padding: 0,
+    });
+  });
+
   it('includes custom-wgsl in pass chain', () => {
     const effects: VideoEffectSpec[] = [
       { type: 'brightness', value: 1.2 },

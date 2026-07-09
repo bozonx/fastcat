@@ -116,6 +116,8 @@ function resetTransitionState(clip: CompositorClip): void {
   clip.transitionOutputTexture = null;
   clip.transitionCombinedTexture = null;
   clip.effectRenderTexture = null;
+  clip.effectTextureW = undefined;
+  clip.effectTextureH = undefined;
 }
 
 function resetEffectFilters(clip: CompositorClip): void {

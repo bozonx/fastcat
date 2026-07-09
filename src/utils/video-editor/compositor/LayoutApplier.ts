@@ -166,11 +166,11 @@ export class LayoutApplier {
       transform: clipTransform,
     });
 
-    // The blur "bleed" path pads the effect output around the frame. The
-    // ImageSource is resized before Pixi's texture internals necessarily expose
-    // that new size, so derive padding from the source object we control.
-    const imageSourceW = Number(clip.imageSource?.width);
-    const imageSourceH = Number(clip.imageSource?.height);
+    // The blur "bleed" path pads the effect output around the frame. GPU effect
+    // outputs can bypass imageSource, so prefer the explicit committed texture
+    // size when present and fall back to the source object we control.
+    const imageSourceW = Number(clip.effectTextureW ?? clip.imageSource?.width);
+    const imageSourceH = Number(clip.effectTextureH ?? clip.imageSource?.height);
     const textureW = Number.isFinite(imageSourceW) && imageSourceW > 0 ? imageSourceW : frameW;
     const textureH = Number.isFinite(imageSourceH) && imageSourceH > 0 ? imageSourceH : frameH;
     const paddingX = Math.max(0, Math.round((textureW - frameW) / 2));

@@ -74,6 +74,8 @@ describe('resetCompositorClipsAfterContextRestored', () => {
       transitionOutputTexture: { close: outputClose } as any,
       transitionCombinedTexture: { close: combinedClose } as any,
       effectRenderTexture: { close: effectClose } as any,
+      effectTextureW: 132,
+      effectTextureH: 76,
     } as unknown as CompositorClip;
 
     resetCompositorClipsAfterContextRestored([clip]);
@@ -93,6 +95,8 @@ describe('resetCompositorClipsAfterContextRestored', () => {
     expect(clip.transitionOutputTexture).toBeNull();
     expect(clip.transitionCombinedTexture).toBeNull();
     expect(clip.effectRenderTexture).toBeNull();
+    expect(clip.effectTextureW).toBeUndefined();
+    expect(clip.effectTextureH).toBeUndefined();
   });
 
   it('resets HUD media states (background, content, frame)', () => {

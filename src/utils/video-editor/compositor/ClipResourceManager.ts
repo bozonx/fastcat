@@ -14,7 +14,10 @@ import {
   estimateVideoFrameSizeBytes,
 } from './VideoFrameCache';
 import type { CanvasFallbackRenderer } from './renderers/CanvasFallbackRenderer';
-import type { WebGpuComputeRunner } from './WebGpuComputeRunner';
+import {
+  resolveEffectTextureSize,
+  type WebGpuComputeRunner,
+} from './WebGpuComputeRunner';
 import { buildEffectSpecs } from '~/effects';
 import { compositorPerfStats } from './CompositorPerfStats';
 const log = createDevLogger('ClipResourceManager');
@@ -72,9 +75,11 @@ export class ClipResourceManager {
 
   private restoreClipImageSourceTexture(clip: CompositorClip): void {
     if (!clip.sprite || (clip.sprite as { destroyed?: boolean }).destroyed) return;
-    if ((clip.sprite as Sprite).texture.source === clip.imageSource) return;
-
-    (clip.sprite as Sprite).texture = new Texture({ source: clip.imageSource, dynamic: true });
+    if ((clip.sprite as Sprite).texture.source !== clip.imageSource) {
+      (clip.sprite as Sprite).texture = new Texture({ source: clip.imageSource, dynamic: true });
+    }
+    clip.effectTextureW = undefined;
+    clip.effectTextureH = undefined;
   }
 
   /**
@@ -186,6 +191,8 @@ export class ClipResourceManager {
           // clip transform, mirroring the native `Transform::center_fit` reset.
           clip.effectSourceW = this.context.width;
           clip.effectSourceH = this.context.height;
+          clip.effectTextureW = processedW;
+          clip.effectTextureH = processedH;
           clip.effectIgnoreTransform = true;
           this.context
             .getLayoutApplier()
@@ -197,6 +204,8 @@ export class ClipResourceManager {
           // baked into `processed` is treated as padding, not content.
           clip.effectSourceW = sourceW;
           clip.effectSourceH = sourceH;
+          clip.effectTextureW = processedW;
+          clip.effectTextureH = processedH;
           clip.effectIgnoreTransform = false;
           this.context.getLayoutApplier().applySpriteLayout(sourceW, sourceH, clip);
         }
@@ -730,6 +739,50 @@ export class ClipResourceManager {
                     type: 'blur-fill';
                   };
                   const otherSpecs = effectSpecs.filter((_, i) => i !== blurFillIndex);
+                  const projectW = this.context.width;
+                  const projectH = this.context.height;
+                  if (
+                    otherSpecs.length === 0 &&
+                    typeof runner.applyBlurFillSourceToTexture === 'function'
+                  ) {
+                    clip.effectRenderTexture = this.ensureEffectRenderTexture(
+                      clip.effectRenderTexture ?? null,
+                      projectW,
+                      projectH,
+                    );
+                    const renderedOnGpu = await runner.applyBlurFillSourceToTexture({
+                      source: frame,
+                      target: clip.effectRenderTexture,
+                      frameW: projectW,
+                      frameH: projectH,
+                      fgScale: blurFill.fg_scale,
+                      bgScale: blurFill.bg_scale,
+                      blur: blurFill.blur,
+                      bgDim: blurFill.bg_dim,
+                      bgSaturation: blurFill.bg_saturation,
+                      tintColor: blurFill.tint_color,
+                      tintStrength: blurFill.tint_strength,
+                      fgOffsetY: blurFill.fg_offset_y,
+                    });
+                    if (renderedOnGpu) {
+                      safeDispose(frame);
+                      if (clip.sprite) {
+                        (clip.sprite as Sprite).texture = clip.effectRenderTexture;
+                      }
+                      clip.lastVideoFrame = null;
+                      clip.effectSourceW = projectW;
+                      clip.effectSourceH = projectH;
+                      clip.effectTextureW = renderedOnGpu.width;
+                      clip.effectTextureH = renderedOnGpu.height;
+                      clip.effectIgnoreTransform = true;
+                      this.context
+                        .getLayoutApplier()
+                        .applySpriteLayout(projectW, projectH, clip, {
+                          ignoreClipTransform: true,
+                        });
+                      return;
+                    }
+                  }
                   // Keep `frame` alive until we know the final result. Disposing it
                   // before blur-fill committed used to leave a closed VideoFrame as
                   // the texture resource whenever blur-fill returned null or threw.
@@ -738,8 +791,6 @@ export class ClipResourceManager {
                     intermediate = await runner.applyEffects(frame, otherSpecs);
                   }
                   const source: VideoFrame | ImageBitmap = intermediate ?? frame;
-                  const projectW = this.context.width;
-                  const projectH = this.context.height;
                   const processed = await runner.applyBlurFill({
                     source,
                     frameW: projectW,
@@ -757,6 +808,7 @@ export class ClipResourceManager {
                     // Success: both the raw frame and the intermediate are consumed.
                     safeDispose(frame);
                     if (intermediate) safeDispose(intermediate as unknown as VideoFrame);
+                    this.restoreClipImageSourceTexture(clip);
                     if (
                       clip.imageSource.width !== projectW ||
                       clip.imageSource.height !== projectH
@@ -771,6 +823,8 @@ export class ClipResourceManager {
                     // `Transform::center_fit` reset so both backends match.
                     clip.effectSourceW = projectW;
                     clip.effectSourceH = projectH;
+                    clip.effectTextureW = projectW;
+                    clip.effectTextureH = projectH;
                     clip.effectIgnoreTransform = true;
                     this.context
                       .getLayoutApplier()
@@ -782,6 +836,7 @@ export class ClipResourceManager {
                   // fall through to the raw-frame path below with the intact frame.
                   if (intermediate) {
                     safeDispose(frame);
+                    this.restoreClipImageSourceTexture(clip);
                     const intermediateW = (intermediate as { width?: number }).width ?? frameW;
                     const intermediateH = (intermediate as { height?: number }).height ?? frameH;
                     if (
@@ -795,15 +850,23 @@ export class ClipResourceManager {
                     clip.lastVideoFrame = intermediate;
                     clip.effectSourceW = frameW;
                     clip.effectSourceH = frameH;
+                    clip.effectTextureW = intermediateW;
+                    clip.effectTextureH = intermediateH;
                     clip.effectIgnoreTransform = false;
                     this.context.getLayoutApplier().applySpriteLayout(frameW, frameH, clip);
                     return;
                   }
                 } else {
+                  const outputSize = resolveEffectTextureSize({
+                    width: frameW,
+                    height: frameH,
+                    effects:
+                      effectSpecs as import('~/types/generated/native-monitor/VideoEffectSpec').VideoEffectSpec[],
+                  });
                   clip.effectRenderTexture = this.ensureEffectRenderTexture(
                     clip.effectRenderTexture ?? null,
-                    frameW,
-                    frameH,
+                    outputSize.width,
+                    outputSize.height,
                   );
                   const renderedOnGpu =
                     typeof runner.applyEffectsSourceToTexture === 'function' &&
@@ -821,6 +884,10 @@ export class ClipResourceManager {
                     clip.lastVideoFrame = null;
                     clip.effectSourceW = frameW;
                     clip.effectSourceH = frameH;
+                    clip.effectTextureW =
+                      typeof renderedOnGpu === 'object' ? renderedOnGpu.width : outputSize.width;
+                    clip.effectTextureH =
+                      typeof renderedOnGpu === 'object' ? renderedOnGpu.height : outputSize.height;
                     clip.effectIgnoreTransform = false;
                     this.context.getLayoutApplier().applySpriteLayout(frameW, frameH, clip);
                     return;
@@ -832,6 +899,7 @@ export class ClipResourceManager {
                   );
                   if (processed) {
                     safeDispose(frame);
+                    this.restoreClipImageSourceTexture(clip);
                     // The compute runner pads the output around the frame so blur /
                     // bloom can bleed beyond the original rectangle, so the bitmap
                     // is larger than frameW×frameH. The texture source must be sized
@@ -852,6 +920,8 @@ export class ClipResourceManager {
                     clip.lastVideoFrame = processed;
                     clip.effectSourceW = frameW;
                     clip.effectSourceH = frameH;
+                    clip.effectTextureW = processedW;
+                    clip.effectTextureH = processedH;
                     clip.effectIgnoreTransform = false;
                     this.context.getLayoutApplier().applySpriteLayout(frameW, frameH, clip);
                     return;
@@ -866,6 +936,7 @@ export class ClipResourceManager {
             }
           }
 
+          this.restoreClipImageSourceTexture(clip);
           (clip.imageSource as { resource?: unknown }).resource = frame as unknown;
           clip.imageSource.update();
           clip.lastVideoFrame = frame;
@@ -874,6 +945,8 @@ export class ClipResourceManager {
           // applyClipLayoutForCurrentSource uses imageSource directly.
           clip.effectSourceW = undefined;
           clip.effectSourceH = undefined;
+          clip.effectTextureW = undefined;
+          clip.effectTextureH = undefined;
           clip.effectIgnoreTransform = undefined;
           this.context.getLayoutApplier().applySpriteLayout(frameW, frameH, clip);
 
@@ -1005,6 +1078,8 @@ export class ClipResourceManager {
       safeDispose(clip.effectRenderTexture);
       clip.effectRenderTexture = null;
     }
+    clip.effectTextureW = undefined;
+    clip.effectTextureH = undefined;
     if (clip.transitionSprite) {
       clip.transitionSprite.destroy(true);
       clip.transitionSprite = null;

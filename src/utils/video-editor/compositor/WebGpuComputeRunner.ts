@@ -97,6 +97,18 @@ export interface ApplyEffectsOptions {
   enablePadding?: boolean;
 }
 
+export interface EffectTextureSize {
+  width: number;
+  height: number;
+  contentWidth: number;
+  contentHeight: number;
+  padding: number;
+}
+
+export interface EffectTextureRenderResult extends EffectTextureSize {
+  rendered: true;
+}
+
 interface WebGpuTextureSystem {
   getGpuSource: (source: unknown) => GPUTexture;
 }
@@ -660,6 +672,27 @@ function calculatePadding(effects: VideoEffectSpec[], scale: number): number {
   return Math.ceil(maxR * 2.0);
 }
 
+export function resolveEffectTextureSize(params: {
+  width: number;
+  height: number;
+  effects: VideoEffectSpec[];
+  options?: ApplyEffectsOptions;
+}): EffectTextureSize {
+  const contentWidth = Math.max(1, Math.round(params.width));
+  const contentHeight = Math.max(1, Math.round(params.height));
+  const scale = spatialScale(contentHeight);
+  const padding =
+    params.options?.enablePadding === false ? 0 : calculatePadding(params.effects, scale);
+
+  return {
+    width: contentWidth + 2 * padding,
+    height: contentHeight + 2 * padding,
+    contentWidth,
+    contentHeight,
+    padding,
+  };
+}
+
 export class WebGpuComputeRunner {
   private previewEffectQuality: PreviewEffectQuality = 'ultra';
   private device: GPUDevice | null = null;
@@ -1157,6 +1190,15 @@ export class WebGpuComputeRunner {
     const inputTexture = this.inputTexture!;
     const inputView = this.inputView!;
 
+    if (
+      copyOriginX !== 0 ||
+      copyOriginY !== 0 ||
+      copyWidth !== inputWidth ||
+      copyHeight !== inputHeight
+    ) {
+      this.clearInputTexture(`${label}-input-clear`);
+    }
+
     this.device.queue.copyExternalImageToTexture(
       { source: uploadSource, flipY: false },
       { texture: inputTexture, origin: { x: copyOriginX, y: copyOriginY, z: 0 } },
@@ -1296,6 +1338,111 @@ export class WebGpuComputeRunner {
     });
   }
 
+  public async applyBlurFillSourceToTexture(params: {
+    source: VideoFrame | ImageBitmap;
+    target: RenderTexture;
+    frameW: number;
+    frameH: number;
+    fgScale: number;
+    bgScale: number;
+    blur: number;
+    bgDim: number;
+    bgSaturation: number;
+    tintColor: [number, number, number, number];
+    tintStrength: number;
+    fgOffsetY: number;
+  }): Promise<EffectTextureRenderResult | false> {
+    if (
+      !this.device ||
+      !this.pipeline ||
+      !this.bindLayout ||
+      !this.shaderModule ||
+      !this.sharedRendererTexture
+    ) {
+      return false;
+    }
+
+    const frameW = Math.max(1, Math.round(params.frameW));
+    const frameH = Math.max(1, Math.round(params.frameH));
+    const targetSource = params.target.source as { pixelWidth?: number; pixelHeight?: number };
+    const targetW = Math.max(1, Math.round(targetSource.pixelWidth ?? params.target.width));
+    const targetH = Math.max(1, Math.round(targetSource.pixelHeight ?? params.target.height));
+    if (targetW !== frameW || targetH !== frameH) {
+      return false;
+    }
+
+    const { uploadSource, origW, origH } = await this.prepareUploadSource(params.source);
+    const targetFormat = params.target.source.format;
+    if (!isRenderableColorFormat(targetFormat)) {
+      if (uploadSource !== params.source && 'close' in uploadSource) {
+        (uploadSource as ImageBitmap).close();
+      }
+      return false;
+    }
+
+    const passes = buildBlurFillPasses(
+      frameW,
+      frameH,
+      origW,
+      origH,
+      params.fgScale,
+      params.bgScale,
+      params.blur,
+      params.bgDim,
+      params.bgSaturation,
+      params.tintColor,
+      params.tintStrength,
+      params.fgOffsetY,
+      this.previewEffectQuality,
+    );
+    if (passes.length === 0) {
+      if (uploadSource !== params.source && 'close' in uploadSource) {
+        (uploadSource as ImageBitmap).close();
+      }
+      return false;
+    }
+
+    this.ensureInputTexture(origW, origH);
+    this.device.queue.copyExternalImageToTexture(
+      { source: uploadSource, flipY: false },
+      { texture: this.inputTexture!, origin: { x: 0, y: 0, z: 0 } },
+      { width: origW, height: origH, depthOrArrayLayers: 1 },
+    );
+    if (uploadSource !== params.source && 'close' in uploadSource) {
+      (uploadSource as ImageBitmap).close();
+    }
+
+    const outputTexture = this.executePasses({
+      inputView: this.inputView!,
+      passes,
+      outputWidth: frameW,
+      outputHeight: frameH,
+      label: 'web-blur-fill-source-texture',
+    });
+    if (!outputTexture) {
+      return false;
+    }
+
+    const rendered = this.blitTextureToRendererTarget({
+      source: outputTexture,
+      target: this.sharedRendererTexture.getGpuSource(params.target.source),
+      targetFormat,
+      width: frameW,
+      height: frameH,
+      label: 'web-blur-fill-source-texture-blit',
+    });
+    return rendered
+      ? {
+          rendered: true,
+          width: frameW,
+          height: frameH,
+          contentWidth: frameW,
+          contentHeight: frameH,
+          padding: 0,
+        }
+      : false;
+  }
+
   public async applyEffects(
     source: VideoFrame | ImageBitmap,
     effects: VideoEffectSpec[],
@@ -1308,10 +1455,10 @@ export class WebGpuComputeRunner {
 
     const { uploadSource, origW, origH } = await this.prepareUploadSource(source);
 
-    const scale = Math.max(0.1, Math.min(8.0, origH / 1080.0));
-    const padding = options.enablePadding === false ? 0 : calculatePadding(effects, scale);
-    const w = origW + 2 * padding;
-    const h = origH + 2 * padding;
+    const outputSize = resolveEffectTextureSize({ width: origW, height: origH, effects, options });
+    const { padding } = outputSize;
+    const w = outputSize.width;
+    const h = outputSize.height;
 
     const passes = buildPasses(effects, w, h, this.previewEffectQuality, {
       spatialScaleHeight: origH,
@@ -1403,7 +1550,7 @@ export class WebGpuComputeRunner {
     target: RenderTexture;
     effects: VideoEffectSpec[];
     options?: ApplyEffectsOptions;
-  }): Promise<boolean> {
+  }): Promise<EffectTextureRenderResult | false> {
     if (
       !this.device ||
       !this.pipeline ||
@@ -1416,9 +1563,17 @@ export class WebGpuComputeRunner {
     if (params.effects.length === 0) return false;
 
     const { uploadSource, origW, origH } = await this.prepareUploadSource(params.source);
-    const scale = Math.max(0.1, Math.min(8.0, origH / 1080.0));
-    const padding = params.options?.enablePadding === false ? 0 : calculatePadding(params.effects, scale);
-    if (padding !== 0) {
+    const outputSize = resolveEffectTextureSize({
+      width: origW,
+      height: origH,
+      effects: params.effects,
+      options: params.options,
+    });
+    const { padding } = outputSize;
+    const targetSource = params.target.source as { pixelWidth?: number; pixelHeight?: number };
+    const targetW = Math.max(1, Math.round(targetSource.pixelWidth ?? params.target.width));
+    const targetH = Math.max(1, Math.round(targetSource.pixelHeight ?? params.target.height));
+    if (targetW !== outputSize.width || targetH !== outputSize.height) {
       if (uploadSource !== params.source && 'close' in uploadSource) {
         (uploadSource as ImageBitmap).close();
       }
@@ -1433,9 +1588,18 @@ export class WebGpuComputeRunner {
       return false;
     }
 
-    const passes = buildPasses(params.effects, origW, origH, this.previewEffectQuality, {
-      spatialScaleHeight: origH,
-    });
+    const passes = buildPasses(
+      params.effects,
+      outputSize.width,
+      outputSize.height,
+      this.previewEffectQuality,
+      {
+        spatialScaleHeight: origH,
+        ...(padding > 0
+          ? { contentRect: { offsetX: padding, offsetY: padding, width: origW, height: origH } }
+          : {}),
+      },
+    );
     if (passes.length === 0) {
       if (uploadSource !== params.source && 'close' in uploadSource) {
         (uploadSource as ImageBitmap).close();
@@ -1443,10 +1607,13 @@ export class WebGpuComputeRunner {
       return false;
     }
 
-    this.ensureInputTexture(origW, origH);
+    this.ensureInputTexture(outputSize.width, outputSize.height);
+    if (padding > 0) {
+      this.clearInputTexture('web-effect-source-texture-input-clear');
+    }
     this.device.queue.copyExternalImageToTexture(
       { source: uploadSource, flipY: false },
-      { texture: this.inputTexture!, origin: { x: 0, y: 0, z: 0 } },
+      { texture: this.inputTexture!, origin: { x: padding, y: padding, z: 0 } },
       { width: origW, height: origH, depthOrArrayLayers: 1 },
     );
     if (uploadSource !== params.source && 'close' in uploadSource) {
@@ -1456,22 +1623,23 @@ export class WebGpuComputeRunner {
     const outputTexture = this.executePasses({
       inputView: this.inputView!,
       passes,
-      outputWidth: origW,
-      outputHeight: origH,
+      outputWidth: outputSize.width,
+      outputHeight: outputSize.height,
       label: 'web-effect-source-texture',
     });
     if (!outputTexture) {
       return false;
     }
 
-    return this.blitTextureToRendererTarget({
+    const rendered = this.blitTextureToRendererTarget({
       source: outputTexture,
       target: this.sharedRendererTexture.getGpuSource(params.target.source),
       targetFormat,
-      width: origW,
-      height: origH,
+      width: outputSize.width,
+      height: outputSize.height,
       label: 'web-effect-source-texture-blit',
     });
+    return rendered ? { rendered: true, ...outputSize } : false;
   }
 
   public async applyTransition(params: {
@@ -1843,6 +2011,25 @@ export class WebGpuComputeRunner {
     this.inputView = this.inputTexture.createView();
     this.inputCachedWidth = w;
     this.inputCachedHeight = h;
+  }
+
+  private clearInputTexture(label: string): void {
+    if (!this.device || !this.inputView) return;
+
+    const encoder = this.device.createCommandEncoder({ label });
+    const pass = encoder.beginRenderPass({
+      label,
+      colorAttachments: [
+        {
+          view: this.inputView,
+          clearValue: { r: 0, g: 0, b: 0, a: 0 },
+          loadOp: 'clear',
+          storeOp: 'store',
+        },
+      ],
+    });
+    pass.end();
+    this.device.queue.submit([encoder.finish()]);
   }
 
   private ensureUniformBuffer(passCount: number): void {
