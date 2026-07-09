@@ -1128,7 +1128,7 @@ describe('timeline/otio-serializer: transitions', () => {
     // speedActive is restored from the canonical LinearTimeWarp effect.
     expect(parsedClip.speedActive).toBe(true);
     expect(parsedClip.audioFadesActive).toBe(true);
-    expect(parsedClip.showThumbnails).toBeUndefined();
+    expect(parsedClip.showThumbnails).toBe(false);
     expect(parsedClip.opacityActive).toBe(true);
     expect(parsedClip.blendModeActive).toBe(true);
     expect(parsedClip.transformActive).toBe(true);

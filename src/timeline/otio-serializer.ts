@@ -300,6 +300,7 @@ function serializeTrackItems(
             isImage: item.isImage,
             sourceOrientation: item.sourceOrientation,
             snapToPixelGrid: item.snapToPixelGrid,
+            showThumbnails: item.showThumbnails,
           },
           flags: {
             locked: item.locked ? true : undefined,

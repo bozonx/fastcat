@@ -299,7 +299,7 @@ input[type='range'] {
   -webkit-appearance: none;
   appearance: none;
   background: transparent;
-  cursor: move;
+  cursor: ew-resize;
   height: 1rem; /* 16px */
 }
 
@@ -336,11 +336,17 @@ input[type='range']::-moz-range-thumb {
   transition: all 0.15s ease;
 }
 
-[role='slider']:not([aria-disabled='true']):not(.slider-cursor-self),
-[data-slider-track],
-[data-slider-range],
-[data-slider-thumb] {
-  cursor: move !important;
+/* Sliders: horizontal scrubbers use ew-resize, vertical use ns-resize.
+   reka-ui (USlider) exposes both aria-orientation and data-orientation.
+   `.slider-cursor-self` opts out so components can set their own cursor. */
+[role='slider']:not(.slider-cursor-self)[data-orientation='horizontal'],
+[role='slider']:not(.slider-cursor-self)[aria-orientation='horizontal'] {
+  cursor: ew-resize;
+}
+
+[role='slider']:not(.slider-cursor-self)[data-orientation='vertical'],
+[role='slider']:not(.slider-cursor-self)[aria-orientation='vertical'] {
+  cursor: ns-resize;
 }
 
 input[type='range']::-webkit-slider-thumb:hover {

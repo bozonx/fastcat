@@ -283,4 +283,49 @@ describe('timeline OTIO roundtrip', () => {
     expect(parsedClip?.opacityActive).toBe(false);
     expect(parsedClip?.blendModeActive).toBe(false);
   });
+
+  it('preserves clip thumbnail/waveform visibility flags through serializing and parsing', () => {
+    const base = createDefaultTimelineDocument({
+      id: 'doc-1',
+      name: 'Timeline',
+      format: { fps: 30, width: 1920, height: 1080 },
+    });
+
+    const doc = applyTimelineCommand(base, {
+      type: 'add_clip_to_track',
+      trackId: 'v1',
+      name: 'Clip',
+      path: '_video/clip.mp4',
+      startUs: 0,
+      durationUs: 1_000_000,
+      sourceDurationUs: 1_000_000,
+    }).next;
+
+    const track = doc.tracks.find((t) => t.id === 'v1');
+    const clip = track?.items.find((i): i is TimelineClipItem => i.kind === 'clip');
+    expect(clip).toBeDefined();
+
+    const updated = applyTimelineCommand(doc, {
+      type: 'update_clip_properties',
+      trackId: 'v1',
+      itemId: clip!.id,
+      properties: {
+        showThumbnails: false,
+        showWaveform: false,
+      },
+    }).next;
+
+    const parsed = parseTimelineFromOtio(serializeTimelineToOtio(updated), {
+      id: 'fallback',
+      name: 'Fallback',
+      format: { fps: 30, width: 1920, height: 1080 },
+    });
+
+    const parsedClip = parsed.tracks
+      .flatMap((t) => t.items)
+      .find((i): i is TimelineClipItem => i.kind === 'clip');
+
+    expect(parsedClip?.showThumbnails).toBe(false);
+    expect(parsedClip?.showWaveform).toBe(false);
+  });
 });
