@@ -113,7 +113,7 @@ export function useEditorHotkeys() {
       matched,
       canUseFileManagerHotkeys: focusStore.canUseFileManagerHotkeys,
       canUseTimelineHotkeys: focusStore.canUseTimelineHotkeys,
-      canUsePlaybackHotkeys: focusStore.canUsePlaybackHotkeys,
+      canUseMonitorHotkeys: focusStore.canUseMonitorHotkeys,
     });
 
     for (const cmdId of focusAwareOrder) {

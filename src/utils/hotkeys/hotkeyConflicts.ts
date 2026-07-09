@@ -4,26 +4,7 @@ import {
   type HotkeyCommandId,
   type HotkeyGroupId,
 } from './defaultHotkeys';
-
-function areGroupsOverlapping(a: HotkeyGroupId, b: HotkeyGroupId): boolean {
-  return getConflictScope(a) === getConflictScope(b);
-}
-
-function getConflictScope(groupId: HotkeyGroupId): string {
-  if (groupId === 'general' || groupId === 'timelineMonitorGlobal') {
-    return 'global';
-  }
-
-  return groupId;
-}
-
-function getPriorityLevel(groupId: HotkeyGroupId): 'global' | 'local' {
-  return getConflictScope(groupId) === 'global' ? 'global' : 'local';
-}
-
-function areGroupsOverrideable(a: HotkeyGroupId, b: HotkeyGroupId): boolean {
-  return getPriorityLevel(a) !== getPriorityLevel(b);
-}
+import { areHotkeyGroupsOverlapping, areHotkeyGroupsOverrideable } from './scopes';
 
 function getCommandGroupId(
   commands: readonly HotkeyCommandDefinition[],
@@ -60,7 +41,7 @@ export function getHotkeyConflicts(
         if (other.id === cmd.id) continue;
 
         const otherGroup = groupById.get(other.id) ?? other.groupId;
-        if (!areGroupsOverlapping(cmdGroup, otherGroup)) continue;
+        if (!areHotkeyGroupsOverlapping(cmdGroup, otherGroup)) continue;
 
         const otherList = effective[other.id] ?? [];
         if (otherList.includes(combo)) {
@@ -100,7 +81,7 @@ export function findDuplicateOwnerByContext(params: {
   for (const cmd of commands) {
     if (cmd.id === targetCmdId) continue;
 
-    if (!areGroupsOverlapping(targetGroupId, cmd.groupId)) continue;
+    if (!areHotkeyGroupsOverlapping(targetGroupId, cmd.groupId)) continue;
 
     const bindings = effective[cmd.id] ?? [];
     if (bindings.includes(combo)) return cmd.id;
@@ -137,7 +118,7 @@ export function getHotkeyOverrides(
         if (other.id === cmd.id) continue;
 
         const otherGroup = groupById.get(other.id) ?? other.groupId;
-        if (!areGroupsOverrideable(cmdGroup, otherGroup)) continue;
+        if (!areHotkeyGroupsOverrideable(cmdGroup, otherGroup)) continue;
 
         const otherList = effective[other.id] ?? [];
         if (otherList.includes(combo)) {
@@ -177,7 +158,7 @@ export function findOverrideOwnerByContext(params: {
   for (const cmd of commands) {
     if (cmd.id === targetCmdId) continue;
 
-    if (!areGroupsOverrideable(targetGroupId, cmd.groupId)) continue;
+    if (!areHotkeyGroupsOverrideable(targetGroupId, cmd.groupId)) continue;
 
     const bindings = effective[cmd.id] ?? [];
     if (bindings.includes(combo)) return cmd.id;

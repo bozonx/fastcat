@@ -1,7 +1,8 @@
 import type { AnyPanelFocus } from '~/stores/focus.store';
-import type { HotkeyCommandId, HotkeyCombo } from './defaultHotkeys';
+import type { HotkeyCommandId, HotkeyCombo, HotkeyGroupId } from './defaultHotkeys';
 import { DEFAULT_HOTKEYS } from './defaultHotkeys';
 import { hotkeyFromKeyboardEvent, parseHotkeyCombo } from './hotkeyUtils';
+import { isGlobalHotkeyGroup } from './scopes';
 import type { FastCatUserSettings } from '../settings/defaults';
 
 export interface HotkeyCommandPolicy {
@@ -27,12 +28,9 @@ const EDITABLE_OVERRIDE_COMMANDS: readonly HotkeyCommandId[] = [
   'general.volumeDown',
 ];
 
-const FILE_MANAGER_COMMANDS: ReadonlySet<HotkeyCommandId> = new Set([
-  'general.navigateBack',
-  'general.navigateForward',
-  'general.navigateUp',
-  'general.createFolder',
-]);
+const COMMAND_GROUPS: ReadonlyMap<HotkeyCommandId, HotkeyGroupId> = new Map(
+  DEFAULT_HOTKEYS.commands.map((command) => [command.id, command.groupId]),
+);
 
 function comboHasCtrl(combo: HotkeyCombo | null | undefined): boolean {
   if (!combo) return false;
@@ -122,29 +120,32 @@ export function getFocusAwareHotkeyOrder(params: {
   matched: HotkeyCommandId[];
   canUseFileManagerHotkeys?: boolean;
   canUseTimelineHotkeys: boolean;
-  canUsePlaybackHotkeys: boolean;
+  canUseMonitorHotkeys?: boolean;
 }): HotkeyCommandId[] {
-  const { matched, canUseFileManagerHotkeys, canUseTimelineHotkeys, canUsePlaybackHotkeys } =
-    params;
+  const activeLocalGroups: HotkeyGroupId[] = [];
 
-  const fileManager = matched.filter((c) => FILE_MANAGER_COMMANDS.has(c));
-  const timeline = matched.filter((c) => c.startsWith('timeline.'));
-  const playback = matched.filter((c) => c.startsWith('playback.'));
-  const general = matched.filter((c) => c.startsWith('general.') && !FILE_MANAGER_COMMANDS.has(c));
-
-  if (canUseFileManagerHotkeys) {
-    return [...fileManager, ...playback, ...general, ...timeline];
+  if (params.canUseFileManagerHotkeys) {
+    activeLocalGroups.push('fileManager');
   }
 
-  if (canUseTimelineHotkeys) {
-    return [...timeline, ...playback, ...general, ...fileManager];
+  if (params.canUseTimelineHotkeys) {
+    activeLocalGroups.push('timeline');
   }
 
-  if (canUsePlaybackHotkeys) {
-    return [...playback, ...general, ...timeline, ...fileManager];
+  if (params.canUseMonitorHotkeys) {
+    activeLocalGroups.push('monitor');
   }
 
-  return [...playback, ...general, ...timeline, ...fileManager];
+  const activeLocal = params.matched.filter((cmdId) => {
+    const groupId = COMMAND_GROUPS.get(cmdId);
+    return groupId ? activeLocalGroups.includes(groupId) : false;
+  });
+  const global = params.matched.filter((cmdId) => {
+    const groupId = COMMAND_GROUPS.get(cmdId);
+    return groupId ? isGlobalHotkeyGroup(groupId) : false;
+  });
+
+  return [...activeLocal, ...global];
 }
 
 export function canExecuteHotkeyCommand(params: {

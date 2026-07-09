@@ -14,7 +14,6 @@ export function useHotkeyCapture(params: {
   onDuplicate: (cmdId: HotkeyCommandId, combo: string, owner: HotkeyCommandId) => void;
   onReserved?: (cmdId: HotkeyCommandId, combo: string, reservation: HotkeyReservation) => void;
   findDuplicateOwner: (combo: string, targetCmdId: HotkeyCommandId) => HotkeyCommandId | null;
-  findOverrideOwner?: (combo: string, targetCmdId: HotkeyCommandId) => HotkeyCommandId | null;
 }) {
   const workspaceStore = useWorkspaceStore();
   const isCapturingHotkey = ref(false);
@@ -65,12 +64,7 @@ export function useHotkeyCapture(params: {
       return;
     }
 
-    const overrideOwner = params.findOverrideOwner?.(combo, target) ?? null;
-    if (overrideOwner) {
-      params.onCaptured(target, combo);
-    } else {
-      params.onCaptured(target, combo);
-    }
+    params.onCaptured(target, combo);
     finishCapture();
   }
 

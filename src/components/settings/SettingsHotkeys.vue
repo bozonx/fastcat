@@ -12,7 +12,6 @@ import {
 import { getEffectiveHotkeyBindings } from '~/utils/hotkeys/effectiveHotkeys';
 import {
   findDuplicateOwnerByContext,
-  findOverrideOwnerByContext,
   getHotkeyConflicts,
   getHotkeyOverrides,
   isHotkeyConflicting,
@@ -79,15 +78,6 @@ const { isCapturingHotkey, captureTargetCommandId, capturedCombo, startCapture, 
         combo,
       });
     },
-    findOverrideOwner: (combo, targetCmdId) => {
-      const effective = getEffectiveHotkeyBindings(workspaceStore.userSettings.hotkeys);
-      return findOverrideOwnerByContext({
-        effective,
-        commands: DEFAULT_HOTKEYS.commands,
-        targetCmdId,
-        combo,
-      });
-    },
   });
 
 function getCommandTitle(cmdId: HotkeyCommandId): string {
@@ -123,11 +113,9 @@ function isCommandCustom(cmdId: HotkeyCommandId): boolean {
 }
 
 function setBindings(cmdId: HotkeyCommandId, next: string[]) {
-  void workspaceStore.batchUpdateUserSettings(
-    (draft) => {
-      draft.hotkeys.bindings[cmdId] = [...next];
-    },
-  );
+  void workspaceStore.batchUpdateUserSettings((draft) => {
+    draft.hotkeys.bindings[cmdId] = [...next];
+  });
 }
 
 function removeBinding(cmdId: HotkeyCommandId, combo: string) {
@@ -137,11 +125,9 @@ function removeBinding(cmdId: HotkeyCommandId, combo: string) {
 
 function confirmResetAllHotkeys() {
   isResetAllHotkeysConfirmOpen.value = false;
-  void workspaceStore.batchUpdateUserSettings(
-    (draft) => {
-      draft.hotkeys.bindings = {};
-    },
-  );
+  void workspaceStore.batchUpdateUserSettings((draft) => {
+    draft.hotkeys.bindings = {};
+  });
 }
 
 function confirmResetCommandHotkeys() {
@@ -149,11 +135,9 @@ function confirmResetCommandHotkeys() {
   isResetCommandConfirmOpen.value = false;
   resetCommandConfirmTarget.value = null;
   if (!cmdId) return;
-  void workspaceStore.batchUpdateUserSettings(
-    (draft) => {
-      Reflect.deleteProperty(draft.hotkeys.bindings, cmdId);
-    },
-  );
+  void workspaceStore.batchUpdateUserSettings((draft) => {
+    Reflect.deleteProperty(draft.hotkeys.bindings, cmdId);
+  });
 }
 
 function confirmAddDuplicate() {
@@ -174,12 +158,10 @@ function confirmReplaceDuplicate() {
   if (target && combo && owner) {
     const ownerNext = getCurrentBindings(owner).filter((c) => c !== combo);
     const targetNext = Array.from(new Set([...getCurrentBindings(target), combo]));
-    void workspaceStore.batchUpdateUserSettings(
-      (draft) => {
-        draft.hotkeys.bindings[owner] = ownerNext;
-        draft.hotkeys.bindings[target] = targetNext;
-      },
-    );
+    void workspaceStore.batchUpdateUserSettings((draft) => {
+      draft.hotkeys.bindings[owner] = ownerNext;
+      draft.hotkeys.bindings[target] = targetNext;
+    });
   }
   isDuplicateConfirmOpen.value = false;
   finishCapture();

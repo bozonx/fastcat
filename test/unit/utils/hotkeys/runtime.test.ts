@@ -17,6 +17,17 @@ vi.mock('~/utils/hotkeys/defaultHotkeys', () => ({
     commands: [
       { id: 'play', groupId: 'general', label: 'Play' },
       { id: 'pause', groupId: 'general', label: 'Pause' },
+      { id: 'general.play', groupId: 'general', label: 'General play' },
+      { id: 'timeline.cut', groupId: 'timeline', label: 'Timeline cut' },
+      { id: 'playback.stop', groupId: 'monitor', label: 'Monitor stop' },
+      { id: 'playback.backward5', groupId: 'monitor', label: 'Monitor backward 5x' },
+      { id: 'general.navigateBack', groupId: 'fileManager', label: 'Navigate back' },
+      {
+        id: 'timeline.rippleDeleteSelectedClipRange',
+        groupId: 'timeline',
+        label: 'Ripple delete range',
+      },
+      { id: 'playback.toggle', groupId: 'timelineMonitorGlobal', label: 'Toggle playback' },
     ],
     bindings: {
       play: ['Space'],
@@ -71,54 +82,52 @@ describe('createDefaultHotkeyLookup', () => {
 });
 
 describe('getFocusAwareHotkeyOrder', () => {
-  it('prioritizes file manager local commands when file manager hotkeys are available', () => {
+  it('prioritizes file manager local commands, then global commands', () => {
     const result = getFocusAwareHotkeyOrder({
       matched: [
         'playback.backward5',
         'general.navigateBack',
         'timeline.rippleDeleteSelectedClipRange',
+        'playback.toggle',
       ],
       canUseFileManagerHotkeys: true,
       canUseTimelineHotkeys: false,
-      canUsePlaybackHotkeys: true,
+      canUseMonitorHotkeys: false,
     });
-    expect(result).toEqual([
-      'general.navigateBack',
-      'playback.backward5',
-      'timeline.rippleDeleteSelectedClipRange',
-    ]);
+    expect(result).toEqual(['general.navigateBack', 'playback.toggle']);
   });
 
-  it('prioritizes timeline when can use timeline hotkeys', () => {
+  it('prioritizes timeline local commands, then global commands', () => {
+    const result = getFocusAwareHotkeyOrder({
+      matched: [
+        'general.play',
+        'timeline.cut',
+        'playback.stop',
+        'general.navigateBack',
+        'playback.toggle',
+      ],
+      canUseTimelineHotkeys: true,
+      canUseMonitorHotkeys: false,
+    });
+    expect(result).toEqual(['timeline.cut', 'general.play', 'playback.toggle']);
+  });
+
+  it('prioritizes monitor local commands, then global commands', () => {
     const result = getFocusAwareHotkeyOrder({
       matched: ['general.play', 'timeline.cut', 'playback.stop', 'general.navigateBack'],
-      canUseTimelineHotkeys: true,
-      canUsePlaybackHotkeys: false,
+      canUseTimelineHotkeys: false,
+      canUseMonitorHotkeys: true,
     });
-    expect(result).toEqual([
-      'timeline.cut',
-      'playback.stop',
-      'general.play',
-      'general.navigateBack',
-    ]);
+    expect(result).toEqual(['playback.stop', 'general.play']);
   });
 
-  it('prioritizes playback when can use playback hotkeys', () => {
+  it('uses only global commands when no local panel accepts hotkeys', () => {
     const result = getFocusAwareHotkeyOrder({
-      matched: ['general.play', 'timeline.cut', 'playback.stop'],
+      matched: ['general.play', 'timeline.cut', 'playback.stop', 'general.navigateBack'],
       canUseTimelineHotkeys: false,
-      canUsePlaybackHotkeys: true,
+      canUseMonitorHotkeys: false,
     });
-    expect(result).toEqual(['playback.stop', 'general.play', 'timeline.cut']);
-  });
-
-  it('defaults to playback > general > timeline', () => {
-    const result = getFocusAwareHotkeyOrder({
-      matched: ['general.play', 'timeline.cut', 'playback.stop'],
-      canUseTimelineHotkeys: false,
-      canUsePlaybackHotkeys: false,
-    });
-    expect(result).toEqual(['playback.stop', 'general.play', 'timeline.cut']);
+    expect(result).toEqual(['general.play']);
   });
 });
 
