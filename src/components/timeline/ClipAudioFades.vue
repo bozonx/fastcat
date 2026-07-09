@@ -260,7 +260,7 @@ const volumeIndicatorPosition = computed(() => {
       data-testid="fade-handle-in"
       class="absolute top-0 w-4 h-4 -translate-x-1/2 -translate-y-1/2 transition-opacity flex items-center justify-center shadow-sm pointer-events-auto touch-none coarse-reveal"
       :class="[
-        clipWidthPx >= 30 ? 'cursor-ew-resize' : 'hidden pointer-events-none',
+        clipWidthPx >= 30 ? 'cursor-pointer' : 'hidden pointer-events-none',
         'opacity-0 group-hover/clip:opacity-100',
       ]"
       :style="{
@@ -281,7 +281,7 @@ const volumeIndicatorPosition = computed(() => {
       data-testid="fade-handle-out"
       class="absolute top-0 w-4 h-4 -translate-x-1/2 -translate-y-1/2 transition-opacity flex items-center justify-center shadow-sm pointer-events-auto touch-none coarse-reveal"
       :class="[
-        clipWidthPx >= 30 ? 'cursor-ew-resize' : 'hidden pointer-events-none',
+        clipWidthPx >= 30 ? 'cursor-pointer' : 'hidden pointer-events-none',
         'opacity-0 group-hover/clip:opacity-100',
       ]"
       :style="{

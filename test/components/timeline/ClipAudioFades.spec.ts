@@ -116,8 +116,12 @@ describe('ClipAudioFades', () => {
       props: defaultProps,
     });
 
-    const handles = component.findAll('.cursor-ew-resize');
-    expect(handles.length).toBe(2);
+    const handles = [
+      component.get('[data-testid="fade-handle-in"]'),
+      component.get('[data-testid="fade-handle-out"]'),
+    ];
+    expect(handles[0].classes()).toContain('cursor-pointer');
+    expect(handles[1].classes()).toContain('cursor-pointer');
 
     // Fade In handle - trigger on the INNER circle
     const handle = handles[0].find('div');
@@ -146,8 +150,10 @@ describe('ClipAudioFades', () => {
       props: defaultProps,
     });
 
-    const handles = component.findAll('.cursor-ew-resize');
-    await handles[0].find('div').trigger('pointerdown', { clientX: 100, clientY: 100, button: 0 });
+    await component
+      .get('[data-testid="fade-handle-in"]')
+      .find('div')
+      .trigger('pointerdown', { clientX: 100, clientY: 100, button: 0 });
 
     // Find and call pointerup listener manually
     const upCall = addEventListenerSpy.mock.calls.find((c) => c[0] === 'pointerup');
@@ -175,9 +181,11 @@ describe('ClipAudioFades', () => {
     expect(component.get('[data-testid="fade-handle-in"]').classes()).toContain(
       'pointer-events-auto',
     );
+    expect(component.get('[data-testid="fade-handle-in"]').classes()).toContain('cursor-pointer');
     expect(component.get('[data-testid="fade-handle-out"]').classes()).toContain(
       'pointer-events-auto',
     );
+    expect(component.get('[data-testid="fade-handle-out"]').classes()).toContain('cursor-pointer');
   });
 
   // While the clip's borders are being trimmed or its material is slipped, the
