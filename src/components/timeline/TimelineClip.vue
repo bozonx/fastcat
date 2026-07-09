@@ -932,6 +932,8 @@ function addTransition(edge: 'in' | 'out') {
           :viewport-width="viewportWidth"
           :top-inset-px="clipContentInset.top"
           :bottom-inset-px="clipContentInset.bottom"
+          :default-fade-duration-us="timelineContext.userSettings.value.timeline.defaultTransitionDurationUs"
+          :default-fade-curve="timelineContext.userSettings.value.projectDefaults.defaultAudioFadeCurve"
           @start-resize-fade="
             (e, payload) =>
               emit('startResizeFade', e, {
@@ -948,6 +950,16 @@ function addTransition(edge: 'in' | 'out') {
                 itemId: item.id,
                 gain,
                 trackHeight,
+              })
+          "
+          @commit-fade="
+            ({ edge, durationUs, curve }) =>
+              timelineContext.updateClipProperties(track.id, item.id, {
+                [edge === 'in' ? 'audioFadeInUs' : 'audioFadeOutUs']: durationUs,
+                ...(curve
+                  ? { [edge === 'in' ? 'audioFadeInCurve' : 'audioFadeOutCurve']: curve }
+                  : {}),
+                audioFadesActive: true,
               })
           "
           @toggle-fade-curve="({ edge }) => toggleFadeCurve(edge)"

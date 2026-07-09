@@ -20,9 +20,15 @@ vi.mock('~/components/timeline/ClipTransitions.vue', () => ({
 vi.mock('~/components/timeline/ClipAudioFades.vue', () => ({
   default: {
     name: 'ClipAudioFades',
-    props: ['hideFadeHandles', 'topInsetPx', 'bottomInsetPx'],
+    props: [
+      'hideFadeHandles',
+      'topInsetPx',
+      'bottomInsetPx',
+      'defaultFadeDurationUs',
+      'defaultFadeCurve',
+    ],
     template:
-      '<div class="clip-audio-fades" :data-hide-fade-handles="hideFadeHandles ? \'true\' : \'false\'" :style="{ top: `${topInsetPx ?? 0}px`, bottom: `${bottomInsetPx ?? 0}px` }"></div>',
+      '<div class="clip-audio-fades" :data-hide-fade-handles="hideFadeHandles ? \'true\' : \'false\'" :data-default-fade-duration-us="defaultFadeDurationUs" :data-default-fade-curve="defaultFadeCurve" :style="{ top: `${topInsetPx ?? 0}px`, bottom: `${bottomInsetPx ?? 0}px` }"></div>',
   },
 }));
 vi.mock('~/components/timeline/ClipMetadata.vue', () => ({
@@ -70,6 +76,9 @@ const mockSelectionStore = reactive({
 const mockWorkspaceStore = reactive({
   userSettings: {
     hotkeys: { layer1: 'Shift', layer2: 'Control' },
+    projectDefaults: {
+      defaultAudioFadeCurve: 'logarithmic',
+    },
     timeline: {
       defaultTransitionDurationUs: 1000000,
     },
@@ -383,6 +392,8 @@ describe('TimelineClip', () => {
     expect(trimStart.style.bottom).toBe('0px');
     expect(audioFades.style.top).toBe('20px');
     expect(audioFades.style.bottom).toBe('0px');
+    expect(audioFades.dataset.defaultFadeDurationUs).toBe('1000000');
+    expect(audioFades.dataset.defaultFadeCurve).toBe('logarithmic');
   });
 
   it('renders transition overlays in the content band above trim handles', async () => {

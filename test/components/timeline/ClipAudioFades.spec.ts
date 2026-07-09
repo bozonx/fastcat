@@ -29,6 +29,8 @@ describe('ClipAudioFades', () => {
     canEdit: true,
     trackHeight: 100,
     isSelected: true,
+    defaultFadeDurationUs: 2_000_000,
+    defaultFadeCurve: 'logarithmic' as const,
   };
 
   beforeEach(() => {
@@ -145,6 +147,7 @@ describe('ClipAudioFades', () => {
   });
 
   it('emits toggleFadeCurve when fade handle is only clicked', async () => {
+    vi.useFakeTimers();
     const addEventListenerSpy = vi.spyOn(window, 'addEventListener');
     const component = await mountSuspended(ClipAudioFades, {
       props: defaultProps,
@@ -162,12 +165,80 @@ describe('ClipAudioFades', () => {
       new (window as any).PointerEvent('pointerup', { clientX: 100, clientY: 100 }),
     );
 
+    await vi.advanceTimersByTimeAsync(220);
+
     expect(component.emitted('toggleFadeCurve')).toBeTruthy();
     expect(component.emitted('toggleFadeCurve')![0][0]).toEqual({
       edge: 'in',
     });
 
     addEventListenerSpy.mockRestore();
+    vi.useRealTimers();
+  });
+
+  it('creates a default fade on single click when the fade is empty', async () => {
+    vi.useFakeTimers();
+    const addEventListenerSpy = vi.spyOn(window, 'addEventListener');
+    const component = await mountSuspended(ClipAudioFades, {
+      props: {
+        ...defaultProps,
+        clip: { ...baseItem, audioFadeInUs: 0 },
+      },
+    });
+
+    await component
+      .get('[data-testid="fade-handle-in"]')
+      .find('div')
+      .trigger('pointerdown', { clientX: 100, clientY: 100, button: 0 });
+
+    const upCall = addEventListenerSpy.mock.calls.find((c) => c[0] === 'pointerup');
+    expect(upCall).toBeTruthy();
+    (upCall![1] as any)(
+      new (window as any).PointerEvent('pointerup', { clientX: 100, clientY: 100 }),
+    );
+
+    await vi.advanceTimersByTimeAsync(220);
+
+    expect(component.emitted('commitFade')![0][0]).toEqual({
+      edge: 'in',
+      durationUs: 2_000_000,
+      curve: 'logarithmic',
+    });
+    expect(component.emitted('toggleFadeCurve')).toBeUndefined();
+
+    addEventListenerSpy.mockRestore();
+    vi.useRealTimers();
+  });
+
+  it('resets an existing fade on double click without applying the pending single click', async () => {
+    vi.useFakeTimers();
+    const addEventListenerSpy = vi.spyOn(window, 'addEventListener');
+    const component = await mountSuspended(ClipAudioFades, {
+      props: defaultProps,
+    });
+
+    await component
+      .get('[data-testid="fade-handle-in"]')
+      .find('div')
+      .trigger('pointerdown', { clientX: 100, clientY: 100, button: 0 });
+
+    const upCall = addEventListenerSpy.mock.calls.find((c) => c[0] === 'pointerup');
+    expect(upCall).toBeTruthy();
+    (upCall![1] as any)(
+      new (window as any).PointerEvent('pointerup', { clientX: 100, clientY: 100 }),
+    );
+
+    await component.get('[data-testid="fade-handle-in"]').trigger('dblclick');
+    await vi.advanceTimersByTimeAsync(220);
+
+    expect(component.emitted('commitFade')![0][0]).toEqual({
+      edge: 'in',
+      durationUs: 0,
+    });
+    expect(component.emitted('toggleFadeCurve')).toBeUndefined();
+
+    addEventListenerSpy.mockRestore();
+    vi.useRealTimers();
   });
 
   it('places the fade handles layer above full-height trim handles', async () => {
