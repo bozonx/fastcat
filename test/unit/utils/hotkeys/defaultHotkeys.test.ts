@@ -1,6 +1,7 @@
 /** @vitest-environment node */
 import { describe, it, expect } from 'vitest';
 import { DEFAULT_HOTKEYS } from '~/utils/hotkeys/defaultHotkeys';
+import type { HotkeyCommandId } from '~/utils/hotkeys/defaultHotkeys';
 
 describe('DEFAULT_HOTKEYS', () => {
   it('contains commands array', () => {
@@ -186,11 +187,33 @@ describe('DEFAULT_HOTKEYS', () => {
     expect(DEFAULT_HOTKEYS.bindings['general.appSettings']).toEqual(['Shift+I']);
   });
 
-  it('has defaults for start/end timeline and playback shortcuts', () => {
-    expect(DEFAULT_HOTKEYS.bindings['playback.toStart']).toEqual(['W']);
-    expect(DEFAULT_HOTKEYS.bindings['playback.toEnd']).toEqual(['T']);
+  it('has defaults for start/end timeline shortcuts', () => {
     expect(DEFAULT_HOTKEYS.bindings['timeline.globalToStart']).toEqual(['Home', 'Ctrl+E']);
     expect(DEFAULT_HOTKEYS.bindings['timeline.globalToEnd']).toEqual(['End', 'Ctrl+R']);
+  });
+
+  it('removed local monitor toStart/toEnd in favor of global timeline commands', () => {
+    const ids = DEFAULT_HOTKEYS.commands.map((c) => c.id);
+    expect(ids).not.toContain('playback.toStart');
+    expect(ids).not.toContain('playback.toEnd');
+    expect(DEFAULT_HOTKEYS.bindings['playback.toStart']).toBeUndefined();
+    expect(DEFAULT_HOTKEYS.bindings['playback.toEnd']).toBeUndefined();
+  });
+
+  it('moves stepping and speed-cycle commands to the timeline & monitor global group', () => {
+    const moved: HotkeyCommandId[] = [
+      'playback.stepForward',
+      'playback.stepBackward',
+      'playback.stepForwardLarge',
+      'playback.stepBackwardLarge',
+      'playback.speedUpForward',
+      'playback.speedDown',
+    ];
+    for (const id of moved) {
+      const command = DEFAULT_HOTKEYS.commands.find((c) => c.id === id);
+      expect(command, `expected ${id} to be registered`).toBeDefined();
+      expect(command?.groupId).toBe('timelineMonitorGlobal');
+    }
   });
 
   it('has defaults for timeline group and ungroup clips shortcuts', () => {

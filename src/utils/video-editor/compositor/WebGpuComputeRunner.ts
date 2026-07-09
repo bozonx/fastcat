@@ -1580,6 +1580,213 @@ export class WebGpuComputeRunner {
       : false;
   }
 
+  public applyBlurFillToTexture(params: {
+    source: RenderTexture;
+    target: RenderTexture;
+    frameW: number;
+    frameH: number;
+    fgScale: number;
+    bgScale: number;
+    blur: number;
+    bgDim: number;
+    bgSaturation: number;
+    tintColor: [number, number, number, number];
+    tintStrength: number;
+    fgOffsetY: number;
+  }): EffectTextureRenderResult | false {
+    if (
+      !this.device ||
+      !this.pipeline ||
+      !this.bindLayout ||
+      !this.shaderModule ||
+      !this.sharedRendererTexture
+    ) {
+      return false;
+    }
+
+    const origW = Math.max(1, Math.round(params.source.source.pixelWidth));
+    const origH = Math.max(1, Math.round(params.source.source.pixelHeight));
+    const frameW = Math.max(1, Math.round(params.frameW));
+    const frameH = Math.max(1, Math.round(params.frameH));
+    if (
+      !isRenderableColorFormat(params.source.source.format) ||
+      !isRenderableColorFormat(params.target.source.format)
+    ) {
+      return false;
+    }
+
+    const passes = buildBlurFillPasses(
+      frameW,
+      frameH,
+      origW,
+      origH,
+      params.fgScale,
+      params.bgScale,
+      params.blur,
+      params.bgDim,
+      params.bgSaturation,
+      params.tintColor,
+      params.tintStrength,
+      params.fgOffsetY,
+      this.previewEffectQuality,
+    );
+    if (passes.length === 0) return false;
+
+    const outputTexture = this.executePasses({
+      inputView: this.sharedRendererTexture.getGpuSource(params.source.source).createView(),
+      passes,
+      outputWidth: frameW,
+      outputHeight: frameH,
+      label: 'web-blur-fill-texture',
+    });
+    if (!outputTexture) {
+      return false;
+    }
+
+    const rendered = this.blitTextureToRendererTarget({
+      source: outputTexture,
+      target: this.sharedRendererTexture.getGpuSource(params.target.source),
+      targetFormat: params.target.source.format,
+      width: frameW,
+      height: frameH,
+      label: 'web-blur-fill-texture-blit',
+    });
+    return rendered
+      ? {
+          rendered: true,
+          width: frameW,
+          height: frameH,
+          contentWidth: frameW,
+          contentHeight: frameH,
+          padding: 0,
+        }
+      : false;
+  }
+
+  public applyEffectsThenBlurFillToTexture(params: {
+    source: RenderTexture;
+    target: RenderTexture;
+    effects: VideoEffectSpec[];
+    frameW: number;
+    frameH: number;
+    fgScale: number;
+    bgScale: number;
+    blur: number;
+    bgDim: number;
+    bgSaturation: number;
+    tintColor: [number, number, number, number];
+    tintStrength: number;
+    fgOffsetY: number;
+    options?: ApplyEffectsOptions;
+  }): EffectTextureRenderResult | false {
+    if (
+      !this.device ||
+      !this.pipeline ||
+      !this.bindLayout ||
+      !this.shaderModule ||
+      !this.sharedRendererTexture
+    ) {
+      return false;
+    }
+    if (params.effects.length === 0) return false;
+
+    const origW = Math.max(1, Math.round(params.source.source.pixelWidth));
+    const origH = Math.max(1, Math.round(params.source.source.pixelHeight));
+    const frameW = Math.max(1, Math.round(params.frameW));
+    const frameH = Math.max(1, Math.round(params.frameH));
+    if (
+      !isRenderableColorFormat(params.source.source.format) ||
+      !isRenderableColorFormat(params.target.source.format)
+    ) {
+      return false;
+    }
+
+    const effectSize = resolveEffectTextureSize({
+      width: origW,
+      height: origH,
+      effects: params.effects,
+      options: params.options,
+    });
+    const { padding } = effectSize;
+    const effectPasses = buildPasses(
+      params.effects,
+      effectSize.width,
+      effectSize.height,
+      this.previewEffectQuality,
+      {
+        spatialScaleHeight: origH,
+        ...(padding > 0
+          ? { contentRect: { offsetX: padding, offsetY: padding, width: origW, height: origH } }
+          : {}),
+      },
+    );
+    if (effectPasses.length === 0) return false;
+
+    const effectOutput = this.executePasses({
+      inputView: this.sharedRendererTexture.getGpuSource(params.source.source).createView(),
+      passes: effectPasses,
+      outputWidth: effectSize.width,
+      outputHeight: effectSize.height,
+      label: 'web-effect-before-blur-fill-texture',
+    });
+    if (!effectOutput) {
+      return false;
+    }
+
+    const intermediateView = this.copyEffectOutputToIntermediate({
+      source: effectOutput,
+      width: effectSize.width,
+      height: effectSize.height,
+      label: 'web-effect-before-blur-fill-texture-copy',
+    });
+    const blurFillPasses = buildBlurFillPasses(
+      frameW,
+      frameH,
+      effectSize.width,
+      effectSize.height,
+      params.fgScale,
+      params.bgScale,
+      params.blur,
+      params.bgDim,
+      params.bgSaturation,
+      params.tintColor,
+      params.tintStrength,
+      params.fgOffsetY,
+      this.previewEffectQuality,
+    );
+    if (blurFillPasses.length === 0) return false;
+
+    const outputTexture = this.executePasses({
+      inputView: intermediateView,
+      passes: blurFillPasses,
+      outputWidth: frameW,
+      outputHeight: frameH,
+      label: 'web-effect-blur-fill-texture',
+    });
+    if (!outputTexture) {
+      return false;
+    }
+
+    const rendered = this.blitTextureToRendererTarget({
+      source: outputTexture,
+      target: this.sharedRendererTexture.getGpuSource(params.target.source),
+      targetFormat: params.target.source.format,
+      width: frameW,
+      height: frameH,
+      label: 'web-effect-blur-fill-texture-blit',
+    });
+    return rendered
+      ? {
+          rendered: true,
+          width: frameW,
+          height: frameH,
+          contentWidth: frameW,
+          contentHeight: frameH,
+          padding: 0,
+        }
+      : false;
+  }
+
   public async applyEffects(
     source: VideoFrame | ImageBitmap,
     effects: VideoEffectSpec[],

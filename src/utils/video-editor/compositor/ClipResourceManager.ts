@@ -143,6 +143,22 @@ export class ClipResourceManager {
     const sourceW = sourceBitmap.width;
     const sourceH = sourceBitmap.height;
 
+    if (
+      await this.applyNonVideoBitmapEffectsToTexture({
+        clip,
+        source: sourceBitmap,
+        sourceW,
+        sourceH,
+        effectSpecs,
+        cacheKey,
+      })
+    ) {
+      if (sourceBitmap !== clip.bitmap) {
+        sourceBitmap.close();
+      }
+      return;
+    }
+
     // Follow the video-path pattern: save the previous processed frame for
     // disposal after the new one is committed, preventing GPU texture leaks.
     let prevProcessed: VideoFrame | ImageBitmap | null = clip.lastVideoFrame;
@@ -354,6 +370,126 @@ export class ClipResourceManager {
         // ignore
       }
     }
+  }
+
+  private async applyNonVideoBitmapEffectsToTexture(params: {
+    clip: CompositorClip;
+    source: ImageBitmap;
+    sourceW: number;
+    sourceH: number;
+    effectSpecs: import('~/types/generated/native-monitor/VideoEffectSpec').VideoEffectSpec[];
+    cacheKey: string;
+  }): Promise<boolean> {
+    const { clip, source, sourceW, sourceH, effectSpecs, cacheKey } = params;
+    const runner = this.context.computeRunner;
+    if (!runner || !clip.sprite || !('texture' in clip.sprite)) {
+      return false;
+    }
+
+    const blurFillIndex = effectSpecs.findIndex((effect) => effect.type === 'blur-fill');
+    let rendered:
+      | Awaited<ReturnType<WebGpuComputeRunner['applyEffectsSourceToTexture']>>
+      | Awaited<ReturnType<WebGpuComputeRunner['applyBlurFillSourceToTexture']>>
+      | Awaited<ReturnType<WebGpuComputeRunner['applyEffectsThenBlurFillSourceToTexture']>>
+      | false = false;
+    let layoutW = sourceW;
+    let layoutH = sourceH;
+    let ignoreClipTransform = false;
+
+    if (blurFillIndex >= 0) {
+      const blurFill = effectSpecs[
+        blurFillIndex
+      ] as import('~/types/generated/native-monitor/VideoEffectSpec').VideoEffectSpec & {
+        type: 'blur-fill';
+      };
+      const otherSpecs = effectSpecs.filter((_, index) => index !== blurFillIndex);
+      const projectW = this.context.width;
+      const projectH = this.context.height;
+      clip.effectRenderTexture = this.ensureEffectRenderTexture(
+        clip.effectRenderTexture ?? null,
+        projectW,
+        projectH,
+      );
+      if (otherSpecs.length === 0 && typeof runner.applyBlurFillSourceToTexture === 'function') {
+        rendered = await runner.applyBlurFillSourceToTexture({
+          source,
+          target: clip.effectRenderTexture,
+          frameW: projectW,
+          frameH: projectH,
+          fgScale: blurFill.fg_scale,
+          bgScale: blurFill.bg_scale,
+          blur: blurFill.blur,
+          bgDim: blurFill.bg_dim,
+          bgSaturation: blurFill.bg_saturation,
+          tintColor: blurFill.tint_color,
+          tintStrength: blurFill.tint_strength,
+          fgOffsetY: blurFill.fg_offset_y,
+        });
+      } else if (
+        otherSpecs.length > 0 &&
+        typeof runner.applyEffectsThenBlurFillSourceToTexture === 'function'
+      ) {
+        rendered = await runner.applyEffectsThenBlurFillSourceToTexture({
+          source,
+          target: clip.effectRenderTexture,
+          effects: otherSpecs,
+          frameW: projectW,
+          frameH: projectH,
+          fgScale: blurFill.fg_scale,
+          bgScale: blurFill.bg_scale,
+          blur: blurFill.blur,
+          bgDim: blurFill.bg_dim,
+          bgSaturation: blurFill.bg_saturation,
+          tintColor: blurFill.tint_color,
+          tintStrength: blurFill.tint_strength,
+          fgOffsetY: blurFill.fg_offset_y,
+        });
+      }
+      layoutW = projectW;
+      layoutH = projectH;
+      ignoreClipTransform = true;
+    } else if (typeof runner.applyEffectsSourceToTexture === 'function') {
+      const outputSize = resolveEffectTextureSize({
+        width: sourceW,
+        height: sourceH,
+        effects: effectSpecs,
+      });
+      clip.effectRenderTexture = this.ensureEffectRenderTexture(
+        clip.effectRenderTexture ?? null,
+        outputSize.width,
+        outputSize.height,
+      );
+      rendered = await runner.applyEffectsSourceToTexture({
+        source,
+        target: clip.effectRenderTexture,
+        effects: effectSpecs,
+      });
+    }
+
+    if (!rendered) {
+      return false;
+    }
+
+    if (clip.lastVideoFrame) {
+      safeDispose(clip.lastVideoFrame);
+      clip.lastVideoFrame = null;
+    }
+    (clip.sprite as Sprite).texture = clip.effectRenderTexture!;
+    clip.nonVideoEffectCacheKey = cacheKey;
+    clip.effectSourceW = layoutW;
+    clip.effectSourceH = layoutH;
+    clip.effectTextureW = rendered.width;
+    clip.effectTextureH = rendered.height;
+    clip.effectIgnoreTransform = ignoreClipTransform;
+    this.context
+      .getLayoutApplier()
+      .applySpriteLayout(
+        layoutW,
+        layoutH,
+        clip,
+        ignoreClipTransform ? { ignoreClipTransform: true } : {},
+      );
+    return true;
   }
 
   private resolveNonVideoTextureSourceSize(

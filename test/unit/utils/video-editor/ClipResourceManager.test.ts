@@ -415,6 +415,87 @@ describe('ClipResourceManager.applyEffectsToNonVideoClip', () => {
     expect(sourceTexture.destroy).toHaveBeenCalledWith(true);
   });
 
+  it('uses GPU texture output for bitmap-source non-video blur-fill effects', async () => {
+    const effectTexture = {
+      uid: 21,
+      width: 1920,
+      height: 1080,
+      source: { pixelWidth: 1920, pixelHeight: 1080, format: 'bgra8unorm' },
+      destroy: vi.fn(),
+    };
+    vi.spyOn(RenderTexture, 'create').mockReturnValue(effectTexture as any);
+
+    const bitmap = { width: 320, height: 180, close: vi.fn() } as unknown as ImageBitmap;
+    const applyBlurFill = vi.fn();
+    const applyBlurFillSourceToTexture = vi.fn().mockResolvedValue({
+      rendered: true,
+      width: 1920,
+      height: 1080,
+      contentWidth: 1920,
+      contentHeight: 1080,
+      padding: 0,
+    });
+    const runner = {
+      isReady: () => true,
+      applyBlurFill,
+      applyBlurFillSourceToTexture,
+    } as unknown as WebGpuComputeRunner;
+    const layoutApplier = createMockLayoutApplier();
+    const imageSource = createMockImageSource(320, 180);
+    const sprite = createMockSprite(imageSource);
+    const manager = createManager({
+      computeRunner: runner,
+      getLayoutApplier: () => layoutApplier,
+    });
+    const clip = {
+      clipKind: 'image' as const,
+      effects: [
+        {
+          id: 'fill-1',
+          type: 'blur-fill',
+          fgScale: 1,
+          bgScale: 1.1,
+          blur: 40,
+          bgDim: 0.85,
+          bgSaturation: 1,
+          tintColor: '#000000',
+          tintStrength: 0,
+          fgOffsetY: 0,
+          enabled: true,
+        },
+      ],
+      bitmap,
+      sprite: sprite as unknown as CompositorClip['sprite'],
+      imageSource: imageSource as any,
+      lastVideoFrame: null,
+    } as CompositorClip;
+
+    await manager.applyEffectsToNonVideoClip(clip, true);
+
+    expect(applyBlurFillSourceToTexture).toHaveBeenCalledWith({
+      source: bitmap,
+      target: effectTexture,
+      frameW: 1920,
+      frameH: 1080,
+      fgScale: 1,
+      bgScale: 1.1,
+      blur: 40,
+      bgDim: 0.85,
+      bgSaturation: 1,
+      tintColor: [0, 0, 0, 255],
+      tintStrength: 0,
+      fgOffsetY: 0,
+    });
+    expect(applyBlurFill).not.toHaveBeenCalled();
+    expect((clip.sprite as any).texture).toBe(effectTexture);
+    expect(clip.lastVideoFrame).toBeNull();
+    expect(clip.effectIgnoreTransform).toBe(true);
+    expect(bitmap.close).not.toHaveBeenCalled();
+    expect(layoutApplier.applySpriteLayout).toHaveBeenCalledWith(1920, 1080, clip, {
+      ignoreClipTransform: true,
+    });
+  });
+
   it('captures shape clips via RenderTexture without touching app.canvas', async () => {
     const bitmap = { width: 320, height: 180 } as ImageBitmap;
     const createImageBitmapMock = vi.fn().mockResolvedValue(bitmap);

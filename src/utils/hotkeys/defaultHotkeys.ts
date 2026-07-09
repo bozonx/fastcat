@@ -108,8 +108,6 @@ export type HotkeyCommandId =
   | 'timeline.ungroupClips'
   | 'playback.toggle'
   | 'playback.toggle1'
-  | 'playback.toStart'
-  | 'playback.toEnd'
   | 'playback.stepForward'
   | 'playback.stepBackward'
   | 'playback.stepForwardLarge'
@@ -294,6 +292,22 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
       groupId: 'timelineMonitorGlobal',
       title: 'Create snapshot from monitor',
     },
+
+    // Timeline & Monitor Global - Покадровая навигация и циклы скорости
+    { id: 'playback.stepForward', groupId: 'timelineMonitorGlobal', title: 'Step forward' },
+    { id: 'playback.stepBackward', groupId: 'timelineMonitorGlobal', title: 'Step backward' },
+    {
+      id: 'playback.stepForwardLarge',
+      groupId: 'timelineMonitorGlobal',
+      title: 'Step forward (large)',
+    },
+    {
+      id: 'playback.stepBackwardLarge',
+      groupId: 'timelineMonitorGlobal',
+      title: 'Step backward (large)',
+    },
+    { id: 'playback.speedUpForward', groupId: 'timelineMonitorGlobal', title: 'Speed up (forward)' },
+    { id: 'playback.speedDown', groupId: 'timelineMonitorGlobal', title: 'Slow down' },
 
     // Timeline - Разрезание (самое частое)
     { id: 'timeline.splitAtPlayhead', groupId: 'timeline', title: 'Split at playhead' },
@@ -480,14 +494,6 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     { id: 'timeline.groupClips', groupId: 'timeline', title: 'Group clips' },
     { id: 'timeline.ungroupClips', groupId: 'timeline', title: 'Ungroup clips' },
 
-    // Monitor - Навигация и шаги
-    { id: 'playback.toStart', groupId: 'monitor', title: 'Go to start' },
-    { id: 'playback.toEnd', groupId: 'monitor', title: 'Go to end' },
-    { id: 'playback.stepForward', groupId: 'monitor', title: 'Step forward' },
-    { id: 'playback.stepBackward', groupId: 'monitor', title: 'Step backward' },
-    { id: 'playback.stepForwardLarge', groupId: 'monitor', title: 'Step forward (large)' },
-    { id: 'playback.stepBackwardLarge', groupId: 'monitor', title: 'Step backward (large)' },
-
     // Monitor - Скорости воспроизведения (по нарастающей)
     { id: 'playback.forward0_5', groupId: 'monitor', title: 'Forward 0.5x' },
     { id: 'playback.backward0_5', groupId: 'monitor', title: 'Backward 0.5x' },
@@ -505,10 +511,6 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     { id: 'playback.backward3', groupId: 'monitor', title: 'Backward 3x' },
     { id: 'playback.forward5', groupId: 'monitor', title: 'Forward 5x' },
     { id: 'playback.backward5', groupId: 'monitor', title: 'Backward 5x' },
-
-    // Monitor - Плавное изменение скорости
-    { id: 'playback.speedUpForward', groupId: 'monitor', title: 'Speed up (forward)' },
-    { id: 'playback.speedDown', groupId: 'monitor', title: 'Slow down' },
   ],
   bindings: {
     'general.copy': [`${Mod}+C`],
@@ -624,8 +626,6 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
 
     'playback.toggle': ['Space'],
     'playback.toggle1': ['Shift+Space'],
-    'playback.toStart': ['W'],
-    'playback.toEnd': ['T'],
     'timeline.globalToStart': ['Home', `${Mod}+E`],
     'timeline.globalToEnd': ['End', `${Mod}+R`],
     'playback.stepForward': ['ArrowRight'],

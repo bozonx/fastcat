@@ -290,14 +290,63 @@ export class VideoCompositor {
           clip.adjustmentSourceTexture ?? null,
         );
         this.renderLowerLayersToTexture(clip.layer, clip.adjustmentSourceTexture);
-        const renderedOnGpu =
-          typeof runner.applyEffectsToTexture === 'function' &&
-          runner.applyEffectsToTexture({
-            source: clip.adjustmentSourceTexture,
-            target: clip.adjustmentSourceTexture,
-            effects: effectSpecs,
-            options: { enablePadding: false },
-          });
+        const blurFillIndex = effectSpecs.findIndex((effect) => effect.type === 'blur-fill');
+        let renderedOnGpu = false;
+        if (blurFillIndex >= 0) {
+          const blurFill = effectSpecs[
+            blurFillIndex
+          ] as import('~/types/generated/native-monitor/VideoEffectSpec').VideoEffectSpec & {
+            type: 'blur-fill';
+          };
+          const otherSpecs = effectSpecs.filter((_, index) => index !== blurFillIndex);
+          renderedOnGpu =
+            otherSpecs.length === 0
+              ? Boolean(
+                  typeof runner.applyBlurFillToTexture === 'function' &&
+                    runner.applyBlurFillToTexture({
+                      source: clip.adjustmentSourceTexture,
+                      target: clip.adjustmentSourceTexture,
+                      frameW: this.width,
+                      frameH: this.height,
+                      fgScale: blurFill.fg_scale,
+                      bgScale: blurFill.bg_scale,
+                      blur: blurFill.blur,
+                      bgDim: blurFill.bg_dim,
+                      bgSaturation: blurFill.bg_saturation,
+                      tintColor: blurFill.tint_color,
+                      tintStrength: blurFill.tint_strength,
+                      fgOffsetY: blurFill.fg_offset_y,
+                    }),
+                )
+              : Boolean(
+                  typeof runner.applyEffectsThenBlurFillToTexture === 'function' &&
+                    runner.applyEffectsThenBlurFillToTexture({
+                      source: clip.adjustmentSourceTexture,
+                      target: clip.adjustmentSourceTexture,
+                      effects: otherSpecs,
+                      frameW: this.width,
+                      frameH: this.height,
+                      fgScale: blurFill.fg_scale,
+                      bgScale: blurFill.bg_scale,
+                      blur: blurFill.blur,
+                      bgDim: blurFill.bg_dim,
+                      bgSaturation: blurFill.bg_saturation,
+                      tintColor: blurFill.tint_color,
+                      tintStrength: blurFill.tint_strength,
+                      fgOffsetY: blurFill.fg_offset_y,
+                      options: { enablePadding: false },
+                    }),
+                );
+        } else {
+          renderedOnGpu =
+            typeof runner.applyEffectsToTexture === 'function' &&
+            runner.applyEffectsToTexture({
+              source: clip.adjustmentSourceTexture,
+              target: clip.adjustmentSourceTexture,
+              effects: effectSpecs,
+              options: { enablePadding: false },
+            });
+        }
         if (renderedOnGpu) {
           if (clip.sprite) clip.sprite.texture = clip.adjustmentSourceTexture;
           continue;

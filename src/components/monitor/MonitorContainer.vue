@@ -732,7 +732,7 @@ watch(viewportRef, (vp) => {
             </UiTooltip>
 
             <!-- Playback buttons — wheel on play button changes speed -->
-            <UiTooltip :text="getHotkeyTitle(t('fastcat.monitor.rewind'), 'playback.toStart')">
+            <UiTooltip :text="getHotkeyTitle(t('fastcat.monitor.rewind'), 'timeline.globalToStart')">
               <UiActionButton
                 size="md"
                 variant="ghost"
@@ -794,7 +794,7 @@ watch(viewportRef, (vp) => {
               </UButton>
             </UiTooltip>
 
-            <UiTooltip :text="getHotkeyTitle(t('fastcat.monitor.end'), 'playback.toEnd')">
+            <UiTooltip :text="getHotkeyTitle(t('fastcat.monitor.end'), 'timeline.globalToEnd')">
               <UiActionButton
                 size="md"
                 variant="ghost"

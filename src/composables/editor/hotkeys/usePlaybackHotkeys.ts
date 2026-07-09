@@ -50,30 +50,6 @@ export function usePlaybackHotkeys(
       return true;
     },
 
-    'playback.toStart': () => {
-      if (!focusStore.canUsePlaybackHotkeys) return false;
-
-      if (isPreviewLikeFocus(focusStore.effectiveFocus) && uiStore.hasActivePreviewPlayer) {
-        uiStore.triggerPreviewPlayback('toStart');
-        return true;
-      }
-
-      timelineStore.goToStart();
-      return true;
-    },
-
-    'playback.toEnd': () => {
-      if (!focusStore.canUsePlaybackHotkeys) return false;
-
-      if (isPreviewLikeFocus(focusStore.effectiveFocus) && uiStore.hasActivePreviewPlayer) {
-        uiStore.triggerPreviewPlayback('toEnd');
-        return true;
-      }
-
-      timelineStore.goToEnd();
-      return true;
-    },
-
     'timeline.globalToStart': () => {
       timelineStore.goToStart();
       return true;

@@ -485,6 +485,70 @@ describe('VideoCompositor render optimization', () => {
     expect(adjustment.sprite.texture).toBe(adjustmentTexture);
   });
 
+  it('uses GPU texture blur-fill for adjustment clips when available', async () => {
+    const compositor = new VideoCompositor() as any;
+    const applyEffectsToTexture = vi.fn();
+    const applyBlurFillToTexture = vi.fn(() => ({ rendered: true, width: 1920, height: 1080 }));
+    const adjustmentTexture = { id: 'adjustment-texture' };
+    const adjustment = {
+      itemId: 'adj-blur-fill',
+      clipKind: 'adjustment',
+      layer: 1,
+      startUs: 0,
+      sprite: { destroyed: false, visible: true, texture: null },
+      adjustmentSourceTexture: null,
+      effects: [
+        {
+          id: 'fill',
+          type: 'blur-fill',
+          enabled: true,
+          fgScale: 1,
+          bgScale: 1.1,
+          blur: 40,
+          bgDim: 0.85,
+          bgSaturation: 1,
+          tintColor: '#000000',
+          tintStrength: 0,
+          fgOffsetY: 0,
+        },
+      ],
+    } as any;
+
+    compositor.width = 1920;
+    compositor.height = 1080;
+    compositor.previewEffectsEnabled = true;
+    compositor.computeRunner = {
+      isReady: () => true,
+      applyBlurFillToTexture,
+      applyEffectsToTexture,
+    };
+    compositor.app = { renderer: { render: vi.fn() } };
+    compositor.clips = [adjustment];
+    compositor.renderLowerLayersToTexture = vi.fn();
+    compositor.ensureStageTextureRenderer = vi.fn();
+    compositor.ensureClipRenderTexture = vi.fn().mockReturnValue(adjustmentTexture);
+
+    await compositor.prepareAdjustmentClips([adjustment]);
+
+    expect(applyBlurFillToTexture).toHaveBeenCalledWith({
+      source: adjustmentTexture,
+      target: adjustmentTexture,
+      frameW: 1920,
+      frameH: 1080,
+      fgScale: 1,
+      bgScale: 1.1,
+      blur: 40,
+      bgDim: 0.85,
+      bgSaturation: 1,
+      tintColor: [0, 0, 0, 255],
+      tintStrength: 0,
+      fgOffsetY: 0,
+    });
+    expect(applyEffectsToTexture).not.toHaveBeenCalled();
+    expect(compositor.ensureStageTextureRenderer).not.toHaveBeenCalled();
+    expect(adjustment.sprite.texture).toBe(adjustmentTexture);
+  });
+
   it('normalizes background color when updating solid clips in updateTimelineLayout', async () => {
     const compositor = new VideoCompositor() as any;
     compositor.width = 1920;

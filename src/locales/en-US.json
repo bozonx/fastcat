@@ -1693,8 +1693,6 @@
         "stepBackwardLarge": "Step backward (large)",
         "stepForward": "Step forward",
         "stepForwardLarge": "Step forward (large)",
-        "toEnd": "Go to end",
-        "toStart": "Go to start",
         "toggle": "Play / Pause",
         "toggle1": "Play / pause (1x)"
       },
