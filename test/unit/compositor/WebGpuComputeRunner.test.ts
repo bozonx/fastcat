@@ -222,6 +222,94 @@ describe('WebGpuComputeRunner', () => {
     vi.unstubAllGlobals();
   });
 
+  it('blits texture effects into a BGRA Pixi render target on the GPU', () => {
+    vi.stubGlobal('GPUShaderStage', { COMPUTE: 0x04, FRAGMENT: 0x02 });
+    vi.stubGlobal('GPUTextureUsage', {
+      TEXTURE_BINDING: 0x04,
+      STORAGE_BINDING: 0x08,
+      COPY_SRC: 0x10,
+      COPY_DST: 0x20,
+      RENDER_ATTACHMENT: 0x40,
+    });
+    vi.stubGlobal('GPUBufferUsage', { UNIFORM: 0x40, COPY_DST: 0x08 });
+
+    const computePass = {
+      setPipeline: vi.fn(),
+      setBindGroup: vi.fn(),
+      dispatchWorkgroups: vi.fn(),
+      end: vi.fn(),
+    };
+    const renderPass = {
+      setPipeline: vi.fn(),
+      setBindGroup: vi.fn(),
+      setViewport: vi.fn(),
+      draw: vi.fn(),
+      end: vi.fn(),
+    };
+    const commandEncoder = {
+      beginComputePass: vi.fn(() => computePass),
+      beginRenderPass: vi.fn(() => renderPass),
+      finish: vi.fn(() => ({})),
+    };
+    const createRenderPipeline = vi.fn(() => ({}));
+    const device = {
+      createShaderModule: vi.fn().mockReturnValue({}),
+      createBindGroupLayout: vi.fn().mockReturnValue({}),
+      createPipelineLayout: vi.fn().mockReturnValue({}),
+      createComputePipeline: vi.fn().mockReturnValue({}),
+      createRenderPipeline,
+      createSampler: vi.fn().mockReturnValue({}),
+      createBuffer: vi.fn().mockReturnValue({ destroy: vi.fn() }),
+      createTexture: vi.fn().mockReturnValue({
+        createView: vi.fn().mockReturnValue({}),
+        destroy: vi.fn(),
+      }),
+      createBindGroup: vi.fn().mockReturnValue({}),
+      createCommandEncoder: vi.fn(() => commandEncoder),
+      limits: { minUniformBufferOffsetAlignment: 256 },
+      lost: new Promise(() => {}),
+      queue: { writeBuffer: vi.fn(), submit: vi.fn() },
+    } as any;
+    const sourceGpuTexture = { createView: vi.fn(() => ({})) };
+    const targetGpuTexture = { createView: vi.fn(() => ({})) };
+    const source = {
+      source: { pixelWidth: 16, pixelHeight: 8, format: 'bgra8unorm' },
+    } as any;
+    const target = {
+      source: { pixelWidth: 16, pixelHeight: 8, format: 'bgra8unorm' },
+    } as any;
+    const runner = new WebGpuComputeRunner();
+
+    runner.initFromPixiRenderer({
+      gpu: { device },
+      texture: {
+        getGpuSource: vi.fn((textureSource) =>
+          textureSource === source.source ? sourceGpuTexture : targetGpuTexture,
+        ),
+      },
+    });
+
+    const rendered = runner.applyEffectsToTexture({
+      source,
+      target,
+      effects: [{ type: 'brightness', value: 1.2 }],
+      options: { enablePadding: false },
+    });
+
+    expect(rendered).toBe(true);
+    expect(createRenderPipeline).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fragment: expect.objectContaining({
+          targets: [{ format: 'bgra8unorm' }],
+        }),
+      }),
+    );
+    expect(commandEncoder.beginRenderPass).toHaveBeenCalled();
+    expect(renderPass.draw).toHaveBeenCalledWith(3, 1, 0, 0);
+    expect(device.queue.submit).toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+
   it('converts VideoFrame to ImageBitmap before copyExternalImageToTexture and disposes it', async () => {
     const runner = new WebGpuComputeRunner();
 

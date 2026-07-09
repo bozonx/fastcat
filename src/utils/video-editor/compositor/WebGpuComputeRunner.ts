@@ -27,6 +27,39 @@ const log = createDevLogger('WebGpuComputeRunner');
 
 const UNIFORM_SIZE = 48; // 12 * 4 bytes
 const TRANSITION_UNIFORM_SIZE = 64;
+const textureBlitWgsl = `
+struct VertexOutput {
+  @builtin(position) position: vec4<f32>,
+  @location(0) uv: vec2<f32>,
+};
+
+@vertex
+fn vsMain(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
+  var positions = array<vec2<f32>, 3>(
+    vec2<f32>(-1.0, -1.0),
+    vec2<f32>(3.0, -1.0),
+    vec2<f32>(-1.0, 3.0)
+  );
+  var uvs = array<vec2<f32>, 3>(
+    vec2<f32>(0.0, 1.0),
+    vec2<f32>(2.0, 1.0),
+    vec2<f32>(0.0, -1.0)
+  );
+
+  var output: VertexOutput;
+  output.position = vec4<f32>(positions[vertexIndex], 0.0, 1.0);
+  output.uv = uvs[vertexIndex];
+  return output;
+}
+
+@group(0) @binding(0) var srcTex: texture_2d<f32>;
+@group(0) @binding(1) var srcSampler: sampler;
+
+@fragment
+fn fsMain(input: VertexOutput) -> @location(0) vec4<f32> {
+  return textureSample(srcTex, srcSampler, input.uv);
+}
+`;
 
 export interface EffectUniform {
   mode: number;
@@ -71,6 +104,15 @@ interface WebGpuTextureSystem {
 interface WebGpuRendererLike {
   gpu?: { device?: GPUDevice };
   texture?: WebGpuTextureSystem;
+}
+
+function isRenderableColorFormat(format: string): format is GPUTextureFormat {
+  return (
+    format === 'bgra8unorm' ||
+    format === 'bgra8unorm-srgb' ||
+    format === 'rgba8unorm' ||
+    format === 'rgba8unorm-srgb'
+  );
 }
 
 interface BlurContentRect {
@@ -624,6 +666,9 @@ export class WebGpuComputeRunner {
   private ownsDevice = false;
   private sharedRendererTexture: WebGpuTextureSystem | null = null;
   private bindLayout: GPUBindGroupLayout | null = null;
+  private textureBlitBindLayout: GPUBindGroupLayout | null = null;
+  private textureBlitShaderModule: GPUShaderModule | null = null;
+  private textureBlitPipelines = new Map<string, GPURenderPipeline>();
   private pipeline: GPUComputePipeline | null = null;
   private shaderModule: GPUShaderModule | null = null;
   private uniformBuffer: GPUBuffer | null = null;
@@ -718,6 +763,21 @@ export class WebGpuComputeRunner {
           },
         ],
       });
+      this.textureBlitBindLayout = this.device.createBindGroupLayout({
+        label: 'web-texture-blit-bind-layout',
+        entries: [
+          {
+            binding: 0,
+            visibility: GPUShaderStage.FRAGMENT,
+            texture: { sampleType: 'float', viewDimension: '2d' },
+          },
+          {
+            binding: 1,
+            visibility: GPUShaderStage.FRAGMENT,
+            sampler: { type: 'filtering' },
+          },
+        ],
+      });
       this.transitionBindLayout = this.device.createBindGroupLayout({
         label: 'web-transition-bind-layout',
         entries: [
@@ -759,6 +819,10 @@ export class WebGpuComputeRunner {
       this.shaderModule = this.device.createShaderModule({
         label: 'web-effect-shader',
         code: effectWgsl,
+      });
+      this.textureBlitShaderModule = this.device.createShaderModule({
+        label: 'web-texture-blit-shader',
+        code: textureBlitWgsl,
       });
 
       this.pipeline = this.device.createComputePipeline({
@@ -927,6 +991,79 @@ export class WebGpuComputeRunner {
 
     this.device.queue.submit([encoder.finish()]);
     return this.ownedTexture;
+  }
+
+  private getOrCreateTextureBlitPipeline(format: GPUTextureFormat): GPURenderPipeline {
+    const cached = this.textureBlitPipelines.get(format);
+    if (cached) {
+      return cached;
+    }
+
+    const pipeline = this.device!.createRenderPipeline({
+      label: `web-texture-blit-${format}`,
+      layout: this.device!.createPipelineLayout({
+        bindGroupLayouts: [this.textureBlitBindLayout!],
+      }),
+      vertex: {
+        module: this.textureBlitShaderModule!,
+        entryPoint: 'vsMain',
+      },
+      fragment: {
+        module: this.textureBlitShaderModule!,
+        entryPoint: 'fsMain',
+        targets: [{ format }],
+      },
+      primitive: { topology: 'triangle-list' },
+    });
+    this.textureBlitPipelines.set(format, pipeline);
+    return pipeline;
+  }
+
+  private blitTextureToRendererTarget(params: {
+    source: GPUTexture;
+    target: GPUTexture;
+    targetFormat: GPUTextureFormat;
+    width: number;
+    height: number;
+    label: string;
+  }): boolean {
+    if (
+      !this.device ||
+      !this.textureBlitBindLayout ||
+      !this.textureBlitShaderModule ||
+      !this.sampler
+    ) {
+      return false;
+    }
+
+    const pipeline = this.getOrCreateTextureBlitPipeline(params.targetFormat);
+    const bindGroup = this.device.createBindGroup({
+      label: `${params.label}-bind-group`,
+      layout: this.textureBlitBindLayout,
+      entries: [
+        { binding: 0, resource: params.source.createView() },
+        { binding: 1, resource: this.sampler },
+      ],
+    });
+    const encoder = this.device.createCommandEncoder({ label: `${params.label}-encoder` });
+    const pass = encoder.beginRenderPass({
+      label: `${params.label}-pass`,
+      colorAttachments: [
+        {
+          view: params.target.createView(),
+          loadOp: 'clear',
+          storeOp: 'store',
+          clearValue: { r: 0, g: 0, b: 0, a: 0 },
+        },
+      ],
+    });
+    pass.setPipeline(pipeline);
+    pass.setBindGroup(0, bindGroup);
+    pass.setViewport(0, 0, params.width, params.height, 0, 1);
+    pass.draw(3, 1, 0, 0);
+    pass.end();
+    this.device.queue.submit([encoder.finish()]);
+    return true;
   }
 
   /**
@@ -1219,10 +1356,11 @@ export class WebGpuComputeRunner {
 
     const origW = Math.max(1, Math.round(params.source.source.pixelWidth));
     const origH = Math.max(1, Math.round(params.source.source.pixelHeight));
-    if (
-      params.source.source.format !== 'rgba8unorm' ||
-      params.target.source.format !== 'rgba8unorm'
-    ) {
+    if (!isRenderableColorFormat(params.source.source.format)) {
+      return false;
+    }
+    const targetFormat = params.target.source.format;
+    if (!isRenderableColorFormat(targetFormat)) {
       return false;
     }
 
@@ -1250,14 +1388,14 @@ export class WebGpuComputeRunner {
       return false;
     }
 
-    const encoder = this.device.createCommandEncoder({ label: 'web-effect-texture-copy' });
-    encoder.copyTextureToTexture(
-      { texture: outputTexture },
-      { texture: targetTexture },
-      { width: origW, height: origH, depthOrArrayLayers: 1 },
-    );
-    this.device.queue.submit([encoder.finish()]);
-    return true;
+    return this.blitTextureToRendererTarget({
+      source: outputTexture,
+      target: targetTexture,
+      targetFormat,
+      width: origW,
+      height: origH,
+      label: 'web-effect-texture-blit',
+    });
   }
 
   public async applyTransition(params: {
@@ -1377,10 +1515,13 @@ export class WebGpuComputeRunner {
     const width = Math.max(1, Math.round(params.to.source.pixelWidth));
     const height = Math.max(1, Math.round(params.to.source.pixelHeight));
     if (
-      params.from.source.format !== 'rgba8unorm' ||
-      params.to.source.format !== 'rgba8unorm' ||
-      params.output.source.format !== 'rgba8unorm'
+      !isRenderableColorFormat(params.from.source.format) ||
+      !isRenderableColorFormat(params.to.source.format)
     ) {
+      return false;
+    }
+    const outputFormat = params.output.source.format;
+    if (!isRenderableColorFormat(outputFormat)) {
       return false;
     }
 
@@ -1459,14 +1600,16 @@ export class WebGpuComputeRunner {
     pass.dispatchWorkgroups(Math.ceil(width / 8), Math.ceil(height / 8), 1);
     pass.end();
 
-    const targetTexture = this.sharedRendererTexture.getGpuSource(params.output.source);
-    encoder.copyTextureToTexture(
-      { texture: outputTexture },
-      { texture: targetTexture },
-      { width, height, depthOrArrayLayers: 1 },
-    );
     this.device.queue.submit([encoder.finish()]);
-    return true;
+    const targetTexture = this.sharedRendererTexture.getGpuSource(params.output.source);
+    return this.blitTextureToRendererTarget({
+      source: outputTexture,
+      target: targetTexture,
+      targetFormat: outputFormat,
+      width,
+      height,
+      label: 'web-transition-texture-blit',
+    });
   }
 
   /**
