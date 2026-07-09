@@ -33,6 +33,7 @@ const emit = defineEmits<{
   (e: 'pointerdown' | 'start-playhead-drag' | 'start-pan', event: PointerEvent): void;
   (e: 'wheel', event: WheelEvent): void;
   (e: 'dblclick-ruler', timeUs: number): void;
+  (e: 'middleclick-ruler', event: MouseEvent): void;
 }>();
 
 const canvasRef = ref<HTMLCanvasElement | null>(null);

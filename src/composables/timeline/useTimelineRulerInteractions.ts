@@ -44,6 +44,7 @@ interface UseTimelineRulerInteractionsOptions {
     (e: 'pointerdown' | 'start-playhead-drag' | 'start-pan', event: PointerEvent): void;
     (e: 'wheel', event: WheelEvent): void;
     (e: 'dblclick-ruler', timeUs: number): void;
+    (e: 'middleclick-ruler', event: MouseEvent): void;
   };
 }
 
@@ -150,6 +151,9 @@ export function useTimelineRulerInteractions(options: UseTimelineRulerInteractio
   function onRulerAuxClick(event: MouseEvent) {
     if (event.button !== 1) return;
 
+    event.preventDefault();
+    event.stopPropagation();
+
     if (middlePointerDown.value?.moved) {
       middlePointerDown.value = null;
       return;
@@ -157,6 +161,7 @@ export function useTimelineRulerInteractions(options: UseTimelineRulerInteractio
 
     middlePointerDown.value = null;
     executeRulerClickAction(rulerSettings.value.middleClick, event);
+    options.emit('middleclick-ruler', event);
   }
 
   function handleDragAction(action: string, event: PointerEvent) {

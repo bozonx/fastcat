@@ -296,7 +296,30 @@ function onContextMenu(e: MouseEvent) {
 
 function onTimeRulerPointerDown(e: PointerEvent) {
   focusStore.setMainFocus('timeline');
+  if (e.button === 1) {
+    middlePointerStartedOnRuler.value = true;
+  }
   onBaseTimeRulerPointerDown(e);
+}
+
+const middlePointerStartedOnRuler = ref(false);
+
+function onRulerStartPan(e: PointerEvent) {
+  if (e.button === 1) {
+    middlePointerStartedOnRuler.value = true;
+  }
+  startPan(e);
+}
+
+function onRulerStartPlayheadDrag(e: PointerEvent) {
+  if (e.button === 1) {
+    middlePointerStartedOnRuler.value = true;
+  }
+  startPlayheadDrag(e);
+}
+
+function onRulerMiddleClick() {
+  middlePointerStartedOnRuler.value = false;
 }
 
 let cachedPointerRectEl: HTMLElement | null = null;
@@ -648,6 +671,12 @@ onMounted(() => {
 
 function onTrackAreaAuxClick(e: MouseEvent) {
   if (e.button !== 1) return;
+  if (middlePointerStartedOnRuler.value) {
+    middlePointerStartedOnRuler.value = false;
+    e.preventDefault();
+    e.stopPropagation();
+    return;
+  }
   const isRuler = (e.target as HTMLElement).closest('.timeline-ruler-container');
   const isLabels = (e.target as HTMLElement).closest('.timeline-labels-container');
   if (!isRuler) {
@@ -1252,8 +1281,9 @@ async function handleConfirmCreateVersion(newName: string) {
               :scroll-el="masterScrollEl"
               :scroll-left="scrollLeftRef"
               @pointerdown="onTimeRulerPointerDown"
-              @start-playhead-drag="startPlayheadDrag"
-              @start-pan="startPan"
+              @start-playhead-drag="onRulerStartPlayheadDrag"
+              @start-pan="onRulerStartPan"
+              @middleclick-ruler="onRulerMiddleClick"
             />
           </UContextMenu>
         </div>

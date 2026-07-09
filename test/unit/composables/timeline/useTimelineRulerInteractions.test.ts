@@ -18,6 +18,7 @@ function setupInteractions(rulerOverrides: Record<string, unknown>) {
   const selectTimelineMarker = vi.fn();
   const setCurrentTimeUs = vi.fn();
   const requestCenterPlayhead = vi.fn();
+  const fitTimelineZoom = vi.fn();
   // Returns a recognizable snapped value so we can prove snapping was applied.
   const resolvePlayheadClickTimeUs = vi.fn((raw: number) => raw + 777);
 
@@ -37,7 +38,7 @@ function setupInteractions(rulerOverrides: Record<string, unknown>) {
           clearSelection: vi.fn(),
           removeSelectionRange: vi.fn(),
           resetTimelineZoom: vi.fn(),
-          fitTimelineZoom: vi.fn(),
+          fitTimelineZoom,
           setCurrentTimeUs,
           requestCenterPlayhead,
         },
@@ -60,6 +61,7 @@ function setupInteractions(rulerOverrides: Record<string, unknown>) {
     selectTimelineMarker,
     setCurrentTimeUs,
     requestCenterPlayhead,
+    fitTimelineZoom,
     resolvePlayheadClickTimeUs,
   };
 }
@@ -103,5 +105,20 @@ describe('useTimelineRulerInteractions', () => {
     api.onRulerClick(new MouseEvent('click', { button: 0 }));
 
     expect(requestCenterPlayhead).toHaveBeenCalledOnce();
+  });
+
+  it('centers the playhead on ruler middle click without fitting zoom', () => {
+    const { api, requestCenterPlayhead, fitTimelineZoom } = setupInteractions({
+      middleClick: 'center_playhead',
+    });
+    const event = new MouseEvent('auxclick', { button: 1, bubbles: true, cancelable: true });
+    const stopPropagation = vi.spyOn(event, 'stopPropagation');
+
+    api.onRulerAuxClick(event);
+
+    expect(stopPropagation).toHaveBeenCalledOnce();
+    expect(event.defaultPrevented).toBe(true);
+    expect(requestCenterPlayhead).toHaveBeenCalledOnce();
+    expect(fitTimelineZoom).not.toHaveBeenCalled();
   });
 });

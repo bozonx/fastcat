@@ -2,6 +2,8 @@ import { defineComponent } from 'vue';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mountSuspended, mockComponent, mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { useTimelineStore } from '~/stores/timeline.store';
+import { useWorkspaceStore } from '~/stores/workspace.store';
+import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
 import EditorTimeline from '~/components/layout-panels/EditorTimeline.vue';
 
 // Enable E2E bridge so __fastcatE2e* hooks get registered on mount.
@@ -76,6 +78,8 @@ function setupTimelineStore() {
   timelineStore.getMarkers = vi.fn().mockReturnValue([]);
   timelineStore.saveTimeline = vi.fn().mockResolvedValue(undefined);
   timelineStore.setCurrentTimeUs = vi.fn();
+  timelineStore.fitTimelineZoom = vi.fn();
+  timelineStore.requestCenterPlayhead = vi.fn();
   timelineStore.unlockAllTracks = vi.fn();
   timelineStore.showAllTracks = vi.fn();
   timelineStore.unmuteAllTracks = vi.fn();
@@ -314,5 +318,29 @@ describe('EditorTimeline — track reset buttons', () => {
     await hiddenBtn.trigger('click');
 
     expect(timelineStore.showAllTracks).toHaveBeenCalled();
+  });
+});
+
+describe('EditorTimeline — ruler middle click isolation', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('does not run timeline middle-click fit when the middle-button gesture started on the ruler', async () => {
+    const timelineStore = setupTimelineStore();
+    const workspaceStore = useWorkspaceStore();
+    workspaceStore.userSettings.mouse = structuredClone(DEFAULT_USER_SETTINGS.mouse);
+    workspaceStore.userSettings.mouse.ruler.middleClick = 'center_playhead';
+    workspaceStore.userSettings.mouse.ruler.middleDrag = 'pan';
+    workspaceStore.userSettings.mouse.timeline.middleClick = 'fit_zoom';
+
+    const component = await mountSuspended(EditorTimeline);
+    const ruler = component.find('[data-testid="timeline-ruler"]');
+    const trackArea = component.find('.video-tracks-scroll');
+
+    await ruler.trigger('pointerdown', { button: 1, pointerId: 1 });
+    await trackArea.trigger('auxclick', { button: 1, bubbles: true, cancelable: true });
+
+    expect(timelineStore.fitTimelineZoom).not.toHaveBeenCalled();
   });
 });
