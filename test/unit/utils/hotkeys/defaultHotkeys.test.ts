@@ -190,4 +190,18 @@ describe('DEFAULT_HOTKEYS', () => {
     expect(DEFAULT_HOTKEYS.bindings['timeline.groupClips']).toEqual(['Ctrl+G']);
     expect(DEFAULT_HOTKEYS.bindings['timeline.ungroupClips']).toEqual(['Ctrl+Shift+G']);
   });
+
+  it('binds F/D to the speed-cycle shortcuts and frees them from 1.5x', () => {
+    expect(DEFAULT_HOTKEYS.bindings['playback.speedUpForward']).toEqual(['F']);
+    expect(DEFAULT_HOTKEYS.bindings['playback.speedDown']).toEqual(['D']);
+    // F/D used to drive the fixed 1.5x speeds; they are now unbound by default.
+    expect(DEFAULT_HOTKEYS.bindings['playback.forward1_5']).toEqual([]);
+    expect(DEFAULT_HOTKEYS.bindings['playback.backward1_5']).toEqual([]);
+  });
+
+  it('registers the speed-cycle commands in the commands registry', () => {
+    const ids = DEFAULT_HOTKEYS.commands.map((c) => c.id);
+    expect(ids).toContain('playback.speedUpForward');
+    expect(ids).toContain('playback.speedDown');
+  });
 });

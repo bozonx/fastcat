@@ -1682,6 +1682,8 @@
         "forward2": "Forward x2",
         "forward3": "Forward x3",
         "forward5": "Forward x5",
+        "speedUpForward": "Speed up (cycle forward up the grid)",
+        "speedDown": "Slow down (cycle down the grid, into reverse)",
         "jumpNextBoundary": "Jump to next clip boundary",
         "jumpNextBoundaryTrack": "Jump to next boundary (current track)",
         "jumpPrevBoundary": "Jump to previous clip boundary",

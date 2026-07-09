@@ -4,6 +4,7 @@ import { useUiStore } from '~/stores/ui.store';
 import type { HotkeyCommandId } from '~/utils/hotkeys/defaultHotkeys';
 import { getDocFps } from '~/timeline/commands/utils';
 import { isPreviewLikeFocus } from '~/utils/hotkeys/runtime';
+import { stepPlaybackSpeed } from '~/utils/playbackSpeeds';
 
 import type { createHotkeyHoldRunner } from '~/utils/hotkeys/holdRunner';
 
@@ -160,6 +161,45 @@ export function usePlaybackHotkeys(
     'playback.jumpNextBoundaryTrack': () => {
       if (!focusStore.canUsePlaybackHotkeys) return false;
       timelineStore.jumpToNextClipBoundary({ currentTrackOnly: true });
+      return true;
+    },
+
+    // F — cycle playback speed UP the grid, always forward.
+    // First press (paused / reversing / below 1.25x) starts at 1.25x forward;
+    // each subsequent press advances one grid step up to the 5x ceiling.
+    'playback.speedUpForward': () => {
+      if (!canUsePlaybackOrTimelineFocus()) return false;
+      // The preview player keeps its own playback rate; the speed grid is a
+      // timeline-transport concept, so leave preview playback untouched.
+      if (isPreviewLikeFocus(focusStore.effectiveFocus) && uiStore.hasActivePreviewPlayer) {
+        return false;
+      }
+
+      const { playbackSpeed, isPlaying } = timelineStore;
+      // Continue climbing only while already playing forward at >= 1.25x.
+      const nextSpeed =
+        isPlaying && playbackSpeed >= 1.25 ? stepPlaybackSpeed(playbackSpeed, 'up') : 1.25;
+      timelineStore.setPlaybackSpeed(nextSpeed);
+      if (!isPlaying) timelineStore.togglePlayback();
+      return true;
+    },
+
+    // D — cycle playback speed DOWN the grid by one step.
+    // Baseline is 1x (so the first step lands on 0.75x) unless already playing
+    // (forward or reverse), in which case it continues from the current speed.
+    // Walking off the bottom crosses into reverse: 0.5 → -0.5 → -0.75 … → -5.
+    'playback.speedDown': () => {
+      if (!canUsePlaybackOrTimelineFocus()) return false;
+      // See playback.speedUpForward: preview player is unaffected.
+      if (isPreviewLikeFocus(focusStore.effectiveFocus) && uiStore.hasActivePreviewPlayer) {
+        return false;
+      }
+
+      const { playbackSpeed, isPlaying } = timelineStore;
+      const fromSpeed = isPlaying ? playbackSpeed : 1;
+      const nextSpeed = stepPlaybackSpeed(fromSpeed, 'down');
+      timelineStore.setPlaybackSpeed(nextSpeed);
+      if (!isPlaying) timelineStore.togglePlayback();
       return true;
     },
   };

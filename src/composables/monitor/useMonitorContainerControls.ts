@@ -7,6 +7,7 @@ import type { useSelectionStore } from '~/stores/selection.store';
 import type { useWorkspaceStore } from '~/stores/workspace.store';
 import type { MonitorSyncMode } from '~/composables/monitor/useMonitorPlayback';
 import { isTauriRuntime } from '~/utils/runtime';
+import { PLAYBACK_SPEED_VALUES, formatSpeedLabel } from '~/utils/playbackSpeeds';
 
 interface PlaybackSpeedOption {
   label: string;
@@ -50,12 +51,6 @@ interface UseMonitorContainerControlsOptions {
   isMobile?: boolean;
 }
 
-function formatSpeedLabel(speed: number): string {
-  const abs = Math.abs(speed);
-  const prefix = speed < 0 ? '-' : '';
-  return `${prefix}${abs}x`;
-}
-
 export function useMonitorContainerControls(options: UseMonitorContainerControlsOptions) {
   const { showTimecode, showTransparencyGrid, showMarkerTexts } = useMonitorSettings();
 
@@ -95,16 +90,13 @@ export function useMonitorContainerControls(options: UseMonitorContainerControls
       monitorSyncOptions[1]!,
   );
 
-  const positiveSpeedValues = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 3, 5];
-
-  const playbackSpeedOptions: PlaybackSpeedOption[] = positiveSpeedValues.map((v) => ({
+  const playbackSpeedOptions: PlaybackSpeedOption[] = PLAYBACK_SPEED_VALUES.map((v) => ({
     label: formatSpeedLabel(v),
     value: v,
   }));
 
   // Negative speeds in descending order (fastest to slowest: -5 … -0.5)
-  const negativeSpeedOptions: PlaybackSpeedOption[] = positiveSpeedValues
-    .slice()
+  const negativeSpeedOptions: PlaybackSpeedOption[] = [...PLAYBACK_SPEED_VALUES]
     .reverse()
     .map((v) => ({ label: formatSpeedLabel(-v), value: -v }));
 

@@ -131,6 +131,8 @@ export type HotkeyCommandId =
   | 'playback.forward0_5'
   | 'playback.backward0_5'
   | 'playback.backward1'
+  | 'playback.speedUpForward'
+  | 'playback.speedDown'
   | 'playback.jumpPrevBoundary'
   | 'playback.jumpNextBoundary'
   | 'playback.jumpPrevBoundaryTrack'
@@ -505,6 +507,18 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     { id: 'playback.backward0_75', groupId: 'monitor', title: 'Backward 0.75x' },
     { id: 'playback.forward0_5', groupId: 'monitor', title: 'Forward 0.5x' },
     { id: 'playback.backward0_5', groupId: 'monitor', title: 'Backward 0.5x' },
+    {
+      id: 'playback.speedUpForward',
+      groupId: 'monitor',
+      title: 'Speed up (forward)',
+      description: 'Cycle playback speed up the speed grid (starts at 1.25x forward)',
+    },
+    {
+      id: 'playback.speedDown',
+      groupId: 'monitor',
+      title: 'Slow down',
+      description: 'Cycle playback speed down the grid, into reverse (starts at 0.75x forward)',
+    },
   ],
   bindings: {
     'general.copy': [`${Mod}+C`],
@@ -630,8 +644,10 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     'playback.stepBackwardLarge': ['Shift+ArrowLeft'],
     'playback.forward1_25': [],
     'playback.backward1_25': ['Shift+O'],
-    'playback.forward1_5': ['F'],
-    'playback.backward1_5': ['D'],
+    'playback.forward1_5': [],
+    'playback.backward1_5': [],
+    'playback.speedUpForward': ['F'],
+    'playback.speedDown': ['D'],
     'playback.forward1_75': ['Shift+R'],
     'playback.backward1_75': ['Shift+E'],
     'playback.forward2': ['R'],

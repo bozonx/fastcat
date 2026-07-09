@@ -6,6 +6,8 @@ import {
   applyLoadedTimelineSessionSnapshot,
   useProjectSettingsStore,
 } from '~/stores/project-settings.store';
+import { createProjectSettingsRepository } from '~/repositories/project-settings.repository';
+import { createProjectUiRepository } from '~/repositories/project-ui.repository';
 
 import { getPlatformSuffix } from '~/stores/ui/uiLocalStorage';
 
@@ -99,10 +101,17 @@ vi.mock('~/stores/ui/uiLocalStorage', () => ({
   getPlatformSuffix: vi.fn(() => ''),
 }));
 
+const { capturedAutoSave, settingsRepoMocks, uiSaveSpy, markDirtySpy } = vi.hoisted(() => ({
+  capturedAutoSave: { doSave: null as null | ((...args: unknown[]) => Promise<unknown>) },
+  settingsRepoMocks: { load: vi.fn().mockResolvedValue(null), save: vi.fn().mockResolvedValue(undefined) },
+  uiSaveSpy: vi.fn().mockResolvedValue(undefined),
+  markDirtySpy: vi.fn(),
+}));
+
 vi.mock('~/repositories/project-settings.repository', () => ({
   createProjectSettingsRepository: vi.fn(() => ({
-    load: vi.fn().mockResolvedValue(null),
-    save: vi.fn().mockResolvedValue(undefined),
+    load: settingsRepoMocks.load,
+    save: settingsRepoMocks.save,
   })),
 }));
 
@@ -113,20 +122,21 @@ vi.mock('~/repositories/project-ui.repository', () => ({
   })),
 }));
 
-const { capturedAutoSave, uiSaveSpy, markDirtySpy } = vi.hoisted(() => ({
-  capturedAutoSave: { doSave: null as null | (() => Promise<unknown>) },
-  uiSaveSpy: vi.fn().mockResolvedValue(undefined),
-  markDirtySpy: vi.fn(),
-}));
-
 vi.mock('~/utils/auto-save', () => ({
-  createAutoSave: vi.fn((config: { doSave: () => Promise<unknown> }) => {
+  createAutoSave: vi.fn((config: { doSave: (...args: unknown[]) => Promise<unknown> }) => {
     capturedAutoSave.doSave = config.doSave;
     return {
       markDirty: markDirtySpy,
       markCleanForCurrentRevision: vi.fn(),
       reset: vi.fn(),
-      requestSave: vi.fn().mockResolvedValue(undefined),
+      // `immediate: true` exercises the real save path (store → doSave → repo.save),
+      // mirroring production behavior. Non-immediate saves stay debounced/no-op
+      // (no event loop in the unit env).
+      requestSave: vi.fn((opts?: { immediate?: boolean }) =>
+        opts?.immediate && capturedAutoSave.doSave
+          ? capturedAutoSave.doSave()
+          : Promise.resolve(undefined),
+      ),
       isDirty: vi.fn().mockReturnValue(false),
     };
   }),
@@ -141,6 +151,7 @@ vi.mock('~/composables/useVfs', () => ({
 const focusStoreMock = { activeTimelinePath: null };
 const projectTabsStoreMock = {
   setTabsState: vi.fn(),
+  syncHiddenStaticTabsWithLayout: vi.fn(),
   activeTabId: null,
   fileTabs: [],
   staticTabsOrder: [],
@@ -353,6 +364,170 @@ describe('ProjectSettingsStore', () => {
     await nextTick();
 
     expect(markDirtySpy).toHaveBeenCalled();
+  });
+
+  describe('save and re-binding', () => {
+    function makeStore() {
+      const store = useProjectSettingsStore();
+      store.setContext({
+        getProjectDirHandle: async () => ({}) as any,
+        getCurrentProjectName: () => 'test',
+        getIsReadOnly: () => false,
+        getProjectMeta: () => null,
+        saveProjectMeta: async () => {},
+        getCurrentEditorView: () => 'cut',
+        getLastViewBeforeFullscreen: () => null,
+      });
+      return store;
+    }
+
+    it('saveProjectSettings persists technical settings via repo.save with the full object', async () => {
+      const store = makeStore();
+
+      await store.saveProjectSettings();
+
+      expect(settingsRepoMocks.save).toHaveBeenCalledTimes(1);
+      const saved = settingsRepoMocks.save.mock.calls.at(-1)![0];
+      expect(saved).toBe(store.projectSettings);
+    });
+
+    it('saveProjectSettings persists UI payload with layout fields via uiRepo.save', async () => {
+      const store = makeStore();
+      store.projectSettings.ui.layout.splitSizes['a:b'] = [1, 2];
+
+      await store.saveProjectSettings();
+
+      expect(uiSaveSpy).toHaveBeenCalled();
+      const ui = uiSaveSpy.mock.calls.at(-1)![0];
+      expect(ui.version).toBe(1);
+      expect(ui.ui.layout.splitSizes['a:b']).toEqual([1, 2]);
+    });
+
+    it('saveProjectSettings toggles isSavingProjectSettings and clears error on success', async () => {
+      const store = makeStore();
+
+      let savingDuringRequest = false;
+      settingsRepoMocks.save.mockImplementationOnce(async () => {
+        savingDuringRequest = store.isSavingProjectSettings;
+      });
+
+      await store.saveProjectSettings();
+
+      expect(savingDuringRequest).toBe(true);
+      expect(store.isSavingProjectSettings).toBe(false);
+      expect(store.projectSettingsSaveError).toBeNull();
+    });
+
+    it('saveProjectSettings records error and resets isSaving in finally when repo.save throws', async () => {
+      const store = makeStore();
+      settingsRepoMocks.save.mockRejectedValueOnce(new Error('disk full'));
+
+      await expect(store.saveProjectSettings()).rejects.toThrow('disk full');
+
+      expect(store.projectSettingsSaveError).toBe('disk full');
+      expect(store.isSavingProjectSettings).toBe(false);
+    });
+
+    it('saveProjectSettings skips save when getIsReadOnly is true', async () => {
+      const store = useProjectSettingsStore();
+      store.setContext({
+        getProjectDirHandle: async () => ({}) as any,
+        getCurrentProjectName: () => 'test',
+        getIsReadOnly: () => true,
+        getProjectMeta: () => null,
+        saveProjectMeta: async () => {},
+        getCurrentEditorView: () => 'cut',
+        getLastViewBeforeFullscreen: () => null,
+      });
+
+      await store.saveProjectSettings();
+
+      expect(settingsRepoMocks.save).not.toHaveBeenCalled();
+      expect(uiSaveSpy).not.toHaveBeenCalled();
+    });
+
+    it('saveProjectSettings skips save when project name is empty', async () => {
+      const store = useProjectSettingsStore();
+      store.setContext({
+        getProjectDirHandle: async () => ({}) as any,
+        getCurrentProjectName: () => '',
+        getIsReadOnly: () => false,
+        getProjectMeta: () => null,
+        saveProjectMeta: async () => {},
+        getCurrentEditorView: () => 'cut',
+        getLastViewBeforeFullscreen: () => null,
+      });
+
+      await store.saveProjectSettings();
+
+      expect(settingsRepoMocks.save).not.toHaveBeenCalled();
+    });
+
+    it('saveProjectSettings skips save when no project dir handle', async () => {
+      const store = useProjectSettingsStore();
+      store.setContext({
+        getProjectDirHandle: async () => null,
+        getCurrentProjectName: () => 'test',
+        getIsReadOnly: () => false,
+        getProjectMeta: () => null,
+        saveProjectMeta: async () => {},
+        getCurrentEditorView: () => 'cut',
+        getLastViewBeforeFullscreen: () => null,
+      });
+
+      await store.saveProjectSettings();
+
+      expect(settingsRepoMocks.save).not.toHaveBeenCalled();
+    });
+
+    it('saveInitialProjectSettingsForNewProject rebinds repos with @project/<name> path and saves', async () => {
+      const store = makeStore();
+
+      await store.saveInitialProjectSettingsForNewProject({ projectName: 'demo' });
+
+      expect(vi.mocked(createProjectSettingsRepository)).toHaveBeenCalledWith(
+        expect.objectContaining({ projectPath: '@project/demo' }),
+      );
+      expect(vi.mocked(createProjectUiRepository)).toHaveBeenCalledWith(
+        expect.objectContaining({ projectPath: '@project/demo' }),
+      );
+      expect(settingsRepoMocks.save).toHaveBeenCalled();
+      expect(uiSaveSpy).toHaveBeenCalled();
+    });
+
+    it('saveInitialProjectSettingsForNewProject omits projectPath when projectName is empty', async () => {
+      const store = makeStore();
+
+      await store.saveInitialProjectSettingsForNewProject({ projectName: '' });
+
+      expect(vi.mocked(createProjectSettingsRepository)).toHaveBeenCalledWith(
+        expect.not.objectContaining({ projectPath: expect.anything() }),
+      );
+    });
+
+    it('loadProjectSettings rebinds repos without projectPath (active project route)', async () => {
+      const store = makeStore();
+      vi.mocked(createProjectSettingsRepository).mockClear();
+
+      await store.loadProjectSettings();
+
+      expect(vi.mocked(createProjectSettingsRepository)).toHaveBeenCalledWith(
+        expect.not.objectContaining({ projectPath: expect.anything() }),
+      );
+    });
+
+    it('ensureRepo does not recreate repos on a second save (early return)', async () => {
+      const store = makeStore();
+
+      await store.saveProjectSettings();
+      const callsAfterFirst = vi.mocked(createProjectSettingsRepository).mock.calls.length;
+
+      await store.saveProjectSettings();
+
+      // Second save hits ensureRepo's early return (repos already bound), so
+      // createProjectSettingsRepository is not called again.
+      expect(vi.mocked(createProjectSettingsRepository).mock.calls.length).toBe(callsAfterFirst);
+    });
   });
 });
 
