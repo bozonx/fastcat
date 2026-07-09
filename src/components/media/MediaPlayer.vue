@@ -457,14 +457,14 @@ onUnmounted(() => {
       ]"
       @mouseenter="resetIdle"
     >
-      <div class="w-full relative flex items-center h-4 group cursor-pointer">
+      <div class="w-full relative flex items-center h-4 group">
         <input
           v-model.number="currentTime"
           type="range"
           min="0"
           :max="duration || 100"
           step="0.01"
-          class="w-full absolute inset-0 opacity-0 cursor-pointer z-10"
+          class="slider-cursor-self w-full absolute inset-0 opacity-0 cursor-pointer z-10"
           @input="onSeek"
           @mousedown="onSeekStart"
           @mouseup="onSeekEnd"

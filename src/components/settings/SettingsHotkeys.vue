@@ -121,7 +121,6 @@ function setBindings(cmdId: HotkeyCommandId, next: string[]) {
     (draft) => {
       draft.hotkeys.bindings[cmdId] = [...next];
     },
-    { immediate: true },
   );
 }
 
@@ -136,7 +135,6 @@ function confirmResetAllHotkeys() {
     (draft) => {
       draft.hotkeys.bindings = {};
     },
-    { immediate: true },
   );
 }
 
@@ -149,7 +147,6 @@ function confirmResetCommandHotkeys() {
     (draft) => {
       Reflect.deleteProperty(draft.hotkeys.bindings, cmdId);
     },
-    { immediate: true },
   );
 }
 
@@ -176,7 +173,6 @@ function confirmReplaceDuplicate() {
         draft.hotkeys.bindings[owner] = ownerNext;
         draft.hotkeys.bindings[target] = targetNext;
       },
-      { immediate: true },
     );
   }
   isDuplicateConfirmOpen.value = false;

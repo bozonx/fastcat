@@ -303,6 +303,12 @@ input[type='range'] {
   height: 1rem; /* 16px */
 }
 
+/* `.slider-cursor-self` opts out of the default range/role-slider cursor
+   so components can set their own cursor via Tailwind utilities. */
+input[type='range'].slider-cursor-self {
+  cursor: auto;
+}
+
 input[type='range']::-webkit-slider-track {
   background: var(--range-track-bg);
   height: 0.1875rem; /* 3px */

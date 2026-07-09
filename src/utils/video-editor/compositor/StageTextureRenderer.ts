@@ -15,6 +15,16 @@ export interface StageTextureRendererContext {
   getTrackById: (trackId: string) => CompositorTrack | undefined;
 }
 
+interface WebGpuTextureSystem {
+  getGpuSource: (source: unknown) => GPUTexture;
+}
+
+interface WebGpuRenderer {
+  gpu?: { device?: GPUDevice };
+  texture?: WebGpuTextureSystem;
+  type?: RendererType;
+}
+
 export class StageTextureRenderer {
   private transitionCombineSprite: Sprite | null = null;
   private bitmapCaptureSprite: Sprite | null = null;
@@ -45,8 +55,100 @@ export class StageTextureRenderer {
     return this.captureTexture;
   }
 
-  private extractImageData(texture: RenderTexture): ImageData {
+  private unpremultiplyPixels(data: Uint8ClampedArray) {
+    for (let i = 0; i < data.length; i += 4) {
+      const alpha = data[i + 3]!;
+      if (alpha === 0 || alpha === 255) continue;
+      data[i] = Math.min(255, Math.round((data[i]! * 255) / alpha));
+      data[i + 1] = Math.min(255, Math.round((data[i + 1]! * 255) / alpha));
+      data[i + 2] = Math.min(255, Math.round((data[i + 2]! * 255) / alpha));
+    }
+  }
+
+  private async extractWebGpuImageData(texture: RenderTexture): Promise<ImageData | null> {
+    const renderer = this.context.app.renderer as unknown as WebGpuRenderer;
+    const device = renderer.gpu?.device;
+    const gpuTexture = renderer.texture?.getGpuSource(texture.source);
+    if (!device || !gpuTexture) {
+      return null;
+    }
+
+    const width = Math.max(0, Math.floor(texture.source.pixelWidth));
+    const height = Math.max(0, Math.floor(texture.source.pixelHeight));
+    if (width === 0 || height === 0) {
+      return new ImageData(width, height);
+    }
+
+    const format = texture.source.format;
+    const isBgra = format === 'bgra8unorm' || format === 'bgra8unorm-srgb';
+    const isRgba = format === 'rgba8unorm' || format === 'rgba8unorm-srgb';
+    if (!isBgra && !isRgba) {
+      return null;
+    }
+
+    const rowSize = width * 4;
+    const bytesPerRow = Math.ceil(rowSize / 256) * 256;
+    const needed = bytesPerRow * height;
+    const buffer = device.createBuffer({
+      label: 'stage-texture-readback',
+      size: needed,
+      usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
+    });
+
+    try {
+      const encoder = device.createCommandEncoder();
+      encoder.copyTextureToBuffer(
+        { texture: gpuTexture },
+        { buffer, bytesPerRow, rowsPerImage: height },
+        { width, height, depthOrArrayLayers: 1 },
+      );
+      device.queue.submit([encoder.finish()]);
+
+      await buffer.mapAsync(GPUMapMode.READ, 0, needed);
+      const mappedRange = buffer.getMappedRange(0, needed);
+      const source = new Uint8Array(mappedRange);
+      const data = new Uint8ClampedArray(rowSize * height);
+
+      for (let y = 0; y < height; y += 1) {
+        const sourceRow = y * bytesPerRow;
+        const targetRow = y * rowSize;
+
+        if (isRgba) {
+          data.set(source.subarray(sourceRow, sourceRow + rowSize), targetRow);
+          continue;
+        }
+
+        for (let x = 0; x < width; x += 1) {
+          const sourceOffset = sourceRow + x * 4;
+          const targetOffset = targetRow + x * 4;
+          data[targetOffset] = source[sourceOffset + 2]!;
+          data[targetOffset + 1] = source[sourceOffset + 1]!;
+          data[targetOffset + 2] = source[sourceOffset]!;
+          data[targetOffset + 3] = source[sourceOffset + 3]!;
+        }
+      }
+
+      this.unpremultiplyPixels(data);
+      return new ImageData(data as Uint8ClampedArray<ArrayBuffer>, width, height);
+    } finally {
+      try {
+        buffer.unmap();
+      } catch {
+        // The buffer may never be mapped if the copy or map failed.
+      }
+      buffer.destroy();
+    }
+  }
+
+  private async extractImageData(texture: RenderTexture): Promise<ImageData> {
     const renderer = this.context.app.renderer;
+    if (renderer.type === RendererType.WEBGPU) {
+      const imageData = await this.extractWebGpuImageData(texture);
+      if (imageData) {
+        return imageData;
+      }
+    }
+
     const { pixels, width, height } = renderer.extract.pixels(texture);
     const data =
       pixels instanceof Uint8ClampedArray
@@ -59,20 +161,14 @@ export class StageTextureRenderer {
     // extract path goes through a 2D-canvas drawImage, which already
     // unpremultiplies.
     if (renderer.type === RendererType.WEBGL) {
-      for (let i = 0; i < data.length; i += 4) {
-        const alpha = data[i + 3]!;
-        if (alpha === 0 || alpha === 255) continue;
-        data[i] = Math.min(255, Math.round((data[i]! * 255) / alpha));
-        data[i + 1] = Math.min(255, Math.round((data[i + 1]! * 255) / alpha));
-        data[i + 2] = Math.min(255, Math.round((data[i + 2]! * 255) / alpha));
-      }
+      this.unpremultiplyPixels(data);
     }
 
     return new ImageData(data as Uint8ClampedArray<ArrayBuffer>, width, height);
   }
 
   private async captureTextureToBitmap(texture: RenderTexture): Promise<ImageBitmap> {
-    return await createImageBitmap(this.extractImageData(texture));
+    return await createImageBitmap(await this.extractImageData(texture));
   }
 
   public setSize(width: number, height: number) {
@@ -317,7 +413,7 @@ export class StageTextureRenderer {
         target: capture,
         clear: true,
       });
-      const captureData = this.extractImageData(capture);
+      const captureData = await this.extractImageData(capture);
 
       const edgeInsetPixels = Math.max(0, Math.floor(options.edgeInsetPixels ?? 0));
       const maxInset = Math.max(

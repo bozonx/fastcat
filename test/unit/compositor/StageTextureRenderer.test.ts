@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { RendererType } from 'pixi.js';
 import { StageTextureRenderer } from '~/utils/video-editor/compositor/StageTextureRenderer';
 
 describe('StageTextureRenderer', () => {
@@ -86,5 +87,72 @@ describe('StageTextureRenderer', () => {
     expect(renderCall.container.texture).toBe(texture);
     expect(extractPixels).toHaveBeenCalledWith(expect.anything());
     expect(createImageBitmapMock.mock.calls[0]?.[0]).toBeInstanceOf(TestImageData);
+  });
+
+  it('reads WebGPU render textures without Pixi canvas extraction', async () => {
+    stubImageData();
+    vi.stubGlobal('GPUBufferUsage', { COPY_DST: 8, MAP_READ: 1 });
+    vi.stubGlobal('GPUMapMode', { READ: 1 });
+
+    const bitmap = { width: 2, height: 1 } as ImageBitmap;
+    const createImageBitmapMock = vi.fn().mockResolvedValue(bitmap);
+    vi.stubGlobal('createImageBitmap', createImageBitmapMock);
+
+    const mappedBytes = new Uint8Array(256);
+    mappedBytes.set([30, 20, 10, 255, 70, 60, 50, 255]);
+    const buffer = {
+      mapAsync: vi.fn().mockResolvedValue(undefined),
+      getMappedRange: vi.fn(() => mappedBytes.buffer),
+      unmap: vi.fn(),
+      destroy: vi.fn(),
+    };
+    const encoder = {
+      copyTextureToBuffer: vi.fn(),
+      finish: vi.fn(() => 'command-buffer'),
+    };
+    const gpuTexture = {};
+    const device = {
+      createBuffer: vi.fn(() => buffer),
+      createCommandEncoder: vi.fn(() => encoder),
+      queue: { submit: vi.fn() },
+    };
+    const extractPixels = vi.fn();
+    const source = {
+      pixelWidth: 2,
+      pixelHeight: 1,
+      format: 'bgra8unorm',
+    };
+    const captureTexture = {
+      width: 2,
+      height: 1,
+      source,
+    };
+    const renderer = new StageTextureRenderer({
+      app: {
+        stage: { children: [] },
+        renderer: {
+          type: RendererType.WEBGPU,
+          render: vi.fn(),
+          extract: { pixels: extractPixels },
+          gpu: { device },
+          texture: { getGpuSource: vi.fn(() => gpuTexture) },
+        },
+      } as any,
+      width: 2,
+      height: 1,
+      getTrackById: () => undefined,
+    });
+    (renderer as any).captureTexture = captureTexture;
+
+    await renderer.renderTextureToBitmap({ width: 2, height: 1 } as any);
+
+    expect(extractPixels).not.toHaveBeenCalled();
+    expect(encoder.copyTextureToBuffer).toHaveBeenCalledWith(
+      { texture: gpuTexture },
+      { buffer, bytesPerRow: 256, rowsPerImage: 1 },
+      { width: 2, height: 1, depthOrArrayLayers: 1 },
+    );
+    const imageData = createImageBitmapMock.mock.calls[0]?.[0] as ImageData;
+    expect([...imageData.data]).toEqual([10, 20, 30, 255, 50, 60, 70, 255]);
   });
 });

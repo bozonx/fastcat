@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { beforeEach, describe, it, expect, vi } from 'vitest';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
 import { reactive, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
@@ -8,7 +8,10 @@ import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
 
 const mockWorkspaceStore = {
   userSettings: reactive(JSON.parse(JSON.stringify(DEFAULT_USER_SETTINGS))),
-  batchUpdateUserSettings: vi.fn(),
+  batchUpdateUserSettings: vi.fn((updater: (draft: typeof DEFAULT_USER_SETTINGS) => void) => {
+    updater(mockWorkspaceStore.userSettings);
+    return Promise.resolve();
+  }),
   workspaceState: {
     fileBrowser: {
       instances: {},
@@ -23,6 +26,14 @@ vi.mock('~/stores/workspace.store', () => ({
 // Mock i18n
 
 describe('SettingsHotkeys', () => {
+  beforeEach(() => {
+    Object.assign(
+      mockWorkspaceStore.userSettings,
+      JSON.parse(JSON.stringify(DEFAULT_USER_SETTINGS)),
+    );
+    mockWorkspaceStore.batchUpdateUserSettings.mockClear();
+  });
+
   it('renders hotkey groups and search input', async () => {
     const wrapper = await mountSuspended(SettingsHotkeys);
 
@@ -64,5 +75,39 @@ describe('SettingsHotkeys', () => {
     // Search by English fallback title
     await searchInput.setValue('toggle');
     expect(wrapper.text()).not.toContain('common.noResults');
+  });
+
+  it('adds captured hotkey without forcing an immediate disk save', async () => {
+    const wrapper = await mountSuspended(SettingsHotkeys);
+    const addButton = wrapper
+      .findAll('button')
+      .find((button) => button.classes().includes('h-6') && !button.attributes('aria-label'));
+
+    expect(addButton).toBeDefined();
+
+    await addButton!.trigger('click');
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key: 'F9',
+        code: 'F9',
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
+    window.dispatchEvent(
+      new KeyboardEvent('keyup', {
+        key: 'F9',
+        code: 'F9',
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
+
+    expect(mockWorkspaceStore.batchUpdateUserSettings).toHaveBeenCalledWith(expect.any(Function));
+    expect(mockWorkspaceStore.batchUpdateUserSettings).not.toHaveBeenCalledWith(
+      expect.any(Function),
+      { immediate: true },
+    );
+    expect(JSON.stringify(mockWorkspaceStore.userSettings.hotkeys.bindings)).toContain('F9');
   });
 });
