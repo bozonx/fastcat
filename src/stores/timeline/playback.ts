@@ -17,6 +17,7 @@ export interface TimelinePlaybackDeps {
   playbackGestureHandler: Ref<((nextPlaying: boolean) => void) | null>;
   getDocFps: () => number;
   setCurrentTimeUs: (nextTimeUs: number) => void;
+  onPlayheadJump?: () => void;
 }
 
 export interface TimelinePlaybackModule {
@@ -47,6 +48,7 @@ export function createTimelinePlaybackModule(deps: TimelinePlaybackDeps): Timeli
 
   function goToStart() {
     deps.currentTime.value = 0;
+    deps.onPlayheadJump?.();
   }
 
   function goToEnd() {
@@ -54,6 +56,7 @@ export function createTimelinePlaybackModule(deps: TimelinePlaybackDeps): Timeli
       ? Math.max(0, Math.round(deps.duration.value))
       : 0;
     deps.currentTime.value = end;
+    deps.onPlayheadJump?.();
   }
 
   function setTimelineZoom(next: number) {

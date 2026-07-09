@@ -88,7 +88,7 @@ describe('ClipMetadata', () => {
     expect(component.html()).toContain('bg-black');
   });
 
-  it('prioritizes disabled icon over muted icon when both are true', async () => {
+  it('renders disabled and muted icons when both are true', async () => {
     const disabledAndMutedItem = {
       kind: 'clip',
       id: 'c1',
@@ -102,11 +102,16 @@ describe('ClipMetadata', () => {
         provide: {
           timelineContext: timelineContextMock,
         },
+        stubs: {
+          UIcon: { props: ['name'], template: '<span class="icon-mock" :data-icon="name" />' },
+        },
       },
     });
 
-    expect(component.html()).toContain('w-4 h-4');
-    expect(component.html()).not.toContain('w-6 h-6');
+    const icons = component.findAll('.icon-mock');
+    expect(icons).toHaveLength(2);
+    expect(icons[0]?.attributes('data-icon')).toBe('i-heroicons-eye-slash');
+    expect(icons[1]?.attributes('data-icon')).toBe('i-heroicons-speaker-x-mark');
   });
 
   it('does not render free position warning when clip is not frame-aligned', async () => {

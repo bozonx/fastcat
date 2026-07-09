@@ -82,9 +82,12 @@ const centeredOverlayStyle = computed(() => {
          visible while gravitating toward the clip centre. -->
     <div
       v-if="
-        clipItem && (clipItem.disabled || clipItem.audioMuted) && !isMediaMissing && !isUnsupported
+        clipItem &&
+        (clipItem.disabled || (clipItem.audioMuted && !track.audioMuted)) &&
+        !isMediaMissing &&
+        !isUnsupported
       "
-      class="absolute inset-y-0 z-30 flex items-center"
+      class="absolute inset-y-0 z-30 flex items-center gap-1"
       :style="centeredOverlayStyle"
     >
       <div v-if="clipItem.disabled" class="bg-black/30 rounded-full p-1">
@@ -93,11 +96,8 @@ const centeredOverlayStyle = computed(() => {
           class="w-4 h-4 text-white/80"
         />
       </div>
-      <div
-        v-else-if="clipItem.audioMuted && !track.audioMuted"
-        class="bg-black/30 rounded-full p-1.5"
-      >
-        <UIcon name="i-heroicons-speaker-x-mark" class="w-6 h-6 text-white/90" />
+      <div v-if="clipItem.audioMuted && !track.audioMuted" class="bg-black/30 rounded-full p-1">
+        <UIcon name="i-heroicons-speaker-x-mark" class="w-4 h-4 text-white/80" />
       </div>
     </div>
   </div>

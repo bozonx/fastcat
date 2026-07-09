@@ -241,6 +241,9 @@ export const useTimelineStore = defineStore('timeline', () => {
     playbackGestureHandler,
     getDocFps: () => (timelineDoc.value ? getDocFps(timelineDoc.value) : TIMELINE_DEFAULTS.FPS),
     setCurrentTimeUs: (nextTimeUs) => lifecycle.setCurrentTimeUs(nextTimeUs),
+    onPlayheadJump: () => {
+      scrollToPlayheadRequest.value++;
+    },
   });
 
   function setMasterMuted(nextMuted: boolean) {

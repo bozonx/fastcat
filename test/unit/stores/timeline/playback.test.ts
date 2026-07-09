@@ -23,6 +23,7 @@ function createMockDeps(overrides?: Partial<Parameters<typeof createTimelinePlay
     setCurrentTimeUs: vi.fn((next: number) => {
       deps.currentTime.value = next;
     }),
+    onPlayheadJump: vi.fn(),
     ...overrides,
   };
   return deps;
@@ -43,15 +44,17 @@ describe('TimelinePlaybackModule', () => {
     expect(deps.playbackSpeed.value).toBe(0.1);
   });
 
-  it('goes to start and end', () => {
+  it('goes to start and end and signals the timeline to scroll', () => {
     const deps = createMockDeps({ currentTime: ref(5_000_000) });
     const mod = createTimelinePlaybackModule(deps);
 
     mod.goToEnd();
     expect(deps.currentTime.value).toBe(10_000_000);
+    expect(deps.onPlayheadJump).toHaveBeenCalledTimes(1);
 
     mod.goToStart();
     expect(deps.currentTime.value).toBe(0);
+    expect(deps.onPlayheadJump).toHaveBeenCalledTimes(2);
   });
 
   it('clamps timeline zoom and snaps to default', () => {
