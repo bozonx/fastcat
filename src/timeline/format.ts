@@ -11,8 +11,10 @@ export const DEFAULT_TIMELINE_FORMAT: TimelineFormat = {
   isCustomResolution: false,
   sampleRate: 48000,
   isAutoSettings: true,
+  geometryResolved: false,
+  sampleRateResolved: false,
   settingsSource: 'projectDefaults',
-  useProjectSettings: true,
+  useProjectSettings: false,
 };
 
 export interface TimelineFormatInput {
@@ -25,6 +27,8 @@ export interface TimelineFormatInput {
   isCustomResolution?: unknown;
   sampleRate?: unknown;
   isAutoSettings?: unknown;
+  geometryResolved?: unknown;
+  sampleRateResolved?: unknown;
   settingsSource?: unknown;
   useProjectSettings?: unknown;
 }
@@ -59,6 +63,16 @@ export function normalizeTimelineFormat(
     input?.settingsSource === 'manual' || input?.settingsSource === 'firstClip'
       ? input.settingsSource
       : 'projectDefaults';
+  const isAutoSettings =
+    typeof input?.isAutoSettings === 'boolean' ? input.isAutoSettings : fallback.isAutoSettings;
+  const geometryResolvedFallback =
+    typeof input?.isAutoSettings === 'boolean'
+      ? !isAutoSettings
+      : (fallback.geometryResolved ?? !isAutoSettings);
+  const sampleRateResolvedFallback =
+    typeof input?.isAutoSettings === 'boolean'
+      ? !isAutoSettings
+      : (fallback.sampleRateResolved ?? !isAutoSettings);
 
   return {
     width,
@@ -72,8 +86,15 @@ export function normalizeTimelineFormat(
         ? input.isCustomResolution
         : preset.isCustomResolution,
     sampleRate: toInt(input?.sampleRate, fallback.sampleRate, 8000, 192000),
-    isAutoSettings:
-      typeof input?.isAutoSettings === 'boolean' ? input.isAutoSettings : fallback.isAutoSettings,
+    isAutoSettings,
+    geometryResolved:
+      typeof input?.geometryResolved === 'boolean'
+        ? input.geometryResolved
+        : geometryResolvedFallback,
+    sampleRateResolved:
+      typeof input?.sampleRateResolved === 'boolean'
+        ? input.sampleRateResolved
+        : sampleRateResolvedFallback,
     settingsSource,
     useProjectSettings:
       typeof input?.useProjectSettings === 'boolean'
@@ -83,11 +104,15 @@ export function normalizeTimelineFormat(
 }
 
 export function createTimelineFormatFromProjectDefaults(project: TimelineFormatInput) {
+  const isAutoSettings =
+    typeof project.isAutoSettings === 'boolean' ? project.isAutoSettings : true;
   return normalizeTimelineFormat({
     ...project,
-    isAutoSettings: typeof project.isAutoSettings === 'boolean' ? project.isAutoSettings : true,
+    isAutoSettings,
+    geometryResolved: !isAutoSettings,
+    sampleRateResolved: !isAutoSettings,
     settingsSource: 'projectDefaults',
-    useProjectSettings: true,
+    useProjectSettings: false,
   });
 }
 

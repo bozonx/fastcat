@@ -19,6 +19,8 @@ export interface TimelineFormat {
   isCustomResolution: boolean;
   sampleRate: number;
   isAutoSettings: boolean;
+  geometryResolved: boolean;
+  sampleRateResolved: boolean;
   settingsSource: TimelineFormatSettingsSource;
   useProjectSettings?: boolean;
 }

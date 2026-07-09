@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { DEFAULT_USER_SETTINGS, type FastCatUserSettings } from '../defaults';
 import {
   CLICK_ACTIONS,
+  CLIP_DRAG_ACTIONS,
   MONITOR_CLICK_ACTIONS,
   MONITOR_LEFT_DOUBLE_CLICK_ACTIONS,
   MONITOR_DRAG_ACTIONS,
@@ -292,6 +293,7 @@ export function normalizeMouseSettings(raw: unknown): FastCatUserSettings['mouse
   const clickEnum = z.enum(CLICK_ACTIONS);
   const timelineClickEnum = z.enum(TIMELINE_CLICK_ACTIONS);
   const dragEnum = z.enum(TIMELINE_DRAG_ACTIONS);
+  const clipDragEnum = z.enum(CLIP_DRAG_ACTIONS);
   const rulerDragEnum = z.enum(RULER_DRAG_ACTIONS);
   const horizEnum = z.enum(MOUSE_HORIZONTAL_MOVEMENT_ACTIONS);
   const tWheelEnum = z.enum(TIMELINE_WHEEL_ACTIONS);
@@ -341,9 +343,9 @@ export function normalizeMouseSettings(raw: unknown): FastCatUserSettings['mouse
           horizontalMovement: horizEnum.catch(
             DEFAULT_USER_SETTINGS.mouse.timeline.horizontalMovement,
           ),
-          clipDragShift: dragEnum.catch(DEFAULT_USER_SETTINGS.mouse.timeline.clipDragShift),
-          clipDragCtrl: dragEnum.catch(DEFAULT_USER_SETTINGS.mouse.timeline.clipDragCtrl),
-          clipDragRight: dragEnum.catch(DEFAULT_USER_SETTINGS.mouse.timeline.clipDragRight),
+          clipDragShift: clipDragEnum.catch(DEFAULT_USER_SETTINGS.mouse.timeline.clipDragShift),
+          clipDragCtrl: clipDragEnum.catch(DEFAULT_USER_SETTINGS.mouse.timeline.clipDragCtrl),
+          clipDragRight: clipDragEnum.catch(DEFAULT_USER_SETTINGS.mouse.timeline.clipDragRight),
         })
         .catch(DEFAULT_USER_SETTINGS.mouse.timeline),
 

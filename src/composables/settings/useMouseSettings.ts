@@ -12,6 +12,7 @@ import {
   SHIFT_CLICK_ACTIONS,
   TIMELINE_CLICK_ACTIONS,
   TIMELINE_DRAG_ACTIONS,
+  CLIP_DRAG_ACTIONS,
   TIMELINE_WHEEL_ACTIONS,
   TRACK_HEADERS_WHEEL_ACTIONS,
 } from '~/utils/mouse';
@@ -145,6 +146,7 @@ export function useMouseSettings() {
     formatOptions(TIMELINE_CLICK_ACTIONS, commonClickLabels.value),
   );
   const dragOptions = computed(() => formatOptions(TIMELINE_DRAG_ACTIONS, commonDragLabels.value));
+  const clipDragOptions = computed(() => formatOptions(CLIP_DRAG_ACTIONS, commonDragLabels.value));
   const rulerDragOptions = computed(() =>
     formatOptions(RULER_DRAG_ACTIONS, commonDragLabels.value),
   );
@@ -308,19 +310,19 @@ export function useMouseSettings() {
               label: t('videoEditor.settings.mouseTimelineClipDragShift', {
                 modifier1: modifier1Name.value,
               }),
-              options: dragOptions.value,
+              options: clipDragOptions.value,
             },
             {
               key: 'clipDragCtrl',
               label: t('videoEditor.settings.mouseTimelineClipDragCtrl', {
                 modifier2: modifier2Name.value,
               }),
-              options: dragOptions.value,
+              options: clipDragOptions.value,
             },
             {
               key: 'clipDragRight',
               label: t('videoEditor.settings.mouseTimelineClipDragRight'),
-              options: dragOptions.value,
+              options: clipDragOptions.value,
             },
 
             // Clicks

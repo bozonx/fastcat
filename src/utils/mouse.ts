@@ -73,10 +73,6 @@ export const TIMELINE_DRAG_ACTIONS = [
   'move_playhead',
   'move_clips',
   'select_area',
-  'pseudo_overlap',
-  'free_mode',
-  'copy',
-  'toggle_snap',
   'none',
 ] as const;
 
@@ -86,9 +82,15 @@ export const RULER_DRAG_ACTIONS = ['pan', 'move_playhead', 'select_area', 'none'
 
 export type RulerDragAction = (typeof RULER_DRAG_ACTIONS)[number];
 
-export const DRAG_ACTIONS = TIMELINE_DRAG_ACTIONS;
+export const CLIP_DRAG_ACTIONS = [
+  'pseudo_overlap',
+  'free_mode',
+  'copy',
+  'toggle_snap',
+  'none',
+] as const;
 
-export const CLIP_DRAG_ACTIONS = TIMELINE_DRAG_ACTIONS;
+export type ClipDragAction = (typeof CLIP_DRAG_ACTIONS)[number];
 
 export const MOUSE_HORIZONTAL_MOVEMENT_ACTIONS = ['move_playhead', 'none'] as const;
 export type MouseHorizontalMovementAction = (typeof MOUSE_HORIZONTAL_MOVEMENT_ACTIONS)[number];

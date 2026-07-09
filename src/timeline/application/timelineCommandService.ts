@@ -17,6 +17,7 @@ import type { TimelineFormatInput } from '~/timeline/format';
 import { getTimelineFormat, resolveEffectiveTimelineFormat } from '~/timeline/format';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 import { isAudioUndecodable, isVideoUndecodable } from '~/utils/media/compatibility';
+import { applyResolutionPreset } from '~/utils/settings/helpers';
 import {
   normalizeProjectPath,
   resolveNestedMediaPath,
@@ -78,13 +79,7 @@ export interface TimelineCommandServiceDeps {
     };
   };
   updateTimelineFormat: (settings: TimelineFormatInput) => Promise<void>;
-  /**
-   * Applies first-clip-derived format to the *project* settings (used while the
-   * project is in auto mode). The timeline keeps following the project, so
-   * updating the project is what makes the clip's format take effect. Geometry
-   * (`width`+`height`+`fps`) and `sampleRate` are independent — pass only what a
-   * given clip provides; the writer marks the corresponding `*Resolved` flag.
-   */
+  /** Legacy project-format writer kept for older callers; clip auto-detection writes to timelines. */
   updateProjectFormat: (settings: {
     width?: number;
     height?: number;
@@ -428,10 +423,9 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
       });
     }
 
-    if (metadata && (metadata.video || metadata.audio)) {
+    if (!input.pseudo && metadata && (metadata.video || metadata.audio)) {
       const doc = deps.getTimelineDoc();
       const timelineFormat = getTimelineFormat(doc);
-      const followsProject = timelineFormat.useProjectSettings ?? true;
       const project = deps.getProjectSettings().project;
 
       let appliedWidth = 0;
@@ -439,31 +433,44 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
       let appliedFps = 0;
       let geometryApplied = false;
 
-      // Auto-detection writes only to the *project* (the shared source of truth)
-      // and only while the timeline follows the project and the project is still
-      // in auto mode. Geometry and sample rate are tracked independently: a video
-      // clip with no audio track resolves geometry while leaving the sample rate
-      // pending for a later audio clip, and vice versa. A timeline that has opted
-      // out of following the project (`useProjectSettings: false`) is left alone —
-      // its format was already frozen when the user unchecked the box.
-      if (followsProject && project.isAutoSettings) {
-        const patch: { width?: number; height?: number; fps?: number; sampleRate?: number } = {};
-        if (metadata.video && !project.geometryResolved) {
+      // Auto-detection is timeline-local: project settings are only defaults for
+      // new timelines. Geometry and sample rate resolve independently, so an
+      // audio-only first clip can set sampleRate while geometry waits for video.
+      if (timelineFormat.isAutoSettings) {
+        const patch: TimelineFormatInput = {
+          ...timelineFormat,
+          useProjectSettings: false,
+          settingsSource: 'firstClip',
+        };
+        let shouldUpdateTimelineFormat = false;
+
+        if (metadata.video && !timelineFormat.geometryResolved) {
           const rotation = metadata.video.rotation ?? 0;
           const isRotated90 = Math.abs(rotation) === 90 || Math.abs(rotation) === 270;
           appliedWidth = isRotated90 ? metadata.video.height : metadata.video.width;
           appliedHeight = isRotated90 ? metadata.video.width : metadata.video.height;
           appliedFps = metadata.video.fps;
-          patch.width = appliedWidth;
-          patch.height = appliedHeight;
-          patch.fps = appliedFps;
+          Object.assign(
+            patch,
+            applyResolutionPreset({
+              width: appliedWidth,
+              height: appliedHeight,
+              fps: appliedFps,
+            }),
+          );
+          patch.geometryResolved = true;
           geometryApplied = true;
+          shouldUpdateTimelineFormat = true;
         }
-        if (metadata.audio && !project.sampleRateResolved) {
+
+        if (metadata.audio && !timelineFormat.sampleRateResolved) {
           patch.sampleRate = metadata.audio.sampleRate;
+          patch.sampleRateResolved = true;
+          shouldUpdateTimelineFormat = true;
         }
-        if (patch.width !== undefined || patch.sampleRate !== undefined) {
-          deps.updateProjectFormat(patch);
+
+        if (shouldUpdateTimelineFormat) {
+          await deps.updateTimelineFormat(patch);
         }
       }
 

@@ -756,9 +756,6 @@ export const useTimelineStore = defineStore('timeline', () => {
       file: File | FileSystemFileHandle;
       projectRelativePath: string;
     }) => await proxyStore.generateProxy(options.file, options.projectRelativePath),
-    openProjectSettings: () => {
-      uiStore.isProjectSettingsOpen = true;
-    },
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     toast: toast as any,
     t,

@@ -443,6 +443,8 @@ export const TimelineDocFastCatMetaSchema = z
             isCustomResolution: z.boolean().optional(),
             sampleRate: z.number().optional(),
             isAutoSettings: z.boolean().optional(),
+            geometryResolved: z.boolean().optional(),
+            sampleRateResolved: z.boolean().optional(),
             settingsSource: z.enum(['projectDefaults', 'firstClip', 'manual']).optional(),
             useProjectSettings: z.boolean().optional(),
           })

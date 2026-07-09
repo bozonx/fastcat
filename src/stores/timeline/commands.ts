@@ -34,7 +34,6 @@ export interface TimelineCommandsDeps {
     file: File | FileSystemFileHandle;
     projectRelativePath: string;
   }) => Promise<void>;
-  openProjectSettings: () => void;
   toast: { add: (opts: unknown) => void };
   t: (key: string, values?: Record<string, unknown>) => string;
 }
@@ -99,7 +98,6 @@ export function createTimelineCommandsModule(params: TimelineCommandsDeps): Time
     updateProjectFormat,
     hasProxy,
     ensureProxy,
-    openProjectSettings,
     toast,
     t,
   } = params;
@@ -206,12 +204,6 @@ export function createTimelineCommandsModule(params: TimelineCommandsDeps): Time
               projectFps: w.projectFps,
             }),
             color: 'warning',
-            actions: [
-              {
-                label: t('videoEditor.projectSettings.title'),
-                onClick: openProjectSettings,
-              },
-            ],
           });
         }
       }

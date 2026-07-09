@@ -11,6 +11,7 @@ import type {
   MonitorDragAction,
   TrackHeadersWheelAction,
   RulerDragAction,
+  ClipDragAction,
 } from '../mouse';
 import type {
   UserExportPresetsSettings,
@@ -176,9 +177,9 @@ export interface FastCatUserSettings {
       middleClick: TimelineClickAction;
       middleDrag: TimelineDragAction;
       horizontalMovement: 'move_playhead' | 'none';
-      clipDragShift: TimelineDragAction;
-      clipDragCtrl: TimelineDragAction;
-      clipDragRight: TimelineDragAction;
+      clipDragShift: ClipDragAction;
+      clipDragCtrl: ClipDragAction;
+      clipDragRight: ClipDragAction;
     };
     trackHeaders: {
       wheel: TrackHeadersWheelAction;

@@ -5,7 +5,7 @@ import { addFileToTrack, clipIds, trackIds } from '../../utils/e2e/timeline';
 import { opfsEntryExists, readTextFileFromOpfs } from '../../utils/e2e/virtual-fs';
 
 test.describe('Web timeline auto format adoption (E2E Smoke)', () => {
-  test('adopts video format into project settings when first clip is added to timeline', async ({
+  test('adopts video format into timeline settings when first clip is added to timeline', async ({
     page,
     e2eProject,
   }) => {
@@ -22,17 +22,23 @@ test.describe('Web timeline auto format adoption (E2E Smoke)', () => {
     // Ensure clip is added to timeline in UI
     await expect.poll(async () => (await clipIds(page)).length).toBeGreaterThan(0);
 
-    // Verify project settings file is persisted in OPFS with auto-adopted geometry
-    const settingsPath = `${e2eProject.path}/.fastcat/project.settings.json`;
-
     await expect
       .poll(
         async () => {
-          if (!(await opfsEntryExists(page, settingsPath))) return null;
+          if (!(await opfsEntryExists(page, e2eProject.timelinePath))) return null;
           try {
-            const raw = await readTextFileFromOpfs(page, settingsPath);
+            const raw = await readTextFileFromOpfs(page, e2eProject.timelinePath);
             return JSON.parse(raw) as {
-              project?: { width?: number; height?: number; geometryResolved?: boolean };
+              metadata?: {
+                fastcat?: {
+                  format?: {
+                    width?: number;
+                    height?: number;
+                    geometryResolved?: boolean;
+                    useProjectSettings?: boolean;
+                  };
+                };
+              };
             };
           } catch {
             return null;
@@ -42,10 +48,15 @@ test.describe('Web timeline auto format adoption (E2E Smoke)', () => {
       )
       .toEqual(
         expect.objectContaining({
-          project: expect.objectContaining({
-            width: 320,
-            height: 240,
-            geometryResolved: true,
+          metadata: expect.objectContaining({
+            fastcat: expect.objectContaining({
+              format: expect.objectContaining({
+                width: 320,
+                height: 240,
+                geometryResolved: true,
+                useProjectSettings: false,
+              }),
+            }),
           }),
         }),
       );

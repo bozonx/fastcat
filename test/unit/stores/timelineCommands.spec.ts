@@ -16,9 +16,9 @@ describe('timelineCommands', () => {
   let getUserSettings: ReturnType<typeof vi.fn>;
   let getProjectSettings: ReturnType<typeof vi.fn>;
   let updateTimelineFormat: ReturnType<typeof vi.fn>;
+  let updateProjectFormat: ReturnType<typeof vi.fn>;
   let hasProxy: ReturnType<typeof vi.fn>;
   let ensureProxy: ReturnType<typeof vi.fn>;
-  let openProjectSettings: ReturnType<typeof vi.fn>;
   let toast: any;
   let t: ReturnType<typeof vi.fn>;
   let commands: ReturnType<typeof createTimelineCommands>;
@@ -37,9 +37,9 @@ describe('timelineCommands', () => {
       .mockReturnValue({ timeline: { defaultStaticClipDurationUs: 5000000 } });
     getProjectSettings = vi.fn().mockReturnValue({});
     updateTimelineFormat = vi.fn().mockResolvedValue(undefined);
+    updateProjectFormat = vi.fn();
     hasProxy = vi.fn().mockReturnValue(false);
     ensureProxy = vi.fn().mockResolvedValue(undefined);
-    openProjectSettings = vi.fn();
     toast = { add: vi.fn() };
     t = vi.fn((key) => key);
 
@@ -55,9 +55,9 @@ describe('timelineCommands', () => {
       getUserSettings,
       getProjectSettings,
       updateTimelineFormat,
+      updateProjectFormat,
       hasProxy,
       ensureProxy,
-      openProjectSettings,
       toast,
       t,
     });

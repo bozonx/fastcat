@@ -49,9 +49,9 @@ describe('normalizeTimelineFormat', () => {
     expect(result.fps).toBe(29.97);
   });
 
-  it('sets useProjectSettings to true by default', () => {
+  it('keeps timelines independent from project settings by default', () => {
     const result = normalizeTimelineFormat(null);
-    expect(result.useProjectSettings).toBe(true);
+    expect(result.useProjectSettings).toBe(false);
   });
 
   it('preserves useProjectSettings flag if provided', () => {
@@ -60,9 +60,9 @@ describe('normalizeTimelineFormat', () => {
   });
 
   it('recomputes the resolution preset from geometry when preset fields are omitted', () => {
-    // This is what updateProjectFormat relies on: passing new geometry without
-    // preset fields must derive the preset from getResolutionPreset rather than
-    // keep stale values (e.g. a portrait clip inheriting the old `landscape`).
+    // Passing new geometry without preset fields must derive the preset from
+    // getResolutionPreset rather than keep stale values (e.g. a portrait clip
+    // inheriting the old `landscape`).
     vi.mocked(getResolutionPreset).mockReturnValueOnce({
       resolutionFormat: '1080p',
       aspectRatio: '16:9',
@@ -83,7 +83,7 @@ describe('normalizeTimelineFormat', () => {
 
   it('keeps a stale orientation when the caller leaves preset fields populated', () => {
     // The inverse contract: an explicit orientation always wins, which is exactly
-    // why updateProjectFormat must NOT forward the project's old preset fields.
+    // why callers must not forward stale preset fields with fresh geometry.
     const result = normalizeTimelineFormat({
       width: 1080,
       height: 1920,
@@ -94,12 +94,25 @@ describe('normalizeTimelineFormat', () => {
 });
 
 describe('createTimelineFormatFromProjectDefaults', () => {
-  it('creates format with project defaults and useProjectSettings true', () => {
+  it('creates independent auto format from project defaults', () => {
     const result = createTimelineFormatFromProjectDefaults({ width: 1280, height: 720 });
     expect(result.width).toBe(1280);
     expect(result.height).toBe(720);
     expect(result.settingsSource).toBe('projectDefaults');
-    expect(result.useProjectSettings).toBe(true);
+    expect(result.useProjectSettings).toBe(false);
+    expect(result.geometryResolved).toBe(false);
+    expect(result.sampleRateResolved).toBe(false);
+  });
+
+  it('creates resolved format from manual project defaults', () => {
+    const result = createTimelineFormatFromProjectDefaults({
+      width: 1280,
+      height: 720,
+      isAutoSettings: false,
+    });
+    expect(result.isAutoSettings).toBe(false);
+    expect(result.geometryResolved).toBe(true);
+    expect(result.sampleRateResolved).toBe(true);
   });
 });
 
