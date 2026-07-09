@@ -168,6 +168,26 @@ describe('TimelineTracksModule', () => {
     );
   });
 
+  it('toggleVisibilityTargetTrack flips only videoHidden and leaves audioMuted untouched', () => {
+    const deps = createMockDeps();
+    deps.getSelectedOrActiveTrackId.mockReturnValue('v1');
+    const mod = createTimelineTracksModule(deps);
+    void mod.toggleVisibilityTargetTrack();
+    expect(deps.applyTimeline).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'update_track_properties',
+        trackId: 'v1',
+        properties: { videoHidden: true },
+      }),
+      { historyMode: 'debounced' },
+    );
+    // Must not carry audioMuted — visibility hotkey controls only disabled state.
+    const call = deps.applyTimeline.mock.calls.find(
+      (c) => c[0]?.type === 'update_track_properties' && c[0]?.trackId === 'v1',
+    );
+    expect(call?.[0]?.properties).toEqual({ videoHidden: true });
+  });
+
   it('toggleTrackAudioMuted flips property', () => {
     const deps = createMockDeps();
     const mod = createTimelineTracksModule(deps);

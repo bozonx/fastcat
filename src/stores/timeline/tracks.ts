@@ -233,12 +233,7 @@ export function createTimelineTracksModule(deps: TimelineTracksDeps): TimelineTr
     if (!track) return;
 
     if (track.kind === 'video') {
-      const nextHidden = !track.videoHidden;
-      updateTrackProperties(trackId, {
-        videoHidden: nextHidden,
-        // Auto-mute if becoming hidden, but don't force unmute when becoming visible
-        audioMuted: nextHidden ? true : track.audioMuted,
-      });
+      updateTrackProperties(trackId, { videoHidden: !track.videoHidden });
     }
     await deps.requestTimelineSave({ immediate: true });
   }
