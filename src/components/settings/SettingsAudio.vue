@@ -10,6 +10,11 @@ import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
 import { getPlatformCapabilities } from '~/utils/capabilities';
 import { nativeMonitorIpc } from '~/composables/monitor/native-monitor-ipc';
 import { createDevLogger } from '~/utils/dev-logger';
+import {
+  checkAudioCodecSupport,
+  checkAudioDecoderSupport,
+  BASE_AUDIO_CODEC_OPTIONS,
+} from '~/utils/webcodecs';
 
 const log = createDevLogger('SettingsAudio');
 
@@ -44,23 +49,9 @@ const isResetConfirmOpen = ref(false);
 const tauriDiagnostics = ref<FfmpegDiagnostics | null>(null);
 const isLoadingTauriDiagnostics = ref(false);
 
-const webAudioSupport = ref<Record<string, boolean>>({});
+const webAudioDecodeSupport = ref<Record<string, boolean>>({});
+const webAudioEncodeSupport = ref<Record<string, boolean>>({});
 const isLoadingWebDiagnostics = ref(false);
-
-const isAudioEncoderAvailable = computed(() => {
-  return (
-    typeof globalThis !== 'undefined' &&
-    !!(globalThis as unknown as { AudioEncoder?: typeof AudioEncoder }).AudioEncoder
-      ?.isConfigSupported
-  );
-});
-
-const statusToneClasses = {
-  danger: 'border-red-500/30 bg-red-500/10 text-red-200',
-  neutral: 'border-ui-border-muted bg-ui-bg-muted/50 text-ui-text',
-  success: 'border-green-500/30 bg-green-500/10 text-green-200',
-  warning: 'border-amber-500/30 bg-amber-500/10 text-amber-200',
-};
 
 async function loadTauriDiagnostics() {
   if (!isTauri.value) return;
@@ -83,8 +74,12 @@ async function loadWebDiagnostics() {
   if (isTauri.value) return;
   isLoadingWebDiagnostics.value = true;
   try {
-    const { checkAudioCodecSupport, BASE_AUDIO_CODEC_OPTIONS } = await import('~/utils/webcodecs');
-    webAudioSupport.value = await checkAudioCodecSupport(BASE_AUDIO_CODEC_OPTIONS);
+    const [encodeSupport, decodeSupport] = await Promise.all([
+      checkAudioCodecSupport(BASE_AUDIO_CODEC_OPTIONS),
+      checkAudioDecoderSupport(BASE_AUDIO_CODEC_OPTIONS),
+    ]);
+    webAudioEncodeSupport.value = encodeSupport;
+    webAudioDecodeSupport.value = decodeSupport;
   } catch (err) {
     log.error('Failed to load Web WebCodecs diagnostics:', err);
   } finally {
@@ -146,19 +141,38 @@ watch(
   { deep: true },
 );
 
-const tauriAudioCodecs = computed(() => {
-  return tauriDiagnostics.value?.codecs.filter((c) => ['aac', 'opus'].includes(c.key)) || [];
+const AUDIO_DIAGNOSTIC_CODEC_KEYS = new Set(['aac', 'opus']);
+
+interface AudioCodecRow {
+  label: string;
+  decodeSupported: boolean;
+  encodeSupported: boolean;
+}
+
+const audioCodecRows = computed<AudioCodecRow[]>(() => {
+  if (isTauri.value) {
+    const codecs = tauriDiagnostics.value?.codecs || [];
+    return codecs
+      .filter((c) => AUDIO_DIAGNOSTIC_CODEC_KEYS.has(c.key))
+      .map((c) => ({
+        label: c.label,
+        decodeSupported: c.decoders.some((d) => d.supported),
+        encodeSupported: c.encoders.some((e) => e.supported),
+      }));
+  }
+
+  return BASE_AUDIO_CODEC_OPTIONS.map((opt) => ({
+    label: opt.label,
+    decodeSupported: webAudioDecodeSupport.value[opt.value] ?? false,
+    encodeSupported: webAudioEncodeSupport.value[opt.value] ?? false,
+  }));
 });
 
-const webAudioCodecs = computed(() => {
-  return [
-    { label: 'AAC', supported: webAudioSupport.value['aac'] ?? false },
-    { label: 'MP3', supported: webAudioSupport.value['mp3'] ?? false },
-    { label: 'Opus', supported: webAudioSupport.value['opus'] ?? false },
-    { label: 'Vorbis', supported: webAudioSupport.value['vorbis'] ?? false },
-    { label: 'ALAC', supported: webAudioSupport.value['alac'] ?? false },
-  ];
-});
+const isLoadingDiagnostics = computed(
+  () => isLoadingTauriDiagnostics.value || isLoadingWebDiagnostics.value,
+);
+
+const hasDiagnostics = computed(() => audioCodecRows.value.length > 0);
 </script>
 
 <template>
@@ -281,211 +295,66 @@ const webAudioCodecs = computed(() => {
             : t('videoEditor.settings.audio.accelerationDiagnostics')
         }}
       </div>
+      <div class="text-sm text-ui-text-muted">
+        {{
+          isTauri
+            ? t('videoEditor.settings.audio.ffmpegDiagnosticsHelp')
+            : t('videoEditor.settings.audio.accelerationDiagnosticsHelp')
+        }}
+      </div>
 
-      <!-- Web Diagnostics -->
-      <template v-if="!isTauri">
-        <div
-          class="rounded-lg border border-ui-border-muted bg-ui-bg-muted/30 p-4 flex flex-col gap-2"
-        >
-          <div
-            class="inline-flex w-fit items-center rounded-full border px-2.5 py-1 text-xs font-medium"
-            :class="isAudioEncoderAvailable ? statusToneClasses.success : statusToneClasses.danger"
-          >
-            {{ isAudioEncoderAvailable ? 'AudioEncoder Available' : 'AudioEncoder Unavailable' }}
-          </div>
-          <div class="text-sm text-ui-text-muted">
-            {{ t('videoEditor.settings.audio.accelerationDiagnosticsHelp') }}
-          </div>
-        </div>
+      <div v-if="isLoadingDiagnostics" class="text-sm text-ui-text-muted">
+        {{ t('videoEditor.settings.audio.loadingDiagnostics') }}
+      </div>
 
-        <div v-if="isLoadingWebDiagnostics" class="text-sm text-ui-text-muted">
-          {{ t('videoEditor.settings.audio.loadingDiagnostics') }}
-        </div>
+      <div v-else-if="!hasDiagnostics" class="text-sm text-ui-text-muted">
+        {{ t('videoEditor.settings.audio.unavailableDiagnostics') }}
+      </div>
 
-        <div v-else class="flex flex-col gap-4">
-          <div
-            class="rounded-lg border border-ui-border-muted p-4 flex flex-col gap-3 bg-ui-bg-muted/10"
-          >
-            <div class="text-sm font-medium text-ui-text border-b border-ui-border-muted/50 pb-2">
-              Browser Audio Codec Support
-            </div>
-            <div
-              class="flex flex-col rounded-md border border-ui-border-muted/50 bg-ui-bg/40 divide-y divide-ui-border-muted/30"
-            >
-              <div
-                v-for="codec in webAudioCodecs"
-                :key="codec.label"
-                class="flex items-center justify-between px-3 py-2.5"
-              >
-                <span class="text-sm text-ui-text-muted">{{ codec.label }}</span>
-                <span
-                  :class="[
-                    'text-xs font-medium px-2 py-0.5 rounded-full border',
-                    codec.supported
-                      ? 'bg-green-500/10 text-green-400 border-green-500/20'
-                      : 'bg-red-500/10 text-red-400 border-red-500/20',
-                  ]"
-                >
-                  {{ codec.supported ? 'Supported' : 'Unsupported' }}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </template>
-
-      <!-- Tauri Diagnostics -->
-      <template v-else>
-        <div
-          v-if="tauriDiagnostics"
-          class="rounded-lg border border-ui-border-muted bg-ui-bg-muted/30 p-4 flex flex-col gap-2"
-        >
-          <div
-            class="inline-flex w-fit items-center rounded-full border px-2.5 py-1 text-xs font-medium"
-            :class="
-              tauriDiagnostics.ffmpegAvailable
-                ? statusToneClasses.success
-                : statusToneClasses.danger
-            "
-          >
-            {{
-              tauriDiagnostics.ffmpegAvailable
-                ? t('videoEditor.settings.audio.ffmpegAvailable')
-                : t('videoEditor.settings.audio.unavailableDiagnostics')
-            }}
-          </div>
-          <div class="text-sm text-ui-text-muted">
-            {{ t('videoEditor.settings.audio.ffmpegDiagnosticsHelp') }}
-          </div>
-        </div>
-
-        <div v-else-if="isLoadingTauriDiagnostics" class="text-sm text-ui-text-muted">
-          {{ t('videoEditor.settings.audio.loadingDiagnostics') }}
-        </div>
-
-        <div v-else class="text-sm text-ui-text-muted">
-          {{ t('videoEditor.settings.audio.unavailableDiagnostics') }}
-        </div>
-
-        <div v-if="tauriDiagnostics" class="flex flex-col gap-4">
-          <!-- FFmpeg & FFprobe status -->
-          <div
-            class="rounded-lg border border-ui-border-muted p-4 flex flex-col gap-3 bg-ui-bg-muted/10"
-          >
-            <div class="text-sm font-medium text-ui-text">
-              {{ t('videoEditor.settings.audio.ffmpegDiagnostics') }}
-            </div>
-
-            <div
-              class="flex flex-col rounded-md border border-ui-border-muted/50 bg-ui-bg/40 divide-y divide-ui-border-muted/30"
-            >
-              <div class="flex items-start justify-between gap-4 px-3 py-2.5">
-                <span class="text-sm text-ui-text-muted">{{
-                  t('videoEditor.settings.audio.ffmpegAvailable')
-                }}</span>
-                <span
-                  :class="[
-                    'text-sm font-medium',
-                    tauriDiagnostics.ffmpegAvailable ? 'text-green-400' : 'text-red-400',
-                  ]"
-                >
-                  {{
-                    tauriDiagnostics.ffmpegAvailable
-                      ? tauriDiagnostics.ffmpegVersion
-                      : t('common.no')
-                  }}
-                </span>
-              </div>
-              <div class="flex items-start justify-between gap-4 px-3 py-2.5">
-                <span class="text-sm text-ui-text-muted">{{
-                  t('videoEditor.settings.audio.ffprobeAvailable')
-                }}</span>
-                <span
-                  :class="[
-                    'text-sm font-medium',
-                    tauriDiagnostics.ffprobeAvailable ? 'text-green-400' : 'text-red-400',
-                  ]"
-                >
-                  {{
-                    tauriDiagnostics.ffprobeAvailable
-                      ? tauriDiagnostics.ffprobeVersion
-                      : t('common.no')
-                  }}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Codecs grid -->
-          <div
-            v-for="codec in tauriAudioCodecs"
-            :key="codec.key"
-            class="rounded-lg border border-ui-border-muted p-4 flex flex-col gap-3 bg-ui-bg-muted/10"
-          >
-            <div class="text-sm font-medium text-ui-text border-b border-ui-border-muted/50 pb-2">
-              {{ codec.label }}
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <!-- Decoders -->
-              <div class="flex flex-col gap-2">
-                <div class="text-xs font-semibold text-ui-text-muted px-1">
-                  {{ t('videoEditor.settings.audio.codecDecoderSupport') }}
-                </div>
-                <div
-                  class="flex flex-col rounded-md border border-ui-border-muted/50 bg-ui-bg/40 divide-y divide-ui-border-muted/30"
-                >
-                  <div
-                    v-for="decoder in codec.decoders"
-                    :key="decoder.name"
-                    class="flex items-center justify-between px-3 py-2"
-                  >
-                    <span class="text-xs text-ui-text-muted">{{ decoder.label }}</span>
-                    <span
-                      :class="[
-                        'text-xs font-medium px-2 py-0.5 rounded-full border',
-                        decoder.supported
-                          ? 'bg-green-500/10 text-green-400 border-green-500/20'
-                          : 'bg-red-500/10 text-red-400 border-red-500/20',
-                      ]"
-                    >
-                      {{ decoder.supported ? 'Supported' : 'Unsupported' }}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Encoders -->
-              <div class="flex flex-col gap-2">
-                <div class="text-xs font-semibold text-ui-text-muted px-1">
-                  {{ t('videoEditor.settings.audio.codecEncoderSupport') }}
-                </div>
-                <div
-                  class="flex flex-col rounded-md border border-ui-border-muted/50 bg-ui-bg/40 divide-y divide-ui-border-muted/30"
-                >
-                  <div
-                    v-for="encoder in codec.encoders"
-                    :key="encoder.name"
-                    class="flex items-center justify-between px-3 py-2"
-                  >
-                    <span class="text-xs text-ui-text-muted">{{ encoder.label }}</span>
-                    <span
-                      :class="[
-                        'text-xs font-medium px-2 py-0.5 rounded-full border',
-                        encoder.supported
-                          ? 'bg-green-500/10 text-green-400 border-green-500/20'
-                          : 'bg-red-500/10 text-red-400 border-red-500/20',
-                      ]"
-                    >
-                      {{ encoder.supported ? 'Supported' : 'Unsupported' }}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </template>
+      <div v-else class="overflow-hidden rounded-lg border border-ui-border-muted bg-ui-bg/40">
+        <table class="w-full border-collapse text-sm">
+          <thead>
+            <tr class="border-b border-ui-border-muted text-ui-text-muted">
+              <th class="text-left font-medium px-3 py-2">
+                {{ t('videoEditor.settings.audio.codecColumn') }}
+              </th>
+              <th class="text-center font-medium px-3 py-2 w-24">
+                {{ t('videoEditor.settings.audio.decoderColumn') }}
+              </th>
+              <th class="text-center font-medium px-3 py-2 w-24">
+                {{ t('videoEditor.settings.audio.encoderColumn') }}
+              </th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-ui-border-muted/50">
+            <tr v-for="codec in audioCodecRows" :key="codec.label">
+              <td class="px-3 py-2 text-ui-text">{{ codec.label }}</td>
+              <td class="px-3 py-2 text-center">
+                <UIcon
+                  :name="
+                    codec.decodeSupported
+                      ? 'i-heroicons-check-circle-solid'
+                      : 'i-heroicons-x-circle-solid'
+                  "
+                  :class="['size-4', codec.decodeSupported ? 'text-green-500' : 'text-red-500/50']"
+                  :title="codec.decodeSupported ? t('common.yes') : t('common.no')"
+                />
+              </td>
+              <td class="px-3 py-2 text-center">
+                <UIcon
+                  :name="
+                    codec.encodeSupported
+                      ? 'i-heroicons-check-circle-solid'
+                      : 'i-heroicons-x-circle-solid'
+                  "
+                  :class="['size-4', codec.encodeSupported ? 'text-green-500' : 'text-red-500/50']"
+                  :title="codec.encodeSupported ? t('common.yes') : t('common.no')"
+                />
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 </template>

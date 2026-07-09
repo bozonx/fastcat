@@ -169,6 +169,10 @@ vi.mock('~/utils/webcodecs', () => ({
     aac: true,
     opus: false,
   }),
+  checkAudioDecoderSupport: vi.fn().mockResolvedValue({
+    aac: true,
+    opus: true,
+  }),
 }));
 
 // Mock Tauri invoke
@@ -217,13 +221,17 @@ describe('SettingsAudio', () => {
     // Wait for microtasks
     await new Promise((resolve) => setTimeout(resolve, 10));
 
-    // Should show browser diagnostics header
+    // Should show browser diagnostics header (i18n key rendered as-is in test env)
     expect(wrapper.text()).toContain('videoEditor.settings.audio.accelerationDiagnostics');
-    expect(wrapper.text()).toContain('AudioEncoder Available');
-    expect(wrapper.text()).toContain('Browser Audio Codec Support');
+    // Removed blocks should not be present
+    expect(wrapper.text()).not.toContain('AudioEncoder Available');
+    expect(wrapper.text()).not.toContain('Browser Audio Codec Support');
+    // Codec table rows should be rendered
     expect(wrapper.text()).toContain('AAC');
-    expect(wrapper.text()).toContain('Supported');
-    expect(wrapper.text()).toContain('Unsupported'); // Opus is unsupported in mock
+    expect(wrapper.text()).toContain('Opus');
+    // Column headers
+    expect(wrapper.text()).toContain('videoEditor.settings.audio.decoderColumn');
+    expect(wrapper.text()).toContain('videoEditor.settings.audio.encoderColumn');
   });
 
   it('renders Tauri settings and loads FFmpeg diagnostics when isTauriRuntime is true', async () => {
@@ -262,17 +270,17 @@ describe('SettingsAudio', () => {
 
     // Should show Tauri audio diagnostics header
     expect(wrapper.text()).toContain('videoEditor.settings.audio.tauriDiagnosticsHeader');
-    expect(wrapper.text()).toContain('videoEditor.settings.audio.ffmpegDiagnostics');
-    expect(wrapper.text()).toContain('ffmpeg version 6.0');
-    expect(wrapper.text()).toContain('ffprobe version 6.0');
+    // Removed ffmpeg status blocks should not be present
+    expect(wrapper.text()).not.toContain('ffmpeg version 6.0');
+    expect(wrapper.text()).not.toContain('ffprobe version 6.0');
+    expect(wrapper.text()).not.toContain('AAC Decoder');
 
     // Should invoke native_get_ffmpeg_diagnostics
     expect(invoke).toHaveBeenCalledWith('native_get_ffmpeg_diagnostics', expect.any(Object));
 
-    // Should show codec details
+    // Should show codec rows aggregated into the table
     expect(wrapper.text()).toContain('AAC (Advanced Audio Coding)');
     expect(wrapper.text()).toContain('Opus');
-    expect(wrapper.text()).toContain('AAC Decoder');
   });
 
   it('hides native settings and sends default values when experimentalFeatures is false', async () => {

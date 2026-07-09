@@ -129,6 +129,38 @@ export async function checkAudioCodecSupport(
 }
 
 /**
+ * Checks which of the given codec options can be DECODED by the current browser
+ * via the WebCodecs AudioDecoder API.
+ * Returns a map of codec string → supported boolean.
+ * If AudioDecoder is unavailable, returns an empty map (all treated as unknown).
+ */
+export async function checkAudioDecoderSupport(
+  codecs: readonly AudioCodecOption[],
+  { sampleRate = 48000, numberOfChannels = 2 }: Omit<CheckAudioCodecSupportOptions, 'bitrate'> = {},
+): Promise<Record<string, boolean>> {
+  const g = globalThis as unknown as { AudioDecoder?: typeof AudioDecoder };
+  const decoder = g.AudioDecoder;
+  if (!decoder?.isConfigSupported) return {};
+
+  const entries = await Promise.all(
+    codecs.map(async (opt) => {
+      try {
+        const result = await decoder.isConfigSupported({
+          codec: opt.value,
+          sampleRate,
+          numberOfChannels,
+        });
+        return [opt.value, !!result?.supported] as const;
+      } catch {
+        return [opt.value, false] as const;
+      }
+    }),
+  );
+
+  return Object.fromEntries(entries);
+}
+
+/**
  * Merges codec options with a support map to produce options with `disabled` flag.
  * An option is disabled only when its support is explicitly `false`
  * (unknown / not yet checked = enabled).

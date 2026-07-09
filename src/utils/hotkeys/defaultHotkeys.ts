@@ -507,18 +507,8 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     { id: 'playback.backward0_75', groupId: 'monitor', title: 'Backward 0.75x' },
     { id: 'playback.forward0_5', groupId: 'monitor', title: 'Forward 0.5x' },
     { id: 'playback.backward0_5', groupId: 'monitor', title: 'Backward 0.5x' },
-    {
-      id: 'playback.speedUpForward',
-      groupId: 'monitor',
-      title: 'Speed up (forward)',
-      description: 'Cycle playback speed up the speed grid (starts at 1.25x forward)',
-    },
-    {
-      id: 'playback.speedDown',
-      groupId: 'monitor',
-      title: 'Slow down',
-      description: 'Cycle playback speed down the grid, into reverse (starts at 0.75x forward)',
-    },
+    { id: 'playback.speedUpForward', groupId: 'monitor', title: 'Speed up (forward)' },
+    { id: 'playback.speedDown', groupId: 'monitor', title: 'Slow down' },
   ],
   bindings: {
     'general.copy': [`${Mod}+C`],

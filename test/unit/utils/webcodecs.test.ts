@@ -5,6 +5,7 @@ import {
   BASE_AUDIO_CODEC_OPTIONS,
   checkVideoCodecSupport,
   checkAudioCodecSupport,
+  checkAudioDecoderSupport,
   resolveVideoCodecOptions,
   resolveAudioCodecOptions,
 } from '~/utils/webcodecs';
@@ -22,6 +23,11 @@ describe('webcodecs', () => {
 
   it('returns empty object when AudioEncoder is unavailable', async () => {
     const result = await checkAudioCodecSupport(BASE_AUDIO_CODEC_OPTIONS);
+    expect(result).toEqual({});
+  });
+
+  it('returns empty object when AudioDecoder is unavailable', async () => {
+    const result = await checkAudioDecoderSupport(BASE_AUDIO_CODEC_OPTIONS);
     expect(result).toEqual({});
   });
 
