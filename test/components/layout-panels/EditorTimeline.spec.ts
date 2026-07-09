@@ -326,7 +326,7 @@ describe('EditorTimeline — ruler middle click isolation', () => {
     vi.clearAllMocks();
   });
 
-  it('does not run timeline middle-click fit when the middle-button gesture started on the ruler', async () => {
+  it('runs ruler middle-click action instead of timeline middle-click fit after ruler pan capture', async () => {
     const timelineStore = setupTimelineStore();
     const workspaceStore = useWorkspaceStore();
     workspaceStore.userSettings.mouse = structuredClone(DEFAULT_USER_SETTINGS.mouse);
@@ -341,6 +341,28 @@ describe('EditorTimeline — ruler middle click isolation', () => {
     await ruler.trigger('pointerdown', { button: 1, pointerId: 1 });
     await trackArea.trigger('auxclick', { button: 1, bubbles: true, cancelable: true });
 
+    expect(timelineStore.requestCenterPlayhead).toHaveBeenCalledOnce();
+    expect(timelineStore.fitTimelineZoom).not.toHaveBeenCalled();
+  });
+
+  it('adds a marker from ruler middle-click fallback', async () => {
+    const timelineStore = setupTimelineStore();
+    const workspaceStore = useWorkspaceStore();
+    workspaceStore.userSettings.mouse = structuredClone(DEFAULT_USER_SETTINGS.mouse);
+    workspaceStore.userSettings.mouse.ruler.middleClick = 'add_marker';
+    workspaceStore.userSettings.mouse.ruler.middleDrag = 'pan';
+    workspaceStore.userSettings.mouse.timeline.middleClick = 'fit_zoom';
+
+    const component = await mountSuspended(EditorTimeline);
+    const ruler = component.find('[data-testid="timeline-ruler"]');
+    const trackArea = component.find('.video-tracks-scroll');
+
+    await ruler.trigger('pointerdown', { button: 1, pointerId: 1, clientX: 42 });
+    await trackArea.trigger('auxclick', { button: 1, bubbles: true, cancelable: true });
+
+    expect(timelineStore.applyTimeline).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'add_marker', text: '' }),
+    );
     expect(timelineStore.fitTimelineZoom).not.toHaveBeenCalled();
   });
 });

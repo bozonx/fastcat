@@ -298,15 +298,18 @@ function onTimeRulerPointerDown(e: PointerEvent) {
   focusStore.setMainFocus('timeline');
   if (e.button === 1) {
     middlePointerStartedOnRuler.value = true;
+    middleRulerPointerDown.value = { clientX: e.clientX, clientY: e.clientY };
   }
   onBaseTimeRulerPointerDown(e);
 }
 
 const middlePointerStartedOnRuler = ref(false);
+const middleRulerPointerDown = ref<{ clientX: number; clientY: number } | null>(null);
 
 function onRulerStartPan(e: PointerEvent) {
   if (e.button === 1) {
     middlePointerStartedOnRuler.value = true;
+    middleRulerPointerDown.value = { clientX: e.clientX, clientY: e.clientY };
   }
   startPan(e);
 }
@@ -314,12 +317,14 @@ function onRulerStartPan(e: PointerEvent) {
 function onRulerStartPlayheadDrag(e: PointerEvent) {
   if (e.button === 1) {
     middlePointerStartedOnRuler.value = true;
+    middleRulerPointerDown.value = { clientX: e.clientX, clientY: e.clientY };
   }
   startPlayheadDrag(e);
 }
 
 function onRulerMiddleClick() {
   middlePointerStartedOnRuler.value = false;
+  middleRulerPointerDown.value = null;
 }
 
 let cachedPointerRectEl: HTMLElement | null = null;
@@ -358,6 +363,58 @@ function getTimeUsFromPointerEvent(el: HTMLElement, event: PointerEvent): number
   const rect = getCachedPointerRect(el);
   const x = event.clientX - rect.left + (masterScrollEl.value?.scrollLeft ?? 0);
   return pxToTimeUs(x, timelineStore.timelineZoom);
+}
+
+function getTimeUsFromRulerMiddlePointer(): number {
+  const rect = rulerContainerRef.value?.getBoundingClientRect();
+  const pointer = middleRulerPointerDown.value;
+  if (!rect || !pointer) return timelineStore.currentTime;
+
+  const x = pointer.clientX - rect.left + scrollLeftRef.value;
+  return pxToTimeUs(x, timelineStore.timelineZoom);
+}
+
+function executeRulerMiddleClickFallback() {
+  const action = rulerMouseSettings.value.middleClick;
+  if (action === 'none') return;
+
+  if (action === 'seek') {
+    timelineStore.setCurrentTimeUs(getTimeUsFromRulerMiddlePointer());
+    return;
+  }
+
+  if (action === 'reset_zoom') {
+    timelineStore.resetTimelineZoom();
+    return;
+  }
+
+  if (action === 'fit_zoom') {
+    timelineStore.fitTimelineZoom();
+    return;
+  }
+
+  if (action === 'center_playhead') {
+    timelineStore.requestCenterPlayhead();
+    return;
+  }
+
+  if (action === 'clear_selection') {
+    timelineStore.removeSelectionRange();
+    timelineStore.clearSelection();
+    selectionStore.clearSelection();
+    return;
+  }
+
+  if (action === 'add_marker') {
+    const markerId = createMarkerId();
+    timelineStore.applyTimeline({
+      type: 'add_marker',
+      id: markerId,
+      timeUs: getTimeUsFromRulerMiddlePointer(),
+      text: '',
+    });
+    selectionStore.selectTimelineMarker(markerId);
+  }
 }
 
 function onTimelinePointerMove(e: PointerEvent) {
@@ -672,7 +729,11 @@ onMounted(() => {
 function onTrackAreaAuxClick(e: MouseEvent) {
   if (e.button !== 1) return;
   if (middlePointerStartedOnRuler.value) {
+    if (!hasPanned.value && !hasPlayheadMoved.value) {
+      executeRulerMiddleClickFallback();
+    }
     middlePointerStartedOnRuler.value = false;
+    middleRulerPointerDown.value = null;
     e.preventDefault();
     e.stopPropagation();
     return;
