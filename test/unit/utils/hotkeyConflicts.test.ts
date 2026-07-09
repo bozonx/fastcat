@@ -14,11 +14,13 @@ import type { HotkeyCommandDefinition, HotkeyCommandId } from '~/utils/hotkeys/d
 
 const commands: readonly HotkeyCommandDefinition[] = [
   { id: 'general.focus', groupId: 'general', title: 'Focus' },
+  { id: 'general.mute', groupId: 'timelineMonitorGlobal', title: 'Mute' },
   { id: 'general.navigateBack', groupId: 'fileManager', title: 'Navigate back' },
   { id: 'general.navigateUp', groupId: 'fileManager', title: 'Navigate up' },
   { id: 'timeline.splitAtPlayhead', groupId: 'timeline', title: 'Split' },
   { id: 'timeline.rippleDelete', groupId: 'timeline', title: 'Ripple delete' },
   { id: 'playback.toggle', groupId: 'monitor', title: 'Play/Pause' },
+  { id: 'playback.stepForward', groupId: 'monitor', title: 'Step forward' },
 ];
 
 function makeEffective(bindings: Partial<Record<HotkeyCommandId, string[]>>) {
@@ -40,6 +42,18 @@ describe('hotkeyConflicts', () => {
     expect(isHotkeyConflicting({ conflicts, cmdId: 'playback.toggle', combo: 'Space' })).toBe(
       false,
     );
+  });
+
+  it('treats general and timeline-monitor global as one conflict level', () => {
+    const effective = makeEffective({
+      'general.focus': ['Space'],
+      'general.mute': ['Space'],
+    });
+
+    const conflicts = getHotkeyConflicts(effective, commands);
+
+    expect(isHotkeyConflicting({ conflicts, cmdId: 'general.focus', combo: 'Space' })).toBe(true);
+    expect(isHotkeyConflicting({ conflicts, cmdId: 'general.mute', combo: 'Space' })).toBe(true);
   });
 
   it('does not treat same combo in general and timeline as conflict', () => {
@@ -113,6 +127,22 @@ describe('hotkeyConflicts', () => {
     ).toBeNull();
   });
 
+  it('findDuplicateOwnerByContext detects duplicates across shared global level', () => {
+    const effective = makeEffective({
+      'general.focus': ['Space'],
+      'general.mute': ['Space'],
+    });
+
+    expect(
+      findDuplicateOwnerByContext({
+        effective,
+        commands,
+        targetCmdId: 'general.focus',
+        combo: 'Space',
+      }),
+    ).toBe('general.mute');
+  });
+
   it('findDuplicateOwnerByContext ignores general vs timeline duplicates', () => {
     const effective = makeEffective({
       'general.focus': ['Space'],
@@ -172,5 +202,35 @@ describe('hotkeyConflicts', () => {
     expect(
       isHotkeyOverriding({ overrides, cmdId: 'timeline.splitAtPlayhead', combo: 'Space' }),
     ).toBe(true);
+  });
+
+  it('getHotkeyOverrides ignores shared global-level overlaps', () => {
+    const effective = makeEffective({
+      'general.focus': ['Space'],
+      'general.mute': ['Space'],
+    });
+
+    const overrides = getHotkeyOverrides(effective, commands);
+    expect(isHotkeyOverriding({ overrides, cmdId: 'general.focus', combo: 'Space' })).toBe(false);
+    expect(isHotkeyOverriding({ overrides, cmdId: 'general.mute', combo: 'Space' })).toBe(false);
+  });
+
+  it('getHotkeyOverrides ignores overlaps between different local groups', () => {
+    const effective = makeEffective({
+      'timeline.splitAtPlayhead': ['Space'],
+      'playback.toggle': ['Space'],
+      'general.navigateBack': ['Space'],
+    });
+
+    const overrides = getHotkeyOverrides(effective, commands);
+    expect(
+      isHotkeyOverriding({ overrides, cmdId: 'timeline.splitAtPlayhead', combo: 'Space' }),
+    ).toBe(false);
+    expect(isHotkeyOverriding({ overrides, cmdId: 'playback.toggle', combo: 'Space' })).toBe(
+      false,
+    );
+    expect(
+      isHotkeyOverriding({ overrides, cmdId: 'general.navigateBack', combo: 'Space' }),
+    ).toBe(false);
   });
 });
