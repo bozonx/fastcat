@@ -71,13 +71,36 @@ describe('createDefaultHotkeyLookup', () => {
 });
 
 describe('getFocusAwareHotkeyOrder', () => {
+  it('prioritizes file manager local commands when file manager hotkeys are available', () => {
+    const result = getFocusAwareHotkeyOrder({
+      matched: [
+        'playback.backward5',
+        'general.navigateBack',
+        'timeline.rippleDeleteSelectedClipRange',
+      ],
+      canUseFileManagerHotkeys: true,
+      canUseTimelineHotkeys: false,
+      canUsePlaybackHotkeys: true,
+    });
+    expect(result).toEqual([
+      'general.navigateBack',
+      'playback.backward5',
+      'timeline.rippleDeleteSelectedClipRange',
+    ]);
+  });
+
   it('prioritizes timeline when can use timeline hotkeys', () => {
     const result = getFocusAwareHotkeyOrder({
-      matched: ['general.play', 'timeline.cut', 'playback.stop'],
+      matched: ['general.play', 'timeline.cut', 'playback.stop', 'general.navigateBack'],
       canUseTimelineHotkeys: true,
       canUsePlaybackHotkeys: false,
     });
-    expect(result).toEqual(['timeline.cut', 'playback.stop', 'general.play']);
+    expect(result).toEqual([
+      'timeline.cut',
+      'playback.stop',
+      'general.play',
+      'general.navigateBack',
+    ]);
   });
 
   it('prioritizes playback when can use playback hotkeys', () => {

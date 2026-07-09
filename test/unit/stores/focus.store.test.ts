@@ -113,6 +113,7 @@ describe('FocusStore', () => {
     expect(store.canUsePlaybackHotkeys).toBe(true);
     expect(store.canUseTimelineHotkeys).toBe(true);
     expect(store.canUsePreviewHotkeys).toBe(false);
+    expect(store.canUseFileManagerHotkeys).toBe(false);
 
     store.setMainFocus('timeline');
     expect(store.canUsePlaybackHotkeys).toBe(true);
@@ -123,6 +124,7 @@ describe('FocusStore', () => {
     expect(store.canUsePlaybackHotkeys).toBe(true);
     expect(store.canUseTimelineHotkeys).toBe(false);
     expect(store.canUsePreviewHotkeys).toBe(true);
+    expect(store.canUseFileManagerHotkeys).toBe(false);
     expect(store.isPropertiesFocus).toBe(false);
 
     store.setPanelFocus('dynamic:properties:files-main');
@@ -152,11 +154,13 @@ describe('FocusStore', () => {
     expect(store.canUsePlaybackHotkeys).toBe(true);
     expect(store.canUseTimelineHotkeys).toBe(false);
     expect(store.canUsePreviewHotkeys).toBe(true);
+    expect(store.canUseFileManagerHotkeys).toBe(true);
 
     store.setPanelFocus('dynamic:detached-preview');
     expect(store.canUsePlaybackHotkeys).toBe(true);
     expect(store.canUseTimelineHotkeys).toBe(false);
     expect(store.canUsePreviewHotkeys).toBe(false);
+    expect(store.canUseFileManagerHotkeys).toBe(false);
   });
 
   it('clearTempFocus restores last cut main panel only for temp panels', () => {

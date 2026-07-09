@@ -111,6 +111,7 @@ export function useEditorHotkeys() {
 
     const focusAwareOrder = getFocusAwareHotkeyOrder({
       matched,
+      canUseFileManagerHotkeys: focusStore.canUseFileManagerHotkeys,
       canUseTimelineHotkeys: focusStore.canUseTimelineHotkeys,
       canUsePlaybackHotkeys: focusStore.canUsePlaybackHotkeys,
     });

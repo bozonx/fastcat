@@ -27,6 +27,13 @@ const EDITABLE_OVERRIDE_COMMANDS: readonly HotkeyCommandId[] = [
   'general.volumeDown',
 ];
 
+const FILE_MANAGER_COMMANDS: ReadonlySet<HotkeyCommandId> = new Set([
+  'general.navigateBack',
+  'general.navigateForward',
+  'general.navigateUp',
+  'general.createFolder',
+]);
+
 function comboHasCtrl(combo: HotkeyCombo | null | undefined): boolean {
   if (!combo) return false;
   const parsed = parseHotkeyCombo(combo);
@@ -113,24 +120,31 @@ export function createDefaultHotkeyLookup(commandOrder: readonly HotkeyCommandId
 
 export function getFocusAwareHotkeyOrder(params: {
   matched: HotkeyCommandId[];
+  canUseFileManagerHotkeys?: boolean;
   canUseTimelineHotkeys: boolean;
   canUsePlaybackHotkeys: boolean;
 }): HotkeyCommandId[] {
-  const { matched, canUseTimelineHotkeys, canUsePlaybackHotkeys } = params;
+  const { matched, canUseFileManagerHotkeys, canUseTimelineHotkeys, canUsePlaybackHotkeys } =
+    params;
 
+  const fileManager = matched.filter((c) => FILE_MANAGER_COMMANDS.has(c));
   const timeline = matched.filter((c) => c.startsWith('timeline.'));
   const playback = matched.filter((c) => c.startsWith('playback.'));
-  const general = matched.filter((c) => c.startsWith('general.'));
+  const general = matched.filter((c) => c.startsWith('general.') && !FILE_MANAGER_COMMANDS.has(c));
+
+  if (canUseFileManagerHotkeys) {
+    return [...fileManager, ...playback, ...general, ...timeline];
+  }
 
   if (canUseTimelineHotkeys) {
-    return [...timeline, ...playback, ...general];
+    return [...timeline, ...playback, ...general, ...fileManager];
   }
 
   if (canUsePlaybackHotkeys) {
-    return [...playback, ...general, ...timeline];
+    return [...playback, ...general, ...timeline, ...fileManager];
   }
 
-  return [...playback, ...general, ...timeline];
+  return [...playback, ...general, ...timeline, ...fileManager];
 }
 
 export function canExecuteHotkeyCommand(params: {

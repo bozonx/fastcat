@@ -52,14 +52,14 @@ describe('DEFAULT_HOTKEYS', () => {
     expect(DEFAULT_HOTKEYS.bindings['general.createFolder']).toEqual(['Ctrl+\\']);
   });
 
-  it('has bindings for general.volumeUp including Ctrl+R', () => {
+  it('has bindings for general.volumeUp including Shift+=', () => {
     expect(DEFAULT_HOTKEYS.bindings['general.volumeUp']).toBeDefined();
-    expect(DEFAULT_HOTKEYS.bindings['general.volumeUp']).toContain('Ctrl+R');
+    expect(DEFAULT_HOTKEYS.bindings['general.volumeUp']).toContain('Shift+=');
   });
 
-  it('has bindings for general.volumeDown including Ctrl+E', () => {
+  it('has bindings for general.volumeDown including Shift+-', () => {
     expect(DEFAULT_HOTKEYS.bindings['general.volumeDown']).toBeDefined();
-    expect(DEFAULT_HOTKEYS.bindings['general.volumeDown']).toContain('Ctrl+E');
+    expect(DEFAULT_HOTKEYS.bindings['general.volumeDown']).toContain('Shift+-');
   });
 
   it('has binding for timeline.centerPlayhead as Shift+/', () => {
@@ -68,7 +68,9 @@ describe('DEFAULT_HOTKEYS', () => {
   });
 
   it('has navigateForward without Shift+Backspace', () => {
-    expect(DEFAULT_HOTKEYS.bindings['general.navigateForward'] ?? []).not.toContain('Shift+Backspace');
+    expect(DEFAULT_HOTKEYS.bindings['general.navigateForward'] ?? []).not.toContain(
+      'Shift+Backspace',
+    );
   });
 
   it('has navigateBack with z only', () => {
@@ -108,7 +110,7 @@ describe('DEFAULT_HOTKEYS', () => {
   });
 
   it('has updated defaults for timeline creation and monitor snapshot', () => {
-    expect(DEFAULT_HOTKEYS.bindings['general.newTimeline']).toEqual(['Ctrl+N']);
+    expect(DEFAULT_HOTKEYS.bindings['general.newTimeline']).toEqual(['Shift+N']);
     expect(DEFAULT_HOTKEYS.bindings['general.snapshot']).toEqual(['Ctrl+H']);
   });
 
@@ -187,8 +189,8 @@ describe('DEFAULT_HOTKEYS', () => {
   it('has defaults for start/end timeline and playback shortcuts', () => {
     expect(DEFAULT_HOTKEYS.bindings['playback.toStart']).toEqual(['W']);
     expect(DEFAULT_HOTKEYS.bindings['playback.toEnd']).toEqual(['T']);
-    expect(DEFAULT_HOTKEYS.bindings['timeline.globalToStart']).toEqual(['Home', 'Ctrl+D']);
-    expect(DEFAULT_HOTKEYS.bindings['timeline.globalToEnd']).toEqual(['End', 'Ctrl+E']);
+    expect(DEFAULT_HOTKEYS.bindings['timeline.globalToStart']).toEqual(['Home', 'Ctrl+E']);
+    expect(DEFAULT_HOTKEYS.bindings['timeline.globalToEnd']).toEqual(['End', 'Ctrl+R']);
   });
 
   it('has defaults for timeline group and ungroup clips shortcuts', () => {

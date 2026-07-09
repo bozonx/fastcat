@@ -227,6 +227,8 @@ export const useFocusStore = defineStore('focus', () => {
 
   const canUsePreviewHotkeys = computed(() => isPreviewPanelFocus(effectiveFocus.value));
 
+  const canUseFileManagerHotkeys = computed(() => isFileManagerPanelFocus(effectiveFocus.value));
+
   const isPropertiesFocus = computed(() => isPropertiesPanelFocus(effectiveFocus.value));
 
   return {
@@ -243,6 +245,7 @@ export const useFocusStore = defineStore('focus', () => {
     canUsePlaybackHotkeys,
     canUseMonitorHotkeys,
     canUsePreviewHotkeys,
+    canUseFileManagerHotkeys,
     isPropertiesFocus,
 
     isPanelFocused,
