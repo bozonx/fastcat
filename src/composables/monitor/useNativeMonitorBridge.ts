@@ -45,7 +45,6 @@ const PLAYING_SEEK_IGNORE_US = 200_000;
 // middle of a series of small slider tweaks, and noticeably more responsive than a second
 // (a sharp frame appears almost immediately after the user stops).
 const ULTRA_SETTLE_DELAY_MS = 500;
-const ULTRA_SETTLE_DELAY_MS = 500;
 
 export function isNativeMonitorSceneReady(params: {
   currentProjectName: string | null;
