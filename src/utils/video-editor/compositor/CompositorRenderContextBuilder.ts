@@ -1,4 +1,4 @@
-import { Sprite, Texture, type Application, type Graphics, type RenderTexture } from 'pixi.js';
+import { RenderTexture, Sprite, Texture, type Application, type Graphics } from 'pixi.js';
 import type { VideoClipEffect } from '~/timeline/types';
 import { buildEffectSpecs } from '~/effects';
 import type { CanvasFallbackRenderer } from './renderers/CanvasFallbackRenderer';
@@ -297,6 +297,8 @@ export class CompositorRenderContextBuilder {
           }
 
           let bitmap: ImageBitmap | null = null;
+          let sourceTexture: RenderTexture | null = null;
+          let processedTexture: RenderTexture | null = null;
           try {
             // Render the track content with its composite alpha/blendMode
             // neutralised — those are applied once at the final stage composite
@@ -307,14 +309,11 @@ export class CompositorRenderContextBuilder {
             container.alpha = 1;
             container.blendMode = 'normal';
             try {
-              // Capture over transparent, not the project background: the
-              // processed sprite must keep the track content's alpha so it
-              // still composites over lower tracks (and the track's own
-              // opacity/blend don't tint baked-in background pixels). Mirrors
-              // the native engine, which renders track members via
-              // Scene::isolated with a TRANSPARENT background.
-              bitmap = await params.stageTextureRenderer.renderDisplayObjectToBitmapForcedVisible(
+              sourceTexture = RenderTexture.create({ width: state.width, height: state.height });
+              processedTexture = RenderTexture.create({ width: state.width, height: state.height });
+              params.stageTextureRenderer.renderDisplayObjectToTextureForcedVisible(
                 container,
+                sourceTexture,
                 { transparent: true },
               );
             } finally {
@@ -322,6 +321,47 @@ export class CompositorRenderContextBuilder {
               container.blendMode = prevBlend;
             }
 
+            if (
+              sourceTexture &&
+              processedTexture &&
+              typeof runner.applyEffectsToTexture === 'function' &&
+              runner.applyEffectsToTexture({
+                source: sourceTexture,
+                target: processedTexture,
+                effects: specs,
+              })
+            ) {
+              const children = [...container.children];
+              const prevVisible = children.map((child) => child.visible);
+              for (const child of children) child.visible = false;
+
+              const sprite = new Sprite(processedTexture);
+              container.addChild(sprite);
+              const committedTexture = processedTexture;
+              processedTexture = null;
+
+              cleanups.push(() => {
+                try {
+                  container.removeChild(sprite);
+                } catch {
+                  // ignore
+                }
+                sprite.destroy();
+                committedTexture.destroy(true);
+                for (let i = 0; i < children.length; i += 1) {
+                  const child = children[i];
+                  if (child && !(child as { destroyed?: boolean }).destroyed) {
+                    child.visible = prevVisible[i] ?? true;
+                  }
+                }
+              });
+              continue;
+            }
+
+            bitmap = await params.stageTextureRenderer.renderDisplayObjectToBitmapForcedVisible(
+              container,
+              { transparent: true },
+            );
             if (!bitmap) continue;
 
             const processed = await runner.applyEffects(bitmap, specs);
@@ -362,6 +402,8 @@ export class CompositorRenderContextBuilder {
           } catch (err) {
             log.warn('[Compositor] Track WebGPU effects failed:', err);
           } finally {
+            sourceTexture?.destroy(true);
+            processedTexture?.destroy(true);
             bitmap?.close();
           }
         }
@@ -395,7 +437,35 @@ export class CompositorRenderContextBuilder {
           return false;
         }
 
+        let sourceTexture: RenderTexture | null = null;
+        let processedTexture: RenderTexture | null = null;
         try {
+          sourceTexture = RenderTexture.create({ width: state.width, height: state.height });
+          processedTexture = RenderTexture.create({ width: state.width, height: state.height });
+          params.stageTextureRenderer.renderDisplayObjectToTextureForcedVisible(
+            app.stage,
+            sourceTexture,
+          );
+          if (
+            typeof runner.applyEffectsToTexture === 'function' &&
+            runner.applyEffectsToTexture({
+              source: sourceTexture,
+              target: processedTexture,
+              effects: masterSpecs,
+            })
+          ) {
+            const sprite = new Sprite(processedTexture);
+            try {
+              if (!app.renderer) {
+                return false;
+              }
+              app.renderer.render({ container: sprite, clear: true });
+            } finally {
+              sprite.destroy();
+            }
+            return true;
+          }
+
           // Capture the stage off-screen: the visible canvas must only ever
           // receive the final processed frame (see RenderingEngine).
           const bitmap = await params.stageTextureRenderer.renderDisplayObjectToBitmapForcedVisible(
@@ -434,6 +504,9 @@ export class CompositorRenderContextBuilder {
         } catch (err) {
           log.warn('[Compositor] Master WebGPU effects failed:', err);
           return false;
+        } finally {
+          sourceTexture?.destroy(true);
+          processedTexture?.destroy(true);
         }
       },
       setStageSortDirty: params.setStageSortDirty,

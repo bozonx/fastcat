@@ -256,11 +256,17 @@ export class StageTextureRenderer {
   public renderDisplayObjectToTextureForcedVisible(
     displayObject: Container,
     texture: RenderTexture,
+    options: { transparent?: boolean } = {},
   ) {
     const previousVisible = displayObject.visible;
     displayObject.visible = true;
     try {
-      this.renderDisplayObjectToTexture(displayObject, texture);
+      this.context.app.renderer.render({
+        container: displayObject,
+        target: texture,
+        clear: true,
+        clearColor: options.transparent ? [0, 0, 0, 0] : undefined,
+      });
     } finally {
       displayObject.visible = previousVisible;
     }
