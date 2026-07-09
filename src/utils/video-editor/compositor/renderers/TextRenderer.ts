@@ -296,7 +296,7 @@ export class TextRenderer {
       // shadowOffset to bring only their blurred (and spread-dilated) shadow into
       // place. Drawing on-canvas would also paint the solid glyph shape in
       // shadowColor — the fill shows through anti-aliased edges and, for the
-      // spread stroke, leaves a hard outline ("обводка") around the text. Off-canvas
+      // spread stroke, leaves a hard outline ("stroke") around the text. Off-canvas
       // rendering emits ONLY the shadow, matching the native compositor.
       const off = ctx.canvas.width + ctx.canvas.height + 1000;
       ctx.save();

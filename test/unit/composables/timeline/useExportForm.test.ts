@@ -825,20 +825,20 @@ describe('useExportForm', () => {
     const form = useExportForm();
     await form.initializeExportForm();
 
-    // Изменяем каналы на 1 (mono)
+    // Change channels to 1 (mono)
     form.audioChannels.value = 1;
     await nextTick();
 
-    // Настройки должны были сохраниться в стор
+    // Settings should have been persisted to the store
     expect(projectStoreMock.projectSettings.exportSettings?.audioChannels).toBe(1);
 
-    // Сбросим состояние формы
+    // Reset the form state
     form.audioChannels.value = 2;
 
-    // Снова инициализируем форму
+    // Re-initialize the form
     await form.initializeExportForm();
 
-    // Каналы должны восстановиться из сохраненных настроек
+    // Channels should be restored from the saved settings
     expect(form.audioChannels.value).toBe(1);
   });
 

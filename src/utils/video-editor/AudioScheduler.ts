@@ -65,7 +65,7 @@ export class AudioScheduler {
 
     const ctx = this.getContext();
     if (!ctx) {
-      // Без AudioContext (например в Tauri-сборке аудио отключено) — играем wall-clock'ом.
+      // Without an AudioContext (e.g. audio is disabled in the Tauri build) — play by wall-clock.
       this.playbackContextTimeS = this.wallClockS() + this.kickoffLatencyS;
       return;
     }
@@ -109,7 +109,7 @@ export class AudioScheduler {
 
     const ctx = this.getContext();
     if (!ctx) {
-      // Без аудио (Tauri) — поддерживаем только обновление wall-clock базы.
+      // Without audio (Tauri) — only update the wall-clock base.
       this.baseTimeS = currentTimeS;
       this.playbackContextTimeS = this.wallClockS() + this.kickoffLatencyS;
       return;
@@ -143,7 +143,7 @@ export class AudioScheduler {
 
     const ctx = this.getContext();
     if (!ctx) {
-      // Wall-clock реанкоринг.
+      // Wall-clock re-anchoring.
       this.playbackContextTimeS = this.wallClockS() + this.kickoffLatencyS;
       return;
     }

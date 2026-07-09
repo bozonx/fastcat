@@ -358,7 +358,7 @@ describe('useFileContextMenu', () => {
           hasProxy: false,
           generatingProxy: false,
         }),
-        canUseFile: () => false, // битый файл
+        canUseFile: () => false, // broken file
       },
       vi.fn(),
     );

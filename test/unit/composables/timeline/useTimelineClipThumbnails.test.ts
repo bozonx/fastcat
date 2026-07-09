@@ -235,8 +235,8 @@ describe('useTimelineClipThumbnails reactive logic', () => {
     const { requestedThumbnailTimes } = useTimelineClipThumbnails(options);
 
     // edges mode: totalTiles = clipWidth / tileDisplayWidth.
-    // В данном тесте проверим, что в edges режиме количество запрашиваемых времен меньше,
-    // и они соответствуют только первому и последнему кадрам клипа (одна миниатюра слева, одна справа).
+    // In this test we verify that in edges mode fewer times are requested,
+    // and they correspond only to the first and last frames of the clip (one thumbnail on the left, one on the right).
     const times = requestedThumbnailTimes.value;
     expect(times).toEqual([0, 16]);
   });

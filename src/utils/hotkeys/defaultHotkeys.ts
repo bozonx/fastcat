@@ -343,7 +343,7 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
       title: 'Advanced ripple trim end',
     },
 
-    // Timeline - Вырезание таймлайна
+    // Timeline - Cut out timeline
     { id: 'timeline.rippleDelete', groupId: 'timeline', title: 'Ripple delete' },
     {
       id: 'timeline.rippleDeleteSelectedClipRange',
@@ -351,7 +351,7 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
       title: 'Ripple delete selected clip range on all tracks',
     },
 
-    // Timeline - Выделение
+    // Timeline - Selection
     {
       id: 'timeline.selectClipsLeftOfPlayhead',
       groupId: 'timeline',
@@ -363,7 +363,7 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
       title: 'Select clips right of playhead',
     },
 
-    // Timeline - Перемещение
+    // Timeline - Moving
     {
       id: 'timeline.moveSelectedClipsLeft',
       groupId: 'timeline',
@@ -385,7 +385,7 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
       title: 'Move selected clips right (large step)',
     },
 
-    // Timeline - Параметры клипов
+    // Timeline - Clip parameters
     {
       id: 'timeline.copyClipParameters',
       groupId: 'timeline',
@@ -397,7 +397,7 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
       title: 'Paste clip parameters',
     },
 
-    // Timeline - Режимы snapping и drag
+    // Timeline - Snapping and drag modes
     { id: 'timeline.selectSnapModeSnap', groupId: 'timeline', title: 'Switch to clip snapping' },
     { id: 'timeline.selectSnapModeNoSnap', groupId: 'timeline', title: 'Switch to no snapping' },
     { id: 'timeline.selectSnapModeFree', groupId: 'timeline', title: 'Switch to free mode' },
@@ -409,7 +409,7 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     },
     { id: 'timeline.selectDragModeSlip', groupId: 'timeline', title: 'Switch to slip mode' },
 
-    // Timeline - Тогглы клипа
+    // Timeline - Clip toggles
     { id: 'timeline.toggleDisableClip', groupId: 'timeline', title: 'Disable / Enable clip' },
     { id: 'timeline.toggleMuteClip', groupId: 'timeline', title: 'Mute / Unmute clip' },
     { id: 'timeline.toggleLockClip', groupId: 'timeline', title: 'Toggle lock clip' },
@@ -419,7 +419,7 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
       title: 'Toggle clip freeze frame',
     },
 
-    // Timeline - Тогглы дорожки
+    // Timeline - Track toggles
     {
       id: 'timeline.toggleVisibilityTrack',
       groupId: 'timeline',
@@ -429,7 +429,7 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     { id: 'timeline.toggleSoloTrack', groupId: 'timeline', title: 'Solo / Unsolo audio track' },
     { id: 'timeline.toggleLockTrack', groupId: 'timeline', title: 'Toggle lock track' },
 
-    // Timeline - Вейвформа и миниатюры
+    // Timeline - Waveform and thumbnails
     {
       id: 'timeline.toggleWaveformMode',
       groupId: 'timeline',
@@ -446,7 +446,7 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
       title: 'Toggle show clip thumbnails',
     },
 
-    // Timeline - Громкость клипов
+    // Timeline - Clip volume
     {
       id: 'timeline.increaseSelectedClipsVolume',
       groupId: 'timeline',
@@ -468,7 +468,7 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
       title: 'Decrease selected clips volume (large step)',
     },
 
-    // Timeline - Создание клипов
+    // Timeline - Create clips
     {
       id: 'timeline.addTextClipAtPlayhead',
       groupId: 'timeline',
@@ -485,7 +485,7 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
       title: 'Create adjustment clip at playhead',
     },
 
-    // Timeline - Прочее
+    // Timeline - Other
     { id: 'timeline.duplicate', groupId: 'timeline', title: 'Duplicate timeline / Create version' },
     { id: 'timeline.centerPlayhead', groupId: 'timeline', title: 'Center playhead' },
     { id: 'timeline.toggleBladeTool', groupId: 'timeline', title: 'Toggle blade tool' },
@@ -494,7 +494,7 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     { id: 'timeline.groupClips', groupId: 'timeline', title: 'Group clips' },
     { id: 'timeline.ungroupClips', groupId: 'timeline', title: 'Ungroup clips' },
 
-    // Monitor - Скорости воспроизведения (по нарастающей)
+    // Monitor - Playback speeds (ascending)
     { id: 'playback.forward0_5', groupId: 'monitor', title: 'Forward 0.5x' },
     { id: 'playback.backward0_5', groupId: 'monitor', title: 'Backward 0.5x' },
     { id: 'playback.forward0_75', groupId: 'monitor', title: 'Forward 0.75x' },

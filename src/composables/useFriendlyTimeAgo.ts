@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n';
 import type { MaybeRefOrGetter } from 'vue';
 
 /**
- * Returns a reactive human-friendly relative time string (e.g. "5 minutes ago", "только что").
+ * Returns a reactive human-friendly relative time string (e.g. "5 minutes ago", "just now").
  * Supports locale switches dynamically.
  */
 export function useFriendlyTimeAgo(
