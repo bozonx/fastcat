@@ -415,7 +415,9 @@ export const useTimelineStore = defineStore('timeline', () => {
   async function loadTimeline() {
     await lifecycle.loadTimeline();
     scrollToPlayheadRequest.value++;
-    selectionStore.selectTimelineProperties();
+    // On desktop this selects the timeline section in the properties panel; on
+    // mobile it would auto-open the settings drawer on page entry, which we don't want.
+    if (!isMobileLayout.value) selectionStore.selectTimelineProperties();
 
     if (selectionRange.value && !timelineDoc.value?.metadata?.fastcat?.selectionRange) {
       applyTimeline(

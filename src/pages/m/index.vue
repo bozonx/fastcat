@@ -331,11 +331,6 @@ const sortedProjects = computed(() => {
                   >
                     {{ t('fastcat.projects.newProject') }}
                   </UButton>
-                  <span
-                    class="text-[11px] text-ui-text-muted/80 text-center block -mt-1 mb-1 font-medium"
-                  >
-                    {{ t('fastcat.projects.selectMediaHint') }}
-                  </span>
                 </div>
 
                 <div class="px-5 pt-6 pb-24">

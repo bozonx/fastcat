@@ -575,6 +575,44 @@ describe('TimelineStore', () => {
     expect(store.timelineDoc.name).toBe('Default');
   });
 
+  it('selects timeline properties after loading on desktop layout', async () => {
+    const selectionStore = useSelectionStore();
+    selectionStore.clearSelection();
+
+    await store.loadTimeline();
+
+    expect(selectionStore.selectedEntity?.kind).toBe('timeline-properties');
+  });
+
+  it('does not select timeline properties after loading on mobile layout', async () => {
+    // isMobileLayout is a cached computed reading window.location.pathname. It must
+    // read the mobile route on first access, so stub window before creating a fresh
+    // store instance (the beforeEach store already cached the desktop value).
+    const originalWindow = (globalThis as any).window;
+    vi.stubGlobal('window', { location: { pathname: '/m/editor/test' } });
+
+    setActivePinia(createPinia());
+    const mobileStore = useTimelineStore();
+    mobileStore.timelineDoc = projectStoreMock.createFallbackTimelineDoc();
+
+    try {
+      const selectionStore = useSelectionStore();
+      selectionStore.clearSelection();
+
+      await mobileStore.loadTimeline();
+
+      expect(selectionStore.selectedEntity).toBeNull();
+    } finally {
+      // Restore the prior window state so subsequent tests are unaffected.
+      if (originalWindow === undefined) {
+        (globalThis as any).window = undefined;
+      } else {
+        (globalThis as any).window = originalWindow;
+      }
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('toggles disabled state on multiple clips', async () => {
     const timeline = createTestTimeline({
       tracks: [

@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
-import { useUiStore } from '~/stores/ui.store';
 import { useProjectActions } from '~/composables/editor/useProjectActions';
 import { useResizablePanel } from '~/composables/layout/useResizablePanel';
 
@@ -24,7 +23,6 @@ definePageMeta({
 
 const projectStore = useProjectStore();
 const workspaceStore = useWorkspaceStore();
-const uiStore = useUiStore();
 const router = useRouter();
 const route = useRoute();
 const { openProject, leaveProject } = useProjectActions();
@@ -269,7 +267,7 @@ const { onDividerPointerDown } = useResizablePanel({
 
     <!-- Bottom Navigation Bar -->
     <MobileBottomNav
-      v-if="showBottomNav && !uiStore.isMobileTimelineDrawerOpen"
+      v-if="showBottomNav"
       v-model:active-tab="activeTab"
       class="landscape:order-first"
     />
