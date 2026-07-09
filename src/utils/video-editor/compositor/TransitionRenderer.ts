@@ -197,12 +197,7 @@ export class TransitionRenderer {
             speed,
           });
         if (renderedOnGpu) {
-          const transitionSprite = params.stageTextureRenderer.ensureTransitionSprite(clip);
-          transitionSprite.texture = clip.transitionOutputTexture;
-          transitionSprite.scale.set(1, 1);
-          transitionSprite.width = params.width;
-          transitionSprite.height = params.height;
-          transitionSprite.visible = true;
+          this.commitTransitionOutput(clip, params, prevClip, mode);
           continue;
         }
       } catch (error) {
@@ -263,38 +258,48 @@ export class TransitionRenderer {
         processed?.close();
       }
 
-      const transitionSprite = params.stageTextureRenderer.ensureTransitionSprite(clip);
-      transitionSprite.texture = clip.transitionOutputTexture;
-      transitionSprite.scale.set(1, 1);
-      transitionSprite.width = params.width;
-      transitionSprite.height = params.height;
-      transitionSprite.alpha = 1;
-      transitionSprite.blendMode = toPixiBlendMode(clip.blendMode);
-      transitionSprite.filters = null;
-      transitionSprite.visible = true;
+      this.commitTransitionOutput(clip, params, prevClip, mode);
+    }
+  }
 
-      if (clip.sprite) {
-        clip.sprite.visible = false;
+  private commitTransitionOutput(
+    clip: CompositorClip,
+    params: TransitionRendererParams,
+    prevClip: CompositorClip | null,
+    mode: string,
+  ): void {
+    const transitionSprite = params.stageTextureRenderer.ensureTransitionSprite(clip);
+    transitionSprite.texture = clip.transitionOutputTexture!;
+    transitionSprite.scale.set(1, 1);
+    transitionSprite.width = params.width;
+    transitionSprite.height = params.height;
+    transitionSprite.alpha = 1;
+    transitionSprite.blendMode = toPixiBlendMode(clip.blendMode);
+    transitionSprite.filters = null;
+    transitionSprite.visible = true;
+
+    if (clip.sprite) {
+      clip.sprite.visible = false;
+    }
+    if (prevClip?.sprite) {
+      prevClip.sprite.visible = false;
+    }
+
+    if (mode !== 'background') {
+      return;
+    }
+
+    const children = params.app.stage.children;
+    for (let i = 0; i < children.length; i += 1) {
+      const child = children[i] as import('pixi.js').Container & { __trackId?: string };
+      if (!child || child === transitionSprite) {
+        continue;
       }
-      if (prevClip && prevClip.sprite) {
-        prevClip.sprite.visible = false;
-      }
 
-      if (mode === 'background') {
-        const children = params.app.stage.children;
-        for (let i = 0; i < children.length; i += 1) {
-          const child = children[i] as import('pixi.js').Container & { __trackId?: string };
-          if (!child || child === transitionSprite) {
-            continue;
-          }
-
-          const track = params.getTrackById(child?.__trackId ?? '');
-          const childLayer =
-            typeof track?.layer === 'number' ? track.layer : Number.POSITIVE_INFINITY;
-          if (childLayer < clip.layer) {
-            child.visible = false;
-          }
-        }
+      const track = params.getTrackById(child?.__trackId ?? '');
+      const childLayer = typeof track?.layer === 'number' ? track.layer : Number.POSITIVE_INFINITY;
+      if (childLayer < clip.layer) {
+        child.visible = false;
       }
     }
   }

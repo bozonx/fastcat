@@ -345,6 +345,76 @@ describe('ClipResourceManager.applyEffectsToNonVideoClip', () => {
     expect(clip.nonVideoEffectCacheKey).toBeDefined();
   });
 
+  it('uses GPU texture output for non-video sprite effects when possible', async () => {
+    const sourceTexture = {
+      uid: 11,
+      width: 1920,
+      height: 1080,
+      source: { pixelWidth: 1920, pixelHeight: 1080, format: 'bgra8unorm' },
+      destroy: vi.fn(),
+    };
+    const effectTexture = {
+      uid: 12,
+      width: 1920,
+      height: 1080,
+      source: { pixelWidth: 1920, pixelHeight: 1080, format: 'bgra8unorm' },
+      destroy: vi.fn(),
+    };
+    const createRenderTexture = vi
+      .spyOn(RenderTexture, 'create')
+      .mockReturnValueOnce(sourceTexture as any)
+      .mockReturnValueOnce(effectTexture as any);
+
+    const render = vi.fn();
+    const applyEffects = vi.fn();
+    const applyEffectsToTexture = vi.fn(() => true);
+    const runner = {
+      isReady: () => true,
+      applyEffects,
+      applyEffectsToTexture,
+    } as unknown as WebGpuComputeRunner;
+    const layoutApplier = createMockLayoutApplier();
+    const imageSource = createMockImageSource(2, 2);
+    const sprite = createMockSprite(imageSource);
+    const manager = createManager({
+      computeRunner: runner,
+      getLayoutApplier: () => layoutApplier,
+      getApp: () =>
+        ({
+          renderer: { render },
+        }) as any,
+    });
+    const clip = {
+      clipKind: 'solid' as const,
+      effects: [{ id: '1', type: 'color-adjustment', brightness: 1.2, enabled: true }],
+      sprite: sprite as unknown as CompositorClip['sprite'],
+      imageSource: imageSource as any,
+      lastVideoFrame: null,
+    } as CompositorClip;
+
+    await manager.applyEffectsToNonVideoClip(clip, true);
+
+    expect(createRenderTexture).toHaveBeenNthCalledWith(1, { width: 1920, height: 1080 });
+    expect(createRenderTexture).toHaveBeenNthCalledWith(2, { width: 1920, height: 1080 });
+    expect(render).toHaveBeenCalledWith({
+      container: sprite,
+      target: sourceTexture,
+      clear: true,
+    });
+    expect(applyEffectsToTexture).toHaveBeenCalledWith({
+      source: sourceTexture,
+      target: effectTexture,
+      effects: expect.arrayContaining([expect.objectContaining({ type: 'brightness' })]),
+    });
+    expect(applyEffects).not.toHaveBeenCalled();
+    expect((clip.sprite as any).texture).toBe(effectTexture);
+    expect(clip.effectRenderTexture).toBe(effectTexture);
+    expect(clip.lastVideoFrame).toBeNull();
+    expect(clip.nonVideoEffectCacheKey).toBeDefined();
+    expect(layoutApplier.applySpriteLayout).toHaveBeenCalledWith(1920, 1080, clip);
+    expect(sourceTexture.destroy).toHaveBeenCalledWith(true);
+  });
+
   it('captures shape clips via RenderTexture without touching app.canvas', async () => {
     const bitmap = { width: 320, height: 180 } as ImageBitmap;
     const createImageBitmapMock = vi.fn().mockResolvedValue(bitmap);

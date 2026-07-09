@@ -200,6 +200,7 @@ describe('TransitionRenderer', () => {
       startUs: 1_000,
       layer: 2,
       clipKind: 'video',
+      blendMode: 'screen',
       sprite: { visible: true },
       transitionSprite,
       transitionFilter: null,
@@ -207,7 +208,12 @@ describe('TransitionRenderer', () => {
       transitionToTexture: null,
       transitionOutputTexture: null,
     } as any;
-    const app = { renderer: { render: vi.fn() }, stage: { children: [] } } as any;
+    const lowerChild = { __trackId: 'track-lower', visible: true } as any;
+    const sameLayerChild = { __trackId: 'track-current', visible: true } as any;
+    const app = {
+      renderer: { render: vi.fn() },
+      stage: { children: [lowerChild, sameLayerChild, transitionSprite] },
+    } as any;
     const stageTextureRenderer = {
       renderSingleClipToTexture: vi.fn(),
       renderLowerLayersToTexture: vi.fn(),
@@ -235,7 +241,8 @@ describe('TransitionRenderer', () => {
       textureToBitmap,
       transitionManager: {} as any,
       stageTextureRenderer: stageTextureRenderer as any,
-      getTrackById: () => ({ id: 'track-current', layer: 2 }) as any,
+      getTrackById: (trackId: string) =>
+        ({ id: trackId, layer: trackId === 'track-lower' ? 1 : 2 }) as any,
       getActiveTransitionState: () => ({
         manifest,
         progress: 0.5,
@@ -269,6 +276,12 @@ describe('TransitionRenderer', () => {
     expect(app.renderer.render).not.toHaveBeenCalled();
     expect(transitionSprite.texture).toBe(clip.transitionOutputTexture);
     expect(transitionSprite.visible).toBe(true);
+    expect(transitionSprite.alpha).toBe(1);
+    expect(transitionSprite.blendMode).toBe('screen');
+    expect(transitionSprite.filters).toBeNull();
+    expect(clip.sprite.visible).toBe(false);
+    expect(lowerChild.visible).toBe(false);
+    expect(sameLayerChild.visible).toBe(true);
   });
 
   it('renders previous clip into transition texture for adjacent mode and hides previous clip sprite', async () => {

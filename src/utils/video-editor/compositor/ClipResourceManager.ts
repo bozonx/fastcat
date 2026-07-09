@@ -1,6 +1,6 @@
 import { createDevLogger } from '~/utils/dev-logger';
-import type { Application, Sprite } from 'pixi.js';
-import { RenderTexture, Texture } from 'pixi.js';
+import type { Application } from 'pixi.js';
+import { RenderTexture, Sprite, Texture } from 'pixi.js';
 import { safeDispose } from '../utils';
 import type { LayoutApplier } from './LayoutApplier';
 import type { TransitionManager } from './TransitionManager';
@@ -75,8 +75,10 @@ export class ClipResourceManager {
 
   private restoreClipImageSourceTexture(clip: CompositorClip): void {
     if (!clip.sprite || (clip.sprite as { destroyed?: boolean }).destroyed) return;
-    if ((clip.sprite as Sprite).texture.source !== clip.imageSource) {
-      (clip.sprite as Sprite).texture = new Texture({ source: clip.imageSource, dynamic: true });
+    const sprite = clip.sprite as Sprite & { texture?: Texture };
+    if (!sprite.texture) return;
+    if (sprite.texture.source !== clip.imageSource) {
+      sprite.texture = new Texture({ source: clip.imageSource, dynamic: true });
     }
     clip.effectTextureW = undefined;
     clip.effectTextureH = undefined;
@@ -102,10 +104,13 @@ export class ClipResourceManager {
     const hasEffects = (clip.effects?.length ?? 0) > 0;
     const runner = this.context.computeRunner;
     if (!hasEffects || !runner?.isReady()) {
+      this.restoreClipImageSourceTexture(clip);
       // Clear stale stored dimensions so applyClipLayoutForCurrentSource
       // uses imageSource directly when effects are off/unavailable.
       clip.effectSourceW = undefined;
       clip.effectSourceH = undefined;
+      clip.effectTextureW = undefined;
+      clip.effectTextureH = undefined;
       clip.effectIgnoreTransform = undefined;
       return;
     }
@@ -117,7 +122,14 @@ export class ClipResourceManager {
 
     // Skip reprocessing when clip content and effects haven't changed.
     const cacheKey = this.buildNonVideoEffectCacheKey(clip, effectSpecs);
-    if (cacheKey === clip.nonVideoEffectCacheKey && clip.lastVideoFrame) {
+    if (
+      cacheKey === clip.nonVideoEffectCacheKey &&
+      (clip.lastVideoFrame || clip.effectRenderTexture)
+    ) {
+      return;
+    }
+
+    if (this.applyNonVideoEffectsToTexture(clip, effectSpecs, cacheKey)) {
       return;
     }
 
@@ -263,6 +275,132 @@ export class ClipResourceManager {
     }
 
     return parts.join('|');
+  }
+
+  private applyNonVideoEffectsToTexture(
+    clip: CompositorClip,
+    effectSpecs: import('~/types/generated/native-monitor/VideoEffectSpec').VideoEffectSpec[],
+    cacheKey: string,
+  ): boolean {
+    const runner = this.context.computeRunner;
+    const app = this.context.getApp?.();
+    if (!runner || !app?.renderer || typeof runner.applyEffectsToTexture !== 'function') {
+      return false;
+    }
+    if (!clip.sprite || (clip.sprite as { destroyed?: boolean }).destroyed) {
+      return false;
+    }
+    if (effectSpecs.some((effect) => effect.type === 'blur-fill')) {
+      return false;
+    }
+
+    const sourceSize = this.resolveNonVideoTextureSourceSize(clip);
+    if (!sourceSize) {
+      return false;
+    }
+    const outputSize = resolveEffectTextureSize({
+      width: sourceSize.width,
+      height: sourceSize.height,
+      effects: effectSpecs,
+    });
+    if (outputSize.padding !== 0) {
+      return false;
+    }
+
+    const sourceTexture = RenderTexture.create({
+      width: sourceSize.width,
+      height: sourceSize.height,
+    });
+    try {
+      if (!this.renderNonVideoSourceToTexture(clip, sourceTexture, sourceSize)) {
+        return false;
+      }
+
+      clip.effectRenderTexture = this.ensureEffectRenderTexture(
+        clip.effectRenderTexture ?? null,
+        outputSize.width,
+        outputSize.height,
+      );
+      const rendered = runner.applyEffectsToTexture({
+        source: sourceTexture,
+        target: clip.effectRenderTexture,
+        effects: effectSpecs,
+      });
+      if (!rendered) {
+        return false;
+      }
+
+      if (clip.lastVideoFrame) {
+        safeDispose(clip.lastVideoFrame);
+        clip.lastVideoFrame = null;
+      }
+      if (clip.sprite && 'texture' in clip.sprite) {
+        (clip.sprite as Sprite).texture = clip.effectRenderTexture;
+      }
+      clip.nonVideoEffectCacheKey = cacheKey;
+      clip.effectSourceW = sourceSize.width;
+      clip.effectSourceH = sourceSize.height;
+      clip.effectTextureW = outputSize.width;
+      clip.effectTextureH = outputSize.height;
+      clip.effectIgnoreTransform = false;
+      this.context
+        .getLayoutApplier()
+        .applySpriteLayout(sourceSize.width, sourceSize.height, clip);
+      return true;
+    } finally {
+      try {
+        sourceTexture.destroy(true);
+      } catch {
+        // ignore
+      }
+    }
+  }
+
+  private resolveNonVideoTextureSourceSize(
+    clip: CompositorClip,
+  ): { width: number; height: number } | null {
+    if (clip.clipKind === 'image' || clip.clipKind === 'text') {
+      const width = Math.max(1, Math.round(clip.imageSource?.width ?? 0));
+      const height = Math.max(1, Math.round(clip.imageSource?.height ?? 0));
+      return width > 0 && height > 0 ? { width, height } : null;
+    }
+    if (clip.clipKind === 'solid') {
+      return { width: this.context.width, height: this.context.height };
+    }
+
+    return null;
+  }
+
+  private renderNonVideoSourceToTexture(
+    clip: CompositorClip,
+    texture: RenderTexture,
+    size: { width: number; height: number },
+  ): boolean {
+    const app = this.context.getApp?.();
+    if (!app?.renderer || !clip.sprite) return false;
+
+    if (clip.clipKind === 'image' || clip.clipKind === 'text') {
+      this.restoreClipImageSourceTexture(clip);
+      const sourceTexture = (clip.sprite as Sprite & { texture?: Texture }).texture;
+      if (!sourceTexture) return false;
+
+      const sourceSprite = new Sprite(sourceTexture);
+      sourceSprite.anchor.set(0, 0);
+      sourceSprite.x = 0;
+      sourceSprite.y = 0;
+      sourceSprite.width = size.width;
+      sourceSprite.height = size.height;
+      app.renderer.render({ container: sourceSprite, target: texture, clear: true });
+      sourceSprite.destroy();
+      return true;
+    }
+
+    if (clip.clipKind === 'solid') {
+      app.renderer.render({ container: clip.sprite, target: texture, clear: true });
+      return true;
+    }
+
+    return false;
   }
 
   private async getNonVideoClipBitmap(clip: CompositorClip): Promise<ImageBitmap | null> {
