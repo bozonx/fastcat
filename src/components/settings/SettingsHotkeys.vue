@@ -24,6 +24,7 @@ import SettingsHotkeysGroup from './hotkeys/SettingsHotkeysGroup.vue';
 
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
+const toast = useToast();
 
 const isDuplicateConfirmOpen = ref(false);
 const duplicateWarningText = ref('');
@@ -56,6 +57,18 @@ const { isCapturingHotkey, captureTargetCommandId, capturedCombo, startCapture, 
       });
       duplicateOwnerCommandId.value = owner;
       isDuplicateConfirmOpen.value = true;
+    },
+    onReserved: (_cmdId, combo, reservation) => {
+      toast.add({
+        title: t('videoEditor.settings.hotkeysReservedTitle'),
+        description: t(
+          reservation.runtime === 'tauri'
+            ? 'videoEditor.settings.hotkeysReservedTauriDesc'
+            : 'videoEditor.settings.hotkeysReservedBrowserDesc',
+          { combo },
+        ),
+        color: 'warning',
+      });
     },
     findDuplicateOwner: (combo, targetCmdId) => {
       const effective = getEffectiveHotkeyBindings(workspaceStore.userSettings.hotkeys);

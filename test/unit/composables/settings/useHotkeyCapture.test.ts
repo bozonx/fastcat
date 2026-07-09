@@ -14,6 +14,10 @@ vi.mock('~/utils/hotkeys/hotkeyUtils', () => ({
   normalizeHotkeyCombo: vi.fn((c: string) => c),
 }));
 
+vi.mock('~/utils/hotkeys/reservedHotkeys', () => ({
+  getReservedHotkeyReservation: vi.fn(() => null),
+}));
+
 describe('useHotkeyCapture', () => {
   let originalAddEventListener: typeof window.addEventListener;
   let originalRemoveEventListener: typeof window.removeEventListener;
@@ -103,5 +107,36 @@ describe('useHotkeyCapture', () => {
     });
     expect(typeof startCapture).toBe('function');
     expect(typeof finishCapture).toBe('function');
+  });
+
+  it('reports reserved shortcuts and stops capture', async () => {
+    const { getReservedHotkeyReservation } = await import('~/utils/hotkeys/reservedHotkeys');
+    vi.mocked(getReservedHotkeyReservation).mockReturnValue({ runtime: 'browser' });
+
+    const onReserved = vi.fn();
+    const onCaptured = vi.fn();
+    const { startCapture, isCapturingHotkey } = useHotkeyCapture({
+      onCaptured,
+      onDuplicate: vi.fn(),
+      onReserved,
+      findDuplicateOwner: vi.fn(),
+    });
+
+    startCapture('general.focus' as any);
+    const handler = vi.mocked(window.addEventListener).mock.calls[0]?.[1] as (
+      e: KeyboardEvent,
+    ) => void;
+    const event = {
+      key: 'l',
+      preventDefault: vi.fn(),
+      target: null,
+    } as unknown as KeyboardEvent;
+
+    handler(event);
+
+    expect(event.preventDefault).toHaveBeenCalled();
+    expect(onReserved).toHaveBeenCalledWith('general.focus', 'Ctrl+A', { runtime: 'browser' });
+    expect(onCaptured).not.toHaveBeenCalled();
+    expect(isCapturingHotkey.value).toBe(false);
   });
 });

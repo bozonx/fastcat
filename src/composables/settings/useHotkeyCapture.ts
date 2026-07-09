@@ -5,11 +5,14 @@ import {
   isEditableTarget,
   normalizeHotkeyCombo,
 } from '~/utils/hotkeys/hotkeyUtils';
+import type { HotkeyReservation } from '~/utils/hotkeys/reservedHotkeys';
+import { getReservedHotkeyReservation } from '~/utils/hotkeys/reservedHotkeys';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 
 export function useHotkeyCapture(params: {
   onCaptured: (cmdId: HotkeyCommandId, combo: string) => void;
   onDuplicate: (cmdId: HotkeyCommandId, combo: string, owner: HotkeyCommandId) => void;
+  onReserved?: (cmdId: HotkeyCommandId, combo: string, reservation: HotkeyReservation) => void;
   findDuplicateOwner: (combo: string, targetCmdId: HotkeyCommandId) => HotkeyCommandId | null;
   findOverrideOwner?: (combo: string, targetCmdId: HotkeyCommandId) => HotkeyCommandId | null;
 }) {
@@ -61,6 +64,13 @@ export function useHotkeyCapture(params: {
 
       const target = captureTargetCommandId.value;
       if (!target) {
+        finishCapture();
+        return;
+      }
+
+      const reservation = getReservedHotkeyReservation(combo);
+      if (reservation) {
+        params.onReserved?.(target, combo, reservation);
         finishCapture();
         return;
       }
