@@ -1398,6 +1398,82 @@ export class WebGpuComputeRunner {
     });
   }
 
+  public async applyEffectsSourceToTexture(params: {
+    source: VideoFrame | ImageBitmap;
+    target: RenderTexture;
+    effects: VideoEffectSpec[];
+    options?: ApplyEffectsOptions;
+  }): Promise<boolean> {
+    if (
+      !this.device ||
+      !this.pipeline ||
+      !this.bindLayout ||
+      !this.shaderModule ||
+      !this.sharedRendererTexture
+    ) {
+      return false;
+    }
+    if (params.effects.length === 0) return false;
+
+    const { uploadSource, origW, origH } = await this.prepareUploadSource(params.source);
+    const scale = Math.max(0.1, Math.min(8.0, origH / 1080.0));
+    const padding = params.options?.enablePadding === false ? 0 : calculatePadding(params.effects, scale);
+    if (padding !== 0) {
+      if (uploadSource !== params.source && 'close' in uploadSource) {
+        (uploadSource as ImageBitmap).close();
+      }
+      return false;
+    }
+
+    const targetFormat = params.target.source.format;
+    if (!isRenderableColorFormat(targetFormat)) {
+      if (uploadSource !== params.source && 'close' in uploadSource) {
+        (uploadSource as ImageBitmap).close();
+      }
+      return false;
+    }
+
+    const passes = buildPasses(params.effects, origW, origH, this.previewEffectQuality, {
+      spatialScaleHeight: origH,
+    });
+    if (passes.length === 0) {
+      if (uploadSource !== params.source && 'close' in uploadSource) {
+        (uploadSource as ImageBitmap).close();
+      }
+      return false;
+    }
+
+    this.ensureInputTexture(origW, origH);
+    this.device.queue.copyExternalImageToTexture(
+      { source: uploadSource, flipY: false },
+      { texture: this.inputTexture!, origin: { x: 0, y: 0, z: 0 } },
+      { width: origW, height: origH, depthOrArrayLayers: 1 },
+    );
+    if (uploadSource !== params.source && 'close' in uploadSource) {
+      (uploadSource as ImageBitmap).close();
+    }
+
+    const outputTexture = this.executePasses({
+      inputView: this.inputView!,
+      passes,
+      outputWidth: origW,
+      outputHeight: origH,
+      label: 'web-effect-source-texture',
+    });
+    if (!outputTexture) {
+      return false;
+    }
+
+    return this.blitTextureToRendererTarget({
+      source: outputTexture,
+      target: this.sharedRendererTexture.getGpuSource(params.target.source),
+      targetFormat,
+      width: origW,
+      height: origH,
+      label: 'web-effect-source-texture-blit',
+    });
+  }
+
   public async applyTransition(params: {
     from: ImageBitmap;
     to: ImageBitmap;

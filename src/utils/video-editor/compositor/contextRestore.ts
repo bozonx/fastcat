@@ -110,10 +110,12 @@ function resetTransitionState(clip: CompositorClip): void {
   safeDispose(clip.transitionToTexture);
   safeDispose(clip.transitionOutputTexture);
   safeDispose(clip.transitionCombinedTexture);
+  safeDispose(clip.effectRenderTexture);
   clip.transitionFromTexture = null;
   clip.transitionToTexture = null;
   clip.transitionOutputTexture = null;
   clip.transitionCombinedTexture = null;
+  clip.effectRenderTexture = null;
 }
 
 function resetEffectFilters(clip: CompositorClip): void {

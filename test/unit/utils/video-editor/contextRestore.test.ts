@@ -54,13 +54,14 @@ describe('resetCompositorClipsAfterContextRestored', () => {
     expect(clip.sprite!.filters).toBeNull();
   });
 
-  it('destroys transitionFilter, transitionSprite, and transition textures', () => {
+  it('destroys transitionFilter, transitionSprite, and GPU render textures', () => {
     const filterDestroy = vi.fn();
     const spriteDestroy = vi.fn();
     const fromClose = vi.fn();
     const toClose = vi.fn();
     const outputClose = vi.fn();
     const combinedClose = vi.fn();
+    const effectClose = vi.fn();
 
     const clip = {
       textDirty: false,
@@ -72,6 +73,7 @@ describe('resetCompositorClipsAfterContextRestored', () => {
       transitionToTexture: { close: toClose } as any,
       transitionOutputTexture: { close: outputClose } as any,
       transitionCombinedTexture: { close: combinedClose } as any,
+      effectRenderTexture: { close: effectClose } as any,
     } as unknown as CompositorClip;
 
     resetCompositorClipsAfterContextRestored([clip]);
@@ -85,10 +87,12 @@ describe('resetCompositorClipsAfterContextRestored', () => {
     expect(toClose).toHaveBeenCalledTimes(1);
     expect(outputClose).toHaveBeenCalledTimes(1);
     expect(combinedClose).toHaveBeenCalledTimes(1);
+    expect(effectClose).toHaveBeenCalledTimes(1);
     expect(clip.transitionFromTexture).toBeNull();
     expect(clip.transitionToTexture).toBeNull();
     expect(clip.transitionOutputTexture).toBeNull();
     expect(clip.transitionCombinedTexture).toBeNull();
+    expect(clip.effectRenderTexture).toBeNull();
   });
 
   it('resets HUD media states (background, content, frame)', () => {

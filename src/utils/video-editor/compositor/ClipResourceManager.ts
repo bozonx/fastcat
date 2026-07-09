@@ -1,6 +1,6 @@
 import { createDevLogger } from '~/utils/dev-logger';
 import type { Application, Sprite } from 'pixi.js';
-import { RenderTexture } from 'pixi.js';
+import { RenderTexture, Texture } from 'pixi.js';
 import { safeDispose } from '../utils';
 import type { LayoutApplier } from './LayoutApplier';
 import type { TransitionManager } from './TransitionManager';
@@ -68,6 +68,13 @@ export class ClipResourceManager {
 
   public getComputeRunner(): WebGpuComputeRunner | undefined {
     return this.context.computeRunner;
+  }
+
+  private restoreClipImageSourceTexture(clip: CompositorClip): void {
+    if (!clip.sprite || (clip.sprite as { destroyed?: boolean }).destroyed) return;
+    if ((clip.sprite as Sprite).texture.source === clip.imageSource) return;
+
+    (clip.sprite as Sprite).texture = new Texture({ source: clip.imageSource, dynamic: true });
   }
 
   /**
@@ -295,6 +302,14 @@ export class ClipResourceManager {
 
   public ensureClipRenderTexture(texture: RenderTexture | null): RenderTexture {
     return this.ensureRenderTexture(texture, this.context.width, this.context.height);
+  }
+
+  public ensureEffectRenderTexture(
+    texture: RenderTexture | null,
+    width: number,
+    height: number,
+  ): RenderTexture {
+    return this.ensureRenderTexture(texture, width, height);
   }
 
   public ensureTransitionRenderTexture(texture: RenderTexture | null): RenderTexture {
@@ -694,6 +709,7 @@ export class ClipResourceManager {
             // resource". Point the source at the fresh, valid frame first so the
             // resize-triggered upload reads it. Effects paths below overwrite the
             // resource (and resize again) with their padded output as needed.
+            this.restoreClipImageSourceTexture(clip);
             (clip.imageSource as { resource?: unknown }).resource = frame as unknown;
             clip.imageSource.resize(frameW, frameH);
           }
@@ -784,6 +800,32 @@ export class ClipResourceManager {
                     return;
                   }
                 } else {
+                  clip.effectRenderTexture = this.ensureEffectRenderTexture(
+                    clip.effectRenderTexture ?? null,
+                    frameW,
+                    frameH,
+                  );
+                  const renderedOnGpu =
+                    typeof runner.applyEffectsSourceToTexture === 'function' &&
+                    (await runner.applyEffectsSourceToTexture({
+                      source: frame,
+                      target: clip.effectRenderTexture,
+                      effects:
+                        effectSpecs as import('~/types/generated/native-monitor/VideoEffectSpec').VideoEffectSpec[],
+                    }));
+                  if (renderedOnGpu) {
+                    safeDispose(frame);
+                    if (clip.sprite) {
+                      (clip.sprite as Sprite).texture = clip.effectRenderTexture;
+                    }
+                    clip.lastVideoFrame = null;
+                    clip.effectSourceW = frameW;
+                    clip.effectSourceH = frameH;
+                    clip.effectIgnoreTransform = false;
+                    this.context.getLayoutApplier().applySpriteLayout(frameW, frameH, clip);
+                    return;
+                  }
+
                   const processed = await runner.applyEffects(
                     frame,
                     effectSpecs as import('~/types/generated/native-monitor/VideoEffectSpec').VideoEffectSpec[],
@@ -958,6 +1000,10 @@ export class ClipResourceManager {
     if (clip.transitionCombinedTexture) {
       safeDispose(clip.transitionCombinedTexture);
       clip.transitionCombinedTexture = null;
+    }
+    if (clip.effectRenderTexture) {
+      safeDispose(clip.effectRenderTexture);
+      clip.effectRenderTexture = null;
     }
     if (clip.transitionSprite) {
       clip.transitionSprite.destroy(true);

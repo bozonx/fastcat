@@ -488,3 +488,62 @@ describe('ClipResourceManager.applyEffectsToNonVideoClip', () => {
     expect(clip.lastVideoFrame).toBe(mockProcessed2);
   });
 });
+
+describe('ClipResourceManager.updateClipTextureFromSample', () => {
+  it('uses GPU texture output for non-padded video effects', async () => {
+    const effectTexture = {
+      uid: 7,
+      width: 128,
+      height: 72,
+      source: { format: 'bgra8unorm' },
+      destroy: vi.fn(),
+    };
+    vi.spyOn(RenderTexture, 'create').mockReturnValue(effectTexture as any);
+
+    const frame = {
+      displayWidth: 128,
+      displayHeight: 72,
+      close: vi.fn(),
+    } as unknown as VideoFrame;
+    const sample = {
+      toVideoFrame: vi.fn(() => frame),
+    };
+    const applyEffects = vi.fn();
+    const applyEffectsSourceToTexture = vi.fn().mockResolvedValue(true);
+    const runner = {
+      isReady: () => true,
+      applyEffects,
+      applyEffectsSourceToTexture,
+    } as unknown as WebGpuComputeRunner;
+    const layoutApplier = createMockLayoutApplier();
+    const imageSource = createMockImageSource(128, 72);
+    const sprite = createMockSprite(imageSource);
+    const manager = createManager({
+      computeRunner: runner,
+      getLayoutApplier: () => layoutApplier,
+    });
+    const clip = {
+      itemId: 'clip-1',
+      clipKind: 'video',
+      sourceKind: 'videoFrame',
+      effects: [{ id: 'b', type: 'color-adjustment', brightness: 1.2, enabled: true }],
+      sprite: sprite as unknown as CompositorClip['sprite'],
+      imageSource: imageSource as any,
+      lastVideoFrame: null,
+    } as CompositorClip;
+
+    await manager.updateClipTextureFromSample(sample, clip, true);
+
+    expect(applyEffectsSourceToTexture).toHaveBeenCalledWith({
+      source: frame,
+      target: effectTexture,
+      effects: expect.arrayContaining([expect.objectContaining({ type: 'brightness' })]),
+    });
+    expect(applyEffects).not.toHaveBeenCalled();
+    expect((clip.sprite as any).texture).toBe(effectTexture);
+    expect(clip.effectRenderTexture).toBe(effectTexture);
+    expect(clip.lastVideoFrame).toBeNull();
+    expect(frame.close).toHaveBeenCalled();
+    expect(layoutApplier.applySpriteLayout).toHaveBeenCalledWith(128, 72, clip);
+  });
+});
