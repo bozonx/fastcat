@@ -17,6 +17,7 @@ function setupInteractions(rulerOverrides: Record<string, unknown>) {
   const applyTimeline = vi.fn();
   const selectTimelineMarker = vi.fn();
   const setCurrentTimeUs = vi.fn();
+  const requestCenterPlayhead = vi.fn();
   // Returns a recognizable snapped value so we can prove snapping was applied.
   const resolvePlayheadClickTimeUs = vi.fn((raw: number) => raw + 777);
 
@@ -38,6 +39,7 @@ function setupInteractions(rulerOverrides: Record<string, unknown>) {
           resetTimelineZoom: vi.fn(),
           fitTimelineZoom: vi.fn(),
           setCurrentTimeUs,
+          requestCenterPlayhead,
         },
         selectionStore: { clearSelection: vi.fn(), selectTimelineMarker },
         workspaceStore: { userSettings },
@@ -52,7 +54,14 @@ function setupInteractions(rulerOverrides: Record<string, unknown>) {
   });
 
   activeWrapper = mount(Comp);
-  return { api, applyTimeline, selectTimelineMarker, setCurrentTimeUs, resolvePlayheadClickTimeUs };
+  return {
+    api,
+    applyTimeline,
+    selectTimelineMarker,
+    setCurrentTimeUs,
+    requestCenterPlayhead,
+    resolvePlayheadClickTimeUs,
+  };
 }
 
 describe('useTimelineRulerInteractions', () => {
@@ -86,5 +95,13 @@ describe('useTimelineRulerInteractions', () => {
     const { api, applyTimeline } = setupInteractions({ click: 'add_marker' });
     api.onRulerClick(new MouseEvent('click', { button: 2 }));
     expect(applyTimeline).not.toHaveBeenCalled();
+  });
+
+  it('centers the playhead (center_playhead)', () => {
+    const { api, requestCenterPlayhead } = setupInteractions({ click: 'center_playhead' });
+
+    api.onRulerClick(new MouseEvent('click', { button: 0 }));
+
+    expect(requestCenterPlayhead).toHaveBeenCalledOnce();
   });
 });

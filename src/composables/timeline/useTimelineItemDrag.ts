@@ -191,9 +191,11 @@ export function useTimelineItemDrag(
       dragAction = 'none';
     }
 
-    dragIsFreeOverride.value = snapAction === 'free_mode' || dragAction === 'copy';
+    // Copy-drag must respect the toolbar snap mode (snap / no_snap / free_mode),
+    // so it only forces free behavior when the active snap action is free_mode.
+    dragIsFreeOverride.value = snapAction === 'free_mode';
     dragUsePseudoOverlapOverride.value = dragAction === 'pseudo_overlap';
-    dragDisableFrameSnapOverride.value = snapAction === 'free_mode' || dragAction === 'copy';
+    dragDisableFrameSnapOverride.value = snapAction === 'free_mode';
     dragIsCopyOverride.value = dragAction === 'copy';
     dragToggleSnapOverride.value = action === 'toggle_snap';
   }

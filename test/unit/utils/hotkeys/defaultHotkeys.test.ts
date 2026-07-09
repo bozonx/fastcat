@@ -182,8 +182,8 @@ describe('DEFAULT_HOTKEYS', () => {
   it('has defaults for start/end timeline and playback shortcuts', () => {
     expect(DEFAULT_HOTKEYS.bindings['playback.toStart']).toEqual(['W']);
     expect(DEFAULT_HOTKEYS.bindings['playback.toEnd']).toEqual(['T']);
-    expect(DEFAULT_HOTKEYS.bindings['timeline.globalToStart']).toEqual(['Home']);
-    expect(DEFAULT_HOTKEYS.bindings['timeline.globalToEnd']).toEqual(['End']);
+    expect(DEFAULT_HOTKEYS.bindings['timeline.globalToStart']).toEqual(['Home', 'Ctrl+E']);
+    expect(DEFAULT_HOTKEYS.bindings['timeline.globalToEnd']).toEqual(['End', 'Ctrl+D']);
   });
 
   it('has defaults for timeline group and ungroup clips shortcuts', () => {

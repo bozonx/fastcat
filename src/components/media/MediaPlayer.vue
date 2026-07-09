@@ -457,14 +457,14 @@ onUnmounted(() => {
       ]"
       @mouseenter="resetIdle"
     >
-      <div class="w-full relative flex items-center h-4 group">
+      <div class="media-player-seek w-full relative flex items-center h-4 group/controls cursor-pointer">
         <input
           v-model.number="currentTime"
           type="range"
           min="0"
           :max="duration || 100"
           step="0.01"
-          class="slider-cursor-self w-full absolute inset-0 opacity-0 cursor-pointer z-10"
+          class="media-player-seek-input slider-cursor-self w-full absolute inset-0 opacity-0 cursor-pointer z-10"
           @input="onSeek"
           @mousedown="onSeekStart"
           @mouseup="onSeekEnd"
@@ -529,3 +529,10 @@ onUnmounted(() => {
     </div>
   </div>
 </template>
+
+<style scoped>
+.media-player-seek,
+input[type='range'].media-player-seek-input {
+  cursor: pointer;
+}
+</style>

@@ -4,6 +4,7 @@ import type {
   CommonWheelAction,
   TimelineDragAction,
   TimelineClickAction,
+  ClickAction,
   MonitorWheelAction,
   MonitorClickAction,
   MonitorLeftDoubleClickAction,
@@ -156,10 +157,10 @@ export interface FastCatUserSettings {
       wheelShift: CommonWheelAction;
       wheelSecondary: CommonWheelAction;
       wheelSecondaryShift: CommonWheelAction;
-      click: 'seek' | 'add_marker' | 'reset_zoom' | 'fit_zoom' | 'clear_selection' | 'none';
-      middleClick: 'seek' | 'add_marker' | 'reset_zoom' | 'fit_zoom' | 'clear_selection' | 'none';
-      doubleClick: 'seek' | 'add_marker' | 'reset_zoom' | 'fit_zoom' | 'clear_selection' | 'none';
-      shiftClick: 'seek' | 'add_marker' | 'reset_zoom' | 'fit_zoom' | 'clear_selection' | 'none';
+      click: ClickAction;
+      middleClick: ClickAction;
+      doubleClick: ClickAction;
+      shiftClick: ClickAction;
       drag: RulerDragAction;
       middleDrag: RulerDragAction;
       dragShift: RulerDragAction;

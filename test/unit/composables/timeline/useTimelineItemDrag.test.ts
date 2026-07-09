@@ -1116,4 +1116,58 @@ describe('useTimelineItemDrag', () => {
       }),
     );
   });
+
+  it('respects snap mode while copy-dragging with the right button', () => {
+    // Copy-drag must honor the toolbar snap mode instead of always forcing free mode.
+    // At clientX 112 with clip snap on, a normal left-drag snaps to 2_000_000, while a
+    // free-mode drag lands at 2_200_000. Copy-drag (right button) must snap like the left one.
+    timelineStoreMock.selectedItemIds = ['clip-1'];
+    workspaceStoreMock.userSettings.timeline.snapping.clips = true;
+    settingsStoreMock.toolbarSnapMode = 'snap';
+
+    const scrollEl = ref({ scrollLeft: 0 } as HTMLElement);
+    const tracks = computed(() => timelineStoreMock.timelineDoc.tracks);
+    const { startMoveItem, movePreview } = useTimelineItemDrag(scrollEl, tracks);
+
+    const pointerTarget = {
+      setPointerCapture: vi.fn(),
+      releasePointerCapture: vi.fn(),
+    };
+
+    startMoveItem(
+      {
+        button: 2,
+        buttons: 2,
+        clientX: 100,
+        clientY: 20,
+        pointerId: 31,
+        pointerType: 'mouse',
+        currentTarget: pointerTarget,
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn(),
+      } as unknown as PointerEvent,
+      {
+        trackId: 'track-1',
+        itemId: 'clip-1',
+        startUs: 1_000_000,
+        mode: 'move',
+      },
+    );
+
+    const handlers = bindSessionMock.mock.calls[0]?.[0];
+
+    handlers.onPointerMove({
+      buttons: 2,
+      button: 2,
+      clientX: 112,
+      clientY: 20,
+    } as PointerEvent);
+
+    expect(movePreview.value[0]).toEqual(
+      expect.objectContaining({
+        itemId: 'clip-1',
+        startUs: 2_000_000,
+      }),
+    );
+  });
 });

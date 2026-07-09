@@ -65,6 +65,10 @@ export function useTimelineClickActions({
       timelineStore.fitTimelineZoom();
       return;
     }
+    if (action === 'center_playhead') {
+      timelineStore.requestCenterPlayhead();
+      return;
+    }
     if (action === 'select_item' || action === 'select_area') {
       return;
     }

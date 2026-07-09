@@ -88,6 +88,7 @@ export function useMouseSettings() {
     add_marker: t('videoEditor.settings.mouseActionAddMarker'),
     reset_zoom: t('videoEditor.settings.mouseActionResetZoom'),
     fit_zoom: t('videoEditor.settings.mouseActionFitZoom'),
+    center_playhead: t('videoEditor.settings.mouseActionCenterPlayhead'),
     clear_selection: t('videoEditor.settings.mouseActionClearSelection'),
     select_item: t('videoEditor.settings.mouseActionSelectItem'),
     select_multiple: t('videoEditor.settings.mouseActionSelectMultiple'),

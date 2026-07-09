@@ -29,6 +29,7 @@ export const CLICK_ACTIONS = [
   'add_marker',
   'reset_zoom',
   'fit_zoom',
+  'center_playhead',
   'clear_selection',
   'none',
 ] as const;
@@ -38,6 +39,7 @@ export const TIMELINE_CLICK_ACTIONS = [
   'add_marker',
   'reset_zoom',
   'fit_zoom',
+  'center_playhead',
   'clear_selection',
   'select_item',
   'none',

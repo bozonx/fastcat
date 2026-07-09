@@ -16,6 +16,8 @@ vi.mock('@tauri-apps/plugin-dialog', () => ({
 // the browser-storage branch without depending on a real Storage API.
 const storageIsPersisted = ref(false);
 const storageIsSupported = ref(false);
+const storageIsPersistSupported = ref(true);
+const storagePersistDeclined = ref(false);
 const storageUsageBytes = ref<number | null>(null);
 const storageQuotaBytes = ref<number | null>(null);
 const refreshMock = vi.fn().mockResolvedValue(undefined);
@@ -24,7 +26,9 @@ const requestPersistMock = vi.fn().mockResolvedValue(undefined);
 vi.mock('~/composables/useStoragePersistence', () => ({
   useStoragePersistence: () => ({
     isSupported: storageIsSupported,
+    isPersistSupported: storageIsPersistSupported,
     isPersisted: storageIsPersisted,
+    persistDeclined: storagePersistDeclined,
     usageBytes: storageUsageBytes,
     quotaBytes: storageQuotaBytes,
     usageRatio: computed(() =>
@@ -88,6 +92,8 @@ function resetStore() {
   mockWorkspaceStore.tauriAppPaths = null;
   storageIsSupported.value = false;
   storageIsPersisted.value = false;
+  storageIsPersistSupported.value = true;
+  storagePersistDeclined.value = false;
   storageUsageBytes.value = null;
   storageQuotaBytes.value = null;
 }
@@ -209,5 +215,28 @@ describe('SettingsStorage.vue', () => {
 
     expect(wrapper.text()).toContain('videoEditor.settings.browserStorage.persistedOn');
     expect(wrapper.text()).not.toContain('videoEditor.settings.browserStorage.requestPersist');
+  });
+
+  it('shows the unsupported warning and hides the button when persist() is unavailable', async () => {
+    mockWorkspaceStore.workspaceProviderId = 'web';
+    storageIsSupported.value = true;
+    storageIsPersistSupported.value = false;
+
+    const wrapper = await mountSuspended(SettingsStorage);
+
+    expect(wrapper.text()).toContain('videoEditor.settings.browserStorage.persistUnsupported');
+    expect(wrapper.text()).not.toContain('videoEditor.settings.browserStorage.requestPersist');
+  });
+
+  it('shows the declined warning after persist() is refused', async () => {
+    mockWorkspaceStore.workspaceProviderId = 'web';
+    storageIsSupported.value = true;
+    storageIsPersistSupported.value = true;
+    storageIsPersisted.value = false;
+    storagePersistDeclined.value = true;
+
+    const wrapper = await mountSuspended(SettingsStorage);
+
+    expect(wrapper.text()).toContain('videoEditor.settings.browserStorage.persistDeclined');
   });
 });

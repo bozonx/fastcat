@@ -41,10 +41,11 @@ describe('WebWorkspaceProvider', () => {
     const handle = { name: 'fastcat-workspace', kind: 'directory' };
     const getDirectoryHandle = vi.fn().mockResolvedValue(handle);
     const getDirectory = vi.fn().mockResolvedValue({ getDirectoryHandle });
+    const persist = vi.fn();
     const storage = makeStorage();
 
     vi.stubGlobal('navigator', {
-      storage: { getDirectory },
+      storage: { getDirectory, persist },
     });
 
     const provider = new WebWorkspaceProvider(storage as any);
@@ -55,6 +56,9 @@ describe('WebWorkspaceProvider', () => {
     expect(getDirectoryHandle).toHaveBeenCalledWith('fastcat-workspace', { create: true });
     expect(storage.set).toHaveBeenCalledWith(handle);
     expect(result).toBe(handle);
+    // Persistent storage must only be requested manually from settings, never
+    // auto-triggered on workspace open.
+    expect(persist).not.toHaveBeenCalled();
   });
 
   it('uses the default OPFS sandbox name', async () => {

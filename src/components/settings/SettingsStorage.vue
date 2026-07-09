@@ -4,6 +4,7 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useStoragePersistence } from '~/composables/useStoragePersistence';
 import { formatBytes } from '~/utils/format';
 import UiFormField from '~/components/ui/UiFormField.vue';
+import UiAlert from '~/components/ui/UiAlert.vue';
 
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 import UiTextInput from '~/components/ui/UiTextInput.vue';
@@ -17,7 +18,9 @@ const isBrowserWorkspaceMode = computed(() => workspaceStore.workspaceProviderId
 
 const {
   isSupported: isStorageApiSupported,
+  isPersistSupported,
   isPersisted,
+  persistDeclined,
   usageBytes,
   quotaBytes,
   usageRatio,
@@ -258,33 +261,48 @@ async function confirmClearWorkspaceVardata() {
             :style="{ width: `${usagePercent}%` }"
           />
         </div>
+        <UiAlert variant="info" :icon="undefined" class="mt-1">
+          {{ t('videoEditor.settings.browserStorage.quotaHint') }}
+        </UiAlert>
       </div>
 
-      <div class="flex items-center justify-between gap-3">
-        <div class="flex items-center gap-2 min-w-0">
-          <UIcon
-            :name="isPersisted ? 'i-heroicons-lock-closed' : 'i-heroicons-lock-open'"
-            class="w-4 h-4 shrink-0"
-            :class="isPersisted ? 'text-emerald-400' : 'text-amber-400'"
+      <!-- Persistent storage toggle -->
+      <UiAlert v-if="!isPersistSupported" variant="warning" icon="i-heroicons-exclamation-triangle">
+        {{ t('videoEditor.settings.browserStorage.persistUnsupported') }}
+      </UiAlert>
+      <div v-else class="flex flex-col gap-2">
+        <div class="flex items-center justify-between gap-3">
+          <div class="flex items-center gap-2 min-w-0">
+            <UIcon
+              :name="isPersisted ? 'i-heroicons-lock-closed' : 'i-heroicons-lock-open'"
+              class="w-4 h-4 shrink-0"
+              :class="isPersisted ? 'text-emerald-400' : 'text-amber-400'"
+            />
+            <span class="text-xs text-ui-text-muted">
+              {{
+                isPersisted
+                  ? t('videoEditor.settings.browserStorage.persistedOn')
+                  : t('videoEditor.settings.browserStorage.persistedOff')
+              }}
+            </span>
+          </div>
+          <UButton
+            v-if="!isPersisted"
+            color="primary"
+            variant="soft"
+            size="sm"
+            icon="i-heroicons-lock-closed"
+            :loading="isRequestingPersist"
+            :label="t('videoEditor.settings.browserStorage.requestPersist')"
+            @click="requestPersist"
           />
-          <span class="text-xs text-ui-text-muted">
-            {{
-              isPersisted
-                ? t('videoEditor.settings.browserStorage.persistedOn')
-                : t('videoEditor.settings.browserStorage.persistedOff')
-            }}
-          </span>
         </div>
-        <UButton
-          v-if="!isPersisted"
-          color="primary"
-          variant="soft"
-          size="sm"
-          icon="i-heroicons-lock-closed"
-          :loading="isRequestingPersist"
-          :label="t('videoEditor.settings.browserStorage.requestPersist')"
-          @click="requestPersist"
-        />
+        <UiAlert v-if="persistDeclined" variant="warning" icon="i-heroicons-exclamation-triangle">
+          {{ t('videoEditor.settings.browserStorage.persistDeclined') }}
+        </UiAlert>
+        <UiAlert v-else-if="!isPersisted" variant="info" :icon="undefined">
+          {{ t('videoEditor.settings.browserStorage.persistHint') }}
+        </UiAlert>
       </div>
     </div>
 

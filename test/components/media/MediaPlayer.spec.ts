@@ -219,6 +219,22 @@ describe('MediaPlayer.vue', () => {
     expect((component.vm as any).isDragging).toBe(false);
   });
 
+  it('uses a pointer cursor on the seek bar', async () => {
+    const component = await mountWithNuxt(MediaPlayer, {
+      props: {
+        src: 'http://example.com/test.mp4',
+        type: 'video',
+      },
+    });
+
+    const seekBar = component.find('.media-player-seek');
+    const rangeInput = component.find('input[type="range"]');
+
+    expect(seekBar.classes()).toContain('cursor-pointer');
+    expect(rangeInput.classes()).toContain('media-player-seek-input');
+    expect(rangeInput.classes()).toContain('cursor-pointer');
+  });
+
   it('resets state on source change', async () => {
     const component = await mountWithNuxt(MediaPlayer, {
       props: {

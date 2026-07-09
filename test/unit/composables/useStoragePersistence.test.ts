@@ -2,6 +2,7 @@
 import { afterEach, describe, it, expect, vi } from 'vitest';
 import {
   isStorageManagerSupported,
+  isPersistSupported,
   requestPersistentStorage,
   useStoragePersistence,
 } from '~/composables/useStoragePersistence';
@@ -24,6 +25,18 @@ describe('useStoragePersistence', () => {
     it('is true when navigator.storage exists', () => {
       stubStorage({});
       expect(isStorageManagerSupported()).toBe(true);
+    });
+  });
+
+  describe('isPersistSupported', () => {
+    it('is false when persist() is unavailable', () => {
+      stubStorage({});
+      expect(isPersistSupported()).toBe(false);
+    });
+
+    it('is true when persist() is a function', () => {
+      stubStorage({ persist: vi.fn() });
+      expect(isPersistSupported()).toBe(true);
     });
   });
 
@@ -94,6 +107,44 @@ describe('useStoragePersistence', () => {
 
       const s = useStoragePersistence();
       await s.requestPersist();
+      expect(s.isPersisted.value).toBe(true);
+    });
+
+    it('sets persistDeclined when persist() returns false', async () => {
+      stubStorage({
+        persisted: vi.fn().mockResolvedValue(false),
+        persist: vi.fn().mockResolvedValue(false),
+        estimate: vi.fn().mockResolvedValue({ usage: 0, quota: 1000 }),
+      });
+
+      const s = useStoragePersistence();
+      await s.requestPersist();
+
+      expect(s.isPersisted.value).toBe(false);
+      expect(s.persistDeclined.value).toBe(true);
+    });
+
+    it('clears persistDeclined on a subsequent successful persist()', async () => {
+      // First persist() declines, the next one succeeds.
+      let attempt = 0;
+      let granted = false;
+      stubStorage({
+        persisted: vi.fn().mockImplementation(async () => granted),
+        persist: vi.fn().mockImplementation(async () => {
+          attempt += 1;
+          if (attempt === 1) return false;
+          granted = true;
+          return true;
+        }),
+        estimate: vi.fn().mockResolvedValue({ usage: 0, quota: 1000 }),
+      });
+
+      const s = useStoragePersistence();
+      await s.requestPersist();
+      expect(s.persistDeclined.value).toBe(true);
+
+      await s.requestPersist();
+      expect(s.persistDeclined.value).toBe(false);
       expect(s.isPersisted.value).toBe(true);
     });
   });

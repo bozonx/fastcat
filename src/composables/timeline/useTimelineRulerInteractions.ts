@@ -22,6 +22,7 @@ interface TimelineStoreLike {
   resetTimelineZoom: () => void;
   fitTimelineZoom: () => void;
   setCurrentTimeUs: (timeUs: number) => void;
+  requestCenterPlayhead: () => void;
 }
 
 interface WorkspaceStoreLike {
@@ -78,6 +79,11 @@ export function useTimelineRulerInteractions(options: UseTimelineRulerInteractio
 
     if (action === 'fit_zoom') {
       options.timelineStore.fitTimelineZoom();
+      return;
+    }
+
+    if (action === 'center_playhead') {
+      options.timelineStore.requestCenterPlayhead();
       return;
     }
 
