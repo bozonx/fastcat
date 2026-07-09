@@ -251,6 +251,11 @@ export function useTimelineHotkeys(
     'timeline.rippleDelete': () => {
       if (!focusStore.canUseTimelineHotkeys) return false;
 
+      if (timelineStore.selectedItemIds.length > 0) {
+        timelineStore.rippleDeleteFirstSelectedItem();
+        return true;
+      }
+
       if (timelineStore.getSelectionRange()) {
         timelineStore.removeSelectionRange();
         return true;
@@ -660,7 +665,7 @@ export function useTimelineHotkeys(
 
     'timeline.centerPlayhead': () => {
       if (!focusStore.canUseTimelineHotkeys) return false;
-      timelineStore.requestScrollToPlayhead();
+      timelineStore.requestCenterPlayhead();
       return true;
     },
 

@@ -140,6 +140,7 @@ export const useTimelineStore = defineStore('timeline', () => {
   const timelineScrollLeftPx = ref(0);
   const scrollResetTicket = ref(0);
   const scrollToPlayheadRequest = ref(0);
+  const centerPlayheadRequest = ref(0);
   const trackHeights = ref<Record<string, number>>({});
   const mobileTrackHeightsEnlarged = ref<Record<string, boolean>>({});
   const selectionRange = ref<TimelineSelectionRange | null>(null);
@@ -1116,8 +1117,12 @@ export const useTimelineStore = defineStore('timeline', () => {
     timelineScrollLeftPx,
     scrollResetTicket,
     scrollToPlayheadRequest,
+    centerPlayheadRequest,
     requestScrollToPlayhead: () => {
       scrollToPlayheadRequest.value++;
+    },
+    requestCenterPlayhead: () => {
+      centerPlayheadRequest.value++;
     },
     fps,
     timelineFormat,

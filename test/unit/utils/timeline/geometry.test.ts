@@ -10,6 +10,7 @@ import {
   pxToTimeUs,
   pxToDeltaUs,
   computeAnchoredScrollLeft,
+  computeTimelineCenteredScrollLeftForPlayhead,
   computeTimelinePlaybackAutoScrollLeft,
   computeTimelineScrollLeftForPlayhead,
   sanitizeFps,
@@ -186,6 +187,27 @@ describe('computeTimelineScrollLeftForPlayhead', () => {
     const result = computeTimelineScrollLeftForPlayhead({
       playheadPx: 900,
       scrollLeft: 0,
+      viewportWidth: 200,
+      maxScrollLeft: 650,
+    });
+
+    expect(result).toBe(650);
+  });
+});
+
+describe('computeTimelineCenteredScrollLeftForPlayhead', () => {
+  it('centers the playhead even when it is already visible', () => {
+    const result = computeTimelineCenteredScrollLeftForPlayhead({
+      playheadPx: 250,
+      viewportWidth: 200,
+    });
+
+    expect(result).toBe(150);
+  });
+
+  it('clamps centered scroll to available range', () => {
+    const result = computeTimelineCenteredScrollLeftForPlayhead({
+      playheadPx: 900,
       viewportWidth: 200,
       maxScrollLeft: 650,
     });

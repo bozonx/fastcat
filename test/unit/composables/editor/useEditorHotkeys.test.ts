@@ -5,7 +5,9 @@ import { defineComponent, h, reactive } from 'vue';
 import { mount, type VueWrapper } from '@vue/test-utils';
 
 import { useEditorHotkeys, hasBlockingModalState } from '~/composables/editor/useEditorHotkeys';
+import { useTimelineHotkeys } from '~/composables/editor/hotkeys/useTimelineHotkeys';
 import { getActiveElement } from '~/utils/browser-api';
+import { createHotkeyHoldRunner } from '~/utils/hotkeys/holdRunner';
 import { pressedKeyCodes } from '~/utils/hotkeys/pressedKeys';
 import { useFocusStore } from '~/stores/focus.store';
 import { useProjectStore } from '~/stores/project.store';
@@ -759,6 +761,46 @@ describe('useEditorHotkeys', () => {
     );
 
     expect(rippleDeleteSpy).toHaveBeenCalledOnce();
+  });
+
+  it('prioritizes selected clip ripple delete over clearing an active selection range', async () => {
+    const focusStore = useFocusStore();
+    const projectStore = useProjectStore();
+    const timelineStore = useTimelineStore() as any;
+
+    projectStore.setView('cut');
+    focusStore.setMainFocus('timeline');
+    timelineStore.timelineDoc = {
+      ...timelineStore.timelineDoc,
+      timebase: { fps: 30 },
+      tracks: [
+        {
+          id: 'track-1',
+          kind: 'video',
+          items: [
+            {
+              id: 'clip-1',
+              kind: 'clip',
+              trackId: 'track-1',
+              name: 'Clip 1',
+              timelineRange: { startUs: 0, durationUs: 1_000_000 },
+            },
+          ],
+        },
+      ],
+    };
+    timelineStore.selectTimelineItems(['clip-1']);
+    timelineStore.updateSelectionRange({ startUs: 2_000_000, endUs: 3_000_000 });
+    expect(timelineStore.selectedItemIds).toEqual(['clip-1']);
+    expect(focusStore.canUseTimelineHotkeys).toBe(true);
+
+    const handlers = useTimelineHotkeys(createHotkeyHoldRunner());
+    const handled = handlers['timeline.rippleDelete']?.(
+      new KeyboardEvent('keydown', { key: 'Z', code: 'KeyZ', shiftKey: true }),
+    );
+
+    expect(handled).toBe(true);
+    expect(timelineStore.getSelectionRange()).toEqual({ startUs: 1_000_000, endUs: 2_000_000 });
   });
 
   it('prioritizes file manager copy when a file manager panel is focused', async () => {

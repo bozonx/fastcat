@@ -22,6 +22,7 @@ import type {
 } from '~/timeline/types';
 import { createMarkerId } from '~/timeline/id';
 import {
+  computeTimelineCenteredScrollLeftForPlayhead,
   computeTimelineScrollLeftForPlayhead,
   computeTimelinePlaybackAutoScrollLeft,
   timeUsToPx,
@@ -668,17 +669,24 @@ async function onClipAction(payload: TimelineClipActionPayload) {
   }
 }
 
-function scrollPlayheadIntoView() {
+function scrollPlayheadIntoView(params: { center?: boolean } = {}) {
   const el = scrollEl.value;
   if (!el) return;
 
   const playheadPx = timeUsToPx(timelineStore.currentTime, timelineStore.timelineZoom);
-  const nextScrollLeft = computeTimelineScrollLeftForPlayhead({
-    playheadPx,
-    scrollLeft: el.scrollLeft,
-    viewportWidth: el.clientWidth,
-    maxScrollLeft: el.scrollWidth - el.clientWidth,
-  });
+  const maxScrollLeft = el.scrollWidth - el.clientWidth;
+  const nextScrollLeft = params.center
+    ? computeTimelineCenteredScrollLeftForPlayhead({
+        playheadPx,
+        viewportWidth: el.clientWidth,
+        maxScrollLeft,
+      })
+    : computeTimelineScrollLeftForPlayhead({
+        playheadPx,
+        scrollLeft: el.scrollLeft,
+        viewportWidth: el.clientWidth,
+        maxScrollLeft,
+      });
 
   if (nextScrollLeft === null) {
     timelineStore.timelineScrollLeftPx = el.scrollLeft;
@@ -694,6 +702,13 @@ watch(
   () => timelineStore.scrollToPlayheadRequest,
   () => {
     nextTick(scrollPlayheadIntoView);
+  },
+);
+
+watch(
+  () => timelineStore.centerPlayheadRequest,
+  () => {
+    nextTick(() => scrollPlayheadIntoView({ center: true }));
   },
 );
 
