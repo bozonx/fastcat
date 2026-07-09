@@ -116,6 +116,12 @@ function isComboCustom(cmdId: HotkeyCommandId, combo: string): boolean {
   return !(DEFAULT_HOTKEYS.bindings[cmdId] || []).includes(combo);
 }
 
+// A command is "custom" when the user has an explicit override entry for it —
+// either a personalized binding or an emptied-out default (cleared to []).
+function isCommandCustom(cmdId: HotkeyCommandId): boolean {
+  return Array.isArray(workspaceStore.userSettings.hotkeys.bindings[cmdId]);
+}
+
 function setBindings(cmdId: HotkeyCommandId, next: string[]) {
   void workspaceStore.batchUpdateUserSettings(
     (draft) => {
@@ -309,6 +315,7 @@ defineExpose({ finishCapture, isDuplicateConfirmOpen });
         :is-conflicting="isConflicting"
         :is-overriding="isOverriding"
         :is-combo-custom="isComboCustom"
+        :is-command-custom="isCommandCustom"
         @remove="removeBinding"
         @capture="startCapture"
         @reset="

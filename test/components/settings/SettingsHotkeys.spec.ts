@@ -1,6 +1,6 @@
 import { beforeEach, describe, it, expect, vi } from 'vitest';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
-import { reactive, ref } from 'vue';
+import { nextTick, reactive, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import SettingsHotkeys from '~/components/settings/SettingsHotkeys.vue';
 import { DEFAULT_HOTKEYS } from '~/utils/hotkeys/defaultHotkeys';
@@ -109,5 +109,39 @@ describe('SettingsHotkeys', () => {
       { immediate: true },
     );
     expect(JSON.stringify(mockWorkspaceStore.userSettings.hotkeys.bindings)).toContain('F9');
+  });
+
+  it('does not render per-command reset buttons when all hotkeys are default', async () => {
+    const wrapper = await mountSuspended(SettingsHotkeys);
+
+    const resetButtons = wrapper
+      .findAll('button')
+      .filter((b) => b.attributes('icon')?.includes('arrow-uturn-left'));
+    expect(resetButtons.length).toBe(0);
+  });
+
+  it('renders per-command reset button (always visible) once a hotkey is customized', async () => {
+    const wrapper = await mountSuspended(SettingsHotkeys);
+    const addButton = wrapper
+      .findAll('button')
+      .find((button) => button.classes().includes('h-6') && !button.attributes('aria-label'));
+    expect(addButton).toBeDefined();
+
+    await addButton!.trigger('click');
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'F9', code: 'F9', bubbles: true, cancelable: true }),
+    );
+    window.dispatchEvent(
+      new KeyboardEvent('keyup', { key: 'F9', code: 'F9', bubbles: true, cancelable: true }),
+    );
+
+    await nextTick();
+
+    const resetButtons = wrapper
+      .findAll('button')
+      .filter((b) => b.attributes('icon')?.includes('arrow-uturn-left'));
+    // One reset button for the customized command, visible by default (no opacity-0)
+    expect(resetButtons.length).toBe(1);
+    expect(resetButtons[0].classes()).not.toContain('opacity-0');
   });
 });

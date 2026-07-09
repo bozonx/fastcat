@@ -23,6 +23,7 @@ describe('SettingsHotkeysGroup', () => {
     isConflicting: () => false,
     isOverriding: () => false,
     isComboCustom: () => false,
+    isCommandCustom: () => false,
   };
 
   it('renders group title', async () => {
@@ -76,9 +77,33 @@ describe('SettingsHotkeysGroup', () => {
     }
   });
 
+  it('hides reset button when command is not customized', async () => {
+    const component = await mountSuspended(SettingsHotkeysGroup, {
+      props: { ...baseProps, isCommandCustom: () => false },
+    });
+
+    const resetButton = component
+      .findAll('button')
+      .find((b) => b.attributes('icon')?.includes('arrow-uturn-left'));
+    expect(resetButton).toBeUndefined();
+  });
+
+  it('always shows reset button (visible, not hover-only) when command is customized', async () => {
+    const component = await mountSuspended(SettingsHotkeysGroup, {
+      props: { ...baseProps, isCommandCustom: () => true },
+    });
+
+    const resetButton = component
+      .findAll('button')
+      .find((b) => b.attributes('icon')?.includes('arrow-uturn-left'));
+    expect(resetButton).toBeDefined();
+    // Button must not be hidden via opacity (visible by default, not on hover)
+    expect(resetButton!.classes()).not.toContain('opacity-0');
+  });
+
   it('emits reset when reset button is clicked', async () => {
     const component = await mountSuspended(SettingsHotkeysGroup, {
-      props: baseProps,
+      props: { ...baseProps, isCommandCustom: () => true },
     });
 
     const resetButtons = component.findAll('button');

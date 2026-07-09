@@ -13,6 +13,7 @@ const props = defineProps<{
   isConflicting: (cmdId: HotkeyCommandId, combo: string) => boolean;
   isOverriding: (cmdId: HotkeyCommandId, combo: string) => boolean;
   isComboCustom: (cmdId: HotkeyCommandId, combo: string) => boolean;
+  isCommandCustom: (cmdId: HotkeyCommandId) => boolean;
 }>();
 
 const emit = defineEmits<{
@@ -140,11 +141,12 @@ function getTitleParts(cmdId: HotkeyCommandId) {
                 </div>
 
                 <UButton
+                  v-if="isCommandCustom(cmd.id)"
                   size="xs"
                   color="neutral"
                   variant="ghost"
                   icon="i-heroicons-arrow-uturn-left"
-                  class="h-6 w-6 rounded-full shrink-0 justify-center opacity-0 focus-visible:opacity-100 group-hover:opacity-100 transition-opacity"
+                  class="h-6 w-6 rounded-full shrink-0 justify-center"
                   :disabled="capturingCommandId !== null"
                   :aria-label="t('videoEditor.settings.hotkeysResetCommand')"
                   @click="emit('reset', cmd.id)"
