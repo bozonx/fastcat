@@ -35,7 +35,10 @@ import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store'
 import { useFileTimelineUsage } from '~/composables/properties/useFileTimelineUsage';
 import FileTimelineUsageSection from '~/components/properties/file/FileTimelineUsageSection.vue';
 import MediaResolutionSettings from '~/components/media/MediaResolutionSettings.vue';
-import type { TimelineFormatInput } from '~/timeline/format';
+import {
+  createTimelineFormatFromProjectDefaults,
+  type TimelineFormatInput,
+} from '~/timeline/format';
 
 const props = defineProps<{
   summary?: {
@@ -379,8 +382,36 @@ function updateFormat(patch: TimelineFormatInput) {
     ...timelineStore.timelineFormat,
     ...patch,
     isAutoSettings: false,
+    geometryResolved: true,
+    sampleRateResolved: true,
     settingsSource: 'manual',
+    useProjectSettings: false,
   });
+}
+
+const timelineFormatSource = computed(() => {
+  const format = timelineStore.timelineFormat;
+  if (format.isAutoSettings && (!format.geometryResolved || !format.sampleRateResolved)) {
+    return t('videoEditor.timeline.formatSourceAuto');
+  }
+  if (format.settingsSource === 'firstClip') {
+    return t('videoEditor.timeline.formatSourceFirstClip');
+  }
+  if (format.settingsSource === 'projectDefaults') {
+    return t('videoEditor.timeline.formatSourceProjectDefaults');
+  }
+  return t('videoEditor.timeline.formatSourceCustom');
+});
+
+function resetTimelineFormatToProjectDefaults() {
+  const project = projectStore.projectSettings?.project;
+  if (!project) return;
+  void timelineStore.updateTimelineFormat(
+    createTimelineFormatFromProjectDefaults({
+      ...project,
+      isAutoSettings: false,
+    }),
+  );
 }
 
 const timelineWidth = computed({
@@ -421,18 +452,6 @@ const timelineIsCustomResolution = computed({
 const timelineSampleRate = computed({
   get: () => timelineStore.timelineFormat.sampleRate,
   set: (sampleRate: number) => updateFormat({ sampleRate }),
-});
-
-const followProjectSettings = computed({
-  get: () => timelineStore.timelineFormat.useProjectSettings ?? true,
-  set: (val: boolean) => {
-    void timelineStore.updateTimelineFormat({
-      ...timelineStore.timelineFormat,
-      useProjectSettings: val,
-      settingsSource: val ? 'projectDefaults' : 'manual',
-      isAutoSettings: false,
-    });
-  },
 });
 
 function handleUpdateMasterEffects(effects: Array<VideoClipEffect | AudioClipEffect>) {
@@ -536,12 +555,27 @@ const addTrackActions = computed(() => [
     </template>
 
     <PropertySection v-if="!finalIsReadOnly" :title="t('videoEditor.timeline.format')">
-      <label class="mb-4 flex items-center justify-between gap-3 cursor-pointer select-none">
-        <span class="text-sm text-ui-text">
-          {{ t('videoEditor.timeline.followProjectSettings') }}
-        </span>
-        <USwitch v-model="followProjectSettings" />
-      </label>
+      <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <div class="flex items-center gap-2 min-w-0">
+          <span class="text-xs text-ui-text-muted">
+            {{ t('videoEditor.timeline.formatSource') }}
+          </span>
+          <span
+            class="inline-flex max-w-full items-center rounded border border-ui-border bg-ui-bg-accent px-2 py-1 text-xs font-medium text-ui-text"
+          >
+            {{ timelineFormatSource }}
+          </span>
+        </div>
+        <UButton
+          size="xs"
+          color="neutral"
+          variant="ghost"
+          icon="i-heroicons-arrow-path"
+          @click="resetTimelineFormatToProjectDefaults"
+        >
+          {{ t('videoEditor.timeline.setFromProjectDefaults') }}
+        </UButton>
+      </div>
       <MediaResolutionSettings
         v-model:width="timelineWidth"
         v-model:height="timelineHeight"
@@ -551,7 +585,6 @@ const addTrackActions = computed(() => [
         v-model:aspect-ratio="timelineAspectRatio"
         v-model:is-custom-resolution="timelineIsCustomResolution"
         v-model:sample-rate="timelineSampleRate"
-        :disabled="followProjectSettings"
       />
     </PropertySection>
 

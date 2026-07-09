@@ -49,7 +49,11 @@ vi.mock('~/components/properties/file/FileTimelineUsageSection.vue', () => ({
   default: { name: 'FileTimelineUsageSection', template: '<div></div>' },
 }));
 vi.mock('~/components/media/MediaResolutionSettings.vue', () => ({
-  default: { name: 'MediaResolutionSettings', template: '<div></div>' },
+  default: {
+    name: 'MediaResolutionSettings',
+    props: ['disabled'],
+    template: '<div data-testid="media-resolution-settings"></div>',
+  },
 }));
 
 const mockTimelineStore = reactive({
@@ -66,9 +70,15 @@ const mockTimelineStore = reactive({
     aspectRatio: '16:9',
     isCustomResolution: false,
     sampleRate: 48000,
+    isAutoSettings: false,
+    geometryResolved: true,
+    sampleRateResolved: true,
+    settingsSource: 'manual',
+    useProjectSettings: false,
   },
   masterGain: 1,
   applyTimeline: vi.fn(),
+  updateTimelineFormat: vi.fn(),
   saveTimelineAs: vi.fn(),
   duplicateCurrentTimeline: vi.fn(),
   loadTimeline: vi.fn(),
@@ -81,6 +91,21 @@ const mockTimelineStore = reactive({
 const mockProjectStore = reactive({
   currentTimelinePath: 'timelines/main.otio',
   isReadOnly: false,
+  projectSettings: {
+    project: {
+      width: 1280,
+      height: 720,
+      fps: 25,
+      resolutionFormat: '720p',
+      orientation: 'landscape',
+      aspectRatio: '16:9',
+      isCustomResolution: false,
+      sampleRate: 44100,
+      isAutoSettings: false,
+      geometryResolved: true,
+      sampleRateResolved: true,
+    },
+  },
   openTimelineFile: vi.fn(),
 });
 
@@ -185,6 +210,7 @@ describe('TimelineProperties', () => {
     mockProjectStore.isReadOnly = false;
     mockTimelineStore.previewMode = false;
     mockTimelineStore.masterGain = 1;
+    mockTimelineStore.updateTimelineFormat.mockClear();
   });
 
   it('renders save-as action in additional actions when fsEntry is present', async () => {
@@ -227,6 +253,29 @@ describe('TimelineProperties', () => {
     await volumeSlider.vm.$emit('update:modelValue', 150);
 
     expect(mockTimelineStore.setAudioVolume).toHaveBeenCalledWith(1.5);
+  });
+
+  it('keeps timeline format controls editable and resets from project defaults', async () => {
+    const wrapper = await mountSuspended(TimelineProperties);
+
+    const resolutionSettings = wrapper.findComponent({ name: 'MediaResolutionSettings' });
+    expect(resolutionSettings.props('disabled')).toBeUndefined();
+
+    await (wrapper.vm as any).resetTimelineFormatToProjectDefaults();
+
+    expect(mockTimelineStore.updateTimelineFormat).toHaveBeenCalledWith(
+      expect.objectContaining({
+        width: 1280,
+        height: 720,
+        fps: 25,
+        sampleRate: 44100,
+        settingsSource: 'projectDefaults',
+        useProjectSettings: false,
+        isAutoSettings: false,
+        geometryResolved: true,
+        sampleRateResolved: true,
+      }),
+    );
   });
 
   it('opens save-as modal when save-as action is clicked', async () => {
