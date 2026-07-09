@@ -111,9 +111,10 @@ const props = defineProps<Props>();
 
 // --- Clip vertical layout bands ---------------------------------------------
 // The header sits at the top; the keyframes lane (placeholder) sits at the
-// bottom when expanded. Trim handles and audio fades are constrained to the
-// content band between them so they never sit under the header controls
-// (e.g. the keyframes toggle) or the keyframes editor.
+// bottom when expanded. Fades and transitions are constrained to the content
+// band between them so they never sit under the header controls (e.g. the
+// keyframes toggle) or the keyframes editor. Trim handles intentionally cover
+// the full clip height so the clip edges remain easy to grab.
 const CLIP_HEADER_HEIGHT_PX = 20; // h-5
 const CLIP_KEYFRAMES_HEIGHT_PX = 76; // h-5 lane + h-14 curve editor
 const CLIP_MIN_CONTENT_BAND_PX = 16; // below this we collapse to header-only
@@ -128,9 +129,9 @@ const isClipHeaderOnly = computed(
 
 const isKeyframesLaneVisible = computed(() => isKeyframesExpanded.value && !isClipHeaderOnly.value);
 
-// Vertical inset (px) for trim handles + fades. In header-only mode the header
-// fills the clip, so we don't inset (handles cover the full box) and rely on the
-// keyframes button being hidden + its z-index to avoid conflicts.
+// Vertical inset (px) for fades and transitions. In header-only mode the header
+// fills the clip, so we don't inset and rely on the keyframes button being
+// hidden + its z-index to avoid conflicts.
 const clipContentInset = computed(() => {
   if (isClipHeaderOnly.value) return { top: 0, bottom: 0 };
   return {
@@ -1005,8 +1006,6 @@ function addTransition(edge: 'in' | 'out') {
         <TimelineClipTrimHandles
           v-if="clipItem && canEditClipContent && !clipItem.locked && !track.locked && !isMobile"
           :clip-width-px="clipWidthPx"
-          :top-inset-px="clipContentInset.top"
-          :bottom-inset-px="clipContentInset.bottom"
           @trim-start="onTrimHandlePointerDown($event, 'start')"
           @trim-end="onTrimHandlePointerDown($event, 'end')"
         />

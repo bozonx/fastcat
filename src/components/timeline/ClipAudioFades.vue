@@ -242,50 +242,61 @@ const volumeIndicatorPosition = computed(() => {
       </svg>
     </div>
 
-    <!-- Fade Handles -->
-    <template v-if="canEdit && !clip.locked && !track.locked && !isMobile && !hideFadeHandles">
-      <div
-        data-testid="fade-handle-in"
-        class="absolute top-0 w-4 h-4 -translate-x-1/2 -translate-y-1/2 transition-opacity flex items-center justify-center shadow-sm pointer-events-auto touch-none coarse-reveal"
-        :class="[
-          clipWidthPx >= 30 ? 'cursor-ew-resize' : 'hidden pointer-events-none',
-          'opacity-0 group-hover/clip:opacity-100',
-        ]"
-        :style="{
-          left: `${getFadeHandlePositionPx('in')}px`,
-          zIndex: 'var(--z-clip-handles)',
-        }"
-        @pointerdown.stop="
-          onFadeHandlePointerDown($event, { edge: 'in', durationUs: clip.audioFadeInUs || 0 })
-        "
-        @click.stop
-      >
-        <div
-          class="w-2.5 h-2.5 rounded-full bg-white border border-black/30 hover:bg-yellow-400 transition-colors"
-        ></div>
-      </div>
+  </div>
 
+  <!-- Keep fade handles in their own stacking root above full-height trim
+       handles while the fade shapes remain below trim. -->
+  <div
+    v-if="!shouldCollapseFades() && canEdit && !clip.locked && !track.locked && !isMobile && !hideFadeHandles"
+    data-testid="fade-handles-layer"
+    class="absolute left-0 right-0 pointer-events-none"
+    :style="{
+      zIndex: 'calc(var(--z-clip-handles) + 1)',
+      top: `${topInsetPx ?? 0}px`,
+      bottom: `${bottomInsetPx ?? 0}px`,
+    }"
+  >
+    <div
+      data-testid="fade-handle-in"
+      class="absolute top-0 w-4 h-4 -translate-x-1/2 -translate-y-1/2 transition-opacity flex items-center justify-center shadow-sm pointer-events-auto touch-none coarse-reveal"
+      :class="[
+        clipWidthPx >= 30 ? 'cursor-ew-resize' : 'hidden pointer-events-none',
+        'opacity-0 group-hover/clip:opacity-100',
+      ]"
+      :style="{
+        left: `${getFadeHandlePositionPx('in')}px`,
+        zIndex: 'var(--z-clip-handles)',
+      }"
+      @pointerdown.stop="
+        onFadeHandlePointerDown($event, { edge: 'in', durationUs: clip.audioFadeInUs || 0 })
+      "
+      @click.stop
+    >
       <div
-        data-testid="fade-handle-out"
-        class="absolute top-0 w-4 h-4 -translate-x-1/2 -translate-y-1/2 transition-opacity flex items-center justify-center shadow-sm pointer-events-auto touch-none coarse-reveal"
-        :class="[
-          clipWidthPx >= 30 ? 'cursor-ew-resize' : 'hidden pointer-events-none',
-          'opacity-0 group-hover/clip:opacity-100',
-        ]"
-        :style="{
-          left: `${getFadeHandlePositionPx('out')}px`,
-          zIndex: 'var(--z-clip-handles)',
-        }"
-        @pointerdown.stop="
-          onFadeHandlePointerDown($event, { edge: 'out', durationUs: clip.audioFadeOutUs || 0 })
-        "
-        @click.stop
-      >
-        <div
-          class="w-2.5 h-2.5 rounded-full bg-white border border-black/30 hover:bg-yellow-400 transition-colors"
-        ></div>
-      </div>
-    </template>
+        class="w-2.5 h-2.5 rounded-full bg-white border border-black/30 hover:bg-yellow-400 transition-colors"
+      ></div>
+    </div>
+
+    <div
+      data-testid="fade-handle-out"
+      class="absolute top-0 w-4 h-4 -translate-x-1/2 -translate-y-1/2 transition-opacity flex items-center justify-center shadow-sm pointer-events-auto touch-none coarse-reveal"
+      :class="[
+        clipWidthPx >= 30 ? 'cursor-ew-resize' : 'hidden pointer-events-none',
+        'opacity-0 group-hover/clip:opacity-100',
+      ]"
+      :style="{
+        left: `${getFadeHandlePositionPx('out')}px`,
+        zIndex: 'var(--z-clip-handles)',
+      }"
+      @pointerdown.stop="
+        onFadeHandlePointerDown($event, { edge: 'out', durationUs: clip.audioFadeOutUs || 0 })
+      "
+      @click.stop
+    >
+      <div
+        class="w-2.5 h-2.5 rounded-full bg-white border border-black/30 hover:bg-yellow-400 transition-colors"
+      ></div>
+    </div>
   </div>
 
   <!-- Volume Control Line — kept in its own stacking root *below* the trim

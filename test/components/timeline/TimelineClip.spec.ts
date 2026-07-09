@@ -20,9 +20,9 @@ vi.mock('~/components/timeline/ClipTransitions.vue', () => ({
 vi.mock('~/components/timeline/ClipAudioFades.vue', () => ({
   default: {
     name: 'ClipAudioFades',
-    props: ['hideFadeHandles'],
+    props: ['hideFadeHandles', 'topInsetPx', 'bottomInsetPx'],
     template:
-      '<div class="clip-audio-fades" :data-hide-fade-handles="hideFadeHandles ? \'true\' : \'false\'"></div>',
+      '<div class="clip-audio-fades" :data-hide-fade-handles="hideFadeHandles ? \'true\' : \'false\'" :style="{ top: `${topInsetPx ?? 0}px`, bottom: `${bottomInsetPx ?? 0}px` }"></div>',
   },
 }));
 vi.mock('~/components/timeline/ClipMetadata.vue', () => ({
@@ -246,6 +246,7 @@ describe('TimelineClip', () => {
     mockTimelineStore.selectedItemIds = [];
     mockTimelineStore.timelineZoom = 1;
     mockTimelineStore.isTrimModeActive = false;
+    mockMediaStore.mediaMetadata = {};
   });
 
   it('calculates position and width correctly based on time and zoom', async () => {
@@ -365,6 +366,23 @@ describe('TimelineClip', () => {
       edge: 'end',
       startUs: 1000000,
     });
+  });
+
+  it('keeps trim handles full-height while audio fades stay in the content band', async () => {
+    mockMediaStore.mediaMetadata = { 'file.mp4': { audio: {} } };
+
+    const component = await mountClip({
+      ...defaultProps,
+      trackHeight: 40,
+    });
+
+    const trimStart = component.get('[data-testid="clip-trim-start"]').element as HTMLElement;
+    const audioFades = component.get('.clip-audio-fades').element as HTMLElement;
+
+    expect(trimStart.style.top).toBe('0px');
+    expect(trimStart.style.bottom).toBe('0px');
+    expect(audioFades.style.top).toBe('20px');
+    expect(audioFades.style.bottom).toBe('0px');
   });
 
   it('renders transition overlays in the content band above trim handles', async () => {

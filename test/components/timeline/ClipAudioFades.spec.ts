@@ -164,6 +164,22 @@ describe('ClipAudioFades', () => {
     addEventListenerSpy.mockRestore();
   });
 
+  it('places the fade handles layer above full-height trim handles', async () => {
+    const component = await mountSuspended(ClipAudioFades, {
+      props: defaultProps,
+    });
+
+    expect(component.get('[data-testid="fade-handles-layer"]').attributes('style')).toContain(
+      'z-index: calc(var(--z-clip-handles) + 1)',
+    );
+    expect(component.get('[data-testid="fade-handle-in"]').classes()).toContain(
+      'pointer-events-auto',
+    );
+    expect(component.get('[data-testid="fade-handle-out"]').classes()).toContain(
+      'pointer-events-auto',
+    );
+  });
+
   // While the clip's borders are being trimmed or its material is slipped, the
   // fade drag handles must disappear (they sit under the trim handle and get in
   // the way) — but the fade shapes themselves must stay drawn.
