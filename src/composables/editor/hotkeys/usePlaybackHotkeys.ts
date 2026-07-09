@@ -164,9 +164,9 @@ export function usePlaybackHotkeys(
       return true;
     },
 
-    // F — cycle playback speed UP the grid, always forward.
-    // First press (paused / reversing / below 1.25x) starts at 1.25x forward;
-    // each subsequent press advances one grid step up to the 5x ceiling.
+    // F — step playback speed UP the grid by one position.
+    // Continues from the current speed while playing (or 1x baseline when
+    // paused), advancing one grid step per press up to the 5x ceiling.
     'playback.speedUpForward': () => {
       if (!canUsePlaybackOrTimelineFocus()) return false;
       // The preview player keeps its own playback rate; the speed grid is a
@@ -176,9 +176,8 @@ export function usePlaybackHotkeys(
       }
 
       const { playbackSpeed, isPlaying } = timelineStore;
-      // Continue climbing only while already playing forward at >= 1.25x.
-      const nextSpeed =
-        isPlaying && playbackSpeed >= 1.25 ? stepPlaybackSpeed(playbackSpeed, 'up') : 1.25;
+      const fromSpeed = isPlaying ? playbackSpeed : 1;
+      const nextSpeed = stepPlaybackSpeed(fromSpeed, 'up');
       timelineStore.setPlaybackSpeed(nextSpeed);
       if (!isPlaying) timelineStore.togglePlayback();
       return true;

@@ -55,6 +55,7 @@ describe('useHotkeyCapture', () => {
     expect(isCapturingHotkey.value).toBe(true);
     expect(captureTargetCommandId.value).toBe('play_pause');
     expect(window.addEventListener).toHaveBeenCalledWith('keydown', expect.any(Function), true);
+    expect(window.addEventListener).toHaveBeenCalledWith('keyup', expect.any(Function), true);
   });
 
   it('startCapture does nothing when already capturing', () => {
@@ -88,6 +89,7 @@ describe('useHotkeyCapture', () => {
     expect(captureTargetCommandId.value).toBeNull();
     expect(capturedCombo.value).toBeNull();
     expect(window.removeEventListener).toHaveBeenCalledWith('keydown', expect.any(Function), true);
+    expect(window.removeEventListener).toHaveBeenCalledWith('keyup', expect.any(Function), true);
   });
 
   it('finishCapture does nothing when not capturing', () => {
@@ -109,6 +111,55 @@ describe('useHotkeyCapture', () => {
     expect(typeof finishCapture).toBe('function');
   });
 
+  it('captures the shortcut as soon as all pressed keys are released', () => {
+    const onCaptured = vi.fn();
+    const { startCapture, isCapturingHotkey } = useHotkeyCapture({
+      onCaptured,
+      onDuplicate: vi.fn(),
+      findDuplicateOwner: vi.fn(() => null),
+    });
+
+    startCapture('general.focus' as any);
+    const keydownHandler = vi.mocked(window.addEventListener).mock.calls.find(
+      ([type]) => type === 'keydown',
+    )?.[1] as (e: KeyboardEvent) => void;
+    const keyupHandler = vi.mocked(window.addEventListener).mock.calls.find(
+      ([type]) => type === 'keyup',
+    )?.[1] as (e: KeyboardEvent) => void;
+
+    keydownHandler({
+      key: 'Control',
+      code: 'ControlLeft',
+      preventDefault: vi.fn(),
+      target: null,
+    } as unknown as KeyboardEvent);
+    keydownHandler({
+      key: 'a',
+      code: 'KeyA',
+      preventDefault: vi.fn(),
+      target: null,
+    } as unknown as KeyboardEvent);
+
+    expect(onCaptured).not.toHaveBeenCalled();
+
+    keyupHandler({
+      key: 'a',
+      code: 'KeyA',
+      preventDefault: vi.fn(),
+    } as unknown as KeyboardEvent);
+
+    expect(onCaptured).not.toHaveBeenCalled();
+
+    keyupHandler({
+      key: 'Control',
+      code: 'ControlLeft',
+      preventDefault: vi.fn(),
+    } as unknown as KeyboardEvent);
+
+    expect(onCaptured).toHaveBeenCalledWith('general.focus', 'Ctrl+A');
+    expect(isCapturingHotkey.value).toBe(false);
+  });
+
   it('reports reserved shortcuts and stops capture', async () => {
     const { getReservedHotkeyReservation } = await import('~/utils/hotkeys/reservedHotkeys');
     vi.mocked(getReservedHotkeyReservation).mockReturnValue({ runtime: 'browser' });
@@ -123,18 +174,31 @@ describe('useHotkeyCapture', () => {
     });
 
     startCapture('general.focus' as any);
-    const handler = vi.mocked(window.addEventListener).mock.calls[0]?.[1] as (
+    const keydownHandler = vi.mocked(window.addEventListener).mock.calls.find(
+      ([type]) => type === 'keydown',
+    )?.[1] as (e: KeyboardEvent) => void;
+    const keyupHandler = vi.mocked(window.addEventListener).mock.calls.find(
+      ([type]) => type === 'keyup',
+    )?.[1] as (
       e: KeyboardEvent,
     ) => void;
-    const event = {
+    const keydownEvent = {
       key: 'l',
+      code: 'KeyL',
       preventDefault: vi.fn(),
       target: null,
     } as unknown as KeyboardEvent;
+    const keyupEvent = {
+      key: 'l',
+      code: 'KeyL',
+      preventDefault: vi.fn(),
+    } as unknown as KeyboardEvent;
 
-    handler(event);
+    keydownHandler(keydownEvent);
+    keyupHandler(keyupEvent);
 
-    expect(event.preventDefault).toHaveBeenCalled();
+    expect(keydownEvent.preventDefault).toHaveBeenCalled();
+    expect(keyupEvent.preventDefault).toHaveBeenCalled();
     expect(onReserved).toHaveBeenCalledWith('general.focus', 'Ctrl+A', { runtime: 'browser' });
     expect(onCaptured).not.toHaveBeenCalled();
     expect(isCapturingHotkey.value).toBe(false);

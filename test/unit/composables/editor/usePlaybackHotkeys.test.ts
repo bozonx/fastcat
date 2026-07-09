@@ -25,7 +25,7 @@ describe('usePlaybackHotkeys — F / D speed cycle', () => {
     handlers[cmd]?.(new KeyboardEvent('keydown'));
 
   describe('F (playback.speedUpForward)', () => {
-    it('starts forward at 1.25x when paused and begins playback', () => {
+    it('steps up from 1x baseline when paused (first step 1.25x) and begins playback', () => {
       const timelineStore = useTimelineStore();
       expect(timelineStore.isPlaying).toBe(false);
 
@@ -36,28 +36,28 @@ describe('usePlaybackHotkeys — F / D speed cycle', () => {
       expect(timelineStore.isPlaying).toBe(true);
     });
 
-    it('starts at 1.25x when currently playing in reverse', () => {
+    it('steps up from the current speed while playing in reverse (-1 -> -0.75)', () => {
       const timelineStore = useTimelineStore();
       timelineStore.setPlaybackSpeed(-1);
       if (!timelineStore.isPlaying) timelineStore.togglePlayback();
 
       run('playback.speedUpForward');
 
-      expect(timelineStore.playbackSpeed).toBe(1.25);
+      expect(timelineStore.playbackSpeed).toBe(-0.75);
       expect(timelineStore.isPlaying).toBe(true);
     });
 
-    it('starts at 1.25x when currently playing forward below 1.25x', () => {
+    it('steps up from the current speed while playing forward below 1.25x (0.5 -> 0.75)', () => {
       const timelineStore = useTimelineStore();
       timelineStore.setPlaybackSpeed(0.5);
       if (!timelineStore.isPlaying) timelineStore.togglePlayback();
 
       run('playback.speedUpForward');
 
-      expect(timelineStore.playbackSpeed).toBe(1.25);
+      expect(timelineStore.playbackSpeed).toBe(0.75);
     });
 
-    it('climbs the grid one step per press while playing forward >= 1.25x', () => {
+    it('climbs the grid one step per press while playing forward', () => {
       const timelineStore = useTimelineStore();
       timelineStore.setPlaybackSpeed(1.25);
       if (!timelineStore.isPlaying) timelineStore.togglePlayback();

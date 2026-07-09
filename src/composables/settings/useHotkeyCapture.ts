@@ -22,15 +22,56 @@ export function useHotkeyCapture(params: {
   const capturedCombo = ref<string | null>(null);
 
   let captureKeydownHandler: ((e: KeyboardEvent) => void) | null = null;
+  let captureKeyupHandler: ((e: KeyboardEvent) => void) | null = null;
+  const pressedKeyIds = new Set<string>();
+
+  function getKeyId(e: KeyboardEvent): string {
+    return e.code || e.key;
+  }
 
   function finishCapture() {
     if (captureKeydownHandler) {
       window.removeEventListener('keydown', captureKeydownHandler, true);
       captureKeydownHandler = null;
     }
+    if (captureKeyupHandler) {
+      window.removeEventListener('keyup', captureKeyupHandler, true);
+      captureKeyupHandler = null;
+    }
+    pressedKeyIds.clear();
     isCapturingHotkey.value = false;
     captureTargetCommandId.value = null;
     capturedCombo.value = null;
+  }
+
+  function commitCapturedCombo() {
+    const target = captureTargetCommandId.value;
+    const combo = capturedCombo.value;
+    if (!target || !combo) {
+      finishCapture();
+      return;
+    }
+
+    const reservation = getReservedHotkeyReservation(combo);
+    if (reservation) {
+      params.onReserved?.(target, combo, reservation);
+      finishCapture();
+      return;
+    }
+
+    const owner = params.findDuplicateOwner(combo, target);
+    if (owner) {
+      params.onDuplicate(target, combo, owner);
+      return;
+    }
+
+    const overrideOwner = params.findOverrideOwner?.(combo, target) ?? null;
+    if (overrideOwner) {
+      params.onCaptured(target, combo);
+    } else {
+      params.onCaptured(target, combo);
+    }
+    finishCapture();
   }
 
   function startCapture(cmdId: HotkeyCommandId) {
@@ -38,10 +79,11 @@ export function useHotkeyCapture(params: {
     isCapturingHotkey.value = true;
     captureTargetCommandId.value = cmdId;
     capturedCombo.value = null;
+    pressedKeyIds.clear();
 
-    const handler = (e: KeyboardEvent) => {
+    const keydownHandler = (e: KeyboardEvent) => {
       if (!isCapturingHotkey.value) {
-        window.removeEventListener('keydown', handler, true);
+        window.removeEventListener('keydown', keydownHandler, true);
         return;
       }
 
@@ -55,42 +97,35 @@ export function useHotkeyCapture(params: {
         return;
       }
 
+      pressedKeyIds.add(getKeyId(e));
+
       const comboRaw = hotkeyFromKeyboardEvent(e, workspaceStore.userSettings);
       const combo = comboRaw ? normalizeHotkeyCombo(comboRaw) : null;
       if (!combo) return;
 
       e.preventDefault();
       capturedCombo.value = combo;
+    };
 
-      const target = captureTargetCommandId.value;
-      if (!target) {
-        finishCapture();
+    const keyupHandler = (e: KeyboardEvent) => {
+      if (!isCapturingHotkey.value) {
+        window.removeEventListener('keyup', keyupHandler, true);
         return;
       }
 
-      const reservation = getReservedHotkeyReservation(combo);
-      if (reservation) {
-        params.onReserved?.(target, combo, reservation);
-        finishCapture();
-        return;
-      }
+      pressedKeyIds.delete(getKeyId(e));
+      if (!capturedCombo.value) return;
 
-      const owner = params.findDuplicateOwner(combo, target);
-      if (owner) {
-        params.onDuplicate(target, combo, owner);
-      } else {
-        const overrideOwner = params.findOverrideOwner?.(combo, target) ?? null;
-        if (overrideOwner) {
-          params.onCaptured(target, combo);
-        } else {
-          params.onCaptured(target, combo);
-        }
-        finishCapture();
+      e.preventDefault();
+      if (pressedKeyIds.size === 0) {
+        commitCapturedCombo();
       }
     };
 
-    captureKeydownHandler = handler;
-    window.addEventListener('keydown', handler, true);
+    captureKeydownHandler = keydownHandler;
+    captureKeyupHandler = keyupHandler;
+    window.addEventListener('keydown', keydownHandler, true);
+    window.addEventListener('keyup', keyupHandler, true);
   }
 
   onBeforeUnmount(() => {

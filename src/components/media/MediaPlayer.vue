@@ -457,7 +457,7 @@ onUnmounted(() => {
       ]"
       @mouseenter="resetIdle"
     >
-      <div class="w-full relative flex items-center h-4 group">
+      <div class="w-full relative flex items-center h-4 group cursor-pointer">
         <input
           v-model.number="currentTime"
           type="range"
