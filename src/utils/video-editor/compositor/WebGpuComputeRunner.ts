@@ -716,6 +716,10 @@ export class WebGpuComputeRunner {
   private auxView: GPUTextureView | null = null;
   private ownedTexture: GPUTexture | null = null;
   private ownedView: GPUTextureView | null = null;
+  private intermediateTexture: GPUTexture | null = null;
+  private intermediateView: GPUTextureView | null = null;
+  private intermediateCachedWidth = 0;
+  private intermediateCachedHeight = 0;
   private sampler: GPUSampler | null = null;
   private cachedWidth = 0;
   private cachedHeight = 0;
@@ -1185,34 +1189,20 @@ export class WebGpuComputeRunner {
       label,
     } = params;
 
-    this.ensureInputTexture(inputWidth, inputHeight);
-
-    const inputTexture = this.inputTexture!;
-    const inputView = this.inputView!;
-
-    if (
-      copyOriginX !== 0 ||
-      copyOriginY !== 0 ||
-      copyWidth !== inputWidth ||
-      copyHeight !== inputHeight
-    ) {
-      this.clearInputTexture(`${label}-input-clear`);
-    }
-
-    this.device.queue.copyExternalImageToTexture(
-      { source: uploadSource, flipY: false },
-      { texture: inputTexture, origin: { x: copyOriginX, y: copyOriginY, z: 0 } },
-      { width: copyWidth, height: copyHeight, depthOrArrayLayers: 1 },
-    );
-
-    // Release the intermediate ImageBitmap immediately after upload to avoid
-    // leaking GPU-backed bitmap memory.
-    if (uploadSource !== source && 'close' in uploadSource) {
-      (uploadSource as ImageBitmap).close();
-    }
+    this.uploadExternalSourceToInput({
+      source,
+      uploadSource,
+      inputWidth,
+      inputHeight,
+      copyOriginX,
+      copyOriginY,
+      copyWidth,
+      copyHeight,
+      label,
+    });
 
     const ownedTexture = this.executePasses({
-      inputView,
+      inputView: this.inputView!,
       passes,
       outputWidth,
       outputHeight,
@@ -1402,15 +1392,17 @@ export class WebGpuComputeRunner {
       return false;
     }
 
-    this.ensureInputTexture(origW, origH);
-    this.device.queue.copyExternalImageToTexture(
-      { source: uploadSource, flipY: false },
-      { texture: this.inputTexture!, origin: { x: 0, y: 0, z: 0 } },
-      { width: origW, height: origH, depthOrArrayLayers: 1 },
-    );
-    if (uploadSource !== params.source && 'close' in uploadSource) {
-      (uploadSource as ImageBitmap).close();
-    }
+    this.uploadExternalSourceToInput({
+      source: params.source,
+      uploadSource,
+      inputWidth: origW,
+      inputHeight: origH,
+      copyOriginX: 0,
+      copyOriginY: 0,
+      copyWidth: origW,
+      copyHeight: origH,
+      label: 'web-blur-fill-source-texture',
+    });
 
     const outputTexture = this.executePasses({
       inputView: this.inputView!,
@@ -1430,6 +1422,151 @@ export class WebGpuComputeRunner {
       width: frameW,
       height: frameH,
       label: 'web-blur-fill-source-texture-blit',
+    });
+    return rendered
+      ? {
+          rendered: true,
+          width: frameW,
+          height: frameH,
+          contentWidth: frameW,
+          contentHeight: frameH,
+          padding: 0,
+        }
+      : false;
+  }
+
+  public async applyEffectsThenBlurFillSourceToTexture(params: {
+    source: VideoFrame | ImageBitmap;
+    target: RenderTexture;
+    effects: VideoEffectSpec[];
+    frameW: number;
+    frameH: number;
+    fgScale: number;
+    bgScale: number;
+    blur: number;
+    bgDim: number;
+    bgSaturation: number;
+    tintColor: [number, number, number, number];
+    tintStrength: number;
+    fgOffsetY: number;
+  }): Promise<EffectTextureRenderResult | false> {
+    if (
+      !this.device ||
+      !this.pipeline ||
+      !this.bindLayout ||
+      !this.shaderModule ||
+      !this.sharedRendererTexture
+    ) {
+      return false;
+    }
+    if (params.effects.length === 0) return false;
+
+    const frameW = Math.max(1, Math.round(params.frameW));
+    const frameH = Math.max(1, Math.round(params.frameH));
+    const targetSource = params.target.source as { pixelWidth?: number; pixelHeight?: number };
+    const targetW = Math.max(1, Math.round(targetSource.pixelWidth ?? params.target.width));
+    const targetH = Math.max(1, Math.round(targetSource.pixelHeight ?? params.target.height));
+    if (targetW !== frameW || targetH !== frameH) {
+      return false;
+    }
+
+    const targetFormat = params.target.source.format;
+    if (!isRenderableColorFormat(targetFormat)) {
+      return false;
+    }
+
+    const { uploadSource, origW, origH } = await this.prepareUploadSource(params.source);
+    const effectSize = resolveEffectTextureSize({
+      width: origW,
+      height: origH,
+      effects: params.effects,
+    });
+    const { padding } = effectSize;
+    const effectPasses = buildPasses(
+      params.effects,
+      effectSize.width,
+      effectSize.height,
+      this.previewEffectQuality,
+      {
+        spatialScaleHeight: origH,
+        ...(padding > 0
+          ? { contentRect: { offsetX: padding, offsetY: padding, width: origW, height: origH } }
+          : {}),
+      },
+    );
+    if (effectPasses.length === 0) {
+      if (uploadSource !== params.source && 'close' in uploadSource) {
+        (uploadSource as ImageBitmap).close();
+      }
+      return false;
+    }
+
+    this.uploadExternalSourceToInput({
+      source: params.source,
+      uploadSource,
+      inputWidth: effectSize.width,
+      inputHeight: effectSize.height,
+      copyOriginX: padding,
+      copyOriginY: padding,
+      copyWidth: origW,
+      copyHeight: origH,
+      label: 'web-effect-before-blur-fill',
+    });
+
+    const effectOutput = this.executePasses({
+      inputView: this.inputView!,
+      passes: effectPasses,
+      outputWidth: effectSize.width,
+      outputHeight: effectSize.height,
+      label: 'web-effect-before-blur-fill',
+    });
+    if (!effectOutput) {
+      return false;
+    }
+
+    const intermediateView = this.copyEffectOutputToIntermediate({
+      source: effectOutput,
+      width: effectSize.width,
+      height: effectSize.height,
+      label: 'web-effect-before-blur-fill-copy',
+    });
+    const blurFillPasses = buildBlurFillPasses(
+      frameW,
+      frameH,
+      effectSize.width,
+      effectSize.height,
+      params.fgScale,
+      params.bgScale,
+      params.blur,
+      params.bgDim,
+      params.bgSaturation,
+      params.tintColor,
+      params.tintStrength,
+      params.fgOffsetY,
+      this.previewEffectQuality,
+    );
+    if (blurFillPasses.length === 0) {
+      return false;
+    }
+
+    const outputTexture = this.executePasses({
+      inputView: intermediateView,
+      passes: blurFillPasses,
+      outputWidth: frameW,
+      outputHeight: frameH,
+      label: 'web-effect-blur-fill-source-texture',
+    });
+    if (!outputTexture) {
+      return false;
+    }
+
+    const rendered = this.blitTextureToRendererTarget({
+      source: outputTexture,
+      target: this.sharedRendererTexture.getGpuSource(params.target.source),
+      targetFormat,
+      width: frameW,
+      height: frameH,
+      label: 'web-effect-blur-fill-source-texture-blit',
     });
     return rendered
       ? {
@@ -1607,18 +1744,17 @@ export class WebGpuComputeRunner {
       return false;
     }
 
-    this.ensureInputTexture(outputSize.width, outputSize.height);
-    if (padding > 0) {
-      this.clearInputTexture('web-effect-source-texture-input-clear');
-    }
-    this.device.queue.copyExternalImageToTexture(
-      { source: uploadSource, flipY: false },
-      { texture: this.inputTexture!, origin: { x: padding, y: padding, z: 0 } },
-      { width: origW, height: origH, depthOrArrayLayers: 1 },
-    );
-    if (uploadSource !== params.source && 'close' in uploadSource) {
-      (uploadSource as ImageBitmap).close();
-    }
+    this.uploadExternalSourceToInput({
+      source: params.source,
+      uploadSource,
+      inputWidth: outputSize.width,
+      inputHeight: outputSize.height,
+      copyOriginX: padding,
+      copyOriginY: padding,
+      copyWidth: origW,
+      copyHeight: origH,
+      label: 'web-effect-source-texture',
+    });
 
     const outputTexture = this.executePasses({
       inputView: this.inputView!,
@@ -2013,6 +2149,83 @@ export class WebGpuComputeRunner {
     this.inputCachedHeight = h;
   }
 
+  private uploadExternalSourceToInput(params: {
+    source: VideoFrame | ImageBitmap;
+    uploadSource: VideoFrame | ImageBitmap;
+    inputWidth: number;
+    inputHeight: number;
+    copyOriginX: number;
+    copyOriginY: number;
+    copyWidth: number;
+    copyHeight: number;
+    label: string;
+  }): void {
+    if (!this.device) return;
+
+    this.ensureInputTexture(params.inputWidth, params.inputHeight);
+
+    if (
+      params.copyOriginX !== 0 ||
+      params.copyOriginY !== 0 ||
+      params.copyWidth !== params.inputWidth ||
+      params.copyHeight !== params.inputHeight
+    ) {
+      this.clearInputTexture(`${params.label}-input-clear`);
+    }
+
+    this.device.queue.copyExternalImageToTexture(
+      { source: params.uploadSource, flipY: false },
+      { texture: this.inputTexture!, origin: { x: params.copyOriginX, y: params.copyOriginY, z: 0 } },
+      { width: params.copyWidth, height: params.copyHeight, depthOrArrayLayers: 1 },
+    );
+
+    if (params.uploadSource !== params.source && 'close' in params.uploadSource) {
+      (params.uploadSource as ImageBitmap).close();
+    }
+  }
+
+  private ensureIntermediateTexture(width: number, height: number): GPUTexture {
+    if (
+      this.intermediateTexture &&
+      this.intermediateCachedWidth === width &&
+      this.intermediateCachedHeight === height
+    ) {
+      return this.intermediateTexture;
+    }
+
+    this.intermediateTexture?.destroy();
+
+    const w = Math.max(1, width);
+    const h = Math.max(1, height);
+    this.intermediateTexture = this.device!.createTexture({
+      label: 'web-effect-intermediate',
+      size: { width: w, height: h, depthOrArrayLayers: 1 },
+      format: 'rgba8unorm',
+      usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.COPY_SRC,
+    });
+    this.intermediateView = this.intermediateTexture.createView();
+    this.intermediateCachedWidth = w;
+    this.intermediateCachedHeight = h;
+    return this.intermediateTexture;
+  }
+
+  private copyEffectOutputToIntermediate(params: {
+    source: GPUTexture;
+    width: number;
+    height: number;
+    label: string;
+  }): GPUTextureView {
+    const intermediateTexture = this.ensureIntermediateTexture(params.width, params.height);
+    const encoder = this.device!.createCommandEncoder({ label: params.label });
+    encoder.copyTextureToTexture(
+      { texture: params.source },
+      { texture: intermediateTexture },
+      { width: params.width, height: params.height, depthOrArrayLayers: 1 },
+    );
+    this.device!.queue.submit([encoder.finish()]);
+    return this.intermediateView!;
+  }
+
   private clearInputTexture(label: string): void {
     if (!this.device || !this.inputView) return;
 
@@ -2177,6 +2390,10 @@ export class WebGpuComputeRunner {
     this.auxView = null;
     this.ownedTexture = null;
     this.ownedView = null;
+    this.intermediateTexture = null;
+    this.intermediateView = null;
+    this.intermediateCachedWidth = 0;
+    this.intermediateCachedHeight = 0;
     this.inputTexture = null;
     this.inputView = null;
     this.inputCachedWidth = 0;
@@ -2218,6 +2435,7 @@ export class WebGpuComputeRunner {
     this.pongTexture?.destroy();
     this.auxTexture?.destroy();
     this.ownedTexture?.destroy();
+    this.intermediateTexture?.destroy();
     this.inputTexture?.destroy();
     this.uniformBuffer?.destroy();
     this.effectReadbackBuffer?.destroy();
@@ -2241,6 +2459,10 @@ export class WebGpuComputeRunner {
     this.auxView = null;
     this.ownedTexture = null;
     this.ownedView = null;
+    this.intermediateTexture = null;
+    this.intermediateView = null;
+    this.intermediateCachedWidth = 0;
+    this.intermediateCachedHeight = 0;
     this.inputTexture = null;
     this.inputView = null;
     this.inputCachedWidth = 0;

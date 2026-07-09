@@ -728,4 +728,100 @@ describe('ClipResourceManager.updateClipTextureFromSample', () => {
       ignoreClipTransform: true,
     });
   });
+
+  it('uses GPU texture output for effects followed by blur-fill', async () => {
+    const effectTexture = {
+      width: 1920,
+      height: 1080,
+      source: { pixelWidth: 1920, pixelHeight: 1080, format: 'bgra8unorm' },
+      destroy: vi.fn(),
+    };
+    vi.spyOn(RenderTexture, 'create').mockReturnValue(effectTexture as any);
+
+    const frame = {
+      displayWidth: 128,
+      displayHeight: 72,
+      close: vi.fn(),
+    } as unknown as VideoFrame;
+    const sample = {
+      toVideoFrame: vi.fn(() => frame),
+    };
+    const applyEffects = vi.fn();
+    const applyBlurFill = vi.fn();
+    const applyEffectsThenBlurFillSourceToTexture = vi.fn().mockResolvedValue({
+      rendered: true,
+      width: 1920,
+      height: 1080,
+      contentWidth: 1920,
+      contentHeight: 1080,
+      padding: 0,
+    });
+    const runner = {
+      isReady: () => true,
+      applyEffects,
+      applyBlurFill,
+      applyEffectsThenBlurFillSourceToTexture,
+    } as unknown as WebGpuComputeRunner;
+    const layoutApplier = createMockLayoutApplier();
+    const imageSource = createMockImageSource(128, 72);
+    const sprite = createMockSprite(imageSource);
+    const manager = createManager({
+      computeRunner: runner,
+      getLayoutApplier: () => layoutApplier,
+    });
+    const clip = {
+      itemId: 'clip-1',
+      clipKind: 'video',
+      sourceKind: 'videoFrame',
+      effects: [
+        { id: 'b', type: 'color-adjustment', brightness: 1.2, enabled: true },
+        {
+          id: 'fill-1',
+          type: 'blur-fill',
+          fgScale: 1,
+          bgScale: 1.1,
+          blur: 40,
+          bgDim: 0.85,
+          bgSaturation: 1,
+          tintColor: '#000000',
+          tintStrength: 0,
+          fgOffsetY: 0,
+          enabled: true,
+        },
+      ],
+      sprite: sprite as unknown as CompositorClip['sprite'],
+      imageSource: imageSource as any,
+      lastVideoFrame: null,
+    } as CompositorClip;
+
+    await manager.updateClipTextureFromSample(sample, clip, true);
+
+    expect(applyEffectsThenBlurFillSourceToTexture).toHaveBeenCalledWith({
+      source: frame,
+      target: effectTexture,
+      effects: expect.arrayContaining([expect.objectContaining({ type: 'brightness' })]),
+      frameW: 1920,
+      frameH: 1080,
+      fgScale: 1,
+      bgScale: 1.1,
+      blur: 40,
+      bgDim: 0.85,
+      bgSaturation: 1,
+      tintColor: [0, 0, 0, 255],
+      tintStrength: 0,
+      fgOffsetY: 0,
+    });
+    expect(applyEffects).not.toHaveBeenCalled();
+    expect(applyBlurFill).not.toHaveBeenCalled();
+    expect((clip.sprite as any).texture).toBe(effectTexture);
+    expect(clip.effectSourceW).toBe(1920);
+    expect(clip.effectSourceH).toBe(1080);
+    expect(clip.effectTextureW).toBe(1920);
+    expect(clip.effectTextureH).toBe(1080);
+    expect(clip.effectIgnoreTransform).toBe(true);
+    expect(frame.close).toHaveBeenCalled();
+    expect(layoutApplier.applySpriteLayout).toHaveBeenCalledWith(1920, 1080, clip, {
+      ignoreClipTransform: true,
+    });
+  });
 });

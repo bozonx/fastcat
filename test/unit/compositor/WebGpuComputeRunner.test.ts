@@ -500,6 +500,30 @@ describe('WebGpuComputeRunner', () => {
     });
     expect(result).toBeNull();
   });
+
+  it('returns false from applyEffectsThenBlurFillSourceToTexture when not initialized', async () => {
+    const runner = new WebGpuComputeRunner();
+    const bitmap = { width: 4, height: 4 } as unknown as ImageBitmap;
+    const target = {} as unknown as import('pixi.js').RenderTexture;
+
+    const result = await runner.applyEffectsThenBlurFillSourceToTexture({
+      source: bitmap,
+      target,
+      effects: [{ type: 'brightness', value: 1.2 }],
+      frameW: 1920,
+      frameH: 1080,
+      fgScale: 1,
+      bgScale: 1,
+      blur: 0,
+      bgDim: 1,
+      bgSaturation: 1,
+      tintColor: [0, 0, 0, 0],
+      tintStrength: 0,
+      fgOffsetY: 0,
+    });
+
+    expect(result).toBe(false);
+  });
 });
 
 describe('buildBlurFillPasses', () => {

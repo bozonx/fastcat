@@ -783,6 +783,50 @@ export class ClipResourceManager {
                       return;
                     }
                   }
+                  if (
+                    otherSpecs.length > 0 &&
+                    typeof runner.applyEffectsThenBlurFillSourceToTexture === 'function'
+                  ) {
+                    clip.effectRenderTexture = this.ensureEffectRenderTexture(
+                      clip.effectRenderTexture ?? null,
+                      projectW,
+                      projectH,
+                    );
+                    const renderedOnGpu = await runner.applyEffectsThenBlurFillSourceToTexture({
+                      source: frame,
+                      target: clip.effectRenderTexture,
+                      effects:
+                        otherSpecs as import('~/types/generated/native-monitor/VideoEffectSpec').VideoEffectSpec[],
+                      frameW: projectW,
+                      frameH: projectH,
+                      fgScale: blurFill.fg_scale,
+                      bgScale: blurFill.bg_scale,
+                      blur: blurFill.blur,
+                      bgDim: blurFill.bg_dim,
+                      bgSaturation: blurFill.bg_saturation,
+                      tintColor: blurFill.tint_color,
+                      tintStrength: blurFill.tint_strength,
+                      fgOffsetY: blurFill.fg_offset_y,
+                    });
+                    if (renderedOnGpu) {
+                      safeDispose(frame);
+                      if (clip.sprite) {
+                        (clip.sprite as Sprite).texture = clip.effectRenderTexture;
+                      }
+                      clip.lastVideoFrame = null;
+                      clip.effectSourceW = projectW;
+                      clip.effectSourceH = projectH;
+                      clip.effectTextureW = renderedOnGpu.width;
+                      clip.effectTextureH = renderedOnGpu.height;
+                      clip.effectIgnoreTransform = true;
+                      this.context
+                        .getLayoutApplier()
+                        .applySpriteLayout(projectW, projectH, clip, {
+                          ignoreClipTransform: true,
+                        });
+                      return;
+                    }
+                  }
                   // Keep `frame` alive until we know the final result. Disposing it
                   // before blur-fill committed used to leave a closed VideoFrame as
                   // the texture resource whenever blur-fill returned null or threw.
