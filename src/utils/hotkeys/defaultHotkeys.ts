@@ -182,20 +182,21 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     { id: 'general.focus', groupId: 'general', title: 'Focus / Search' },
     { id: 'general.rename', groupId: 'general', title: 'Rename' },
 
-    // Зум операции
+    // General - Масштаб и полноэкранный режим
+    { id: 'general.fullscreen', groupId: 'general', title: 'Toggle fullscreen' },
     { id: 'general.zoomIn', groupId: 'general', title: 'Zoom in' },
     { id: 'general.zoomOut', groupId: 'general', title: 'Zoom out' },
     { id: 'general.zoomReset', groupId: 'general', title: 'Reset zoom' },
     { id: 'general.zoomFit', groupId: 'general', title: 'Fit to window' },
 
-    // Переключение видов (View)
+    // General - Переключение видов (View)
     { id: 'general.switchViewFiles', groupId: 'general', title: 'Switch to Files' },
     { id: 'general.switchViewCut', groupId: 'general', title: 'Switch to Cut' },
     { id: 'general.switchViewSound', groupId: 'general', title: 'Switch to Sound' },
     { id: 'general.switchViewEffects', groupId: 'general', title: 'Switch to Effects' },
     { id: 'general.switchViewExport', groupId: 'general', title: 'Switch to Export' },
 
-    // Табы проекта
+    // General - Табы проекта
     { id: 'general.projectTabFiles', groupId: 'general', title: 'Switch to Files tab' },
     { id: 'general.projectTabHistory', groupId: 'general', title: 'Switch to History tab' },
     { id: 'general.projectTabEffects', groupId: 'general', title: 'Switch to Effects tab' },
@@ -203,7 +204,7 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     { id: 'general.projectTabMarkers', groupId: 'general', title: 'Switch to Markers tab' },
     { id: 'general.projectTabBackups', groupId: 'general', title: 'Switch to Backups tab' },
 
-    // Табы таймлайна
+    // General - Табы таймлайна
     { id: 'general.tab1', groupId: 'general', title: 'Switch to timeline tab 1' },
     { id: 'general.tab2', groupId: 'general', title: 'Switch to timeline tab 2' },
     { id: 'general.tab3', groupId: 'general', title: 'Switch to timeline tab 3' },
@@ -214,8 +215,7 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     { id: 'general.tab8', groupId: 'general', title: 'Switch to timeline tab 8' },
     { id: 'general.tab9', groupId: 'general', title: 'Switch to timeline tab 9' },
 
-    // Прочие общие операции
-    { id: 'general.fullscreen', groupId: 'general', title: 'Toggle fullscreen' },
+    // General - Настройки и задачи (редко используемые)
     { id: 'general.newTimeline', groupId: 'general', title: 'Create new timeline' },
     { id: 'general.backgroundTasks', groupId: 'general', title: 'Show background tasks' },
     { id: 'general.projectSettings', groupId: 'general', title: 'Open project settings' },
@@ -295,15 +295,19 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
       title: 'Create snapshot from monitor',
     },
 
-    // Timeline - Основные операции редактирования
+    // Timeline - Разрезание (самое частое)
     { id: 'timeline.splitAtPlayhead', groupId: 'timeline', title: 'Split at playhead' },
     { id: 'timeline.splitAllAtPlayhead', groupId: 'timeline', title: 'Split all at playhead' },
+
+    // Timeline - Обрезка края клипа (простая)
     {
       id: 'timeline.trimToPlayheadLeft',
       groupId: 'timeline',
       title: 'Trim clip start to playhead',
     },
     { id: 'timeline.trimToPlayheadRight', groupId: 'timeline', title: 'Trim clip end to playhead' },
+
+    // Timeline - Обрезка со смещением (ripple)
     {
       id: 'timeline.rippleTrimLeft',
       groupId: 'timeline',
@@ -324,6 +328,8 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
       groupId: 'timeline',
       title: 'Advanced ripple trim end',
     },
+
+    // Timeline - Вырезание таймлайна
     { id: 'timeline.rippleDelete', groupId: 'timeline', title: 'Ripple delete' },
     {
       id: 'timeline.rippleDeleteSelectedClipRange',
@@ -365,6 +371,18 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
       title: 'Move selected clips right (large step)',
     },
 
+    // Timeline - Параметры клипов
+    {
+      id: 'timeline.copyClipParameters',
+      groupId: 'timeline',
+      title: 'Copy clip parameters',
+    },
+    {
+      id: 'timeline.pasteClipParameters',
+      groupId: 'timeline',
+      title: 'Paste clip parameters',
+    },
+
     // Timeline - Режимы snapping и drag
     { id: 'timeline.selectSnapModeSnap', groupId: 'timeline', title: 'Switch to clip snapping' },
     { id: 'timeline.selectSnapModeNoSnap', groupId: 'timeline', title: 'Switch to no snapping' },
@@ -377,21 +395,17 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     },
     { id: 'timeline.selectDragModeSlip', groupId: 'timeline', title: 'Switch to slip mode' },
 
-    // Timeline - Тогглы клипов
+    // Timeline - Тогглы клипа
     { id: 'timeline.toggleDisableClip', groupId: 'timeline', title: 'Disable / Enable clip' },
     { id: 'timeline.toggleMuteClip', groupId: 'timeline', title: 'Mute / Unmute clip' },
-    {
-      id: 'timeline.toggleLockClip',
-      groupId: 'timeline',
-      title: 'Toggle lock clip',
-    },
+    { id: 'timeline.toggleLockClip', groupId: 'timeline', title: 'Toggle lock clip' },
     {
       id: 'timeline.toggleFreezeFrame',
       groupId: 'timeline',
       title: 'Toggle clip freeze frame',
     },
 
-    // Timeline - Тогглы дорожек
+    // Timeline - Тогглы дорожки
     {
       id: 'timeline.toggleVisibilityTrack',
       groupId: 'timeline',
@@ -399,23 +413,7 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     },
     { id: 'timeline.toggleMuteTrack', groupId: 'timeline', title: 'Mute / Unmute audio track' },
     { id: 'timeline.toggleSoloTrack', groupId: 'timeline', title: 'Solo / Unsolo audio track' },
-    {
-      id: 'timeline.toggleLockTrack',
-      groupId: 'timeline',
-      title: 'Toggle lock track',
-    },
-
-    // Timeline - Параметры клипов
-    {
-      id: 'timeline.copyClipParameters',
-      groupId: 'timeline',
-      title: 'Copy clip parameters',
-    },
-    {
-      id: 'timeline.pasteClipParameters',
-      groupId: 'timeline',
-      title: 'Paste clip parameters',
-    },
+    { id: 'timeline.toggleLockTrack', groupId: 'timeline', title: 'Toggle lock track' },
 
     // Timeline - Вейвформа и миниатюры
     {
@@ -483,30 +481,32 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     { id: 'timeline.ungroupClips', groupId: 'timeline', title: 'Ungroup clips' },
 
     // Monitor - Навигация и шаги
+    { id: 'playback.toStart', groupId: 'monitor', title: 'Go to start' },
+    { id: 'playback.toEnd', groupId: 'monitor', title: 'Go to end' },
     { id: 'playback.stepForward', groupId: 'monitor', title: 'Step forward' },
     { id: 'playback.stepBackward', groupId: 'monitor', title: 'Step backward' },
     { id: 'playback.stepForwardLarge', groupId: 'monitor', title: 'Step forward (large)' },
     { id: 'playback.stepBackwardLarge', groupId: 'monitor', title: 'Step backward (large)' },
-    { id: 'playback.toStart', groupId: 'monitor', title: 'Go to start' },
-    { id: 'playback.toEnd', groupId: 'monitor', title: 'Go to end' },
 
-    // Monitor - Скорости воспроизведения (от частых к редким)
+    // Monitor - Скорости воспроизведения (по нарастающей)
+    { id: 'playback.forward0_5', groupId: 'monitor', title: 'Forward 0.5x' },
+    { id: 'playback.backward0_5', groupId: 'monitor', title: 'Backward 0.5x' },
+    { id: 'playback.forward0_75', groupId: 'monitor', title: 'Forward 0.75x' },
+    { id: 'playback.backward0_75', groupId: 'monitor', title: 'Backward 0.75x' },
+    { id: 'playback.forward1_25', groupId: 'monitor', title: 'Forward 1.25x' },
+    { id: 'playback.backward1_25', groupId: 'monitor', title: 'Backward 1.25x' },
     { id: 'playback.forward1_5', groupId: 'monitor', title: 'Forward 1.5x' },
     { id: 'playback.backward1_5', groupId: 'monitor', title: 'Backward 1.5x' },
+    { id: 'playback.forward1_75', groupId: 'monitor', title: 'Forward 1.75x' },
+    { id: 'playback.backward1_75', groupId: 'monitor', title: 'Backward 1.75x' },
     { id: 'playback.forward2', groupId: 'monitor', title: 'Forward 2x' },
     { id: 'playback.backward2', groupId: 'monitor', title: 'Backward 2x' },
     { id: 'playback.forward3', groupId: 'monitor', title: 'Forward 3x' },
     { id: 'playback.backward3', groupId: 'monitor', title: 'Backward 3x' },
     { id: 'playback.forward5', groupId: 'monitor', title: 'Forward 5x' },
     { id: 'playback.backward5', groupId: 'monitor', title: 'Backward 5x' },
-    { id: 'playback.forward1_25', groupId: 'monitor', title: 'Forward 1.25x' },
-    { id: 'playback.backward1_25', groupId: 'monitor', title: 'Backward 1.25x' },
-    { id: 'playback.forward1_75', groupId: 'monitor', title: 'Forward 1.75x' },
-    { id: 'playback.backward1_75', groupId: 'monitor', title: 'Backward 1.75x' },
-    { id: 'playback.forward0_75', groupId: 'monitor', title: 'Forward 0.75x' },
-    { id: 'playback.backward0_75', groupId: 'monitor', title: 'Backward 0.75x' },
-    { id: 'playback.forward0_5', groupId: 'monitor', title: 'Forward 0.5x' },
-    { id: 'playback.backward0_5', groupId: 'monitor', title: 'Backward 0.5x' },
+
+    // Monitor - Плавное изменение скорости
     { id: 'playback.speedUpForward', groupId: 'monitor', title: 'Speed up (forward)' },
     { id: 'playback.speedDown', groupId: 'monitor', title: 'Slow down' },
   ],
