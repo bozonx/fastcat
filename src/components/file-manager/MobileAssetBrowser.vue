@@ -187,7 +187,7 @@ const selectedEntryPath = computed<string | null>(() => {
       @touch-end="onTouchEnd"
     />
 
-    <!-- Properties Drawer (шторка) -->
+    <!-- Properties Drawer (sheet) -->
     <MobileFileBrowserDrawer
       :is-open="isDrawerOpen"
       :is-selection-mode="isSelectionMode"

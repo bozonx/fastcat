@@ -150,7 +150,7 @@ function handlePasteToTrack() {
         @click="deleteGap"
       />
 
-      <!-- Разделитель после действия гэпа -->
+      <!-- Divider after the gap action -->
       <div
         v-if="isGapMode"
         :class="
@@ -200,7 +200,7 @@ function handlePasteToTrack() {
         "
       />
 
-      <!-- 2. Active/disabled (дорожку) -->
+      <!-- 2. Active/disabled (track) -->
       <MobileDrawerToolbarButton
         v-if="selectedTrack?.kind === 'video'"
         :icon="selectedTrack?.videoHidden ? 'i-heroicons-eye-slash' : 'i-heroicons-eye'"
@@ -208,7 +208,7 @@ function handlePasteToTrack() {
         @click="toggleTrackVideoHidden"
       />
 
-      <!-- 3. Mute (дорожку) -->
+      <!-- 3. Mute (track) -->
       <MobileDrawerToolbarButton
         :icon="
           selectedTrack?.audioMuted ? 'i-heroicons-speaker-x-mark' : 'i-heroicons-speaker-wave'
@@ -217,28 +217,28 @@ function handlePasteToTrack() {
         @click="toggleTrackMute"
       />
 
-      <!-- 4. Solo (дорожку) -->
+      <!-- 4. Solo (track) -->
       <MobileDrawerToolbarButton
         icon="i-heroicons-musical-note"
         :active="selectedTrack?.audioSolo"
         @click="toggleTrackSolo"
       />
 
-      <!-- 5. Locked (дорожку) -->
+      <!-- 5. Locked (track) -->
       <MobileDrawerToolbarButton
         :icon="selectedTrack?.locked ? 'i-heroicons-lock-open' : 'i-heroicons-lock-closed'"
         :active="selectedTrack?.locked"
         @click="toggleTrackLock"
       />
 
-      <!-- 6. Переименовать (дорожку) -->
+      <!-- 6. Rename (track) -->
       <MobileDrawerToolbarButton
         icon="i-heroicons-pencil-square"
         :label="t('common.rename')"
         @click="isTrackRenameOpen = true"
       />
 
-      <!-- 7. Удалить дорожку -->
+      <!-- 7. Delete track -->
       <MobileDrawerToolbarButton icon="i-heroicons-trash" @click="requestDeleteTrack" />
     </template>
 

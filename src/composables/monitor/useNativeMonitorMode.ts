@@ -14,37 +14,37 @@ const log = createDevLogger('useNativeMonitorMode');
 
 export type MonitorMode = 'embedded' | 'canvas';
 
-// Дефолтный потолок readback в canvas-режиме во время воспроизведения/интерактива в режиме
-// «Auto» (previewResolution = 0). Дальше — CSS-stretch браузером. Это решающий фактор
-// производительности: GPU→CPU readback + IPC масштабируются как O(w*h). ~960px даёт
-// ~2-3 МБ/кадр вместо 8+ МБ для FullHD. Когда пользователь явно выбрал разрешение превью
-// (previewResolution > 0), потолок берётся из него — см. resolvePlaybackMaxRenderDim.
+// Default readback ceiling in canvas mode during playback/interaction in "Auto" mode
+// (previewResolution = 0). Beyond that the browser CSS-stretches. This is the decisive
+// performance factor: GPU→CPU readback + IPC scale as O(w*h). ~960px yields ~2-3 MB/frame
+// instead of 8+ MB for FullHD. When the user explicitly selects a preview resolution
+// (previewResolution > 0), the ceiling is taken from it — see resolvePlaybackMaxRenderDim.
 const MAX_RENDER_DIM = 960;
 
-// Кэп для «устоявшегося» стоп-кадра (пауза без активного скрабинга/правок): readback тут
-// единичный, поэтому рендерим в реальном разрешении экрана (layout*dpr, без CSS-апскейла),
-// чтобы края текста/бордера/шейпов были чёткими — как в export-качестве по ultra-дебаунсу.
-// Ограничиваем сверху, чтобы не гонять readback 8K на огромных панелях без нужды.
+// Cap for a "settled" still frame (paused with no active scrubbing/edits): readback here is
+// a one-off, so we render at the real screen resolution (layout*dpr, no CSS upscaling),
+// keeping text/border/shape edges crisp — like export quality via the ultra debounce.
+// Capped above to avoid running 8K readback on huge panels unnecessarily.
 const MAX_STILL_RENDER_DIM = 3840;
 
-// true → still-frame рендерится без 960-кэпа (в полном разрешении). Флаг выставляет мост
-// (useNativeMonitorBridge) синхронно с тем же ultra-дебаунсом, что поднимает качество
-// эффектов на устоявшейся паузе; сбрасывается на время воспроизведения и интерактива.
+// true → the still frame is rendered without the 960-cap (at full resolution). The flag is
+// set by the bridge (useNativeMonitorBridge) in sync with the same ultra debounce that raises
+// effect quality on a settled pause; reset during playback and interaction.
 export const stillFrameFullRes = ref(false);
 
 /**
- * Глобальный (на модуль) реактивный режим монитора. В Tauri-панели по умолчанию
- * используем canvas stream; отдельное native-окно открывается явной командой.
+ * Global (module-level) reactive monitor mode. In the Tauri panel we default to canvas
+ * stream; a separate native window is opened via an explicit command.
  */
 const mode = ref<MonitorMode>('canvas');
 
 /**
- * Потолок длинной стороны readback-таргета для НЕ-устоявшегося кадра (воспроизведение или
- * интерактивный скрабинг). Уважает явный выбор пользователя в меню «Разрешение превью»
- * (`previewResolution` — доля отображаемых пикселей: 1 = полное, 0.5 = половина и т.д.),
- * иначе (Auto = 0) держит дешёвый дефолт MAX_RENDER_DIM. Сверху всё равно ограничено
- * реальными отображаемыми пикселями и MAX_STILL_RENDER_DIM — рендерить больше, чем видно
- * на экране, смысла нет. Устоявшийся стоп-кадр этот путь минует (полное разрешение).
+ * Ceiling for the long edge of the readback target for a NOT-settled frame (playback or
+ * interactive scrubbing). Respects the user's explicit choice in the "Preview resolution"
+ * menu (`previewResolution` — fraction of displayed pixels: 1 = full, 0.5 = half, etc.),
+ * otherwise (Auto = 0) keeps the cheap default MAX_RENDER_DIM. Still capped above by the
+ * real displayed pixels and MAX_STILL_RENDER_DIM — there is no point rendering more than is
+ * visible on screen. A settled still frame bypasses this path (full resolution).
  */
 export function resolvePlaybackMaxRenderDim(params: {
   displayLongEdgePx: number;
@@ -92,11 +92,11 @@ export function useMonitorMode() {
 }
 
 /**
- * Связывает состояние `mode` с нативной стороной: шлёт `monitor_set_mode`,
- * управляет подпиской на стрим RGBA-кадров и рисует их на переданном `<canvas>`.
+ * Links the `mode` state to the native side: sends `monitor_set_mode`, manages the
+ * RGBA frame stream subscription, and draws the frames onto the provided `<canvas>`.
  *
- * Передавать сюда нужно ref на CANVAS элемент (не div). Canvas должен быть видим в режиме
- * `canvas` и иметь pixel size = его CSS size * devicePixelRatio (мы сами выставляем).
+ * Pass a ref to a CANVAS element (not a div). The canvas must be visible in `canvas`
+ * mode and have a pixel size = its CSS size * devicePixelRatio (we set it ourselves).
  */
 export function useNativeMonitorCanvas(canvasRef: Ref<HTMLCanvasElement | null>): void {
   if (!isTauriRuntime()) return;
@@ -105,7 +105,7 @@ export function useNativeMonitorCanvas(canvasRef: Ref<HTMLCanvasElement | null>)
 
   let unsubChannel: (() => void) | null = null;
   let disposed = false;
-  // Кешируем 2D-контекст: getContext на каждый кадр стрима — лишняя работа.
+  // Cache the 2D context: calling getContext on every stream frame is wasteful.
   let ctx2d: CanvasRenderingContext2D | null = null;
   let ctxEl: HTMLCanvasElement | null = null;
   let ro: ResizeObserver | null = null;
@@ -125,16 +125,16 @@ export function useNativeMonitorCanvas(canvasRef: Ref<HTMLCanvasElement | null>)
     }
   }
 
-  // Размер canvas (drawing buffer) в физ. пикселях. CSS-размер задаётся стилями и
-  // может отличаться — браузер растянет/сожмёт буфер. Это критично для производительности.
+  // Canvas (drawing buffer) size in physical pixels. The CSS size is set by styles and may
+  // differ — the browser will stretch/compress the buffer. This is critical for performance.
   function syncCanvasSize(): void {
     const el = canvasRef.value;
     if (!el) return;
     const layoutWidth = el.offsetWidth || el.clientWidth || el.getBoundingClientRect().width;
     const layoutHeight = el.offsetHeight || el.clientHeight || el.getBoundingClientRect().height;
     const dpr = window.devicePixelRatio || 1;
-    // Устоявшийся стоп-кадр → полное разрешение экрана; иначе (воспроизведение/скрабинг) —
-    // потолок из выбранного пользователем «Разрешения превью» (Auto → дешёвый дефолт).
+    // Settled still frame → full screen resolution; otherwise (playback/scrubbing) the
+    // ceiling from the user-selected "Preview resolution" (Auto → cheap default).
     const maxRenderDim = stillFrameFullRes.value
       ? MAX_STILL_RENDER_DIM
       : resolvePlaybackMaxRenderDim({
@@ -167,7 +167,7 @@ export function useNativeMonitorCanvas(canvasRef: Ref<HTMLCanvasElement | null>)
     const view = new DataView(buffer);
     const width = view.getUint32(0, true);
     const height = view.getUint32(4, true);
-    // Защита от обрезанного/битого кадра: иначе Uint8ClampedArray(...) бросит RangeError.
+    // Guard against a truncated/corrupt frame: otherwise Uint8ClampedArray(...) throws RangeError.
     const expectedBytes = 8 + width * height * 4;
     if (width === 0 || height === 0 || buffer.byteLength < expectedBytes) return;
     const pixels = new Uint8ClampedArray(buffer, 8, width * height * 4);
@@ -186,7 +186,7 @@ export function useNativeMonitorCanvas(canvasRef: Ref<HTMLCanvasElement | null>)
     if (isNativeMonitorDisabled()) return;
     const channel = new Channel<ArrayBuffer>();
     channel.onmessage = (data) => {
-      // Tauri отдаёт InvokeResponseBody::Raw как ArrayBuffer на стороне JS.
+      // Tauri returns InvokeResponseBody::Raw as an ArrayBuffer on the JS side.
       if (data instanceof ArrayBuffer) {
         drawFrame(data);
       } else if (ArrayBuffer.isView(data)) {
@@ -251,14 +251,14 @@ export function useNativeMonitorCanvas(canvasRef: Ref<HTMLCanvasElement | null>)
     ro.observe(el);
   }
 
-  // Переход «устоявшаяся пауза ↔ интерактив» и смена выбранного «Разрешения превью» меняют
-  // потолок readback → пересобираем размер таргета. На паузе SetCanvasSize на нативной
-  // стороне сам перерисует кадр.
+  // The "settled pause ↔ interactive" transition and a change of the selected "Preview
+  // resolution" change the readback ceiling → rebuild the target size. While paused,
+  // SetCanvasSize on the native side redraws the frame itself.
   watch([stillFrameFullRes, () => projectStore.activeMonitor?.previewResolution], () => {
     if (mode.value === 'canvas') syncCanvasSize();
   });
 
-  // Реактивно подстраиваем canvas size при resize.
+  // Reactively adjust the canvas size on resize.
   onMounted(() => {
     observeCanvas();
   });
@@ -283,7 +283,7 @@ export function useNativeMonitorCanvas(canvasRef: Ref<HTMLCanvasElement | null>)
 }
 
 /**
- * Computed для UI: в каком режиме сейчас, чтобы скрыть/показать <canvas>.
+ * Computed for the UI: which mode we're in, to hide/show the <canvas>.
  */
 export const isCanvasMode = computed(() => mode.value === 'canvas');
 export const isEmbeddedMode = computed(() => mode.value === 'embedded');

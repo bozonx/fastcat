@@ -34,16 +34,17 @@ interface NativeAudioTrackSelection {
 }
 
 const NATIVE_TIME_STORE_SYNC_MS = 50;
-// Во время воспроизведения мелкие правки currentTime (в пределах этого окна) считаем
-// шумом локального тика, а не реальным seek'ом — иначе натив дёргался бы на каждый тик
-// мастер-клока. Крупные прыжки (drag playhead) — реальная перемотка.
+// During playback, small currentTime adjustments (within this window) are treated as
+// local-tick noise rather than a real seek — otherwise the native side would jump on every
+// master-clock tick. Large jumps (playhead drag) are treated as a real seek.
 const PLAYING_SEEK_IGNORE_US = 200_000;
-// После любого интерактивного действия на паузе (скрабинг, drag параметров клипа —
-// трансформации/эффекты/переходы, момент остановки воспроизведения) кадр сначала
-// рендерится в выбранном пользователем качестве (дёшево, без лагов), а на ultra
-// пересобирается лишь когда активность утихла на это время. 500мс — компромисс: длиннее
-// 250мс, чтобы не сработать посреди серии мелких правок слайдера, и заметно отзывчивее
-// секунды (чёткий кадр появляется почти сразу после того, как пользователь остановился).
+// After any interactive action while paused (scrubbing, dragging clip parameters —
+// transforms/effects/transitions, the moment playback stops), the frame is first rendered
+// in the user-selected quality (cheap, no lag), and only rebuilt in ultra once activity has
+// settled for this long. 500ms is a compromise: longer than 250ms so it doesn't fire in the
+// middle of a series of small slider tweaks, and noticeably more responsive than a second
+// (a sharp frame appears almost immediately after the user stops).
+const ULTRA_SETTLE_DELAY_MS = 500;
 const ULTRA_SETTLE_DELAY_MS = 500;
 
 export function isNativeMonitorSceneReady(params: {
@@ -125,13 +126,13 @@ export function resolveNativeAudioTrackSelection(params: {
 }
 
 /**
- * Привязка таймлайна к нативному мульти-слойному монитору.
+ * Binds the timeline to the native multi-layer monitor.
  *
- *   - сцена = снапшот всех video/image клипов; z = trackIndex (выше — поверх);
- *   - opacity = clip.opacity * (1 - transitions/masks?), пока берём только per-clip opacity;
- *   - на каждое значимое изменение шлём `monitor_set_scene`;
- *   - транспорт (play/pause/seek) — отдельные команды по timeline-PTS;
- *   - master clock — натив, эмитит timeline-time в `monitor:time`.
+ *   - scene = a snapshot of all video/image clips; z = trackIndex (higher = on top);
+ *   - opacity = clip.opacity * (1 - transitions/masks?), for now only per-clip opacity is used;
+ *   - every significant change sends `monitor_set_scene`;
+ *   - transport (play/pause/seek) — separate commands by timeline-PTS;
+ *   - master clock is native, it emits timeline-time in `monitor:time`.
  */
 export function useNativeMonitorBridge(): void {
   if (!isTauriRuntime()) return;
@@ -169,12 +170,12 @@ export function useNativeMonitorBridge(): void {
   // first fraction of a second (the "audio plays twice" on 4K). Cleared on the
   // first native sync, after which the normal anchor-deviation logic takes over.
   let awaitingFirstNativeTime = false;
-  // Монотонный токен сборки сцены: buildScene() — async, и без него медленная сборка,
-  // стартовавшая раньше, могла бы завершиться позже и отправить устаревшую сцену поверх свежей.
+  // Monotonic scene-build token: buildScene() is async, and without it a slower build started
+  // earlier could finish later and overwrite a fresh scene with a stale one.
   let sceneBuildSeq = 0;
-  // Кадр «устоялся» (нет активного скрабинга/правок) → можно рендерить ultra. На время
-  // интерактива ставится false, и сцена строится в выбранном пользователем качестве; по
-  // дебаунсу флаг возвращается в true и сцена пересобирается в ultra. См. ULTRA_SETTLE_DELAY_MS.
+  // The frame has "settled" (no active scrubbing/edits) → ultra rendering is allowed. During
+  // interaction this is set to false and the scene is built in the user-selected quality; once
+  // debounced, the flag returns to true and the scene is rebuilt in ultra. See ULTRA_SETTLE_DELAY_MS.
   let idleSettled = true;
   let ultraSettleTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -185,19 +186,19 @@ export function useNativeMonitorBridge(): void {
     }
   }
 
-  // Полное разрешение readback имеет смысл только на устоявшемся стоп-кадре: на паузе и без
-  // активного интерактива. В остальных состояниях держим 960-кэп (см. useNativeMonitorMode).
+  // Full-resolution readback only makes sense on a settled still frame: paused and with no
+  // active interaction. In other states we keep the 960-cap (see useNativeMonitorMode).
   function updateStillFrameFullRes(): void {
     stillFrameFullRes.value = !timelineStore.isPlaying && idleSettled;
   }
-  // Начальное состояние: свежезагруженный проект на паузе уже «устоявшийся» (idleSettled=true),
-  // поэтому первый статичный кадр должен строиться в полном разрешении — как и ultra-качество.
+  // Initial state: a freshly loaded project on pause is already "settled" (idleSettled=true),
+  // so the first still frame should be built at full resolution — just like ultra quality.
   updateStillFrameFullRes();
 
-  // Открывает интерактивное окно: кадр считается «не устоявшимся» (рендерится в выбранном
-  // качестве), а через ULTRA_SETTLE_DELAY_MS бездействия сцена пересобирается в ultra.
-  // Возвращает true, если флаг только что сменился с settled → interactive (вызывающему стоит
-  // сразу отправить сцену пониженного качества — например при старте скрабинга).
+  // Opens an interactive window: the frame is considered "not settled" (rendered in the selected
+  // quality), and after ULTRA_SETTLE_DELAY_MS of inactivity the scene is rebuilt in ultra.
+  // Returns true if the flag just flipped from settled → interactive (the caller should send a
+  // reduced-quality scene immediately — e.g. when scrubbing starts).
   function beginInteractiveWindow(): boolean {
     const wasSettled = idleSettled;
     idleSettled = false;
@@ -285,7 +286,7 @@ export function useNativeMonitorBridge(): void {
         return;
       }
       const scene = await buildScene();
-      // Более новая сборка обогнала нас — выходим, чтобы не затереть свежую сцену.
+      // A newer build overtook us — exit so we don't clobber the fresh scene.
       if (disposed || seq !== sceneBuildSeq) return;
       if (isNativeMonitorDisabled()) return;
       const json = JSON.stringify(scene);
@@ -356,9 +357,9 @@ export function useNativeMonitorBridge(): void {
     }, delayMs);
   }
 
-  // Сцена меняется при правках треков/клипов и формата.
-  // Наблюдаем только tracks + format (не весь doc), чтобы не гонять IPC на каждое
-  // изменение waveform-данных или UI-полей, не влияющих на рендер.
+  // The scene changes on edits to tracks/clips and the format.
+  // We watch only tracks + format (not the whole doc) to avoid firing IPC on every
+  // change to waveform data or UI fields that don't affect rendering.
   watch(
     [
       nativeMonitorTracks,
@@ -371,9 +372,9 @@ export function useNativeMonitorBridge(): void {
       () => projectStore.activeMonitor?.previewBlurQuality,
     ],
     () => {
-      // Правки клипа (трансформации/эффекты/переходы) и т.п. — интерактив: пересобираем
-      // сцену сразу в выбранном пользователем качестве (видно изменение без лагов), а ultra
-      // откладываем до конца серии правок (см. beginInteractiveWindow).
+      // Clip edits (transforms/effects/transitions) etc. are interactive: rebuild the
+      // scene immediately in the user-selected quality (the change is visible without lag),
+      // and defer ultra until the end of the edit series (see beginInteractiveWindow).
       beginInteractiveWindow();
       void syncScene();
     },
@@ -404,13 +405,13 @@ export function useNativeMonitorBridge(): void {
         // Native start is deferred until decoders warm up; suppress seek-detection
         // until it confirms by emitting the first `monitor:time` (see flag docs).
         awaitingFirstNativeTime = true;
-        // Во время воспроизведения качество и так пользовательское — отложенный ultra-кадр
-        // не нужен (и шумел бы лишним IPC). Разрешение тоже возвращаем к 960-кэпу.
+        // During playback the quality is already user-selected — a deferred ultra frame is
+        // unnecessary (and would add noisy IPC). Resolution also returns to the 960-cap.
         cancelUltraSettle();
         updateStillFrameFullRes();
       } else {
         awaitingFirstNativeTime = false;
-        // Остановка — тоже интерактив: показываем кадр в выбранном качестве, ultra по дебаунсу.
+        // Stopping is interactive too: show the frame in the selected quality; ultra on debounce.
         beginInteractiveWindow();
       }
       if (isNativeMonitorDisabled()) return;
@@ -425,10 +426,10 @@ export function useNativeMonitorBridge(): void {
     },
   );
 
-  // Глобальная скорость воспроизведения (мультипликатор таймлайн-времени). Натив —
-  // мастер-клок, он сам разгоняет/тормозит/реверсирует время и аудио по этой команде.
-  // immediate: держим нативную скорость в синхроне с момента маунта (даже на паузе),
-  // чтобы старт воспроизведения сразу шёл на нужной скорости.
+  // Global playback speed (multiplier of timeline time). The native side is the
+  // master clock — it speeds up/slows down/reverses time and audio per this command.
+  // immediate: keep the native speed in sync from mount onward (even when paused),
+  // so playback starts at the right speed immediately.
   watch(
     () => timelineStore.playbackSpeed,
     (speed) => {
@@ -446,7 +447,7 @@ export function useNativeMonitorBridge(): void {
     { immediate: true },
   );
 
-  // Manual seek (когда не подавлено апдейтом от натива).
+  // Manual seek (when not suppressed by a native update).
   let seekThrottleId: ReturnType<typeof setTimeout> | null = null;
   let pendingSeekTimeSec = 0;
   let lastSeekTimeSec = 0;
@@ -484,9 +485,10 @@ export function useNativeMonitorBridge(): void {
 
       if (isNativeMonitorDisabled()) return;
 
-      // Скрабинг на паузе — интерактив: рендерим в выбранном качестве, ultra откладываем до
-      // конца перемотки. Если кадр был «устоявшимся» (ultra), сразу шлём сцену пониженного
-      // качества, иначе каждый seek упирался бы в дорогой ultra-рендер (источник тормозов).
+      // Scrubbing while paused is interactive: render in the selected quality and defer ultra
+      // until the end of the scrub. If the frame was "settled" (ultra), send a reduced-quality
+      // scene immediately, otherwise every seek would block on an expensive ultra render (a
+      // source of lag).
       if (!timelineStore.isPlaying && beginInteractiveWindow()) {
         void syncScene();
       }
@@ -521,7 +523,7 @@ export function useNativeMonitorBridge(): void {
     { flush: 'sync' },
   );
 
-  // Натив — мастер-клок: timeline-PTS (секунды) приходят в `monitor:time`.
+  // Native is the master clock: timeline-PTS (seconds) arrive in `monitor:time`.
   const unsubs: UnlistenFn[] = [];
   void onMonitorTime((timelineSec) => {
     if (disposed) return;

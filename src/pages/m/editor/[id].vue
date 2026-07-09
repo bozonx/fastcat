@@ -25,6 +25,7 @@ const projectStore = useProjectStore();
 const workspaceStore = useWorkspaceStore();
 const router = useRouter();
 const route = useRoute();
+const { t } = useI18n();
 const { openProject, leaveProject } = useProjectActions();
 const isOpeningProject = ref(true);
 const projectOpenError = ref<string | null>(null);
@@ -117,7 +118,8 @@ onMounted(async () => {
       }
     }
   } catch (error: unknown) {
-    projectOpenError.value = error instanceof Error ? error.message : 'Failed to open the project';
+    projectOpenError.value =
+      error instanceof Error ? error.message : t('fastcat.projects.openProjectFailedFallback');
   } finally {
     isOpeningProject.value = false;
   }
@@ -203,8 +205,8 @@ const { onDividerPointerDown } = useResizablePanel({
       >
         <Icon name="lucide:loader-circle" class="h-8 w-8 animate-spin text-primary-400" />
         <div>
-          <p class="text-sm font-medium text-ui-text">Opening project</p>
-          <p class="text-xs text-ui-text-muted">Preparing timeline, media, and mobile workspace</p>
+          <p class="text-sm font-medium text-ui-text">{{ t('fastcat.projects.openingProject') }}</p>
+          <p class="text-xs text-ui-text-muted">{{ t('fastcat.projects.preparingProjectMobile') }}</p>
         </div>
       </div>
 
@@ -213,14 +215,14 @@ const { onDividerPointerDown } = useResizablePanel({
         class="flex h-full flex-col items-center justify-center gap-4 px-6 text-center"
       >
         <div class="max-w-sm rounded-2xl border border-red-500/20 bg-red-500/10 p-5 text-red-200">
-          <p class="text-sm font-semibold">Failed to open project</p>
+          <p class="text-sm font-semibold">{{ t('fastcat.projects.failedToOpenProject') }}</p>
           <p class="mt-2 text-xs text-red-200/80">{{ projectOpenError }}</p>
         </div>
         <UButton
           color="neutral"
           variant="soft"
           icon="lucide:arrow-left"
-          label="Back"
+          :label="t('common.back')"
           @click="handleBack"
         />
       </div>

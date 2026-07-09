@@ -423,7 +423,7 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
     }[] = [];
     const clip = options.clip.value;
 
-    // 1. Копировать параметры
+    // 1. Copy parameters
     list.push({
       id: 'copy-parameters',
       label: t('fastcat.clip.parameters.copy'),
@@ -433,7 +433,7 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
       },
     });
 
-    // 2. Вставить параметры
+    // 2. Paste parameters
     list.push({
       id: 'paste-parameters',
       label: t('fastcat.clip.parameters.paste'),
@@ -444,7 +444,7 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
       },
     });
 
-    // 3. Переименовать
+    // 3. Rename
     list.push({
       id: 'rename',
       label: t('common.rename'),
@@ -454,7 +454,7 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
       },
     });
 
-    // 4. Скорость
+    // 4. Speed
     if (clipSupportsSpeedControls({ kind: options.trackKind.value }, clip)) {
       list.push({
         id: 'speed',
@@ -467,7 +467,7 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
       });
     }
 
-    // 4. Реверс
+    // 4. Reverse
     if (clipSupportsReverseControls({ kind: options.trackKind.value }, clip)) {
       list.push({
         id: 'reverse-speed',
@@ -483,7 +483,7 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
       });
     }
 
-    // 5. Заморозить клип / Сбросить заморозку
+    // 5. Freeze clip / Reset freeze
     if (isMediaVideoClip.value && !hasFreezeFrame.value) {
       const playheadUs = timelineStore.currentTime;
       const clipStartUs = clip.timelineRange.startUs;
@@ -507,7 +507,7 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
       });
     }
 
-    // 6. Автомонтаж
+    // 6. Auto montage
     if (clip.clipType === 'media' && options.inDevelopmentFeaturesEnabled?.value) {
       list.push({
         id: 'autoMontage',
@@ -518,7 +518,7 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
       });
     }
 
-    // 7. Вынести аудио на аудио дорожку
+    // 7. Extract audio to an audio track
     if (canExtractAudio.value) {
       list.push({
         id: 'extractAudio',
@@ -528,7 +528,7 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
       });
     }
 
-    // 8. Показать в файловом менеджере
+    // 8. Show in file manager
     if (clip.clipType === 'media') {
       list.push({
         id: 'showInFileManager',
@@ -538,7 +538,7 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
       });
     }
 
-    // 9. Замена медиа
+    // 9. Replace media
     if (clip.clipType === 'media') {
       list.push({
         id: 'replaceMedia',
@@ -548,9 +548,9 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
       });
     }
 
-    // --- Остальные действия (если применимы) ---
+    // --- Remaining actions (if applicable) ---
 
-    // Привязать к сетке (Quantize)
+    // Snap to grid (Quantize)
     if (isFreePosition.value) {
       list.push({
         id: 'quantize',
@@ -560,7 +560,7 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
       });
     }
 
-    // Удалить из группы
+    // Remove from group
     if (isInLinkedGroup.value) {
       list.push({
         id: 'removeFromGroup',
@@ -570,7 +570,7 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
       });
     }
 
-    // Перейти к вложенному таймлайну
+    // Go to nested timeline
     if (clip.clipType === 'timeline') {
       list.push({
         id: 'goToTimeline',
@@ -580,7 +580,7 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
       });
     }
 
-    // Показать полную/половинную вейвформу
+    // Show full/half waveform
     if (hasAudio.value) {
       list.push({
         id: 'toggleAudioWaveformMode',
@@ -593,7 +593,7 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
       });
     }
 
-    // Скрыть/показать вейвформу
+    // Hide/show waveform
     if (
       (options.trackKind.value === 'video' || options.trackKind.value === 'audio') &&
       hasAudio.value
@@ -609,7 +609,7 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
       });
     }
 
-    // Скрыть/показать миниатюры (only for media/timeline video clips)
+    // Hide/show thumbnails (only for media/timeline video clips)
     if (
       options.trackKind.value === 'video' &&
       clip.clipType !== 'adjustment' &&

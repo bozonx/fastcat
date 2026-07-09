@@ -79,10 +79,10 @@ const canInteractPlayback = computed(
 );
 
 const statusText = computed(() => {
-  if (loadError.value) return 'Preview failed';
-  if (isLoading.value) return 'Preparing preview';
-  if (videoItems.value.length === 0) return 'Add media to preview it here';
-  return props.mode === 'sound' ? 'Sound view' : 'Preview';
+  if (loadError.value) return t('fastcat.monitor.previewFailed');
+  if (isLoading.value) return t('fastcat.monitor.preparingPreview');
+  if (videoItems.value.length === 0) return t('fastcat.monitor.addMediaToPreview');
+  return props.mode === 'sound' ? t('fastcat.monitor.soundView') : t('fastcat.monitor.previewIdle');
 });
 
 const workspaceStore = useWorkspaceStore();

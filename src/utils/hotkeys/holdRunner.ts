@@ -35,7 +35,7 @@ export function createHotkeyHoldRunner() {
     const delayMs = params.delayMs ?? 350;
     const intervalMs = params.intervalMs ?? 60;
 
-    // Выполняем действие сразу при нажатии
+    // Run the action immediately on keydown
     params.action();
 
     state.holdTimeout = window.setTimeout(() => {

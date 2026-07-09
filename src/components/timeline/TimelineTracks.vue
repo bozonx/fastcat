@@ -692,7 +692,7 @@ watch(
 </template>
 
 <style scoped>
-/* Псевдоэлементы для подсветки выбора трека вместо лишних DOM-узлов */
+/* Pseudo-elements for track selection highlight instead of extra DOM nodes */
 [data-track-id]::before,
 [data-track-id]::after {
   content: '';
@@ -705,7 +705,7 @@ watch(
   border-width: 0;
   border-color: transparent;
 }
-/* Яркая подсветка когда выбран сам трек */
+/* Bright highlight when the track itself is selected */
 .track--directly-selected::before {
   background-color: color-mix(in srgb, var(--color-selection-accent-500) 8%, transparent);
 }
@@ -719,7 +719,7 @@ watch(
   );
 }
 
-/* Мягкая подсветка когда выбран клип на треке */
+/* Soft highlight when a clip on the track is selected */
 .track--visually-selected::after {
   border-top-width: 1px;
   border-bottom-width: 1px;

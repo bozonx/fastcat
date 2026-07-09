@@ -31,7 +31,7 @@ const projectStore = useProjectStore();
 const { resetProjectState } = useProjectActions();
 const { pendingFilesForNewProject } = usePendingNewProjectFiles();
 
-// Сбрасываем состояние открытого проекта при попадании на список
+// Reset the open-project state when landing on the list
 resetProjectState();
 
 onMounted(() => {
@@ -87,7 +87,7 @@ async function onNewProjectFilesSelected(e: Event) {
 
   pendingFilesForNewProject.value = files;
 
-  // Автоопределение параметров на основе первого видео или изображения
+  // Auto-detect parameters based on the first video or image
   const detected = await tryDetectMediaDimensions(files);
 
   const options = {
@@ -123,7 +123,7 @@ async function onNewProjectFilesSelected(e: Event) {
 
 const isSettingsOpen = ref(false);
 
-// Сортировка для основного списка по дате изменения (сначала новые)
+// Sort the main list by modification date (newest first)
 const sortedProjects = computed(() => {
   if (workspaceStore.workspaceProviderId === 'tauri') {
     const query = searchQuery.value.trim().toLowerCase();
@@ -186,7 +186,7 @@ const sortedProjects = computed(() => {
       class="hidden"
       @change="onNewProjectFilesSelected"
     />
-    <!-- Если идет инициализация или загрузка данных воркспейса -->
+    <!-- If workspace initialization or data loading is in progress -->
     <div
       v-if="workspaceStore.isInitializing || workspaceStore.isLoading || isTransitioning"
       class="flex h-full w-full items-center justify-center bg-ui-bg"
@@ -194,7 +194,7 @@ const sortedProjects = computed(() => {
       <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
     </div>
 
-    <!-- Если рабочая область не выбрана -->
+    <!-- If no workspace is selected -->
     <WelcomeScreen
       v-else-if="!workspaceStore.workspaceHandle && workspaceStore.workspaceProviderId !== 'tauri'"
     />
@@ -334,7 +334,7 @@ const sortedProjects = computed(() => {
                 </div>
 
                 <div class="px-5 pt-6 pb-24">
-                  <!-- Если проекты есть -->
+                  <!-- If there are projects -->
                   <div
                     v-if="sortedProjects.length > 0"
                     class="grid grid-cols-1 landscape:grid-cols-2 gap-4"
@@ -435,7 +435,7 @@ const sortedProjects = computed(() => {
                     </UiSwipeableRow>
                   </div>
 
-                  <!-- Если проектов нет -->
+                  <!-- If there are no projects -->
                   <div
                     v-else
                     class="flex flex-col items-center justify-center py-24 text-ui-text-muted gap-8"

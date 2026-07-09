@@ -105,8 +105,8 @@ export function useTimelineRulerPresentation(options: UseTimelineRulerPresentati
     const pxPerFrame = zoomToPxPerSecond(currentZoom) / currentFps;
     if (pxPerFrame < 6) return null;
 
-    // Честная математика: currentTime округляется до целых микросекунд.
-    // Добавляем 0.5 мкс (максимальную погрешность округления) для точного определения кадра.
+    // Exact math: currentTime is rounded to whole microseconds.
+    // Add 0.5 µs (the max rounding error) to determine the frame precisely.
     const currentFrameIndex = Math.floor(
       ((options.currentTime.value + 0.5) * currentFps) / 1_000_000,
     );

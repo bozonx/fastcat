@@ -274,7 +274,7 @@ describe('MobileMonitorContainer', () => {
     });
 
     await wrapper.vm.$nextTick();
-    expect(wrapper.text()).toContain('Add media to preview it here');
+    expect(wrapper.text()).toContain('fastcat.monitor.addMediaToPreview');
   });
 
   it('is disabled when no media and no duration', async () => {

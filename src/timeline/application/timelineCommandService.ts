@@ -346,9 +346,9 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
     if (!targetTrack) throw new Error('Track not found');
 
     const metadata = await deps.getOrFetchMetadataByPath(input.path);
-    // Для картинок (по расширению) допускаем фолбэк: если воркер не смог распарсить
-    // метаданные (например, PNG с альфой / нестандартный формат) — всё равно вставляем
-    // как статичный image-клип с дефолтной длительностью, а не фейлим весь дроп.
+    // For images (by extension) we allow a fallback: if the worker failed to parse
+    // metadata (e.g. PNG with alpha / non-standard format) — we still insert it
+    // as a static image-clip with the default duration instead of failing the whole drop.
     const isImageExt = getMediaTypeFromFilename(input.name || input.path) === 'image';
     if ((!metadata || metadata.error) && !isImageExt) {
       throw new Error('Failed to resolve media metadata');

@@ -127,7 +127,7 @@ async function confirmClearWorkspaceVardata() {
     </div>
 
     <div v-if="isDesktopTauri" class="flex flex-col gap-6">
-      <!-- 1. Папка общих файлов (common) -->
+      <!-- 1. Common files folder -->
       <UiFormField
         v-if="workspaceStore.inDevelopmentFeaturesEnabled"
         :label="t('videoEditor.settings.commonFilesFolder')"
@@ -148,7 +148,7 @@ async function confirmClearWorkspaceVardata() {
         </div>
       </UiFormField>
 
-      <!-- 2. Папка проектов по умолчанию -->
+      <!-- 2. Default projects folder -->
       <UiFormField
         :label="t('videoEditor.settings.defaultProjectsFolder')"
         :help="t('videoEditor.settings.defaultProjectsFolderHelp')"
@@ -168,7 +168,7 @@ async function confirmClearWorkspaceVardata() {
         </div>
       </UiFormField>
 
-      <!-- 3. Папка для прокси-файлов -->
+      <!-- 3. Proxy files folder -->
       <UiFormField
         :label="t('videoEditor.settings.proxiesFolder')"
         :help="t('videoEditor.settings.proxiesFolderHelp')"
@@ -188,7 +188,7 @@ async function confirmClearWorkspaceVardata() {
         </div>
       </UiFormField>
 
-      <!-- Информационный блок о системных путях и кэше -->
+      <!-- Info block about system paths and cache -->
       <div class="p-4 rounded-xl border border-ui-border bg-ui-bg-elevated/20 flex flex-col gap-3">
         <div class="text-xs font-bold text-ui-text-muted tracking-wider">
           {{ t('videoEditor.settings.systemPathsTitle') }}

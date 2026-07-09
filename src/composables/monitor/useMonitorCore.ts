@@ -347,7 +347,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
     if (!containerEl.value) return;
     const requestId = ++buildRequestId;
 
-    // Лоадер полностью убран по запросу, чтобы не блокировать превью
+    // Loader fully removed by request, so it doesn't block the preview
 
     loadError.value = null;
 

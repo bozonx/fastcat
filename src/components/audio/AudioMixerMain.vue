@@ -127,7 +127,7 @@ const {
         <UiToggleButton
           :model-value="isMuted"
           size="sm"
-          label="MUTE"
+          :label="t('fastcat.audioMixer.muteMasterLabel')"
           active-color="error"
           inactive-color="primary"
           inactive-variant="soft"

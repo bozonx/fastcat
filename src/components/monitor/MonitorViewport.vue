@@ -49,10 +49,10 @@ const nativeCanvasEl = ref<HTMLCanvasElement | null>(null);
 
 const { mode: monitorMode } = useMonitorMode();
 
-// Бинд нативного child-окна Tauri-монитора к видимой области панели. Vello внутри
-// сам делает letterbox под аспект сцены — здесь даём «холст» без учёта workspace pan/zoom.
+// Bind the native Tauri child monitor window to the panel's visible area. Vello internally
+// letterboxes to the scene aspect ratio — here we provide a "canvas" ignoring workspace pan/zoom.
 useNativeMonitorViewport(viewportEl);
-// Стрим RGBA-кадров → <canvas> в режиме canvas. В embedded режиме no-op.
+// RGBA frame stream → <canvas> in canvas mode. No-op in embedded mode.
 useNativeMonitorCanvas(nativeCanvasEl);
 
 const {

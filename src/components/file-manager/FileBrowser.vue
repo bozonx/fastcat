@@ -209,7 +209,7 @@ async function handleCrossVfsCopyEntry(params: { source: FsEntry; targetDirPath:
 
 async function handleCrossVfsMoveEntry(params: { source: FsEntry; targetDirPath: string }) {
   if (params.source.source === 'remote') {
-    // User requested: "ладно, пока move не делаем, только копирование"
+    // User requested: "ok, no move for now, copy only"
     return await handleCrossVfsCopyEntry(params);
   }
   return await moveEntry(params);

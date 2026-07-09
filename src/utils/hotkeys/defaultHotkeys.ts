@@ -167,7 +167,7 @@ export interface HotkeyRegistry {
 
 export const DEFAULT_HOTKEYS: HotkeyRegistry = {
   commands: [
-    // General - Часто используемые операции редактирования
+    // General - Common editing operations
     { id: 'general.copy', groupId: 'general', title: 'Copy' },
     { id: 'general.cut', groupId: 'general', title: 'Cut' },
     { id: 'general.paste', groupId: 'general', title: 'Paste' },
@@ -180,21 +180,21 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     { id: 'general.focus', groupId: 'general', title: 'Focus / Search' },
     { id: 'general.rename', groupId: 'general', title: 'Rename' },
 
-    // General - Масштаб и полноэкранный режим
+    // General - Zoom and fullscreen
     { id: 'general.fullscreen', groupId: 'general', title: 'Toggle fullscreen' },
     { id: 'general.zoomIn', groupId: 'general', title: 'Zoom in' },
     { id: 'general.zoomOut', groupId: 'general', title: 'Zoom out' },
     { id: 'general.zoomReset', groupId: 'general', title: 'Reset zoom' },
     { id: 'general.zoomFit', groupId: 'general', title: 'Fit to window' },
 
-    // General - Переключение видов (View)
+    // General - View switching
     { id: 'general.switchViewFiles', groupId: 'general', title: 'Switch to Files' },
     { id: 'general.switchViewCut', groupId: 'general', title: 'Switch to Cut' },
     { id: 'general.switchViewSound', groupId: 'general', title: 'Switch to Sound' },
     { id: 'general.switchViewEffects', groupId: 'general', title: 'Switch to Effects' },
     { id: 'general.switchViewExport', groupId: 'general', title: 'Switch to Export' },
 
-    // General - Табы проекта
+    // General - Project tabs
     { id: 'general.projectTabFiles', groupId: 'general', title: 'Switch to Files tab' },
     { id: 'general.projectTabHistory', groupId: 'general', title: 'Switch to History tab' },
     { id: 'general.projectTabEffects', groupId: 'general', title: 'Switch to Effects tab' },
@@ -202,7 +202,7 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     { id: 'general.projectTabMarkers', groupId: 'general', title: 'Switch to Markers tab' },
     { id: 'general.projectTabBackups', groupId: 'general', title: 'Switch to Backups tab' },
 
-    // General - Табы таймлайна
+    // General - Timeline tabs
     { id: 'general.tab1', groupId: 'general', title: 'Switch to timeline tab 1' },
     { id: 'general.tab2', groupId: 'general', title: 'Switch to timeline tab 2' },
     { id: 'general.tab3', groupId: 'general', title: 'Switch to timeline tab 3' },
@@ -213,7 +213,7 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     { id: 'general.tab8', groupId: 'general', title: 'Switch to timeline tab 8' },
     { id: 'general.tab9', groupId: 'general', title: 'Switch to timeline tab 9' },
 
-    // General - Настройки и задачи (редко используемые)
+    // General - Settings and tasks (rarely used)
     { id: 'general.newTimeline', groupId: 'general', title: 'Create new timeline' },
     { id: 'general.backgroundTasks', groupId: 'general', title: 'Show background tasks' },
     { id: 'general.projectSettings', groupId: 'general', title: 'Open project settings' },
@@ -244,7 +244,7 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
       title: 'Go to end of timeline',
     },
 
-    // Timeline & Monitor Global - Громкость
+    // Timeline & Monitor Global - Volume
     { id: 'general.mute', groupId: 'timelineMonitorGlobal', title: 'Mute / Unmute' },
     { id: 'general.volumeUp', groupId: 'timelineMonitorGlobal', title: 'Increase monitor volume' },
     {
@@ -253,7 +253,7 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
       title: 'Decrease monitor volume',
     },
 
-    // Timeline & Monitor Global - Маркеры
+    // Timeline & Monitor Global - Markers
     { id: 'general.addMarker', groupId: 'timelineMonitorGlobal', title: 'Add marker' },
     { id: 'general.prevMarker', groupId: 'timelineMonitorGlobal', title: 'Previous marker' },
     { id: 'general.nextMarker', groupId: 'timelineMonitorGlobal', title: 'Next marker' },
@@ -293,7 +293,7 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
       title: 'Create snapshot from monitor',
     },
 
-    // Timeline & Monitor Global - Покадровая навигация и циклы скорости
+    // Timeline & Monitor Global - Frame-by-frame navigation and speed loops
     { id: 'playback.stepForward', groupId: 'timelineMonitorGlobal', title: 'Step forward' },
     { id: 'playback.stepBackward', groupId: 'timelineMonitorGlobal', title: 'Step backward' },
     {
@@ -309,11 +309,11 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     { id: 'playback.speedUpForward', groupId: 'timelineMonitorGlobal', title: 'Speed up (forward)' },
     { id: 'playback.speedDown', groupId: 'timelineMonitorGlobal', title: 'Slow down' },
 
-    // Timeline - Разрезание (самое частое)
+    // Timeline - Splitting (most frequent)
     { id: 'timeline.splitAtPlayhead', groupId: 'timeline', title: 'Split at playhead' },
     { id: 'timeline.splitAllAtPlayhead', groupId: 'timeline', title: 'Split all at playhead' },
 
-    // Timeline - Обрезка края клипа (простая)
+    // Timeline - Clip edge trim (simple)
     {
       id: 'timeline.trimToPlayheadLeft',
       groupId: 'timeline',
@@ -321,7 +321,7 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     },
     { id: 'timeline.trimToPlayheadRight', groupId: 'timeline', title: 'Trim clip end to playhead' },
 
-    // Timeline - Обрезка со смещением (ripple)
+    // Timeline - Trim with shift (ripple)
     {
       id: 'timeline.rippleTrimLeft',
       groupId: 'timeline',

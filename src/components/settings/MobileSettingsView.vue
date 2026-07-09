@@ -69,7 +69,7 @@ const tabOptions = computed(() => {
       </div>
       <div v-else class="flex flex-col items-center justify-center py-20 text-ui-text-muted gap-3">
         <UIcon name="lucide:folder-off" class="w-10 h-10 opacity-20" />
-        <p class="text-sm">Settings not available</p>
+        <p class="text-sm">{{ t('videoEditor.settings.notAvailable') }}</p>
       </div>
     </div>
 

@@ -75,10 +75,10 @@ onBeforeUnmount(() => {
 function onBlur(event: FocusEvent) {
   const relatedTarget = event.relatedTarget as HTMLElement | null;
 
-  // Если фокус переходит на родительский контейнер (карточку/строку файла), который содержит наш инпут,
-  // то это, скорее всего, контекстное меню восстанавливает фокус при закрытии. Возвращаем фокус на инпут.
-  // Мы также проверяем наличие атрибута data-entry-path, чтобы отличить карточку файла от общих контейнеров
-  // файлового менеджера, по пустому месту которых пользователь кликнул для закрытия переименования.
+  // If focus moves to a parent container (file card/row) that holds our input,
+  // it is likely the context menu restoring focus on close. Redirect focus back to the input.
+  // We also check for the data-entry-path attribute to distinguish a file card from general
+  // file-manager containers, whose empty area the user clicked to dismiss renaming.
   if (
     relatedTarget &&
     relatedTarget.hasAttribute('data-entry-path') &&

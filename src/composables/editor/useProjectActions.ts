@@ -36,9 +36,9 @@ export function useProjectActions() {
 
   async function leaveProject(redirectPath: string = '/') {
     try {
-      // Сначала сбрасываем состояние
+      // Reset state first
       await resetProjectState();
-      // Затем переходим на указанный путь
+      // Then navigate to the specified path
       await router.push(redirectPath);
     } catch (e) {
       log.warn('Failed to leave project:', e);

@@ -42,7 +42,7 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
   const clipEndUs = clipStartUs + clipItem.timelineRange.durationUs;
   const playheadOnClip = playheadUs >= clipStartUs && playheadUs < clipEndUs;
 
-  // 1. speedGroup (Скорость, Реверс, Заморозить клип)
+  // 1. speedGroup (Speed, Reverse, Freeze clip)
   const currentSpeed = clipItem.speed ?? 1;
   if (clipSupportsSpeedControls(track, clipItem)) {
     speedGroup.push({
@@ -102,7 +102,7 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
     }
   }
 
-  // 2. montageGroup (Автомонтаж, Вынести аудио)
+  // 2. montageGroup (Auto montage, Extract audio)
   if (clipSupportsAutoMontage(track, clipItem)) {
     montageGroup.push({
       label: options.t('fastcat.timeline.autoMontage.title'),
@@ -135,7 +135,7 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
     });
   }
 
-  // 3. stateGroup (Вейвформы, миниатюры, Включить/выключить, Заблокировать, Привязать к сетке)
+  // 3. stateGroup (Waveforms, thumbnails, Enable/disable, Lock, Snap to grid)
   const hasAudio = clipSupportsAudioControls(track, clipItem) && hasAudioTrack;
   if (hasAudio) {
     const currentMode = clipItem.audioWaveformMode || 'half';
@@ -187,7 +187,7 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
     });
   }
 
-  // Включить/выключить клип
+  // Enable/disable clip
   if (track.kind !== 'audio') {
     stateGroup.push({
       label: clipItem.disabled
@@ -204,7 +204,7 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
     });
   }
 
-  // Включить/выключить звук клипа
+  // Mute/unmute clip audio
   if (hasAudio) {
     stateGroup.push({
       label: clipItem.audioMuted
@@ -221,7 +221,7 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
     });
   }
 
-  // Заблокировать/разблокировать клип
+  // Lock/unlock clip
   stateGroup.push({
     label: clipItem.locked
       ? options.t('fastcat.timeline.unlockClip')
@@ -236,7 +236,7 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
     },
   });
 
-  // Привязать к сетке (Quantize)
+  // Snap to grid (Quantize)
   if (isFree && !clipItem.locked) {
     stateGroup.push({
       label: options.t('fastcat.timeline.quantize'),

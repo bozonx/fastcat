@@ -21,17 +21,17 @@ interface ViewportPayload {
 }
 
 /**
- * Передает нативному монитору размер DOM viewport для offscreen/canvas render target.
+ * Passes the DOM viewport size to the native monitor for the offscreen/canvas render target.
  *
- * Используем ResizeObserver + IntersectionObserver вместо rAF-loop:
- * viewport обновляется только при реальных изменениях размера/видимости элемента.
- * Это убирает постоянные layout reads (60×/сек) и снижает нагрузку на CPU.
+ * Uses ResizeObserver + IntersectionObserver instead of an rAF-loop:
+ * the viewport updates only on real changes of element size/visibility.
+ * This removes continuous layout reads (60×/sec) and reduces CPU load.
  *
- * Координаты — в физических пикселях относительно клиентской области главного окна Tauri:
+ * Coordinates are in physical pixels relative to the client area of the main Tauri window:
  *   `rect.left * dpr`, `rect.top * dpr`, `rect.width * dpr`, `rect.height * dpr`.
  *
- * Видимость определяется через IntersectionObserver (учитывает display:none, opacity, overflow),
- * но в canvas-режиме standalone-окно открывается только отдельной командой пользователя.
+ * Visibility is determined via IntersectionObserver (accounts for display:none, opacity, overflow),
+ * but in canvas mode the standalone window is only opened via a separate user command.
  */
 export function useNativeMonitorViewport(elRef: Ref<HTMLElement | null>): void {
   if (!isTauriRuntime()) return;
@@ -154,7 +154,7 @@ export function useNativeMonitorViewport(elRef: Ref<HTMLElement | null>): void {
         visible: false,
       })
       .catch(() => {
-        // ignore — окно может уже быть закрыто
+        // ignore — the window may already be closed
       });
   });
 }

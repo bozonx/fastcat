@@ -520,16 +520,16 @@ select {
    Mobile Layout Form Overrides (.is-mobile-layout)
    ========================================================================== */
 .is-mobile-layout {
-  /* 1. Стилизация полей ввода (text, number, email, и т.д.) и textarea */
+  /* 1. Input fields styling (text, number, email, etc.) and textarea */
   input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
   textarea:not(.text-editor-textarea) {
-    font-size: 0.95rem !important; /* Читаемый размер шрифта, предотвращает автозум на iOS */
-    border-radius: var(--radius-ui-md) !important; /* Закругление углов 8px */
+    font-size: 0.95rem !important; /* Readable font size, prevents auto-zoom on iOS */
+    border-radius: var(--radius-ui-md) !important; /* 8px border radius */
     border: 1px solid var(--ui-border) !important;
-    background-color: var(--ui-bg) !important; /* Темный контрастный фон полей */
+    background-color: var(--ui-bg) !important; /* Dark contrasting field background */
     color: var(--ui-text) !important;
     box-shadow: none !important;
-    height: 38px !important; /* Увеличенная высота для мобильных */
+    height: 38px !important; /* Increased height for mobile */
     padding-top: 0.5rem !important;
     padding-bottom: 0.5rem !important;
     padding-left: 0.875rem !important;
@@ -541,7 +541,7 @@ select {
     min-height: 80px !important;
   }
 
-  /* Фокус-состояние для инпутов и текстовых зон */
+  /* Focus state for inputs and textareas */
   input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):focus-visible,
   textarea:not(.text-editor-textarea):focus-visible {
     border-color: var(--color-primary-500) !important;
@@ -549,7 +549,7 @@ select {
     box-shadow: 0 0 0 1px var(--color-primary-500) !important;
   }
 
-  /* 2. Стилизация триггеров селектов (USelectMenu / UiSelect) */
+  /* 2. Select triggers styling (USelectMenu / UiSelect) */
   .ui-select-menu button,
   button.ui-select-menu,
   .ui-select-menu,
@@ -562,7 +562,7 @@ select {
     background-color: var(--ui-bg) !important;
     color: var(--ui-text) !important;
     box-shadow: none !important;
-    height: 38px !important; /* Совпадает с инпутами */
+    height: 38px !important; /* Matches inputs */
     padding-top: 0.5rem !important;
     padding-bottom: 0.5rem !important;
     padding-left: 0.875rem !important;
@@ -574,7 +574,7 @@ select {
     width: 100% !important;
   }
 
-  /* Фокус-состояние для кнопок-селектов */
+  /* Focus state for select buttons */
   .ui-select-menu button:focus-visible,
   button.ui-select-menu:focus-visible,
   .ui-select-menu:focus-visible,
@@ -585,7 +585,7 @@ select {
     box-shadow: 0 0 0 1px var(--color-primary-500) !important;
   }
 
-  /* 3. Опции в выпадающем списке (роли option / menuitem) */
+  /* 3. Options in the dropdown list (roles option / menuitem) */
   [role='listbox'] [role='option'],
   [role='menu'] [role^='menuitem'] {
     padding-top: 0.625rem !important;
@@ -593,7 +593,7 @@ select {
     font-size: 0.95rem !important;
   }
 
-  /* 4. Вспомогательные кнопки в формах (например, кнопка шеврона рядом с FPS пресетами) */
+  /* 4. Auxiliary buttons in forms (e.g. chevron button next to FPS presets) */
   .flex.items-center.gap-1 > button:not(.mobile-timeline-toolbar *, .mobile-drawer-toolbar *, .file-browser-breadcrumbs *, .mobile-file-browser-navbar *, .marker-color-filter *),
   .flex.items-center.gap-1\.5 > button:not(.mobile-timeline-toolbar *, .mobile-drawer-toolbar *, .file-browser-breadcrumbs *, .mobile-file-browser-navbar *, .marker-color-filter *) {
     height: 38px !important;
@@ -606,7 +606,7 @@ select {
     background-color: var(--ui-bg) !important;
   }
 
-  /* 5. Группы кнопок (например, выбор ориентации: альбомная/портретная) */
+  /* 5. Button groups (e.g. orientation choice: landscape/portrait) */
   .inline-flex.w-full.h-8,
   .inline-flex.h-8 {
     height: 38px !important;
@@ -621,7 +621,7 @@ select {
     justify-content: center !important;
   }
 
-  /* 6. Поля отображения и другие контейнеры со статичной высотой h-8 */
+  /* 6. Display fields and other containers with static height h-8 */
   div.font-mono.bg-ui-bg-accent.h-8 {
     height: 38px !important;
     font-size: 0.95rem !important;
@@ -631,7 +631,7 @@ select {
     justify-content: center !important;
   }
 
-  /* 7. Метки полей (labels) */
+  /* 7. Field labels */
   label,
   .ui-form-field-label {
     font-size: 0.85rem !important;
