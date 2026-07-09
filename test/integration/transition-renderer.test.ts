@@ -183,6 +183,94 @@ describe('TransitionRenderer', () => {
     expect(sameLayerChild.visible).toBe(true);
   });
 
+  it('uses GPU texture transitions when available', async () => {
+    const renderer = new TransitionRenderer();
+    const transitionSprite = {
+      visible: false,
+      filters: null,
+      scale: { set: vi.fn() },
+      width: 0,
+      height: 0,
+      alpha: 0,
+      blendMode: 'normal',
+      texture: null,
+    } as any;
+    const clip = {
+      itemId: 'clip-current',
+      startUs: 1_000,
+      layer: 2,
+      clipKind: 'video',
+      sprite: { visible: true },
+      transitionSprite,
+      transitionFilter: null,
+      transitionFromTexture: null,
+      transitionToTexture: null,
+      transitionOutputTexture: null,
+    } as any;
+    const app = { renderer: { render: vi.fn() }, stage: { children: [] } } as any;
+    const stageTextureRenderer = {
+      renderSingleClipToTexture: vi.fn(),
+      renderLowerLayersToTexture: vi.fn(),
+      ensureTransitionSprite: vi.fn(() => transitionSprite),
+      renderCombinedTransitionTexture: vi.fn(),
+      renderTextureToBitmap: vi.fn(),
+    };
+    const applyTransition = vi.fn(async () => bitmap);
+    const applyTransitionToTexture = vi.fn(() => true);
+    const gpuComputeRunner = {
+      isReady: vi.fn(() => true),
+      applyTransition,
+      applyTransitionToTexture,
+    } as any;
+    const textureFactory = vi.fn(
+      (texture: any) => texture ?? { id: `rt-${textureFactory.mock.calls.length}` },
+    );
+
+    await renderer.applyShaderTransitions([clip], 1_500, {
+      app,
+      clips: [clip],
+      width: 1920,
+      height: 1080,
+      computeRunner: gpuComputeRunner,
+      textureToBitmap,
+      transitionManager: {} as any,
+      stageTextureRenderer: stageTextureRenderer as any,
+      getTrackById: () => ({ id: 'track-current', layer: 2 }) as any,
+      getActiveTransitionState: () => ({
+        manifest,
+        progress: 0.5,
+        curve: 'linear',
+        edge: 'in',
+        transition: {
+          type: 'dissolve',
+          durationUs: 1_000,
+          mode: 'background',
+          params: {},
+        },
+      }),
+      ensureTransitionRenderTexture: textureFactory as any,
+      findPrevClipOnLayer: vi.fn(),
+      findNextClipOnLayer: vi.fn(),
+      createAbortController: vi.fn(() => new AbortController()),
+      getVideoSampleForClip: vi.fn(),
+      updateClipTextureFromSample: vi.fn(),
+    });
+
+    expect(applyTransitionToTexture).toHaveBeenCalledWith({
+      from: clip.transitionFromTexture,
+      to: clip.transitionToTexture,
+      output: clip.transitionOutputTexture,
+      spec: { type: 'crossfade' },
+      progress: 0.5,
+      speed: 1,
+    });
+    expect(applyTransition).not.toHaveBeenCalled();
+    expect(textureToBitmap).not.toHaveBeenCalled();
+    expect(app.renderer.render).not.toHaveBeenCalled();
+    expect(transitionSprite.texture).toBe(clip.transitionOutputTexture);
+    expect(transitionSprite.visible).toBe(true);
+  });
+
   it('renders previous clip into transition texture for adjacent mode and hides previous clip sprite', async () => {
     const renderer = new TransitionRenderer();
     const prevClip = {

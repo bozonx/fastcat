@@ -185,6 +185,30 @@ export class TransitionRenderer {
       const progress = applyTransitionCurve(state.progress, curve, normalizedParams);
       const speed = getTransitionCurveSpeed(state.progress, curve, normalizedParams);
 
+      try {
+        const renderedOnGpu =
+          typeof params.computeRunner.applyTransitionToTexture === 'function' &&
+          params.computeRunner.applyTransitionToTexture({
+            from: shaderFromTexture,
+            to: shaderToTexture,
+            output: clip.transitionOutputTexture,
+            spec,
+            progress,
+            speed,
+          });
+        if (renderedOnGpu) {
+          const transitionSprite = params.stageTextureRenderer.ensureTransitionSprite(clip);
+          transitionSprite.texture = clip.transitionOutputTexture;
+          transitionSprite.scale.set(1, 1);
+          transitionSprite.width = params.width;
+          transitionSprite.height = params.height;
+          transitionSprite.visible = true;
+          continue;
+        }
+      } catch (error) {
+        log.warn('[VideoCompositor] WebGPU texture transition failed:', error);
+      }
+
       let fromBitmap: ImageBitmap | null = null;
       let toBitmap: ImageBitmap | null = null;
       let processed: ImageBitmap | null = null;

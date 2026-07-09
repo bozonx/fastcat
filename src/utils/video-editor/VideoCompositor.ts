@@ -286,6 +286,23 @@ export class VideoCompositor {
       let sourceBitmap: ImageBitmap | null = null;
       let processedBitmap: ImageBitmap | null = null;
       try {
+        clip.adjustmentSourceTexture = this.ensureClipRenderTexture(
+          clip.adjustmentSourceTexture ?? null,
+        );
+        this.renderLowerLayersToTexture(clip.layer, clip.adjustmentSourceTexture);
+        const renderedOnGpu =
+          typeof runner.applyEffectsToTexture === 'function' &&
+          runner.applyEffectsToTexture({
+            source: clip.adjustmentSourceTexture,
+            target: clip.adjustmentSourceTexture,
+            effects: effectSpecs,
+            options: { enablePadding: false },
+          });
+        if (renderedOnGpu) {
+          if (clip.sprite) clip.sprite.texture = clip.adjustmentSourceTexture;
+          continue;
+        }
+
         sourceBitmap = await this.ensureStageTextureRenderer(this.app).renderLowerLayersToBitmap(
           clip.layer,
           {
@@ -576,11 +593,6 @@ export class VideoCompositor {
     this.contextLost = false;
     this.resetRuntimeDependencies();
 
-    // Complete compute initialization before the first render so effects are
-    // never silently omitted during the adapter/device startup window.
-    await this.computeRunner.init();
-    this.computeUnavailableWarningShown = false;
-
     const { app, canvas } = await this.pixiLifecycle.init({
       width,
       height,
@@ -593,6 +605,19 @@ export class VideoCompositor {
     });
     this.app = app;
     this.canvas = canvas;
+
+    // Complete compute initialization before the first render so effects are
+    // never silently omitted during the adapter/device startup window. In WebGPU
+    // mode the runner shares Pixi's device, which is required for zero-copy
+    // RenderTexture processing.
+    if (
+      !this.computeRunner.initFromPixiRenderer(
+        app.renderer as unknown as Parameters<WebGpuComputeRunner['initFromPixiRenderer']>[0],
+      )
+    ) {
+      await this.computeRunner.init();
+    }
+    this.computeUnavailableWarningShown = false;
 
     this.ensureStageTextureRenderer(this.app);
   }

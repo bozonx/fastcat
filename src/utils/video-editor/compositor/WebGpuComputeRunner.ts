@@ -1,5 +1,6 @@
 import type { VideoEffectSpec } from '~/types/generated/native-monitor/VideoEffectSpec';
 import type { TransitionSpec } from '~/transitions';
+import type { RenderTexture } from 'pixi.js';
 import effectWgsl from '~shared/effects/effect.wgsl?raw';
 import crossfadeWgsl from '~shared/transitions/crossfade.wgsl?raw';
 import fadeThroughColorWgsl from '~shared/transitions/fade_through_color.wgsl?raw';
@@ -61,6 +62,15 @@ export interface ComputePass {
 
 export interface ApplyEffectsOptions {
   enablePadding?: boolean;
+}
+
+interface WebGpuTextureSystem {
+  getGpuSource: (source: unknown) => GPUTexture;
+}
+
+interface WebGpuRendererLike {
+  gpu?: { device?: GPUDevice };
+  texture?: WebGpuTextureSystem;
 }
 
 interface BlurContentRect {
@@ -611,6 +621,8 @@ function calculatePadding(effects: VideoEffectSpec[], scale: number): number {
 export class WebGpuComputeRunner {
   private previewEffectQuality: PreviewEffectQuality = 'ultra';
   private device: GPUDevice | null = null;
+  private ownsDevice = false;
+  private sharedRendererTexture: WebGpuTextureSystem | null = null;
   private bindLayout: GPUBindGroupLayout | null = null;
   private pipeline: GPUComputePipeline | null = null;
   private shaderModule: GPUShaderModule | null = null;
@@ -664,21 +676,10 @@ export class WebGpuComputeRunner {
   private transReadbackBuffer: GPUBuffer | null = null;
   private transReadbackCapacity = 0;
 
-  public async init(): Promise<boolean> {
-    if (this.device) return true;
-    if (typeof navigator === 'undefined' || !navigator.gpu) {
-      log.warn('WebGPU is not supported in this environment (navigator.gpu is undefined).');
-      return false;
-    }
-
+  private initializeDeviceResources(device: GPUDevice, options: { ownsDevice: boolean }): boolean {
     try {
-      const adapter = await navigator.gpu.requestAdapter();
-      if (!adapter) {
-        log.warn('Failed to request WebGPU adapter (requestAdapter returned null).');
-        return false;
-      }
-
-      this.device = await adapter.requestDevice();
+      this.device = device;
+      this.ownsDevice = options.ownsDevice;
 
       // Handle GPU device loss (driver crash, OOM, etc.) by tearing down all
       // cached resources so isReady() returns false and callers can re-init.
@@ -778,12 +779,154 @@ export class WebGpuComputeRunner {
       return true;
     } catch (err) {
       log.error('Failed to initialize WebGPU device/pipeline:', err);
+      if (options.ownsDevice) {
+        try {
+          device.destroy();
+        } catch {
+          // ignore
+        }
+      }
+      this.handleDeviceLost();
       return false;
     }
   }
 
+  public async init(): Promise<boolean> {
+    if (this.device) return true;
+    if (typeof navigator === 'undefined' || !navigator.gpu) {
+      log.warn('WebGPU is not supported in this environment (navigator.gpu is undefined).');
+      return false;
+    }
+
+    try {
+      const adapter = await navigator.gpu.requestAdapter();
+      if (!adapter) {
+        log.warn('Failed to request WebGPU adapter (requestAdapter returned null).');
+        return false;
+      }
+
+      const device = await adapter.requestDevice();
+      this.sharedRendererTexture = null;
+      return this.initializeDeviceResources(device, { ownsDevice: true });
+    } catch (err) {
+      log.error('Failed to initialize WebGPU device:', err);
+      return false;
+    }
+  }
+
+  public initFromPixiRenderer(renderer: WebGpuRendererLike): boolean {
+    const device = renderer.gpu?.device;
+    const texture = renderer.texture ?? null;
+    if (!device || !texture) {
+      return this.isReady();
+    }
+
+    if (this.device === device) {
+      this.sharedRendererTexture = texture;
+      return this.isReady();
+    }
+
+    this.destroy();
+    this.sharedRendererTexture = texture;
+    return this.initializeDeviceResources(device, { ownsDevice: false });
+  }
+
   public isReady(): boolean {
     return this.device !== null && this.pipeline !== null;
+  }
+
+  private executePasses(params: {
+    inputView: GPUTextureView;
+    passes: ComputePass[];
+    outputWidth: number;
+    outputHeight: number;
+    label: string;
+  }): GPUTexture | null {
+    if (!this.device || !this.pipeline || !this.bindLayout || !this.shaderModule) {
+      return null;
+    }
+
+    const { inputView, passes, outputWidth, outputHeight, label } = params;
+    this.ensureTextures(outputWidth, outputHeight);
+    this.ensureUniformBuffer(passes.length);
+
+    const staging = new ArrayBuffer(this.uniformStride * passes.length);
+    const u32 = new Uint32Array(staging);
+    const f32 = new Float32Array(staging);
+
+    for (let i = 0; i < passes.length; i++) {
+      const base = (i * this.uniformStride) / 4;
+      const u = passes[i]!.uniform;
+      u32[base + 0] = u.mode;
+      u32[base + 1] = u.width;
+      u32[base + 2] = u.height;
+      u32[base + 3] = u.seed;
+      f32[base + 4] = u.p0;
+      f32[base + 5] = u.p1;
+      f32[base + 6] = u.p2;
+      f32[base + 7] = u.p3;
+      f32[base + 8] = u.p4;
+      f32[base + 9] = u.p5;
+      f32[base + 10] = u.p6;
+      f32[base + 11] = u.p7;
+    }
+
+    this.device.queue.writeBuffer(this.uniformBuffer!, 0, staging);
+
+    const encoder = this.device.createCommandEncoder({ label: `${label}-encoder` });
+
+    const viewOf = (buf: Buf): GPUTextureView => {
+      switch (buf) {
+        case 'input':
+          return inputView;
+        case 'ping':
+          return this.pingView!;
+        case 'pong':
+          return this.pongView!;
+        case 'aux':
+          return this.auxView!;
+        case 'owned':
+          return this.ownedView!;
+      }
+    };
+
+    for (let index = 0; index < passes.length; index += 1) {
+      const pass = passes[index]!;
+      const uniformOffset = index * this.uniformStride;
+
+      const bindSrc = viewOf(pass.src);
+      const bindSecondary = viewOf(pass.secondary);
+      const targetView = viewOf(pass.dst);
+
+      let pipeline = this.pipeline;
+      if (pass.customSource) {
+        pipeline = this.getOrCreateCustomPipeline(pass.customSource);
+      }
+
+      const bindGroup = this.device.createBindGroup({
+        label: `${label}-bind-group`,
+        layout: this.bindLayout,
+        entries: [
+          { binding: 0, resource: bindSrc },
+          { binding: 1, resource: targetView },
+          {
+            binding: 2,
+            resource: { buffer: this.uniformBuffer!, offset: 0, size: UNIFORM_SIZE },
+          },
+          { binding: 3, resource: bindSecondary },
+          { binding: 4, resource: this.sampler! },
+        ],
+      });
+
+      const computePass = encoder.beginComputePass({ label: `${label}-pass` });
+      computePass.setPipeline(pipeline);
+      computePass.setBindGroup(0, bindGroup, [uniformOffset]);
+      computePass.dispatchWorkgroups(Math.ceil(outputWidth / 8), Math.ceil(outputHeight / 8), 1);
+      computePass.end();
+    }
+
+    this.device.queue.submit([encoder.finish()]);
+    return this.ownedTexture;
   }
 
   /**
@@ -872,13 +1015,10 @@ export class WebGpuComputeRunner {
       label,
     } = params;
 
-    this.ensureTextures(outputWidth, outputHeight);
     this.ensureInputTexture(inputWidth, inputHeight);
 
     const inputTexture = this.inputTexture!;
     const inputView = this.inputView!;
-    const ownedTexture = this.ownedTexture!;
-    const ownedView = this.ownedView!;
 
     this.device.queue.copyExternalImageToTexture(
       { source: uploadSource, flipY: false },
@@ -892,86 +1032,16 @@ export class WebGpuComputeRunner {
       (uploadSource as ImageBitmap).close();
     }
 
-    this.ensureUniformBuffer(passes.length);
-
-    const staging = new ArrayBuffer(this.uniformStride * passes.length);
-    const u32 = new Uint32Array(staging);
-    const f32 = new Float32Array(staging);
-
-    for (let i = 0; i < passes.length; i++) {
-      const base = (i * this.uniformStride) / 4;
-      const u = passes[i]!.uniform;
-      u32[base + 0] = u.mode;
-      u32[base + 1] = u.width;
-      u32[base + 2] = u.height;
-      u32[base + 3] = u.seed;
-      f32[base + 4] = u.p0;
-      f32[base + 5] = u.p1;
-      f32[base + 6] = u.p2;
-      f32[base + 7] = u.p3;
-      f32[base + 8] = u.p4;
-      f32[base + 9] = u.p5;
-      f32[base + 10] = u.p6;
-      f32[base + 11] = u.p7;
+    const ownedTexture = this.executePasses({
+      inputView,
+      passes,
+      outputWidth,
+      outputHeight,
+      label,
+    });
+    if (!ownedTexture) {
+      return null;
     }
-
-    this.device.queue.writeBuffer(this.uniformBuffer!, 0, staging);
-
-    const encoder = this.device.createCommandEncoder({ label: `${label}-encoder` });
-
-    // Map a logical buffer slot to its concrete view (mirror of the Rust
-    // `view_of` routing). The final pass is routed to `owned` by the builder.
-    const viewOf = (buf: Buf): GPUTextureView => {
-      switch (buf) {
-        case 'input':
-          return inputView;
-        case 'ping':
-          return this.pingView!;
-        case 'pong':
-          return this.pongView!;
-        case 'aux':
-          return this.auxView!;
-        case 'owned':
-          return ownedView;
-      }
-    };
-
-    for (let index = 0; index < passes.length; index++) {
-      const pass = passes[index]!;
-      const uniformOffset = index * this.uniformStride;
-
-      const bindSrc = viewOf(pass.src);
-      const bindSecondary = viewOf(pass.secondary);
-      const targetView = viewOf(pass.dst);
-
-      let pipeline = this.pipeline;
-      if (pass.customSource) {
-        pipeline = this.getOrCreateCustomPipeline(pass.customSource);
-      }
-
-      const bindGroup = this.device.createBindGroup({
-        label: `${label}-bind-group`,
-        layout: this.bindLayout,
-        entries: [
-          { binding: 0, resource: bindSrc },
-          { binding: 1, resource: targetView },
-          {
-            binding: 2,
-            resource: { buffer: this.uniformBuffer!, offset: 0, size: UNIFORM_SIZE },
-          },
-          { binding: 3, resource: bindSecondary },
-          { binding: 4, resource: this.sampler! },
-        ],
-      });
-
-      const computePass = encoder.beginComputePass({ label: `${label}-pass` });
-      computePass.setPipeline(pipeline);
-      computePass.setBindGroup(0, bindGroup, [uniformOffset]);
-      computePass.dispatchWorkgroups(Math.ceil(outputWidth / 8), Math.ceil(outputHeight / 8), 1);
-      computePass.end();
-    }
-
-    this.device.queue.submit([encoder.finish()]);
 
     // Read output back to CPU and create ImageBitmap
     const bytesPerRow = Math.ceil((outputWidth * 4) / 256) * 256;
@@ -1130,6 +1200,66 @@ export class WebGpuComputeRunner {
     });
   }
 
+  public applyEffectsToTexture(params: {
+    source: RenderTexture;
+    target: RenderTexture;
+    effects: VideoEffectSpec[];
+    options?: ApplyEffectsOptions;
+  }): boolean {
+    if (
+      !this.device ||
+      !this.pipeline ||
+      !this.bindLayout ||
+      !this.shaderModule ||
+      !this.sharedRendererTexture
+    ) {
+      return false;
+    }
+    if (params.effects.length === 0) return false;
+
+    const origW = Math.max(1, Math.round(params.source.source.pixelWidth));
+    const origH = Math.max(1, Math.round(params.source.source.pixelHeight));
+    if (
+      params.source.source.format !== 'rgba8unorm' ||
+      params.target.source.format !== 'rgba8unorm'
+    ) {
+      return false;
+    }
+
+    const scale = Math.max(0.1, Math.min(8.0, origH / 1080.0));
+    const padding = params.options?.enablePadding === false ? 0 : calculatePadding(params.effects, scale);
+    if (padding !== 0) {
+      return false;
+    }
+
+    const passes = buildPasses(params.effects, origW, origH, this.previewEffectQuality, {
+      spatialScaleHeight: origH,
+    });
+    if (passes.length === 0) return false;
+
+    const sourceTexture = this.sharedRendererTexture.getGpuSource(params.source.source);
+    const targetTexture = this.sharedRendererTexture.getGpuSource(params.target.source);
+    const outputTexture = this.executePasses({
+      inputView: sourceTexture.createView(),
+      passes,
+      outputWidth: origW,
+      outputHeight: origH,
+      label: 'web-effect-texture',
+    });
+    if (!outputTexture) {
+      return false;
+    }
+
+    const encoder = this.device.createCommandEncoder({ label: 'web-effect-texture-copy' });
+    encoder.copyTextureToTexture(
+      { texture: outputTexture },
+      { texture: targetTexture },
+      { width: origW, height: origH, depthOrArrayLayers: 1 },
+    );
+    this.device.queue.submit([encoder.finish()]);
+    return true;
+  }
+
   public async applyTransition(params: {
     from: ImageBitmap;
     to: ImageBitmap;
@@ -1230,6 +1360,113 @@ export class WebGpuComputeRunner {
 
       return await this.readTextureToBitmap(outputTexture, width, height);
     }
+  }
+
+  public applyTransitionToTexture(params: {
+    from: RenderTexture;
+    to: RenderTexture;
+    output: RenderTexture;
+    spec: TransitionSpec;
+    progress: number;
+    speed: number;
+  }): boolean {
+    if (!this.device || !this.transitionBindLayout || !this.sharedRendererTexture) {
+      return false;
+    }
+
+    const width = Math.max(1, Math.round(params.to.source.pixelWidth));
+    const height = Math.max(1, Math.round(params.to.source.pixelHeight));
+    if (
+      params.from.source.format !== 'rgba8unorm' ||
+      params.to.source.format !== 'rgba8unorm' ||
+      params.output.source.format !== 'rgba8unorm'
+    ) {
+      return false;
+    }
+
+    if (params.from.source.pixelWidth !== width || params.from.source.pixelHeight !== height) {
+      throw new Error('Transition inputs must have identical dimensions.');
+    }
+
+    this.ensureTransitionResources(width, height);
+    const outputTexture = this.transOutputTexture!;
+    const uniformBuffer = this.transUniformBuffer!;
+
+    const values = new ArrayBuffer(TRANSITION_UNIFORM_SIZE);
+    const u32 = new Uint32Array(values);
+    const f32 = new Float32Array(values);
+    f32[0] = Math.max(0, Math.min(1, params.progress));
+    u32[1] = width;
+    u32[2] = height;
+    f32[3] = Math.max(0, params.speed);
+    const specParams =
+      typeof params.spec.params === 'object' && params.spec.params !== null ? params.spec.params : {};
+    for (let index = 0; index < 12; index += 1) {
+      const value = (specParams as Record<string, unknown>)[`p${index}`];
+      f32[4 + index] = typeof value === 'number' && Number.isFinite(value) ? value : 0;
+    }
+    if (params.spec.type === 'wipe') {
+      f32[4] = typeof params.spec.angle_deg === 'number' ? params.spec.angle_deg : 0;
+      f32[5] = typeof params.spec.softness === 'number' ? params.spec.softness : 0.1;
+    } else if (params.spec.type === 'slide') {
+      const dir = params.spec.direction;
+      f32[4] = dir === 'left' ? 0.0 : dir === 'right' ? 1.0 : dir === 'up' ? 2.0 : 3.0;
+    } else if (params.spec.type === 'fade-through-color') {
+      const color = String(params.spec.color ?? '#000000')
+        .trim()
+        .replace(/^#/, '');
+      const parsed = /^[0-9a-fA-F]{6}$/.test(color) ? Number.parseInt(color, 16) : 0;
+      f32[4] = ((parsed >> 16) & 0xff) / 255;
+      f32[5] = ((parsed >> 8) & 0xff) / 255;
+      f32[6] = (parsed & 0xff) / 255;
+    }
+    this.device.queue.writeBuffer(uniformBuffer, 0, values);
+
+    let source: string;
+    if (params.spec.type === 'custom-wgsl' && typeof params.spec.source === 'string') {
+      source = params.spec.source;
+    } else if (params.spec.type === 'fade-through-color') {
+      source = fadeThroughColorWgsl;
+    } else if (params.spec.type === 'wipe') {
+      source = wipeWgsl;
+    } else if (params.spec.type === 'slide') {
+      source = slideWgsl;
+    } else {
+      source = crossfadeWgsl;
+    }
+
+    const bindGroup = this.device.createBindGroup({
+      label: 'web-transition-texture-bind-group',
+      layout: this.transitionBindLayout,
+      entries: [
+        {
+          binding: 0,
+          resource: this.sharedRendererTexture.getGpuSource(params.from.source).createView(),
+        },
+        {
+          binding: 1,
+          resource: this.sharedRendererTexture.getGpuSource(params.to.source).createView(),
+        },
+        { binding: 2, resource: outputTexture.createView() },
+        { binding: 3, resource: { buffer: uniformBuffer } },
+      ],
+    });
+    const pipeline = this.getOrCreateTransitionPipeline(source);
+    const encoder = this.device.createCommandEncoder({ label: 'web-transition-texture-encoder' });
+    const pass = encoder.beginComputePass({ label: 'web-transition-texture-pass' });
+    pass.setPipeline(pipeline);
+    pass.setBindGroup(0, bindGroup);
+    pass.dispatchWorkgroups(Math.ceil(width / 8), Math.ceil(height / 8), 1);
+    pass.end();
+
+    const targetTexture = this.sharedRendererTexture.getGpuSource(params.output.source);
+    encoder.copyTextureToTexture(
+      { texture: outputTexture },
+      { texture: targetTexture },
+      { width, height, depthOrArrayLayers: 1 },
+    );
+    this.device.queue.submit([encoder.finish()]);
+    return true;
   }
 
   /**
@@ -1562,6 +1799,8 @@ export class WebGpuComputeRunner {
     this.pipeline = null;
     this.shaderModule = null;
     this.device = null;
+    this.ownsDevice = false;
+    this.sharedRendererTexture = null;
   }
 
   /**
@@ -1581,9 +1820,12 @@ export class WebGpuComputeRunner {
     this.transOutputTexture?.destroy();
     this.transUniformBuffer?.destroy();
     this.transReadbackBuffer?.destroy();
-    // GPUShaderModule has no .destroy(); releasing the device reclaims all
-    // child objects (pipelines, shader modules, bind group layouts).
-    this.device?.destroy();
+    // GPUShaderModule has no .destroy(); releasing the owned device reclaims all
+    // child objects (pipelines, shader modules, bind group layouts). A Pixi-owned
+    // shared device must stay alive for the renderer.
+    if (this.ownsDevice) {
+      this.device?.destroy();
+    }
 
     this.pingTexture = null;
     this.pongTexture = null;
@@ -1619,5 +1861,7 @@ export class WebGpuComputeRunner {
     this.pipeline = null;
     this.shaderModule = null;
     this.device = null;
+    this.ownsDevice = false;
+    this.sharedRendererTexture = null;
   }
 }

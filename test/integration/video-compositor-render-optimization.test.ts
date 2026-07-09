@@ -438,6 +438,53 @@ describe('VideoCompositor render optimization', () => {
     warn.mockRestore();
   });
 
+  it('uses GPU texture effects for adjustment clips when available', async () => {
+    const compositor = new VideoCompositor() as any;
+    const applyEffects = vi.fn();
+    const applyEffectsToTexture = vi.fn(() => true);
+    const adjustmentTexture = { id: 'adjustment-texture' };
+    const adjustment = {
+      itemId: 'adj-gpu',
+      clipKind: 'adjustment',
+      layer: 1,
+      startUs: 0,
+      sprite: { destroyed: false, visible: true, texture: null },
+      adjustmentSourceTexture: null,
+      effects: [
+        {
+          id: 'blur',
+          type: 'blur',
+          enabled: true,
+          strength: 24,
+          blurPastEdges: true,
+        },
+      ],
+    } as any;
+
+    compositor.width = 1920;
+    compositor.height = 1080;
+    compositor.previewEffectsEnabled = true;
+    compositor.computeRunner = { isReady: () => true, applyEffects, applyEffectsToTexture };
+    compositor.app = { renderer: { render: vi.fn() } };
+    compositor.clips = [adjustment];
+    compositor.renderLowerLayersToTexture = vi.fn();
+    compositor.ensureStageTextureRenderer = vi.fn();
+    compositor.ensureClipRenderTexture = vi.fn().mockReturnValue(adjustmentTexture);
+
+    await compositor.prepareAdjustmentClips([adjustment]);
+
+    expect(compositor.renderLowerLayersToTexture).toHaveBeenCalledWith(1, adjustmentTexture);
+    expect(applyEffectsToTexture).toHaveBeenCalledWith({
+      source: adjustmentTexture,
+      target: adjustmentTexture,
+      effects: expect.arrayContaining([expect.objectContaining({ type: 'gaussian-blur', bleed: true })]),
+      options: { enablePadding: false },
+    });
+    expect(applyEffects).not.toHaveBeenCalled();
+    expect(compositor.ensureStageTextureRenderer).not.toHaveBeenCalled();
+    expect(adjustment.sprite.texture).toBe(adjustmentTexture);
+  });
+
   it('normalizes background color when updating solid clips in updateTimelineLayout', async () => {
     const compositor = new VideoCompositor() as any;
     compositor.width = 1920;

@@ -191,6 +191,37 @@ describe('WebGpuComputeRunner', () => {
     expect(runner.isReady()).toBe(false);
   });
 
+  it('does not destroy a Pixi-owned shared GPU device', () => {
+    const realGPUShaderStage = (globalThis as Record<string, unknown>).GPUShaderStage;
+    vi.stubGlobal('GPUShaderStage', realGPUShaderStage ?? { COMPUTE: 0x04 });
+
+    const destroy = vi.fn();
+    const device = {
+      destroy,
+      createShaderModule: vi.fn().mockReturnValue({}),
+      createBindGroupLayout: vi.fn().mockReturnValue({}),
+      createPipelineLayout: vi.fn().mockReturnValue({}),
+      createComputePipeline: vi.fn().mockReturnValue({}),
+      createSampler: vi.fn().mockReturnValue({}),
+      limits: { minUniformBufferOffsetAlignment: 256 },
+      lost: new Promise(() => {}),
+    } as any;
+    const runner = new WebGpuComputeRunner();
+
+    expect(
+      runner.initFromPixiRenderer({
+        gpu: { device },
+        texture: { getGpuSource: vi.fn() },
+      }),
+    ).toBe(true);
+
+    runner.destroy();
+
+    expect(destroy).not.toHaveBeenCalled();
+    expect(runner.isReady()).toBe(false);
+    vi.unstubAllGlobals();
+  });
+
   it('converts VideoFrame to ImageBitmap before copyExternalImageToTexture and disposes it', async () => {
     const runner = new WebGpuComputeRunner();
 
