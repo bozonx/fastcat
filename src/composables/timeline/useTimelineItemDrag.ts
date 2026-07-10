@@ -564,7 +564,13 @@ export function useTimelineItemDrag(
     const isMulti = selectedMovableItemIds.includes(itemId) && selectedMovableItemIds.length > 1;
 
     if (isMulti && dragStartSnapshot.value) {
-      const deltaUs = startUs - dragAnchorStartUs.value;
+      // Quantize the group's shared delta (not each member's absolute start) so a
+      // group with mixed on-grid / off-grid clips translates rigidly and every
+      // member keeps its own sub-frame phase. The commit sets `preserveItemOffsets`
+      // so `move_items` applies these starts verbatim instead of re-snapping the
+      // off-grid members onto the frame grid. Mirrors the linked-clip move path.
+      const rawDeltaUs = startUs - dragAnchorStartUs.value;
+      const deltaUs = enableFrameSnap ? quantizeDeltaUsToFrames(rawDeltaUs, fps) : rawDeltaUs;
       const moves = buildMultiItemMoves({
         currentTracks: tracks.value,
         dragStartSnapshot: dragStartSnapshot.value,
@@ -1013,6 +1019,9 @@ export function useTimelineItemDrag(
             moves: commit.moves,
             quantizeToFrames: enableFrameSnap,
             ignoreLinks: usePseudoOverlap,
+            // Starts are already frame-snapped (single group / per-item) during the
+            // drag; apply them verbatim so off-grid clips keep their sub-frame phase.
+            preserveItemOffsets: true,
           };
           timelineStore.applyTimeline(cmd, { saveMode: 'none', skipHistory: true });
           appliedCmdLocal = cmd;

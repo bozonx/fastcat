@@ -199,6 +199,22 @@ export function buildMultiItemMoves(params: {
 }): TimelineMoveOperation[] {
   const moves: TimelineMoveOperation[] = [];
 
+  // Clamp the shared delta ONCE against the earliest selected clip so the group
+  // never crosses 0. Clamping each start independently (`max(0, start + delta)`)
+  // would pile the leftmost members at 0 while the rest keep moving, collapsing
+  // the group's relative geometry. This mirrors the linked-clip move path.
+  let minSelectedStartUs = Number.POSITIVE_INFINITY;
+  for (const track of params.dragStartSnapshot.tracks) {
+    for (const item of track.items) {
+      if (item.kind !== 'clip') continue;
+      if (!params.selectedMovableItemIds.includes(item.id)) continue;
+      minSelectedStartUs = Math.min(minSelectedStartUs, item.timelineRange.startUs);
+    }
+  }
+  const clampedDeltaUs = Number.isFinite(minSelectedStartUs)
+    ? Math.max(params.deltaUs, -minSelectedStartUs)
+    : params.deltaUs;
+
   let trackOffset = 0;
   if (params.targetTrackId !== params.dragOriginTrackId) {
     const originTrackIndex = params.currentTracks.findIndex(
@@ -256,12 +272,12 @@ export function buildMultiItemMoves(params: {
       fromTrackId: currentTrackId,
       toTrackId,
       itemId: selectedId,
-      startUs: Math.max(0, originalStartUs + params.deltaUs),
+      startUs: Math.max(0, originalStartUs + clampedDeltaUs),
     });
   }
 
   moves.sort((left, right) => {
-    return params.deltaUs >= 0 ? right.startUs - left.startUs : left.startUs - right.startUs;
+    return clampedDeltaUs >= 0 ? right.startUs - left.startUs : left.startUs - right.startUs;
   });
 
   return moves;

@@ -49,7 +49,8 @@ function moveItemsWithinTracks(
   cmd: MoveItemsCommand,
 ): TimelineCommandResult {
   const fps = getDocFps(doc);
-  const shouldQuantizeToFrames = cmd.quantizeToFrames !== false;
+  const preserveItemOffsets = cmd.preserveItemOffsets === true;
+  const shouldQuantizeToFrames = cmd.quantizeToFrames !== false && !preserveItemOffsets;
   const movesByTrack = new Map<string, Map<string, number>>();
   const seenMoveKeys = new Set<string>();
 
@@ -150,6 +151,7 @@ function moveItemsSequentially(
       quantizeToFrames: cmd.quantizeToFrames,
       ignoreLocks: cmd.ignoreLocks,
       ignoreLinks: true,
+      preserveItemOffsets: cmd.preserveItemOffsets,
     });
     currentDoc = res.next;
   }
@@ -241,7 +243,8 @@ export function moveItem(doc: TimelineDocument, cmd: MoveItemCommand): TimelineC
   }
 
   const fps = getDocFps(doc);
-  const shouldQuantizeToFrames = cmd.quantizeToFrames !== false;
+  const preserveItemOffsets = cmd.preserveItemOffsets === true;
+  const shouldQuantizeToFrames = cmd.quantizeToFrames !== false && !preserveItemOffsets;
   const startCandidate = Math.max(0, Math.round(Number(cmd.startUs)));
   const startUs = shouldQuantizeToFrames
     ? quantizeTimeUsToFrames(startCandidate, fps, 'round')
@@ -285,6 +288,7 @@ export function moveItemToTrack(
       quantizeToFrames: cmd.quantizeToFrames,
       ignoreLocks: cmd.ignoreLocks,
       ignoreLinks: cmd.ignoreLinks,
+      preserveItemOffsets: cmd.preserveItemOffsets,
     });
   }
 
@@ -299,7 +303,8 @@ export function moveItemToTrack(
   }
 
   const fps = getDocFps(doc);
-  const shouldQuantizeToFrames = cmd.quantizeToFrames !== false;
+  const preserveItemOffsets = cmd.preserveItemOffsets === true;
+  const shouldQuantizeToFrames = cmd.quantizeToFrames !== false && !preserveItemOffsets;
   const startCandidate = Math.max(0, Math.round(Number(cmd.startUs)));
   const startUs = shouldQuantizeToFrames
     ? quantizeTimeUsToFrames(startCandidate, fps, 'round')

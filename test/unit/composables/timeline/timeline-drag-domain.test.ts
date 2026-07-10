@@ -318,6 +318,32 @@ describe('buildMultiItemMoves', () => {
     expect(moves[0]!.startUs).toBe(0);
   });
 
+  it('clamps a negative-delta group rigidly against its earliest member', () => {
+    // c1 starts at 200_000; a -500_000 delta would push it past 0. The whole
+    // group must shift by the same clamped delta (-200_000) so relative geometry
+    // is preserved, instead of piling c1 at 0 while c2 keeps its full -500_000.
+    const t1 = track([
+      clip({ id: 'c1', timelineRange: { startUs: 200_000, durationUs: 1_000_000 } }),
+      clip({ id: 'c2', timelineRange: { startUs: 5_000_000, durationUs: 1_000_000 } }),
+    ]);
+    const snapshot = makeDoc([t1]);
+
+    const moves = buildMultiItemMoves({
+      currentTracks: [t1],
+      dragStartSnapshot: snapshot,
+      dragOriginTrackId: 'v1',
+      targetTrackId: 'v1',
+      selectedMovableItemIds: ['c1', 'c2'],
+      deltaUs: -500_000,
+    });
+
+    const byId = Object.fromEntries(moves.map((m) => [m.itemId, m.startUs]));
+    expect(byId.c1).toBe(0);
+    expect(byId.c2).toBe(4_800_000);
+    // Relative gap between members is unchanged (4_800_000, same as original).
+    expect(byId.c2 - byId.c1).toBe(4_800_000);
+  });
+
   it('moves items to a different track with same kind', () => {
     const t1 = track(
       [clip({ id: 'c1', timelineRange: { startUs: 1_000_000, durationUs: 2_000_000 } })],

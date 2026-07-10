@@ -101,6 +101,13 @@ export interface MoveItemCommand {
   ignoreLocks?: boolean;
   ignoreLinks?: boolean;
   quantizeToFrames?: boolean;
+  /**
+   * Apply `startUs` verbatim without re-snapping it (or the resulting gaps) to
+   * the frame grid. Used by group drags where the caller has already quantized
+   * the shared *delta*, so members that were placed off-grid keep their own
+   * sub-frame phase instead of being pulled onto the grid. See `move_items`.
+   */
+  preserveItemOffsets?: boolean;
 }
 
 export interface TrimItemCommand {
@@ -174,6 +181,8 @@ export interface MoveItemToTrackCommand {
   quantizeToFrames?: boolean;
   ignoreLocks?: boolean;
   ignoreLinks?: boolean;
+  /** See {@link MoveItemsCommand.preserveItemOffsets}. */
+  preserveItemOffsets?: boolean;
 }
 
 export interface ExtractAudioToTrackCommand {
@@ -307,6 +316,17 @@ export interface MoveItemsCommand {
   quantizeToFrames?: boolean;
   ignoreLocks?: boolean;
   ignoreLinks?: boolean;
+  /**
+   * Treat `moves` as a rigid group translation whose shared delta the caller has
+   * already frame-quantized: apply each `startUs` verbatim and skip frame
+   * re-quantization (both of the item start and of gap normalization). This is
+   * what lets a group with mixed on-grid / off-grid clips move together while
+   * every member keeps its own sub-frame phase — per-item absolute quantization
+   * would otherwise snap the off-grid members onto the grid and drift the group
+   * geometry. Ripple/edit callers leave this off (they pass independent,
+   * individually-clamped starts that are *not* a rigid translation).
+   */
+  preserveItemOffsets?: boolean;
 }
 
 export type TimelineCommand =
