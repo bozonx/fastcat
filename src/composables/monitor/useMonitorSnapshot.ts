@@ -22,6 +22,7 @@ export function useMonitorSnapshot(input: {
   const toast = useToast();
   const uiStore = useUiStore();
   const fileManager = useFileManager();
+  const { t } = useI18n();
 
   const isSavingStopFrame = ref(false);
 
@@ -94,8 +95,8 @@ export function useMonitorSnapshot(input: {
       if (!fileHandle) {
         toast.add({
           color: 'error',
-          title: 'Snapshot failed',
-          description: 'Could not access project folder for writing',
+          title: t('fastcat.monitor.snapshotFailed'),
+          description: t('fastcat.monitor.snapshotNoWriteAccess'),
         });
         return;
       }
@@ -108,8 +109,10 @@ export function useMonitorSnapshot(input: {
 
       toast.add({
         color: 'success',
-        title: 'Snapshot created',
-        description: `Saved to ${IMAGES_DIR_NAME}/stop_frames/${filename}`,
+        title: t('fastcat.monitor.snapshotCreated'),
+        description: t('fastcat.monitor.snapshotCreatedDescription', {
+          path: `${IMAGES_DIR_NAME}/stop_frames/${filename}`,
+        }),
       });
       await fileManager.reloadDirectory('');
       await fileManager.reloadDirectory('images');
@@ -118,8 +121,8 @@ export function useMonitorSnapshot(input: {
       log.error('[Monitor] Failed to create stop frame snapshot', err);
       toast.add({
         color: 'error',
-        title: 'Snapshot failed',
-        description: err instanceof Error ? err.message : 'Unknown error',
+        title: t('fastcat.monitor.snapshotFailed'),
+        description: err instanceof Error ? err.message : t('fastcat.monitor.snapshotUnknownError'),
       });
     } finally {
       isSavingStopFrame.value = false;

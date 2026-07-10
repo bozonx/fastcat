@@ -96,9 +96,9 @@ export function createFileManagerDirectory(ctx: FileManagerContext) {
       action: async () => {
         await service.toggleDirectory(entry);
       },
-      defaultErrorMessage: 'Failed to read folder',
-      toastTitle: 'Folder error',
-      toastDescription: () => 'Failed to read folder',
+      defaultErrorMessage: deps.t('videoEditor.fileManager.errors.readFolder'),
+      toastTitle: deps.t('videoEditor.fileManager.errors.folderError'),
+      toastDescription: () => deps.t('videoEditor.fileManager.errors.readFolder'),
       ignoreError: () => false,
     });
   }
@@ -109,9 +109,9 @@ export function createFileManagerDirectory(ctx: FileManagerContext) {
       action: async () => {
         await service.ensureDirectoryExpanded(entry);
       },
-      defaultErrorMessage: 'Failed to read folder',
-      toastTitle: 'Folder error',
-      toastDescription: () => 'Failed to read folder',
+      defaultErrorMessage: deps.t('videoEditor.fileManager.errors.readFolder'),
+      toastTitle: deps.t('videoEditor.fileManager.errors.folderError'),
+      toastDescription: () => deps.t('videoEditor.fileManager.errors.readFolder'),
       ignoreError: () => false,
     });
   }
@@ -146,9 +146,9 @@ export function createFileManagerDirectory(ctx: FileManagerContext) {
           }
         },
 
-        defaultErrorMessage: 'Failed to open project folder',
-        toastTitle: 'Project error',
-        toastDescription: () => 'Failed to open project folder',
+        defaultErrorMessage: deps.t('videoEditor.fileManager.errors.openProjectFolder'),
+        toastTitle: deps.t('videoEditor.fileManager.errors.projectError'),
+        toastDescription: () => deps.t('videoEditor.fileManager.errors.openProjectFolder'),
       });
     } finally {
       suppressDirectoryLoadedNotification = previousSuppressNotification;

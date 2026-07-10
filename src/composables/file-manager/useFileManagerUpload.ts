@@ -105,9 +105,9 @@ export function createFileManagerUpload(ctx: FileManagerContext) {
         }
         return results;
       },
-      defaultErrorMessage: 'Failed to upload files',
-      toastTitle: 'Upload error',
-      toastDescription: () => 'Failed to upload files',
+      defaultErrorMessage: deps.t('videoEditor.fileManager.errors.uploadFiles'),
+      toastTitle: deps.t('videoEditor.fileManager.errors.uploadError'),
+      toastDescription: () => deps.t('videoEditor.fileManager.errors.uploadFiles'),
       ignoreError: (e: unknown) => e instanceof Error && e.name === 'AbortError',
     });
 

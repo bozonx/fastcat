@@ -64,9 +64,9 @@ export function createFileManagerCrud(ctx: FileManagerContext) {
         await reloadDirectory(parentPath);
         return true;
       },
-      defaultErrorMessage: 'Failed to create folder',
-      toastTitle: 'Folder error',
-      toastDescription: () => 'Failed to create folder',
+      defaultErrorMessage: deps.t('videoEditor.fileManager.errors.createFolder'),
+      toastTitle: deps.t('videoEditor.fileManager.errors.folderError'),
+      toastDescription: () => deps.t('videoEditor.fileManager.errors.createFolder'),
     });
     if (created) {
       notifyFileManagerUpdate();
@@ -146,9 +146,9 @@ export function createFileManagerCrud(ctx: FileManagerContext) {
         }
         return true;
       },
-      defaultErrorMessage: 'Failed to delete',
-      toastTitle: 'Delete error',
-      toastDescription: () => 'Failed to delete',
+      defaultErrorMessage: deps.t('videoEditor.fileManager.errors.deleteEntry'),
+      toastTitle: deps.t('videoEditor.fileManager.errors.deleteError'),
+      toastDescription: () => deps.t('videoEditor.fileManager.errors.deleteEntry'),
     });
     if (deleted && !options.skipNotify) {
       notifyFileManagerUpdate();
@@ -190,9 +190,9 @@ export function createFileManagerCrud(ctx: FileManagerContext) {
         await triggerMediaIntegrityCheck();
         return true;
       },
-      defaultErrorMessage: 'Failed to rename',
-      toastTitle: 'Rename error',
-      toastDescription: () => 'Failed to rename',
+      defaultErrorMessage: deps.t('videoEditor.fileManager.errors.renameEntry'),
+      toastTitle: deps.t('videoEditor.fileManager.errors.renameError'),
+      toastDescription: () => deps.t('videoEditor.fileManager.errors.renameEntry'),
     });
     if (renamed) {
       notifyFileManagerUpdate();
@@ -271,9 +271,9 @@ export function createFileManagerCrud(ctx: FileManagerContext) {
 
         return newPath;
       },
-      defaultErrorMessage: 'Failed to move',
-      toastTitle: 'Move error',
-      toastDescription: () => 'Failed to move',
+      defaultErrorMessage: deps.t('videoEditor.fileManager.errors.moveEntry'),
+      toastTitle: deps.t('videoEditor.fileManager.errors.moveError'),
+      toastDescription: () => deps.t('videoEditor.fileManager.errors.moveEntry'),
     });
     if (newPath && !options.skipNotify) {
       notifyFileManagerUpdate();
@@ -331,9 +331,9 @@ export function createFileManagerCrud(ctx: FileManagerContext) {
 
         return newPath;
       },
-      defaultErrorMessage: 'Failed to copy',
-      toastTitle: 'Copy error',
-      toastDescription: () => 'Failed to copy',
+      defaultErrorMessage: deps.t('videoEditor.fileManager.errors.copyEntry'),
+      toastTitle: deps.t('videoEditor.fileManager.errors.copyError'),
+      toastDescription: () => deps.t('videoEditor.fileManager.errors.copyEntry'),
       ignoreError: (e: unknown) => e instanceof Error && e.name === 'AbortError',
     });
     if (newPath && !options.skipNotify) {

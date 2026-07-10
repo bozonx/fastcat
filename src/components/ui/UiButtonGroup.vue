@@ -49,12 +49,25 @@ function select(option: Option) {
 function isSelected(value: unknown) {
   return modelValue.value === value;
 }
+
+function getButtonClasses(option: Option) {
+  const isDisabled = props.disabled || option.disabled;
+  const selected = isSelected(option.value);
+
+  return [
+    !isDisabled ? 'cursor-pointer' : '',
+    props.fluid ? 'flex-1' : '',
+    selected && isDisabled
+      ? 'disabled:!bg-zinc-700 disabled:!text-zinc-100 disabled:!border-zinc-500 disabled:!opacity-100 dark:disabled:!bg-zinc-600 dark:disabled:!text-zinc-50 dark:disabled:!border-zinc-500'
+      : '',
+  ];
+}
 </script>
 
 <template>
   <UFieldGroup
     :orientation="orientation"
-    :class="[fluid ? 'w-full' : 'inline-flex', disabled ? 'opacity-50 cursor-not-allowed' : '']"
+    :class="[fluid ? 'w-full' : 'inline-flex', disabled ? 'cursor-not-allowed' : '']"
   >
     <UButton
       v-for="option in options"
@@ -67,7 +80,7 @@ function isSelected(value: unknown) {
       :disabled="disabled || option.disabled"
       :title="option.title"
       class="transition-all duration-200 justify-center whitespace-normal h-auto py-1.5 px-2 text-xs"
-      :class="[!(disabled || option.disabled) ? 'cursor-pointer' : '', fluid ? 'flex-1' : '']"
+      :class="getButtonClasses(option)"
       @click="select(option)"
     >
       <slot name="option" :option="option" :selected="isSelected(option.value)" />

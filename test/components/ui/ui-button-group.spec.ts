@@ -34,6 +34,23 @@ describe('UiButtonGroup', () => {
     expect(component.classes()).toContain('w-full');
   });
 
+  it('keeps the selected option visually selected when disabled', async () => {
+    const component = await mountSuspended(UiButtonGroup, {
+      props: {
+        modelValue: 'opt1',
+        options: defaultOptions,
+        disabled: true,
+      },
+    });
+
+    const buttons = component.findAll('button');
+
+    expect(component.classes()).not.toContain('opacity-50');
+    expect(buttons[0].classes()).toContain('disabled:!bg-zinc-700');
+    expect(buttons[0].classes()).toContain('disabled:!opacity-100');
+    expect(buttons[1].classes()).not.toContain('disabled:!bg-zinc-700');
+  });
+
   it('emits update:modelValue and change events when an option is clicked', async () => {
     const component = await mountSuspended(UiButtonGroup, {
       props: {

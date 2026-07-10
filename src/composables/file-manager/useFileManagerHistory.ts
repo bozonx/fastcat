@@ -38,8 +38,8 @@ export function createFileManagerHistory(ctx: FileManagerContext, crud: FileMana
           await createFolder(op.name as string, op.parentPath as string);
         }
       },
-      defaultErrorMessage: 'Failed to restore file operation',
-      toastTitle: 'History error',
+      defaultErrorMessage: ctx.deps.t('videoEditor.fileManager.errors.restoreOperation'),
+      toastTitle: ctx.deps.t('videoEditor.fileManager.errors.historyError'),
       ignoreError: () => false,
     });
     ctx.isRestoringHistory = false;

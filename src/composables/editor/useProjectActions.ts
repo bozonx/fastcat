@@ -13,6 +13,7 @@ export function useProjectActions() {
   const uiStore = useUiStore();
   const focusStore = useFocusStore();
   const toast = useToast();
+  const { t } = useI18n();
   const router = useRouter();
 
   async function resetProjectState() {
@@ -65,7 +66,7 @@ export function useProjectActions() {
     } catch (e) {
       toast.add({
         color: 'error',
-        title: 'Failed to load timeline',
+        title: t('fastcat.projects.failedToLoadTimeline'),
         description: e instanceof Error ? e.message : String(e),
       });
     }
@@ -90,7 +91,7 @@ export function useProjectActions() {
     } catch (e) {
       toast.add({
         color: 'error',
-        title: 'Failed to open project',
+        title: t('fastcat.projects.failedToOpenProject'),
         description: e instanceof Error ? e.message : String(e),
       });
     }

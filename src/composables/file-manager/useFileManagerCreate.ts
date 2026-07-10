@@ -49,9 +49,9 @@ export function createFileManagerCreate(ctx: FileManagerContext) {
         await reloadDirectory(dirPath);
         return createdPath;
       },
-      defaultErrorMessage: 'Failed to create document',
-      toastTitle: 'Document error',
-      toastDescription: () => 'Failed to create document',
+      defaultErrorMessage: deps.t('videoEditor.fileManager.errors.createDocument'),
+      toastTitle: deps.t('videoEditor.fileManager.errors.documentError'),
+      toastDescription: () => deps.t('videoEditor.fileManager.errors.createDocument'),
     });
     if (createdPath) {
       notifyFileManagerUpdate();
