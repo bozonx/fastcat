@@ -156,6 +156,7 @@ export interface HotkeyCommand {
   id: HotkeyCommandId;
   groupId: HotkeyGroupId;
   title: string;
+  visibility?: 'default' | 'advanced' | 'hidden';
 }
 
 export interface HotkeyCommandDefinition {
@@ -163,6 +164,7 @@ export interface HotkeyCommandDefinition {
   groupId: HotkeyGroupId;
   title: string;
   description?: string;
+  visibility?: 'default' | 'advanced' | 'hidden';
 }
 
 export interface HotkeyRegistry {
@@ -200,33 +202,133 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     { id: 'general.switchViewExport', groupId: 'general', title: 'Switch to Export' },
 
     // General - Project tabs
-    { id: 'general.projectTabFiles', groupId: 'general', title: 'Switch to Files tab' },
-    { id: 'general.projectTabHistory', groupId: 'general', title: 'Switch to History tab' },
-    { id: 'general.projectTabEffects', groupId: 'general', title: 'Switch to Effects tab' },
-    { id: 'general.projectTabLibrary', groupId: 'general', title: 'Switch to Library tab' },
-    { id: 'general.projectTabMarkers', groupId: 'general', title: 'Switch to Markers tab' },
-    { id: 'general.projectTabBackups', groupId: 'general', title: 'Switch to Backups tab' },
+    {
+      id: 'general.projectTabFiles',
+      groupId: 'general',
+      title: 'Switch to Files tab',
+      visibility: 'advanced',
+    },
+    {
+      id: 'general.projectTabHistory',
+      groupId: 'general',
+      title: 'Switch to History tab',
+      visibility: 'advanced',
+    },
+    {
+      id: 'general.projectTabEffects',
+      groupId: 'general',
+      title: 'Switch to Effects tab',
+      visibility: 'advanced',
+    },
+    {
+      id: 'general.projectTabLibrary',
+      groupId: 'general',
+      title: 'Switch to Library tab',
+      visibility: 'advanced',
+    },
+    {
+      id: 'general.projectTabMarkers',
+      groupId: 'general',
+      title: 'Switch to Markers tab',
+      visibility: 'advanced',
+    },
+    {
+      id: 'general.projectTabBackups',
+      groupId: 'general',
+      title: 'Switch to Backups tab',
+      visibility: 'advanced',
+    },
 
     // General - Timeline tabs
-    { id: 'general.tab1', groupId: 'general', title: 'Switch to timeline tab 1' },
-    { id: 'general.tab2', groupId: 'general', title: 'Switch to timeline tab 2' },
-    { id: 'general.tab3', groupId: 'general', title: 'Switch to timeline tab 3' },
-    { id: 'general.tab4', groupId: 'general', title: 'Switch to timeline tab 4' },
-    { id: 'general.tab5', groupId: 'general', title: 'Switch to timeline tab 5' },
-    { id: 'general.tab6', groupId: 'general', title: 'Switch to timeline tab 6' },
-    { id: 'general.tab7', groupId: 'general', title: 'Switch to timeline tab 7' },
-    { id: 'general.tab8', groupId: 'general', title: 'Switch to timeline tab 8' },
-    { id: 'general.tab9', groupId: 'general', title: 'Switch to timeline tab 9' },
+    {
+      id: 'general.tab1',
+      groupId: 'general',
+      title: 'Switch to timeline tab 1',
+      visibility: 'advanced',
+    },
+    {
+      id: 'general.tab2',
+      groupId: 'general',
+      title: 'Switch to timeline tab 2',
+      visibility: 'advanced',
+    },
+    {
+      id: 'general.tab3',
+      groupId: 'general',
+      title: 'Switch to timeline tab 3',
+      visibility: 'advanced',
+    },
+    {
+      id: 'general.tab4',
+      groupId: 'general',
+      title: 'Switch to timeline tab 4',
+      visibility: 'advanced',
+    },
+    {
+      id: 'general.tab5',
+      groupId: 'general',
+      title: 'Switch to timeline tab 5',
+      visibility: 'advanced',
+    },
+    {
+      id: 'general.tab6',
+      groupId: 'general',
+      title: 'Switch to timeline tab 6',
+      visibility: 'advanced',
+    },
+    {
+      id: 'general.tab7',
+      groupId: 'general',
+      title: 'Switch to timeline tab 7',
+      visibility: 'advanced',
+    },
+    {
+      id: 'general.tab8',
+      groupId: 'general',
+      title: 'Switch to timeline tab 8',
+      visibility: 'advanced',
+    },
+    {
+      id: 'general.tab9',
+      groupId: 'general',
+      title: 'Switch to timeline tab 9',
+      visibility: 'advanced',
+    },
 
     // General - Settings and tasks (rarely used)
-    { id: 'general.newTimeline', groupId: 'general', title: 'Create new timeline' },
-    { id: 'general.backgroundTasks', groupId: 'general', title: 'Show background tasks' },
-    { id: 'general.projectSettings', groupId: 'general', title: 'Open project settings' },
-    { id: 'general.appSettings', groupId: 'general', title: 'Open application settings' },
+    {
+      id: 'general.newTimeline',
+      groupId: 'general',
+      title: 'Create new timeline',
+      visibility: 'advanced',
+    },
+    {
+      id: 'general.backgroundTasks',
+      groupId: 'general',
+      title: 'Show background tasks',
+      visibility: 'advanced',
+    },
+    {
+      id: 'general.projectSettings',
+      groupId: 'general',
+      title: 'Open project settings',
+      visibility: 'advanced',
+    },
+    {
+      id: 'general.appSettings',
+      groupId: 'general',
+      title: 'Open application settings',
+      visibility: 'advanced',
+    },
 
     // File Manager
     { id: 'general.navigateBack', groupId: 'fileManager', title: 'Navigate back' },
-    { id: 'general.navigateForward', groupId: 'fileManager', title: 'Navigate forward' },
+    {
+      id: 'general.navigateForward',
+      groupId: 'fileManager',
+      title: 'Navigate forward',
+      visibility: 'advanced',
+    },
     { id: 'general.navigateUp', groupId: 'fileManager', title: 'Navigate up' },
     { id: 'general.createFolder', groupId: 'fileManager', title: 'Create folder' },
 
@@ -245,6 +347,7 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
       id: 'playback.play1ResetSpeed',
       groupId: 'timelineMonitorGlobal',
       title: 'Play 1x / reset speed',
+      visibility: 'advanced',
     },
     {
       id: 'timeline.globalToStart',
@@ -272,11 +375,17 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     { id: 'general.nextMarker', groupId: 'timelineMonitorGlobal', title: 'Next marker' },
 
     // Transport & navigation - Selection/Boundaries
-    { id: 'timeline.setSelectionIn', groupId: 'timelineMonitorGlobal', title: 'Set selection In' },
+    {
+      id: 'timeline.setSelectionIn',
+      groupId: 'timelineMonitorGlobal',
+      title: 'Set selection In',
+      visibility: 'advanced',
+    },
     {
       id: 'timeline.setSelectionOut',
       groupId: 'timelineMonitorGlobal',
       title: 'Set selection Out',
+      visibility: 'advanced',
     },
     {
       id: 'playback.jumpPrevBoundary',
@@ -292,11 +401,13 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
       id: 'playback.jumpPrevBoundaryTrack',
       groupId: 'timelineMonitorGlobal',
       title: 'Jump to previous edit point on track',
+      visibility: 'advanced',
     },
     {
       id: 'playback.jumpNextBoundaryTrack',
       groupId: 'timelineMonitorGlobal',
       title: 'Jump to next edit point on track',
+      visibility: 'advanced',
     },
 
     // Transport & navigation - Snapshot
@@ -304,11 +415,13 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
       id: 'general.snapshot',
       groupId: 'timelineMonitorGlobal',
       title: 'Create snapshot from monitor',
+      visibility: 'advanced',
     },
     {
       id: 'monitor.center',
       groupId: 'monitor',
       title: 'Center monitor view',
+      visibility: 'advanced',
     },
 
     // Transport & navigation - Frame-by-frame navigation and speed loops
@@ -328,8 +441,14 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
       id: 'playback.speedUpForward',
       groupId: 'timelineMonitorGlobal',
       title: 'Speed up (forward)',
+      visibility: 'advanced',
     },
-    { id: 'playback.speedDown', groupId: 'timelineMonitorGlobal', title: 'Slow down' },
+    {
+      id: 'playback.speedDown',
+      groupId: 'timelineMonitorGlobal',
+      title: 'Slow down',
+      visibility: 'advanced',
+    },
 
     // Transport & navigation - Classic J/K/L shuttle (unbound by default)
     {
@@ -433,25 +552,57 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     },
 
     // Timeline - Snapping and drag modes
-    { id: 'timeline.selectSnapModeSnap', groupId: 'timeline', title: 'Switch to clip snapping' },
-    { id: 'timeline.selectSnapModeNoSnap', groupId: 'timeline', title: 'Switch to no snapping' },
-    { id: 'timeline.selectSnapModeFree', groupId: 'timeline', title: 'Switch to free mode' },
-    { id: 'timeline.selectDragModeMove', groupId: 'timeline', title: 'Switch to normal move mode' },
+    {
+      id: 'timeline.selectSnapModeSnap',
+      groupId: 'timeline',
+      title: 'Switch to clip snapping',
+      visibility: 'advanced',
+    },
+    {
+      id: 'timeline.selectSnapModeNoSnap',
+      groupId: 'timeline',
+      title: 'Switch to no snapping',
+      visibility: 'advanced',
+    },
+    {
+      id: 'timeline.selectSnapModeFree',
+      groupId: 'timeline',
+      title: 'Switch to free mode',
+      visibility: 'advanced',
+    },
+    {
+      id: 'timeline.selectDragModeMove',
+      groupId: 'timeline',
+      title: 'Switch to normal move mode',
+      visibility: 'advanced',
+    },
     {
       id: 'timeline.selectDragModePseudoOverlap',
       groupId: 'timeline',
       title: 'Switch to pseudo-overlap mode',
+      visibility: 'advanced',
     },
-    { id: 'timeline.selectDragModeSlip', groupId: 'timeline', title: 'Switch to slip mode' },
+    {
+      id: 'timeline.selectDragModeSlip',
+      groupId: 'timeline',
+      title: 'Switch to slip mode',
+      visibility: 'advanced',
+    },
 
     // Timeline - Clip toggles
     { id: 'timeline.toggleDisableClip', groupId: 'timeline', title: 'Disable / Enable clip' },
     { id: 'timeline.toggleMuteClip', groupId: 'timeline', title: 'Mute / Unmute clip' },
-    { id: 'timeline.toggleLockClip', groupId: 'timeline', title: 'Toggle lock clip' },
+    {
+      id: 'timeline.toggleLockClip',
+      groupId: 'timeline',
+      title: 'Toggle lock clip',
+      visibility: 'advanced',
+    },
     {
       id: 'timeline.toggleFreezeFrame',
       groupId: 'timeline',
       title: 'Toggle clip freeze frame',
+      visibility: 'advanced',
     },
 
     // Timeline - Track toggles
@@ -459,26 +610,45 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
       id: 'timeline.toggleVisibilityTrack',
       groupId: 'timeline',
       title: 'Hide / Show video track',
+      visibility: 'advanced',
     },
-    { id: 'timeline.toggleMuteTrack', groupId: 'timeline', title: 'Mute / Unmute audio track' },
-    { id: 'timeline.toggleSoloTrack', groupId: 'timeline', title: 'Solo / Unsolo audio track' },
-    { id: 'timeline.toggleLockTrack', groupId: 'timeline', title: 'Toggle lock track' },
+    {
+      id: 'timeline.toggleMuteTrack',
+      groupId: 'timeline',
+      title: 'Mute / Unmute audio track',
+      visibility: 'advanced',
+    },
+    {
+      id: 'timeline.toggleSoloTrack',
+      groupId: 'timeline',
+      title: 'Solo / Unsolo audio track',
+      visibility: 'advanced',
+    },
+    {
+      id: 'timeline.toggleLockTrack',
+      groupId: 'timeline',
+      title: 'Toggle lock track',
+      visibility: 'advanced',
+    },
 
     // Timeline - Waveform and thumbnails
     {
       id: 'timeline.toggleWaveformMode',
       groupId: 'timeline',
       title: 'Toggle clip waveform mode',
+      visibility: 'advanced',
     },
     {
       id: 'timeline.toggleShowWaveform',
       groupId: 'timeline',
       title: 'Toggle show clip waveform',
+      visibility: 'advanced',
     },
     {
       id: 'timeline.toggleShowThumbnails',
       groupId: 'timeline',
       title: 'Toggle show clip thumbnails',
+      visibility: 'advanced',
     },
 
     // Timeline - Clip volume
@@ -486,21 +656,25 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
       id: 'timeline.increaseSelectedClipsVolume',
       groupId: 'timeline',
       title: 'Increase selected clips volume',
+      visibility: 'advanced',
     },
     {
       id: 'timeline.decreaseSelectedClipsVolume',
       groupId: 'timeline',
       title: 'Decrease selected clips volume',
+      visibility: 'advanced',
     },
     {
       id: 'timeline.increaseSelectedClipsVolumeLarge',
       groupId: 'timeline',
       title: 'Increase selected clips volume (large step)',
+      visibility: 'advanced',
     },
     {
       id: 'timeline.decreaseSelectedClipsVolumeLarge',
       groupId: 'timeline',
       title: 'Decrease selected clips volume (large step)',
+      visibility: 'advanced',
     },
 
     // Timeline - Create clips
@@ -508,16 +682,19 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
       id: 'timeline.addTextClipAtPlayhead',
       groupId: 'timeline',
       title: 'Create text clip at playhead',
+      visibility: 'advanced',
     },
     {
       id: 'timeline.addBackgroundClipAtPlayhead',
       groupId: 'timeline',
       title: 'Create background clip at playhead',
+      visibility: 'advanced',
     },
     {
       id: 'timeline.addAdjustmentClipAtPlayhead',
       groupId: 'timeline',
       title: 'Create adjustment clip at playhead',
+      visibility: 'advanced',
     },
 
     // Timeline - Other
@@ -530,22 +707,72 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     { id: 'timeline.ungroupClips', groupId: 'timeline', title: 'Ungroup clips' },
 
     // Monitor - Playback speeds (ascending)
-    { id: 'playback.forward0_5', groupId: 'monitor', title: 'Forward 0.5x' },
-    { id: 'playback.backward0_5', groupId: 'monitor', title: 'Backward 0.5x' },
-    { id: 'playback.forward0_75', groupId: 'monitor', title: 'Forward 0.75x' },
-    { id: 'playback.backward0_75', groupId: 'monitor', title: 'Backward 0.75x' },
-    { id: 'playback.forward1_25', groupId: 'monitor', title: 'Forward 1.25x' },
-    { id: 'playback.backward1_25', groupId: 'monitor', title: 'Backward 1.25x' },
-    { id: 'playback.forward1_5', groupId: 'monitor', title: 'Forward 1.5x' },
-    { id: 'playback.backward1_5', groupId: 'monitor', title: 'Backward 1.5x' },
-    { id: 'playback.forward1_75', groupId: 'monitor', title: 'Forward 1.75x' },
-    { id: 'playback.backward1_75', groupId: 'monitor', title: 'Backward 1.75x' },
-    { id: 'playback.forward2', groupId: 'monitor', title: 'Forward 2x' },
-    { id: 'playback.backward2', groupId: 'monitor', title: 'Backward 2x' },
-    { id: 'playback.forward3', groupId: 'monitor', title: 'Forward 3x' },
-    { id: 'playback.backward3', groupId: 'monitor', title: 'Backward 3x' },
-    { id: 'playback.forward5', groupId: 'monitor', title: 'Forward 5x' },
-    { id: 'playback.backward5', groupId: 'monitor', title: 'Backward 5x' },
+    {
+      id: 'playback.forward0_5',
+      groupId: 'monitor',
+      title: 'Forward 0.5x',
+      visibility: 'advanced',
+    },
+    {
+      id: 'playback.backward0_5',
+      groupId: 'monitor',
+      title: 'Backward 0.5x',
+      visibility: 'advanced',
+    },
+    {
+      id: 'playback.forward0_75',
+      groupId: 'monitor',
+      title: 'Forward 0.75x',
+      visibility: 'advanced',
+    },
+    {
+      id: 'playback.backward0_75',
+      groupId: 'monitor',
+      title: 'Backward 0.75x',
+      visibility: 'advanced',
+    },
+    {
+      id: 'playback.forward1_25',
+      groupId: 'monitor',
+      title: 'Forward 1.25x',
+      visibility: 'advanced',
+    },
+    {
+      id: 'playback.backward1_25',
+      groupId: 'monitor',
+      title: 'Backward 1.25x',
+      visibility: 'advanced',
+    },
+    {
+      id: 'playback.forward1_5',
+      groupId: 'monitor',
+      title: 'Forward 1.5x',
+      visibility: 'advanced',
+    },
+    {
+      id: 'playback.backward1_5',
+      groupId: 'monitor',
+      title: 'Backward 1.5x',
+      visibility: 'advanced',
+    },
+    {
+      id: 'playback.forward1_75',
+      groupId: 'monitor',
+      title: 'Forward 1.75x',
+      visibility: 'advanced',
+    },
+    {
+      id: 'playback.backward1_75',
+      groupId: 'monitor',
+      title: 'Backward 1.75x',
+      visibility: 'advanced',
+    },
+    { id: 'playback.forward2', groupId: 'monitor', title: 'Forward 2x', visibility: 'advanced' },
+    { id: 'playback.backward2', groupId: 'monitor', title: 'Backward 2x', visibility: 'advanced' },
+    { id: 'playback.forward3', groupId: 'monitor', title: 'Forward 3x', visibility: 'advanced' },
+    { id: 'playback.backward3', groupId: 'monitor', title: 'Backward 3x', visibility: 'advanced' },
+    { id: 'playback.forward5', groupId: 'monitor', title: 'Forward 5x', visibility: 'advanced' },
+    { id: 'playback.backward5', groupId: 'monitor', title: 'Backward 5x', visibility: 'advanced' },
   ],
   bindings: {
     'general.copy': [`${Modifier2}+C`],

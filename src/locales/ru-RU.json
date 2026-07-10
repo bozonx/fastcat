@@ -1929,6 +1929,7 @@
       "historyMaxEntries": "Лимит истории отмены",
       "hotkeysCaptureHint": "Ожидание комбинации клавиш (Esc для отмены)",
       "hotkeysCapturing": "Запись...",
+      "hotkeysAdvanced": "Расширенные",
       "hotkeysConflict": "Конфликт горячих клавиш",
       "hotkeysOverride": "Перекрывает команду в другом контексте",
       "hotkeysDuplicateConfirm": "Всё равно добавить",

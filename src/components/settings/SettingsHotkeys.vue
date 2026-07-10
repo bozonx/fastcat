@@ -175,7 +175,9 @@ function confirmReplaceDuplicate() {
 const hotkeyGroups = computed(() => {
   const query = normalizedQuery.value;
   const groupIds = hotkeyGroupOrder.filter((groupId) =>
-    DEFAULT_HOTKEYS.commands.some((command) => command.groupId === groupId),
+    DEFAULT_HOTKEYS.commands.some(
+      (command) => command.groupId === groupId && command.visibility !== 'hidden',
+    ),
   );
   return groupIds
     .map((groupId) => ({
@@ -183,6 +185,7 @@ const hotkeyGroups = computed(() => {
       title: getCommandGroupTitle(groupId),
       commands: DEFAULT_HOTKEYS.commands.filter((c) => {
         if (c.groupId !== groupId) return false;
+        if (c.visibility === 'hidden') return false;
         if (!query) return true;
         const translatedTitle = getCommandTitle(c.id).toLowerCase();
         const fallbackTitle = c.title.toLowerCase();

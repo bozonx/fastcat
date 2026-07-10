@@ -1929,6 +1929,7 @@
       "historyMaxEntries": "Undo history limit",
       "hotkeysCaptureHint": "Waiting for key combination (Esc to cancel)",
       "hotkeysCapturing": "Capturing...",
+      "hotkeysAdvanced": "Advanced",
       "hotkeysConflict": "Hotkey conflict",
       "hotkeysOverride": "Overrides a command in another context",
       "hotkeysDuplicateConfirm": "Add anyway",

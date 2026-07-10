@@ -131,4 +131,47 @@ describe('SettingsHotkeysGroup', () => {
 
     expect(component.text()).toContain('Play');
   });
+
+  it('renders advanced commands in a collapsed section by default', async () => {
+    const component = await mountSuspended(SettingsHotkeysGroup, {
+      props: {
+        ...baseProps,
+        commands: [
+          ...baseProps.commands,
+          {
+            id: 'advancedCommand',
+            groupId: 'playback',
+            title: 'Advanced Command',
+            visibility: 'advanced',
+          },
+        ],
+      },
+    });
+
+    const advanced = component.find('details');
+    expect(advanced.exists()).toBe(true);
+    expect(advanced.attributes('open')).toBeUndefined();
+    expect(component.text()).toContain('videoEditor.settings.hotkeysAdvanced');
+  });
+
+  it('opens advanced commands while searching', async () => {
+    const component = await mountSuspended(SettingsHotkeysGroup, {
+      props: {
+        ...baseProps,
+        searchQuery: 'advanced',
+        commands: [
+          {
+            id: 'advancedCommand',
+            groupId: 'playback',
+            title: 'Advanced Command',
+            visibility: 'advanced',
+          },
+        ],
+      },
+    });
+
+    const advanced = component.find('details');
+    expect(advanced.exists()).toBe(true);
+    expect(advanced.attributes('open')).toBeDefined();
+  });
 });
