@@ -227,7 +227,16 @@ export const useFocusStore = defineStore('focus', () => {
 
   const canUsePreviewHotkeys = computed(() => isPreviewPanelFocus(effectiveFocus.value));
 
-  const canUseFileManagerHotkeys = computed(() => isFileManagerPanelFocus(effectiveFocus.value));
+  const canUseFileManagerHotkeys = computed(() => {
+    if (isFileManagerPanelFocus(effectiveFocus.value)) return true;
+
+    if (isPropertiesPanelFocus(effectiveFocus.value)) {
+      const selectionStore = useSelectionStore();
+      return selectionStore.selectedEntity?.source === 'fileManager';
+    }
+
+    return false;
+  });
 
   const isPropertiesFocus = computed(() => isPropertiesPanelFocus(effectiveFocus.value));
 

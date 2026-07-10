@@ -68,6 +68,7 @@ export function useEditorHotkeys() {
 
   function canHandleFocusTab() {
     if (hasBlockingModalState()) return false;
+    if (!projectStore.currentProjectName) return false;
     return (
       projectStore.currentView === 'files' ||
       projectStore.currentView === 'cut' ||
@@ -137,7 +138,6 @@ export function useEditorHotkeys() {
           hasBlockingModalState: modalOpen || (fullscreen && !isPlayback && !isZoom),
           isEditableEventTarget,
           isEditableActiveElement,
-          pressedCombo: matchedCombo,
         })
       ) {
         continue;

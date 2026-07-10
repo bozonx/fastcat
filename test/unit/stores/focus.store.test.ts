@@ -146,6 +146,7 @@ describe('FocusStore', () => {
       entry: { kind: 'file', name: 'test.mp4', path: '/test.mp4', source: 'local' },
     };
     expect(store.canUseTimelineHotkeys).toBe(false);
+    expect(store.canUseFileManagerHotkeys).toBe(true);
 
     // Reset selection
     selectionStore.clearSelection();

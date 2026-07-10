@@ -171,7 +171,7 @@ describe('canExecuteHotkeyCommand', () => {
     ).toBe(false);
   });
 
-  it('allows commands in editable when policy permits', () => {
+  it('blocks deselect in editable elements', () => {
     expect(
       canExecuteHotkeyCommand({
         cmdId: 'general.deselect',
@@ -179,59 +179,27 @@ describe('canExecuteHotkeyCommand', () => {
         isEditableEventTarget: true,
         isEditableActiveElement: false,
       }),
-    ).toBe(true);
+    ).toBe(false);
   });
 
-  it('allows save/mute/volume in editable only with Ctrl combo', () => {
-    expect(
-      canExecuteHotkeyCommand({
-        cmdId: 'general.save',
-        hasBlockingModalState: false,
-        isEditableEventTarget: true,
-        isEditableActiveElement: false,
-        pressedCombo: 'Ctrl+S',
-      }),
-    ).toBe(true);
+  it('blocks save, mute, and volume commands in editable elements', () => {
+    const editableCommands = [
+      'general.save',
+      'general.mute',
+      'general.volumeUp',
+      'general.volumeDown',
+    ] as const;
 
-    expect(
-      canExecuteHotkeyCommand({
-        cmdId: 'general.save',
-        hasBlockingModalState: false,
-        isEditableEventTarget: true,
-        isEditableActiveElement: false,
-        pressedCombo: 'Shift+S',
-      }),
-    ).toBe(false);
-
-    expect(
-      canExecuteHotkeyCommand({
-        cmdId: 'general.mute',
-        hasBlockingModalState: false,
-        isEditableEventTarget: false,
-        isEditableActiveElement: true,
-        pressedCombo: 'Ctrl+Q',
-      }),
-    ).toBe(true);
-
-    expect(
-      canExecuteHotkeyCommand({
-        cmdId: 'general.volumeUp',
-        hasBlockingModalState: false,
-        isEditableEventTarget: true,
-        isEditableActiveElement: false,
-        pressedCombo: 'R',
-      }),
-    ).toBe(false);
-
-    expect(
-      canExecuteHotkeyCommand({
-        cmdId: 'general.volumeDown',
-        hasBlockingModalState: false,
-        isEditableEventTarget: true,
-        isEditableActiveElement: false,
-        pressedCombo: 'Ctrl+E',
-      }),
-    ).toBe(true);
+    for (const cmdId of editableCommands) {
+      expect(
+        canExecuteHotkeyCommand({
+          cmdId,
+          hasBlockingModalState: false,
+          isEditableEventTarget: true,
+          isEditableActiveElement: false,
+        }),
+      ).toBe(false);
+    }
   });
 });
 
@@ -246,9 +214,9 @@ describe('shouldHandleRepeatForMatchedCommands', () => {
 });
 
 describe('shouldBlurAfterHotkey', () => {
-  it('returns true for blur policy with HTMLElement', () => {
+  it('does not blur editable elements for deselect', () => {
     const el = document.createElement('input');
-    expect(shouldBlurAfterHotkey({ cmdId: 'general.deselect', activeElement: el })).toBe(true);
+    expect(shouldBlurAfterHotkey({ cmdId: 'general.deselect', activeElement: el })).toBe(false);
   });
 
   it('returns false for non-blur policy', () => {

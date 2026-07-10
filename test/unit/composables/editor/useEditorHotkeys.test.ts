@@ -99,6 +99,7 @@ describe('useEditorHotkeys', () => {
       'general.focus': ['Tab'],
       'general.copy': ['Ctrl+C'],
     };
+    useProjectStore().currentProjectName = 'Test project';
     wrapper = undefined;
   });
 
@@ -312,7 +313,7 @@ describe('useEditorHotkeys', () => {
     input.remove();
   });
 
-  it('allows Escape-based deselect even when editable element is active', async () => {
+  it('leaves Escape to an editable element', async () => {
     wrapper = mount(HotkeysHarness, { attachTo: document.body });
     const projectStore = useProjectStore();
     const selectionStore = useSelectionStore();
@@ -331,9 +332,9 @@ describe('useEditorHotkeys', () => {
       new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', bubbles: true }),
     );
 
-    expect(selectionStore.selectedEntity).toBeNull();
-    expect(timelineStore.selectedItemIds).toEqual([]);
-    expect(timelineStore.selectedTrackId).toBeNull();
+    expect(selectionStore.selectedEntity).not.toBeNull();
+    expect(timelineStore.selectedItemIds).toEqual(['clip-1']);
+    expect(timelineStore.selectedTrackId).toBe('track-1');
 
     input.remove();
   });
@@ -404,6 +405,33 @@ describe('useEditorHotkeys', () => {
       );
 
       expect(focusStore.activePanelId).toBe('timeline');
+    } finally {
+      dialog.remove();
+    }
+  });
+
+  it('leaves Escape in a modal to the modal system', async () => {
+    wrapper = mount(HotkeysHarness);
+    const selectionStore = useSelectionStore();
+    const timelineStore = useTimelineStore() as any;
+    const dialog = document.createElement('dialog');
+    dialog.setAttribute('open', '');
+    document.body.appendChild(dialog);
+    selectionStore.selectTimelineMarker('marker-1');
+    timelineStore.selectedItemIds = ['clip-1'];
+
+    try {
+      const event = new KeyboardEvent('keydown', {
+        key: 'Escape',
+        code: 'Escape',
+        bubbles: true,
+        cancelable: true,
+      });
+      dialog.dispatchEvent(event);
+
+      expect(event.defaultPrevented).toBe(false);
+      expect(selectionStore.selectedEntity).not.toBeNull();
+      expect(timelineStore.selectedItemIds).toEqual(['clip-1']);
     } finally {
       dialog.remove();
     }
@@ -1174,7 +1202,7 @@ describe('useEditorHotkeys', () => {
     input.remove();
   });
 
-  it('allows Ctrl+S save in editable inputs', async () => {
+  it('does not execute save hotkeys in editable inputs', async () => {
     wrapper = mount(HotkeysHarness, { attachTo: document.body });
     const projectStore = useProjectStore();
     const timelineStore = useTimelineStore() as any;
@@ -1196,7 +1224,7 @@ describe('useEditorHotkeys', () => {
       }),
     );
 
-    expect(saveTimelineSpy).toHaveBeenCalled();
+    expect(saveTimelineSpy).not.toHaveBeenCalled();
     input.remove();
   });
 

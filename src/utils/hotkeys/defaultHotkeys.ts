@@ -327,7 +327,6 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
       id: 'general.navigateForward',
       groupId: 'fileManager',
       title: 'Navigate forward',
-      visibility: 'advanced',
     },
     { id: 'general.navigateUp', groupId: 'fileManager', title: 'Navigate up' },
     { id: 'general.createFolder', groupId: 'fileManager', title: 'Create folder' },
@@ -454,13 +453,13 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     {
       id: 'playback.shuttleReverse',
       groupId: 'timelineMonitorGlobal',
-      title: 'Shuttle reverse (J)',
+      title: 'Shuttle reverse',
     },
-    { id: 'playback.shuttleStop', groupId: 'timelineMonitorGlobal', title: 'Shuttle stop (K)' },
+    { id: 'playback.shuttleStop', groupId: 'timelineMonitorGlobal', title: 'Shuttle stop' },
     {
       id: 'playback.shuttleForward',
       groupId: 'timelineMonitorGlobal',
-      title: 'Shuttle forward (L)',
+      title: 'Shuttle forward',
     },
 
     // Timeline - Splitting (most frequent)
