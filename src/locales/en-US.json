@@ -1732,7 +1732,8 @@
         "stepForward": "Step forward",
         "stepForwardLarge": "Step forward (large)",
         "toggle": "Play / Pause (current speed)",
-        "toggle1": "Play / pause (1x)"
+        "toggle1": "Play / pause (1x)",
+        "play1ResetSpeed": "Play 1x / reset speed"
       },
       "timeline": {
         "globalToStart": "Go to start of timeline",

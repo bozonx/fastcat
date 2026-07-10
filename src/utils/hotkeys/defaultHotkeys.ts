@@ -108,6 +108,7 @@ export type HotkeyCommandId =
   | 'timeline.ungroupClips'
   | 'playback.toggle'
   | 'playback.toggle1'
+  | 'playback.play1ResetSpeed'
   | 'playback.stepForward'
   | 'playback.stepBackward'
   | 'playback.stepForwardLarge'
@@ -238,6 +239,11 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
       id: 'playback.toggle1',
       groupId: 'timelineMonitorGlobal',
       title: 'Toggle playback (1x)',
+    },
+    {
+      id: 'playback.play1ResetSpeed',
+      groupId: 'timelineMonitorGlobal',
+      title: 'Play 1x / reset speed',
     },
     {
       id: 'timeline.globalToStart',
@@ -649,6 +655,7 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
 
     'playback.toggle': [`${Modifier1}+Space`],
     'playback.toggle1': ['Space'],
+    'playback.play1ResetSpeed': [],
     'timeline.globalToStart': ['Home', `${Modifier2}+E`],
     'timeline.globalToEnd': ['End', `${Modifier2}+R`],
     'playback.stepForward': ['ArrowRight'],

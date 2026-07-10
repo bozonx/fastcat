@@ -49,6 +49,21 @@ export function usePlaybackHotkeys(
       return true;
     },
 
+    'playback.play1ResetSpeed': () => {
+      if (!canUsePlaybackOrTimelineFocus()) return false;
+
+      if (isPreviewLikeFocus(focusStore.effectiveFocus) && uiStore.hasActivePreviewPlayer) {
+        uiStore.triggerPreviewPlayback('set', 1, 'forward');
+        return true;
+      }
+
+      timelineStore.setPlaybackSpeed(1);
+      if (!timelineStore.isPlaying) {
+        timelineStore.togglePlayback();
+      }
+      return true;
+    },
+
     'timeline.globalToStart': () => {
       timelineStore.goToStart();
       return true;

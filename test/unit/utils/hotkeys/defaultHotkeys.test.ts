@@ -234,6 +234,7 @@ describe('DEFAULT_HOTKEYS', () => {
       'playback.stepBackward',
       'playback.stepForwardLarge',
       'playback.stepBackwardLarge',
+      'playback.play1ResetSpeed',
       'playback.speedUpForward',
       'playback.speedDown',
     ];
@@ -254,6 +255,7 @@ describe('DEFAULT_HOTKEYS', () => {
   it('leaves speed-cycle and 1.5x commands unbound by default', () => {
     expect(DEFAULT_HOTKEYS.bindings['playback.speedUpForward']).toEqual([]);
     expect(DEFAULT_HOTKEYS.bindings['playback.speedDown']).toEqual([]);
+    expect(DEFAULT_HOTKEYS.bindings['playback.play1ResetSpeed']).toEqual([]);
     expect(DEFAULT_HOTKEYS.bindings['playback.forward1_5']).toEqual([]);
     expect(DEFAULT_HOTKEYS.bindings['playback.backward1_5']).toEqual([]);
   });
