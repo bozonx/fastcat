@@ -555,7 +555,7 @@ export function useNativeMonitorBridge(): void {
     playbackAnchorUs = timelineUs;
     playbackAnchorWallMs = nowMs;
     suppressSeekFromTimeUpdate = true;
-    timelineStore.currentTime = timelineUs;
+    timelineStore.setCurrentTimeUs(timelineUs);
     queueMicrotask(() => {
       suppressSeekFromTimeUpdate = false;
     });

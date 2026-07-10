@@ -299,6 +299,10 @@ export function useExportForm() {
     return 'timeline';
   }
 
+  function resolveSavedMetadataValue(savedValue: string | undefined, projectValue: string) {
+    return savedValue?.trim() ? savedValue : projectValue;
+  }
+
   async function initializeExportForm() {
     isInitializing.value = true;
     try {
@@ -337,10 +341,22 @@ export function useExportForm() {
         customFps.value = saved.customFps ?? format.fps;
         customAudioSampleRate.value = saved.customAudioSampleRate ?? format.sampleRate;
         includeMetadata.value = saved.includeMetadata ?? false;
-        metadataTitle.value = saved.metadataTitle ?? '';
-        metadataDescription.value = saved.metadataDescription ?? '';
-        metadataAuthor.value = saved.metadataAuthor ?? '';
-        metadataTags.value = saved.metadataTags ?? '';
+        metadataTitle.value = resolveSavedMetadataValue(
+          saved.metadataTitle,
+          projectStore.projectMeta?.title || '',
+        );
+        metadataDescription.value = resolveSavedMetadataValue(
+          saved.metadataDescription,
+          projectStore.projectMeta?.description || '',
+        );
+        metadataAuthor.value = resolveSavedMetadataValue(
+          saved.metadataAuthor,
+          projectStore.projectMeta?.author || '',
+        );
+        metadataTags.value = resolveSavedMetadataValue(
+          saved.metadataTags,
+          projectStore.projectMeta?.tags.join(', ') || '',
+        );
         customExportPath.value = saved.customExportPath ?? null;
       } else {
         const encDefaults = resolveExportPreset(workspaceStore.userSettings.exportPresets);

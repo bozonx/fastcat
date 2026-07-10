@@ -118,6 +118,29 @@ describe('TimelinePersistenceModule', () => {
     expect(deps.duration.value).toBe(0);
   });
 
+  it('loadTimeline clamps restored playhead to the loaded timeline duration', async () => {
+    const files: FileStore = {
+      'timeline.otio': { text: JSON.stringify({ ...fallbackDoc, id: 'loaded' }), lastModified: 1 },
+    };
+    parseTimelineFromOtio.mockImplementationOnce((text: string) => JSON.parse(text));
+    selectTimelineDurationUs.mockReturnValueOnce(1_000);
+    const deps = createMockDeps({
+      ...makeVfsMock(files),
+      getProjectSettings: () => ({
+        timelines: {
+          sessions: {
+            'timeline.otio': { playheadUs: 2_000 },
+          },
+        },
+      }),
+    });
+    const mod = createTimelinePersistenceModule(deps);
+
+    await mod.loadTimeline();
+
+    expect(deps.currentTime.value).toBe(1_000);
+  });
+
   it('loadTimeline falls back to default when parseTimelineFromOtio throws', async () => {
     const files: FileStore = { 'timeline.otio': { text: 'invalid otio', lastModified: 1 } };
     const deps = createMockDeps(makeVfsMock(files));

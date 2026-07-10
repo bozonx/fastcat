@@ -612,7 +612,9 @@ const filenamePlaceholder = computed(() =>
             />
           </div>
           <p class="text-sm text-ui-text-muted text-center mt-1">
-            {{ t('videoEditor.export.doNotClose') }}
+            {{
+              t(isTauri ? 'videoEditor.export.doNotCloseTauri' : 'videoEditor.export.doNotCloseWeb')
+            }}
           </p>
         </div>
         <div class="flex flex-wrap justify-end gap-2" :class="{ 'mt-2': isExporting }">

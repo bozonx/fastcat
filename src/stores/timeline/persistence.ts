@@ -756,6 +756,10 @@ export function createTimelinePersistenceModule(
         deps.duration.value = deps.timelineDoc.value
           ? deps.selectTimelineDurationUs(deps.timelineDoc.value)
           : 0;
+        deps.currentTime.value = Math.min(
+          Math.max(0, Math.round(deps.currentTime.value)),
+          Math.max(0, Math.round(deps.duration.value)),
+        );
         currentRevision = restoredAutosave ? 1 : 0;
         mainSavedRevision = 0;
         autoSave.reset();

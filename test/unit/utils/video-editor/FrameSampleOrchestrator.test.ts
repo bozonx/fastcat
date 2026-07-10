@@ -180,6 +180,56 @@ describe('FrameSampleOrchestrator', () => {
     );
   });
 
+  it('draws text clips before applying WebGPU non-video effects', async () => {
+    const orchestrator = new FrameSampleOrchestrator();
+    const processor = new TimelineActiveClipProcessor();
+    const calls: string[] = [];
+    const textClip = {
+      itemId: 'text',
+      sprite: { alpha: 1, blendMode: 'normal', visible: false },
+      clipKind: 'text',
+      startUs: 0,
+      durationUs: 1_000_000,
+      text: 'Hello',
+      textDirty: true,
+      canvas: null,
+      ctx: null,
+    } as unknown as CompositorClip;
+    const drawTextClip = vi.fn((clip: CompositorClip) => {
+      calls.push('draw');
+      clip.canvas = { width: 64, height: 32 } as unknown as OffscreenCanvas;
+      clip.ctx = {} as OffscreenCanvasRenderingContext2D;
+    });
+    const applyWebGpuClipEffects = vi.fn((clip: CompositorClip) => {
+      calls.push(clip.canvas && clip.ctx ? 'effects-ready' : 'effects-empty');
+      return Promise.resolve();
+    });
+
+    await orchestrator.process({
+      activeClips: [textClip],
+      timeUs: 0,
+      width: 1920,
+      height: 1080,
+      activeClipProcessor: processor,
+      syncTransitionFilter: vi.fn(),
+      computeTransitionOpacity: () => 1,
+      applyClipEffects: vi.fn(),
+      applyWebGpuClipEffects,
+      drawHudClip: vi.fn(),
+      drawShapeClip: vi.fn(),
+      drawTextClip,
+      createAbortController: () => new AbortController(),
+      getVideoSampleForClip: vi.fn(),
+      getPrevClipOnLayer: () => null,
+      updateClipTextureFromSample: vi.fn().mockResolvedValue(undefined),
+      setClipSpriteVisible: () => true,
+    });
+
+    expect(drawTextClip).toHaveBeenCalledWith(textClip, { width: 1920, height: 1080 });
+    expect(applyWebGpuClipEffects).toHaveBeenCalledWith(textClip);
+    expect(calls).toEqual(['draw', 'effects-ready']);
+  });
+
   it('tags blend-shadow sample requests with the render timeline time for cache priority', async () => {
     const calls: Array<{ timelineTimeUs?: number }> = [];
     const orchestrator = new FrameSampleOrchestrator();

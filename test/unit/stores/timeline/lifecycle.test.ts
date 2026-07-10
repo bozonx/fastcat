@@ -116,6 +116,14 @@ describe('createTimelineLifecycleModule', () => {
     expect(deps.currentTime.value).toBe(1000);
   });
 
+  it('setCurrentTimeUs stays at 0 when the timeline is empty', () => {
+    const deps = makeDeps();
+    deps.duration.value = 0;
+    const mod = createTimelineLifecycleModule(deps);
+    mod.setCurrentTimeUs(2000);
+    expect(deps.currentTime.value).toBe(0);
+  });
+
   it('setCurrentTimeUs clamps to 0', () => {
     const deps = makeDeps();
     deps.duration.value = 1000;

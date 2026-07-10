@@ -802,6 +802,46 @@ describe('useExportForm', () => {
     });
   });
 
+  it('подставляет метаданные проекта вместо пустых сохраненных export metadata', async () => {
+    projectStoreMock.projectSettings.exportSettings = {
+      exportType: 'video',
+      outputFormat: 'mp4',
+      videoCodec: 'avc1.42E032',
+      bitrateMbps: 8,
+      excludeAudio: false,
+      audioCodec: 'aac',
+      audioBitrateKbps: 192,
+      audioChannels: 2,
+      audioSampleRate: 48000,
+      bitrateMode: 'variable',
+      enableAdvancedSettings: false,
+      maxBitrateMbps: null,
+      minBitrateMbps: null,
+      keyframeIntervalSec: 2,
+      exportAlpha: false,
+      fastStart: true,
+      matchTimeline: true,
+      customWidth: 1920,
+      customHeight: 1080,
+      customFps: 30,
+      customAudioSampleRate: 48000,
+      includeMetadata: false,
+      metadataTitle: '',
+      metadataDescription: '',
+      metadataAuthor: '',
+      metadataTags: '',
+      customExportPath: null,
+    };
+
+    const form = useExportForm();
+    await form.initializeExportForm();
+
+    expect(form.metadataTitle.value).toBe('Title');
+    expect(form.metadataDescription.value).toBe('Description');
+    expect(form.metadataAuthor.value).toBe('Author');
+    expect(form.metadataTags.value).toBe('tag-1');
+  });
+
   it('передает метаданные, если includeMetadata установлен в true', async () => {
     const form = useExportForm();
     await form.initializeExportForm();

@@ -311,6 +311,62 @@ describe('ClipResourceManager.applyEffectsToNonVideoClip', () => {
     await manager.applyEffectsToNonVideoClip(clip, true);
   });
 
+  it('keeps text canvas texture when no effects are active', async () => {
+    const manager = createManager();
+    const imageSource = createMockImageSource();
+    const canvas = { width: 64, height: 32 };
+    const canvasTextureSource = { resource: canvas, update: vi.fn() };
+    const sprite = {
+      texture: { source: canvasTextureSource },
+    };
+    const clip = {
+      clipKind: 'text',
+      effects: [],
+      sprite,
+      imageSource,
+      canvas,
+      ctx: {},
+      textDirty: false,
+    } as unknown as CompositorClip;
+
+    await manager.applyEffectsToNonVideoClip(clip, true);
+
+    expect(sprite.texture.source).toBe(canvasTextureSource);
+    expect(clip.textDirty).toBe(false);
+  });
+
+  it('restores solid clips from placeholder source when no effects are active', async () => {
+    const clearRect = vi.fn();
+    const fillRect = vi.fn();
+    vi.stubGlobal(
+      'OffscreenCanvas',
+      vi.fn(function MockOffscreenCanvas(width: number, height: number) {
+        return {
+          width,
+          height,
+          getContext: vi.fn(() => ({ clearRect, fillRect, fillStyle: '' })),
+        };
+      }),
+    );
+
+    const manager = createManager();
+    const imageSource = createMockImageSource();
+    const placeholderTexture = { source: imageSource };
+    const sprite = { texture: placeholderTexture };
+    const clip = {
+      clipKind: 'solid',
+      effects: [],
+      sprite,
+      imageSource,
+      backgroundColor: '#ff0000',
+    } as unknown as CompositorClip;
+
+    await manager.applyEffectsToNonVideoClip(clip, true);
+
+    expect(sprite.texture).not.toBe(placeholderTexture);
+    expect(sprite.texture.source).not.toBe(imageSource);
+  });
+
   it('applies effects to an image clip bitmap and reuses imageSource in-place', async () => {
     const mockProcessed = { width: 10, height: 10, close: vi.fn() } as unknown as ImageBitmap;
     const runner = {

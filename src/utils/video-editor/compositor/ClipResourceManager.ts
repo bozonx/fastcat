@@ -1,6 +1,6 @@
 import { createDevLogger } from '~/utils/dev-logger';
 import type { Application } from 'pixi.js';
-import { RenderTexture, Sprite, Texture } from 'pixi.js';
+import { CanvasSource, RenderTexture, Sprite, Texture } from 'pixi.js';
 import { safeDispose } from '../utils';
 import type { LayoutApplier } from './LayoutApplier';
 import type { TransitionManager } from './TransitionManager';
@@ -20,6 +20,7 @@ import {
 } from './WebGpuComputeRunner';
 import { buildEffectSpecs } from '~/effects';
 import { compositorPerfStats } from './CompositorPerfStats';
+import { createSolidColorTexture } from './placeholderImageSource';
 const log = createDevLogger('ClipResourceManager');
 
 function fastHash(input: unknown): string {
@@ -77,7 +78,39 @@ export class ClipResourceManager {
     if (!clip.sprite || (clip.sprite as { destroyed?: boolean }).destroyed) return;
     const sprite = clip.sprite as Sprite & { texture?: Texture };
     if (!sprite.texture) return;
-    if (sprite.texture.source !== clip.imageSource) {
+
+    if (clip.clipKind === 'text') {
+      if (!clip.canvas) {
+        clip.textDirty = true;
+        return;
+      }
+      const currentResource = (sprite.texture.source as { resource?: unknown } | undefined)
+        ?.resource;
+      if (currentResource !== clip.canvas) {
+        const source = new CanvasSource({
+          resource: clip.canvas as unknown as import('pixi.js').ICanvas,
+        });
+        source.update?.();
+        sprite.texture = new Texture({ source, dynamic: true });
+      }
+      clip.effectTextureW = undefined;
+      clip.effectTextureH = undefined;
+      return;
+    }
+
+    if (clip.clipKind === 'solid') {
+      if (
+        sprite.texture === clip.effectRenderTexture ||
+        sprite.texture.source === clip.imageSource
+      ) {
+        sprite.texture = createSolidColorTexture('#ffffff');
+      }
+      clip.effectTextureW = undefined;
+      clip.effectTextureH = undefined;
+      return;
+    }
+
+    if (clip.clipKind === 'image' && sprite.texture.source !== clip.imageSource) {
       sprite.texture = new Texture({ source: clip.imageSource, dynamic: true });
     }
     clip.effectTextureW = undefined;

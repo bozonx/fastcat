@@ -113,8 +113,7 @@ export function createTimelineLifecycleModule(
     const max = Number.isFinite(deps.duration.value)
       ? Math.max(0, Math.round(deps.duration.value))
       : 0;
-    deps.currentTime.value =
-      max > 0 ? Math.min(Math.max(0, quantized), max) : Math.max(0, quantized);
+    deps.currentTime.value = Math.min(Math.max(0, quantized), max);
   }
 
   function resetTimelineState() {
