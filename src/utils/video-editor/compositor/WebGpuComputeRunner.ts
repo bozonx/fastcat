@@ -59,6 +59,18 @@ fn vsMain(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
 fn fsMain(input: VertexOutput) -> @location(0) vec4<f32> {
   return textureSample(srcTex, srcSampler, input.uv);
 }
+
+// Pixi stores premultiplied alpha in its textures (alphaMode
+// 'premultiply-alpha-on-upload'), while the compute chain works in straight
+// alpha whenever the input was an external upload (VideoFrame/ImageBitmap).
+// This entry point premultiplies on the way into a Pixi render target so
+// semi-transparent output (chroma-key edges, bleed feather) composites the
+// same as the bitmap fallback path, which goes through Pixi's own upload.
+@fragment
+fn fsMainPremultiply(input: VertexOutput) -> @location(0) vec4<f32> {
+  let c = textureSample(srcTex, srcSampler, input.uv);
+  return vec4<f32>(c.rgb * c.a, c.a);
+}
 `;
 
 export interface EffectUniform {
@@ -693,6 +705,70 @@ export function resolveEffectTextureSize(params: {
   };
 }
 
+/** Packs the shared transition uniform block (mirrored by the Rust host). */
+function packTransitionUniform(
+  spec: TransitionSpec,
+  progress: number,
+  speed: number,
+  width: number,
+  height: number,
+): ArrayBuffer {
+  const values = new ArrayBuffer(TRANSITION_UNIFORM_SIZE);
+  const u32 = new Uint32Array(values);
+  const f32 = new Float32Array(values);
+  f32[0] = Math.max(0, Math.min(1, progress));
+  u32[1] = width;
+  u32[2] = height;
+  f32[3] = Math.max(0, speed);
+  const specParams = typeof spec.params === 'object' && spec.params !== null ? spec.params : {};
+  for (let index = 0; index < 12; index += 1) {
+    const value = (specParams as Record<string, unknown>)[`p${index}`];
+    f32[4 + index] = typeof value === 'number' && Number.isFinite(value) ? value : 0;
+  }
+  if (spec.type === 'wipe') {
+    f32[4] = typeof spec.angle_deg === 'number' ? spec.angle_deg : 0;
+    f32[5] = typeof spec.softness === 'number' ? spec.softness : 0.1;
+  } else if (spec.type === 'slide') {
+    const dir = spec.direction;
+    f32[4] = dir === 'left' ? 0.0 : dir === 'right' ? 1.0 : dir === 'up' ? 2.0 : 3.0;
+  } else if (spec.type === 'fade-through-color') {
+    const color = String(spec.color ?? '#000000')
+      .trim()
+      .replace(/^#/, '');
+    const parsed = /^[0-9a-fA-F]{6}$/.test(color) ? Number.parseInt(color, 16) : 0;
+    f32[4] = ((parsed >> 16) & 0xff) / 255;
+    f32[5] = ((parsed >> 8) & 0xff) / 255;
+    f32[6] = (parsed & 0xff) / 255;
+  }
+  return values;
+}
+
+function resolveTransitionShaderSource(spec: TransitionSpec): string {
+  if (spec.type === 'custom-wgsl' && typeof spec.source === 'string') {
+    return spec.source;
+  }
+  if (spec.type === 'fade-through-color') {
+    return fadeThroughColorWgsl;
+  }
+  if (spec.type === 'wipe') {
+    return wipeWgsl;
+  }
+  if (spec.type === 'slide') {
+    return slideWgsl;
+  }
+  return crossfadeWgsl;
+}
+
+/** Closes `uploadSource` when prepareUploadSource converted it from `source`. */
+function closeConvertedUploadSource(
+  source: VideoFrame | ImageBitmap,
+  uploadSource: VideoFrame | ImageBitmap,
+): void {
+  if (uploadSource !== source && 'close' in uploadSource) {
+    (uploadSource as ImageBitmap).close();
+  }
+}
+
 export class WebGpuComputeRunner {
   private previewEffectQuality: PreviewEffectQuality = 'ultra';
   private device: GPUDevice | null = null;
@@ -738,6 +814,9 @@ export class WebGpuComputeRunner {
   // Reusable OffscreenCanvas for GPU→CPU readback in both effect and transition paths.
   private readbackCanvas: OffscreenCanvas | null = null;
 
+  // Per-pixel-format result of the direct VideoFrame upload probe; device-scoped.
+  private videoFrameUploadSupport = new Map<string, boolean>();
+
   private customPipelines = new Map<string, GPUComputePipeline>();
   private transitionBindLayout: GPUBindGroupLayout | null = null;
   private transitionPipelines = new Map<string, GPUComputePipeline>();
@@ -765,8 +844,18 @@ export class WebGpuComputeRunner {
 
       // Handle GPU device loss (driver crash, OOM, etc.) by tearing down all
       // cached resources so isReady() returns false and callers can re-init.
-      this.device.lost.then((info) => {
-        log.error('WebGPU device lost:', info?.reason, info?.message);
+      // GPUDevice.destroy() also resolves `lost` (reason 'destroyed'), so a
+      // stale handler may fire after this runner has already re-initialized
+      // with a different device — it must not wipe the fresh state.
+      device.lost.then((info) => {
+        if (this.device !== device) {
+          return;
+        }
+        if (info?.reason === 'destroyed') {
+          log.info('WebGPU device destroyed externally; resetting runner state.');
+        } else {
+          log.error('WebGPU device lost:', info?.reason, info?.message);
+        }
         this.handleDeviceLost();
       });
 
@@ -1030,14 +1119,18 @@ export class WebGpuComputeRunner {
     return this.ownedTexture;
   }
 
-  private getOrCreateTextureBlitPipeline(format: GPUTextureFormat): GPURenderPipeline {
-    const cached = this.textureBlitPipelines.get(format);
+  private getOrCreateTextureBlitPipeline(
+    format: GPUTextureFormat,
+    premultiply: boolean,
+  ): GPURenderPipeline {
+    const key = `${format}|${premultiply ? 'pm' : 'straight'}`;
+    const cached = this.textureBlitPipelines.get(key);
     if (cached) {
       return cached;
     }
 
     const pipeline = this.device!.createRenderPipeline({
-      label: `web-texture-blit-${format}`,
+      label: `web-texture-blit-${key}`,
       layout: this.device!.createPipelineLayout({
         bindGroupLayouts: [this.textureBlitBindLayout!],
       }),
@@ -1047,21 +1140,30 @@ export class WebGpuComputeRunner {
       },
       fragment: {
         module: this.textureBlitShaderModule!,
-        entryPoint: 'fsMain',
+        entryPoint: premultiply ? 'fsMainPremultiply' : 'fsMain',
         targets: [{ format }],
       },
       primitive: { topology: 'triangle-list' },
     });
-    this.textureBlitPipelines.set(format, pipeline);
+    this.textureBlitPipelines.set(key, pipeline);
     return pipeline;
   }
 
+  /**
+   * Draws `source` into the Pixi-owned `target` texture with a fullscreen
+   * triangle. `premultiply` must be true whenever the compute chain ran on
+   * straight-alpha data (external VideoFrame/ImageBitmap uploads): Pixi treats
+   * its texture contents as premultiplied, so straight output would render
+   * semi-transparent pixels wrong. Texture→texture chains already carry Pixi's
+   * premultiplied data through unchanged and must pass false.
+   */
   private blitTextureToRendererTarget(params: {
     source: GPUTexture;
     target: GPUTexture;
     targetFormat: GPUTextureFormat;
     width: number;
     height: number;
+    premultiply: boolean;
     label: string;
   }): boolean {
     if (
@@ -1073,7 +1175,7 @@ export class WebGpuComputeRunner {
       return false;
     }
 
-    const pipeline = this.getOrCreateTextureBlitPipeline(params.targetFormat);
+    const pipeline = this.getOrCreateTextureBlitPipeline(params.targetFormat, params.premultiply);
     const bindGroup = this.device.createBindGroup({
       label: `${params.label}-bind-group`,
       layout: this.textureBlitBindLayout,
@@ -1104,11 +1206,62 @@ export class WebGpuComputeRunner {
   }
 
   /**
-   * Normalises a decode source to an upload-ready bitmap and reports its
-   * original dimensions. VideoFrame from WebCodecs may carry YUV pixel formats
-   * that Chrome's copyExternalImageToTexture rejects, so we convert to
-   * ImageBitmap first (always RGBA), matching the Rust side which uploads raw
-   * RGBA bytes. The caller owns disposal via {@link runComputeChain}.
+   * Probes (once per pixel format, cached) whether this browser accepts the
+   * VideoFrame directly in copyExternalImageToTexture. The spec requires
+   * implementations to colour-convert any VideoFrame, but some browser/format
+   * combinations have rejected YUV frames — those fall back to an ImageBitmap
+   * conversion. The probe copies a single texel into a throwaway texture under
+   * a validation error scope, so a device-side rejection is observed instead of
+   * silently producing a cleared input texture.
+   */
+  private async canUploadVideoFrameDirectly(frame: VideoFrame): Promise<boolean> {
+    if (!this.device) return false;
+    const format = frame.format ?? 'unknown';
+    const cached = this.videoFrameUploadSupport.get(format);
+    if (cached !== undefined) return cached;
+
+    let supported = false;
+    let probeTexture: GPUTexture | null = null;
+    try {
+      probeTexture = this.device.createTexture({
+        label: 'web-effect-videoframe-probe',
+        size: { width: 1, height: 1, depthOrArrayLayers: 1 },
+        format: 'rgba8unorm',
+        usage:
+          GPUTextureUsage.TEXTURE_BINDING |
+          GPUTextureUsage.COPY_DST |
+          GPUTextureUsage.RENDER_ATTACHMENT,
+      });
+      this.device.pushErrorScope('validation');
+      this.device.queue.copyExternalImageToTexture(
+        { source: frame },
+        { texture: probeTexture },
+        { width: 1, height: 1, depthOrArrayLayers: 1 },
+      );
+      supported = (await this.device.popErrorScope()) === null;
+    } catch {
+      supported = false;
+    } finally {
+      try {
+        probeTexture?.destroy();
+      } catch {
+        // ignore
+      }
+    }
+    this.videoFrameUploadSupport.set(format, supported);
+    if (!supported) {
+      log.warn(`Direct VideoFrame upload rejected for format ${format}; using ImageBitmap.`);
+    }
+    return supported;
+  }
+
+  /**
+   * Normalises a decode source to an upload-ready image and reports its
+   * original dimensions. VideoFrames upload directly (no intermediate copy)
+   * when {@link canUploadVideoFrameDirectly} confirms the browser accepts the
+   * frame's pixel format; otherwise they are converted to an ImageBitmap
+   * (always RGBA), matching the Rust side which uploads raw RGBA bytes. The
+   * caller owns disposal via {@link runComputeChain}.
    */
   private async prepareUploadSource(source: VideoFrame | ImageBitmap): Promise<{
     uploadSource: ImageBitmap | VideoFrame;
@@ -1116,7 +1269,7 @@ export class WebGpuComputeRunner {
     origH: number;
   }> {
     let uploadSource: ImageBitmap | VideoFrame = source;
-    if (source instanceof VideoFrame) {
+    if (source instanceof VideoFrame && !(await this.canUploadVideoFrameDirectly(source))) {
       uploadSource = await createImageBitmap(source);
     }
 
@@ -1364,9 +1517,7 @@ export class WebGpuComputeRunner {
     const { uploadSource, origW, origH } = await this.prepareUploadSource(params.source);
     const targetFormat = params.target.source.format;
     if (!isRenderableColorFormat(targetFormat)) {
-      if (uploadSource !== params.source && 'close' in uploadSource) {
-        (uploadSource as ImageBitmap).close();
-      }
+      closeConvertedUploadSource(params.source, uploadSource);
       return false;
     }
 
@@ -1386,9 +1537,7 @@ export class WebGpuComputeRunner {
       this.previewEffectQuality,
     );
     if (passes.length === 0) {
-      if (uploadSource !== params.source && 'close' in uploadSource) {
-        (uploadSource as ImageBitmap).close();
-      }
+      closeConvertedUploadSource(params.source, uploadSource);
       return false;
     }
 
@@ -1421,6 +1570,7 @@ export class WebGpuComputeRunner {
       targetFormat,
       width: frameW,
       height: frameH,
+      premultiply: true,
       label: 'web-blur-fill-source-texture-blit',
     });
     return rendered
@@ -1495,9 +1645,7 @@ export class WebGpuComputeRunner {
       },
     );
     if (effectPasses.length === 0) {
-      if (uploadSource !== params.source && 'close' in uploadSource) {
-        (uploadSource as ImageBitmap).close();
-      }
+      closeConvertedUploadSource(params.source, uploadSource);
       return false;
     }
 
@@ -1566,6 +1714,7 @@ export class WebGpuComputeRunner {
       targetFormat,
       width: frameW,
       height: frameH,
+      premultiply: true,
       label: 'web-effect-blur-fill-source-texture-blit',
     });
     return rendered
@@ -1649,6 +1798,7 @@ export class WebGpuComputeRunner {
       targetFormat: params.target.source.format,
       width: frameW,
       height: frameH,
+      premultiply: false,
       label: 'web-blur-fill-texture-blit',
     });
     return rendered
@@ -1773,6 +1923,7 @@ export class WebGpuComputeRunner {
       targetFormat: params.target.source.format,
       width: frameW,
       height: frameH,
+      premultiply: false,
       label: 'web-effect-blur-fill-texture-blit',
     });
     return rendered
@@ -1856,7 +2007,8 @@ export class WebGpuComputeRunner {
     }
 
     const scale = Math.max(0.1, Math.min(8.0, origH / 1080.0));
-    const padding = params.options?.enablePadding === false ? 0 : calculatePadding(params.effects, scale);
+    const padding =
+      params.options?.enablePadding === false ? 0 : calculatePadding(params.effects, scale);
     if (padding !== 0) {
       return false;
     }
@@ -1885,6 +2037,7 @@ export class WebGpuComputeRunner {
       targetFormat,
       width: origW,
       height: origH,
+      premultiply: false,
       label: 'web-effect-texture-blit',
     });
   }
@@ -1918,17 +2071,13 @@ export class WebGpuComputeRunner {
     const targetW = Math.max(1, Math.round(targetSource.pixelWidth ?? params.target.width));
     const targetH = Math.max(1, Math.round(targetSource.pixelHeight ?? params.target.height));
     if (targetW !== outputSize.width || targetH !== outputSize.height) {
-      if (uploadSource !== params.source && 'close' in uploadSource) {
-        (uploadSource as ImageBitmap).close();
-      }
+      closeConvertedUploadSource(params.source, uploadSource);
       return false;
     }
 
     const targetFormat = params.target.source.format;
     if (!isRenderableColorFormat(targetFormat)) {
-      if (uploadSource !== params.source && 'close' in uploadSource) {
-        (uploadSource as ImageBitmap).close();
-      }
+      closeConvertedUploadSource(params.source, uploadSource);
       return false;
     }
 
@@ -1945,9 +2094,7 @@ export class WebGpuComputeRunner {
       },
     );
     if (passes.length === 0) {
-      if (uploadSource !== params.source && 'close' in uploadSource) {
-        (uploadSource as ImageBitmap).close();
-      }
+      closeConvertedUploadSource(params.source, uploadSource);
       return false;
     }
 
@@ -1980,6 +2127,7 @@ export class WebGpuComputeRunner {
       targetFormat,
       width: outputSize.width,
       height: outputSize.height,
+      premultiply: true,
       label: 'web-effect-source-texture-blit',
     });
     return rendered ? { rendered: true, ...outputSize } : false;
@@ -2026,51 +2174,15 @@ export class WebGpuComputeRunner {
         { width, height },
       );
 
-      const values = new ArrayBuffer(TRANSITION_UNIFORM_SIZE);
-      const u32 = new Uint32Array(values);
-      const f32 = new Float32Array(values);
-      f32[0] = Math.max(0, Math.min(1, params.progress));
-      u32[1] = width;
-      u32[2] = height;
-      f32[3] = Math.max(0, params.speed);
-      const specParams =
-        typeof params.spec.params === 'object' && params.spec.params !== null
-          ? params.spec.params
-          : {};
-      for (let index = 0; index < 12; index += 1) {
-        const value = (specParams as Record<string, unknown>)[`p${index}`];
-        f32[4 + index] = typeof value === 'number' && Number.isFinite(value) ? value : 0;
-      }
-      if (params.spec.type === 'wipe') {
-        f32[4] = typeof params.spec.angle_deg === 'number' ? params.spec.angle_deg : 0;
-        f32[5] = typeof params.spec.softness === 'number' ? params.spec.softness : 0.1;
-      } else if (params.spec.type === 'slide') {
-        const dir = params.spec.direction;
-        f32[4] = dir === 'left' ? 0.0 : dir === 'right' ? 1.0 : dir === 'up' ? 2.0 : 3.0;
-      } else if (params.spec.type === 'fade-through-color') {
-        const color = String(params.spec.color ?? '#000000')
-          .trim()
-          .replace(/^#/, '');
-        const parsed = /^[0-9a-fA-F]{6}$/.test(color) ? Number.parseInt(color, 16) : 0;
-        f32[4] = ((parsed >> 16) & 0xff) / 255;
-        f32[5] = ((parsed >> 8) & 0xff) / 255;
-        f32[6] = (parsed & 0xff) / 255;
-      }
-      this.device.queue.writeBuffer(uniformBuffer, 0, values);
+      this.device.queue.writeBuffer(
+        uniformBuffer,
+        0,
+        packTransitionUniform(params.spec, params.progress, params.speed, width, height),
+      );
 
-      let source: string;
-      if (params.spec.type === 'custom-wgsl' && typeof params.spec.source === 'string') {
-        source = params.spec.source;
-      } else if (params.spec.type === 'fade-through-color') {
-        source = fadeThroughColorWgsl;
-      } else if (params.spec.type === 'wipe') {
-        source = wipeWgsl;
-      } else if (params.spec.type === 'slide') {
-        source = slideWgsl;
-      } else {
-        source = crossfadeWgsl;
-      }
-      const pipeline = this.getOrCreateTransitionPipeline(source);
+      const pipeline = this.getOrCreateTransitionPipeline(
+        resolveTransitionShaderSource(params.spec),
+      );
       // The bind group only references the pooled textures + uniform buffer
       // (never the pipeline), so it stays valid until the frame size changes
       // and `ensureTransitionResources` rebuilds it.
@@ -2120,48 +2232,11 @@ export class WebGpuComputeRunner {
     const outputTexture = this.transOutputTexture!;
     const uniformBuffer = this.transUniformBuffer!;
 
-    const values = new ArrayBuffer(TRANSITION_UNIFORM_SIZE);
-    const u32 = new Uint32Array(values);
-    const f32 = new Float32Array(values);
-    f32[0] = Math.max(0, Math.min(1, params.progress));
-    u32[1] = width;
-    u32[2] = height;
-    f32[3] = Math.max(0, params.speed);
-    const specParams =
-      typeof params.spec.params === 'object' && params.spec.params !== null ? params.spec.params : {};
-    for (let index = 0; index < 12; index += 1) {
-      const value = (specParams as Record<string, unknown>)[`p${index}`];
-      f32[4 + index] = typeof value === 'number' && Number.isFinite(value) ? value : 0;
-    }
-    if (params.spec.type === 'wipe') {
-      f32[4] = typeof params.spec.angle_deg === 'number' ? params.spec.angle_deg : 0;
-      f32[5] = typeof params.spec.softness === 'number' ? params.spec.softness : 0.1;
-    } else if (params.spec.type === 'slide') {
-      const dir = params.spec.direction;
-      f32[4] = dir === 'left' ? 0.0 : dir === 'right' ? 1.0 : dir === 'up' ? 2.0 : 3.0;
-    } else if (params.spec.type === 'fade-through-color') {
-      const color = String(params.spec.color ?? '#000000')
-        .trim()
-        .replace(/^#/, '');
-      const parsed = /^[0-9a-fA-F]{6}$/.test(color) ? Number.parseInt(color, 16) : 0;
-      f32[4] = ((parsed >> 16) & 0xff) / 255;
-      f32[5] = ((parsed >> 8) & 0xff) / 255;
-      f32[6] = (parsed & 0xff) / 255;
-    }
-    this.device.queue.writeBuffer(uniformBuffer, 0, values);
-
-    let source: string;
-    if (params.spec.type === 'custom-wgsl' && typeof params.spec.source === 'string') {
-      source = params.spec.source;
-    } else if (params.spec.type === 'fade-through-color') {
-      source = fadeThroughColorWgsl;
-    } else if (params.spec.type === 'wipe') {
-      source = wipeWgsl;
-    } else if (params.spec.type === 'slide') {
-      source = slideWgsl;
-    } else {
-      source = crossfadeWgsl;
-    }
+    this.device.queue.writeBuffer(
+      uniformBuffer,
+      0,
+      packTransitionUniform(params.spec, params.progress, params.speed, width, height),
+    );
 
     const bindGroup = this.device.createBindGroup({
       label: 'web-transition-texture-bind-group',
@@ -2179,7 +2254,7 @@ export class WebGpuComputeRunner {
         { binding: 3, resource: { buffer: uniformBuffer } },
       ],
     });
-    const pipeline = this.getOrCreateTransitionPipeline(source);
+    const pipeline = this.getOrCreateTransitionPipeline(resolveTransitionShaderSource(params.spec));
     const encoder = this.device.createCommandEncoder({ label: 'web-transition-texture-encoder' });
     const pass = encoder.beginComputePass({ label: 'web-transition-texture-pass' });
     pass.setPipeline(pipeline);
@@ -2195,6 +2270,7 @@ export class WebGpuComputeRunner {
       targetFormat: outputFormat,
       width,
       height,
+      premultiply: false,
       label: 'web-transition-texture-blit',
     });
   }
@@ -2385,13 +2461,14 @@ export class WebGpuComputeRunner {
 
     this.device.queue.copyExternalImageToTexture(
       { source: params.uploadSource, flipY: false },
-      { texture: this.inputTexture!, origin: { x: params.copyOriginX, y: params.copyOriginY, z: 0 } },
+      {
+        texture: this.inputTexture!,
+        origin: { x: params.copyOriginX, y: params.copyOriginY, z: 0 },
+      },
       { width: params.copyWidth, height: params.copyHeight, depthOrArrayLayers: 1 },
     );
 
-    if (params.uploadSource !== params.source && 'close' in params.uploadSource) {
-      (params.uploadSource as ImageBitmap).close();
-    }
+    closeConvertedUploadSource(params.source, params.uploadSource);
   }
 
   private ensureIntermediateTexture(width: number, height: number): GPUTexture {
@@ -2627,7 +2704,11 @@ export class WebGpuComputeRunner {
     this.cachedHeight = 0;
     this.customPipelines.clear();
     this.transitionPipelines.clear();
+    this.textureBlitPipelines.clear();
+    this.videoFrameUploadSupport.clear();
     this.transitionBindLayout = null;
+    this.textureBlitBindLayout = null;
+    this.textureBlitShaderModule = null;
     this.bindLayout = null;
     this.pipeline = null;
     this.shaderModule = null;
@@ -2694,7 +2775,11 @@ export class WebGpuComputeRunner {
     this.transCachedHeight = 0;
     this.customPipelines.clear();
     this.transitionPipelines.clear();
+    this.textureBlitPipelines.clear();
+    this.videoFrameUploadSupport.clear();
     this.transitionBindLayout = null;
+    this.textureBlitBindLayout = null;
+    this.textureBlitShaderModule = null;
     this.bindLayout = null;
     this.pipeline = null;
     this.shaderModule = null;

@@ -327,6 +327,9 @@ describe('WebGpuComputeRunner', () => {
     expect(createRenderPipeline).toHaveBeenCalledWith(
       expect.objectContaining({
         fragment: expect.objectContaining({
+          // Texture→texture chains carry Pixi's premultiplied data through
+          // unchanged, so the blit must not premultiply again.
+          entryPoint: 'fsMain',
           targets: [{ format: 'bgra8unorm' }],
         }),
       }),
@@ -419,7 +422,7 @@ describe('WebGpuComputeRunner', () => {
     vi.unstubAllGlobals();
   });
 
-  it('converts VideoFrame to ImageBitmap before copyExternalImageToTexture and disposes it', async () => {
+  it('falls back to ImageBitmap conversion when the direct VideoFrame probe is rejected', async () => {
     const runner = new WebGpuComputeRunner();
 
     const mockClose = vi.fn();
@@ -442,6 +445,9 @@ describe('WebGpuComputeRunner', () => {
       createSampler: vi.fn().mockReturnValue({}),
       limits: { minUniformBufferOffsetAlignment: 256 },
       lost: new Promise(() => {}),
+      // The probe observes a device-side validation error → fall back.
+      pushErrorScope: vi.fn(),
+      popErrorScope: vi.fn().mockResolvedValue({ message: 'unsupported pixel format' }),
       createBuffer: vi.fn().mockReturnValue({
         destroy: vi.fn(),
         mapAsync: mockMapAsync,
@@ -539,10 +545,273 @@ describe('WebGpuComputeRunner', () => {
 
     expect(createImageBitmap).toHaveBeenCalledWith(fakeFrame);
     expect(mockCopyExternalImageToTexture).toHaveBeenCalled();
-    const copyArgs = mockCopyExternalImageToTexture.mock.calls[0];
+    // The first copy is the 1x1 probe with the raw frame; the real upload
+    // (last call) must use the converted bitmap.
+    const copyArgs = mockCopyExternalImageToTexture.mock.calls.at(-1)!;
     expect(copyArgs[0].source).toBe(mockBitmap);
     expect(mockClose).toHaveBeenCalled();
 
+    // The rejection is cached per pixel format: the next frame goes straight
+    // to conversion without another probe.
+    mockCopyExternalImageToTexture.mockClear();
+    (mockDevice.pushErrorScope as ReturnType<typeof vi.fn>).mockClear();
+    await runner.applyEffects(fakeFrame, [{ type: 'brightness', value: 1.2 }]);
+    expect(mockDevice.pushErrorScope).not.toHaveBeenCalled();
+    expect(mockCopyExternalImageToTexture.mock.calls[0]![0].source).toBe(mockBitmap);
+
+    vi.unstubAllGlobals();
+  });
+
+  it('uploads a VideoFrame directly when the format probe passes', async () => {
+    const runner = new WebGpuComputeRunner();
+
+    const mockBitmap = { width: 4, height: 4, close: vi.fn() } as unknown as ImageBitmap;
+    const mockCopyExternalImageToTexture = vi.fn();
+    const createImageBitmapMock = vi.fn().mockResolvedValue(mockBitmap);
+
+    const mockDevice = {
+      createShaderModule: vi.fn().mockReturnValue({}),
+      createBindGroupLayout: vi.fn().mockReturnValue({}),
+      createPipelineLayout: vi.fn().mockReturnValue({}),
+      createComputePipeline: vi.fn().mockReturnValue({}),
+      createSampler: vi.fn().mockReturnValue({}),
+      limits: { minUniformBufferOffsetAlignment: 256 },
+      lost: new Promise(() => {}),
+      pushErrorScope: vi.fn(),
+      popErrorScope: vi.fn().mockResolvedValue(null),
+      createBuffer: vi.fn().mockReturnValue({
+        destroy: vi.fn(),
+        mapAsync: vi.fn().mockResolvedValue(undefined),
+        getMappedRange: vi.fn().mockReturnValue(new ArrayBuffer(1024)),
+        unmap: vi.fn(),
+      }),
+      createTexture: vi.fn().mockReturnValue({
+        createView: vi.fn().mockReturnValue({}),
+        destroy: vi.fn(),
+      }),
+      createBindGroup: vi.fn().mockReturnValue({}),
+      createCommandEncoder: vi.fn().mockReturnValue({
+        beginComputePass: vi.fn().mockReturnValue({
+          setPipeline: vi.fn(),
+          setBindGroup: vi.fn(),
+          dispatchWorkgroups: vi.fn(),
+          end: vi.fn(),
+        }),
+        copyTextureToBuffer: vi.fn(),
+        finish: vi.fn().mockReturnValue({}),
+      }),
+      queue: {
+        copyExternalImageToTexture: mockCopyExternalImageToTexture,
+        writeBuffer: vi.fn(),
+        submit: vi.fn(),
+      },
+    } as any;
+
+    vi.stubGlobal('navigator', {
+      gpu: {
+        requestAdapter: vi
+          .fn()
+          .mockResolvedValue({ requestDevice: vi.fn().mockResolvedValue(mockDevice) }),
+      },
+    });
+    vi.stubGlobal('createImageBitmap', createImageBitmapMock);
+    vi.stubGlobal('GPUShaderStage', { COMPUTE: 0x04, FRAGMENT: 0x02 });
+    vi.stubGlobal('GPUTextureUsage', {
+      TEXTURE_BINDING: 0x04,
+      STORAGE_BINDING: 0x08,
+      COPY_SRC: 0x10,
+      COPY_DST: 0x20,
+      RENDER_ATTACHMENT: 0x40,
+    });
+    vi.stubGlobal('GPUBufferUsage', { COPY_DST: 0x08, MAP_READ: 0x01, UNIFORM: 0x40 });
+    vi.stubGlobal('GPUMapMode', { READ: 0x01 });
+    vi.stubGlobal(
+      'VideoFrame',
+      class VideoFrame {
+        displayWidth = 4;
+        displayHeight = 4;
+        format = 'NV12';
+      },
+    );
+    vi.stubGlobal(
+      'OffscreenCanvas',
+      class OffscreenCanvas {
+        width: number;
+        height: number;
+        constructor(w: number, h: number) {
+          this.width = w;
+          this.height = h;
+        }
+        getContext() {
+          return {
+            createImageData: () => ({ data: new Uint8ClampedArray(this.width * this.height * 4) }),
+            putImageData: vi.fn(),
+          };
+        }
+      },
+    );
+
+    await runner.init();
+    const FakeVideoFrame = (globalThis as unknown as { VideoFrame: new () => object }).VideoFrame;
+    const fakeFrame = new FakeVideoFrame() as unknown as VideoFrame;
+
+    await runner.applyEffects(fakeFrame, [{ type: 'brightness', value: 1.2 }]);
+
+    // No conversion of the frame itself (the only bitmap creation is the
+    // readback canvas at the end of the chain).
+    expect(createImageBitmapMock).not.toHaveBeenCalledWith(fakeFrame);
+    // Call 0 is the 1x1 probe, call 1 the real upload — both with the frame.
+    expect(mockCopyExternalImageToTexture.mock.calls[0]![0].source).toBe(fakeFrame);
+    expect(mockCopyExternalImageToTexture.mock.calls[1]![0].source).toBe(fakeFrame);
+    expect(mockDevice.pushErrorScope).toHaveBeenCalledTimes(1);
+
+    // Cached: a second frame of the same format uploads without a new probe.
+    await runner.applyEffects(fakeFrame, [{ type: 'brightness', value: 1.2 }]);
+    expect(mockDevice.pushErrorScope).toHaveBeenCalledTimes(1);
+
+    vi.unstubAllGlobals();
+  });
+
+  it('ignores a stale device.lost from a replaced device', async () => {
+    vi.stubGlobal('GPUShaderStage', { COMPUTE: 0x04, FRAGMENT: 0x02 });
+
+    const makeDevice = () => {
+      let resolveLost: (info: { reason: string; message: string }) => void = () => {};
+      const device = {
+        destroy: vi.fn(),
+        createShaderModule: vi.fn().mockReturnValue({}),
+        createBindGroupLayout: vi.fn().mockReturnValue({}),
+        createPipelineLayout: vi.fn().mockReturnValue({}),
+        createComputePipeline: vi.fn().mockReturnValue({}),
+        createSampler: vi.fn().mockReturnValue({}),
+        limits: { minUniformBufferOffsetAlignment: 256 },
+        lost: new Promise<{ reason: string; message: string }>((resolve) => {
+          resolveLost = resolve;
+        }),
+      } as any;
+      return {
+        device,
+        resolveLost: (info: { reason: string; message: string }) => resolveLost(info),
+      };
+    };
+
+    const a = makeDevice();
+    const b = makeDevice();
+    const runner = new WebGpuComputeRunner();
+
+    expect(
+      runner.initFromPixiRenderer({
+        gpu: { device: a.device },
+        texture: { getGpuSource: vi.fn() },
+      }),
+    ).toBe(true);
+    // Re-init with a different (e.g. restored) Pixi device.
+    expect(
+      runner.initFromPixiRenderer({
+        gpu: { device: b.device },
+        texture: { getGpuSource: vi.fn() },
+      }),
+    ).toBe(true);
+
+    // The old device's lost promise resolving (destroy() does that with reason
+    // 'destroyed') must not wipe the freshly initialized state.
+    a.resolveLost({ reason: 'destroyed', message: '' });
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(runner.isReady()).toBe(true);
+
+    // Losing the *current* device still tears the runner down.
+    b.resolveLost({ reason: 'unknown', message: 'driver crash' });
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(runner.isReady()).toBe(false);
+
+    vi.unstubAllGlobals();
+  });
+
+  it('premultiplies the blit when the compute input came from an external source', async () => {
+    vi.stubGlobal('GPUShaderStage', { COMPUTE: 0x04, FRAGMENT: 0x02 });
+    vi.stubGlobal('GPUTextureUsage', {
+      TEXTURE_BINDING: 0x04,
+      STORAGE_BINDING: 0x08,
+      COPY_SRC: 0x10,
+      COPY_DST: 0x20,
+      RENDER_ATTACHMENT: 0x40,
+    });
+    vi.stubGlobal('GPUBufferUsage', { UNIFORM: 0x40, COPY_DST: 0x08 });
+    vi.stubGlobal('VideoFrame', class VideoFrame {});
+
+    const computePass = {
+      setPipeline: vi.fn(),
+      setBindGroup: vi.fn(),
+      dispatchWorkgroups: vi.fn(),
+      end: vi.fn(),
+    };
+    const renderPass = {
+      setPipeline: vi.fn(),
+      setBindGroup: vi.fn(),
+      setViewport: vi.fn(),
+      draw: vi.fn(),
+      end: vi.fn(),
+    };
+    const commandEncoder = {
+      beginComputePass: vi.fn(() => computePass),
+      beginRenderPass: vi.fn(() => renderPass),
+      finish: vi.fn(() => ({})),
+    };
+    const createRenderPipeline = vi.fn(() => ({}));
+    const device = {
+      createShaderModule: vi.fn().mockReturnValue({}),
+      createBindGroupLayout: vi.fn().mockReturnValue({}),
+      createPipelineLayout: vi.fn().mockReturnValue({}),
+      createComputePipeline: vi.fn().mockReturnValue({}),
+      createRenderPipeline,
+      createSampler: vi.fn().mockReturnValue({}),
+      createBuffer: vi.fn().mockReturnValue({ destroy: vi.fn() }),
+      createTexture: vi.fn().mockReturnValue({
+        createView: vi.fn().mockReturnValue({}),
+        destroy: vi.fn(),
+      }),
+      createBindGroup: vi.fn().mockReturnValue({}),
+      createCommandEncoder: vi.fn(() => commandEncoder),
+      limits: { minUniformBufferOffsetAlignment: 256 },
+      lost: new Promise(() => {}),
+      queue: { writeBuffer: vi.fn(), submit: vi.fn(), copyExternalImageToTexture: vi.fn() },
+    } as any;
+    const targetGpuTexture = { createView: vi.fn(() => ({})) };
+    const target = {
+      source: { pixelWidth: 16, pixelHeight: 8, format: 'bgra8unorm' },
+    } as any;
+    const runner = new WebGpuComputeRunner();
+
+    runner.initFromPixiRenderer({
+      gpu: { device },
+      texture: { getGpuSource: vi.fn(() => targetGpuTexture) },
+    });
+
+    const bitmap = { width: 16, height: 8 } as unknown as ImageBitmap;
+    const rendered = await runner.applyEffectsSourceToTexture({
+      source: bitmap,
+      target,
+      effects: [{ type: 'brightness', value: 1.2 }],
+    });
+
+    expect(rendered).toEqual({
+      rendered: true,
+      width: 16,
+      height: 8,
+      contentWidth: 16,
+      contentHeight: 8,
+      padding: 0,
+    });
+    expect(createRenderPipeline).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fragment: expect.objectContaining({
+          entryPoint: 'fsMainPremultiply',
+          targets: [{ format: 'bgra8unorm' }],
+        }),
+      }),
+    );
     vi.unstubAllGlobals();
   });
 

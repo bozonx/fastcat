@@ -303,39 +303,39 @@ export class VideoCompositor {
             otherSpecs.length === 0
               ? Boolean(
                   typeof runner.applyBlurFillToTexture === 'function' &&
-                    runner.applyBlurFillToTexture({
-                      source: clip.adjustmentSourceTexture,
-                      target: clip.adjustmentSourceTexture,
-                      frameW: this.width,
-                      frameH: this.height,
-                      fgScale: blurFill.fg_scale,
-                      bgScale: blurFill.bg_scale,
-                      blur: blurFill.blur,
-                      bgDim: blurFill.bg_dim,
-                      bgSaturation: blurFill.bg_saturation,
-                      tintColor: blurFill.tint_color,
-                      tintStrength: blurFill.tint_strength,
-                      fgOffsetY: blurFill.fg_offset_y,
-                    }),
+                  runner.applyBlurFillToTexture({
+                    source: clip.adjustmentSourceTexture,
+                    target: clip.adjustmentSourceTexture,
+                    frameW: this.width,
+                    frameH: this.height,
+                    fgScale: blurFill.fg_scale,
+                    bgScale: blurFill.bg_scale,
+                    blur: blurFill.blur,
+                    bgDim: blurFill.bg_dim,
+                    bgSaturation: blurFill.bg_saturation,
+                    tintColor: blurFill.tint_color,
+                    tintStrength: blurFill.tint_strength,
+                    fgOffsetY: blurFill.fg_offset_y,
+                  }),
                 )
               : Boolean(
                   typeof runner.applyEffectsThenBlurFillToTexture === 'function' &&
-                    runner.applyEffectsThenBlurFillToTexture({
-                      source: clip.adjustmentSourceTexture,
-                      target: clip.adjustmentSourceTexture,
-                      effects: otherSpecs,
-                      frameW: this.width,
-                      frameH: this.height,
-                      fgScale: blurFill.fg_scale,
-                      bgScale: blurFill.bg_scale,
-                      blur: blurFill.blur,
-                      bgDim: blurFill.bg_dim,
-                      bgSaturation: blurFill.bg_saturation,
-                      tintColor: blurFill.tint_color,
-                      tintStrength: blurFill.tint_strength,
-                      fgOffsetY: blurFill.fg_offset_y,
-                      options: { enablePadding: false },
-                    }),
+                  runner.applyEffectsThenBlurFillToTexture({
+                    source: clip.adjustmentSourceTexture,
+                    target: clip.adjustmentSourceTexture,
+                    effects: otherSpecs,
+                    frameW: this.width,
+                    frameH: this.height,
+                    fgScale: blurFill.fg_scale,
+                    bgScale: blurFill.bg_scale,
+                    blur: blurFill.blur,
+                    bgDim: blurFill.bg_dim,
+                    bgSaturation: blurFill.bg_saturation,
+                    tintColor: blurFill.tint_color,
+                    tintStrength: blurFill.tint_strength,
+                    fgOffsetY: blurFill.fg_offset_y,
+                    options: { enablePadding: false },
+                  }),
                 );
         } else {
           renderedOnGpu =
@@ -702,6 +702,19 @@ export class VideoCompositor {
     this.stageSortDirty = true;
     this.videoFrameCache.clear();
     resetCompositorClipsAfterContextRestored(this.clips);
+    // A device loss tears the compute runner down (isReady() flips false) and
+    // nothing else re-initializes it, so effects would silently stay off until
+    // a full compositor re-init. Re-attach to the restored Pixi device (no-op
+    // when the runner is still ready on the same device), falling back to an
+    // owned device like init() does.
+    if (this.app) {
+      const attached = this.computeRunner.initFromPixiRenderer(
+        this.app.renderer as unknown as Parameters<WebGpuComputeRunner['initFromPixiRenderer']>[0],
+      );
+      if (!attached) {
+        void this.computeRunner.init();
+      }
+    }
   }
 
   async loadTimeline(
