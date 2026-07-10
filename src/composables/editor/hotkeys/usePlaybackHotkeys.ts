@@ -44,11 +44,6 @@ export function usePlaybackHotkeys(
         return true;
       }
 
-      if (timelineStore.isPlaying) {
-        timelineStore.setPlaybackSpeed(1);
-        return true;
-      }
-
       timelineStore.setPlaybackSpeed(1);
       timelineStore.togglePlayback();
       return true;

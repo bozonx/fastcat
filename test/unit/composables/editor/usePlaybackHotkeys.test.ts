@@ -27,6 +27,31 @@ describe('usePlaybackHotkeys — F / D speed cycle', () => {
   const run = (cmd: 'playback.speedUpForward' | 'playback.speedDown') =>
     handlers[cmd]?.(new KeyboardEvent('keydown'));
 
+  describe('Space (playback.toggle1)', () => {
+    it('starts playback at 1x when paused', () => {
+      const timelineStore = useTimelineStore();
+      timelineStore.setPlaybackSpeed(2);
+
+      const result = handlers['playback.toggle1']?.(new KeyboardEvent('keydown'));
+
+      expect(result).toBe(true);
+      expect(timelineStore.playbackSpeed).toBe(1);
+      expect(timelineStore.isPlaying).toBe(true);
+    });
+
+    it('stops playback and resets speed to 1x when playing', () => {
+      const timelineStore = useTimelineStore();
+      timelineStore.setPlaybackSpeed(2);
+      timelineStore.togglePlayback();
+
+      const result = handlers['playback.toggle1']?.(new KeyboardEvent('keydown'));
+
+      expect(result).toBe(true);
+      expect(timelineStore.playbackSpeed).toBe(1);
+      expect(timelineStore.isPlaying).toBe(false);
+    });
+  });
+
   describe('F (playback.speedUpForward)', () => {
     it('steps up from 1x baseline when paused (first step 1.25x) and begins playback', () => {
       const timelineStore = useTimelineStore();
