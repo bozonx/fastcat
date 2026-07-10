@@ -2,11 +2,26 @@
 import { describe, it, expect, vi } from 'vitest';
 import { useHotkeyLabel } from '~/composables/useHotkeyLabel';
 
+const mockWorkspaceStore = vi.hoisted(() => ({
+  userSettings: {
+    hotkeys: {
+      layer1: 'Shift',
+      layer2: 'Control',
+      bindings: {},
+    },
+  },
+}));
+
+vi.mock('~/stores/workspace.store', () => ({
+  useWorkspaceStore: () => mockWorkspaceStore,
+}));
+
 vi.mock('~/utils/hotkeys/effectiveHotkeys', () => ({
   getEffectiveHotkeyBindings: vi.fn(() => ({
     'play-pause': ['Space'],
-    undo: ['Ctrl+Z'],
-    redo: ['Ctrl+Shift+Z'],
+    undo: ['Modifier2+Z'],
+    redo: ['Modifier2+Modifier1+Z'],
+    splitAll: ['Modifier1+T'],
   })),
 }));
 
@@ -23,7 +38,6 @@ describe('useHotkeyLabel', () => {
 
   it('returns multiple bindings joined by comma', () => {
     const { getHotkeyLabel } = useHotkeyLabel();
-    // redo has Ctrl+Shift+Z
     expect(getHotkeyLabel('redo')).toBe('Ctrl+Shift+Z');
   });
 
@@ -31,6 +45,20 @@ describe('useHotkeyLabel', () => {
     const { getHotkeyKbds } = useHotkeyLabel();
     const kbds = getHotkeyKbds('undo');
     expect(kbds).toEqual(['Ctrl', 'Z']);
+  });
+
+  it('renders virtual modifiers using user layer settings', () => {
+    mockWorkspaceStore.userSettings.hotkeys.layer1 = 'Alt';
+    mockWorkspaceStore.userSettings.hotkeys.layer2 = 'ControlRight';
+
+    const { getHotkeyLabel, getHotkeyKbds } = useHotkeyLabel();
+
+    expect(getHotkeyLabel('redo')).toBe('Right Ctrl+Alt+Z');
+    expect(getHotkeyLabel('splitAll')).toBe('Alt+T');
+    expect(getHotkeyKbds('redo')).toEqual(['Right Ctrl', 'Alt', 'Z']);
+
+    mockWorkspaceStore.userSettings.hotkeys.layer1 = 'Shift';
+    mockWorkspaceStore.userSettings.hotkeys.layer2 = 'Control';
   });
 
   it('getHotkeyKbds returns undefined for unknown command', () => {

@@ -124,7 +124,6 @@ const trackResetButtons = computed(() =>
       active: anyLocked.value,
       icon: 'i-heroicons-lock-closed',
       tooltip: t('fastcat.track.resetLocked'),
-      shortcuts: ['L'],
       color: '#3b82f6',
       textColor: '#ffffff',
       class: '',
@@ -134,7 +133,6 @@ const trackResetButtons = computed(() =>
       active: anyHidden.value,
       icon: 'i-heroicons-eye-slash',
       tooltip: t('fastcat.track.resetHidden'),
-      shortcuts: ['H'],
       color: '#ffffff',
       textColor: '#000000',
       class: 'ring-1 ring-ui-border',
@@ -144,7 +142,6 @@ const trackResetButtons = computed(() =>
       active: anyMuted.value,
       icon: 'i-heroicons-speaker-x-mark',
       tooltip: t('fastcat.track.resetMuted'),
-      shortcuts: ['M'],
       color: '#ef4444',
       textColor: '#ffffff',
       class: '',
@@ -154,7 +151,6 @@ const trackResetButtons = computed(() =>
       active: isAnyTrackSoloed.value,
       icon: 'i-heroicons-musical-note',
       tooltip: t('fastcat.track.resetSolo'),
-      shortcuts: ['S'],
       color: '#22c55e',
       textColor: '#ffffff',
       class: '',
@@ -1313,7 +1309,6 @@ async function handleConfirmCreateVersion(newName: string) {
               v-for="button in trackResetButtons"
               :key="button.icon"
               :text="button.tooltip"
-              :shortcuts="button.shortcuts"
             >
               <UButton
                 :icon="button.icon"
