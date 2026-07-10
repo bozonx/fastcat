@@ -11,11 +11,13 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useTrackContextMenu } from '~/composables/timeline/useTrackContextMenu';
 import { useExclusiveContextMenu } from '~/composables/ui/useExclusiveContextMenu';
 import UiRenameModal from '~/components/ui/UiRenameModal.vue';
+import { useHotkeyLabel } from '~/composables/useHotkeyLabel';
 
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
 const selectionStore = useSelectionStore();
 const clipboardStore = useAppClipboard();
+const { getHotkeyTitle } = useHotkeyLabel();
 
 const hasTimelineClipboard = computed(() => clipboardStore.hasTimelinePayload);
 const { isContextMenuOpen, setContextMenuOpen } = useExclusiveContextMenu();
@@ -219,12 +221,12 @@ onScopeDispose(() => {
     :items="[
       [
         {
-          label: t('fastcat.timeline.delete'),
+          label: getHotkeyTitle(t('fastcat.timeline.delete'), 'general.delete'),
           icon: 'i-heroicons-trash',
           onSelect: onDelete,
         },
         {
-          label: t('common.paste'),
+          label: getHotkeyTitle(t('common.paste'), 'general.paste'),
           icon: 'i-heroicons-clipboard',
           disabled: !hasTimelineClipboard,
           onSelect: onPaste,

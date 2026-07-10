@@ -3,6 +3,7 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import type { TimelineTrack } from '~/timeline/types';
 
 import { useAppClipboard } from '~/composables/useAppClipboard';
+import { useHotkeyLabel } from '~/composables/useHotkeyLabel';
 
 export function useTrackContextMenu(
   options: {
@@ -14,6 +15,7 @@ export function useTrackContextMenu(
   const { t } = useI18n();
   const timelineStore = useTimelineStore();
   const clipboardStore = useAppClipboard();
+  const { getHotkeyTitle } = useHotkeyLabel();
   const hasTimelineClipboard = computed(() => clipboardStore.hasTimelinePayload);
 
   const getTrackContextMenuItems = (track: TimelineTrack, tracks: TimelineTrack[]) => {
@@ -23,7 +25,7 @@ export function useTrackContextMenu(
     return [
       [
         {
-          label: t('common.paste'),
+          label: getHotkeyTitle(t('common.paste'), 'general.paste'),
           icon: 'i-heroicons-clipboard',
           disabled: !hasTimelineClipboard.value,
           onSelect: () => options.onPaste?.(track.id),
@@ -49,21 +51,24 @@ export function useTrackContextMenu(
       ],
       [
         {
-          label: t('fastcat.timeline.renameTrack'),
+          label: getHotkeyTitle(t('fastcat.timeline.renameTrack'), 'general.rename'),
           icon: 'i-heroicons-pencil',
           onSelect: () => {
             options.onRequestRename?.(track);
           },
         },
         {
-          label: track.locked ? t('fastcat.track.unlock') : t('fastcat.track.lock'),
+          label: getHotkeyTitle(
+            track.locked ? t('fastcat.track.unlock') : t('fastcat.track.lock'),
+            'timeline.toggleLockTrack',
+          ),
           icon: track.locked ? 'i-heroicons-lock-open' : 'i-heroicons-lock-closed',
           onSelect: () => {
             timelineStore.updateTrackProperties(track.id, { locked: !track.locked });
           },
         },
         {
-          label: t('fastcat.timeline.deleteTrack'),
+          label: getHotkeyTitle(t('fastcat.timeline.deleteTrack'), 'general.delete'),
           icon: 'i-heroicons-trash',
           onSelect: () => options.onRequestDelete?.(track),
         },

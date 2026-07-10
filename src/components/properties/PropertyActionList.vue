@@ -65,6 +65,7 @@ const ACTION_TO_HOTKEY: Record<string, HotkeyCommandId> = {
   rename: 'general.rename',
   copy: 'general.copy',
   cut: 'general.cut',
+  'delete-gap': 'general.delete',
   'toggle-disabled': 'timeline.toggleDisableClip',
   'toggle-muted': 'timeline.toggleMuteClip',
   'toggle-locked': 'timeline.toggleLockClip',
@@ -79,7 +80,9 @@ const ACTION_TO_HOTKEY: Record<string, HotkeyCommandId> = {
 
   // Track Actions
   'toggle-video-hidden': 'timeline.toggleVisibilityTrack',
+  'toggle-track-muted': 'timeline.toggleMuteTrack',
   'toggle-solo': 'timeline.toggleSoloTrack',
+  'toggle-track-locked': 'timeline.toggleLockTrack',
 
   // Marker Actions
   addMarker: 'general.addMarker',

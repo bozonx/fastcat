@@ -171,6 +171,7 @@ const moveModeOptions = computed<
     value: 'none',
     icon: 'i-heroicons-cursor-arrow-rays',
     tooltip: t('fastcat.timeline.moveModeNormalDescription'),
+    commandId: 'timeline.selectDragModeMove',
   },
   {
     value: 'pseudo_overlap',
@@ -394,7 +395,7 @@ function onToolbarContextMenu(e: MouseEvent) {
 
         <UiIconToggleGroup v-model="currentMoveMode" :options="moveModeToggleOptions" />
 
-        <UiTooltip :text="t('fastcat.timeline.trim')">
+        <UiTooltip :text="getHotkeyTitle(t('fastcat.timeline.trim'), 'timeline.toggleBladeTool')">
           <UiSplitDropdownButton
             v-bind="
               {

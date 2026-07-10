@@ -1,4 +1,5 @@
 import { computed } from 'vue';
+import { useHotkeyLabel } from '~/composables/useHotkeyLabel';
 
 interface MarkerLike {
   id: string;
@@ -31,10 +32,12 @@ interface UseTimelineRulerMenusOptions {
 }
 
 export function useTimelineRulerMenus(options: UseTimelineRulerMenusOptions) {
+  const { getHotkeyTitle } = useHotkeyLabel();
+
   const rulerContextMenuItems = computed(() => [
     [
       {
-        label: options.t('fastcat.timeline.addMarker'),
+        label: getHotkeyTitle(options.t('fastcat.timeline.addMarker'), 'general.addMarker'),
         icon: 'i-heroicons-bookmark',
         onSelect: () => {
           const timeUs = options.getRightClickTimeUs?.() ?? null;
@@ -103,7 +106,7 @@ export function useTimelineRulerMenus(options: UseTimelineRulerMenusOptions) {
           onSelect: () => options.timelineStore.createSelectionRangeFromMarker(markerId),
         },
         {
-          label: options.t('fastcat.timeline.deleteMarker'),
+          label: getHotkeyTitle(options.t('fastcat.timeline.deleteMarker'), 'general.delete'),
           icon: 'i-heroicons-trash',
           color: 'red' as const,
           onSelect: () => options.deleteMarker(markerId),
@@ -121,7 +124,7 @@ export function useTimelineRulerMenus(options: UseTimelineRulerMenusOptions) {
           onSelect: () => options.timelineStore.convertMarkerToZone(markerId),
         },
         {
-          label: options.t('fastcat.timeline.deleteMarker'),
+          label: getHotkeyTitle(options.t('fastcat.timeline.deleteMarker'), 'general.delete'),
           icon: 'i-heroicons-trash',
           color: 'red' as const,
           onSelect: () => options.deleteMarker(markerId),
@@ -143,7 +146,7 @@ export function useTimelineRulerMenus(options: UseTimelineRulerMenusOptions) {
         onSelect: () => options.timelineStore.rippleTrimSelectionRange(),
       },
       {
-        label: options.t('common.delete'),
+        label: getHotkeyTitle(options.t('common.delete'), 'general.delete'),
         icon: 'i-heroicons-trash',
         color: 'red' as const,
         onSelect: () => options.timelineStore.removeSelectionRange(),

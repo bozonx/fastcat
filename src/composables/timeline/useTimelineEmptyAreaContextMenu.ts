@@ -2,12 +2,14 @@ import { computed } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
 import { useSelectionStore } from '~/stores/selection.store';
+import { useHotkeyLabel } from '~/composables/useHotkeyLabel';
 
 export function useTimelineEmptyAreaContextMenu(options: { onZoomToFit?: () => void } = {}) {
   const { t } = useI18n();
   const timelineStore = useTimelineStore();
   const timelineSettingsStore = useTimelineSettingsStore();
   const selectionStore = useSelectionStore();
+  const { getHotkeyTitle } = useHotkeyLabel();
 
   const emptyAreaContextMenuItems = computed(() => [
     [
@@ -20,7 +22,7 @@ export function useTimelineEmptyAreaContextMenu(options: { onZoomToFit?: () => v
         },
       },
       {
-        label: t('fastcat.timeline.zoomToFit'),
+        label: getHotkeyTitle(t('fastcat.timeline.zoomToFit'), 'general.zoomFit'),
         icon: 'i-heroicons-arrows-pointing-out',
         onSelect: () => {
           if (options.onZoomToFit) {

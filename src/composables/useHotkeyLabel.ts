@@ -23,15 +23,22 @@ function formatHotkey(
 export function useHotkeyLabel() {
   const workspaceStore = useWorkspaceStore();
 
+  function getHotkeySettings() {
+    return {
+      ...workspaceStore.userSettings.hotkeys,
+      bindings: workspaceStore.userSettings.hotkeys?.bindings ?? {},
+    };
+  }
+
   function getHotkeyLabel(commandId: HotkeyCommandId): string | null {
-    const effective = getEffectiveHotkeyBindings(workspaceStore.userSettings.hotkeys);
+    const effective = getEffectiveHotkeyBindings(getHotkeySettings());
     const bindings = effective[commandId];
     if (!bindings || bindings.length === 0) return null;
     return bindings.map((combo) => formatHotkey(combo, workspaceStore.userSettings)).join(', ');
   }
 
   function getHotkeyKbds(commandId: HotkeyCommandId): string[] | undefined {
-    const effective = getEffectiveHotkeyBindings(workspaceStore.userSettings.hotkeys);
+    const effective = getEffectiveHotkeyBindings(getHotkeySettings());
     const bindings = effective[commandId];
     if (!bindings || bindings.length === 0) return undefined;
     const firstBinding = bindings[0];

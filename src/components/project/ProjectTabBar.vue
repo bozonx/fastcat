@@ -2,6 +2,8 @@
 import { VueDraggable } from 'vue-draggable-plus';
 import { isFileTab, type AnyProjectTab } from '~/stores/project-tabs.store';
 import { useProjectTabs } from '~/composables/project/useProjectTabs';
+import { useHotkeyLabel } from '~/composables/useHotkeyLabel';
+import type { HotkeyCommandId } from '~/utils/hotkeys/defaultHotkeys';
 
 const {
   activateProjectTab,
@@ -17,6 +19,16 @@ const {
 } = useProjectTabs();
 
 const { t } = useI18n();
+const { getHotkeyTitle } = useHotkeyLabel();
+
+const STATIC_TAB_HOTKEYS: Partial<Record<string, HotkeyCommandId>> = {
+  files: 'general.projectTabFiles',
+  history: 'general.projectTabHistory',
+  effects: 'general.projectTabEffects',
+  library: 'general.projectTabLibrary',
+  markers: 'general.projectTabMarkers',
+  backups: 'general.projectTabBackups',
+};
 
 function tabIcon(tab: AnyProjectTab): string {
   if (isFileTab(tab)) return tab.icon;
@@ -26,6 +38,14 @@ function tabIcon(tab: AnyProjectTab): string {
 function tabLabel(tab: AnyProjectTab): string {
   if (isFileTab(tab)) return tab.fileName;
   return tab.label;
+}
+
+function tabTitle(tab: AnyProjectTab): string {
+  const label = tabLabel(tab);
+  if (isFileTab(tab)) return label;
+
+  const commandId = STATIC_TAB_HOTKEYS[tab.id];
+  return commandId ? getHotkeyTitle(label, commandId) : label;
 }
 
 function isDraggable(tab: AnyProjectTab): boolean {
@@ -70,7 +90,7 @@ function isDraggable(tab: AnyProjectTab): boolean {
                 ? 'bg-selection-accent-500/15 text-selection-accent-400'
                 : 'text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-accent/40'
             "
-            :title="tabLabel(tab)"
+            :title="tabTitle(tab)"
             @mousedown="onTabMouseDown($event, tab)"
             @auxclick="onTabAuxClick($event, tab)"
             @pointerdown="isDraggable(tab) ? onTabPointerDown($event, tab) : undefined"

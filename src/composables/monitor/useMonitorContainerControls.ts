@@ -8,6 +8,7 @@ import type { useWorkspaceStore } from '~/stores/workspace.store';
 import type { MonitorSyncMode } from '~/composables/monitor/useMonitorPlayback';
 import { isTauriRuntime } from '~/utils/runtime';
 import { PLAYBACK_SPEED_VALUES, formatSpeedLabel } from '~/utils/playbackSpeeds';
+import type { HotkeyCommandId } from '~/utils/hotkeys/defaultHotkeys';
 
 interface PlaybackSpeedOption {
   label: string;
@@ -22,6 +23,7 @@ interface PreviewResolutionOption {
 }
 
 type TranslateFn = (key: string, fallback?: string) => string;
+type HotkeyTitleFn = (baseTitle: string, commandId: HotkeyCommandId) => string;
 
 interface MonitorViewportPublicApi {
   centerMonitor: () => void;
@@ -32,6 +34,7 @@ interface MonitorViewportPublicApi {
 
 interface UseMonitorContainerControlsOptions {
   t: TranslateFn;
+  getHotkeyTitle?: HotkeyTitleFn;
   projectStore: ReturnType<typeof useProjectStore>;
   workspaceStore: ReturnType<typeof useWorkspaceStore>;
   timelineStore: ReturnType<typeof useTimelineStore>;
@@ -53,6 +56,7 @@ interface UseMonitorContainerControlsOptions {
 
 export function useMonitorContainerControls(options: UseMonitorContainerControlsOptions) {
   const { showTimecode, showTransparencyGrid, showMarkerTexts } = useMonitorSettings();
+  const getHotkeyTitle = options.getHotkeyTitle ?? ((baseTitle: string) => baseTitle);
 
   const monitorSyncOptions: Array<{
     value: MonitorSyncMode;
@@ -337,13 +341,16 @@ export function useMonitorContainerControls(options: UseMonitorContainerControls
         ? []
         : [
             {
-              label: options.t('fastcat.timeline.addMarkerAtPlayhead'),
+              label: getHotkeyTitle(
+                options.t('fastcat.timeline.addMarkerAtPlayhead'),
+                'general.addMarker',
+              ),
               icon: 'i-heroicons-tag',
               onSelect: createMarkerAtPlayhead,
             },
           ]),
       {
-        label: options.t('fastcat.monitor.snapshot'),
+        label: getHotkeyTitle(options.t('fastcat.monitor.snapshot'), 'general.snapshot'),
         icon: 'i-heroicons-camera',
         onSelect: options.createStopFrameSnapshot,
         disabled:
@@ -363,7 +370,7 @@ export function useMonitorContainerControls(options: UseMonitorContainerControls
     ],
     [
       {
-        label: options.t('fastcat.preview.fitToWindow'),
+        label: getHotkeyTitle(options.t('fastcat.preview.fitToWindow'), 'general.zoomFit'),
         icon: 'i-heroicons-arrows-pointing-in',
         onSelect: fitMonitor,
       },
@@ -373,7 +380,7 @@ export function useMonitorContainerControls(options: UseMonitorContainerControls
         onSelect: centerMonitor,
       },
       {
-        label: options.t('fastcat.preview.resetZoom'),
+        label: getHotkeyTitle(options.t('fastcat.preview.resetZoom'), 'general.zoomReset'),
         icon: 'i-heroicons-arrow-path',
         onSelect: resetView,
       },

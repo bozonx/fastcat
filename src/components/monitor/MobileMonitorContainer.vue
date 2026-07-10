@@ -14,6 +14,7 @@ import { useMonitorFullscreenViewport } from '~/composables/monitor/useMonitorFu
 import { useLongPressTooltip } from '~/composables/ui/useLongPressTooltip';
 import ProjectMarkers from '~/components/project/ProjectMarkers.vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
+import { useHotkeyLabel } from '~/composables/useHotkeyLabel';
 import {
   MOBILE_DOUBLE_TAP_MS,
   MOBILE_LONG_PRESS_MOVE_THRESHOLD_PX,
@@ -87,10 +88,12 @@ const statusText = computed(() => {
 
 const workspaceStore = useWorkspaceStore();
 const { showGrid, toggleGrid, getGridLines } = useMonitorGrid({ projectStore });
+const { getHotkeyTitle } = useHotkeyLabel();
 
 const { contextMenuItems, onPlaybackSpeedChange, selectedPlaybackSpeedOption, speedButtonLabel } =
   useMonitorContainerControls({
     t,
+    getHotkeyTitle,
     projectStore,
     workspaceStore,
     timelineStore,

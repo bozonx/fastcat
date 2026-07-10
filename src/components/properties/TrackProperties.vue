@@ -166,7 +166,7 @@ const trackQuickActions = computed(() => {
 
   const muted = props.track.audioMuted || false;
   actions.push({
-    id: 'toggle-muted',
+    id: 'toggle-track-muted',
     title: muted ? 'Unmute Track' : 'Mute Track',
     icon: muted ? 'i-heroicons-speaker-x-mark' : 'i-heroicons-speaker-wave',
     color: muted ? ('error' as const) : ('neutral' as const),
@@ -186,7 +186,7 @@ const trackQuickActions = computed(() => {
 
   const locked = props.track.locked || false;
   actions.push({
-    id: 'toggle-locked',
+    id: 'toggle-track-locked',
     title: locked ? 'Unlock Track' : 'Lock Track',
     icon: locked ? 'i-heroicons-lock-closed' : 'i-heroicons-lock-open',
     color: locked ? ('primary' as const) : ('neutral' as const),

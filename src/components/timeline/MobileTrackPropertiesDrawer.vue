@@ -8,6 +8,7 @@ import MobilePropertiesDrawer from './MobilePropertiesDrawer.vue';
 import MobileDrawerToolbarButton from './MobileDrawerToolbarButton.vue';
 import { useDrawerToolbarOrientation } from '~/composables/timeline/useDrawerToolbarOrientation';
 import { useAppClipboard } from '~/composables/useAppClipboard';
+import { useHotkeyLabel } from '~/composables/useHotkeyLabel';
 
 const props = defineProps<{
   isOpen: boolean;
@@ -33,6 +34,7 @@ const { toolbarOrientation } = useDrawerToolbarOrientation();
 const timelineStore = useTimelineStore();
 const workspaceStore = useWorkspaceStore();
 const clipboardStore = useAppClipboard();
+const { getHotkeyTitle } = useHotkeyLabel();
 const hasClipboard = computed(() => clipboardStore.hasTimelinePayload);
 
 const tracks = computed(
@@ -147,6 +149,7 @@ function handlePasteToTrack() {
         v-if="isGapMode"
         icon="i-heroicons-trash"
         primary
+        :label="getHotkeyTitle(t('fastcat.timeline.deleteGap'), 'general.delete')"
         @click="deleteGap"
       />
 
@@ -205,6 +208,12 @@ function handlePasteToTrack() {
         v-if="selectedTrack?.kind === 'video'"
         :icon="selectedTrack?.videoHidden ? 'i-heroicons-eye-slash' : 'i-heroicons-eye'"
         :active="selectedTrack?.videoHidden"
+        :label="
+          getHotkeyTitle(
+            t('videoEditor.hotkeys.timeline.toggleVisibilityTrack'),
+            'timeline.toggleVisibilityTrack',
+          )
+        "
         @click="toggleTrackVideoHidden"
       />
 
@@ -214,6 +223,12 @@ function handlePasteToTrack() {
           selectedTrack?.audioMuted ? 'i-heroicons-speaker-x-mark' : 'i-heroicons-speaker-wave'
         "
         :active="selectedTrack?.audioMuted"
+        :label="
+          getHotkeyTitle(
+            t('videoEditor.hotkeys.timeline.toggleMuteTrack'),
+            'timeline.toggleMuteTrack',
+          )
+        "
         @click="toggleTrackMute"
       />
 
@@ -221,6 +236,12 @@ function handlePasteToTrack() {
       <MobileDrawerToolbarButton
         icon="i-heroicons-musical-note"
         :active="selectedTrack?.audioSolo"
+        :label="
+          getHotkeyTitle(
+            t('videoEditor.hotkeys.timeline.toggleSoloTrack'),
+            'timeline.toggleSoloTrack',
+          )
+        "
         @click="toggleTrackSolo"
       />
 
@@ -228,18 +249,28 @@ function handlePasteToTrack() {
       <MobileDrawerToolbarButton
         :icon="selectedTrack?.locked ? 'i-heroicons-lock-open' : 'i-heroicons-lock-closed'"
         :active="selectedTrack?.locked"
+        :label="
+          getHotkeyTitle(
+            t('videoEditor.hotkeys.timeline.toggleLockTrack'),
+            'timeline.toggleLockTrack',
+          )
+        "
         @click="toggleTrackLock"
       />
 
       <!-- 6. Rename (track) -->
       <MobileDrawerToolbarButton
         icon="i-heroicons-pencil-square"
-        :label="t('common.rename')"
+        :label="getHotkeyTitle(t('common.rename'), 'general.rename')"
         @click="isTrackRenameOpen = true"
       />
 
       <!-- 7. Delete track -->
-      <MobileDrawerToolbarButton icon="i-heroicons-trash" @click="requestDeleteTrack" />
+      <MobileDrawerToolbarButton
+        icon="i-heroicons-trash"
+        :label="getHotkeyTitle(t('common.delete'), 'general.delete')"
+        @click="requestDeleteTrack"
+      />
     </template>
 
     <div v-if="selectedTrack" class="px-4 pb-8 pt-4 flex flex-col gap-4">

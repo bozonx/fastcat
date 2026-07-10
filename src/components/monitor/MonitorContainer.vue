@@ -248,6 +248,7 @@ const {
   toolbarPosition,
 } = useMonitorContainerControls({
   t,
+  getHotkeyTitle,
   projectStore,
   workspaceStore,
   timelineStore,
@@ -732,7 +733,9 @@ watch(viewportRef, (vp) => {
             </UiTooltip>
 
             <!-- Playback buttons — wheel on play button changes speed -->
-            <UiTooltip :text="getHotkeyTitle(t('fastcat.monitor.rewind'), 'timeline.globalToStart')">
+            <UiTooltip
+              :text="getHotkeyTitle(t('fastcat.monitor.rewind'), 'timeline.globalToStart')"
+            >
               <UiActionButton
                 size="md"
                 variant="ghost"
@@ -751,7 +754,7 @@ watch(viewportRef, (vp) => {
               />
             </UiTooltip>
 
-            <UiTooltip :text="getHotkeyTitle(t('fastcat.monitor.play'), 'playback.toggle')">
+            <UiTooltip :text="getHotkeyTitle(t('fastcat.monitor.play'), 'playback.toggle1')">
               <UButton
                 size="md"
                 variant="subtle"

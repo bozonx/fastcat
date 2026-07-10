@@ -3,6 +3,7 @@ import { computed, ref, watch, onBeforeUnmount, nextTick } from 'vue';
 import type { TimelineTrack } from '~/timeline/types';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { getAudioMeterColorClass, getAudioMeterPercent, isAudioClipping } from '~/utils/audio';
+import { useHotkeyLabel } from '~/composables/useHotkeyLabel';
 
 const props = defineProps<{
   track: TimelineTrack;
@@ -28,6 +29,8 @@ const emit = defineEmits<{
 }>();
 
 const timelineStore = useTimelineStore();
+const { t } = useI18n();
+const { getHotkeyTitle } = useHotkeyLabel();
 
 const renameValue = ref(props.track.name);
 const renameInput = ref<HTMLInputElement | HTMLTextAreaElement | null>(null);
@@ -65,6 +68,22 @@ const levelColorClass = computed(() => getAudioMeterColorClass(props.levelDb));
 // Calculate available space for text wrap and the maximum number of lines that can fit
 const remainingHeight = computed(() => props.height - 28 - (props.hasAudio ? 16 : 8));
 const lineCount = computed(() => Math.max(1, Math.floor(remainingHeight.value / 13)));
+
+const lockTrackTitle = computed(() =>
+  getHotkeyTitle(t('videoEditor.hotkeys.timeline.toggleLockTrack'), 'timeline.toggleLockTrack'),
+);
+const visibilityTrackTitle = computed(() =>
+  getHotkeyTitle(
+    t('videoEditor.hotkeys.timeline.toggleVisibilityTrack'),
+    'timeline.toggleVisibilityTrack',
+  ),
+);
+const muteTrackTitle = computed(() =>
+  getHotkeyTitle(t('videoEditor.hotkeys.timeline.toggleMuteTrack'), 'timeline.toggleMuteTrack'),
+);
+const soloTrackTitle = computed(() =>
+  getHotkeyTitle(t('videoEditor.hotkeys.timeline.toggleSoloTrack'), 'timeline.toggleSoloTrack'),
+);
 
 watch(
   () => props.levelDb,
@@ -266,7 +285,7 @@ onBeforeUnmount(() => {
             icon="i-heroicons-lock-closed"
             :active-bg="'#3b82f6'"
             :active-text="'#ffffff'"
-            title="Unlock Track"
+            :title="lockTrackTitle"
             @click="toggleTrackLock"
           />
 
@@ -282,7 +301,7 @@ onBeforeUnmount(() => {
             active-color="primary"
             :active-bg="'#ffffff'"
             :active-text="'#000000'"
-            title="Hide/Show Track"
+            :title="visibilityTrackTitle"
             @click="toggleVideoHidden"
           />
 
@@ -297,7 +316,7 @@ onBeforeUnmount(() => {
             active-color="error"
             :active-bg="'#ef4444'"
             :active-text="'#ffffff'"
-            title="Mute/Unmute Track"
+            :title="muteTrackTitle"
             @click="toggleAudioMuted"
           />
 
@@ -311,7 +330,7 @@ onBeforeUnmount(() => {
             active-color="success"
             :active-bg="'#22c55e'"
             :active-text="'#ffffff'"
-            title="Solo Track"
+            :title="soloTrackTitle"
             @click="toggleAudioSolo"
           />
         </div>
