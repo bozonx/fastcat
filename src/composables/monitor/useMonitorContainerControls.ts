@@ -375,7 +375,7 @@ export function useMonitorContainerControls(options: UseMonitorContainerControls
         onSelect: fitMonitor,
       },
       {
-        label: options.t('fastcat.monitor.center'),
+        label: getHotkeyTitle(options.t('fastcat.monitor.center'), 'monitor.center'),
         icon: 'i-lucide-crosshair',
         onSelect: centerMonitor,
       },

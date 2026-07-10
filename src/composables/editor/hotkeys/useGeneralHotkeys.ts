@@ -27,7 +27,7 @@ export function useGeneralHotkeys(
   const selectionStore = useSelectionStore();
   const projectStore = useProjectStore();
 
-  const { createStopFrameSnapshot, createNewTimeline } = useMonitorActions();
+  const { createStopFrameSnapshot, createNewTimeline, centerMonitor } = useMonitorActions();
   const fileManagerStore = useFileManagerStore();
   const projectTabsStore = useProjectTabsStore();
   const clipboardStore = useAppClipboard();
@@ -526,6 +526,14 @@ export function useGeneralHotkeys(
     'general.snapshot': () => {
       if (createStopFrameSnapshot.value) {
         void createStopFrameSnapshot.value();
+        return true;
+      }
+      return false;
+    },
+    'monitor.center': () => {
+      if (!focusStore.canUseMonitorHotkeys) return false;
+      if (centerMonitor.value) {
+        centerMonitor.value();
         return true;
       }
       return false;

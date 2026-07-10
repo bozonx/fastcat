@@ -151,6 +151,7 @@ function onSeekbarPointerUp(event: PointerEvent) {
 registerMonitorActions({
   createStopFrameSnapshot,
   createNewTimeline,
+  centerMonitor: () => viewportRef.value?.centerMonitor(),
 });
 
 const props = withDefaults(

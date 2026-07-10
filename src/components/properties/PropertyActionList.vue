@@ -20,6 +20,7 @@ export interface PropertyAction {
   disabled?: boolean;
   loading?: boolean;
   hidden?: boolean;
+  showHotkeyInLabel?: boolean;
   onClick: () => void;
 }
 
@@ -103,6 +104,7 @@ function getActionLabel(action: PropertyAction): string | undefined {
   if (!baseLabel) return undefined;
   const cmdId = ACTION_TO_HOTKEY[action.id];
   if (!cmdId) return baseLabel;
+  if (action.showHotkeyInLabel === false) return baseLabel;
   const label = getHotkeyLabel(cmdId);
   if (!label) return baseLabel;
   return `${baseLabel} (${label})`;
@@ -140,7 +142,7 @@ const justifyClass = computed(() => {
       :variant="action.variant || props.variant || 'soft'"
       :disabled="action.disabled"
       :loading="action.loading"
-      :title="vertical ? action.title || action.label : getActionTitle(action)"
+      :title="getActionTitle(action)"
       :size="size"
       class="transition-all duration-200 hover:bg-ui-bg-hover hover:text-ui-text"
       :class="[vertical ? 'w-full' : '', !action.label && !vertical ? 'px-2' : '', justifyClass]"

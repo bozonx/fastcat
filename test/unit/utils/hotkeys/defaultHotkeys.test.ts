@@ -109,9 +109,7 @@ describe('DEFAULT_HOTKEYS', () => {
 
   it('has jumpPrevBoundaryTrack with modifier1+A and modifier1+ArrowUp', () => {
     expect(DEFAULT_HOTKEYS.bindings['playback.jumpPrevBoundaryTrack']).toBeDefined();
-    expect(DEFAULT_HOTKEYS.bindings['playback.jumpPrevBoundaryTrack']).toContain(
-      `${Modifier1}+A`,
-    );
+    expect(DEFAULT_HOTKEYS.bindings['playback.jumpPrevBoundaryTrack']).toContain(`${Modifier1}+A`);
     expect(DEFAULT_HOTKEYS.bindings['playback.jumpPrevBoundaryTrack']).toContain(
       `${Modifier1}+ArrowUp`,
     );
@@ -119,9 +117,7 @@ describe('DEFAULT_HOTKEYS', () => {
 
   it('has jumpNextBoundaryTrack with modifier1+G and modifier1+ArrowDown', () => {
     expect(DEFAULT_HOTKEYS.bindings['playback.jumpNextBoundaryTrack']).toBeDefined();
-    expect(DEFAULT_HOTKEYS.bindings['playback.jumpNextBoundaryTrack']).toContain(
-      `${Modifier1}+G`,
-    );
+    expect(DEFAULT_HOTKEYS.bindings['playback.jumpNextBoundaryTrack']).toContain(`${Modifier1}+G`);
     expect(DEFAULT_HOTKEYS.bindings['playback.jumpNextBoundaryTrack']).toContain(
       `${Modifier1}+ArrowDown`,
     );
@@ -130,6 +126,7 @@ describe('DEFAULT_HOTKEYS', () => {
   it('has updated defaults for timeline creation and monitor snapshot', () => {
     expect(DEFAULT_HOTKEYS.bindings['general.newTimeline']).toEqual([`${Modifier1}+N`]);
     expect(DEFAULT_HOTKEYS.bindings['general.snapshot']).toEqual([`${Modifier2}+H`]);
+    expect(DEFAULT_HOTKEYS.bindings['monitor.center']).toEqual([]);
   });
 
   it('has updated defaults for timeline trim and selection actions', () => {
@@ -148,9 +145,7 @@ describe('DEFAULT_HOTKEYS', () => {
   it('has updated defaults for waveform and thumbnail toggles', () => {
     expect(DEFAULT_HOTKEYS.bindings['timeline.toggleWaveformMode']).toEqual([',']);
     expect(DEFAULT_HOTKEYS.bindings['timeline.toggleShowWaveform']).toEqual(['.']);
-    expect(DEFAULT_HOTKEYS.bindings['timeline.toggleShowThumbnails']).toEqual([
-      `${Modifier1}+X`,
-    ]);
+    expect(DEFAULT_HOTKEYS.bindings['timeline.toggleShowThumbnails']).toEqual([`${Modifier1}+X`]);
   });
 
   it('has defaults for timeline creation and mode shortcuts', () => {
@@ -213,10 +208,7 @@ describe('DEFAULT_HOTKEYS', () => {
   });
 
   it('has defaults for start/end timeline shortcuts', () => {
-    expect(DEFAULT_HOTKEYS.bindings['timeline.globalToStart']).toEqual([
-      'Home',
-      `${Modifier2}+E`,
-    ]);
+    expect(DEFAULT_HOTKEYS.bindings['timeline.globalToStart']).toEqual(['Home', `${Modifier2}+E`]);
     expect(DEFAULT_HOTKEYS.bindings['timeline.globalToEnd']).toEqual(['End', `${Modifier2}+R`]);
   });
 
@@ -262,9 +254,7 @@ describe('DEFAULT_HOTKEYS', () => {
 
   it('moves split, solo and boundary defaults to the new layout', () => {
     expect(DEFAULT_HOTKEYS.bindings['timeline.splitAtPlayhead']).toEqual(['T']);
-    expect(DEFAULT_HOTKEYS.bindings['timeline.splitAllAtPlayhead']).toEqual([
-      `${Modifier1}+T`,
-    ]);
+    expect(DEFAULT_HOTKEYS.bindings['timeline.splitAllAtPlayhead']).toEqual([`${Modifier1}+T`]);
     expect(DEFAULT_HOTKEYS.bindings['timeline.toggleSoloTrack']).toEqual([`${Modifier1}+S`]);
     expect(DEFAULT_HOTKEYS.bindings['playback.jumpNextBoundary']).toEqual(['G', 'ArrowDown']);
     expect(DEFAULT_HOTKEYS.bindings['playback.jumpNextBoundaryTrack']).toEqual([

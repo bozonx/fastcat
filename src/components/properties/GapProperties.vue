@@ -44,6 +44,7 @@ const gapActions = computed(() => [
     icon: 'i-heroicons-trash',
     color: 'neutral' as const,
     variant: 'soft' as const,
+    showHotkeyInLabel: false,
     onClick: deleteGap,
   },
 ]);

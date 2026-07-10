@@ -1789,6 +1789,9 @@
         "toggleWaveformMode": "Toggle waveform mode (full / half)",
         "trimToPlayheadLeft": "Trim clip to playhead (left)",
         "trimToPlayheadRight": "Trim clip to playhead (right)"
+      },
+      "monitor": {
+        "center": "Center monitor view"
       }
     },
     "library": {

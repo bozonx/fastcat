@@ -53,6 +53,7 @@ export type HotkeyCommandId =
   | 'general.selectAll'
   | 'general.snapshot'
   | 'general.newTimeline'
+  | 'monitor.center'
   | 'timeline.duplicate'
   | 'timeline.addTextClipAtPlayhead'
   | 'timeline.addBackgroundClipAtPlayhead'
@@ -303,6 +304,11 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
       id: 'general.snapshot',
       groupId: 'timelineMonitorGlobal',
       title: 'Create snapshot from monitor',
+    },
+    {
+      id: 'monitor.center',
+      groupId: 'monitor',
+      title: 'Center monitor view',
     },
 
     // Timeline & Monitor Global - Frame-by-frame navigation and speed loops
@@ -560,6 +566,7 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     'general.volumeUp': [`${Modifier1}+=`],
     'general.volumeDown': [`${Modifier1}+-`],
     'general.snapshot': [`${Modifier2}+H`],
+    'monitor.center': [],
     'general.fullscreen': ['`'],
 
     'general.zoomIn': ['='],
