@@ -1,6 +1,7 @@
 import { CanvasSource, Graphics, ImageSource, Sprite, Texture, type Container } from 'pixi.js';
 import type { LayoutApplier } from './LayoutApplier';
 import type { CompositorClip, CompositorTrack } from './types';
+import { createPlaceholderImageSource } from './placeholderImageSource';
 
 export interface CreateClipBaseParams {
   itemId: string;
@@ -60,9 +61,7 @@ export class ClipFactory {
       clipType: params.clipType,
       clipKind: 'solid',
       sourceKind: 'bitmap',
-      imageSource: new ImageSource({
-        resource: new OffscreenCanvas(2, 2) as unknown as HTMLCanvasElement,
-      }),
+      imageSource: createPlaceholderImageSource(),
       lastVideoFrame: null,
       canvas: null,
       ctx: null,
@@ -106,9 +105,7 @@ export class ClipFactory {
       clipType: 'text',
       clipKind: 'text',
       sourceKind: 'canvas',
-      imageSource: new ImageSource({
-        resource: new OffscreenCanvas(2, 2) as unknown as HTMLCanvasElement,
-      }),
+      imageSource: createPlaceholderImageSource(),
       lastVideoFrame: null,
       canvas: null,
       ctx: null,
@@ -157,9 +154,7 @@ export class ClipFactory {
       clipType: 'shape',
       clipKind: 'shape',
       sourceKind: 'graphics',
-      imageSource: new ImageSource({
-        resource: new OffscreenCanvas(2, 2) as unknown as HTMLCanvasElement,
-      }),
+      imageSource: createPlaceholderImageSource(),
       lastVideoFrame: null,
       canvas: null,
       ctx: null,
@@ -209,9 +204,7 @@ export class ClipFactory {
       clipType: 'adjustment',
       clipKind: 'adjustment',
       sourceKind: 'bitmap',
-      imageSource: new ImageSource({
-        resource: new OffscreenCanvas(2, 2) as unknown as HTMLCanvasElement,
-      }),
+      imageSource: createPlaceholderImageSource(),
       lastVideoFrame: null,
       canvas: null,
       ctx: null,
@@ -255,9 +248,7 @@ export class ClipFactory {
       clipType: 'hud',
       clipKind: 'hud',
       sourceKind: 'bitmap',
-      imageSource: new ImageSource({
-        resource: new OffscreenCanvas(2, 2) as unknown as HTMLCanvasElement,
-      }),
+      imageSource: createPlaceholderImageSource(),
       lastVideoFrame: null,
       canvas: new OffscreenCanvas(this.context.width, this.context.height),
       ctx: null,

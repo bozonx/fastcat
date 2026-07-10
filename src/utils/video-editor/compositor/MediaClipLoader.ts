@@ -1,6 +1,7 @@
 import { ImageSource } from 'pixi.js';
 import { safeDispose } from '../utils';
 import { governedBlobWorker } from '~/utils/io/governed-blob-worker';
+import { createPlaceholderImageSource } from './placeholderImageSource';
 
 export interface MediabunnyTrack {
   canDecode(): Promise<boolean>;
@@ -142,9 +143,7 @@ export class MediaClipLoader {
           requestedSourceRangeDurationUs > 0 ? requestedSourceRangeDurationUs : durationUs,
         durationUs,
         endUs,
-        imageSource: new ImageSource({
-          resource: new OffscreenCanvas(2, 2) as unknown as HTMLCanvasElement,
-        }),
+        imageSource: createPlaceholderImageSource(),
         sourceRotation: Number.isFinite(sourceRotation) ? sourceRotation : undefined,
       };
     } catch (error) {

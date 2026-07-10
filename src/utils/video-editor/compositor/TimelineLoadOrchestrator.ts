@@ -1,5 +1,4 @@
 import { createDevLogger } from '~/utils/dev-logger';
-import { ImageSource } from 'pixi.js';
 import PQueue from 'p-queue';
 import { getMediaTypeFromFilename } from '../../media-types';
 import { runResilientWorkerFileIo } from '../../../workers/core/io-governor';
@@ -13,6 +12,7 @@ import type { ClipFactory } from './ClipFactory';
 import type { LayoutApplier } from './LayoutApplier';
 import type { CompositorClip, CompositorTrack } from './types';
 import { resolveBlendMode } from './types';
+import { createPlaceholderImageSource } from './placeholderImageSource';
 const log = createDevLogger('TimelineLoadOrchestrator');
 
 export type TimelineLoadOrchestratorDeps = MediaSourceLoaderDeps;
@@ -267,8 +267,7 @@ export class TimelineLoadOrchestrator {
       });
       sequentialTimeUs = fixedDuration.sequentialTimeUs;
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const imageSource = new ImageSource({ resource: new OffscreenCanvas(2, 2) as any });
+      const imageSource = createPlaceholderImageSource();
       let bitmap: ImageBitmap | null = null;
       const loadedImage = await this.context.rasterImageLoader.load({ sourcePath, deps });
       if (loadedImage) {
