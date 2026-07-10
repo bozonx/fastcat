@@ -32,6 +32,10 @@ const COMMAND_GROUPS: ReadonlyMap<HotkeyCommandId, HotkeyGroupId> = new Map(
   DEFAULT_HOTKEYS.commands.map((command) => [command.id, command.groupId]),
 );
 
+export function getHotkeyCommandGroup(cmdId: HotkeyCommandId): HotkeyGroupId | null {
+  return COMMAND_GROUPS.get(cmdId) ?? null;
+}
+
 function comboHasCtrl(combo: HotkeyCombo | null | undefined): boolean {
   if (!combo) return false;
   const parsed = parseHotkeyCombo(combo);

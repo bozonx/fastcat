@@ -10,6 +10,7 @@ import type { HotkeyCommandId, HotkeyCombo } from '~/utils/hotkeys/defaultHotkey
 import { createHotkeyHoldRunner } from '~/utils/hotkeys/holdRunner';
 import {
   canExecuteHotkeyCommand,
+  getHotkeyCommandGroup,
   getFocusAwareHotkeyOrder,
   getMatchedHotkeyCommands,
   shouldBlurAfterHotkey,
@@ -107,9 +108,21 @@ export function useEditorHotkeys() {
 
     const isEditableEventTarget = isEditableTarget((e as KeyboardEvent).target);
     const isEditableActiveElement = isEditableTarget(getActiveElement());
+    const keyboardEvent = e as KeyboardEvent;
+    const isArrowKey = keyboardEvent.key.startsWith('Arrow');
+    const isFileManagerHotkeyFocus =
+      focusStore.canUseFileManagerHotkeys || focusStore.effectiveFocus === 'filesBrowser';
+    const matchedForFocus =
+      isFileManagerHotkeyFocus && isArrowKey
+        ? matched.filter((cmdId) => getHotkeyCommandGroup(cmdId) === 'fileManager')
+        : matched;
+
+    if (matchedForFocus.length === 0) {
+      return false;
+    }
 
     const focusAwareOrder = getFocusAwareHotkeyOrder({
-      matched,
+      matched: matchedForFocus,
       canUseFileManagerHotkeys: focusStore.canUseFileManagerHotkeys,
       canUseTimelineHotkeys: focusStore.canUseTimelineHotkeys,
       canUseMonitorHotkeys: focusStore.canUseMonitorHotkeys,

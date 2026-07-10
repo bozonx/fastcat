@@ -2,6 +2,7 @@ import { ref, watch, onUnmounted, type Ref } from 'vue';
 import { useUiStore } from '~/stores/ui.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { createDevLogger } from '~/utils/dev-logger';
+import { stepPlaybackSpeed } from '~/utils/playbackSpeeds';
 
 const log = createDevLogger('mediaPlayerPlayback');
 
@@ -73,6 +74,46 @@ export function useMediaPlayerPlayback(
     mediaElement.value.playbackRate = Math.max(0.1, Math.abs(playbackSpeed.value));
     mediaElement.value.muted = false;
     void mediaElement.value.play();
+  }
+
+  function pauseAndResetSpeed() {
+    pauseAndClearPlayback();
+    playbackSpeed.value = 1;
+    if (mediaElement.value) {
+      mediaElement.value.playbackRate = 1;
+      mediaElement.value.muted = isMuted.value;
+    }
+    isPlaying.value = false;
+  }
+
+  function seekBySeconds(seconds: number) {
+    if (!mediaElement.value) return;
+    pauseAndClearPlayback();
+
+    const durationSec = Number.isFinite(mediaElement.value.duration)
+      ? mediaElement.value.duration
+      : 0;
+    const nextTime = Math.min(
+      Math.max(mediaElement.value.currentTime + seconds, 0),
+      Math.max(durationSec, 0),
+    );
+    mediaElement.value.currentTime = nextTime;
+    currentTime.value = nextTime;
+
+    if (duration.value > 0) {
+      progress.value = (currentTime.value / duration.value) * 100;
+    }
+  }
+
+  function speedUpForward() {
+    const currentSpeed = playbackSpeed.value > 0 ? playbackSpeed.value : 1;
+    setForwardPlaybackSpeed(stepPlaybackSpeed(currentSpeed, 'up'));
+  }
+
+  function speedDownForward() {
+    const currentSpeed = playbackSpeed.value > 0 ? playbackSpeed.value : 1;
+    const nextSpeed = stepPlaybackSpeed(currentSpeed, 'down');
+    setForwardPlaybackSpeed(Math.max(0.5, nextSpeed));
   }
 
   function setBackwardPlaybackSpeed(speed: number) {
@@ -200,12 +241,25 @@ export function useMediaPlayerPlayback(
         pauseAndClearPlayback();
         mediaElement.value.currentTime = 0;
         currentTime.value = 0;
+      } else if (detail.action === 'toStart') {
+        if (!mediaElement.value) return;
+        pauseAndClearPlayback();
+        mediaElement.value.currentTime = 0;
+        currentTime.value = 0;
       } else if (detail.action === 'toEnd') {
         if (!mediaElement.value) return;
         pauseAndClearPlayback();
         const end = Number.isFinite(mediaElement.value.duration) ? mediaElement.value.duration : 0;
         mediaElement.value.currentTime = end;
         currentTime.value = end;
+      } else if (detail.action === 'step') {
+        seekBySeconds(detail.seconds ?? 0);
+      } else if (detail.action === 'speedUpForward') {
+        speedUpForward();
+      } else if (detail.action === 'speedDownForward') {
+        speedDownForward();
+      } else if (detail.action === 'pauseReset') {
+        pauseAndResetSpeed();
       } else if (detail.action === 'set') {
         const targetSpeed = detail.speed ?? 1;
         const currentSpeed = playbackSpeed.value;
@@ -265,5 +319,6 @@ export function useMediaPlayerPlayback(
     onPlaybackError,
     resetState,
     pauseAndClearPlayback,
+    pauseAndResetSpeed,
   };
 }

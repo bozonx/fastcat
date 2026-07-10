@@ -7,6 +7,7 @@ import { usePlaybackHotkeys } from '~/composables/editor/hotkeys/usePlaybackHotk
 import { pressedKeyCodes } from '~/utils/hotkeys/pressedKeys';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useFocusStore } from '~/stores/focus.store';
+import { useUiStore } from '~/stores/ui.store';
 
 describe('usePlaybackHotkeys — F / D speed cycle', () => {
   let handlers: ReturnType<typeof usePlaybackHotkeys>;
@@ -312,6 +313,57 @@ describe('usePlaybackHotkeys — F / D speed cycle', () => {
       expect(result).toBe(true);
       expect(seekFrames).not.toHaveBeenCalled();
       expect(timelineStore.isPlaying).toBe(true);
+    });
+  });
+
+  describe('preview player routing', () => {
+    beforeEach(() => {
+      const focusStore = useFocusStore();
+      const uiStore = useUiStore();
+
+      focusStore.setPanelFocus('project');
+      uiStore.hasActivePreviewPlayer = true;
+    });
+
+    it('routes start/end and frame steps to the active preview player', () => {
+      const uiStore = useUiStore();
+      const timelineStore = useTimelineStore();
+      const goToStart = vi.fn();
+      const goToEnd = vi.fn();
+      timelineStore.goToStart = goToStart;
+      timelineStore.goToEnd = goToEnd;
+
+      expect(handlers['timeline.globalToStart']?.(new KeyboardEvent('keydown'))).toBe(true);
+      expect(uiStore.previewPlaybackTrigger.action).toBe('toStart');
+      expect(goToStart).not.toHaveBeenCalled();
+
+      expect(handlers['timeline.globalToEnd']?.(new KeyboardEvent('keydown'))).toBe(true);
+      expect(uiStore.previewPlaybackTrigger.action).toBe('toEnd');
+      expect(goToEnd).not.toHaveBeenCalled();
+
+      expect(
+        handlers['playback.stepForward']?.(
+          new KeyboardEvent('keydown', { code: 'ArrowRight', key: 'ArrowRight' }),
+        ),
+      ).toBe(true);
+      expect(uiStore.previewPlaybackTrigger).toMatchObject({
+        action: 'step',
+        seconds: 1 / 30,
+      });
+    });
+
+    it('supports forward preview speed controls and consumes reverse playback commands', () => {
+      const uiStore = useUiStore();
+
+      expect(handlers['playback.speedUpForward']?.(new KeyboardEvent('keydown'))).toBe(true);
+      expect(uiStore.previewPlaybackTrigger.action).toBe('speedUpForward');
+
+      expect(handlers['playback.speedDown']?.(new KeyboardEvent('keydown'))).toBe(true);
+      expect(uiStore.previewPlaybackTrigger.action).toBe('speedDownForward');
+
+      const previousTrigger = uiStore.previewPlaybackTrigger;
+      expect(handlers['playback.backward2']?.(new KeyboardEvent('keydown'))).toBe(true);
+      expect(uiStore.previewPlaybackTrigger).toBe(previousTrigger);
     });
   });
 });

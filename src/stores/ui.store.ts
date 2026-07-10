@@ -157,8 +157,19 @@ export const useUiStore = defineStore('ui', () => {
   const monitorZoomResetTrigger = ref(0);
   const monitorZoomFitTrigger = ref(0);
   const previewPlaybackTrigger = ref<{
-    action: 'toggle' | 'toggle1' | 'toStart' | 'toEnd' | 'set' | '';
+    action:
+      | 'toggle'
+      | 'toggle1'
+      | 'toStart'
+      | 'toEnd'
+      | 'step'
+      | 'set'
+      | 'speedUpForward'
+      | 'speedDownForward'
+      | 'pauseReset'
+      | '';
     speed?: number;
+    seconds?: number;
     direction?: 'forward' | 'backward' | '';
     timestamp: number;
   }>({ action: '', speed: 0, direction: '', timestamp: 0 });
@@ -200,11 +211,21 @@ export const useUiStore = defineStore('ui', () => {
   }
 
   function triggerPreviewPlayback(
-    action: 'toggle' | 'toggle1' | 'toStart' | 'toEnd' | 'set',
+    action:
+      | 'toggle'
+      | 'toggle1'
+      | 'toStart'
+      | 'toEnd'
+      | 'step'
+      | 'set'
+      | 'speedUpForward'
+      | 'speedDownForward'
+      | 'pauseReset',
     speed?: number,
     direction?: 'forward' | 'backward',
+    seconds?: number,
   ) {
-    previewPlaybackTrigger.value = { action, speed, direction, timestamp: Date.now() };
+    previewPlaybackTrigger.value = { action, speed, seconds, direction, timestamp: Date.now() };
   }
 
   function togglePreviewFullscreen() {

@@ -438,6 +438,75 @@ describe('useMediaPlayerPlayback', () => {
     expect(playbackSpeed.value).toBe(-1);
   });
 
+  it('handles preview transport seek triggers', async () => {
+    const el = makeMediaElement({ currentTime: 10, duration: 100 });
+    const mediaEl = ref(el);
+    const volume = ref(1);
+    const isMuted = ref(false);
+    const focusStore = { canUsePreviewHotkeys: true, effectiveFocus: null };
+
+    const { currentTime } = useMediaPlayerPlayback(
+      mediaEl,
+      { src: '' },
+      volume,
+      isMuted,
+      focusStore,
+    );
+
+    mockState.trigger = {
+      action: 'step',
+      seconds: 1 / 30,
+      timestamp: Date.now(),
+    };
+    await nextTick();
+
+    expect(currentTime.value).toBe(10 + 1 / 30);
+
+    mockState.trigger = {
+      action: 'toStart',
+      timestamp: Date.now(),
+    };
+    await nextTick();
+
+    expect(currentTime.value).toBe(0);
+    expect(el.currentTime).toBe(0);
+  });
+
+  it('keeps speedDownForward in forward playback for preview', async () => {
+    const el = makeMediaElement();
+    const mediaEl = ref(el);
+    const volume = ref(1);
+    const isMuted = ref(false);
+    const focusStore = { canUsePreviewHotkeys: true, effectiveFocus: null };
+
+    const { playbackSpeed } = useMediaPlayerPlayback(
+      mediaEl,
+      { src: '' },
+      volume,
+      isMuted,
+      focusStore,
+    );
+
+    mockState.trigger = {
+      action: 'speedDownForward',
+      timestamp: Date.now(),
+    };
+    await nextTick();
+
+    expect(playbackSpeed.value).toBe(0.75);
+    expect(el.playbackRate).toBe(0.75);
+
+    playbackSpeed.value = 0.5;
+    mockState.trigger = {
+      action: 'speedDownForward',
+      timestamp: Date.now(),
+    };
+    await nextTick();
+
+    expect(playbackSpeed.value).toBe(0.5);
+    expect(el.playbackRate).toBe(0.5);
+  });
+
   it('stops timeline playback when preview playback starts', async () => {
     const el = makeMediaElement();
     const mediaEl = ref(el);

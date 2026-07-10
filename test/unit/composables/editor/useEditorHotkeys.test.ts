@@ -961,6 +961,42 @@ describe('useEditorHotkeys', () => {
     });
   });
 
+  it('does not route bare arrow keys from file-manager focus to timeline playback hotkeys', async () => {
+    wrapper = mount(HotkeysHarness);
+    const focusStore = useFocusStore();
+    const projectStore = useProjectStore();
+    const timelineStore = useTimelineStore() as any;
+
+    projectStore.setView('cut');
+    focusStore.setPanelFocus('dynamic:file-manager:detached-files');
+
+    const seekFramesSpy = vi.fn();
+    const jumpPrevSpy = vi.fn();
+    const jumpNextSpy = vi.fn();
+    timelineStore.seekFrames = seekFramesSpy;
+    timelineStore.jumpToPrevClipBoundary = jumpPrevSpy;
+    timelineStore.jumpToNextClipBoundary = jumpNextSpy;
+
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key: 'ArrowRight',
+        code: 'ArrowRight',
+        bubbles: true,
+      }),
+    );
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key: 'ArrowUp',
+        code: 'ArrowUp',
+        bubbles: true,
+      }),
+    );
+
+    expect(seekFramesSpy).not.toHaveBeenCalled();
+    expect(jumpPrevSpy).not.toHaveBeenCalled();
+    expect(jumpNextSpy).not.toHaveBeenCalled();
+  });
+
   it('creates a folder in the current directory from file properties focus', async () => {
     wrapper = mount(HotkeysHarness);
     const focusStore = useFocusStore();

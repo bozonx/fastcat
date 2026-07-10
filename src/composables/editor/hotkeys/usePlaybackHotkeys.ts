@@ -23,11 +23,20 @@ export function usePlaybackHotkeys(
     return focusStore.canUsePlaybackHotkeys || focusStore.effectiveFocus === 'timeline';
   }
 
+  function hasActivePreviewPlaybackTarget() {
+    return isPreviewLikeFocus(focusStore.effectiveFocus) && uiStore.hasActivePreviewPlayer;
+  }
+
+  function getPlaybackStepSeconds(frames: number) {
+    const fps = timelineStore.timelineDoc ? getDocFps(timelineStore.timelineDoc) : 30;
+    return frames / fps;
+  }
+
   const handlers: Partial<Record<HotkeyCommandId, (e: KeyboardEvent) => boolean>> = {
     'playback.toggle': () => {
       if (!canUsePlaybackOrTimelineFocus()) return false;
 
-      if (isPreviewLikeFocus(focusStore.effectiveFocus) && uiStore.hasActivePreviewPlayer) {
+      if (hasActivePreviewPlaybackTarget()) {
         uiStore.triggerPreviewPlayback('toggle');
         return true;
       }
@@ -39,7 +48,7 @@ export function usePlaybackHotkeys(
     'playback.toggle1': () => {
       if (!canUsePlaybackOrTimelineFocus()) return false;
 
-      if (isPreviewLikeFocus(focusStore.effectiveFocus) && uiStore.hasActivePreviewPlayer) {
+      if (hasActivePreviewPlaybackTarget()) {
         uiStore.triggerPreviewPlayback('toggle1');
         return true;
       }
@@ -52,7 +61,7 @@ export function usePlaybackHotkeys(
     'playback.play1ResetSpeed': () => {
       if (!canUsePlaybackOrTimelineFocus()) return false;
 
-      if (isPreviewLikeFocus(focusStore.effectiveFocus) && uiStore.hasActivePreviewPlayer) {
+      if (hasActivePreviewPlaybackTarget()) {
         uiStore.triggerPreviewPlayback('set', 1, 'forward');
         return true;
       }
@@ -65,18 +74,33 @@ export function usePlaybackHotkeys(
     },
 
     'timeline.globalToStart': () => {
+      if (hasActivePreviewPlaybackTarget()) {
+        uiStore.triggerPreviewPlayback('toStart');
+        return true;
+      }
+
       timelineStore.goToStart();
       return true;
     },
 
     'timeline.globalToEnd': () => {
+      if (hasActivePreviewPlaybackTarget()) {
+        uiStore.triggerPreviewPlayback('toEnd');
+        return true;
+      }
+
       timelineStore.goToEnd();
       return true;
     },
 
     'playback.stepForward': (e) => {
-      if (!canUsePlaybackOrTimelineFocus() || isPreviewLikeFocus(focusStore.effectiveFocus))
-        return false;
+      if (!canUsePlaybackOrTimelineFocus()) return false;
+      if (hasActivePreviewPlaybackTarget()) {
+        uiStore.triggerPreviewPlayback('step', undefined, undefined, getPlaybackStepSeconds(1));
+        return true;
+      }
+      if (isPreviewLikeFocus(focusStore.effectiveFocus)) return false;
+
       playbackStepHoldRunner.startHold({
         keyCode: e.code,
         action: () => {
@@ -87,8 +111,13 @@ export function usePlaybackHotkeys(
     },
 
     'playback.stepBackward': (e) => {
-      if (!canUsePlaybackOrTimelineFocus() || isPreviewLikeFocus(focusStore.effectiveFocus))
-        return false;
+      if (!canUsePlaybackOrTimelineFocus()) return false;
+      if (hasActivePreviewPlaybackTarget()) {
+        uiStore.triggerPreviewPlayback('step', undefined, undefined, getPlaybackStepSeconds(-1));
+        return true;
+      }
+      if (isPreviewLikeFocus(focusStore.effectiveFocus)) return false;
+
       playbackStepHoldRunner.startHold({
         keyCode: e.code,
         action: () => {
@@ -99,8 +128,13 @@ export function usePlaybackHotkeys(
     },
 
     'playback.stepForwardLarge': (e) => {
-      if (!canUsePlaybackOrTimelineFocus() || isPreviewLikeFocus(focusStore.effectiveFocus))
-        return false;
+      if (!canUsePlaybackOrTimelineFocus()) return false;
+      if (hasActivePreviewPlaybackTarget()) {
+        uiStore.triggerPreviewPlayback('step', undefined, undefined, 1);
+        return true;
+      }
+      if (isPreviewLikeFocus(focusStore.effectiveFocus)) return false;
+
       playbackStepHoldRunner.startHold({
         keyCode: e.code,
         action: () => {
@@ -115,8 +149,13 @@ export function usePlaybackHotkeys(
     },
 
     'playback.stepBackwardLarge': (e) => {
-      if (!canUsePlaybackOrTimelineFocus() || isPreviewLikeFocus(focusStore.effectiveFocus))
-        return false;
+      if (!canUsePlaybackOrTimelineFocus()) return false;
+      if (hasActivePreviewPlaybackTarget()) {
+        uiStore.triggerPreviewPlayback('step', undefined, undefined, -1);
+        return true;
+      }
+      if (isPreviewLikeFocus(focusStore.effectiveFocus)) return false;
+
       playbackStepHoldRunner.startHold({
         keyCode: e.code,
         action: () => {
@@ -159,10 +198,9 @@ export function usePlaybackHotkeys(
     // paused), advancing one grid step per press up to the 5x ceiling.
     'playback.speedUpForward': () => {
       if (!canUsePlaybackOrTimelineFocus()) return false;
-      // The preview player keeps its own playback rate; the speed grid is a
-      // timeline-transport concept, so leave preview playback untouched.
-      if (isPreviewLikeFocus(focusStore.effectiveFocus) && uiStore.hasActivePreviewPlayer) {
-        return false;
+      if (hasActivePreviewPlaybackTarget()) {
+        uiStore.triggerPreviewPlayback('speedUpForward');
+        return true;
       }
 
       const { playbackSpeed, isPlaying } = timelineStore;
@@ -179,9 +217,9 @@ export function usePlaybackHotkeys(
     // Walking off the bottom crosses into reverse: 0.5 → -0.5 → -0.75 … → -5.
     'playback.speedDown': () => {
       if (!canUsePlaybackOrTimelineFocus()) return false;
-      // See playback.speedUpForward: preview player is unaffected.
-      if (isPreviewLikeFocus(focusStore.effectiveFocus) && uiStore.hasActivePreviewPlayer) {
-        return false;
+      if (hasActivePreviewPlaybackTarget()) {
+        uiStore.triggerPreviewPlayback('speedDownForward');
+        return true;
       }
 
       const { playbackSpeed, isPlaying } = timelineStore;
@@ -202,8 +240,9 @@ export function usePlaybackHotkeys(
     // the next transport command starts from a predictable baseline.
     'playback.shuttleStop': () => {
       if (!canUsePlaybackOrTimelineFocus()) return false;
-      if (isPreviewLikeFocus(focusStore.effectiveFocus) && uiStore.hasActivePreviewPlayer) {
-        return false;
+      if (hasActivePreviewPlaybackTarget()) {
+        uiStore.triggerPreviewPlayback('pauseReset');
+        return true;
       }
 
       if (timelineStore.isPlaying) timelineStore.togglePlayback();
@@ -214,10 +253,11 @@ export function usePlaybackHotkeys(
 
   function shuttle(direction: ShuttleDirection): boolean {
     if (!canUsePlaybackOrTimelineFocus()) return false;
-    // The preview player keeps its own playback rate; shuttling is a
-    // timeline-transport concept, so leave preview playback untouched.
-    if (isPreviewLikeFocus(focusStore.effectiveFocus) && uiStore.hasActivePreviewPlayer) {
-      return false;
+    if (hasActivePreviewPlaybackTarget()) {
+      if (direction === 'forward') {
+        uiStore.triggerPreviewPlayback('speedUpForward');
+      }
+      return true;
     }
 
     const { playbackSpeed, isPlaying } = timelineStore;
@@ -240,8 +280,11 @@ export function usePlaybackHotkeys(
   function shuttleOrStep(e: KeyboardEvent, direction: ShuttleDirection): boolean {
     if (!isShuttleStopModifierHeld()) return shuttle(direction);
     if (!canUsePlaybackOrTimelineFocus()) return false;
-    if (isPreviewLikeFocus(focusStore.effectiveFocus) && uiStore.hasActivePreviewPlayer) {
-      return false;
+    if (hasActivePreviewPlaybackTarget()) {
+      if (direction === 'forward') {
+        uiStore.triggerPreviewPlayback('step', undefined, undefined, getPlaybackStepSeconds(1));
+      }
+      return true;
     }
 
     const fps = timelineStore.timelineDoc ? getDocFps(timelineStore.timelineDoc) : 30;
@@ -300,7 +343,7 @@ export function usePlaybackHotkeys(
     handlers[cmd as HotkeyCommandId] = () => {
       if (!focusStore.canUsePlaybackHotkeys) return false;
 
-      if (isPreviewLikeFocus(focusStore.effectiveFocus) && uiStore.hasActivePreviewPlayer) {
+      if (hasActivePreviewPlaybackTarget()) {
         if (speedCmd.direction === 'backward') {
           return true; // ignored but consumed
         }

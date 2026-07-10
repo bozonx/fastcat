@@ -43,6 +43,7 @@ export function useFocusableListNavigation({
     if (event.ctrlKey || event.altKey || event.metaKey || event.shiftKey) return;
 
     event.preventDefault();
+    event.stopPropagation();
 
     if (currentIndex === -1) {
       items[0]?.focus();
@@ -78,6 +79,7 @@ export function useFocusableListNavigation({
     onKeyDown({
       key: keyMap[dir],
       preventDefault: () => {},
+      stopPropagation: () => {},
     } as KeyboardEvent);
   }
 
