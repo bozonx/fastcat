@@ -108,7 +108,7 @@ const {
 } = useClipBatchActions(itemsRef, {
   timelineDoc: computed(() => timelineStore.timelineDoc),
   mediaMetadata: computed(() => mediaStore.mediaMetadata),
-  batchApplyTimeline: (cmds) => timelineStore.batchApplyTimeline(cmds),
+  batchApplyTimeline: (cmds, options) => timelineStore.batchApplyTimeline(cmds, options),
   clearSelection: () => timelineStore.clearSelection(),
 });
 
@@ -484,14 +484,6 @@ const commonActions = computed(() => {
       variant: allDisabled.value ? 'solid' : 'ghost',
       onClick: toggleDisabled,
     },
-    {
-      id: 'toggle-locked',
-      title: allLocked.value ? t('fastcat.timeline.unlockClips') : t('fastcat.timeline.lockClips'),
-      icon: allLocked.value ? 'i-heroicons-lock-open' : 'i-heroicons-lock-closed',
-      color: allLocked.value ? 'primary' : 'neutral',
-      variant: allLocked.value ? 'solid' : 'ghost',
-      onClick: toggleLocked,
-    },
   ];
 
   if (hasAudioOrVideoWithAudio.value) {
@@ -504,6 +496,15 @@ const commonActions = computed(() => {
       onClick: toggleMuted,
     });
   }
+
+  actions.push({
+    id: 'toggle-locked',
+    title: allLocked.value ? t('fastcat.timeline.unlockClips') : t('fastcat.timeline.lockClips'),
+    icon: allLocked.value ? 'i-heroicons-lock-open' : 'i-heroicons-lock-closed',
+    color: allLocked.value ? 'primary' : 'neutral',
+    variant: allLocked.value ? 'solid' : 'ghost',
+    onClick: toggleLocked,
+  });
 
   return actions as PropertyAction[];
 });

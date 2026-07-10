@@ -161,7 +161,7 @@ const {
   {
     timelineDoc: computed(() => timelineStore.timelineDoc),
     mediaMetadata: computed(() => mediaStore.mediaMetadata),
-    batchApplyTimeline: (cmds) => timelineStore.batchApplyTimeline(cmds),
+    batchApplyTimeline: (cmds, options) => timelineStore.batchApplyTimeline(cmds, options),
     clearSelection: () => timelineStore.clearSelection(),
   },
 );

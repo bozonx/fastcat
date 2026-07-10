@@ -106,9 +106,9 @@ function getActionTitle(action: PropertyAction): string {
 function getActionLabel(action: PropertyAction): string | undefined {
   const baseLabel = action.label;
   if (!baseLabel) return undefined;
+  if (!action.showHotkeyInLabel) return baseLabel;
   const cmdId = ACTION_TO_HOTKEY[action.id];
   if (!cmdId) return baseLabel;
-  if (action.showHotkeyInLabel === false) return baseLabel;
   const label = getHotkeyLabel(cmdId);
   if (!label) return baseLabel;
   return `${baseLabel} (${label})`;
