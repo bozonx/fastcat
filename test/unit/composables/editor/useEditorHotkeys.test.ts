@@ -431,7 +431,7 @@ describe('useEditorHotkeys', () => {
     }
   });
 
-  it('toggles lock states with the updated T shortcuts when timeline hotkeys are active', async () => {
+  it('uses the updated T / Shift+T / B timeline shortcuts when timeline hotkeys are active', async () => {
     wrapper = mount(HotkeysHarness, { attachTo: document.body });
     const focusStore = useFocusStore();
     const projectStore = useProjectStore();
@@ -440,7 +440,11 @@ describe('useEditorHotkeys', () => {
     projectStore.setView('cut');
     focusStore.setMainFocus('timeline');
 
+    const splitClipAtPlayheadSpy = vi.fn().mockResolvedValue(undefined);
+    const splitAllClipsAtPlayheadSpy = vi.fn().mockResolvedValue(undefined);
     const toggleLockTrackSpy = vi.fn().mockResolvedValue(undefined);
+    timelineStore.splitClipAtPlayhead = splitClipAtPlayheadSpy;
+    timelineStore.splitAllClipsAtPlayhead = splitAllClipsAtPlayheadSpy;
     timelineStore.toggleLockTargetTrack = toggleLockTrackSpy;
     const batchApplyTimelineSpy = vi.fn();
     timelineStore.batchApplyTimeline = batchApplyTimelineSpy;
@@ -456,6 +460,15 @@ describe('useEditorHotkeys', () => {
     timelineStore.requestTimelineSave = vi.fn().mockResolvedValue(undefined);
 
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 't', code: 'KeyT', bubbles: true }));
+    expect(splitClipAtPlayheadSpy).toHaveBeenCalledOnce();
+
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'T', code: 'KeyT', shiftKey: true, bubbles: true }),
+    );
+    expect(splitAllClipsAtPlayheadSpy).toHaveBeenCalledOnce();
+    expect(toggleLockTrackSpy).not.toHaveBeenCalled();
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'b', code: 'KeyB', bubbles: true }));
     expect(batchApplyTimelineSpy).toHaveBeenCalledWith([
       {
         type: 'update_clip_properties',
@@ -464,11 +477,6 @@ describe('useEditorHotkeys', () => {
         properties: { locked: true },
       },
     ]);
-
-    window.dispatchEvent(
-      new KeyboardEvent('keydown', { key: 'T', code: 'KeyT', shiftKey: true, bubbles: true }),
-    );
-    expect(toggleLockTrackSpy).toHaveBeenCalledOnce();
   });
 
   it('toggles waveform mode on multiple selected clips with shortcuts', async () => {

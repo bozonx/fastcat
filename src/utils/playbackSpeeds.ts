@@ -1,6 +1,6 @@
 /**
  * Shared playback-speed grid used by the monitor speed control and the
- * speed-cycle timeline hotkeys (F / D). Keeping a single source of truth
+ * speed-cycle hotkey commands. Keeping a single source of truth
  * guarantees the hotkeys walk exactly the same steps the monitor UI exposes.
  */
 
@@ -11,7 +11,7 @@
 export const PLAYBACK_SPEED_VALUES: readonly number[] = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 3, 5];
 
 /**
- * Full signed speed grid used for step traversal (mouse wheel + F/D hotkeys),
+ * Full signed speed grid used for step traversal (mouse wheel + speed-cycle hotkeys),
  * ordered from most-negative to most-positive. Zero is intentionally excluded
  * (transport speed can never be 0 — that would mean stopped).
  */

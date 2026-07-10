@@ -22,15 +22,15 @@ describe('DEFAULT_HOTKEYS', () => {
     expect(DEFAULT_HOTKEYS.bindings['playback.toggle']).toContain('Shift+Space');
   });
 
-  it('leaves the classic J/K/L shuttle commands unbound', () => {
-    expect(DEFAULT_HOTKEYS.bindings['playback.shuttleForward']).toEqual([]);
-    expect(DEFAULT_HOTKEYS.bindings['playback.shuttleReverse']).toEqual([]);
-    expect(DEFAULT_HOTKEYS.bindings['playback.shuttleStop']).toEqual([]);
+  it('binds the shuttle commands to S / D / F by default', () => {
+    expect(DEFAULT_HOTKEYS.bindings['playback.shuttleForward']).toEqual(['F']);
+    expect(DEFAULT_HOTKEYS.bindings['playback.shuttleReverse']).toEqual(['S']);
+    expect(DEFAULT_HOTKEYS.bindings['playback.shuttleStop']).toEqual(['D']);
   });
 
   it('has binding for timeline.splitAtPlayhead', () => {
     expect(DEFAULT_HOTKEYS.bindings['timeline.splitAtPlayhead']).toBeDefined();
-    expect(DEFAULT_HOTKEYS.bindings['timeline.splitAtPlayhead']).toContain('G');
+    expect(DEFAULT_HOTKEYS.bindings['timeline.splitAtPlayhead']).toContain('T');
   });
 
   it('has binding for timeline.rippleDeleteSelectedClipRange', () => {
@@ -98,9 +98,9 @@ describe('DEFAULT_HOTKEYS', () => {
     expect(DEFAULT_HOTKEYS.bindings['playback.jumpPrevBoundary']).toContain('ArrowUp');
   });
 
-  it('has jumpNextBoundary with S and ArrowDown', () => {
+  it('has jumpNextBoundary with G and ArrowDown', () => {
     expect(DEFAULT_HOTKEYS.bindings['playback.jumpNextBoundary']).toBeDefined();
-    expect(DEFAULT_HOTKEYS.bindings['playback.jumpNextBoundary']).toContain('S');
+    expect(DEFAULT_HOTKEYS.bindings['playback.jumpNextBoundary']).toContain('G');
     expect(DEFAULT_HOTKEYS.bindings['playback.jumpNextBoundary']).toContain('ArrowDown');
   });
 
@@ -110,9 +110,9 @@ describe('DEFAULT_HOTKEYS', () => {
     expect(DEFAULT_HOTKEYS.bindings['playback.jumpPrevBoundaryTrack']).toContain('Shift+ArrowUp');
   });
 
-  it('has jumpNextBoundaryTrack with Shift+S and Shift+ArrowDown', () => {
+  it('has jumpNextBoundaryTrack with Shift+G and Shift+ArrowDown', () => {
     expect(DEFAULT_HOTKEYS.bindings['playback.jumpNextBoundaryTrack']).toBeDefined();
-    expect(DEFAULT_HOTKEYS.bindings['playback.jumpNextBoundaryTrack']).toContain('Shift+S');
+    expect(DEFAULT_HOTKEYS.bindings['playback.jumpNextBoundaryTrack']).toContain('Shift+G');
     expect(DEFAULT_HOTKEYS.bindings['playback.jumpNextBoundaryTrack']).toContain('Shift+ArrowDown');
   });
 
@@ -149,8 +149,8 @@ describe('DEFAULT_HOTKEYS', () => {
   });
 
   it('has updated defaults for lock shortcuts', () => {
-    expect(DEFAULT_HOTKEYS.bindings['timeline.toggleLockClip']).toEqual(['T']);
-    expect(DEFAULT_HOTKEYS.bindings['timeline.toggleLockTrack']).toEqual(['Shift+T']);
+    expect(DEFAULT_HOTKEYS.bindings['timeline.toggleLockClip']).toEqual(['B']);
+    expect(DEFAULT_HOTKEYS.bindings['timeline.toggleLockTrack']).toEqual([]);
   });
 
   it('has nudge clip bindings with Ctrl modifier to avoid conflict with playhead stepping', () => {
@@ -227,12 +227,22 @@ describe('DEFAULT_HOTKEYS', () => {
     expect(DEFAULT_HOTKEYS.bindings['timeline.ungroupClips']).toEqual(['Ctrl+Shift+G']);
   });
 
-  it('binds F/D to the speed-cycle shortcuts and frees them from 1.5x', () => {
-    expect(DEFAULT_HOTKEYS.bindings['playback.speedUpForward']).toEqual(['F']);
-    expect(DEFAULT_HOTKEYS.bindings['playback.speedDown']).toEqual(['D']);
-    // F/D used to drive the fixed 1.5x speeds; they are now unbound by default.
+  it('leaves speed-cycle and 1.5x commands unbound by default', () => {
+    expect(DEFAULT_HOTKEYS.bindings['playback.speedUpForward']).toEqual([]);
+    expect(DEFAULT_HOTKEYS.bindings['playback.speedDown']).toEqual([]);
     expect(DEFAULT_HOTKEYS.bindings['playback.forward1_5']).toEqual([]);
     expect(DEFAULT_HOTKEYS.bindings['playback.backward1_5']).toEqual([]);
+  });
+
+  it('moves split, solo and boundary defaults to the new layout', () => {
+    expect(DEFAULT_HOTKEYS.bindings['timeline.splitAtPlayhead']).toEqual(['T']);
+    expect(DEFAULT_HOTKEYS.bindings['timeline.splitAllAtPlayhead']).toEqual(['Shift+T']);
+    expect(DEFAULT_HOTKEYS.bindings['timeline.toggleSoloTrack']).toEqual(['Shift+S']);
+    expect(DEFAULT_HOTKEYS.bindings['playback.jumpNextBoundary']).toEqual(['G', 'ArrowDown']);
+    expect(DEFAULT_HOTKEYS.bindings['playback.jumpNextBoundaryTrack']).toEqual([
+      'Shift+G',
+      'Shift+ArrowDown',
+    ]);
   });
 
   it('registers the speed-cycle commands in the commands registry', () => {
