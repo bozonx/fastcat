@@ -10,6 +10,7 @@ const props = defineProps<{
   searchQuery: string;
   capturingCommandId: HotkeyCommandId | null;
   getCurrentBindings: (cmdId: HotkeyCommandId) => string[];
+  formatBinding?: (combo: string) => string;
   isConflicting: (cmdId: HotkeyCommandId, combo: string) => boolean;
   isOverriding: (cmdId: HotkeyCommandId, combo: string) => boolean;
   isComboCustom: (cmdId: HotkeyCommandId, combo: string) => boolean;
@@ -47,6 +48,10 @@ function getTitleParts(cmdId: HotkeyCommandId) {
   ];
 
   return parts.filter((p) => p.text.length > 0);
+}
+
+function getBindingLabel(combo: string): string {
+  return props.formatBinding?.(combo) ?? combo;
 }
 </script>
 
@@ -97,7 +102,7 @@ function getTitleParts(cmdId: HotkeyCommandId) {
                             : 'text-ui-text-muted',
                     ]"
                   >
-                    {{ combo }}
+                    {{ getBindingLabel(combo) }}
                   </span>
                   <UButton
                     size="2xs"

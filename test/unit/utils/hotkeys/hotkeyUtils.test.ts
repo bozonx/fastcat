@@ -4,6 +4,7 @@ import {
   stringifyHotkey,
   parseHotkeyCombo,
   normalizeHotkeyCombo,
+  formatHotkeyComboForDisplay,
   hotkeyComboToBareKeyCode,
   isBareHotkeyCombo,
   isEditableTarget,
@@ -67,6 +68,26 @@ describe('normalizeHotkeyCombo', () => {
 
   it('returns null for invalid combos', () => {
     expect(normalizeHotkeyCombo('')).toBeNull();
+  });
+});
+
+describe('formatHotkeyComboForDisplay', () => {
+  it('renders virtual modifiers as default physical modifier labels', () => {
+    expect(formatHotkeyComboForDisplay('Modifier1+ArrowUp')).toBe('Shift+ArrowUp');
+    expect(formatHotkeyComboForDisplay('Modifier2+Modifier1+G')).toBe('Ctrl+Shift+G');
+  });
+
+  it('renders virtual modifiers using user layer settings', () => {
+    const settings = {
+      hotkeys: {
+        layer1: 'Alt',
+        layer2: 'ControlRight',
+      },
+    } as any;
+
+    expect(formatHotkeyComboForDisplay('Modifier2+Modifier1+G', settings)).toBe(
+      'Right Ctrl+Alt+G',
+    );
   });
 });
 

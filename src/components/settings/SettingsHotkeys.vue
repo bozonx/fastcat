@@ -17,6 +17,7 @@ import {
   isHotkeyConflicting,
   isHotkeyOverriding,
 } from '~/utils/hotkeys/hotkeyConflicts';
+import { formatHotkeyComboForDisplay, normalizeHotkeyCombo } from '~/utils/hotkeys/hotkeyUtils';
 import { useHotkeyCapture } from '~/composables/settings/useHotkeyCapture';
 
 import SettingsHotkeysGroup from './hotkeys/SettingsHotkeysGroup.vue';
@@ -100,6 +101,10 @@ function getCurrentBindings(cmdId: HotkeyCommandId): string[] {
   return (
     workspaceStore.userSettings.hotkeys.bindings[cmdId] ?? DEFAULT_HOTKEYS.bindings[cmdId] ?? []
   );
+}
+
+function formatBinding(combo: string): string {
+  return formatHotkeyComboForDisplay(combo, workspaceStore.userSettings);
 }
 
 function isComboCustom(cmdId: HotkeyCommandId, combo: string): boolean {
@@ -198,11 +203,19 @@ const hotkeyOverrides = computed(() => {
 });
 
 function isConflicting(cmdId: HotkeyCommandId, combo: string): boolean {
-  return isHotkeyConflicting({ conflicts: hotkeyConflicts.value, cmdId, combo });
+  return isHotkeyConflicting({
+    conflicts: hotkeyConflicts.value,
+    cmdId,
+    combo: normalizeHotkeyCombo(combo) ?? combo,
+  });
 }
 
 function isOverriding(cmdId: HotkeyCommandId, combo: string): boolean {
-  return isHotkeyOverriding({ overrides: hotkeyOverrides.value, cmdId, combo });
+  return isHotkeyOverriding({
+    overrides: hotkeyOverrides.value,
+    cmdId,
+    combo: normalizeHotkeyCombo(combo) ?? combo,
+  });
 }
 
 defineExpose({ finishCapture, isDuplicateConfirmOpen });
@@ -294,6 +307,7 @@ defineExpose({ finishCapture, isDuplicateConfirmOpen });
         :search-query="searchQuery"
         :capturing-command-id="captureTargetCommandId"
         :get-current-bindings="getCurrentBindings"
+        :format-binding="formatBinding"
         :is-conflicting="isConflicting"
         :is-overriding="isOverriding"
         :is-combo-custom="isComboCustom"

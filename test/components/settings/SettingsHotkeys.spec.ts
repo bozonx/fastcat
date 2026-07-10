@@ -42,6 +42,23 @@ describe('SettingsHotkeys', () => {
     expect(wrapper.text()).toContain('videoEditor.settings.hotkeysGroupGeneral');
   });
 
+  it('renders virtual default modifiers as physical hotkey labels', async () => {
+    const wrapper = await mountSuspended(SettingsHotkeys);
+
+    expect(wrapper.text()).toContain('Shift+ArrowUp');
+    expect(wrapper.text()).not.toContain('Modifier1+ArrowUp');
+  });
+
+  it('renders virtual default modifiers from current layer settings', async () => {
+    mockWorkspaceStore.userSettings.hotkeys.layer1 = 'Alt';
+    mockWorkspaceStore.userSettings.hotkeys.layer2 = 'ControlRight';
+
+    const wrapper = await mountSuspended(SettingsHotkeys);
+
+    expect(wrapper.text()).toContain('Alt+ArrowUp');
+    expect(wrapper.text()).toContain('Right Ctrl+ArrowUp');
+  });
+
   it('filters results based on search query', async () => {
     const wrapper = await mountSuspended(SettingsHotkeys);
     const searchInput = wrapper.find('input[type="text"]');

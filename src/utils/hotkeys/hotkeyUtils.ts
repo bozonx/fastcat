@@ -1,5 +1,6 @@
 import type { FastCatUserSettings } from '../settings/defaults';
 import type { HotkeyCombo } from './defaultHotkeys';
+import type { LayerKey } from './layerUtils';
 import { isLayer1Active, isLayer2Active } from './layerUtils';
 
 export interface NormalizedHotkey {
@@ -48,6 +49,15 @@ const LABEL_TO_CODE: Record<string, string> = {
   Pagedown: 'PageDown',
 };
 
+const KEY_LABEL_NORMALIZATION: Record<string, string> = {
+  arrowup: 'ArrowUp',
+  arrowdown: 'ArrowDown',
+  arrowleft: 'ArrowLeft',
+  arrowright: 'ArrowRight',
+  pageup: 'PageUp',
+  pagedown: 'PageDown',
+};
+
 function normalizeKeyLabel(rawKey: string): string {
   const codeLabel = CODE_TO_LABEL[rawKey];
   if (codeLabel) return codeLabel;
@@ -58,6 +68,9 @@ function normalizeKeyLabel(rawKey: string): string {
   if (!key) return '';
 
   const lower = key.toLowerCase();
+
+  const normalizedSpecialKey = KEY_LABEL_NORMALIZATION[lower];
+  if (normalizedSpecialKey) return normalizedSpecialKey;
 
   if (lower === 'modifier1' || lower === 'mod1' || lower === 'layer1') return 'Shift';
   if (lower === 'modifier2' || lower === 'mod2' || lower === 'layer2') return 'Ctrl';
@@ -81,6 +94,48 @@ function normalizeKeyLabel(rawKey: string): string {
   }
 
   return lower.charAt(0).toUpperCase() + lower.slice(1);
+}
+
+function formatLayerKey(layerKey: LayerKey): string {
+  if (layerKey === 'Control') return 'Ctrl';
+  if (layerKey === 'Shift' || layerKey === 'Alt' || layerKey === 'Meta') return layerKey;
+
+  const side = layerKey.endsWith('Left') ? 'Left' : 'Right';
+  const key = layerKey
+    .replace('Left', '')
+    .replace('Right', '')
+    .replace('Control', 'Ctrl');
+
+  return `${side} ${key}`;
+}
+
+function formatHotkeyTokenForDisplay(
+  token: string,
+  settings?: Pick<FastCatUserSettings, 'hotkeys'>,
+): string {
+  const normalized = normalizeKeyLabel(token);
+  const lower = token.trim().toLowerCase();
+
+  if (lower === 'modifier1' || lower === 'mod1' || lower === 'layer1') {
+    return formatLayerKey(settings?.hotkeys.layer1 ?? 'Shift');
+  }
+
+  if (lower === 'modifier2' || lower === 'mod2' || lower === 'layer2') {
+    return formatLayerKey(settings?.hotkeys.layer2 ?? 'Control');
+  }
+
+  return normalized;
+}
+
+export function formatHotkeyComboForDisplay(
+  combo: HotkeyCombo,
+  settings?: Pick<FastCatUserSettings, 'hotkeys'>,
+): string {
+  return combo
+    .split('+')
+    .map((token) => formatHotkeyTokenForDisplay(token, settings))
+    .filter(Boolean)
+    .join('+');
 }
 
 export function stringifyHotkey(input: NormalizedHotkey): HotkeyCombo {
