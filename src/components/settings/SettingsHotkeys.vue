@@ -38,10 +38,10 @@ const searchQuery = ref('');
 const normalizedQuery = computed(() => searchQuery.value.toLowerCase().trim());
 const hotkeyGroupOrder: readonly HotkeyGroupId[] = [
   'general',
+  'fileManager',
   'timelineMonitorGlobal',
   'timeline',
   'monitor',
-  'fileManager',
 ];
 
 const { isCapturingHotkey, captureTargetCommandId, capturedCombo, startCapture, finishCapture } =

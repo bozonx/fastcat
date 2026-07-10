@@ -83,16 +83,16 @@ describe('DEFAULT_HOTKEYS', () => {
     );
   });
 
-  it('has navigateBack with z only', () => {
+  it('leaves navigateBack unbound by default', () => {
     expect(DEFAULT_HOTKEYS.bindings['general.navigateBack']).toBeDefined();
-    expect(DEFAULT_HOTKEYS.bindings['general.navigateBack']).toContain('z');
+    expect(DEFAULT_HOTKEYS.bindings['general.navigateBack']).toEqual([]);
     expect(DEFAULT_HOTKEYS.bindings['general.navigateBack']).not.toContain('Backspace');
   });
 
-  it('has navigateUp with modifier2+ArrowUp and Backspace', () => {
+  it('has navigateUp with modifier2+ArrowUp and without Backspace', () => {
     expect(DEFAULT_HOTKEYS.bindings['general.navigateUp']).toBeDefined();
-    expect(DEFAULT_HOTKEYS.bindings['general.navigateUp']).toContain(`${Modifier2}+ArrowUp`);
-    expect(DEFAULT_HOTKEYS.bindings['general.navigateUp']).toContain('Backspace');
+    expect(DEFAULT_HOTKEYS.bindings['general.navigateUp']).toEqual([`${Modifier2}+ArrowUp`]);
+    expect(DEFAULT_HOTKEYS.bindings['general.navigateUp']).not.toContain('Backspace');
   });
 
   it('has jumpPrevBoundary with A and ArrowUp', () => {
@@ -250,6 +250,31 @@ describe('DEFAULT_HOTKEYS', () => {
     expect(DEFAULT_HOTKEYS.bindings['playback.play1ResetSpeed']).toEqual([]);
     expect(DEFAULT_HOTKEYS.bindings['playback.forward1_5']).toEqual([]);
     expect(DEFAULT_HOTKEYS.bindings['playback.backward1_5']).toEqual([]);
+  });
+
+  it('leaves fixed playback speed commands unbound by default', () => {
+    const fixedSpeedCommands: HotkeyCommandId[] = [
+      'playback.forward0_5',
+      'playback.backward0_5',
+      'playback.forward0_75',
+      'playback.backward0_75',
+      'playback.forward1_25',
+      'playback.backward1_25',
+      'playback.forward1_5',
+      'playback.backward1_5',
+      'playback.forward1_75',
+      'playback.backward1_75',
+      'playback.forward2',
+      'playback.backward2',
+      'playback.forward3',
+      'playback.backward3',
+      'playback.forward5',
+      'playback.backward5',
+    ];
+
+    for (const id of fixedSpeedCommands) {
+      expect(DEFAULT_HOTKEYS.bindings[id]).toEqual([]);
+    }
   });
 
   it('moves split, solo and boundary defaults to the new layout', () => {

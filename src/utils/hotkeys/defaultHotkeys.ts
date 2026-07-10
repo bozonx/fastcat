@@ -230,7 +230,7 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     { id: 'general.navigateUp', groupId: 'fileManager', title: 'Navigate up' },
     { id: 'general.createFolder', groupId: 'fileManager', title: 'Create folder' },
 
-    // Timeline & Monitor Global - Playback
+    // Transport & navigation - Playback
     {
       id: 'playback.toggle',
       groupId: 'timelineMonitorGlobal',
@@ -257,7 +257,7 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
       title: 'Go to end of timeline',
     },
 
-    // Timeline & Monitor Global - Volume
+    // Transport & navigation - Volume
     { id: 'general.mute', groupId: 'timelineMonitorGlobal', title: 'Mute / Unmute' },
     { id: 'general.volumeUp', groupId: 'timelineMonitorGlobal', title: 'Increase monitor volume' },
     {
@@ -266,12 +266,12 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
       title: 'Decrease monitor volume',
     },
 
-    // Timeline & Monitor Global - Markers
+    // Transport & navigation - Markers
     { id: 'general.addMarker', groupId: 'timelineMonitorGlobal', title: 'Add marker' },
     { id: 'general.prevMarker', groupId: 'timelineMonitorGlobal', title: 'Previous marker' },
     { id: 'general.nextMarker', groupId: 'timelineMonitorGlobal', title: 'Next marker' },
 
-    // Timeline & Monitor Global - Selection/Boundaries
+    // Transport & navigation - Selection/Boundaries
     { id: 'timeline.setSelectionIn', groupId: 'timelineMonitorGlobal', title: 'Set selection In' },
     {
       id: 'timeline.setSelectionOut',
@@ -299,7 +299,7 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
       title: 'Jump to next edit point on track',
     },
 
-    // Timeline & Monitor Global - Snapshot
+    // Transport & navigation - Snapshot
     {
       id: 'general.snapshot',
       groupId: 'timelineMonitorGlobal',
@@ -311,7 +311,7 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
       title: 'Center monitor view',
     },
 
-    // Timeline & Monitor Global - Frame-by-frame navigation and speed loops
+    // Transport & navigation - Frame-by-frame navigation and speed loops
     { id: 'playback.stepForward', groupId: 'timelineMonitorGlobal', title: 'Step forward' },
     { id: 'playback.stepBackward', groupId: 'timelineMonitorGlobal', title: 'Step backward' },
     {
@@ -331,7 +331,7 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     },
     { id: 'playback.speedDown', groupId: 'timelineMonitorGlobal', title: 'Slow down' },
 
-    // Timeline & Monitor Global - Classic J/K/L shuttle (unbound by default)
+    // Transport & navigation - Classic J/K/L shuttle (unbound by default)
     {
       id: 'playback.shuttleReverse',
       groupId: 'timelineMonitorGlobal',
@@ -604,9 +604,9 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     'general.tab9': [`${Modifier1}+9`],
 
     'timeline.duplicate': [`${Modifier2}+${Modifier1}+S`],
-    'general.navigateBack': ['z'],
+    'general.navigateBack': [],
     'general.navigateForward': [],
-    'general.navigateUp': [`${Modifier2}+ArrowUp`, 'Backspace'],
+    'general.navigateUp': [`${Modifier2}+ArrowUp`],
     'general.createFolder': [`${Modifier2}+\\`],
 
     'timeline.addTextClipAtPlayhead': ['N'],
@@ -670,23 +670,23 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     'playback.stepForwardLarge': [`${Modifier1}+ArrowRight`],
     'playback.stepBackwardLarge': [`${Modifier1}+ArrowLeft`],
     'playback.forward1_25': [],
-    'playback.backward1_25': [`${Modifier1}+O`],
+    'playback.backward1_25': [],
     'playback.forward1_5': [],
     'playback.backward1_5': [],
     'playback.speedUpForward': [],
     'playback.speedDown': [],
-    'playback.forward1_75': [`${Modifier1}+R`],
-    'playback.backward1_75': [`${Modifier1}+E`],
-    'playback.forward2': ['R'],
-    'playback.backward2': ['E'],
+    'playback.forward1_75': [],
+    'playback.backward1_75': [],
+    'playback.forward2': [],
+    'playback.backward2': [],
     'playback.forward3': [],
-    'playback.backward3': [`${Modifier1}+Z`],
+    'playback.backward3': [],
     'playback.forward5': [],
-    'playback.backward5': ['Z'],
-    'playback.forward0_75': [`${Modifier1}+V`],
-    'playback.backward0_75': [`${Modifier1}+C`],
-    'playback.forward0_5': ['V'],
-    'playback.backward0_5': ['C'],
+    'playback.backward5': [],
+    'playback.forward0_75': [],
+    'playback.backward0_75': [],
+    'playback.forward0_5': [],
+    'playback.backward0_5': [],
     'playback.shuttleReverse': ['S'],
     'playback.shuttleStop': ['D'],
     'playback.shuttleForward': ['F'],

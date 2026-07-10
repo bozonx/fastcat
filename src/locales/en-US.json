@@ -1939,7 +1939,7 @@
       "hotkeysGroupFileManager": "File manager",
       "hotkeysGroupMonitor": "Monitor",
       "hotkeysGroupTimeline": "Timeline",
-      "hotkeysGroupTimelineMonitorGlobal": "Timeline & Monitor (Global)",
+      "hotkeysGroupTimelineMonitorGlobal": "Transport & navigation",
       "hotkeysLayer1": "Modifier 1",
       "hotkeysLayer2": "Modifier 2",
       "hotkeysLayersHint": "Modifiers are used to perform additional actions when controlling the mouse in the timeline, monitor, and file manager, as well as layers for standard keyboard shortcuts.",
