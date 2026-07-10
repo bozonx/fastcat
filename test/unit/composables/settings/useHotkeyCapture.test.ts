@@ -1,6 +1,7 @@
 /** @vitest-environment node */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { useHotkeyCapture } from '~/composables/settings/useHotkeyCapture';
+import { hotkeyFromKeyboardEvent, isBareHotkeyCombo } from '~/utils/hotkeys/hotkeyUtils';
 
 vi.mock('~/stores/workspace.store', () => ({
   useWorkspaceStore: () => ({
@@ -10,6 +11,7 @@ vi.mock('~/stores/workspace.store', () => ({
 
 vi.mock('~/utils/hotkeys/hotkeyUtils', () => ({
   hotkeyFromKeyboardEvent: vi.fn(() => 'Ctrl+A'),
+  isBareHotkeyCombo: vi.fn(() => false),
   isEditableTarget: vi.fn(() => false),
   normalizeHotkeyCombo: vi.fn((c: string) => c),
 }));
@@ -23,6 +25,8 @@ describe('useHotkeyCapture', () => {
   let originalRemoveEventListener: typeof window.removeEventListener;
 
   beforeEach(() => {
+    vi.mocked(hotkeyFromKeyboardEvent).mockReturnValue('Ctrl+A');
+    vi.mocked(isBareHotkeyCombo).mockReturnValue(false);
     originalAddEventListener = window.addEventListener;
     originalRemoveEventListener = window.removeEventListener;
     window.addEventListener = vi.fn();
@@ -158,6 +162,75 @@ describe('useHotkeyCapture', () => {
 
     expect(onCaptured).toHaveBeenCalledWith('general.focus', 'Ctrl+A');
     expect(isCapturingHotkey.value).toBe(false);
+  });
+
+  it('rejects modifier combos for shuttle stop capture', () => {
+    vi.mocked(isBareHotkeyCombo).mockReturnValue(false);
+    const onCaptured = vi.fn();
+    const { startCapture, isCapturingHotkey, capturedCombo } = useHotkeyCapture({
+      onCaptured,
+      onDuplicate: vi.fn(),
+      findDuplicateOwner: vi.fn(() => null),
+    });
+
+    startCapture('playback.shuttleStop' as any);
+    const keydownHandler = vi.mocked(window.addEventListener).mock.calls.find(
+      ([type]) => type === 'keydown',
+    )?.[1] as (e: KeyboardEvent) => void;
+    const keyupHandler = vi.mocked(window.addEventListener).mock.calls.find(
+      ([type]) => type === 'keyup',
+    )?.[1] as (e: KeyboardEvent) => void;
+    const keydownEvent = {
+      key: 'k',
+      code: 'KeyK',
+      preventDefault: vi.fn(),
+      target: null,
+    } as unknown as KeyboardEvent;
+
+    keydownHandler(keydownEvent);
+    keyupHandler({
+      key: 'k',
+      code: 'KeyK',
+      preventDefault: vi.fn(),
+    } as unknown as KeyboardEvent);
+
+    expect(keydownEvent.preventDefault).toHaveBeenCalled();
+    expect(capturedCombo.value).toBeNull();
+    expect(onCaptured).not.toHaveBeenCalled();
+    expect(isCapturingHotkey.value).toBe(true);
+  });
+
+  it('captures bare keys for shuttle stop', () => {
+    vi.mocked(hotkeyFromKeyboardEvent).mockReturnValue('K');
+    vi.mocked(isBareHotkeyCombo).mockReturnValue(true);
+    const onCaptured = vi.fn();
+    const { startCapture } = useHotkeyCapture({
+      onCaptured,
+      onDuplicate: vi.fn(),
+      findDuplicateOwner: vi.fn(() => null),
+    });
+
+    startCapture('playback.shuttleStop' as any);
+    const keydownHandler = vi.mocked(window.addEventListener).mock.calls.find(
+      ([type]) => type === 'keydown',
+    )?.[1] as (e: KeyboardEvent) => void;
+    const keyupHandler = vi.mocked(window.addEventListener).mock.calls.find(
+      ([type]) => type === 'keyup',
+    )?.[1] as (e: KeyboardEvent) => void;
+
+    keydownHandler({
+      key: 'k',
+      code: 'KeyK',
+      preventDefault: vi.fn(),
+      target: null,
+    } as unknown as KeyboardEvent);
+    keyupHandler({
+      key: 'k',
+      code: 'KeyK',
+      preventDefault: vi.fn(),
+    } as unknown as KeyboardEvent);
+
+    expect(onCaptured).toHaveBeenCalledWith('playback.shuttleStop', 'K');
   });
 
   it('reports reserved shortcuts and stops capture', async () => {

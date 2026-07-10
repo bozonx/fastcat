@@ -4,6 +4,8 @@ import {
   stringifyHotkey,
   parseHotkeyCombo,
   normalizeHotkeyCombo,
+  hotkeyComboToBareKeyCode,
+  isBareHotkeyCombo,
   isEditableTarget,
   hotkeyFromKeyboardEvent,
 } from '~/utils/hotkeys/hotkeyUtils';
@@ -60,6 +62,30 @@ describe('normalizeHotkeyCombo', () => {
 
   it('returns null for invalid combos', () => {
     expect(normalizeHotkeyCombo('')).toBeNull();
+  });
+});
+
+describe('isBareHotkeyCombo', () => {
+  it('returns true only for combos without modifiers', () => {
+    expect(isBareHotkeyCombo('K')).toBe(true);
+    expect(isBareHotkeyCombo('/')).toBe(true);
+    expect(isBareHotkeyCombo('Shift+K')).toBe(false);
+    expect(isBareHotkeyCombo('')).toBe(false);
+  });
+});
+
+describe('hotkeyComboToBareKeyCode', () => {
+  it('maps bare hotkey labels back to physical key codes', () => {
+    expect(hotkeyComboToBareKeyCode('K')).toBe('KeyK');
+    expect(hotkeyComboToBareKeyCode('5')).toBe('Digit5');
+    expect(hotkeyComboToBareKeyCode('/')).toBe('Slash');
+    expect(hotkeyComboToBareKeyCode('Space')).toBe('Space');
+  });
+
+  it('returns null for modifier combos and unsupported keys', () => {
+    expect(hotkeyComboToBareKeyCode('Shift+K')).toBeNull();
+    expect(hotkeyComboToBareKeyCode('Ctrl+/')).toBeNull();
+    expect(hotkeyComboToBareKeyCode('')).toBeNull();
   });
 });
 

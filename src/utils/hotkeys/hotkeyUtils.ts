@@ -29,6 +29,25 @@ const CODE_TO_LABEL: Record<string, string> = {
   IntlBackslash: '\\',
 };
 
+const LABEL_TO_CODE: Record<string, string> = {
+  ...Object.fromEntries(Object.entries(CODE_TO_LABEL).map(([code, label]) => [label, code])),
+  '\\': 'Backslash',
+  Space: 'Space',
+  Enter: 'Enter',
+  Escape: 'Escape',
+  Tab: 'Tab',
+  Backspace: 'Backspace',
+  Delete: 'Delete',
+  Arrowup: 'ArrowUp',
+  Arrowdown: 'ArrowDown',
+  Arrowleft: 'ArrowLeft',
+  Arrowright: 'ArrowRight',
+  Home: 'Home',
+  End: 'End',
+  Pageup: 'PageUp',
+  Pagedown: 'PageDown',
+};
+
 function normalizeKeyLabel(rawKey: string): string {
   const codeLabel = CODE_TO_LABEL[rawKey];
   if (codeLabel) return codeLabel;
@@ -115,6 +134,24 @@ export function normalizeHotkeyCombo(combo: HotkeyCombo): HotkeyCombo | null {
   const parsed = parseHotkeyCombo(combo);
   if (!parsed) return null;
   return stringifyHotkey(parsed);
+}
+
+export function isBareHotkeyCombo(combo: HotkeyCombo): boolean {
+  const parsed = parseHotkeyCombo(combo);
+  if (!parsed) return false;
+
+  return !parsed.ctrl && !parsed.meta && !parsed.alt && !parsed.shift;
+}
+
+export function hotkeyComboToBareKeyCode(combo: HotkeyCombo): string | null {
+  const parsed = parseHotkeyCombo(combo);
+  if (!parsed || parsed.ctrl || parsed.meta || parsed.alt || parsed.shift) return null;
+
+  if (/^[A-Z]$/.test(parsed.key)) return `Key${parsed.key}`;
+  if (/^[0-9]$/.test(parsed.key)) return `Digit${parsed.key}`;
+  if (/^Numpad[A-Za-z0-9]+$/.test(parsed.key)) return parsed.key;
+
+  return LABEL_TO_CODE[parsed.key] ?? null;
 }
 
 const LAYOUT_INDEPENDENT_CODES = [

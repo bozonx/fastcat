@@ -1,15 +1,19 @@
+import type { ComputedRef } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { useUiStore } from '~/stores/ui.store';
-import type { HotkeyCommandId } from '~/utils/hotkeys/defaultHotkeys';
+import type { HotkeyCommandId, HotkeyCombo } from '~/utils/hotkeys/defaultHotkeys';
 import { getDocFps } from '~/timeline/commands/utils';
 import { isPreviewLikeFocus } from '~/utils/hotkeys/runtime';
+import { hotkeyComboToBareKeyCode } from '~/utils/hotkeys/hotkeyUtils';
+import { pressedKeyCodes } from '~/utils/hotkeys/pressedKeys';
 import { nextShuttleSpeed, stepPlaybackSpeed, type ShuttleDirection } from '~/utils/playbackSpeeds';
 
 import type { createHotkeyHoldRunner } from '~/utils/hotkeys/holdRunner';
 
 export function usePlaybackHotkeys(
   playbackStepHoldRunner: ReturnType<typeof createHotkeyHoldRunner>,
+  effectiveHotkeys?: ComputedRef<Record<HotkeyCommandId, HotkeyCombo[]>>,
 ) {
   const timelineStore = useTimelineStore();
   const focusStore = useFocusStore();
@@ -178,11 +182,11 @@ export function usePlaybackHotkeys(
       return true;
     },
 
-    // L — classic shuttle forward: 1x, then accelerate on each further press.
-    'playback.shuttleForward': () => shuttle('forward'),
+    // L — classic shuttle forward; with shuttle stop held, step frames instead.
+    'playback.shuttleForward': (e) => shuttleOrStep(e, 'forward'),
 
-    // J — classic shuttle reverse, mirroring L.
-    'playback.shuttleReverse': () => shuttle('backward'),
+    // J — classic shuttle reverse; with shuttle stop held, step frames instead.
+    'playback.shuttleReverse': (e) => shuttleOrStep(e, 'backward'),
 
     // K — classic shuttle stop: pause and drop the shuttle speed back to 1x so
     // the next transport command starts from a predictable baseline.
@@ -209,6 +213,35 @@ export function usePlaybackHotkeys(
     const { playbackSpeed, isPlaying } = timelineStore;
     timelineStore.setPlaybackSpeed(nextShuttleSpeed(playbackSpeed, isPlaying, direction));
     if (!isPlaying) timelineStore.togglePlayback();
+    return true;
+  }
+
+  function getShuttleStopModifierCodes(): string[] {
+    const combos = effectiveHotkeys?.value['playback.shuttleStop'] ?? [];
+    return combos
+      .map((combo) => hotkeyComboToBareKeyCode(combo))
+      .filter((code): code is string => Boolean(code));
+  }
+
+  function isShuttleStopModifierHeld() {
+    return getShuttleStopModifierCodes().some((code) => pressedKeyCodes.has(code));
+  }
+
+  function shuttleOrStep(e: KeyboardEvent, direction: ShuttleDirection): boolean {
+    if (!isShuttleStopModifierHeld()) return shuttle(direction);
+    if (!canUsePlaybackOrTimelineFocus()) return false;
+    if (isPreviewLikeFocus(focusStore.effectiveFocus) && uiStore.hasActivePreviewPlayer) {
+      return false;
+    }
+
+    const fps = timelineStore.timelineDoc ? getDocFps(timelineStore.timelineDoc) : 30;
+    playbackStepHoldRunner.startHold({
+      keyCode: e.code,
+      intervalMs: 3000 / fps,
+      action: () => {
+        timelineStore.seekFrames(direction === 'forward' ? 1 : -1);
+      },
+    });
     return true;
   }
 

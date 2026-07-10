@@ -39,7 +39,8 @@ export function useEditorHotkeys() {
 
   const generalHandlers = useGeneralHotkeys(zoomHoldRunner, volumeHoldRunner, navigationHoldRunner);
   const timelineHandlers = useTimelineHotkeys(navigationHoldRunner);
-  const playbackHandlers = usePlaybackHotkeys(playbackStepHoldRunner);
+  const { effectiveHotkeys, hotkeyLookup, defaultHotkeyLookup } = useEffectiveHotkeys();
+  const playbackHandlers = usePlaybackHotkeys(playbackStepHoldRunner, effectiveHotkeys);
 
   // Combine handlers that overlap (copy, cut, paste)
   const registry: Partial<Record<HotkeyCommandId, (e: KeyboardEvent) => boolean>> = {
@@ -59,8 +60,6 @@ export function useEditorHotkeys() {
       };
     }
   }
-
-  const { hotkeyLookup, defaultHotkeyLookup } = useEffectiveHotkeys();
 
   function isFullscreen() {
     return projectStore.currentView === 'fullscreen';

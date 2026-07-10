@@ -1,6 +1,7 @@
 import { computed, type ComputedRef } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { DEFAULT_HOTKEYS } from '~/utils/hotkeys/defaultHotkeys';
+import type { HotkeyCommandId, HotkeyCombo } from '~/utils/hotkeys/defaultHotkeys';
 import { getEffectiveHotkeyBindings } from '~/utils/hotkeys/effectiveHotkeys';
 import {
   createDefaultHotkeyLookup,
@@ -9,6 +10,8 @@ import {
 } from '~/utils/hotkeys/runtime';
 
 export interface EffectiveHotkeys {
+  /** Effective command bindings honouring the user's customised settings. */
+  effectiveHotkeys: ComputedRef<Record<HotkeyCommandId, HotkeyCombo[]>>;
   /** Lookup honouring the user's customised bindings. */
   hotkeyLookup: ComputedRef<HotkeyLookup>;
   /** Lookup for the built-in default bindings. */
@@ -30,5 +33,5 @@ export function useEffectiveHotkeys(): EffectiveHotkeys {
   const hotkeyLookup = computed(() => createHotkeyLookup(effectiveHotkeys.value, commandOrder));
   const defaultHotkeyLookup = computed(() => createDefaultHotkeyLookup(commandOrder));
 
-  return { hotkeyLookup, defaultHotkeyLookup };
+  return { effectiveHotkeys, hotkeyLookup, defaultHotkeyLookup };
 }

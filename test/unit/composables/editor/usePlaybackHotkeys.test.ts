@@ -1,8 +1,10 @@
 /** @vitest-environment happy-dom */
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
+import { computed } from 'vue';
 import { createHotkeyHoldRunner } from '~/utils/hotkeys/holdRunner';
 import { usePlaybackHotkeys } from '~/composables/editor/hotkeys/usePlaybackHotkeys';
+import { pressedKeyCodes } from '~/utils/hotkeys/pressedKeys';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useFocusStore } from '~/stores/focus.store';
 
@@ -15,6 +17,7 @@ describe('usePlaybackHotkeys — F / D speed cycle', () => {
 
     const focusStore = useFocusStore();
     focusStore.setPanelFocus('timeline');
+    pressedKeyCodes.clear();
 
     const timelineStore = useTimelineStore();
     timelineStore.setPlaybackSpeed(1);
@@ -148,5 +151,117 @@ describe('usePlaybackHotkeys — F / D speed cycle', () => {
     // F/D were freed from forward1_5/backward1_5, but the handlers themselves remain.
     expect(typeof handlers['playback.forward1_5']).toBe('function');
     expect(typeof handlers['playback.backward1_5']).toBe('function');
+  });
+
+  describe('J / K / L shuttle stop modifier', () => {
+    it('steps one frame forward when the bare shuttle stop key is held with shuttle forward', () => {
+      const holdRunner = createHotkeyHoldRunner();
+      handlers = usePlaybackHotkeys(
+        holdRunner,
+        computed(
+          () =>
+            ({
+              'playback.shuttleStop': ['K'],
+            }) as any,
+        ),
+      );
+      const timelineStore = useTimelineStore();
+      const seekFrames = vi.fn();
+      timelineStore.seekFrames = seekFrames;
+      pressedKeyCodes.add('KeyK');
+
+      const result = handlers['playback.shuttleForward']?.(
+        new KeyboardEvent('keydown', { code: 'KeyL', key: 'l' }),
+      );
+
+      expect(result).toBe(true);
+      expect(seekFrames).toHaveBeenCalledWith(1);
+      expect(timelineStore.isPlaying).toBe(false);
+      holdRunner.clearTimers();
+    });
+
+    it('steps one frame backward when the bare shuttle stop key is held with shuttle reverse', () => {
+      const holdRunner = createHotkeyHoldRunner();
+      handlers = usePlaybackHotkeys(
+        holdRunner,
+        computed(
+          () =>
+            ({
+              'playback.shuttleStop': ['K'],
+            }) as any,
+        ),
+      );
+      const timelineStore = useTimelineStore();
+      const seekFrames = vi.fn();
+      timelineStore.seekFrames = seekFrames;
+      pressedKeyCodes.add('KeyK');
+
+      const result = handlers['playback.shuttleReverse']?.(
+        new KeyboardEvent('keydown', { code: 'KeyJ', key: 'j' }),
+      );
+
+      expect(result).toBe(true);
+      expect(seekFrames).toHaveBeenCalledWith(-1);
+      expect(timelineStore.isPlaying).toBe(false);
+      holdRunner.clearTimers();
+    });
+
+    it('repeats held shuttle steps at roughly one third playback speed', () => {
+      vi.useFakeTimers();
+      const holdRunner = createHotkeyHoldRunner();
+      try {
+        handlers = usePlaybackHotkeys(
+          holdRunner,
+          computed(
+            () =>
+              ({
+                'playback.shuttleStop': ['K'],
+              }) as any,
+          ),
+        );
+        const timelineStore = useTimelineStore();
+        const seekFrames = vi.fn();
+        timelineStore.seekFrames = seekFrames;
+        timelineStore.timelineDoc = { timebase: { fps: 30 } } as any;
+        pressedKeyCodes.add('KeyK');
+
+        handlers['playback.shuttleForward']?.(
+          new KeyboardEvent('keydown', { code: 'KeyL', key: 'l' }),
+        );
+
+        expect(seekFrames).toHaveBeenCalledTimes(1);
+        vi.advanceTimersByTime(449);
+        expect(seekFrames).toHaveBeenCalledTimes(1);
+        vi.advanceTimersByTime(1);
+        expect(seekFrames).toHaveBeenCalledTimes(2);
+      } finally {
+        holdRunner.clearTimers();
+        vi.useRealTimers();
+      }
+    });
+
+    it('does not treat modifier shuttle stop combos as physical shuttle modifiers', () => {
+      handlers = usePlaybackHotkeys(
+        createHotkeyHoldRunner(),
+        computed(
+          () =>
+            ({
+              'playback.shuttleStop': ['Shift+K'],
+            }) as any,
+        ),
+      );
+      const timelineStore = useTimelineStore();
+      const seekFrames = vi.fn();
+      timelineStore.seekFrames = seekFrames;
+      pressedKeyCodes.add('KeyK');
+
+      const result = handlers['playback.shuttleForward']?.(
+        new KeyboardEvent('keydown', { code: 'KeyL', key: 'l' }),
+      );
+
+      expect(result).toBe(true);
+      expect(seekFrames).not.toHaveBeenCalled();
+      expect(timelineStore.isPlaying).toBe(true);
+    });
   });
 });

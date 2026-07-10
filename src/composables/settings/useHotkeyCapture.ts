@@ -2,6 +2,7 @@ import { ref, onBeforeUnmount } from 'vue';
 import type { HotkeyCommandId } from '~/utils/hotkeys/defaultHotkeys';
 import {
   hotkeyFromKeyboardEvent,
+  isBareHotkeyCombo,
   isEditableTarget,
   normalizeHotkeyCombo,
 } from '~/utils/hotkeys/hotkeyUtils';
@@ -96,8 +97,11 @@ export function useHotkeyCapture(params: {
       const comboRaw = hotkeyFromKeyboardEvent(e, workspaceStore.userSettings);
       const combo = comboRaw ? normalizeHotkeyCombo(comboRaw) : null;
       if (!combo) return;
-
       e.preventDefault();
+      if (captureTargetCommandId.value === 'playback.shuttleStop' && !isBareHotkeyCombo(combo)) {
+        return;
+      }
+
       capturedCombo.value = combo;
     };
 
