@@ -671,7 +671,15 @@
       "nameAlreadyExists": "A project with this name already exists",
       "openingProject": "Opening project",
       "openProjectFailedFallback": "Failed to open the project",
-      "preparingProjectMobile": "Preparing timeline, media, and mobile workspace"
+      "preparingProjectMobile": "Preparing timeline, media, and mobile workspace",
+      "dateGroups": {
+        "today": "Today",
+        "yesterday": "Yesterday",
+        "thisWeek": "This week",
+        "lastWeek": "Last week",
+        "thisMonth": "This month",
+        "unknown": "No date"
+      }
     },
     "properties": {
       "blur": "Blur",

@@ -31,6 +31,7 @@ const handleWidth = computed(() => {
       bottom: `${bottomInsetPx ?? 0}px`,
     }"
     @pointerdown="(event) => emit('trimStart', event)"
+    @click.stop
   >
     <div
       class="coarse-reveal w-[3px] h-6 rounded-full bg-white opacity-0 group-hover/trim:opacity-75 transition-opacity duration-150"
@@ -46,6 +47,7 @@ const handleWidth = computed(() => {
       bottom: `${bottomInsetPx ?? 0}px`,
     }"
     @pointerdown="(event) => emit('trimEnd', event)"
+    @click.stop
   >
     <div
       class="coarse-reveal w-[3px] h-6 rounded-full bg-white opacity-0 group-hover/trim:opacity-75 transition-opacity duration-150"

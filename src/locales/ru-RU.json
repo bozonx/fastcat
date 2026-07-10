@@ -671,7 +671,15 @@
       "nameAlreadyExists": "Проект с таким названием уже существует",
       "openingProject": "Открываем проект",
       "openProjectFailedFallback": "Не удалось открыть проект",
-      "preparingProjectMobile": "Подготовка таймлайна, медиа и мобильного рабочего пространства"
+      "preparingProjectMobile": "Подготовка таймлайна, медиа и мобильного рабочего пространства",
+      "dateGroups": {
+        "today": "Сегодня",
+        "yesterday": "Вчера",
+        "thisWeek": "На этой неделе",
+        "lastWeek": "На прошлой неделе",
+        "thisMonth": "В этом месяце",
+        "unknown": "Без даты"
+      }
     },
     "properties": {
       "blur": "Размытие",

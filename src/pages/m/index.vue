@@ -11,7 +11,7 @@ import { onMounted, ref } from 'vue';
 import { writeLocalStorageString, STORAGE_KEYS } from '~/stores/ui/uiLocalStorage';
 import WelcomeScreen from '~/components/startup/WelcomeScreen.vue';
 import { dropdownNoReturnFocus } from '~/composables/useDropdownMenuFocus';
-import UiSearchInput from '~/components/ui/UiSearchInput.vue';
+import { groupProjectsByDate, type ProjectDateGroup } from '~/utils/project/groupProjectsByDate';
 import MediaResolutionSettings from '~/components/media/MediaResolutionSettings.vue';
 import ProjectThumbnail from '~/components/startup/ProjectThumbnail.vue';
 import MobileSettingsView from '~/components/settings/MobileSettingsView.vue';
@@ -24,7 +24,7 @@ definePageMeta({
   layout: 'mobile',
 });
 
-const { t, locale: _locale } = useI18n();
+const { t, locale } = useI18n();
 const router = useRouter();
 const workspaceStore = useWorkspaceStore();
 const projectStore = useProjectStore();
@@ -39,7 +39,6 @@ onMounted(() => {
 });
 
 const {
-  searchQuery,
   renameValue,
   isCreateModalOpen,
   isTransitioning,
@@ -126,16 +125,13 @@ const isSettingsOpen = ref(false);
 // Sort the main list by modification date (newest first)
 const sortedProjects = computed(() => {
   if (workspaceStore.workspaceProviderId === 'tauri') {
-    const query = searchQuery.value.trim().toLowerCase();
-    const projects = workspaceStore.recentProjects
-      .filter((project) => !query || project.projectName.toLowerCase().includes(query))
-      .map((project) => ({
-        projectName: project.projectName,
-        projectId: project.projectId,
-        lastTimelinePath: project.lastTimelinePath,
-        updatedAt: project.updatedAt,
-        projectPath: project.projectPath,
-      }));
+    const projects = workspaceStore.recentProjects.map((project) => ({
+      projectName: project.projectName,
+      projectId: project.projectId,
+      lastTimelinePath: project.lastTimelinePath,
+      updatedAt: project.updatedAt,
+      projectPath: project.projectPath,
+    }));
 
     projects.sort((a, b) => {
       const dateA = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
@@ -172,6 +168,26 @@ const sortedProjects = computed(() => {
 
   return projects;
 });
+
+type SortedProject = (typeof sortedProjects.value)[number];
+
+// Group the sorted projects into date buckets (Today / Yesterday / This week / …),
+// the Apple/Google Photos pattern. Replaces text search on mobile — users scroll
+// by "when they last touched it" rather than typing auto-generated project names.
+const groupedProjects = computed<ProjectDateGroup<SortedProject>[]>(() =>
+  groupProjectsByDate(sortedProjects.value, (p) => p.updatedAt),
+);
+
+const monthFormatter = computed(
+  () => new Intl.DateTimeFormat(locale.value, { month: 'long', year: 'numeric' }),
+);
+
+function groupLabel(group: ProjectDateGroup<SortedProject>): string {
+  if (group.kind === 'month' && group.year != null && group.month != null) {
+    return monthFormatter.value.format(new Date(group.year, group.month, 1));
+  }
+  return t(`fastcat.projects.dateGroups.${group.kind}`);
+}
 
 // formatDate removed in favor of FriendlyTime component
 </script>
@@ -225,14 +241,8 @@ const sortedProjects = computed(() => {
                 </div>
               </div>
 
-              <!-- Search Bar (landscape only) -->
-              <div class="hidden landscape:flex flex-1 max-w-md min-w-0">
-                <UiSearchInput
-                  v-model="searchQuery"
-                  :placeholder="t('fastcat.projects.searchPlaceholder')"
-                  is-mobile
-                />
-              </div>
+              <!-- Spacer keeps the header actions pinned to the right -->
+              <div class="flex-1" />
 
               <div class="flex items-center gap-2 shrink-0">
                 <!-- Action Buttons (landscape only) -->
@@ -270,7 +280,7 @@ const sortedProjects = computed(() => {
           <main class="flex-1 overflow-y-auto bg-ui-bg custom-scrollbar relative">
             <!-- 1. Completely Empty State (No projects at all) -->
             <div
-              v-if="sortedProjects.length === 0 && !searchQuery"
+              v-if="sortedProjects.length === 0"
               class="flex flex-col items-center justify-center min-h-[70vh] px-6 text-center gap-6"
             >
               <div class="relative w-36 h-36 flex items-center justify-center">
@@ -305,22 +315,11 @@ const sortedProjects = computed(() => {
               </UButton>
             </div>
 
-            <!-- 2. Dashboard with Projects -->
+            <!-- 2. Dashboard with Projects grouped by date -->
             <template v-else>
-              <!-- Search Bar Sticky below header (Mobile Portrait only) -->
-              <div
-                class="px-5 py-4 sticky top-0 z-10 bg-ui-bg/80 backdrop-blur-md border-b border-white/5 landscape:hidden"
-              >
-                <UiSearchInput
-                  v-model="searchQuery"
-                  :placeholder="t('fastcat.projects.searchPlaceholder')"
-                  is-mobile
-                />
-              </div>
-
               <div class="flex flex-col gap-8 pb-24">
                 <!-- New Project Button (Mobile Portrait only) -->
-                <div class="flex flex-col gap-3 px-5 landscape:hidden">
+                <div class="flex flex-col gap-3 px-5 pt-4 landscape:hidden">
                   <UButton
                     block
                     size="xl"
@@ -333,135 +332,116 @@ const sortedProjects = computed(() => {
                   </UButton>
                 </div>
 
-                <div class="px-5 pt-6 pb-24">
-                  <!-- If there are projects -->
-                  <div
-                    v-if="sortedProjects.length > 0"
-                    class="grid grid-cols-1 landscape:grid-cols-2 gap-4"
-                  >
-                    <UiSwipeableRow
-                      v-for="project in sortedProjects"
-                      :key="project.projectPath || project.projectId || project.projectName"
-                      class="rounded-2xl overflow-hidden"
+                <div class="flex flex-col gap-6 pb-24">
+                  <!-- One section per date bucket (Today / Yesterday / This week / …) -->
+                  <section v-for="group in groupedProjects" :key="group.id">
+                    <!-- Sticky bucket header -->
+                    <h2
+                      class="sticky top-0 z-10 px-5 py-2 bg-ui-bg/80 backdrop-blur-md text-[11px] font-black uppercase tracking-[0.18em] text-ui-text-muted"
                     >
-                      <template #actions="{ close }">
-                        <div class="flex h-full items-stretch pl-2 pr-1 py-0">
-                          <button
-                            class="bg-blue-600 active:bg-blue-700 text-white w-14 rounded-2xl h-full flex items-center justify-center transition-colors cursor-pointer"
-                            :aria-label="t('common.rename')"
-                            @click.stop="
-                              startRename(project);
-                              close();
-                            "
-                          >
-                            <UIcon name="i-heroicons-pencil-square" class="w-6 h-6" />
-                          </button>
-                          <button
-                            class="bg-red-600 active:bg-red-700 text-white w-14 rounded-2xl h-full flex items-center justify-center transition-colors ml-1 cursor-pointer"
-                            :aria-label="t('common.delete')"
-                            @click.stop="
-                              startDelete(project);
-                              close();
-                            "
-                          >
-                            <UIcon name="i-heroicons-trash" class="w-6 h-6" />
-                          </button>
-                        </div>
-                      </template>
+                      {{ groupLabel(group) }}
+                      <span class="ml-2 text-ui-text-muted/50 normal-case tracking-normal">{{
+                        group.projects.length
+                      }}</span>
+                    </h2>
 
-                      <div
-                        class="group bg-ui-bg-elevated/40 border border-white/5 rounded-2xl overflow-hidden flex items-center active:bg-ui-bg-elevated transition-all shadow-sm h-20"
-                        @click="handleOpenProject(project.projectPath || project.projectName)"
+                    <div class="px-5 pt-3 grid grid-cols-1 landscape:grid-cols-2 gap-4">
+                      <UiSwipeableRow
+                        v-for="project in group.projects"
+                        :key="project.projectPath || project.projectId || project.projectName"
+                        class="rounded-2xl overflow-hidden"
                       >
-                        <div class="w-20 h-full relative shrink-0">
-                          <ProjectThumbnail
-                            :project-id="project.projectId"
-                            :project-relative-path="project.lastTimelinePath"
-                            :project-name="project.projectName"
-                            variant="mobile"
-                          />
-                          <div class="absolute inset-0 bg-black/20" />
-                        </div>
+                        <template #actions="{ close }">
+                          <div class="flex h-full items-stretch pl-2 pr-1 py-0">
+                            <button
+                              class="bg-blue-600 active:bg-blue-700 text-white w-14 rounded-2xl h-full flex items-center justify-center transition-colors cursor-pointer"
+                              :aria-label="t('common.rename')"
+                              @click.stop="
+                                startRename(project);
+                                close();
+                              "
+                            >
+                              <UIcon name="i-heroicons-pencil-square" class="w-6 h-6" />
+                            </button>
+                            <button
+                              class="bg-red-600 active:bg-red-700 text-white w-14 rounded-2xl h-full flex items-center justify-center transition-colors ml-1 cursor-pointer"
+                              :aria-label="t('common.delete')"
+                              @click.stop="
+                                startDelete(project);
+                                close();
+                              "
+                            >
+                              <UIcon name="i-heroicons-trash" class="w-6 h-6" />
+                            </button>
+                          </div>
+                        </template>
 
-                        <div class="px-4 flex items-center justify-between flex-1 min-w-0 h-full">
-                          <div class="flex flex-col min-w-0">
-                            <span
-                              class="font-bold text-ui-text truncate text-sm tracking-tight leading-tight"
-                              >{{ project.projectName }}</span
-                            >
-                            <span
-                              class="text-[10px] text-ui-text-muted font-medium flex items-center gap-1 mt-1"
-                            >
-                              <UIcon name="i-heroicons-clock" class="w-3 h-3" />
-                              <FriendlyTime :date="project.updatedAt" fallback="---" />
-                            </span>
+                        <div
+                          class="group bg-ui-bg-elevated/40 border border-white/5 rounded-2xl overflow-hidden flex items-center active:bg-ui-bg-elevated transition-all shadow-sm h-20"
+                          @click="handleOpenProject(project.projectPath || project.projectName)"
+                        >
+                          <div class="w-20 h-full relative shrink-0">
+                            <ProjectThumbnail
+                              :project-id="project.projectId"
+                              :project-relative-path="project.lastTimelinePath"
+                              :project-name="project.projectName"
+                              variant="mobile"
+                            />
+                            <div class="absolute inset-0 bg-black/20" />
                           </div>
 
-                          <div class="flex items-center gap-2 shrink-0">
-                            <UDropdownMenu
-                              :items="[
-                                [
-                                  {
-                                    label: t('common.rename'),
-                                    icon: 'i-heroicons-pencil-square',
-                                    onSelect: () => startRename(project),
-                                  },
-                                  {
-                                    label: t('common.duplicate'),
-                                    icon: 'i-heroicons-document-duplicate',
-                                    onSelect: () => startDuplicate(project),
-                                  },
-                                  {
-                                    label: t('common.delete'),
-                                    icon: 'i-heroicons-trash',
-                                    onSelect: () => startDelete(project),
-                                  },
-                                ],
-                              ]"
-                              :content="dropdownNoReturnFocus"
-                            >
-                              <UButton
-                                size="sm"
-                                variant="ghost"
-                                color="neutral"
-                                icon="i-heroicons-ellipsis-vertical-16-solid"
-                                class="rounded-full w-9 h-9 p-0 text-ui-text-muted active:text-white active:bg-white/5 transition-colors"
-                                @click.stop
-                              />
-                            </UDropdownMenu>
+                          <div class="px-4 flex items-center justify-between flex-1 min-w-0 h-full">
+                            <div class="flex flex-col min-w-0">
+                              <span
+                                class="font-bold text-ui-text truncate text-sm tracking-tight leading-tight"
+                                >{{ project.projectName }}</span
+                              >
+                              <span
+                                class="text-[10px] text-ui-text-muted font-medium flex items-center gap-1 mt-1"
+                              >
+                                <UIcon name="i-heroicons-clock" class="w-3 h-3" />
+                                <FriendlyTime :date="project.updatedAt" fallback="---" />
+                              </span>
+                            </div>
+
+                            <div class="flex items-center gap-2 shrink-0">
+                              <UDropdownMenu
+                                :items="[
+                                  [
+                                    {
+                                      label: t('common.rename'),
+                                      icon: 'i-heroicons-pencil-square',
+                                      onSelect: () => startRename(project),
+                                    },
+                                    {
+                                      label: t('common.duplicate'),
+                                      icon: 'i-heroicons-document-duplicate',
+                                      onSelect: () => startDuplicate(project),
+                                    },
+                                    {
+                                      label: t('common.delete'),
+                                      icon: 'i-heroicons-trash',
+                                      onSelect: () => startDelete(project),
+                                    },
+                                  ],
+                                ]"
+                                :content="dropdownNoReturnFocus"
+                              >
+                                <UButton
+                                  size="sm"
+                                  variant="ghost"
+                                  color="neutral"
+                                  icon="i-heroicons-ellipsis-vertical-16-solid"
+                                  class="rounded-full w-9 h-9 p-0 text-ui-text-muted active:text-white active:bg-white/5 transition-colors"
+                                  @click.stop
+                                />
+                              </UDropdownMenu>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </UiSwipeableRow>
-                  </div>
-
-                  <!-- If there are no projects -->
-                  <div
-                    v-else
-                    class="flex flex-col items-center justify-center py-24 text-ui-text-muted gap-8"
-                  >
-                    <div
-                      class="w-28 h-28 rounded-full bg-ui-bg-elevated/50 flex items-center justify-center border border-white/5 relative"
-                    >
-                      <UIcon name="i-heroicons-folder-open" class="w-12 h-12 opacity-10" />
-                      <div class="absolute inset-0 bg-primary-500/5 rounded-full animate-pulse" />
+                      </UiSwipeableRow>
                     </div>
-                    <div class="text-center space-y-3">
-                      <p
-                        class="font-black uppercase tracking-[0.2em] text-[10px] text-ui-text-muted"
-                      >
-                        {{ t('fastcat.projects.noProjectsFound') }}
-                      </p>
-                      <UButton
-                        variant="solid"
-                        color="neutral"
-                        size="sm"
-                        class="rounded-full px-6 bg-ui-action! hover:bg-ui-action-hover! text-white! border-none shadow-ui-action/20"
-                        :label="t('fastcat.projects.newProject')"
-                        @click="triggerNewProjectSelection"
-                      />
-                    </div>
-                  </div>
+                  </section>
                 </div>
               </div>
             </template>
