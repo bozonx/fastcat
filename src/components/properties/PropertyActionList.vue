@@ -79,6 +79,10 @@ const ACTION_TO_HOTKEY: Record<string, HotkeyCommandId> = {
   resetFreezeFrame: 'timeline.toggleFreezeFrame',
   createOtioVersion: 'timeline.duplicate',
 
+  // Multi-clip Actions
+  group: 'timeline.groupClips',
+  ungroup: 'timeline.ungroupClips',
+
   // Track Actions
   'toggle-video-hidden': 'timeline.toggleVisibilityTrack',
   'toggle-track-muted': 'timeline.toggleMuteTrack',

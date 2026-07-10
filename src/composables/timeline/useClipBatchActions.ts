@@ -22,7 +22,10 @@ type ClipPropertiesPatch = UpdateClipPropertiesCommand['properties'];
 export interface ClipBatchActionsContext {
   timelineDoc: Ref<TimelineDocument | null>;
   mediaMetadata: Ref<Record<string, unknown>>;
-  batchApplyTimeline: (cmds: TimelineCommand[], options?: { labelKey?: string }) => void;
+  batchApplyTimeline: (
+    cmds: TimelineCommand[],
+    options?: { labelKey?: string; historyMode?: 'immediate' | 'debounced' },
+  ) => void;
   clearSelection: () => void;
 }
 
@@ -145,7 +148,10 @@ export function useClipBatchActions(
     }
 
     if (cmds.length === 0) return;
-    ctx.batchApplyTimeline(cmds, { labelKey: 'videoEditor.fileManager.history.entries.moveItems' });
+    ctx.batchApplyTimeline(cmds, {
+      labelKey: 'videoEditor.fileManager.history.entries.moveItems',
+      historyMode: 'debounced',
+    });
   }
 
   function handleRelativeEndShift(deltaUs: number) {
@@ -164,7 +170,10 @@ export function useClipBatchActions(
     }
 
     if (cmds.length === 0) return;
-    ctx.batchApplyTimeline(cmds, { labelKey: 'videoEditor.fileManager.history.entries.trimClip' });
+    ctx.batchApplyTimeline(cmds, {
+      labelKey: 'videoEditor.fileManager.history.entries.trimClip',
+      historyMode: 'debounced',
+    });
   }
 
   function toggleLocked() {
@@ -334,6 +343,7 @@ export function useClipBatchActions(
     if (cmds.length === 0) return;
     ctx.batchApplyTimeline(cmds, {
       labelKey: 'videoEditor.fileManager.history.entries.updateClip',
+      historyMode: 'debounced',
     });
   }
 

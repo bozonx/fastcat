@@ -180,7 +180,7 @@ describe('useClipBatchActions', () => {
           startUs: 1_000_000,
         },
       ],
-      { labelKey: 'videoEditor.fileManager.history.entries.moveItems' },
+      { labelKey: 'videoEditor.fileManager.history.entries.moveItems', historyMode: 'debounced' },
     );
   });
 

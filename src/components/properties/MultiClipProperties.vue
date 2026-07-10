@@ -137,12 +137,10 @@ const blendModeOptions = computed<Array<{ value: TimelineBlendMode; label: strin
 );
 
 const startShiftAccumulator = ref(0);
-const endShiftAccumulator = ref(0);
 const durationShiftAccumulator = ref(0);
 
 watch(itemsRef, () => {
   startShiftAccumulator.value = 0;
-  endShiftAccumulator.value = 0;
   durationShiftAccumulator.value = 0;
 });
 
@@ -150,13 +148,6 @@ function onStartShiftChange(newVal: number) {
   const deltaUs = newVal - startShiftAccumulator.value;
   handleRelativeStartShift(deltaUs);
   startShiftAccumulator.value = newVal;
-}
-
-function onEndShiftChange(newVal: number) {
-  const deltaUs = newVal - endShiftAccumulator.value;
-  // End shift logic using trim_item (which moves the end)
-  handleRelativeEndShift(deltaUs);
-  endShiftAccumulator.value = newVal;
 }
 
 function onDurationShiftChange(newVal: number) {
@@ -466,6 +457,12 @@ function handleBatchToggleReversed() {
 const commonActions = computed(() => {
   const actions = [
     {
+      id: 'delete',
+      title: t('common.delete'),
+      icon: 'i-heroicons-trash',
+      onClick: handleDelete,
+    },
+    {
       id: 'copy',
       title: t('common.copy'),
       icon: 'i-heroicons-document-duplicate',
@@ -476,12 +473,6 @@ const commonActions = computed(() => {
       title: t('common.cut'),
       icon: 'i-heroicons-scissors',
       onClick: handleCutClips,
-    },
-    {
-      id: 'delete',
-      title: t('common.delete'),
-      icon: 'i-heroicons-trash',
-      onClick: handleDelete,
     },
     {
       id: 'toggle-disabled',
@@ -610,13 +601,11 @@ const otherActions = computed(() => {
       :first-clip="firstClip"
       :duration-shift-accumulator="durationShiftAccumulator"
       :start-shift-accumulator="startShiftAccumulator"
-      :end-shift-accumulator="endShiftAccumulator"
       :hide-uniform-duration="isSingleGroupSelection"
       :is-mobile="isMobile"
       @set-uniform-duration="handleSetUniformDuration"
       @duration-shift-change="onDurationShiftChange"
       @start-shift-change="onStartShiftChange"
-      @end-shift-change="onEndShiftChange"
     />
 
     <ClipTransitionsSection

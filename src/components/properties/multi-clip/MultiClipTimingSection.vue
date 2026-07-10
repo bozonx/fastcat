@@ -9,7 +9,6 @@ defineProps<{
   firstClip: TimelineClipItem | undefined;
   durationShiftAccumulator: number;
   startShiftAccumulator: number;
-  endShiftAccumulator: number;
   hideUniformDuration?: boolean;
   isMobile?: boolean;
 }>();
@@ -18,7 +17,6 @@ const emit = defineEmits<{
   setUniformDuration: [durationUs: number];
   durationShiftChange: [value: number];
   startShiftChange: [value: number];
-  endShiftChange: [value: number];
 }>();
 
 const { t } = useI18n();
@@ -28,7 +26,7 @@ const { t } = useI18n();
   <PropertySection v-if="!isMobile" :title="t('fastcat.clip.info')">
     <PropertyTimecode
       v-if="!hideUniformDuration"
-      :label="t('common.duration')"
+      :label="t('fastcat.timeline.setUniformDuration')"
       :model-value="firstClip?.timelineRange.durationUs ?? 0"
       @update:model-value="(value) => emit('setUniformDuration', value)"
     />
@@ -46,14 +44,6 @@ const { t } = useI18n();
         :model-value="startShiftAccumulator"
         allow-negative
         @update:model-value="(value) => emit('startShiftChange', value)"
-      />
-    </PropertyField>
-
-    <PropertyField :label="t('fastcat.timeline.endShift')" class="mt-2">
-      <UiTimecode
-        :model-value="endShiftAccumulator"
-        allow-negative
-        @update:model-value="(value) => emit('endShiftChange', value)"
       />
     </PropertyField>
   </PropertySection>
