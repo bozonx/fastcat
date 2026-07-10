@@ -1073,6 +1073,42 @@ mod tests {
         super::passes::build_passes(effects, width, height, EffectQuality::Ultra)
     }
 
+    /// Parses and validates every shared WGSL shader with naga (the same
+    /// front-end wgpu uses), so a syntax/typing error in `shared/*.wgsl` fails
+    /// in CI instead of breaking both engines at runtime. GPU-free.
+    #[test]
+    fn shared_wgsl_shaders_are_valid() {
+        let shaders: [(&str, &str); 5] = [
+            ("effect.wgsl", EFFECT_SHADER),
+            (
+                "crossfade.wgsl",
+                include_str!("../../../../shared/transitions/crossfade.wgsl"),
+            ),
+            (
+                "wipe.wgsl",
+                include_str!("../../../../shared/transitions/wipe.wgsl"),
+            ),
+            (
+                "slide.wgsl",
+                include_str!("../../../../shared/transitions/slide.wgsl"),
+            ),
+            (
+                "fade_through_color.wgsl",
+                include_str!("../../../../shared/transitions/fade_through_color.wgsl"),
+            ),
+        ];
+        for (name, source) in shaders {
+            let module = naga::front::wgsl::parse_str(source)
+                .unwrap_or_else(|e| panic!("{name}: WGSL parse error: {e}"));
+            naga::valid::Validator::new(
+                naga::valid::ValidationFlags::all(),
+                naga::valid::Capabilities::default(),
+            )
+            .validate(&module)
+            .unwrap_or_else(|e| panic!("{name}: WGSL validation error: {e:?}"));
+        }
+    }
+
     #[test]
     fn build_passes_includes_custom_wgsl() {
         let passes = build_passes(

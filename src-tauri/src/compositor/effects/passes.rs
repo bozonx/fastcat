@@ -112,6 +112,98 @@ fn pick_scratch(avoid: &[Buf]) -> Buf {
     Buf::Ping
 }
 
+/// Op code + clamped param of the fused point-wise chain (mode 24) — mirror of
+/// the web `fusablePointwiseOp`. Params carry the same clamps as the standalone
+/// modes so a fused run is math-identical to the individual passes.
+fn fusable_pointwise_op(effect: &EffectSpec) -> Option<(f32, f32)> {
+    match effect {
+        EffectSpec::Brightness { value } => Some((1.0, value.clamp(0.0, MAX_COLOR_MULTIPLIER))),
+        EffectSpec::Contrast { value } => Some((2.0, value.clamp(0.0, MAX_COLOR_MULTIPLIER))),
+        EffectSpec::Saturation { value } => Some((3.0, value.clamp(0.0, MAX_COLOR_MULTIPLIER))),
+        EffectSpec::Hue { degrees } => Some((4.0, *degrees)),
+        _ => None,
+    }
+}
+
+/// Ops a single mode-24 pass can hold: 4 (op, param) pairs in p0..p7.
+const FUSED_CHAIN_CAPACITY: usize = 4;
+
+/// Emits a single-effect pass (the pre-fusion behaviour of the generic arm).
+fn push_single(
+    passes: &mut Vec<EffectPass>,
+    cur: &mut Buf,
+    effect: &EffectSpec,
+    width: u32,
+    height: u32,
+) {
+    if let Some((uniform, custom_source)) = effect_uniform(effect, width, height) {
+        let dst = pick_scratch(&[*cur]);
+        passes.push(EffectPass {
+            uniform,
+            custom_source,
+            src: *cur,
+            secondary: *cur,
+            dst,
+        });
+        *cur = dst;
+    }
+}
+
+/// Flushes accumulated consecutive fusable effects: runs of >=2 become mode-24
+/// passes (chunks of up to FUSED_CHAIN_CAPACITY, a trailing single keeps its
+/// standalone mode). Chunking must mirror the web builder exactly.
+fn flush_fused(
+    passes: &mut Vec<EffectPass>,
+    cur: &mut Buf,
+    pending: &mut Vec<(&EffectSpec, f32, f32)>,
+    width: u32,
+    height: u32,
+) {
+    while !pending.is_empty() {
+        if pending.len() == 1 {
+            let (spec, _, _) = pending.remove(0);
+            push_single(passes, cur, spec, width, height);
+            continue;
+        }
+        let take = pending.len().min(FUSED_CHAIN_CAPACITY);
+        let mut uniform = EffectUniform {
+            mode: 24,
+            width,
+            height,
+            ..Default::default()
+        };
+        for (i, (_, op, param)) in pending.drain(0..take).enumerate() {
+            match i {
+                0 => {
+                    uniform.p0 = op;
+                    uniform.p1 = param;
+                }
+                1 => {
+                    uniform.p2 = op;
+                    uniform.p3 = param;
+                }
+                2 => {
+                    uniform.p4 = op;
+                    uniform.p5 = param;
+                }
+                _ => {
+                    uniform.p6 = op;
+                    uniform.p7 = param;
+                }
+            }
+        }
+        let dst = pick_scratch(&[*cur]);
+        passes.push(EffectPass {
+            uniform,
+            custom_source: None,
+            src: *cur,
+            secondary: *cur,
+            dst,
+        });
+        *cur = dst;
+    }
+}
+
 /// Separable gaussian blur (horizontal then vertical) reading from `cur` and
 /// returning the buffer holding the result.
 #[allow(clippy::too_many_arguments)]
@@ -470,8 +562,16 @@ pub(super) fn build_passes_with_options(
     let mut passes: Vec<EffectPass> = Vec::new();
     // The buffer currently holding the running image; effects chain off it.
     let mut cur = Buf::Input;
+    // Consecutive fusable point-wise effects accumulate here and flush as
+    // mode-24 passes; see `flush_fused`.
+    let mut pending: Vec<(&EffectSpec, f32, f32)> = Vec::new();
 
     for effect in effects {
+        if let Some((op, param)) = fusable_pointwise_op(effect) {
+            pending.push((effect, op, param));
+            continue;
+        }
+        flush_fused(&mut passes, &mut cur, &mut pending, width, height);
         match effect {
             EffectSpec::GaussianBlur {
                 radius,
@@ -544,20 +644,11 @@ pub(super) fn build_passes_with_options(
                 }
             }
             _ => {
-                if let Some((uniform, custom_source)) = effect_uniform(effect, width, height) {
-                    let dst = pick_scratch(&[cur]);
-                    passes.push(EffectPass {
-                        uniform,
-                        custom_source,
-                        src: cur,
-                        secondary: cur,
-                        dst,
-                    });
-                    cur = dst;
-                }
+                push_single(&mut passes, &mut cur, effect, width, height);
             }
         }
     }
+    flush_fused(&mut passes, &mut cur, &mut pending, width, height);
 
     // The final result must land in the owned output texture handed back to the
     // caller; everything before it ping-pongs through the scratch buffers.

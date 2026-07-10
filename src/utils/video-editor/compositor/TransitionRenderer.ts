@@ -1,4 +1,5 @@
 import { createDevLogger } from '~/utils/dev-logger';
+import { compositorPerfStats } from './CompositorPerfStats';
 import { ImageSource, Sprite, Texture, type Application, type RenderTexture } from 'pixi.js';
 import {
   applyTransitionCurve,
@@ -197,6 +198,7 @@ export class TransitionRenderer {
             speed,
           });
         if (renderedOnGpu) {
+          compositorPerfStats.onGpuComputePath('transition', 'zero-copy');
           this.commitTransitionOutput(clip, params, prevClip, mode);
           continue;
         }
@@ -222,6 +224,7 @@ export class TransitionRenderer {
           speed,
         });
         if (!processed) continue;
+        compositorPerfStats.onGpuComputePath('transition', 'bitmap-fallback');
 
         // Reuse cached ImageSource + Texture + Sprite to avoid per-frame GPU allocations.
         if (!this.blitSource) {

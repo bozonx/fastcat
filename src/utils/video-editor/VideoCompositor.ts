@@ -348,6 +348,7 @@ export class VideoCompositor {
             });
         }
         if (renderedOnGpu) {
+          compositorPerfStats.onGpuComputePath('adjustment', 'zero-copy');
           if (clip.sprite) clip.sprite.texture = clip.adjustmentSourceTexture;
           continue;
         }
@@ -375,6 +376,10 @@ export class VideoCompositor {
           enablePadding: false,
         });
 
+        compositorPerfStats.onGpuComputePath(
+          'adjustment',
+          processedBitmap ? 'bitmap-fallback' : 'raw-fallback',
+        );
         const output = processedBitmap ?? sourceBitmap;
         // Reuse cached ImageSource + Sprite to avoid per-frame GPU allocations.
         if (!this.adjustmentBlitSource) {

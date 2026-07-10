@@ -46,6 +46,17 @@
 //      desaturates, dims and tints the background plate before compose
 //   23 color tone (p0..p2=tint rgb, p3=amount, p4=blend mode,
 //      p5=preserve luminance, p6=range)
+//   24 fused point-wise chain: up to four ops applied in sequence in one
+//      dispatch. (p0,p1)/(p2,p3)/(p4,p5)/(p6,p7) are (op, param) pairs;
+//      op 0=none, 1=brightness, 2=contrast, 3=saturation, 4=hue (degrees).
+//      Math is identical to modes 1/2/3/11; the only difference is no rgba8
+//      quantization between the fused steps. Both pass builders emit it only
+//      for runs of >=2 consecutive fusable effects.
+//
+// COUPLING RULE (see AGENTS.md "Engine Coupling Contract"): this file is the
+// only shader-math coupling between the engines. Adding a mode, changing the
+// uniform layout or any binding requires updating BOTH backends in the same
+// change; web-only performance work must stay in the TS pass builder/runner.
 // =============================================================================
 
 struct EffectUniform {
@@ -108,6 +119,25 @@ fn sample_uv(uv: vec2<f32>) -> vec4<f32> {
 
 fn luma(color: vec3<f32>) -> f32 {
     return dot(color, vec3<f32>(0.2126, 0.7152, 0.0722));
+}
+
+// One op of the fused point-wise chain (mode 24). Must stay math-identical to
+// the standalone modes 1 (brightness), 2 (contrast), 3 (saturation) and
+// 11 (hue) — the fused pass is a pure dispatch-count optimization.
+fn fused_pointwise_op(c: vec3<f32>, op: f32, param: f32) -> vec3<f32> {
+    if (op >= 3.5) {
+        return rotate_hue(c, param);
+    }
+    if (op >= 2.5) {
+        return mix(vec3<f32>(luma(c)), c, param);
+    }
+    if (op >= 1.5) {
+        return (c - vec3<f32>(0.5)) * param + vec3<f32>(0.5);
+    }
+    if (op >= 0.5) {
+        return c * param;
+    }
+    return c;
 }
 
 fn hash21(p: vec2<f32>) -> f32 {
@@ -636,6 +666,14 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
             }
             let mask = color_tone_range_mask(luma(base), effect.p6);
             color = vec4<f32>(mix(base, blended, clamp(effect.p3, 0.0, 1.0) * mask), color.a);
+        }
+        case 24u: {
+            var c = color.rgb;
+            c = fused_pointwise_op(c, effect.p0, effect.p1);
+            c = fused_pointwise_op(c, effect.p2, effect.p3);
+            c = fused_pointwise_op(c, effect.p4, effect.p5);
+            c = fused_pointwise_op(c, effect.p6, effect.p7);
+            color = vec4<f32>(c, color.a);
         }
         default: {}
     }

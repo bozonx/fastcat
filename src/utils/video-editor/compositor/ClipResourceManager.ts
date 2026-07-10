@@ -14,10 +14,7 @@ import {
   estimateVideoFrameSizeBytes,
 } from './VideoFrameCache';
 import type { CanvasFallbackRenderer } from './renderers/CanvasFallbackRenderer';
-import {
-  resolveEffectTextureSize,
-  type WebGpuComputeRunner,
-} from './WebGpuComputeRunner';
+import { resolveEffectTextureSize, type WebGpuComputeRunner } from './WebGpuComputeRunner';
 import { buildEffectSpecs } from '~/effects';
 import { compositorPerfStats } from './CompositorPerfStats';
 import { createSolidColorTexture } from './placeholderImageSource';
@@ -233,6 +230,7 @@ export class ClipResourceManager {
       }
 
       if (processed) {
+        compositorPerfStats.onGpuComputePath('non-video', 'bitmap-fallback');
         // Reuse the existing imageSource like the video path does, instead of
         // creating a new Texture.from(processed) which orphans the old GPU texture.
         if (clip.sprite && (clip.sprite as Sprite).texture.source !== clip.imageSource) {
@@ -378,6 +376,7 @@ export class ClipResourceManager {
       if (!rendered) {
         return false;
       }
+      compositorPerfStats.onGpuComputePath('non-video', 'zero-copy');
 
       if (clip.lastVideoFrame) {
         safeDispose(clip.lastVideoFrame);
@@ -392,9 +391,7 @@ export class ClipResourceManager {
       clip.effectTextureW = outputSize.width;
       clip.effectTextureH = outputSize.height;
       clip.effectIgnoreTransform = false;
-      this.context
-        .getLayoutApplier()
-        .applySpriteLayout(sourceSize.width, sourceSize.height, clip);
+      this.context.getLayoutApplier().applySpriteLayout(sourceSize.width, sourceSize.height, clip);
       return true;
     } finally {
       try {
@@ -502,6 +499,7 @@ export class ClipResourceManager {
     if (!rendered) {
       return false;
     }
+    compositorPerfStats.onGpuComputePath('non-video', 'zero-copy');
 
     if (clip.lastVideoFrame) {
       safeDispose(clip.lastVideoFrame);
@@ -1034,9 +1032,11 @@ export class ClipResourceManager {
           // effects and preview is enabled. On failure, fall back to raw frame.
           const hasEffects = (clip.effects?.length ?? 0) > 0;
           const runner = this.context.computeRunner;
+          let gpuEffectsAttempted = false;
           if (previewEffectsEnabled && hasEffects && runner?.isReady()) {
             const effectSpecs = clip.animatedEffectSpecs ?? buildEffectSpecs(clip.effects);
             if (effectSpecs && effectSpecs.length > 0) {
+              gpuEffectsAttempted = true;
               try {
                 const blurFillIndex = effectSpecs.findIndex((e) => e.type === 'blur-fill');
                 if (blurFillIndex >= 0) {
@@ -1072,6 +1072,7 @@ export class ClipResourceManager {
                       fgOffsetY: blurFill.fg_offset_y,
                     });
                     if (renderedOnGpu) {
+                      compositorPerfStats.onGpuComputePath('blur-fill', 'zero-copy');
                       safeDispose(frame);
                       if (clip.sprite) {
                         (clip.sprite as Sprite).texture = clip.effectRenderTexture;
@@ -1082,11 +1083,9 @@ export class ClipResourceManager {
                       clip.effectTextureW = renderedOnGpu.width;
                       clip.effectTextureH = renderedOnGpu.height;
                       clip.effectIgnoreTransform = true;
-                      this.context
-                        .getLayoutApplier()
-                        .applySpriteLayout(projectW, projectH, clip, {
-                          ignoreClipTransform: true,
-                        });
+                      this.context.getLayoutApplier().applySpriteLayout(projectW, projectH, clip, {
+                        ignoreClipTransform: true,
+                      });
                       return;
                     }
                   }
@@ -1116,6 +1115,7 @@ export class ClipResourceManager {
                       fgOffsetY: blurFill.fg_offset_y,
                     });
                     if (renderedOnGpu) {
+                      compositorPerfStats.onGpuComputePath('blur-fill', 'zero-copy');
                       safeDispose(frame);
                       if (clip.sprite) {
                         (clip.sprite as Sprite).texture = clip.effectRenderTexture;
@@ -1126,11 +1126,9 @@ export class ClipResourceManager {
                       clip.effectTextureW = renderedOnGpu.width;
                       clip.effectTextureH = renderedOnGpu.height;
                       clip.effectIgnoreTransform = true;
-                      this.context
-                        .getLayoutApplier()
-                        .applySpriteLayout(projectW, projectH, clip, {
-                          ignoreClipTransform: true,
-                        });
+                      this.context.getLayoutApplier().applySpriteLayout(projectW, projectH, clip, {
+                        ignoreClipTransform: true,
+                      });
                       return;
                     }
                   }
@@ -1156,6 +1154,7 @@ export class ClipResourceManager {
                     fgOffsetY: blurFill.fg_offset_y,
                   });
                   if (processed) {
+                    compositorPerfStats.onGpuComputePath('blur-fill', 'bitmap-fallback');
                     // Success: both the raw frame and the intermediate are consumed.
                     safeDispose(frame);
                     if (intermediate) safeDispose(intermediate as unknown as VideoFrame);
@@ -1228,6 +1227,7 @@ export class ClipResourceManager {
                         effectSpecs as import('~/types/generated/native-monitor/VideoEffectSpec').VideoEffectSpec[],
                     }));
                   if (renderedOnGpu) {
+                    compositorPerfStats.onGpuComputePath('effects', 'zero-copy');
                     safeDispose(frame);
                     if (clip.sprite) {
                       (clip.sprite as Sprite).texture = clip.effectRenderTexture;
@@ -1249,6 +1249,7 @@ export class ClipResourceManager {
                     effectSpecs as import('~/types/generated/native-monitor/VideoEffectSpec').VideoEffectSpec[],
                   );
                   if (processed) {
+                    compositorPerfStats.onGpuComputePath('effects', 'bitmap-fallback');
                     safeDispose(frame);
                     this.restoreClipImageSourceTexture(clip);
                     // The compute runner pads the output around the frame so blur /
@@ -1287,6 +1288,10 @@ export class ClipResourceManager {
             }
           }
 
+          if (gpuEffectsAttempted) {
+            // Every GPU path above failed or threw — the frame renders raw.
+            compositorPerfStats.onGpuComputePath('effects', 'raw-fallback');
+          }
           this.restoreClipImageSourceTexture(clip);
           (clip.imageSource as { resource?: unknown }).resource = frame as unknown;
           clip.imageSource.update();

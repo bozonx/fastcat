@@ -44,6 +44,24 @@ both be called "parity" — keep them distinct:
 - Write minimalist, readable code. Follow DRY and SOLID principles.
 - If you find minor issues in a working file (typos, formatting) — fix them. For serious ones (vulnerabilities) — report them, but do not fix without a command.
 
+## Engine Coupling Contract (web ↔ native)
+The web (Pixi/WebGPU) and native (wgpu/vello) video engines are **separate paradigms**
+with exactly two coupling surfaces:
+- `shared/*.wgsl` — the single source of effect/transition math (ABI pinned in each
+  file's header: bindings, uniform layout, mode codes);
+- `shared/parity/*.json` + `shared/golden/` — fixtures locking duplicated pure logic
+  and rendered output.
+
+Rules:
+- **Native (Tauri) is the performance/architecture reference.** Web-only optimizations
+  are legal only if they do not add mode codes, do not change uniform layouts, and do
+  not require `src-tauri` changes. They must live in the TS pass builders, runners,
+  caches and orchestration.
+- Touching a shared `.wgsl` is justified only when **both** backends benefit and both
+  are updated in the same change (plus parity/golden coverage).
+- Web fallback paths (bitmap/readback, WebGL) are part of the architecture — keep them
+  working; do not delete them to chase speed.
+
 ## Code and Architecture
 - Prefer `interface` over `type` for objects.
 - Functions with 3 or more arguments should accept a parameters object.

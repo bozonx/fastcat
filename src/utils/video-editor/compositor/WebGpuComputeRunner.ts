@@ -7,6 +7,7 @@ import fadeThroughColorWgsl from '~shared/transitions/fade_through_color.wgsl?ra
 import slideWgsl from '~shared/transitions/slide.wgsl?raw';
 import wipeWgsl from '~shared/transitions/wipe.wgsl?raw';
 import { createDevLogger } from '~/utils/dev-logger';
+import { compositorPerfStats } from '~/utils/video-editor/compositor/CompositorPerfStats';
 import {
   previewEffectQualityTapBudget,
   type PreviewEffectQuality,
@@ -24,6 +25,9 @@ import {
 } from '~/utils/video-editor/compositor/effect-render-ceilings';
 
 const log = createDevLogger('WebGpuComputeRunner');
+
+const isDev = typeof import.meta !== 'undefined' && Boolean(import.meta.env?.DEV);
+const GPU_TIMING_SAMPLE_EVERY = 30;
 
 const UNIFORM_SIZE = 48; // 12 * 4 bytes
 const TRANSITION_UNIFORM_SIZE = 64;
@@ -391,6 +395,30 @@ export function buildBlurFillPasses(
   return passes;
 }
 
+/**
+ * Op codes of the fused point-wise chain (mode 24) — mirror of the Rust
+ * `fusable_pointwise_op`. Returns null for effects that cannot be fused.
+ * Params carry the same clamps as the standalone modes so a fused run is
+ * math-identical to the individual passes.
+ */
+function fusablePointwiseOp(effect: VideoEffectSpec): { op: number; param: number } | null {
+  switch (effect.type) {
+    case 'brightness':
+      return { op: 1, param: Math.max(0, Math.min(MAX_COLOR_MULTIPLIER, effect.value)) };
+    case 'contrast':
+      return { op: 2, param: Math.max(0, Math.min(MAX_COLOR_MULTIPLIER, effect.value)) };
+    case 'saturation':
+      return { op: 3, param: Math.max(0, Math.min(MAX_COLOR_MULTIPLIER, effect.value)) };
+    case 'hue':
+      return { op: 4, param: effect.degrees };
+    default:
+      return null;
+  }
+}
+
+/** Ops a single mode-24 pass can hold: 4 (op, param) pairs in p0..p7. */
+const FUSED_CHAIN_CAPACITY = 4;
+
 export function buildPasses(
   effects: VideoEffectSpec[],
   width: number,
@@ -404,7 +432,50 @@ export function buildPasses(
   // Buffer currently holding the running image; effects chain off it.
   let cur: Buf = 'input';
 
+  // Consecutive fusable point-wise effects accumulate here and flush as
+  // mode-24 passes (chunks of up to FUSED_CHAIN_CAPACITY). A trailing single
+  // keeps its standalone mode so existing single-effect behaviour is unchanged.
+  const pendingFused: { effect: VideoEffectSpec; op: number; param: number }[] = [];
+  const pushSingle = (effect: VideoEffectSpec) => {
+    const built = effectUniform(effect, width, height, scale);
+    if (!built) return;
+    const dst = pickScratch([cur]);
+    passes.push({
+      uniform: built.uniform,
+      customSource: built.customSource,
+      src: cur,
+      secondary: cur,
+      dst,
+    });
+    cur = dst;
+  };
+  const flushFused = () => {
+    while (pendingFused.length > 0) {
+      if (pendingFused.length === 1) {
+        pushSingle(pendingFused.shift()!.effect);
+        continue;
+      }
+      const chunk = pendingFused.splice(0, FUSED_CHAIN_CAPACITY);
+      const u = uniform(24, width, height);
+      for (let i = 0; i < chunk.length; i++) {
+        const slot = `p${i * 2}` as keyof EffectUniform;
+        const paramSlot = `p${i * 2 + 1}` as keyof EffectUniform;
+        (u[slot] as number) = chunk[i]!.op;
+        (u[paramSlot] as number) = chunk[i]!.param;
+      }
+      const dst = pickScratch([cur]);
+      passes.push({ uniform: u, src: cur, secondary: cur, dst });
+      cur = dst;
+    }
+  };
+
   for (const effect of effects) {
+    const fusable = fusablePointwiseOp(effect);
+    if (fusable) {
+      pendingFused.push({ effect, ...fusable });
+      continue;
+    }
+    flushFused();
     switch (effect.type) {
       case 'gaussian-blur': {
         const base = cur;
@@ -466,21 +537,11 @@ export function buildPasses(
         // chain skips it (no crash); both backends render it through a dedicated
         // path instead — web via `applyBlurFill` (`ClipResourceManager`) and
         // native via `apply_blur_fill`.
-        const built = effectUniform(effect, width, height, scale);
-        if (built) {
-          const dst = pickScratch([cur]);
-          passes.push({
-            uniform: built.uniform,
-            customSource: built.customSource,
-            src: cur,
-            secondary: cur,
-            dst,
-          });
-          cur = dst;
-        }
+        pushSingle(effect);
       }
     }
   }
+  flushFused();
 
   // The final result must land in the owned output texture.
   if (passes.length > 0) {
@@ -814,6 +875,8 @@ export class WebGpuComputeRunner {
   // Reusable OffscreenCanvas for GPU→CPU readback in both effect and transition paths.
   private readbackCanvas: OffscreenCanvas | null = null;
 
+  private gpuTimingSampleCounter = 0;
+
   // Per-pixel-format result of the direct VideoFrame upload probe; device-scoped.
   private videoFrameUploadSupport = new Map<string, boolean>();
 
@@ -1116,7 +1179,25 @@ export class WebGpuComputeRunner {
     }
 
     this.device.queue.submit([encoder.finish()]);
+    this.sampleGpuChainTiming();
     return this.ownedTexture;
+  }
+
+  /**
+   * Dev-only, sampled submit→onSubmittedWorkDone duration of a compute chain.
+   * Pixi hardcodes its device features (no 'timestamp-query' on the shared
+   * device), so this measures queue-drain wall time instead — it includes any
+   * other queued work and is indicative, not a per-pass GPU timer. Sampling
+   * keeps the completion callbacks from perturbing the pipeline.
+   */
+  private sampleGpuChainTiming(): void {
+    if (!isDev || !this.device) return;
+    this.gpuTimingSampleCounter = (this.gpuTimingSampleCounter + 1) % GPU_TIMING_SAMPLE_EVERY;
+    if (this.gpuTimingSampleCounter !== 0) return;
+    const startMs = performance.now();
+    void this.device.queue.onSubmittedWorkDone().then(() => {
+      compositorPerfStats.onGpuChain(performance.now() - startMs);
+    });
   }
 
   private getOrCreateTextureBlitPipeline(
@@ -2263,6 +2344,7 @@ export class WebGpuComputeRunner {
     pass.end();
 
     this.device.queue.submit([encoder.finish()]);
+    this.sampleGpuChainTiming();
     const targetTexture = this.sharedRendererTexture.getGpuSource(params.output.source);
     return this.blitTextureToRendererTarget({
       source: outputTexture,
