@@ -29,6 +29,8 @@ export function createHotkeyHoldRunner() {
     intervalMs?: number;
     action: () => void;
   }) {
+    if (state.holdKeyCode === params.keyCode) return;
+
     clearTimers();
     state.holdKeyCode = params.keyCode;
 

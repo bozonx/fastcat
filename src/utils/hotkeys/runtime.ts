@@ -1,7 +1,7 @@
 import type { AnyPanelFocus } from '~/stores/focus.store';
 import type { HotkeyCommandId, HotkeyCombo, HotkeyGroupId } from './defaultHotkeys';
 import { DEFAULT_HOTKEYS } from './defaultHotkeys';
-import { hotkeyFromKeyboardEvent, parseHotkeyCombo } from './hotkeyUtils';
+import { hotkeyFromKeyboardEvent, normalizeHotkeyCombo, parseHotkeyCombo } from './hotkeyUtils';
 import { isGlobalHotkeyGroup } from './scopes';
 import type { FastCatUserSettings } from '../settings/defaults';
 
@@ -106,10 +106,12 @@ export function createDefaultHotkeyLookup(commandOrder: readonly HotkeyCommandId
   for (const cmdId of commandOrder) {
     const bindings = DEFAULT_HOTKEYS.bindings[cmdId] ?? [];
     for (const combo of bindings) {
-      if (!lookup[combo]) {
-        lookup[combo] = [];
+      const normalized = normalizeHotkeyCombo(combo);
+      if (!normalized) continue;
+      if (!lookup[normalized]) {
+        lookup[normalized] = [];
       }
-      lookup[combo]!.push(cmdId);
+      lookup[normalized]!.push(cmdId);
     }
   }
 

@@ -3,6 +3,9 @@ import { describe, it, expect } from 'vitest';
 import { DEFAULT_HOTKEYS } from '~/utils/hotkeys/defaultHotkeys';
 import type { HotkeyCommandId } from '~/utils/hotkeys/defaultHotkeys';
 
+const Modifier1 = 'Modifier1';
+const Modifier2 = 'Modifier2';
+
 describe('DEFAULT_HOTKEYS', () => {
   it('contains commands array', () => {
     expect(DEFAULT_HOTKEYS.commands.length).toBeGreaterThan(0);
@@ -14,12 +17,12 @@ describe('DEFAULT_HOTKEYS', () => {
 
   it('has binding for general.copy', () => {
     expect(DEFAULT_HOTKEYS.bindings['general.copy']).toBeDefined();
-    expect(DEFAULT_HOTKEYS.bindings['general.copy']).toContain('Ctrl+C');
+    expect(DEFAULT_HOTKEYS.bindings['general.copy']).toContain(`${Modifier2}+C`);
   });
 
-  it('binds bare Space to 1x playback and Shift+Space to current-speed playback', () => {
+  it('binds bare Space to 1x playback and modifier1+Space to current-speed playback', () => {
     expect(DEFAULT_HOTKEYS.bindings['playback.toggle1']).toContain('Space');
-    expect(DEFAULT_HOTKEYS.bindings['playback.toggle']).toContain('Shift+Space');
+    expect(DEFAULT_HOTKEYS.bindings['playback.toggle']).toContain(`${Modifier1}+Space`);
   });
 
   it('binds the shuttle commands to S / D / F by default', () => {
@@ -44,9 +47,9 @@ describe('DEFAULT_HOTKEYS', () => {
     expect(DEFAULT_HOTKEYS.bindings['general.delete']).toContain('X');
   });
 
-  it('has binding for general.mute as Ctrl+Q', () => {
+  it('has binding for general.mute as modifier2+Q', () => {
     expect(DEFAULT_HOTKEYS.bindings['general.mute']).toBeDefined();
-    expect(DEFAULT_HOTKEYS.bindings['general.mute']).toContain('Ctrl+Q');
+    expect(DEFAULT_HOTKEYS.bindings['general.mute']).toContain(`${Modifier2}+Q`);
   });
 
   it('has binding for general.addMarker as M', () => {
@@ -54,29 +57,29 @@ describe('DEFAULT_HOTKEYS', () => {
     expect(DEFAULT_HOTKEYS.bindings['general.addMarker']).toContain('M');
   });
 
-  it('has binding for general.createFolder as Ctrl+\\', () => {
+  it('has binding for general.createFolder as modifier2+\\', () => {
     expect(DEFAULT_HOTKEYS.bindings['general.createFolder']).toBeDefined();
-    expect(DEFAULT_HOTKEYS.bindings['general.createFolder']).toEqual(['Ctrl+\\']);
+    expect(DEFAULT_HOTKEYS.bindings['general.createFolder']).toEqual([`${Modifier2}+\\`]);
   });
 
-  it('has bindings for general.volumeUp including Shift+=', () => {
+  it('has bindings for general.volumeUp including modifier1+=', () => {
     expect(DEFAULT_HOTKEYS.bindings['general.volumeUp']).toBeDefined();
-    expect(DEFAULT_HOTKEYS.bindings['general.volumeUp']).toContain('Shift+=');
+    expect(DEFAULT_HOTKEYS.bindings['general.volumeUp']).toContain(`${Modifier1}+=`);
   });
 
-  it('has bindings for general.volumeDown including Shift+-', () => {
+  it('has bindings for general.volumeDown including modifier1+-', () => {
     expect(DEFAULT_HOTKEYS.bindings['general.volumeDown']).toBeDefined();
-    expect(DEFAULT_HOTKEYS.bindings['general.volumeDown']).toContain('Shift+-');
+    expect(DEFAULT_HOTKEYS.bindings['general.volumeDown']).toContain(`${Modifier1}+-`);
   });
 
-  it('has binding for timeline.centerPlayhead as Shift+/', () => {
+  it('has binding for timeline.centerPlayhead as modifier1+/', () => {
     expect(DEFAULT_HOTKEYS.bindings['timeline.centerPlayhead']).toBeDefined();
-    expect(DEFAULT_HOTKEYS.bindings['timeline.centerPlayhead']).toContain('Shift+/');
+    expect(DEFAULT_HOTKEYS.bindings['timeline.centerPlayhead']).toContain(`${Modifier1}+/`);
   });
 
-  it('has navigateForward without Shift+Backspace', () => {
+  it('has navigateForward without modifier1+Backspace', () => {
     expect(DEFAULT_HOTKEYS.bindings['general.navigateForward'] ?? []).not.toContain(
-      'Shift+Backspace',
+      `${Modifier1}+Backspace`,
     );
   });
 
@@ -86,9 +89,9 @@ describe('DEFAULT_HOTKEYS', () => {
     expect(DEFAULT_HOTKEYS.bindings['general.navigateBack']).not.toContain('Backspace');
   });
 
-  it('has navigateUp with Ctrl+ArrowUp and Backspace', () => {
+  it('has navigateUp with modifier2+ArrowUp and Backspace', () => {
     expect(DEFAULT_HOTKEYS.bindings['general.navigateUp']).toBeDefined();
-    expect(DEFAULT_HOTKEYS.bindings['general.navigateUp']).toContain('Ctrl+ArrowUp');
+    expect(DEFAULT_HOTKEYS.bindings['general.navigateUp']).toContain(`${Modifier2}+ArrowUp`);
     expect(DEFAULT_HOTKEYS.bindings['general.navigateUp']).toContain('Backspace');
   });
 
@@ -104,36 +107,50 @@ describe('DEFAULT_HOTKEYS', () => {
     expect(DEFAULT_HOTKEYS.bindings['playback.jumpNextBoundary']).toContain('ArrowDown');
   });
 
-  it('has jumpPrevBoundaryTrack with Shift+A and Shift+ArrowUp', () => {
+  it('has jumpPrevBoundaryTrack with modifier1+A and modifier1+ArrowUp', () => {
     expect(DEFAULT_HOTKEYS.bindings['playback.jumpPrevBoundaryTrack']).toBeDefined();
-    expect(DEFAULT_HOTKEYS.bindings['playback.jumpPrevBoundaryTrack']).toContain('Shift+A');
-    expect(DEFAULT_HOTKEYS.bindings['playback.jumpPrevBoundaryTrack']).toContain('Shift+ArrowUp');
+    expect(DEFAULT_HOTKEYS.bindings['playback.jumpPrevBoundaryTrack']).toContain(
+      `${Modifier1}+A`,
+    );
+    expect(DEFAULT_HOTKEYS.bindings['playback.jumpPrevBoundaryTrack']).toContain(
+      `${Modifier1}+ArrowUp`,
+    );
   });
 
-  it('has jumpNextBoundaryTrack with Shift+G and Shift+ArrowDown', () => {
+  it('has jumpNextBoundaryTrack with modifier1+G and modifier1+ArrowDown', () => {
     expect(DEFAULT_HOTKEYS.bindings['playback.jumpNextBoundaryTrack']).toBeDefined();
-    expect(DEFAULT_HOTKEYS.bindings['playback.jumpNextBoundaryTrack']).toContain('Shift+G');
-    expect(DEFAULT_HOTKEYS.bindings['playback.jumpNextBoundaryTrack']).toContain('Shift+ArrowDown');
+    expect(DEFAULT_HOTKEYS.bindings['playback.jumpNextBoundaryTrack']).toContain(
+      `${Modifier1}+G`,
+    );
+    expect(DEFAULT_HOTKEYS.bindings['playback.jumpNextBoundaryTrack']).toContain(
+      `${Modifier1}+ArrowDown`,
+    );
   });
 
   it('has updated defaults for timeline creation and monitor snapshot', () => {
-    expect(DEFAULT_HOTKEYS.bindings['general.newTimeline']).toEqual(['Shift+N']);
-    expect(DEFAULT_HOTKEYS.bindings['general.snapshot']).toEqual(['Ctrl+H']);
+    expect(DEFAULT_HOTKEYS.bindings['general.newTimeline']).toEqual([`${Modifier1}+N`]);
+    expect(DEFAULT_HOTKEYS.bindings['general.snapshot']).toEqual([`${Modifier2}+H`]);
   });
 
   it('has updated defaults for timeline trim and selection actions', () => {
-    expect(DEFAULT_HOTKEYS.bindings['timeline.selectClipsLeftOfPlayhead']).toEqual(['Shift+D']);
-    expect(DEFAULT_HOTKEYS.bindings['timeline.selectClipsRightOfPlayhead']).toEqual(['Shift+F']);
+    expect(DEFAULT_HOTKEYS.bindings['timeline.selectClipsLeftOfPlayhead']).toEqual([
+      `${Modifier1}+D`,
+    ]);
+    expect(DEFAULT_HOTKEYS.bindings['timeline.selectClipsRightOfPlayhead']).toEqual([
+      `${Modifier1}+F`,
+    ]);
     expect(DEFAULT_HOTKEYS.bindings['timeline.trimToPlayheadLeft']).toEqual(['C']);
     expect(DEFAULT_HOTKEYS.bindings['timeline.trimToPlayheadRight']).toEqual(['V']);
-    expect(DEFAULT_HOTKEYS.bindings['timeline.rippleTrimLeft']).toEqual(['Shift+E']);
-    expect(DEFAULT_HOTKEYS.bindings['timeline.rippleTrimRight']).toEqual(['Shift+R']);
+    expect(DEFAULT_HOTKEYS.bindings['timeline.rippleTrimLeft']).toEqual([`${Modifier1}+E`]);
+    expect(DEFAULT_HOTKEYS.bindings['timeline.rippleTrimRight']).toEqual([`${Modifier1}+R`]);
   });
 
   it('has updated defaults for waveform and thumbnail toggles', () => {
     expect(DEFAULT_HOTKEYS.bindings['timeline.toggleWaveformMode']).toEqual([',']);
     expect(DEFAULT_HOTKEYS.bindings['timeline.toggleShowWaveform']).toEqual(['.']);
-    expect(DEFAULT_HOTKEYS.bindings['timeline.toggleShowThumbnails']).toEqual(['Shift+X']);
+    expect(DEFAULT_HOTKEYS.bindings['timeline.toggleShowThumbnails']).toEqual([
+      `${Modifier1}+X`,
+    ]);
   });
 
   it('has defaults for timeline creation and mode shortcuts', () => {
@@ -153,49 +170,54 @@ describe('DEFAULT_HOTKEYS', () => {
     expect(DEFAULT_HOTKEYS.bindings['timeline.toggleLockTrack']).toEqual([]);
   });
 
-  it('has nudge clip bindings with Ctrl modifier to avoid conflict with playhead stepping', () => {
-    expect(DEFAULT_HOTKEYS.bindings['timeline.moveSelectedClipsLeft']).toEqual(['Ctrl+ArrowLeft']);
+  it('has nudge clip bindings with modifier2 to avoid conflict with playhead stepping', () => {
+    expect(DEFAULT_HOTKEYS.bindings['timeline.moveSelectedClipsLeft']).toEqual([
+      `${Modifier2}+ArrowLeft`,
+    ]);
     expect(DEFAULT_HOTKEYS.bindings['timeline.moveSelectedClipsRight']).toEqual([
-      'Ctrl+ArrowRight',
+      `${Modifier2}+ArrowRight`,
     ]);
     expect(DEFAULT_HOTKEYS.bindings['timeline.moveSelectedClipsLeftLarge']).toEqual([
-      'Ctrl+Shift+ArrowLeft',
+      `${Modifier2}+${Modifier1}+ArrowLeft`,
     ]);
     expect(DEFAULT_HOTKEYS.bindings['timeline.moveSelectedClipsRightLarge']).toEqual([
-      'Ctrl+Shift+ArrowRight',
+      `${Modifier2}+${Modifier1}+ArrowRight`,
     ]);
   });
 
-  it('has volume bindings on Ctrl+ArrowUp/Ctrl+ArrowDown', () => {
+  it('has volume bindings on modifier2+ArrowUp/modifier2+ArrowDown', () => {
     expect(DEFAULT_HOTKEYS.bindings['timeline.increaseSelectedClipsVolume']).toEqual([
-      'Ctrl+ArrowUp',
+      `${Modifier2}+ArrowUp`,
     ]);
     expect(DEFAULT_HOTKEYS.bindings['timeline.decreaseSelectedClipsVolume']).toEqual([
-      'Ctrl+ArrowDown',
+      `${Modifier2}+ArrowDown`,
     ]);
     expect(DEFAULT_HOTKEYS.bindings['timeline.increaseSelectedClipsVolumeLarge']).toEqual([
-      'Ctrl+Shift+ArrowUp',
+      `${Modifier2}+${Modifier1}+ArrowUp`,
     ]);
     expect(DEFAULT_HOTKEYS.bindings['timeline.decreaseSelectedClipsVolumeLarge']).toEqual([
-      'Ctrl+Shift+ArrowDown',
+      `${Modifier2}+${Modifier1}+ArrowDown`,
     ]);
   });
 
   it('has defaults for project panel, settings and background task shortcuts', () => {
-    expect(DEFAULT_HOTKEYS.bindings['general.projectTabFiles']).toEqual(['Shift+H']);
-    expect(DEFAULT_HOTKEYS.bindings['general.projectTabHistory']).toEqual(['Shift+J']);
-    expect(DEFAULT_HOTKEYS.bindings['general.projectTabEffects']).toEqual(['Shift+K']);
-    expect(DEFAULT_HOTKEYS.bindings['general.projectTabLibrary']).toEqual(['Shift+L']);
-    expect(DEFAULT_HOTKEYS.bindings['general.projectTabMarkers']).toEqual(['Shift+;']);
-    expect(DEFAULT_HOTKEYS.bindings['general.projectTabBackups']).toEqual(["Shift+'"]);
-    expect(DEFAULT_HOTKEYS.bindings['general.backgroundTasks']).toEqual(['Shift+Y']);
-    expect(DEFAULT_HOTKEYS.bindings['general.projectSettings']).toEqual(['Shift+U']);
-    expect(DEFAULT_HOTKEYS.bindings['general.appSettings']).toEqual(['Shift+I']);
+    expect(DEFAULT_HOTKEYS.bindings['general.projectTabFiles']).toEqual([`${Modifier1}+H`]);
+    expect(DEFAULT_HOTKEYS.bindings['general.projectTabHistory']).toEqual([`${Modifier1}+J`]);
+    expect(DEFAULT_HOTKEYS.bindings['general.projectTabEffects']).toEqual([`${Modifier1}+K`]);
+    expect(DEFAULT_HOTKEYS.bindings['general.projectTabLibrary']).toEqual([`${Modifier1}+L`]);
+    expect(DEFAULT_HOTKEYS.bindings['general.projectTabMarkers']).toEqual([`${Modifier1}+;`]);
+    expect(DEFAULT_HOTKEYS.bindings['general.projectTabBackups']).toEqual([`${Modifier1}+'`]);
+    expect(DEFAULT_HOTKEYS.bindings['general.backgroundTasks']).toEqual([`${Modifier1}+Y`]);
+    expect(DEFAULT_HOTKEYS.bindings['general.projectSettings']).toEqual([`${Modifier1}+U`]);
+    expect(DEFAULT_HOTKEYS.bindings['general.appSettings']).toEqual([`${Modifier1}+I`]);
   });
 
   it('has defaults for start/end timeline shortcuts', () => {
-    expect(DEFAULT_HOTKEYS.bindings['timeline.globalToStart']).toEqual(['Home', 'Ctrl+E']);
-    expect(DEFAULT_HOTKEYS.bindings['timeline.globalToEnd']).toEqual(['End', 'Ctrl+R']);
+    expect(DEFAULT_HOTKEYS.bindings['timeline.globalToStart']).toEqual([
+      'Home',
+      `${Modifier2}+E`,
+    ]);
+    expect(DEFAULT_HOTKEYS.bindings['timeline.globalToEnd']).toEqual(['End', `${Modifier2}+R`]);
   });
 
   it('removed local monitor toStart/toEnd in favor of global timeline commands', () => {
@@ -223,8 +245,10 @@ describe('DEFAULT_HOTKEYS', () => {
   });
 
   it('has defaults for timeline group and ungroup clips shortcuts', () => {
-    expect(DEFAULT_HOTKEYS.bindings['timeline.groupClips']).toEqual(['Ctrl+G']);
-    expect(DEFAULT_HOTKEYS.bindings['timeline.ungroupClips']).toEqual(['Ctrl+Shift+G']);
+    expect(DEFAULT_HOTKEYS.bindings['timeline.groupClips']).toEqual([`${Modifier2}+G`]);
+    expect(DEFAULT_HOTKEYS.bindings['timeline.ungroupClips']).toEqual([
+      `${Modifier2}+${Modifier1}+G`,
+    ]);
   });
 
   it('leaves speed-cycle and 1.5x commands unbound by default', () => {
@@ -236,12 +260,14 @@ describe('DEFAULT_HOTKEYS', () => {
 
   it('moves split, solo and boundary defaults to the new layout', () => {
     expect(DEFAULT_HOTKEYS.bindings['timeline.splitAtPlayhead']).toEqual(['T']);
-    expect(DEFAULT_HOTKEYS.bindings['timeline.splitAllAtPlayhead']).toEqual(['Shift+T']);
-    expect(DEFAULT_HOTKEYS.bindings['timeline.toggleSoloTrack']).toEqual(['Shift+S']);
+    expect(DEFAULT_HOTKEYS.bindings['timeline.splitAllAtPlayhead']).toEqual([
+      `${Modifier1}+T`,
+    ]);
+    expect(DEFAULT_HOTKEYS.bindings['timeline.toggleSoloTrack']).toEqual([`${Modifier1}+S`]);
     expect(DEFAULT_HOTKEYS.bindings['playback.jumpNextBoundary']).toEqual(['G', 'ArrowDown']);
     expect(DEFAULT_HOTKEYS.bindings['playback.jumpNextBoundaryTrack']).toEqual([
-      'Shift+G',
-      'Shift+ArrowDown',
+      `${Modifier1}+G`,
+      `${Modifier1}+ArrowDown`,
     ]);
   });
 

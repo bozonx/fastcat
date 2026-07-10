@@ -60,6 +60,11 @@ describe('normalizeHotkeyCombo', () => {
     expect(normalizeHotkeyCombo('a')).toBe('A');
   });
 
+  it('normalizes virtual modifier aliases', () => {
+    expect(normalizeHotkeyCombo('Modifier1+Space')).toBe('Shift+Space');
+    expect(normalizeHotkeyCombo('Modifier2+Modifier1+G')).toBe('Ctrl+Shift+G');
+  });
+
   it('returns null for invalid combos', () => {
     expect(normalizeHotkeyCombo('')).toBeNull();
   });

@@ -32,6 +32,7 @@ vi.mock('~/utils/hotkeys/defaultHotkeys', () => ({
     bindings: {
       play: ['Space'],
       pause: ['Enter'],
+      'general.play': ['Modifier2+Modifier1+P'],
     },
   },
 }));
@@ -78,6 +79,11 @@ describe('createDefaultHotkeyLookup', () => {
     const lookup = createDefaultHotkeyLookup(['play', 'pause']);
     expect(lookup['Space']).toEqual(['play']);
     expect(lookup['Enter']).toEqual(['pause']);
+  });
+
+  it('normalizes virtual modifier aliases from default bindings', () => {
+    const lookup = createDefaultHotkeyLookup(['general.play']);
+    expect(lookup['Ctrl+Shift+P']).toEqual(['general.play']);
   });
 });
 

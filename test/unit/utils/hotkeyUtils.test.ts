@@ -77,6 +77,11 @@ describe('hotkeyUtils', () => {
       expect(normalizeHotkeyCombo('meta+esc')).toBe('Meta+Escape');
     });
 
+    it('normalizes virtual modifier aliases', () => {
+      expect(normalizeHotkeyCombo('Modifier1+Space')).toBe('Shift+Space');
+      expect(normalizeHotkeyCombo('Modifier2+Modifier1+G')).toBe('Ctrl+Shift+G');
+    });
+
     it('returns null if cannot parse', () => {
       expect(normalizeHotkeyCombo('+')).toBeNull();
     });

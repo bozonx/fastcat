@@ -59,6 +59,8 @@ function normalizeKeyLabel(rawKey: string): string {
 
   const lower = key.toLowerCase();
 
+  if (lower === 'modifier1' || lower === 'mod1' || lower === 'layer1') return 'Shift';
+  if (lower === 'modifier2' || lower === 'mod2' || lower === 'layer2') return 'Ctrl';
   if (lower === 'control') return 'Ctrl';
   if (lower === 'spacebar') return 'Space';
   if (lower === 'esc') return 'Escape';
