@@ -88,7 +88,7 @@ describe('ResolutionSettings.vue', () => {
     mockWorkspaceStore.userSettings.projectPresets.selectedPresetId = '1080p';
   });
 
-  it('renders form section header with resolution title and tooltip', async () => {
+  it('renders form section header with resolution title', async () => {
     const component = await mountWithNuxt(ResolutionSettings);
 
     expect(component.exists()).toBe(true);
@@ -96,11 +96,7 @@ describe('ResolutionSettings.vue', () => {
     expect(component.find('.form-section-header').text()).toContain(
       'videoEditor.projectSettings.resolutionAndFps',
     );
-    const tooltip = component.find('.info-tooltip');
-    expect(tooltip.exists()).toBe(true);
-    expect(tooltip.attributes('data-tooltip')).toBe(
-      'videoEditor.projectSettings.resolutionAndFpsTooltip',
-    );
+    expect(component.find('.info-tooltip').exists()).toBe(false);
   });
 
   it('renders MediaResolutionSettings with current project values', async () => {

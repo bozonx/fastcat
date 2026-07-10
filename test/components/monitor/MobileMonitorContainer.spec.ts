@@ -375,6 +375,21 @@ describe('MobileMonitorContainer', () => {
     vi.useRealTimers();
   });
 
+  it('hides marker button in fullscreen mode', async () => {
+    mockIsFullscreen.value = true;
+
+    wrapper = mount(MobileMonitorContainer, {
+      global: {
+        plugins: [pinia],
+        stubs,
+      },
+    });
+
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[aria-label="fastcat.timeline.addMarker"]').exists()).toBe(false);
+  });
+
   it('saves active monitor pan & zoom on entering fullscreen and restores them on exit', async () => {
     mockIsFullscreen.value = false;
     mockActiveMonitor.zoom = 2.5;

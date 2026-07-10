@@ -189,7 +189,7 @@ const deleteModalDescription = computed(() => {
 
       <div class="space-y-4">
         <UiFormField :label="t('videoEditor.export.presetName')" :disabled="isBuiltIn">
-          <UiTextInput v-model="draftPreset.name" :disabled="isBuiltIn" />
+          <UiTextInput v-model="draftPreset.name" :disabled="isBuiltIn" full-width />
         </UiFormField>
 
         <VideoEncodingForm

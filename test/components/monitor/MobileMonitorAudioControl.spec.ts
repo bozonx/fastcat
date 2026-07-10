@@ -40,9 +40,10 @@ describe('MobileMonitorAudioControl', () => {
         UPopover: {
           template: '<div class="popover-stub"><slot /><slot name="content" /></div>',
         },
-        USlider: {
-          props: ['modelValue'],
-          template: '<div class="slider-stub" @click="$emit(\'update:modelValue\', 0.8)"></div>',
+        UiWheelSlider: {
+          props: ['modelValue', 'defaultValue'],
+          template:
+            '<div class="slider-stub" :data-default-value="defaultValue" @click="$emit(\'update:modelValue\', 0.8)"></div>',
         },
         UButton: {
           props: ['label', 'icon', 'color'],
@@ -86,6 +87,15 @@ describe('MobileMonitorAudioControl', () => {
 
     await slider.trigger('click');
     expect(uiStore.monitorVolume).toBe(0.8);
+  });
+
+  it('passes default reset value to wheel slider', async () => {
+    const wrapper = mount(MobileMonitorAudioControl, {
+      global: globalOptions,
+    });
+
+    const slider = wrapper.find('.slider-stub');
+    expect(slider.attributes('data-default-value')).toBe('1');
   });
 
   it('resets volume to 100% when reset button is clicked', async () => {

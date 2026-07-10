@@ -114,7 +114,9 @@ const mockWorkspaceStore = vi.hoisted(() => {
     isFeatureEnabled: vi.fn(() => false),
     userSettings: {
       timeline: {
+        defaultAudioFadeDurationUs: 1_000_000,
         defaultStaticClipDurationUs: 5_000_000,
+        defaultTransitionDurationUs: 2_000_000,
         snapThresholdPx: 10,
         snapping: {
           timelineEdges: true,
@@ -130,6 +132,7 @@ const mockWorkspaceStore = vi.hoisted(() => {
       },
       projectDefaults: {
         audioScrubbingEnabled: true,
+        defaultAudioFadeCurve: 'linear',
       },
       experimentalFeatures: false,
       ui: {

@@ -25,6 +25,11 @@ export interface FastCatPublicadorIntegrationSettings {
   bearerToken: string;
 }
 
+export const MIN_DEFAULT_DURATION_US = 100_000;
+export const MAX_DEFAULT_FADE_DURATION_US = 100_000_000;
+export const MAX_DEFAULT_TRANSITION_DURATION_US = 100_000_000;
+export const MAX_DEFAULT_STATIC_CLIP_DURATION_US = 3_600_000_000;
+
 export interface ManualExternalApiSettings {
   enabled: boolean;
   baseUrl: string;
@@ -64,6 +69,8 @@ export interface FastCatUserSettings {
   timeline: {
     /** Snap threshold in pixels. Used as snapping area size for clips/playhead/markers. */
     snapThresholdPx: number;
+    /** Default audio fade duration in microseconds */
+    defaultAudioFadeDurationUs: number;
     /** Default transition duration in microseconds */
     defaultTransitionDurationUs: number;
     /** Default duration for static clips (images, text, etc) in microseconds */
@@ -240,6 +247,7 @@ export const DEFAULT_USER_SETTINGS: FastCatUserSettings = {
   openLastProjectOnStart: false,
   timeline: {
     snapThresholdPx: 8,
+    defaultAudioFadeDurationUs: 1_000_000,
     defaultTransitionDurationUs: 2_000_000,
     defaultStaticClipDurationUs: 5_000_000,
     snapping: {
@@ -297,7 +305,7 @@ export const DEFAULT_USER_SETTINGS: FastCatUserSettings = {
     isCustomResolution: false,
     sampleRate: 48000,
     audioDeclickDurationUs: 5_000,
-    defaultAudioFadeCurve: 'logarithmic',
+    defaultAudioFadeCurve: 'linear',
     audioScrubbingEnabled: true,
   },
   integrations: {

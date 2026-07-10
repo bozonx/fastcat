@@ -30,8 +30,10 @@ describe('SettingsGeneral', () => {
     mockWorkspaceStore.userSettings.deleteWithoutConfirmation = true;
     mockWorkspaceStore.userSettings.experimentalFeatures = true;
     mockWorkspaceStore.userSettings.stopFrames.qualityPercent = 50;
+    mockWorkspaceStore.userSettings.timeline.defaultAudioFadeDurationUs = 2_500_000;
     mockWorkspaceStore.userSettings.timeline.defaultTransitionDurationUs = 1_000_000;
     mockWorkspaceStore.userSettings.timeline.defaultStaticClipDurationUs = 1_000_000;
+    mockWorkspaceStore.userSettings.projectDefaults.defaultAudioFadeCurve = 'logarithmic';
     mockWorkspaceStore.userSettings.ui.interfaceScale = 20;
     mockWorkspaceStore.userSettings.history.maxEntries = 999;
     mockWorkspaceStore.userSettings.backup.enabled = false;
@@ -62,11 +64,17 @@ describe('SettingsGeneral', () => {
     expect(mockWorkspaceStore.userSettings.stopFrames.qualityPercent).toBe(
       DEFAULT_USER_SETTINGS.stopFrames.qualityPercent,
     );
+    expect(mockWorkspaceStore.userSettings.timeline.defaultAudioFadeDurationUs).toBe(
+      DEFAULT_USER_SETTINGS.timeline.defaultAudioFadeDurationUs,
+    );
     expect(mockWorkspaceStore.userSettings.timeline.defaultTransitionDurationUs).toBe(
       DEFAULT_USER_SETTINGS.timeline.defaultTransitionDurationUs,
     );
     expect(mockWorkspaceStore.userSettings.timeline.defaultStaticClipDurationUs).toBe(
       DEFAULT_USER_SETTINGS.timeline.defaultStaticClipDurationUs,
+    );
+    expect(mockWorkspaceStore.userSettings.projectDefaults.defaultAudioFadeCurve).toBe(
+      DEFAULT_USER_SETTINGS.projectDefaults.defaultAudioFadeCurve,
     );
     expect(mockWorkspaceStore.userSettings.ui.interfaceScale).toBe(
       DEFAULT_USER_SETTINGS.ui.interfaceScale,

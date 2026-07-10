@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
 import { reactive } from 'vue';
 import SettingsUi from '~/components/settings/SettingsUi.vue';
+import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
 
 vi.mock('~/components/ui/UiFormField.vue', () => ({
   default: {
@@ -19,9 +20,17 @@ vi.mock('~/components/ui/UiSelect.vue', () => ({
   },
 }));
 
+vi.mock('~/components/ui/UiConfirmModal.vue', () => ({
+  default: {
+    name: 'UiConfirmModal',
+    template: '<div><slot /></div>',
+  },
+}));
+
 const mockWorkspaceStore = reactive({
   userSettings: {
     ui: {
+      interfaceScale: 14,
       clipThumbnailMode: 'standard',
       defaultAudioWaveformMode: 'half',
     },
@@ -69,5 +78,16 @@ describe('SettingsUi', () => {
     await selects[1].setValue('full');
 
     expect(mockWorkspaceStore.userSettings.ui.defaultAudioWaveformMode).toBe('full');
+  });
+
+  it('resets UI settings to defaults', async () => {
+    mockWorkspaceStore.userSettings.ui.clipThumbnailMode = 'none';
+    mockWorkspaceStore.userSettings.ui.defaultAudioWaveformMode = 'full';
+
+    const component = await mountSuspended(SettingsUi);
+    await component.find('button').trigger('click');
+    await component.findComponent({ name: 'UiConfirmModal' }).vm.$emit('confirm');
+
+    expect(mockWorkspaceStore.userSettings.ui).toEqual(DEFAULT_USER_SETTINGS.ui);
   });
 });

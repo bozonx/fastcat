@@ -250,7 +250,12 @@ export function useMobileTimelineDrawers() {
     isClipPropertiesDrawerOpen.value = false;
     isLongPress.value = false;
 
-    if (suppressDrawerSelectionClear.value) {
+    if (
+      suppressDrawerSelectionClear.value ||
+      isTrimDrawerOpen.value ||
+      isTransitionsPanelOpen.value ||
+      isDeleteDrawerOpen.value
+    ) {
       return;
     }
 

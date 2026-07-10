@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import UiWheelSlider from '~/components/ui/UiWheelSlider.vue';
 import { useUiStore } from '~/stores/ui.store';
 import { storeToRefs } from 'pinia';
 
@@ -59,13 +60,14 @@ function onVolumeUpdate(v: number | undefined) {
           @click.stop
         >
           <div class="flex-1 w-full flex items-center justify-center">
-            <USlider
+            <UiWheelSlider
               :min="0"
               :max="2"
               :step="0.01"
+              :default-value="1"
               :model-value="monitorMuted ? 0 : monitorVolume"
               orientation="horizontal"
-              class="w-full"
+              slider-class="w-full"
               @update:model-value="onVolumeUpdate"
             />
           </div>

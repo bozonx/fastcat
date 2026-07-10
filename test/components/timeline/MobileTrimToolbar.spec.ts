@@ -67,7 +67,7 @@ describe('MobileTrimToolbar', () => {
     };
   });
 
-  it('renders manual trim title and clip name', async () => {
+  it('renders manual trim title without clip name', async () => {
     const wrapper = await mountSuspended(MobileTrimToolbar, {
       global: {
         stubs: {
@@ -80,7 +80,7 @@ describe('MobileTrimToolbar', () => {
     expect(wrapper.text()).toContain('fastcat.timeline.manualTrim');
     expect(wrapper.text()).toContain('fastcat.timeline.trimStart');
     expect(wrapper.text()).toContain('fastcat.timeline.trimEnd');
-    expect(wrapper.text()).toContain('Test Clip');
+    expect(wrapper.text()).not.toContain('Test Clip');
   });
 
   it('emits trim-start events for manual trim areas', async () => {

@@ -1,5 +1,12 @@
 import { z } from 'zod';
-import { DEFAULT_USER_SETTINGS, type FastCatUserSettings } from '../defaults';
+import {
+  DEFAULT_USER_SETTINGS,
+  MAX_DEFAULT_FADE_DURATION_US,
+  MAX_DEFAULT_STATIC_CLIP_DURATION_US,
+  MAX_DEFAULT_TRANSITION_DURATION_US,
+  MIN_DEFAULT_DURATION_US,
+  type FastCatUserSettings,
+} from '../defaults';
 import {
   CLICK_ACTIONS,
   CLIP_DRAG_ACTIONS,
@@ -82,13 +89,20 @@ export function normalizeTimelineSettings(raw: unknown): FastCatUserSettings['ti
         .number()
         .min(1)
         .catch(DEFAULT_USER_SETTINGS.timeline.snapThresholdPx),
+      defaultAudioFadeDurationUs: z.coerce
+        .number()
+        .min(MIN_DEFAULT_DURATION_US)
+        .max(MAX_DEFAULT_FADE_DURATION_US)
+        .catch(DEFAULT_USER_SETTINGS.timeline.defaultAudioFadeDurationUs),
       defaultTransitionDurationUs: z.coerce
         .number()
-        .min(0)
+        .min(MIN_DEFAULT_DURATION_US)
+        .max(MAX_DEFAULT_TRANSITION_DURATION_US)
         .catch(DEFAULT_USER_SETTINGS.timeline.defaultTransitionDurationUs),
       defaultStaticClipDurationUs: z.coerce
         .number()
-        .min(0)
+        .min(MIN_DEFAULT_DURATION_US)
+        .max(MAX_DEFAULT_STATIC_CLIP_DURATION_US)
         .catch(DEFAULT_USER_SETTINGS.timeline.defaultStaticClipDurationUs),
       snapping: snapSchema,
       frameSnapMode: z.enum(['free', 'frames']).catch(DEFAULT_USER_SETTINGS.timeline.frameSnapMode),

@@ -9,6 +9,7 @@ describe('DEFAULT_USER_SETTINGS', () => {
 
   it('has timeline defaults', () => {
     expect(DEFAULT_USER_SETTINGS.timeline.snapThresholdPx).toBe(8);
+    expect(DEFAULT_USER_SETTINGS.timeline.defaultAudioFadeDurationUs).toBe(1_000_000);
     expect(DEFAULT_USER_SETTINGS.timeline.defaultTransitionDurationUs).toBe(2_000_000);
   });
 
@@ -21,6 +22,7 @@ describe('DEFAULT_USER_SETTINGS', () => {
     expect(DEFAULT_USER_SETTINGS.projectDefaults.width).toBe(1920);
     expect(DEFAULT_USER_SETTINGS.projectDefaults.height).toBe(1080);
     expect(DEFAULT_USER_SETTINGS.projectDefaults.fps).toBe(25);
+    expect(DEFAULT_USER_SETTINGS.projectDefaults.defaultAudioFadeCurve).toBe('linear');
   });
 
   it('uses balanced native monitor sync by default', () => {

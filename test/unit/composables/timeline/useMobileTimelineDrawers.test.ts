@@ -205,6 +205,22 @@ describe('useMobileTimelineDrawers', () => {
     unmount();
   });
 
+  it('keeps clip selection when the clip drawer close is emitted after trim drawer opening', async () => {
+    mockSelectionStore.selectedEntity = { source: 'timeline', kind: 'clip', itemId: 'clip-1' };
+    const { api, unmount } = mountDrawers();
+
+    api.isClipPropertiesDrawerOpen.value = true;
+    api.openClipTrimDrawer();
+    await nextTick();
+
+    api.onClipPropertiesDrawerClose();
+
+    expect(api.isTrimDrawerOpen.value).toBe(true);
+    expect(mockTimelineStore.clearSelection).not.toHaveBeenCalled();
+    expect(mockSelectionStore.clearSelection).not.toHaveBeenCalled();
+    unmount();
+  });
+
   it('clears track selection when a drawer is closed externally', () => {
     mockTimelineStore.selectedTrackId = 'track-1';
     const { api, unmount } = mountDrawers();

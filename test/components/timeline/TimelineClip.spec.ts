@@ -77,9 +77,10 @@ const mockWorkspaceStore = reactive({
   userSettings: {
     hotkeys: { layer1: 'Shift', layer2: 'Control' },
     projectDefaults: {
-      defaultAudioFadeCurve: 'logarithmic',
+      defaultAudioFadeCurve: 'linear',
     },
     timeline: {
+      defaultAudioFadeDurationUs: 500000,
       defaultTransitionDurationUs: 1000000,
     },
   },
@@ -392,8 +393,8 @@ describe('TimelineClip', () => {
     expect(trimStart.style.bottom).toBe('0px');
     expect(audioFades.style.top).toBe('20px');
     expect(audioFades.style.bottom).toBe('0px');
-    expect(audioFades.dataset.defaultFadeDurationUs).toBe('1000000');
-    expect(audioFades.dataset.defaultFadeCurve).toBe('logarithmic');
+    expect(audioFades.dataset.defaultFadeDurationUs).toBe('500000');
+    expect(audioFades.dataset.defaultFadeCurve).toBe('linear');
   });
 
   it('renders transition overlays in the content band above trim handles', async () => {

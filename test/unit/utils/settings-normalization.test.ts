@@ -58,6 +58,20 @@ describe('settings normalization', () => {
     ).toBe('balanced');
   });
 
+  it('normalizes default timeline durations to sane bounds', () => {
+    const normalized = normalizeUserSettings({
+      timeline: {
+        defaultAudioFadeDurationUs: 20_000,
+        defaultTransitionDurationUs: 500_000_000,
+        defaultStaticClipDurationUs: 4_000_000_000,
+      },
+    });
+
+    expect(normalized.timeline.defaultAudioFadeDurationUs).toBe(1_000_000);
+    expect(normalized.timeline.defaultTransitionDurationUs).toBe(2_000_000);
+    expect(normalized.timeline.defaultStaticClipDurationUs).toBe(5_000_000);
+  });
+
   it('normalizes legacy Pixi renderer settings to WebGPU-first', () => {
     expect(
       normalizeUserSettings({ optimization: { pixiRenderer: 'webgl' } }).optimization.pixiRenderer,

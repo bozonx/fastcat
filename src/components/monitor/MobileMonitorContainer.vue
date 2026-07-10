@@ -559,6 +559,7 @@ function onMonitorButtonPointerUp() {
             />
 
             <UButton
+              v-if="!isFullscreen"
               size="xs"
               variant="ghost"
               color="neutral"

@@ -60,7 +60,7 @@ function resetDefaults() {
       {{ t('videoEditor.settings.proxyInfo') }}
     </div>
 
-    <div class="grid grid-cols-2 gap-4">
+    <div class="flex flex-col gap-4">
       <UiFormField :label="t('videoEditor.settings.proxyMaxPixels')">
         <UiSelect
           v-model="workspaceStore.userSettings.optimization.proxyMaxPixels"
@@ -77,26 +77,28 @@ function resetDefaults() {
         />
       </UiFormField>
 
-      <UiFormField :label="t('videoEditor.settings.proxyVideoBitrate')">
-        <UiWheelNumberInput
-          v-model="workspaceStore.userSettings.optimization.proxyVideoBitrateMbps"
-          :min="0.1"
-          :max="50"
-          :step="0.1"
-          :wheel-step-multiplier="10"
-          full-width
-        />
-      </UiFormField>
+      <div class="grid grid-cols-2 gap-4">
+        <UiFormField :label="t('videoEditor.settings.proxyVideoBitrate')">
+          <UiWheelNumberInput
+            v-model="workspaceStore.userSettings.optimization.proxyVideoBitrateMbps"
+            :min="0.1"
+            :max="50"
+            :step="0.1"
+            :wheel-step-multiplier="10"
+            full-width
+          />
+        </UiFormField>
 
-      <UiFormField :label="t('videoEditor.settings.proxyAudioBitrate')">
-        <UiWheelNumberInput
-          v-model="workspaceStore.userSettings.optimization.proxyAudioBitrateKbps"
-          :min="32"
-          :max="512"
-          :step="16"
-          full-width
-        />
-      </UiFormField>
+        <UiFormField :label="t('videoEditor.settings.proxyAudioBitrate')">
+          <UiWheelNumberInput
+            v-model="workspaceStore.userSettings.optimization.proxyAudioBitrateKbps"
+            :min="32"
+            :max="512"
+            :step="16"
+            full-width
+          />
+        </UiFormField>
+      </div>
     </div>
 
     <label

@@ -152,11 +152,5 @@ function onEnd(event: TouchEvent) {
         </div>
       </div>
     </div>
-
-    <div v-if="currentClipAndTrack" class="px-2 pb-1 flex justify-center">
-      <span class="text-[8px] text-ui-text-muted uppercase font-bold tracking-[0.2em] truncate">
-        {{ currentClipAndTrack.item.name }}
-      </span>
-    </div>
   </div>
 </template>

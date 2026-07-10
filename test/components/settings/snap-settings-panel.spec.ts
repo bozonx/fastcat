@@ -3,12 +3,6 @@ import { mountSuspended } from '@nuxt/test-utils/runtime';
 import { reactive, ref, computed } from 'vue';
 import SnapSettingsPanel from '~/components/settings/SnapSettingsPanel.vue';
 
-const isMobileLayout = ref(false);
-
-vi.mock('~/composables/useMobileLayout', () => ({
-  useMobileLayout: () => ({ isMobileLayout }),
-}));
-
 vi.mock('~/components/ui/UiSliderInput.vue', () => ({
   default: {
     props: ['modelValue', 'min', 'max', 'step', 'unit', 'label', 'defaultValue'],
@@ -22,10 +16,6 @@ const mockSettingsStore = reactive({
   toolbarSnapMode: 'normal',
   selectToolbarSnapMode: vi.fn(),
 });
-
-vi.mock('~/stores/timeline-settings.store', () => ({
-  useTimelineSettingsStore: () => mockSettingsStore,
-}));
 
 vi.mock('~/composables/timeline/useSnapSettings', () => ({
   useSnapSettings: () => ({
@@ -62,84 +52,17 @@ const stubs = {
 
 describe('SnapSettingsPanel', () => {
   beforeEach(() => {
-    isMobileLayout.value = false;
+    mockSettingsStore.toolbarSnapMode = 'normal';
     vi.clearAllMocks();
   });
 
-  describe('desktop layout', () => {
-    it('renders snap mode buttons', async () => {
-      const component = await mountSuspended(SnapSettingsPanel, {
-        global: { stubs },
-      });
-
-      const buttons = component.findAll('button');
-      expect(buttons.length).toBe(3);
+  it('does not render snap mode toggles in settings', async () => {
+    const component = await mountSuspended(SnapSettingsPanel, {
+      global: { stubs },
     });
 
-    it('highlights active snap mode', async () => {
-      mockSettingsStore.toolbarSnapMode = 'normal';
-
-      const component = await mountSuspended(SnapSettingsPanel, {
-        global: { stubs },
-      });
-
-      const buttons = component.findAll('button');
-      expect(buttons[1].classes()).toContain('bg-primary-500');
-    });
-
-    it('calls selectToolbarSnapMode when mode button is clicked', async () => {
-      const component = await mountSuspended(SnapSettingsPanel, {
-        global: { stubs },
-      });
-
-      const buttons = component.findAll('button');
-      await buttons[2].trigger('click');
-
-      expect(mockSettingsStore.selectToolbarSnapMode).toHaveBeenCalledWith('magnetic');
-    });
-  });
-
-  describe('mobile layout', () => {
-    beforeEach(() => {
-      isMobileLayout.value = true;
-    });
-
-    it('renders switch instead of buttons in mobile layout', async () => {
-      const component = await mountSuspended(SnapSettingsPanel, {
-        global: { stubs },
-      });
-
-      expect(component.findAll('button').length).toBe(0);
-      expect(component.find('.switch-mock').exists()).toBe(true);
-    });
-
-    it('calls selectToolbarSnapMode with snap when switch is toggled on', async () => {
-      mockSettingsStore.toolbarSnapMode = 'no_snap';
-
-      const component = await mountSuspended(SnapSettingsPanel, {
-        global: { stubs },
-      });
-
-      const toggle = component.find('.switch-mock');
-      expect((toggle.element as HTMLInputElement).checked).toBe(false);
-
-      await toggle.setValue(true);
-      expect(mockSettingsStore.selectToolbarSnapMode).toHaveBeenCalledWith('snap');
-    });
-
-    it('calls selectToolbarSnapMode with no_snap when switch is toggled off', async () => {
-      mockSettingsStore.toolbarSnapMode = 'snap';
-
-      const component = await mountSuspended(SnapSettingsPanel, {
-        global: { stubs },
-      });
-
-      const toggle = component.find('.switch-mock');
-      expect((toggle.element as HTMLInputElement).checked).toBe(true);
-
-      await toggle.setValue(false);
-      expect(mockSettingsStore.selectToolbarSnapMode).toHaveBeenCalledWith('no_snap');
-    });
+    expect(component.findAll('button')).toHaveLength(0);
+    expect(component.find('.switch-mock').exists()).toBe(false);
   });
 
   describe('shared features', () => {

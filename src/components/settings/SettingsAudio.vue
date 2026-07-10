@@ -2,7 +2,6 @@
 import { ref, computed, onMounted, watch } from 'vue';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 import UiFormField from '~/components/ui/UiFormField.vue';
-import UiButtonGroup from '~/components/ui/UiButtonGroup.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
@@ -92,8 +91,6 @@ function resetDefaults() {
     DEFAULT_USER_SETTINGS.projectDefaults.audioDeclickDurationUs;
   workspaceStore.userSettings.projectDefaults.audioScrubbingEnabled =
     DEFAULT_USER_SETTINGS.projectDefaults.audioScrubbingEnabled;
-  workspaceStore.userSettings.projectDefaults.defaultAudioFadeCurve =
-    DEFAULT_USER_SETTINGS.projectDefaults.defaultAudioFadeCurve;
   workspaceStore.userSettings.audioEngine.bufferSize = DEFAULT_USER_SETTINGS.audioEngine.bufferSize;
   workspaceStore.userSettings.audioEngine.backend = DEFAULT_USER_SETTINGS.audioEngine.backend;
   isResetConfirmOpen.value = false;
@@ -203,22 +200,6 @@ const hasDiagnostics = computed(() => audioCodecRows.value.length > 0);
       </span>
       <USwitch v-model="workspaceStore.userSettings.projectDefaults.audioScrubbingEnabled" />
     </label>
-
-    <UiFormField
-      :label="t('videoEditor.settings.defaultAudioFadeCurveTitle')"
-      :help="t('videoEditor.settings.defaultAudioFadeCurveHint')"
-    >
-      <UiButtonGroup
-        v-model="workspaceStore.userSettings.projectDefaults.defaultAudioFadeCurve"
-        :options="[
-          {
-            label: t('fastcat.clip.audioFade.curve.logarithmic'),
-            value: 'logarithmic',
-          },
-          { label: t('fastcat.clip.audioFade.curve.linear'), value: 'linear' },
-        ]"
-      />
-    </UiFormField>
 
     <UiFormField
       :label="t('videoEditor.settings.projectAudioDeclickTitle')"

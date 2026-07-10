@@ -30,10 +30,7 @@ watch(
 
 <template>
   <div v-if="projectStore.projectSettings" class="space-y-2 pt-2 px-0">
-    <UiFormSectionHeader
-      :title="t('videoEditor.projectSettings.resolutionAndFps')"
-      :info-tooltip="t('videoEditor.projectSettings.resolutionAndFpsTooltip')"
-    />
+    <UiFormSectionHeader :title="t('videoEditor.projectSettings.resolutionAndFps')" />
     <MediaResolutionSettings
       v-model:width="projectStore.projectSettings.project.width"
       v-model:height="projectStore.projectSettings.project.height"
