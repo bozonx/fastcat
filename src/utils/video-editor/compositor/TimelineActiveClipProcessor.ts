@@ -159,7 +159,7 @@ export class TimelineActiveClipProcessor {
 
       if (clip.clipKind === 'text') {
         const hasText = typeof clip.text === 'string' && clip.text.trim().length > 0;
-        if (clip.textDirty && hasText) {
+        if (hasText && (clip.textDirty || !clip.canvas || !clip.ctx)) {
           params.drawTextClip(clip, { width, height });
           clip.textDirty = false;
         }

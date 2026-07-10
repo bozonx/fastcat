@@ -163,6 +163,23 @@ describe('TimelineActiveClipProcessor.process', () => {
     expect(clip.sprite!.visible).toBe(true);
   });
 
+  it('draws text clip when the canvas has not been initialized yet', () => {
+    const processor = new TimelineActiveClipProcessor();
+    const clip = makeClip({
+      clipKind: 'text',
+      text: 'Hello',
+      textDirty: false,
+      canvas: null,
+      ctx: null,
+    });
+    const drawTextClip = vi.fn();
+    const params = makeParams({ activeClips: [clip], drawTextClip });
+    processor.process(params);
+    expect(drawTextClip).toHaveBeenCalled();
+    expect(clip.textDirty).toBe(false);
+    expect(clip.sprite!.visible).toBe(true);
+  });
+
   it('hides text clip when text is empty', () => {
     const processor = new TimelineActiveClipProcessor();
     const clip = makeClip({ clipKind: 'text', text: '   ', textDirty: true });

@@ -1,7 +1,7 @@
 import { CanvasSource, Graphics, ImageSource, Sprite, Texture, type Container } from 'pixi.js';
 import type { LayoutApplier } from './LayoutApplier';
 import type { CompositorClip, CompositorTrack } from './types';
-import { createPlaceholderImageSource } from './placeholderImageSource';
+import { createPlaceholderImageSource, createSolidColorTexture } from './placeholderImageSource';
 
 export interface CreateClipBaseParams {
   itemId: string;
@@ -40,7 +40,7 @@ export class ClipFactory {
       clipType: 'background';
     },
   ): CompositorClip {
-    const sprite = new Sprite(Texture.WHITE);
+    const sprite = new Sprite(createSolidColorTexture('#ffffff'));
     sprite.width = 1;
     sprite.height = 1;
     sprite.visible = false;
