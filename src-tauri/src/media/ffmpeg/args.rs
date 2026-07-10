@@ -107,6 +107,10 @@ pub struct ExtraEncodeFilters<'a> {
     pub extra_filters: &'a [String],
     /// Optional colour-space matrix/range to pin (and tag) on the output.
     pub color: Option<ColorSpec>,
+    /// The input already carries YUV converted with `color`'s matrix (the GPU
+    /// NV12 export path): *declare* the matrix/range on the input (`setparams`)
+    /// instead of converting (`scale=out_color_matrix=…`). Tags are unchanged.
+    pub color_input_declared: bool,
 }
 
 /// Builds the `scale=W:H[...]` filter. When `preserve_aspect` is set, the target
@@ -140,6 +144,7 @@ pub fn push_video_encode_filter_args_with_extra(
         preserve_aspect,
         extra_filters,
         color,
+        color_input_declared,
     } = extra;
     let has_scale = width > 0 && height > 0;
     let with_extra = |tail: String| {
@@ -155,7 +160,13 @@ pub fn push_video_encode_filter_args_with_extra(
     // dimension-preserving `scale` step (no `w:h` ⇒ keep size). It runs before any
     // pixel-format/hwupload conversion so the conversion — not swscale's BT.601 default —
     // decides the matrix. `push_color_tag_args` then tags the stream to match.
-    let color_scale = color.map(|c| format!("scale=out_color_matrix={}:out_range=tv", c.matrix));
+    let color_scale = color.map(|c| {
+        if color_input_declared {
+            format!("setparams=colorspace={}:range=tv", c.space)
+        } else {
+            format!("scale=out_color_matrix={}:out_range=tv", c.matrix)
+        }
+    });
     match hw_mode {
         HwAccelMode::Vaapi => {
             // `format` must be its own filter, not a `scale` option: the scale filter has
@@ -304,6 +315,7 @@ mod tests {
                 preserve_aspect: true,
                 extra_filters: &["fps=24".to_string()],
                 color: None,
+                color_input_declared: false,
             },
         );
         let vf = args
@@ -333,6 +345,7 @@ mod tests {
                 preserve_aspect: true,
                 extra_filters: &["fps=30".to_string()],
                 color: None,
+                color_input_declared: false,
             },
         );
         let vf = args
@@ -378,6 +391,7 @@ mod tests {
                 preserve_aspect: false,
                 extra_filters: &[],
                 color: Some(ColorSpec::for_output_height(1080)),
+                color_input_declared: false,
             },
         );
         let vf = find_arg(&args, "-vf").expect("expected -vf");
@@ -405,6 +419,7 @@ mod tests {
                 preserve_aspect: false,
                 extra_filters: &[],
                 color: Some(ColorSpec::for_output_height(480)),
+                color_input_declared: false,
             },
         );
         let vf = find_arg(&args, "-vf").expect("expected -vf");
@@ -430,6 +445,7 @@ mod tests {
                 preserve_aspect: false,
                 extra_filters: &[],
                 color: Some(ColorSpec::for_output_height(1080)),
+                color_input_declared: false,
             },
         );
         assert!(
@@ -453,6 +469,7 @@ mod tests {
                 preserve_aspect: false,
                 extra_filters: &[],
                 color: Some(ColorSpec::for_output_height(1080)),
+                color_input_declared: false,
             },
         );
         let vf = find_arg(&args, "-vf").expect("expected -vf");

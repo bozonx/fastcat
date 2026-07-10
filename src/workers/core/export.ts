@@ -13,6 +13,11 @@ import {
   getClipRangesS,
   getExportFrameTiming,
 } from './export-helpers';
+import {
+  buildPassthroughVideoTrack,
+  findVideoPassthroughCandidate,
+  writeVideoPassthrough,
+} from './export-video-passthrough';
 import { usToS } from './time';
 import { yieldToEventLoop } from './yield-scheduler';
 import { initEffects } from '../../effects';
@@ -770,6 +775,24 @@ export async function runExport(
         }
         emptyFrameCount++;
       }
+      // Decode-ahead: warm the next frame's decode window (sequential per-clip
+      // iterators → frame cache) while THIS frame sits out encoder backpressure
+      // and the canvas capture below. Fire-and-forget is safe: the compositor
+      // op-queue serializes the prewarm against the next renderFrame, so it can
+      // never race the render path — it only turns the next render's decode into
+      // a cache hit. Same mechanism as monitor playback; without it every export
+      // frame paid a cold from-keyframe decode.
+      if (frameNum + 1 < totalFrames) {
+        const nextFrame = getExportFrameTiming({
+          frameNum: frameNum + 1,
+          totalFrames,
+          durationUs: params.durationUs,
+          fps,
+        });
+        void params.compositor.prewarmVideoFrames(nextFrame.timeUs).catch(() => {
+          // Prewarm is an optimization; a failure must never fail the export.
+        });
+      }
       const backpressureStartMs = nowMsFn();
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await waitForVideoBackpressure(params.videoSource as any);
@@ -990,8 +1013,70 @@ export async function runExport(
         );
       }
 
-      const videoSource =
-        options.videoCodec !== 'none' && localCompositor
+      // Video passthrough: pure remux of a single untouched source clip. Built
+      // per attempt (like the audio passthrough) so a hardware→software retry
+      // gets a fresh, unconsumed packet stream. Any gate failure falls back to
+      // the normal render+encode path below.
+      let videoPassthroughState: Awaited<ReturnType<typeof buildPassthroughVideoTrack>> = null;
+      const passthroughCandidate = findVideoPassthroughCandidate({
+        timelineClips,
+        options,
+        maxDurationUs,
+      });
+      if (passthroughCandidate.ok) {
+        try {
+          videoPassthroughState = await buildPassthroughVideoTrack({
+            clip: passthroughCandidate.clip,
+            options,
+            hostClient,
+            getFile: async (path, handle) =>
+              (await hostClient?.getFileByPath?.(path)) ??
+              (await runResilientWorkerFileIo(handle, () => handle.getFile())),
+            openInput: async (file) => {
+              const {
+                Input,
+                BlobSource,
+                ALL_FORMATS,
+                EncodedPacketSink,
+                EncodedVideoPacketSource,
+              } = await import('mediabunny');
+              const input = new Input({
+                source: new BlobSource(governedBlobWorker(file)),
+                formats: ALL_FORMATS,
+              } as ConstructorParameters<typeof Input>[0]);
+              return {
+                input,
+                // Structural cast: InputVideoTrack satisfies the minimal track
+                // surface buildPassthroughVideoTrack needs.
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                videoTrack: (await input.getPrimaryVideoTrack()) as any,
+                makePacketSink: (track: unknown) =>
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  new EncodedPacketSink(track as any) as unknown as {
+                    packets: () => AsyncIterable<unknown>;
+                  },
+                makeVideoSource: (codec: string) =>
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  new EncodedVideoPacketSource(codec as any) as unknown as {
+                    add: (packet: unknown, meta?: { decoderConfig?: unknown }) => Promise<void>;
+                  },
+                dispose: (openedInput: unknown) => safeDispose(openedInput),
+              };
+            },
+          });
+        } catch (error) {
+          log.warn('[Worker Export] Video passthrough setup failed; re-encoding.', error);
+          videoPassthroughState = null;
+        }
+      } else {
+        log.info(
+          `[Worker Export] video passthrough not applicable: ${passthroughCandidate.reason}`,
+        );
+      }
+
+      const videoSource = videoPassthroughState
+        ? videoPassthroughState.videoSource
+        : options.videoCodec !== 'none' && localCompositor
           ? new CanvasSource(localCompositor.canvas as unknown as HTMLCanvasElement, {
               codec: getBunnyVideoCodec(options.videoCodec),
               fullCodecString,
@@ -1038,13 +1123,22 @@ export async function runExport(
             });
         }
 
-        const videoWriter =
-          videoSource && localCompositor
+        const passthroughState = videoPassthroughState;
+        const videoWriter = passthroughState
+          ? () =>
+              writeVideoPassthrough({
+                state: passthroughState,
+                ensureNotCancelled,
+                onProgress: (progress) => writerProgress.report('video', progress),
+                disposeInput: (input) => safeDispose(input),
+              })
+          : videoSource && localCompositor
             ? () =>
                 encodeFrames({
                   durationUs: maxDurationUs,
                   fps: options.fps,
-                  videoSource,
+                  // Without a passthrough state this is always the CanvasSource.
+                  videoSource: videoSource as InstanceType<typeof CanvasSource>,
                   compositor: localCompositor,
                   writerProgress,
                 })

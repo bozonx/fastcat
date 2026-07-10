@@ -39,6 +39,63 @@ fn base_options() -> NativeExportOptions {
 }
 
 #[test]
+fn nv12_input_declares_matrix_instead_of_converting() {
+    let options = base_options();
+    let args = build_ffmpeg_args(
+        &options,
+        None,
+        1920,
+        1080,
+        30.0,
+        5.0,
+        Path::new("out.mp4"),
+        true,
+    );
+
+    // Input side reads NV12 from stdin (first -pix_fmt is the rawvideo input's).
+    let input_fmt = args.iter().position(|a| a == "-pix_fmt").unwrap();
+    assert_eq!(args[input_fmt + 1], "nv12");
+
+    // The GPU already converted with the BT.709 matrix: the filter chain must
+    // *declare* it (setparams) rather than convert (scale=out_color_matrix).
+    let vf_idx = args.iter().position(|a| a == "-vf").unwrap();
+    let vf = &args[vf_idx + 1];
+    assert!(
+        vf.contains("setparams=colorspace=bt709:range=tv"),
+        "got vf: {vf}"
+    );
+    assert!(!vf.contains("out_color_matrix"), "got vf: {vf}");
+
+    // Colour tags stay pinned exactly like the RGBA path.
+    let cs = args.iter().position(|a| a == "-colorspace").unwrap();
+    assert_eq!(args[cs + 1], "bt709");
+}
+
+#[test]
+fn rgba_input_keeps_matrix_converting_scale_filter() {
+    let options = base_options();
+    let args = build_ffmpeg_args(
+        &options,
+        None,
+        1920,
+        1080,
+        30.0,
+        5.0,
+        Path::new("out.mp4"),
+        false,
+    );
+    let input_fmt = args.iter().position(|a| a == "-pix_fmt").unwrap();
+    assert_eq!(args[input_fmt + 1], "rgba");
+    let vf_idx = args.iter().position(|a| a == "-vf").unwrap();
+    let vf = &args[vf_idx + 1];
+    assert!(
+        vf.contains("scale=out_color_matrix=bt709:out_range=tv"),
+        "got vf: {vf}"
+    );
+    assert!(!vf.contains("setparams"), "got vf: {vf}");
+}
+
+#[test]
 fn test_build_ffmpeg_args_webm_forces_opus() {
     let options = NativeExportOptions {
         width: 1920,
@@ -74,6 +131,7 @@ fn test_build_ffmpeg_args_webm_forces_opus() {
         30.0,
         5.0,
         Path::new("output.webm"),
+        false,
     );
     let mut idx = 0;
     let mut found_opus = false;
@@ -113,6 +171,7 @@ fn test_build_ffmpeg_args_video_export_matrix() {
             30.0,
             1.0,
             Path::new(&format!("output.{format}")),
+            false,
         );
 
         assert!(
@@ -151,6 +210,7 @@ fn test_build_ffmpeg_args_audio_export_matrix() {
             30.0,
             1.0,
             Path::new(&format!("output.{format}")),
+            false,
         );
 
         assert!(
@@ -244,6 +304,7 @@ fn test_build_ffmpeg_args_vp9_alpha_adds_auto_alt_ref() {
         30.0,
         5.0,
         Path::new("output.webm"),
+        false,
     );
     let mut found_yuva = false;
     let mut found_auto_alt_ref = false;
@@ -297,6 +358,7 @@ fn test_build_ffmpeg_args_mp4_ignores_alpha() {
         30.0,
         5.0,
         Path::new("output.mp4"),
+        false,
     );
     assert!(
         !args.contains(&"yuva420p".to_string()),
@@ -327,6 +389,7 @@ fn test_build_ffmpeg_args_adds_metadata_cbr_and_keyframes() {
         30.0,
         5.0,
         Path::new("output.mp4"),
+        false,
     );
 
     assert!(args.windows(2).any(|pair| pair == ["-g", "60"]));
@@ -365,6 +428,7 @@ fn test_build_ffmpeg_args_pins_cfr_and_caps_output_duration() {
         30.0,
         5.0,
         Path::new("output.mp4"),
+        false,
     );
     assert!(args.windows(2).any(|p| p == ["-fps_mode", "cfr"]));
     // Output `-r` (distinct from the input `-r` on the rawvideo demuxer).
@@ -392,6 +456,7 @@ fn test_mkv_keeps_literal_author_and_tags_metadata() {
         30.0,
         5.0,
         Path::new("output.mkv"),
+        false,
     );
     assert!(args
         .windows(2)
@@ -419,6 +484,7 @@ fn test_build_ffmpeg_args_audio_only_skips_rawvideo_input() {
         30.0,
         5.0,
         Path::new("output.wav"),
+        false,
     );
 
     assert!(args.windows(2).any(|pair| pair == ["-vn", "-c:a"]));
@@ -448,6 +514,7 @@ fn test_lossless_audio_skips_bitrate() {
         30.0,
         5.0,
         Path::new("output.flac"),
+        false,
     );
     assert!(args.windows(2).any(|pair| pair == ["-c:a", "flac"]));
     // FLAC ignores a target bitrate; -b:a must not be emitted.
@@ -473,6 +540,7 @@ fn test_alpha_mkv_av1_does_not_emit_yuva() {
         30.0,
         5.0,
         Path::new("output.mkv"),
+        false,
     );
     assert!(!args.contains(&"yuva420p".to_string()));
     assert!(!args.contains(&"-auto-alt-ref".to_string()));
@@ -496,6 +564,7 @@ fn test_alpha_mkv_vp9_emits_yuva() {
         30.0,
         5.0,
         Path::new("output.mkv"),
+        false,
     );
     assert!(args.contains(&"yuva420p".to_string()));
     assert!(args.windows(2).any(|pair| pair == ["-auto-alt-ref", "0"]));
@@ -522,7 +591,16 @@ fn test_build_ffmpeg_args_tags_bt709_for_hd_vello_path() {
         format: "mp4".to_string(),
         ..base_options()
     };
-    let args = build_ffmpeg_args(&options, None, 1920, 1080, 30.0, 5.0, Path::new("out.mp4"));
+    let args = build_ffmpeg_args(
+        &options,
+        None,
+        1920,
+        1080,
+        30.0,
+        5.0,
+        Path::new("out.mp4"),
+        false,
+    );
     let vf = args
         .iter()
         .position(|a| a == "-vf")

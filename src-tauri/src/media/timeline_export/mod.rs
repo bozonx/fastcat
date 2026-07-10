@@ -80,6 +80,27 @@ const EXPORT_MEMORY_TRACE_INTERVAL_FRAMES: u64 = 900;
 const EXPORT_MEMORY_TRACE_RSS_STEP_MB: u64 = 256;
 const EXPORT_MEMORY_LOW_AVAILABLE_MB: u64 = 1024;
 
+/// GPU-side RGBA→NV12 conversion for the rawvideo-stdin path: cuts readback and
+/// pipe volume to 1.5 B/px and removes ffmpeg's swscale RGB→YUV from the encode
+/// hot path. Alpha export must keep RGBA (yuva420p needs the alpha channel) and
+/// NV12 needs even dimensions. `FASTCAT_EXPORT_GPU_NV12=0` is the escape hatch.
+fn should_use_gpu_nv12(export_alpha: bool, width: u32, height: u32) -> bool {
+    if export_alpha
+        || width == 0
+        || height == 0
+        || !width.is_multiple_of(2)
+        || !height.is_multiple_of(2)
+    {
+        return false;
+    }
+    static FLAG: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *FLAG.get_or_init(|| {
+        std::env::var("FASTCAT_EXPORT_GPU_NV12")
+            .map(|v| v != "0" && !v.eq_ignore_ascii_case("false"))
+            .unwrap_or(true)
+    })
+}
+
 fn export_trace_enabled() -> bool {
     static FLAG: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
     *FLAG.get_or_init(|| {
@@ -554,6 +575,12 @@ pub fn export_timeline(
             vello::peniko::Color::BLACK
         };
 
+        // Must be decided once and passed to BOTH the ffmpeg args and the GPU
+        // readback session — they have to agree on the stdin pixel format.
+        let gpu_nv12 = direct.is_none()
+            && is_video
+            && should_use_gpu_nv12(export_uses_alpha(opts), width, height);
+
         let args = match direct {
             Some(plan) => build_direct_ffmpeg_args(
                 opts,
@@ -572,6 +599,7 @@ pub fn export_timeline(
                 fps,
                 frame_count as f64 / fps,
                 target_path,
+                gpu_nv12,
             ),
         };
         let ffmpeg_cmd = opts.hw.ffmpeg_cmd();
@@ -851,8 +879,21 @@ pub fn export_timeline(
                         // readback buffers bounded.
                         let is_4k = width as u64 * height as u64 >= 3840 * 2160;
                         let readback_depth = if is_4k { 3 } else { 4 };
+                        let readback_format = if gpu_nv12 {
+                            crate::compositor::ReadbackFormat::Nv12(
+                                crate::compositor::Nv12Matrix::for_output_height(height),
+                            )
+                        } else {
+                            crate::compositor::ReadbackFormat::Rgba
+                        };
                         let mut pipeline = compositor
-                            .begin_pipelined_readback(dev_id, width, height, readback_depth)
+                            .begin_pipelined_readback_with_format(
+                                dev_id,
+                                width,
+                                height,
+                                readback_depth,
+                                readback_format,
+                            )
                             .context("export: failed to create pipelined readback")?;
                         let mut trace =
                             export_trace_enabled().then(|| ExportStageTrace::new("gpu-readback"));

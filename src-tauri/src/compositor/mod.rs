@@ -29,7 +29,11 @@ mod render_telemetry;
 
 mod text_engine;
 
+mod nv12;
+pub use nv12::Nv12Matrix;
+
 mod readback;
 pub(crate) use readback::PipelinedReadback;
+pub use readback::ReadbackFormat;
 
 mod gpu_utils;

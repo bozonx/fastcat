@@ -677,6 +677,7 @@ fn build_convert_ffmpeg_args(
                     // Convert/proxy transcode a real source whose colour metadata ffmpeg
                     // already propagates; don't re-tag.
                     color: None,
+                    color_input_declared: false,
                 },
             );
 

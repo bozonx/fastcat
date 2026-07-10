@@ -1379,14 +1379,35 @@ impl Compositor {
         height: u32,
         depth: usize,
     ) -> Result<PipelinedReadback> {
-        let device_handle = &self.devices.render_cx.devices[dev_id];
-        Ok(PipelinedReadback::new(
-            &device_handle.device,
+        self.begin_pipelined_readback_with_format(
             dev_id,
             width,
             height,
             depth,
-        ))
+            crate::compositor::ReadbackFormat::Rgba,
+        )
+    }
+
+    /// Format-aware variant: `ReadbackFormat::Nv12` converts each frame to NV12
+    /// on the GPU before readback (export fast path, 1.5 B/px instead of 4).
+    pub fn begin_pipelined_readback_with_format(
+        &mut self,
+        dev_id: usize,
+        width: u32,
+        height: u32,
+        depth: usize,
+        format: crate::compositor::ReadbackFormat,
+    ) -> Result<PipelinedReadback> {
+        let device_handle = &self.devices.render_cx.devices[dev_id];
+        PipelinedReadback::with_format(
+            &device_handle.device,
+            Some(&device_handle.queue),
+            dev_id,
+            width,
+            height,
+            depth,
+            format,
+        )
     }
 
     /// Renders a scene and returns pixels from the oldest ready frame,
@@ -1434,27 +1455,43 @@ impl Compositor {
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("pipelined-readback"),
         });
-        encoder.copy_texture_to_buffer(
-            wgpu::TexelCopyTextureInfo {
-                texture: &slot.texture,
-                mip_level: 0,
-                origin: wgpu::Origin3d::ZERO,
-                aspect: wgpu::TextureAspect::All,
-            },
-            wgpu::TexelCopyBufferInfo {
-                buffer: &slot.buffer,
-                layout: wgpu::TexelCopyBufferLayout {
-                    offset: 0,
-                    bytes_per_row: Some(slot.aligned_row_bytes as u32),
-                    rows_per_image: Some(session.height),
-                },
-            },
-            wgpu::Extent3d {
-                width: session.width,
-                height: session.height,
-                depth_or_array_layers: 1,
-            },
-        );
+        match (&session.nv12, &slot.nv12_storage, &slot.nv12_bind_group) {
+            (Some(converter), Some(storage), Some(bind_group)) => {
+                // NV12 fast path: compute-convert the rendered RGBA texture into
+                // the slot's padded NV12 storage buffer, then stage it for mapping.
+                converter.encode(&mut encoder, bind_group);
+                encoder.copy_buffer_to_buffer(
+                    storage,
+                    0,
+                    &slot.buffer,
+                    0,
+                    converter.plan.padded_bytes(),
+                );
+            }
+            _ => {
+                encoder.copy_texture_to_buffer(
+                    wgpu::TexelCopyTextureInfo {
+                        texture: &slot.texture,
+                        mip_level: 0,
+                        origin: wgpu::Origin3d::ZERO,
+                        aspect: wgpu::TextureAspect::All,
+                    },
+                    wgpu::TexelCopyBufferInfo {
+                        buffer: &slot.buffer,
+                        layout: wgpu::TexelCopyBufferLayout {
+                            offset: 0,
+                            bytes_per_row: Some(slot.aligned_row_bytes as u32),
+                            rows_per_image: Some(session.height),
+                        },
+                    },
+                    wgpu::Extent3d {
+                        width: session.width,
+                        height: session.height,
+                        depth_or_array_layers: 1,
+                    },
+                );
+            }
+        }
         queue.submit([encoder.finish()]);
 
         let slice = slot.buffer.slice(..);
@@ -1520,9 +1557,9 @@ impl Compositor {
     ) -> Result<()> {
         let device_handle = &self.devices.render_cx.devices[session.dev_id];
         let device = &device_handle.device;
-        let slot = &mut session.slots[slot_idx];
+        let state = std::mem::replace(&mut session.slots[slot_idx].state, SlotState::Idle);
 
-        match std::mem::replace(&mut slot.state, SlotState::Idle) {
+        match state {
             SlotState::Idle => Ok(()),
             SlotState::InFlight { frame, map_rx } => {
                 device.poll(wgpu::PollType::wait_indefinitely()).ok();
@@ -1530,16 +1567,16 @@ impl Compositor {
                     .recv()
                     .map_err(|_| anyhow!("buffer map disconnected"))?
                     .map_err(|e| anyhow!("buffer map: {e:?}"))?;
-                let guard = UnmapGuard::new(&slot.buffer);
-                let mapped = slot.buffer.slice(..).get_mapped_range();
-                let mut out = Vec::with_capacity(session.row_bytes * session.height as usize);
-                for row in 0..session.height as usize {
-                    let start = row * slot.aligned_row_bytes;
-                    out.extend_from_slice(&mapped[start..start + session.row_bytes]);
-                }
-                drop(mapped);
-                slot.buffer.unmap();
-                guard.disarm();
+                let out = {
+                    let slot = &session.slots[slot_idx];
+                    let guard = UnmapGuard::new(&slot.buffer);
+                    let mapped = slot.buffer.slice(..).get_mapped_range();
+                    let out = session.repack_mapped(slot_idx, &mapped);
+                    drop(mapped);
+                    slot.buffer.unmap();
+                    guard.disarm();
+                    out
+                };
                 session.push_pending(frame, out);
                 Ok(())
             }
@@ -1629,6 +1666,77 @@ mod tests {
             video_tracks: Vec::new(),
             master_effects: Vec::new(),
             effect_quality: EffectQuality::default(),
+        }
+    }
+
+    #[test]
+    fn pipelined_nv12_readback_converts_solid_color() {
+        if !Compositor::is_gpu_available() {
+            return;
+        }
+
+        let mut compositor = Compositor::new();
+        let dev_id = compositor
+            .ensure_offscreen_device()
+            .expect("offscreen device");
+        let (w, h) = (64u32, 32u32);
+        let mut session = compositor
+            .begin_pipelined_readback_with_format(
+                dev_id,
+                w,
+                h,
+                2,
+                crate::compositor::ReadbackFormat::Nv12(crate::compositor::Nv12Matrix::Bt709),
+            )
+            .expect("nv12 readback session");
+
+        let scene = Scene {
+            width: w,
+            height: h,
+            time: 0.0,
+            background: Color::from_rgba8(255, 0, 0, 255),
+            layers: Vec::new(),
+            video_tracks: Vec::new(),
+            master_effects: Vec::new(),
+            effect_quality: EffectQuality::default(),
+        };
+
+        let mut frames = Vec::new();
+        if let Some(frame) = compositor
+            .render_scene_to_pixels_pipelined(&mut session, &scene)
+            .expect("pipelined nv12 render")
+        {
+            frames.push(frame);
+        }
+        frames.extend(session.drain(&mut compositor).expect("drain nv12"));
+        assert_eq!(frames.len(), 1);
+
+        let frame = &frames[0];
+        assert_eq!(frame.len(), (w * h * 3 / 2) as usize);
+
+        let (ey, ecb, ecr) = crate::compositor::nv12::reference_yuv(
+            [1.0, 0.0, 0.0],
+            crate::compositor::Nv12Matrix::Bt709,
+        );
+        let y_plane = &frame[..(w * h) as usize];
+        for (i, &b) in y_plane.iter().enumerate() {
+            assert!(
+                (b as i16 - ey as i16).abs() <= 2,
+                "Y[{i}] = {b}, expected ≈ {ey}"
+            );
+        }
+        let uv_plane = &frame[(w * h) as usize..];
+        for (i, pair) in uv_plane.chunks_exact(2).enumerate() {
+            assert!(
+                (pair[0] as i16 - ecb as i16).abs() <= 2,
+                "U[{i}] = {}, expected ≈ {ecb}",
+                pair[0]
+            );
+            assert!(
+                (pair[1] as i16 - ecr as i16).abs() <= 2,
+                "V[{i}] = {}, expected ≈ {ecr}",
+                pair[1]
+            );
         }
     }
 

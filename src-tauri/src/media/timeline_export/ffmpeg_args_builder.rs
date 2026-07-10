@@ -5,6 +5,7 @@ use super::super::ffmpeg::utils::*;
 use super::super::types::HwAccelMode;
 use super::options::NativeExportOptions;
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn build_ffmpeg_args(
     options: &NativeExportOptions,
     audio_input: Option<&Path>,
@@ -13,6 +14,7 @@ pub(crate) fn build_ffmpeg_args(
     fps: f64,
     duration_sec: f64,
     target_path: &Path,
+    nv12_input: bool,
 ) -> Vec<String> {
     let export_alpha = export_uses_alpha(options);
     let hw_mode = resolve_export_hw_mode(options);
@@ -33,11 +35,12 @@ pub(crate) fn build_ffmpeg_args(
     // Audio-only path: no rawvideo stdin.
     if is_video {
         args.extend([
-            // Video comes from stdin as raw RGBA.
+            // Video comes from stdin as raw frames: RGBA normally, NV12 when the
+            // GPU already converted (see `should_use_gpu_nv12`).
             "-f".to_string(),
             "rawvideo".to_string(),
             "-pix_fmt".to_string(),
-            "rgba".to_string(),
+            if nv12_input { "nv12" } else { "rgba" }.to_string(),
             "-s".to_string(),
             format!("{width}x{height}"),
             "-r".to_string(),
@@ -100,6 +103,7 @@ pub(crate) fn build_ffmpeg_args(
                 preserve_aspect: false,
                 extra_filters: &extra,
                 color,
+                color_input_declared: nv12_input,
             },
         );
     } else {
@@ -331,6 +335,7 @@ pub(crate) fn build_direct_ffmpeg_args(
             // Direct transcode decodes a real source; ffmpeg already carries its colour
             // metadata through, so don't override it.
             color: None,
+            color_input_declared: false,
         },
     );
 

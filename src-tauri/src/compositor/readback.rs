@@ -10,8 +10,19 @@ use std::sync::mpsc::{Receiver, TryRecvError};
 
 use anyhow::{anyhow, Result};
 
-use crate::compositor::gpu_utils::create_readback_target;
+use crate::compositor::gpu_utils::{create_readback_target, create_rgba8_texture};
+use crate::compositor::nv12::{Nv12Converter, Nv12Matrix, Nv12Plan};
 use crate::compositor::Compositor;
+
+/// Pixel layout the session reads back to the CPU.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum ReadbackFormat {
+    /// Tight RGBA8 rows (4 B/px) — the historical export/monitor format.
+    Rgba,
+    /// GPU-converted NV12 (1.5 B/px) for the ffmpeg-stdin export path. Requires
+    /// even dimensions.
+    Nv12(Nv12Matrix),
+}
 
 pub(crate) enum SlotState {
     Idle,
@@ -27,6 +38,10 @@ pub(crate) struct ReadbackSlot {
     pub(crate) buffer: wgpu::Buffer,
     pub(crate) state: SlotState,
     pub(crate) aligned_row_bytes: usize,
+    /// NV12 mode only: compute-written padded NV12 frame, copied into `buffer`.
+    pub(crate) nv12_storage: Option<wgpu::Buffer>,
+    /// NV12 mode only: texture + storage + uniform bind group for the converter.
+    pub(crate) nv12_bind_group: Option<wgpu::BindGroup>,
 }
 
 pub struct PipelinedReadback {
@@ -41,6 +56,8 @@ pub struct PipelinedReadback {
     pub(crate) pending: BTreeMap<u64, Vec<u8>>,
     /// How many frames have already been emitted via `collect`.
     pub(crate) emitted: u64,
+    /// NV12 mode: conversion pipelines + buffer geometry. `None` = RGBA.
+    pub(crate) nv12: Option<Nv12Converter>,
 }
 
 impl PipelinedReadback {
@@ -51,21 +68,99 @@ impl PipelinedReadback {
         height: u32,
         depth: usize,
     ) -> Self {
+        Self::with_format(
+            device,
+            None,
+            dev_id,
+            width,
+            height,
+            depth,
+            ReadbackFormat::Rgba,
+        )
+        .expect("RGBA readback construction is infallible")
+    }
+
+    /// Format-aware constructor. `queue` is required for NV12 (the converter
+    /// uploads its uniform once at creation).
+    pub fn with_format(
+        device: &wgpu::Device,
+        queue: Option<&wgpu::Queue>,
+        dev_id: usize,
+        width: u32,
+        height: u32,
+        depth: usize,
+        format: ReadbackFormat,
+    ) -> Result<Self> {
         let row_bytes = width as usize * 4;
         let depth = depth.max(2);
+
+        let nv12 = match format {
+            ReadbackFormat::Rgba => None,
+            ReadbackFormat::Nv12(matrix) => {
+                let plan = Nv12Plan::new(width, height).ok_or_else(|| {
+                    anyhow!("NV12 readback requires even dimensions, got {width}x{height}")
+                })?;
+                let queue =
+                    queue.ok_or_else(|| anyhow!("NV12 readback requires a queue handle"))?;
+                Some(Nv12Converter::new(device, queue, plan, matrix))
+            }
+        };
+
         let mut slots = Vec::with_capacity(depth);
         for i in 0..depth {
-            let (texture, view, buffer, aligned_row_bytes) =
-                create_readback_target(device, &format!("pipelined-{i}"), width, height);
-            slots.push(ReadbackSlot {
-                texture,
-                view,
-                buffer,
-                state: SlotState::Idle,
-                aligned_row_bytes,
-            });
+            let slot = match &nv12 {
+                None => {
+                    let (texture, view, buffer, aligned_row_bytes) =
+                        create_readback_target(device, &format!("pipelined-{i}"), width, height);
+                    ReadbackSlot {
+                        texture,
+                        view,
+                        buffer,
+                        state: SlotState::Idle,
+                        aligned_row_bytes,
+                        nv12_storage: None,
+                        nv12_bind_group: None,
+                    }
+                }
+                Some(converter) => {
+                    // Vello renders via STORAGE_BINDING; the NV12 converter then
+                    // reads the texture (TEXTURE_BINDING) into a storage buffer,
+                    // which is copied into the mappable readback buffer.
+                    let texture = create_rgba8_texture(
+                        device,
+                        &format!("pipelined-{i}-offscreen"),
+                        width,
+                        height,
+                        wgpu::TextureUsages::STORAGE_BINDING | wgpu::TextureUsages::TEXTURE_BINDING,
+                    );
+                    let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+                    let storage = device.create_buffer(&wgpu::BufferDescriptor {
+                        label: Some(&format!("pipelined-{i}-nv12-storage")),
+                        size: converter.plan.padded_bytes(),
+                        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+                        mapped_at_creation: false,
+                    });
+                    let buffer = device.create_buffer(&wgpu::BufferDescriptor {
+                        label: Some(&format!("pipelined-{i}-nv12-readback")),
+                        size: converter.plan.padded_bytes(),
+                        usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+                        mapped_at_creation: false,
+                    });
+                    let bind_group = converter.bind_group(device, &view, &storage);
+                    ReadbackSlot {
+                        texture,
+                        view,
+                        buffer,
+                        state: SlotState::Idle,
+                        aligned_row_bytes: 0,
+                        nv12_storage: Some(storage),
+                        nv12_bind_group: Some(bind_group),
+                    }
+                }
+            };
+            slots.push(slot);
         }
-        Self {
+        Ok(Self {
             dev_id,
             width,
             height,
@@ -75,7 +170,24 @@ impl PipelinedReadback {
             frame_seq: 0,
             pending: BTreeMap::new(),
             emitted: 0,
+            nv12,
+        })
+    }
+
+    /// Converts one slot's mapped readback bytes into the tight CPU frame
+    /// (RGBA rows sans copy alignment, or tight NV12). Shared by the pipelined
+    /// collect and the blocking drain so the two can never disagree.
+    pub(crate) fn repack_mapped(&self, slot_idx: usize, mapped: &[u8]) -> Vec<u8> {
+        if let Some(converter) = &self.nv12 {
+            return converter.plan.repack(mapped);
         }
+        let aligned = self.slots[slot_idx].aligned_row_bytes;
+        let mut out = Vec::with_capacity(self.row_bytes * self.height as usize);
+        for row in 0..self.height as usize {
+            let start = row * aligned;
+            out.extend_from_slice(&mapped[start..start + self.row_bytes]);
+        }
+        out
     }
 
     /// True if this session already targets the given device and dimensions, so a
@@ -172,11 +284,7 @@ pub(crate) fn collect_ready_slots(session: &mut PipelinedReadback) -> Result<()>
             let slot = &session.slots[i];
             let guard = UnmapGuard::new(&slot.buffer);
             let mapped = slot.buffer.slice(..).get_mapped_range();
-            let mut out = Vec::with_capacity(session.row_bytes * session.height as usize);
-            for row in 0..session.height as usize {
-                let start = row * slot.aligned_row_bytes;
-                out.extend_from_slice(&mapped[start..start + session.row_bytes]);
-            }
+            let out = session.repack_mapped(i, &mapped);
             drop(mapped);
             slot.buffer.unmap();
             guard.disarm();
