@@ -27,6 +27,37 @@ export function formatSpeedLabel(speed: number): string {
   return `${prefix}${abs}x`;
 }
 
+/**
+ * Speeds the classic J/K/L shuttle walks through, ascending. Unlike the full
+ * grid this skips the sub-1x values: a shuttle press always starts at 1x and
+ * only ever accelerates from there.
+ */
+export const SHUTTLE_SPEED_VALUES: readonly number[] = [1, 2, 3, 5];
+
+export type ShuttleDirection = 'forward' | 'backward';
+
+/**
+ * Next signed speed for a J (backward) or L (forward) shuttle press.
+ *
+ * Classic NLE behaviour: the first press in a direction snaps to 1x in that
+ * direction — including when the transport is already running the *other* way,
+ * so J acts as a brake on a forward shuttle before it reverses. Further presses
+ * in the same direction climb {@link SHUTTLE_SPEED_VALUES}, clamped at 5x.
+ */
+export function nextShuttleSpeed(
+  currentSpeed: number,
+  isPlaying: boolean,
+  direction: ShuttleDirection,
+): number {
+  const sign = direction === 'backward' ? -1 : 1;
+  const alreadyShuttling = isPlaying && Math.sign(currentSpeed) === sign;
+  if (!alreadyShuttling) return sign;
+
+  const magnitude = Math.abs(currentSpeed);
+  const above = SHUTTLE_SPEED_VALUES.find((v) => v > magnitude);
+  return sign * (above ?? SHUTTLE_SPEED_VALUES[SHUTTLE_SPEED_VALUES.length - 1]!);
+}
+
 export type PlaybackSpeedStep = 'up' | 'down';
 
 /**

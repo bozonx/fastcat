@@ -17,9 +17,15 @@ describe('DEFAULT_HOTKEYS', () => {
     expect(DEFAULT_HOTKEYS.bindings['general.copy']).toContain('Ctrl+C');
   });
 
-  it('has binding for playback.toggle', () => {
-    expect(DEFAULT_HOTKEYS.bindings['playback.toggle']).toBeDefined();
-    expect(DEFAULT_HOTKEYS.bindings['playback.toggle']).toContain('Space');
+  it('binds bare Space to 1x playback and Shift+Space to current-speed playback', () => {
+    expect(DEFAULT_HOTKEYS.bindings['playback.toggle1']).toContain('Space');
+    expect(DEFAULT_HOTKEYS.bindings['playback.toggle']).toContain('Shift+Space');
+  });
+
+  it('leaves the classic J/K/L shuttle commands unbound', () => {
+    expect(DEFAULT_HOTKEYS.bindings['playback.shuttleForward']).toEqual([]);
+    expect(DEFAULT_HOTKEYS.bindings['playback.shuttleReverse']).toEqual([]);
+    expect(DEFAULT_HOTKEYS.bindings['playback.shuttleStop']).toEqual([]);
   });
 
   it('has binding for timeline.splitAtPlayhead', () => {

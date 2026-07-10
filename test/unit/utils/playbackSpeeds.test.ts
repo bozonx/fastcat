@@ -3,6 +3,7 @@ import {
   PLAYBACK_SPEED_VALUES,
   WHEEL_SPEED_VALUES,
   formatSpeedLabel,
+  nextShuttleSpeed,
   stepPlaybackSpeed,
 } from '~/utils/playbackSpeeds';
 
@@ -93,6 +94,35 @@ describe('playbackSpeeds', () => {
 
     it('treats a value below the grid as the floor', () => {
       expect(stepPlaybackSpeed(-8, 'down')).toBe(-5);
+    });
+  });
+
+  describe('nextShuttleSpeed', () => {
+    it('starts at 1x in the pressed direction when paused', () => {
+      expect(nextShuttleSpeed(3, false, 'forward')).toBe(1);
+      expect(nextShuttleSpeed(-3, false, 'backward')).toBe(-1);
+    });
+
+    it('accelerates through the shuttle grid on repeated presses', () => {
+      expect(nextShuttleSpeed(1, true, 'forward')).toBe(2);
+      expect(nextShuttleSpeed(2, true, 'forward')).toBe(3);
+      expect(nextShuttleSpeed(3, true, 'forward')).toBe(5);
+      expect(nextShuttleSpeed(-1, true, 'backward')).toBe(-2);
+    });
+
+    it('clamps at the 5x ceiling', () => {
+      expect(nextShuttleSpeed(5, true, 'forward')).toBe(5);
+      expect(nextShuttleSpeed(-5, true, 'backward')).toBe(-5);
+    });
+
+    it('brakes to 1x in the new direction when shuttling the opposite way', () => {
+      expect(nextShuttleSpeed(3, true, 'backward')).toBe(-1);
+      expect(nextShuttleSpeed(-5, true, 'forward')).toBe(1);
+    });
+
+    it('snaps an off-grid speed onto the next shuttle step', () => {
+      expect(nextShuttleSpeed(1.5, true, 'forward')).toBe(2);
+      expect(nextShuttleSpeed(0.5, true, 'forward')).toBe(1);
     });
   });
 });

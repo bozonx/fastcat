@@ -128,9 +128,11 @@ export type HotkeyCommandId =
   | 'playback.backward0_75'
   | 'playback.forward0_5'
   | 'playback.backward0_5'
-  | 'playback.backward1'
   | 'playback.speedUpForward'
   | 'playback.speedDown'
+  | 'playback.shuttleForward'
+  | 'playback.shuttleReverse'
+  | 'playback.shuttleStop'
   | 'playback.jumpPrevBoundary'
   | 'playback.jumpNextBoundary'
   | 'playback.jumpPrevBoundaryTrack'
@@ -226,13 +228,16 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     { id: 'general.createFolder', groupId: 'fileManager', title: 'Create folder' },
 
     // Timeline & Monitor Global - Playback
-    { id: 'playback.toggle', groupId: 'timelineMonitorGlobal', title: 'Toggle playback' },
+    {
+      id: 'playback.toggle',
+      groupId: 'timelineMonitorGlobal',
+      title: 'Toggle playback (current speed)',
+    },
     {
       id: 'playback.toggle1',
       groupId: 'timelineMonitorGlobal',
-      title: 'Toggle playback (secondary)',
+      title: 'Toggle playback (1x)',
     },
-    { id: 'playback.backward1', groupId: 'timelineMonitorGlobal', title: 'Backward 1x' },
     {
       id: 'timeline.globalToStart',
       groupId: 'timelineMonitorGlobal',
@@ -306,8 +311,25 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
       groupId: 'timelineMonitorGlobal',
       title: 'Step backward (large)',
     },
-    { id: 'playback.speedUpForward', groupId: 'timelineMonitorGlobal', title: 'Speed up (forward)' },
+    {
+      id: 'playback.speedUpForward',
+      groupId: 'timelineMonitorGlobal',
+      title: 'Speed up (forward)',
+    },
     { id: 'playback.speedDown', groupId: 'timelineMonitorGlobal', title: 'Slow down' },
+
+    // Timeline & Monitor Global - Classic J/K/L shuttle (unbound by default)
+    {
+      id: 'playback.shuttleReverse',
+      groupId: 'timelineMonitorGlobal',
+      title: 'Shuttle reverse (J)',
+    },
+    { id: 'playback.shuttleStop', groupId: 'timelineMonitorGlobal', title: 'Shuttle stop (K)' },
+    {
+      id: 'playback.shuttleForward',
+      groupId: 'timelineMonitorGlobal',
+      title: 'Shuttle forward (L)',
+    },
 
     // Timeline - Splitting (most frequent)
     { id: 'timeline.splitAtPlayhead', groupId: 'timeline', title: 'Split at playhead' },
@@ -624,8 +646,8 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     'timeline.groupClips': [`${Mod}+G`],
     'timeline.ungroupClips': [`${Mod}+Shift+G`],
 
-    'playback.toggle': ['Space'],
-    'playback.toggle1': ['Shift+Space'],
+    'playback.toggle': ['Shift+Space'],
+    'playback.toggle1': ['Space'],
     'timeline.globalToStart': ['Home', `${Mod}+E`],
     'timeline.globalToEnd': ['End', `${Mod}+R`],
     'playback.stepForward': ['ArrowRight'],
@@ -650,7 +672,10 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     'playback.backward0_75': ['Shift+C'],
     'playback.forward0_5': ['V'],
     'playback.backward0_5': ['C'],
-    'playback.backward1': [`${Mod}+Space`],
+    // Classic J/K/L shuttle: deliberately unbound — assign in hotkey settings.
+    'playback.shuttleReverse': [],
+    'playback.shuttleStop': [],
+    'playback.shuttleForward': [],
     'playback.jumpPrevBoundary': ['A', 'ArrowUp'],
     'playback.jumpNextBoundary': ['S', 'ArrowDown'],
     'playback.jumpPrevBoundaryTrack': ['Shift+A', 'Shift+ArrowUp'],

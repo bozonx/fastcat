@@ -1704,7 +1704,6 @@
       "playback": {
         "backward0_5": "Backward x0.5 (Monitor only)",
         "backward0_75": "Backward x0.75 (Monitor only)",
-        "backward1": "Backward x1 (Monitor only)",
         "backward1_25": "Backward x1.25 (Monitor only)",
         "backward1_5": "Backward x1.5 (Monitor only)",
         "backward1_75": "Backward x1.75 (Monitor only)",
@@ -1721,6 +1720,9 @@
         "forward5": "Forward x5",
         "speedUpForward": "Speed up (cycle forward up the grid)",
         "speedDown": "Slow down (cycle down the grid, into reverse)",
+        "shuttleForward": "Shuttle forward (L)",
+        "shuttleReverse": "Shuttle reverse (J)",
+        "shuttleStop": "Shuttle stop (K)",
         "jumpNextBoundary": "Jump to next clip boundary",
         "jumpNextBoundaryTrack": "Jump to next boundary (current track)",
         "jumpPrevBoundary": "Jump to previous clip boundary",
@@ -1729,7 +1731,7 @@
         "stepBackwardLarge": "Step backward (large)",
         "stepForward": "Step forward",
         "stepForwardLarge": "Step forward (large)",
-        "toggle": "Play / Pause",
+        "toggle": "Play / Pause (current speed)",
         "toggle1": "Play / pause (1x)"
       },
       "timeline": {

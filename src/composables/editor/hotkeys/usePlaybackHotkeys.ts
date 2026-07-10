@@ -4,7 +4,7 @@ import { useUiStore } from '~/stores/ui.store';
 import type { HotkeyCommandId } from '~/utils/hotkeys/defaultHotkeys';
 import { getDocFps } from '~/timeline/commands/utils';
 import { isPreviewLikeFocus } from '~/utils/hotkeys/runtime';
-import { stepPlaybackSpeed } from '~/utils/playbackSpeeds';
+import { nextShuttleSpeed, stepPlaybackSpeed, type ShuttleDirection } from '~/utils/playbackSpeeds';
 
 import type { createHotkeyHoldRunner } from '~/utils/hotkeys/holdRunner';
 
@@ -177,7 +177,40 @@ export function usePlaybackHotkeys(
       if (!isPlaying) timelineStore.togglePlayback();
       return true;
     },
+
+    // L — classic shuttle forward: 1x, then accelerate on each further press.
+    'playback.shuttleForward': () => shuttle('forward'),
+
+    // J — classic shuttle reverse, mirroring L.
+    'playback.shuttleReverse': () => shuttle('backward'),
+
+    // K — classic shuttle stop: pause and drop the shuttle speed back to 1x so
+    // the next transport command starts from a predictable baseline.
+    'playback.shuttleStop': () => {
+      if (!canUsePlaybackOrTimelineFocus()) return false;
+      if (isPreviewLikeFocus(focusStore.effectiveFocus) && uiStore.hasActivePreviewPlayer) {
+        return false;
+      }
+
+      if (timelineStore.isPlaying) timelineStore.togglePlayback();
+      timelineStore.setPlaybackSpeed(1);
+      return true;
+    },
   };
+
+  function shuttle(direction: ShuttleDirection): boolean {
+    if (!canUsePlaybackOrTimelineFocus()) return false;
+    // The preview player keeps its own playback rate; shuttling is a
+    // timeline-transport concept, so leave preview playback untouched.
+    if (isPreviewLikeFocus(focusStore.effectiveFocus) && uiStore.hasActivePreviewPlayer) {
+      return false;
+    }
+
+    const { playbackSpeed, isPlaying } = timelineStore;
+    timelineStore.setPlaybackSpeed(nextShuttleSpeed(playbackSpeed, isPlaying, direction));
+    if (!isPlaying) timelineStore.togglePlayback();
+    return true;
+  }
 
   const playbackSpeedMap: Partial<
     Record<
@@ -204,7 +237,6 @@ export function usePlaybackHotkeys(
     'playback.backward3': { direction: 'backward', speed: 3 },
     'playback.forward5': { direction: 'forward', speed: 5 },
     'playback.backward5': { direction: 'backward', speed: 5 },
-    'playback.backward1': { direction: 'backward', speed: 1 },
   };
 
   function setTimelinePlayback(params: { direction: 'forward' | 'backward'; speed: number }) {
@@ -221,30 +253,11 @@ export function usePlaybackHotkeys(
     }
   }
 
-  function forceTimelinePlaybackSpeed(params: {
-    direction: 'forward' | 'backward';
-    speed: number;
-  }) {
-    const finalSpeed = params.direction === 'backward' ? -params.speed : params.speed;
-    timelineStore.setPlaybackSpeed(finalSpeed);
-    if (!timelineStore.isPlaying) {
-      timelineStore.togglePlayback();
-    }
-  }
-
   for (const [cmd, speedCmd] of Object.entries(playbackSpeedMap)) {
     handlers[cmd as HotkeyCommandId] = () => {
-      const canUse =
-        cmd === 'playback.backward1'
-          ? canUsePlaybackOrTimelineFocus()
-          : focusStore.canUsePlaybackHotkeys;
-      if (!canUse) return false;
+      if (!focusStore.canUsePlaybackHotkeys) return false;
 
-      if (
-        cmd !== 'playback.backward1' &&
-        isPreviewLikeFocus(focusStore.effectiveFocus) &&
-        uiStore.hasActivePreviewPlayer
-      ) {
+      if (isPreviewLikeFocus(focusStore.effectiveFocus) && uiStore.hasActivePreviewPlayer) {
         if (speedCmd.direction === 'backward') {
           return true; // ignored but consumed
         }
@@ -252,11 +265,7 @@ export function usePlaybackHotkeys(
         return true;
       }
 
-      if (cmd === 'playback.backward1') {
-        forceTimelinePlaybackSpeed(speedCmd);
-      } else {
-        setTimelinePlayback(speedCmd);
-      }
+      setTimelinePlayback(speedCmd);
       return true;
     };
   }
