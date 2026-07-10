@@ -104,7 +104,7 @@ describe('useMonitorSnapshot', () => {
     expect(mockProjectStore.getProjectFileHandleByRelativePath).toHaveBeenCalled();
     expect(mockToast.add).toHaveBeenCalledWith(
       expect.objectContaining({
-        title: 'Snapshot created',
+        title: 'fastcat.monitor.snapshotCreated',
         color: 'success',
       }),
     );
