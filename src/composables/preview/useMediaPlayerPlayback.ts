@@ -241,6 +241,7 @@ export function useMediaPlayerPlayback(
         if (isPlaying.value) {
           mediaElement.value.playbackRate = 1;
           playbackSpeed.value = 1;
+          mediaElement.value.pause();
           return;
         }
 

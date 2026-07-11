@@ -486,6 +486,42 @@ describe('useEditorHotkeys', () => {
     });
   });
 
+  it('routes Space and Shift+Space to preview playback toggles', async () => {
+    mockWorkspaceStore.userSettings.hotkeys.bindings = {
+      'playback.toggle1': ['Space'],
+      'playback.toggle': ['Shift+Space'],
+    };
+    wrapper = mount(HotkeysHarness);
+    const focusStore = useFocusStore();
+    const uiStore = useUiStore();
+
+    focusStore.setPanelFocus('project');
+    uiStore.hasActivePreviewPlayer = true;
+
+    const spaceEvent = new KeyboardEvent('keydown', {
+      key: ' ',
+      code: 'Space',
+      bubbles: true,
+      cancelable: true,
+    });
+    window.dispatchEvent(spaceEvent);
+
+    expect(spaceEvent.defaultPrevented).toBe(true);
+    expect(uiStore.previewPlaybackTrigger.action).toBe('toggle1');
+
+    const shiftSpaceEvent = new KeyboardEvent('keydown', {
+      key: ' ',
+      code: 'Space',
+      shiftKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+    window.dispatchEvent(shiftSpaceEvent);
+
+    expect(shiftSpaceEvent.defaultPrevented).toBe(true);
+    expect(uiStore.previewPlaybackTrigger.action).toBe('toggle');
+  });
+
   it('blocks reverse and boundary commands while preview player is focused', async () => {
     mockWorkspaceStore.userSettings.hotkeys.bindings = {
       'playback.backward2': ['Digit2'],

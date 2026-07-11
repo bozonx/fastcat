@@ -474,6 +474,35 @@ describe('useMediaPlayerPlayback', () => {
     expect(el.currentTime).toBe(0);
   });
 
+  it('pauses preview playback on toggle1 when already playing', async () => {
+    const el = makeMediaElement();
+    const mediaEl = ref(el);
+    const volume = ref(1);
+    const isMuted = ref(false);
+    const focusStore = { canUsePreviewHotkeys: true, effectiveFocus: null };
+
+    const { onPlay, playbackSpeed } = useMediaPlayerPlayback(
+      mediaEl,
+      { src: '' },
+      volume,
+      isMuted,
+      focusStore,
+    );
+
+    onPlay();
+    playbackSpeed.value = 2;
+
+    mockState.trigger = {
+      action: 'toggle1',
+      timestamp: Date.now(),
+    };
+    await nextTick();
+
+    expect(playbackSpeed.value).toBe(1);
+    expect(el.playbackRate).toBe(1);
+    expect(el.pause).toHaveBeenCalledOnce();
+  });
+
   it('keeps speedDownForward in forward playback for preview', async () => {
     const el = makeMediaElement();
     const mediaEl = ref(el);
