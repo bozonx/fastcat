@@ -245,10 +245,10 @@ export function useMediaPlayerPlayback(
           return;
         }
 
-        if (!mediaElement.value) return;
-        pauseAndClearPlayback();
-        mediaElement.value.currentTime = 0;
-        currentTime.value = 0;
+        playbackSpeed.value = 1;
+        mediaElement.value.playbackRate = 1;
+        mediaElement.value.muted = isMuted.value;
+        void mediaElement.value.play();
       } else if (detail.action === 'toStart') {
         if (!mediaElement.value) return;
         pauseAndClearPlayback();

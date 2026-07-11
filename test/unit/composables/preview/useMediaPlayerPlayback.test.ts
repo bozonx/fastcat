@@ -503,6 +503,36 @@ describe('useMediaPlayerPlayback', () => {
     expect(el.pause).toHaveBeenCalledOnce();
   });
 
+  it('starts preview playback at 1x on toggle1 when paused', async () => {
+    const el = makeMediaElement({ currentTime: 12, playbackRate: 2 });
+    const mediaEl = ref(el);
+    const volume = ref(1);
+    const isMuted = ref(false);
+    const focusStore = { canUsePreviewHotkeys: true, effectiveFocus: null };
+
+    const { playbackSpeed, currentTime } = useMediaPlayerPlayback(
+      mediaEl,
+      { src: '' },
+      volume,
+      isMuted,
+      focusStore,
+    );
+
+    currentTime.value = 12;
+    playbackSpeed.value = 2;
+
+    mockState.trigger = {
+      action: 'toggle1',
+      timestamp: Date.now(),
+    };
+    await nextTick();
+
+    expect(playbackSpeed.value).toBe(1);
+    expect(el.playbackRate).toBe(1);
+    expect(el.currentTime).toBe(12);
+    expect(el.play).toHaveBeenCalledOnce();
+  });
+
   it('keeps speedDownForward in forward playback for preview', async () => {
     const el = makeMediaElement();
     const mediaEl = ref(el);

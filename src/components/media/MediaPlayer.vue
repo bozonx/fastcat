@@ -289,6 +289,11 @@ function shouldHandlePreviewEvent() {
   return focusStore.isPanelFocused(props.focusPanelId as PanelFocusId);
 }
 
+function focusPreviewPanel() {
+  if (!props.focusPanelId) return;
+  focusStore.setPanelFocus(props.focusPanelId as PanelFocusId);
+}
+
 watch(
   () => uiStore.previewZoomTrigger,
   (trigger) => {
@@ -403,7 +408,11 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div ref="playerRootEl" class="flex flex-col w-full h-full overflow-hidden rounded">
+  <div
+    ref="playerRootEl"
+    class="flex flex-col w-full h-full overflow-hidden rounded"
+    @pointerdown.capture="focusPreviewPanel"
+  >
     <!-- Video -->
     <UContextMenu
       v-if="type === 'video'"
