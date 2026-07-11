@@ -116,6 +116,13 @@ export function useMediaPlayerPlayback(
     setForwardPlaybackSpeed(Math.max(0.5, nextSpeed));
   }
 
+  function changeVolume(delta: number) {
+    volume.value = Math.min(2, Math.max(0, volume.value + delta));
+    if (mediaElement.value) {
+      mediaElement.value.volume = Math.min(1, Math.max(0, volume.value));
+    }
+  }
+
   function setBackwardPlaybackSpeed(speed: number) {
     if (!mediaElement.value) return;
 
@@ -208,8 +215,8 @@ export function useMediaPlayerPlayback(
   }
 
   function shouldHandlePreviewPlaybackEvent() {
-    // We can't easily check playerRootEl here, but we can check props
-    if (props.isModal) return false;
+    if (props.isModal) return true;
+    if (uiStore.previewModalOpen) return false;
     if (!props.focusPanelId) return focusStore.canUsePreviewHotkeys;
     return focusStore.effectiveFocus === props.focusPanelId;
   }
@@ -260,6 +267,15 @@ export function useMediaPlayerPlayback(
         speedDownForward();
       } else if (detail.action === 'pauseReset') {
         pauseAndResetSpeed();
+      } else if (detail.action === 'volumeUp') {
+        changeVolume(0.05);
+      } else if (detail.action === 'volumeDown') {
+        changeVolume(-0.05);
+      } else if (detail.action === 'toggleMute') {
+        isMuted.value = !isMuted.value;
+        if (mediaElement.value) {
+          mediaElement.value.muted = isMuted.value;
+        }
       } else if (detail.action === 'set') {
         const targetSpeed = detail.speed ?? 1;
         const currentSpeed = playbackSpeed.value;

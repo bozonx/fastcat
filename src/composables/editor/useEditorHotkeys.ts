@@ -9,11 +9,14 @@ import { useEffectiveHotkeys } from '~/composables/editor/hotkeys/useEffectiveHo
 import { hotkeyFromKeyboardEvent, isEditableTarget } from '~/utils/hotkeys/hotkeyUtils';
 import type { HotkeyCommandId } from '~/utils/hotkeys/defaultHotkeys';
 import { createHotkeyHoldRunner } from '~/utils/hotkeys/holdRunner';
+import { getDocFpsOrDefault } from '~/timeline/commands/utils';
+import { resolvePreviewTransport, type PreviewRoute } from '~/utils/hotkeys/previewTransport';
 import {
   canExecuteHotkeyCommand,
   getHotkeyCommandGroup,
   getFocusAwareHotkeyOrder,
   getMatchedHotkeyCommands,
+  isPreviewLikeFocus,
   shouldBlurAfterHotkey,
   shouldHandleRepeatForMatchedCommands,
 } from '~/utils/hotkeys/runtime';
@@ -94,6 +97,31 @@ export function useEditorHotkeys() {
     focusStore.handleFocusHotkey();
   }
 
+  function applyPreviewRoute(route: PreviewRoute) {
+    if (route.kind === 'action') {
+      uiStore.triggerPreviewPlayback(route.action);
+      return;
+    }
+
+    if (route.kind === 'step') {
+      const fps = getDocFpsOrDefault(timelineStore.timelineDoc);
+      uiStore.triggerPreviewPlayback('step', undefined, undefined, route.frames / fps);
+      return;
+    }
+
+    if (route.kind === 'setSpeed') {
+      uiStore.triggerPreviewPlayback('set', route.speed, 'forward');
+      return;
+    }
+
+    if (route.kind === 'volume') {
+      uiStore.triggerPreviewPlayback(route.delta >= 0 ? 'volumeUp' : 'volumeDown');
+      return;
+    }
+
+    uiStore.triggerPreviewPlayback('toggleMute');
+  }
+
   function dispatchMatchedCommands(matched: HotkeyCommandId[], e: Event): boolean {
     const modalOpen = hasBlockingModalState();
     const fullscreen = isFullscreen();
@@ -135,6 +163,26 @@ export function useEditorHotkeys() {
     }
 
     if (matched.length === 0) return false;
+
+    const previewActive =
+      uiStore.previewModalOpen ||
+      (uiStore.hasActivePreviewPlayer && isPreviewLikeFocus(focusStore.effectiveFocus));
+
+    if (previewActive && !modalOpen) {
+      for (const cmdId of matched) {
+        const route = resolvePreviewTransport(cmdId);
+        if (!route) continue;
+
+        if (route !== 'block') {
+          applyPreviewRoute(route);
+        }
+
+        e.preventDefault();
+        e.stopPropagation();
+        (e as Event).stopImmediatePropagation?.();
+        return true;
+      }
+    }
 
     const isEditableEventTarget = isEditableTarget((e as KeyboardEvent).target);
     const isEditableActiveElement = isEditableTarget(getActiveElement());

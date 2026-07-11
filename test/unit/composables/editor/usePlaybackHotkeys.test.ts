@@ -7,7 +7,6 @@ import { usePlaybackHotkeys } from '~/composables/editor/hotkeys/usePlaybackHotk
 import { pressedKeyCodes } from '~/utils/hotkeys/pressedKeys';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useFocusStore } from '~/stores/focus.store';
-import { useUiStore } from '~/stores/ui.store';
 
 describe('usePlaybackHotkeys — F / D speed cycle', () => {
   let handlers: ReturnType<typeof usePlaybackHotkeys>;
@@ -316,17 +315,13 @@ describe('usePlaybackHotkeys — F / D speed cycle', () => {
     });
   });
 
-  describe('preview player routing', () => {
+  describe('preview player focus', () => {
     beforeEach(() => {
       const focusStore = useFocusStore();
-      const uiStore = useUiStore();
-
       focusStore.setPanelFocus('project');
-      uiStore.hasActivePreviewPlayer = true;
     });
 
-    it('routes start/end and frame steps to the active preview player', () => {
-      const uiStore = useUiStore();
+    it('keeps timeline start/end handlers free of preview routing', () => {
       const timelineStore = useTimelineStore();
       const goToStart = vi.fn();
       const goToEnd = vi.fn();
@@ -334,36 +329,29 @@ describe('usePlaybackHotkeys — F / D speed cycle', () => {
       timelineStore.goToEnd = goToEnd;
 
       expect(handlers['timeline.globalToStart']?.(new KeyboardEvent('keydown'))).toBe(true);
-      expect(uiStore.previewPlaybackTrigger.action).toBe('toStart');
-      expect(goToStart).not.toHaveBeenCalled();
+      expect(goToStart).toHaveBeenCalledOnce();
 
       expect(handlers['timeline.globalToEnd']?.(new KeyboardEvent('keydown'))).toBe(true);
-      expect(uiStore.previewPlaybackTrigger.action).toBe('toEnd');
-      expect(goToEnd).not.toHaveBeenCalled();
+      expect(goToEnd).toHaveBeenCalledOnce();
+    });
 
+    it('leaves preview-like frame stepping to the editor dispatcher', () => {
       expect(
         handlers['playback.stepForward']?.(
           new KeyboardEvent('keydown', { code: 'ArrowRight', key: 'ArrowRight' }),
         ),
-      ).toBe(true);
-      expect(uiStore.previewPlaybackTrigger).toMatchObject({
-        action: 'step',
-        seconds: 1 / 30,
-      });
+      ).toBe(false);
     });
 
-    it('supports forward preview speed controls and consumes reverse playback commands', () => {
-      const uiStore = useUiStore();
+    it('keeps speed controls on the timeline handler path', () => {
+      const timelineStore = useTimelineStore();
 
       expect(handlers['playback.speedUpForward']?.(new KeyboardEvent('keydown'))).toBe(true);
-      expect(uiStore.previewPlaybackTrigger.action).toBe('speedUpForward');
+      expect(timelineStore.isPlaying).toBe(true);
+      expect(timelineStore.playbackSpeed).toBe(1.25);
 
       expect(handlers['playback.speedDown']?.(new KeyboardEvent('keydown'))).toBe(true);
-      expect(uiStore.previewPlaybackTrigger.action).toBe('speedDownForward');
-
-      const previousTrigger = uiStore.previewPlaybackTrigger;
-      expect(handlers['playback.backward2']?.(new KeyboardEvent('keydown'))).toBe(true);
-      expect(uiStore.previewPlaybackTrigger).toBe(previousTrigger);
+      expect(timelineStore.playbackSpeed).toBe(1);
     });
   });
 });

@@ -459,6 +459,95 @@ describe('useEditorHotkeys', () => {
     }
   });
 
+  it('routes preview speed commands before monitor group filtering', async () => {
+    mockWorkspaceStore.userSettings.hotkeys.bindings = {
+      'playback.forward2': ['Digit2'],
+    };
+    wrapper = mount(HotkeysHarness);
+    const focusStore = useFocusStore();
+    const uiStore = useUiStore();
+
+    focusStore.setPanelFocus('dynamic:properties:files-main');
+    uiStore.hasActivePreviewPlayer = true;
+
+    const event = new KeyboardEvent('keydown', {
+      key: '2',
+      code: 'Digit2',
+      bubbles: true,
+      cancelable: true,
+    });
+    window.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(uiStore.previewPlaybackTrigger).toMatchObject({
+      action: 'set',
+      speed: 2,
+      direction: 'forward',
+    });
+  });
+
+  it('blocks reverse and boundary commands while preview player is focused', async () => {
+    mockWorkspaceStore.userSettings.hotkeys.bindings = {
+      'playback.backward2': ['Digit2'],
+      'playback.jumpNextBoundary': ['KeyG'],
+    };
+    wrapper = mount(HotkeysHarness);
+    const focusStore = useFocusStore();
+    const timelineStore = useTimelineStore() as any;
+    const uiStore = useUiStore();
+
+    focusStore.setPanelFocus('dynamic:properties:files-main');
+    uiStore.hasActivePreviewPlayer = true;
+    timelineStore.jumpToNextClipBoundary = vi.fn();
+
+    const reverseEvent = new KeyboardEvent('keydown', {
+      key: '2',
+      code: 'Digit2',
+      bubbles: true,
+      cancelable: true,
+    });
+    window.dispatchEvent(reverseEvent);
+
+    expect(reverseEvent.defaultPrevented).toBe(true);
+    expect(uiStore.previewPlaybackTrigger.action).toBe('');
+
+    const boundaryEvent = new KeyboardEvent('keydown', {
+      key: 'g',
+      code: 'KeyG',
+      bubbles: true,
+      cancelable: true,
+    });
+    window.dispatchEvent(boundaryEvent);
+
+    expect(boundaryEvent.defaultPrevented).toBe(true);
+    expect(timelineStore.jumpToNextClipBoundary).not.toHaveBeenCalled();
+    expect(uiStore.previewPlaybackTrigger.action).toBe('');
+  });
+
+  it('lets non-transport commands fall through while preview player is focused', async () => {
+    mockWorkspaceStore.userSettings.hotkeys.bindings = {
+      'general.copy': ['Ctrl+C'],
+    };
+    wrapper = mount(HotkeysHarness);
+    const focusStore = useFocusStore();
+    const uiStore = useUiStore();
+
+    focusStore.setPanelFocus('dynamic:properties:files-main');
+    uiStore.hasActivePreviewPlayer = true;
+
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key: 'c',
+        code: 'KeyC',
+        ctrlKey: true,
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
+
+    expect(uiStore.previewPlaybackTrigger.action).toBe('');
+  });
+
   it('uses the updated T / Shift+T / B timeline shortcuts when timeline hotkeys are active', async () => {
     wrapper = mount(HotkeysHarness, { attachTo: document.body });
     const focusStore = useFocusStore();

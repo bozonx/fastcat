@@ -1,5 +1,14 @@
 <script setup lang="ts">
-import { ref, watch, computed, onMounted, onUnmounted, nextTick } from 'vue';
+import {
+  ref,
+  watch,
+  computed,
+  onActivated,
+  onDeactivated,
+  onMounted,
+  onUnmounted,
+  nextTick,
+} from 'vue';
 import { useImagePanZoom } from '~/composables/preview/useImagePanZoom';
 import { useMediaPlayerVolume } from '~/composables/preview/useMediaPlayerVolume';
 import { useMediaPlayerPlayback } from '~/composables/preview/useMediaPlayerPlayback';
@@ -55,6 +64,8 @@ const mediaElement = ref<HTMLVideoElement | HTMLAudioElement | null>(null);
 const playerRootEl = ref<HTMLElement | null>(null);
 const { applyVolume } = useMediaElementGain(mediaElement, volume, isMuted, { maxGain: 2 });
 let suppressNextTransferPauseSync = false;
+let isPreviewPlayerRegistered = false;
+let isPreviewModalRegistered = false;
 
 const {
   isPlaying,
@@ -343,7 +354,32 @@ function onGlobalMouseMove() {
   resetIdle();
 }
 
+function registerPreviewPlayerInstance() {
+  if (isPreviewPlayerRegistered) return;
+
+  uiStore.registerActivePreviewPlayer();
+  isPreviewPlayerRegistered = true;
+
+  if (props.isModal) {
+    uiStore.setPreviewModalOpen(true);
+    isPreviewModalRegistered = true;
+  }
+}
+
+function unregisterPreviewPlayerInstance() {
+  if (!isPreviewPlayerRegistered) return;
+
+  uiStore.unregisterActivePreviewPlayer();
+  isPreviewPlayerRegistered = false;
+
+  if (isPreviewModalRegistered) {
+    uiStore.setPreviewModalOpen(false);
+    isPreviewModalRegistered = false;
+  }
+}
+
 onMounted(() => {
+  registerPreviewPlayerInstance();
   window.addEventListener('mousemove', onGlobalMouseMove);
   void nextTick(async () => {
     await applyResumeState();
@@ -351,7 +387,16 @@ onMounted(() => {
   });
 });
 
+onActivated(() => {
+  registerPreviewPlayerInstance();
+});
+
+onDeactivated(() => {
+  unregisterPreviewPlayerInstance();
+});
+
 onUnmounted(() => {
+  unregisterPreviewPlayerInstance();
   window.removeEventListener('mousemove', onGlobalMouseMove);
   if (idleTimer) window.clearTimeout(idleTimer);
 });
@@ -457,7 +502,9 @@ onUnmounted(() => {
       ]"
       @mouseenter="resetIdle"
     >
-      <div class="media-player-seek w-full relative flex items-center h-4 group/controls cursor-pointer">
+      <div
+        class="media-player-seek w-full relative flex items-center h-4 group/controls cursor-pointer"
+      >
         <input
           v-model.number="currentTime"
           type="range"

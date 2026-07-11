@@ -149,7 +149,9 @@ export const useUiStore = defineStore('ui', () => {
     }
   }
 
+  const activePreviewPlayerCount = ref(0);
   const hasActivePreviewPlayer = ref(false);
+  const previewModalOpen = ref(false);
   const previewZoomTrigger = ref({ dir: 0, timestamp: 0 });
   const previewZoomResetTrigger = ref(0);
   const previewZoomFitTrigger = ref(0);
@@ -167,6 +169,9 @@ export const useUiStore = defineStore('ui', () => {
       | 'speedUpForward'
       | 'speedDownForward'
       | 'pauseReset'
+      | 'volumeUp'
+      | 'volumeDown'
+      | 'toggleMute'
       | '';
     speed?: number;
     seconds?: number;
@@ -224,12 +229,29 @@ export const useUiStore = defineStore('ui', () => {
       | 'set'
       | 'speedUpForward'
       | 'speedDownForward'
-      | 'pauseReset',
+      | 'pauseReset'
+      | 'volumeUp'
+      | 'volumeDown'
+      | 'toggleMute',
     speed?: number,
     direction?: 'forward' | 'backward',
     seconds?: number,
   ) {
     previewPlaybackTrigger.value = { action, speed, seconds, direction, timestamp: Date.now() };
+  }
+
+  function registerActivePreviewPlayer() {
+    activePreviewPlayerCount.value++;
+    hasActivePreviewPlayer.value = activePreviewPlayerCount.value > 0;
+  }
+
+  function unregisterActivePreviewPlayer() {
+    activePreviewPlayerCount.value = Math.max(0, activePreviewPlayerCount.value - 1);
+    hasActivePreviewPlayer.value = activePreviewPlayerCount.value > 0;
+  }
+
+  function setPreviewModalOpen(open: boolean) {
+    previewModalOpen.value = open;
   }
 
   function togglePreviewFullscreen() {
@@ -325,6 +347,7 @@ export const useUiStore = defineStore('ui', () => {
     monitorZoomResetTrigger,
     monitorZoomFitTrigger,
     hasActivePreviewPlayer,
+    previewModalOpen,
     previewPlaybackTrigger,
     previewFullscreenToggleTrigger,
     fileBrowserSelectAllTrigger,
@@ -341,6 +364,9 @@ export const useUiStore = defineStore('ui', () => {
     triggerMonitorZoomReset,
     triggerMonitorZoomFit,
     triggerPreviewPlayback,
+    registerActivePreviewPlayer,
+    unregisterActivePreviewPlayer,
+    setPreviewModalOpen,
     togglePreviewFullscreen,
     timelineSaveTrigger,
 

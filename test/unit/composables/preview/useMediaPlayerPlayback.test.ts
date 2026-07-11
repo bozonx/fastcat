@@ -17,6 +17,7 @@ if (typeof global.cancelAnimationFrame === 'undefined') {
 
 const mockUiStore = reactive({
   hasActivePreviewPlayer: false,
+  previewModalOpen: false,
   get previewPlaybackTrigger() {
     return mockState?.trigger;
   },
@@ -52,6 +53,7 @@ describe('useMediaPlayerPlayback', () => {
     });
     mockTimelineStore.isPlaying = false;
     mockUiStore.hasActivePreviewPlayer = false;
+    mockUiStore.previewModalOpen = false;
   });
 
   it('initializes with default state', () => {
@@ -505,6 +507,71 @@ describe('useMediaPlayerPlayback', () => {
 
     expect(playbackSpeed.value).toBe(0.5);
     expect(el.playbackRate).toBe(0.5);
+  });
+
+  it('handles preview volume and mute transport triggers', async () => {
+    const el = makeMediaElement({ volume: 0.5, muted: false });
+    const mediaEl = ref(el);
+    const volume = ref(0.5);
+    const isMuted = ref(false);
+    const focusStore = { canUsePreviewHotkeys: true, effectiveFocus: null };
+
+    useMediaPlayerPlayback(mediaEl, { src: '' }, volume, isMuted, focusStore);
+
+    mockState.trigger = {
+      action: 'volumeUp',
+      timestamp: Date.now(),
+    };
+    await nextTick();
+
+    expect(volume.value).toBe(0.55);
+    expect(el.volume).toBe(0.55);
+
+    mockState.trigger = {
+      action: 'toggleMute',
+      timestamp: Date.now(),
+    };
+    await nextTick();
+
+    expect(isMuted.value).toBe(true);
+    expect(el.muted).toBe(true);
+  });
+
+  it('lets modal player handle preview triggers while inline player is gated', async () => {
+    const inlineEl = makeMediaElement();
+    const modalEl = makeMediaElement();
+    const inlineMediaEl = ref(inlineEl);
+    const modalMediaEl = ref(modalEl);
+    const inlineVolume = ref(1);
+    const modalVolume = ref(1);
+    const inlineMuted = ref(false);
+    const modalMuted = ref(false);
+    const focusStore = { canUsePreviewHotkeys: true, effectiveFocus: null };
+
+    useMediaPlayerPlayback(
+      inlineMediaEl,
+      { src: '', isModal: false },
+      inlineVolume,
+      inlineMuted,
+      focusStore,
+    );
+    useMediaPlayerPlayback(
+      modalMediaEl,
+      { src: '', isModal: true },
+      modalVolume,
+      modalMuted,
+      focusStore,
+    );
+
+    mockUiStore.previewModalOpen = true;
+    mockState.trigger = {
+      action: 'toggle',
+      timestamp: Date.now(),
+    };
+    await nextTick();
+
+    expect(inlineEl.play).not.toHaveBeenCalled();
+    expect(modalEl.play).toHaveBeenCalledOnce();
   });
 
   it('stops timeline playback when preview playback starts', async () => {
