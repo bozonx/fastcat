@@ -486,6 +486,97 @@ describe('useEditorHotkeys', () => {
     });
   });
 
+  it('keeps arrow navigation in file-manager properties even when preview player is visible', async () => {
+    mockWorkspaceStore.userSettings.hotkeys.bindings = {
+      'playback.stepForward': ['ArrowRight'],
+    };
+    wrapper = mount(HotkeysHarness);
+    const focusStore = useFocusStore();
+    const selectionStore = useSelectionStore();
+    const uiStore = useUiStore();
+
+    focusStore.setPanelFocus('dynamic:properties:files-main');
+    selectionStore.selectedEntity = {
+      source: 'fileManager',
+      kind: 'file',
+      name: 'clip.mp4',
+      entry: { kind: 'file', name: 'clip.mp4', path: '/clip.mp4', source: 'local' },
+    };
+    uiStore.hasActivePreviewPlayer = true;
+
+    const event = new KeyboardEvent('keydown', {
+      key: 'ArrowRight',
+      code: 'ArrowRight',
+      bubbles: true,
+      cancelable: true,
+    });
+    window.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(uiStore.fileBrowserMoveSelectionTrigger.dir).toBe('right');
+    expect(uiStore.previewPlaybackTrigger.action).toBe('');
+  });
+
+  it('keeps preview playback toggles available in file-manager properties', async () => {
+    mockWorkspaceStore.userSettings.hotkeys.bindings = {
+      'playback.toggle': ['Space'],
+    };
+    wrapper = mount(HotkeysHarness);
+    const focusStore = useFocusStore();
+    const selectionStore = useSelectionStore();
+    const uiStore = useUiStore();
+
+    focusStore.setPanelFocus('dynamic:properties:files-main');
+    selectionStore.selectedEntity = {
+      source: 'fileManager',
+      kind: 'file',
+      name: 'clip.mp4',
+      entry: { kind: 'file', name: 'clip.mp4', path: '/clip.mp4', source: 'local' },
+    };
+    uiStore.hasActivePreviewPlayer = true;
+
+    const event = new KeyboardEvent('keydown', {
+      key: ' ',
+      code: 'Space',
+      bubbles: true,
+      cancelable: true,
+    });
+    window.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(uiStore.previewPlaybackTrigger.action).toBe('toggle');
+  });
+
+  it('keeps timeline frame-step arrows active in timeline properties', async () => {
+    mockWorkspaceStore.userSettings.hotkeys.bindings = {
+      'playback.stepForward': ['ArrowRight'],
+    };
+    wrapper = mount(HotkeysHarness);
+    const focusStore = useFocusStore();
+    const selectionStore = useSelectionStore();
+    const timelineStore = useTimelineStore() as any;
+
+    focusStore.setPanelFocus('dynamic:properties:timeline');
+    selectionStore.selectedEntity = {
+      source: 'timeline',
+      kind: 'clip',
+      trackId: 'track-1',
+      itemId: 'clip-1',
+    };
+    timelineStore.seekFrames = vi.fn();
+
+    const event = new KeyboardEvent('keydown', {
+      key: 'ArrowRight',
+      code: 'ArrowRight',
+      bubbles: true,
+      cancelable: true,
+    });
+    window.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(timelineStore.seekFrames).toHaveBeenCalledWith(1);
+  });
+
   it('routes Space and Shift+Space to preview playback toggles', async () => {
     mockWorkspaceStore.userSettings.hotkeys.bindings = {
       'playback.toggle1': ['Space'],

@@ -1,6 +1,7 @@
 import type { ComputedRef } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useFocusStore } from '~/stores/focus.store';
+import { useSelectionStore } from '~/stores/selection.store';
 import type { HotkeyCommandId, HotkeyCombo } from '~/utils/hotkeys/defaultHotkeys';
 import { getDocFpsOrDefault } from '~/timeline/commands/utils';
 import { isPreviewLikeFocus } from '~/utils/hotkeys/runtime';
@@ -16,8 +17,17 @@ export function usePlaybackHotkeys(
 ) {
   const timelineStore = useTimelineStore();
   const focusStore = useFocusStore();
+  const selectionStore = useSelectionStore();
   function canUsePlaybackOrTimelineFocus() {
     return focusStore.canUsePlaybackHotkeys || focusStore.effectiveFocus === 'timeline';
+  }
+
+  function isTimelinePropertiesFocus() {
+    return focusStore.isPropertiesFocus && selectionStore.selectedEntity?.source === 'timeline';
+  }
+
+  function shouldBlockTimelineStepInPreviewFocus() {
+    return isPreviewLikeFocus(focusStore.effectiveFocus) && !isTimelinePropertiesFocus();
   }
 
   const handlers: Partial<Record<HotkeyCommandId, (e: KeyboardEvent) => boolean>> = {
@@ -58,7 +68,7 @@ export function usePlaybackHotkeys(
 
     'playback.stepForward': (e) => {
       if (!canUsePlaybackOrTimelineFocus()) return false;
-      if (isPreviewLikeFocus(focusStore.effectiveFocus)) return false;
+      if (shouldBlockTimelineStepInPreviewFocus()) return false;
 
       playbackStepHoldRunner.startHold({
         keyCode: e.code,
@@ -71,7 +81,7 @@ export function usePlaybackHotkeys(
 
     'playback.stepBackward': (e) => {
       if (!canUsePlaybackOrTimelineFocus()) return false;
-      if (isPreviewLikeFocus(focusStore.effectiveFocus)) return false;
+      if (shouldBlockTimelineStepInPreviewFocus()) return false;
 
       playbackStepHoldRunner.startHold({
         keyCode: e.code,
@@ -84,7 +94,7 @@ export function usePlaybackHotkeys(
 
     'playback.stepForwardLarge': (e) => {
       if (!canUsePlaybackOrTimelineFocus()) return false;
-      if (isPreviewLikeFocus(focusStore.effectiveFocus)) return false;
+      if (shouldBlockTimelineStepInPreviewFocus()) return false;
 
       playbackStepHoldRunner.startHold({
         keyCode: e.code,
@@ -98,7 +108,7 @@ export function usePlaybackHotkeys(
 
     'playback.stepBackwardLarge': (e) => {
       if (!canUsePlaybackOrTimelineFocus()) return false;
-      if (isPreviewLikeFocus(focusStore.effectiveFocus)) return false;
+      if (shouldBlockTimelineStepInPreviewFocus()) return false;
 
       playbackStepHoldRunner.startHold({
         keyCode: e.code,
