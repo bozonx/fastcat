@@ -186,6 +186,10 @@ export const useUiStore = defineStore('ui', () => {
     timestamp: 0,
   });
 
+  function triggerFileBrowserMoveSelection(dir: 'up' | 'down' | 'left' | 'right') {
+    fileBrowserMoveSelectionTrigger.value = { dir, timestamp: Date.now() };
+  }
+
   function triggerPreviewZoom(dir: 1 | -1) {
     previewZoomTrigger.value = { dir, timestamp: Date.now() };
   }
@@ -328,6 +332,7 @@ export const useUiStore = defineStore('ui', () => {
     fileBrowserNavigateForwardTrigger,
     fileBrowserNavigateUpTrigger,
     fileBrowserMoveSelectionTrigger,
+    triggerFileBrowserMoveSelection,
 
     triggerPreviewZoom,
     triggerPreviewZoomReset,

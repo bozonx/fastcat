@@ -3,7 +3,7 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { useUiStore } from '~/stores/ui.store';
 import type { HotkeyCommandId, HotkeyCombo } from '~/utils/hotkeys/defaultHotkeys';
-import { getDocFps } from '~/timeline/commands/utils';
+import { getDocFpsOrDefault } from '~/timeline/commands/utils';
 import { isPreviewLikeFocus } from '~/utils/hotkeys/runtime';
 import { hotkeyComboToBareKeyCode } from '~/utils/hotkeys/hotkeyUtils';
 import { pressedKeyCodes } from '~/utils/hotkeys/pressedKeys';
@@ -28,7 +28,7 @@ export function usePlaybackHotkeys(
   }
 
   function getPlaybackStepSeconds(frames: number) {
-    const fps = timelineStore.timelineDoc ? getDocFps(timelineStore.timelineDoc) : 30;
+    const fps = getDocFpsOrDefault(timelineStore.timelineDoc);
     return frames / fps;
   }
 
@@ -138,10 +138,7 @@ export function usePlaybackHotkeys(
       playbackStepHoldRunner.startHold({
         keyCode: e.code,
         action: () => {
-          const fps = getDocFps(
-            (timelineStore.timelineDoc ||
-              ({} as { format?: { fps?: number } })) as import('~/timeline/types').TimelineDocument,
-          );
+          const fps = getDocFpsOrDefault(timelineStore.timelineDoc);
           timelineStore.seekFrames(fps);
         },
       });
@@ -159,10 +156,7 @@ export function usePlaybackHotkeys(
       playbackStepHoldRunner.startHold({
         keyCode: e.code,
         action: () => {
-          const fps = getDocFps(
-            (timelineStore.timelineDoc ||
-              ({} as { format?: { fps?: number } })) as import('~/timeline/types').TimelineDocument,
-          );
+          const fps = getDocFpsOrDefault(timelineStore.timelineDoc);
           timelineStore.seekFrames(-fps);
         },
       });
@@ -287,7 +281,7 @@ export function usePlaybackHotkeys(
       return true;
     }
 
-    const fps = timelineStore.timelineDoc ? getDocFps(timelineStore.timelineDoc) : 30;
+    const fps = getDocFpsOrDefault(timelineStore.timelineDoc);
     playbackStepHoldRunner.startHold({
       keyCode: e.code,
       intervalMs: 3000 / fps,

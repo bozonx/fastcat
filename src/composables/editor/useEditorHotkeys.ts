@@ -3,10 +3,11 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
+import { useUiStore } from '~/stores/ui.store';
 import { getActiveElement } from '~/utils/browser-api';
 import { useEffectiveHotkeys } from '~/composables/editor/hotkeys/useEffectiveHotkeys';
 import { hotkeyFromKeyboardEvent, isEditableTarget } from '~/utils/hotkeys/hotkeyUtils';
-import type { HotkeyCommandId, HotkeyCombo } from '~/utils/hotkeys/defaultHotkeys';
+import type { HotkeyCommandId } from '~/utils/hotkeys/defaultHotkeys';
 import { createHotkeyHoldRunner } from '~/utils/hotkeys/holdRunner';
 import {
   canExecuteHotkeyCommand,
@@ -25,11 +26,19 @@ export function hasBlockingModalState(): boolean {
   return !!document.querySelector('dialog[open], [role="dialog"], [role="alertdialog"]');
 }
 
+const ARROW_KEY_DIRECTIONS: Record<string, 'up' | 'down' | 'left' | 'right' | undefined> = {
+  ArrowUp: 'up',
+  ArrowDown: 'down',
+  ArrowLeft: 'left',
+  ArrowRight: 'right',
+};
+
 export function useEditorHotkeys() {
   const workspaceStore = useWorkspaceStore();
   const focusStore = useFocusStore();
   const projectStore = useProjectStore();
   const timelineStore = useTimelineStore();
+  const uiStore = useUiStore();
 
   const volumeHoldRunner = createHotkeyHoldRunner();
   const zoomHoldRunner = createHotkeyHoldRunner();
@@ -38,9 +47,9 @@ export function useEditorHotkeys() {
 
   const suppressedKeyupCodes = new Set<string>();
 
-  const generalHandlers = useGeneralHotkeys(zoomHoldRunner, volumeHoldRunner, navigationHoldRunner);
+  const generalHandlers = useGeneralHotkeys(zoomHoldRunner, volumeHoldRunner);
   const timelineHandlers = useTimelineHotkeys(navigationHoldRunner);
-  const { effectiveHotkeys, hotkeyLookup, defaultHotkeyLookup } = useEffectiveHotkeys();
+  const { effectiveHotkeys, hotkeyLookup } = useEffectiveHotkeys();
   const playbackHandlers = usePlaybackHotkeys(playbackStepHoldRunner, effectiveHotkeys);
 
   // Combine handlers that overlap (copy, cut, paste)
@@ -85,19 +94,9 @@ export function useEditorHotkeys() {
     focusStore.handleFocusHotkey();
   }
 
-  function dispatchMatchedCommands(
-    matched: HotkeyCommandId[],
-    matchedCombo: HotkeyCombo | null,
-    e: Event,
-  ): boolean {
-    const allowsFullscreenExit = matched.includes('general.fullscreen');
-    const isPlaybackCmd = matched.some((cmdId) => cmdId.startsWith('playback.'));
-    const isZoomCmd = matched.some((cmdId) => cmdId.includes('zoom'));
+  function dispatchMatchedCommands(matched: HotkeyCommandId[], e: Event): boolean {
     const modalOpen = hasBlockingModalState();
     const fullscreen = isFullscreen();
-
-    if (modalOpen && !allowsFullscreenExit && !isZoomCmd) return false;
-    if (fullscreen && !allowsFullscreenExit && !isPlaybackCmd && !isZoomCmd) return false;
 
     if (matched.includes('general.focus') && canHandleFocusTab()) {
       if (isEditableTarget((e as KeyboardEvent).target)) return false;
@@ -107,35 +106,52 @@ export function useEditorHotkeys() {
       return true;
     }
 
-    const isEditableEventTarget = isEditableTarget((e as KeyboardEvent).target);
-    const isEditableActiveElement = isEditableTarget(getActiveElement());
     const keyboardEvent = e as KeyboardEvent;
     const isArrowKey = keyboardEvent.key.startsWith('Arrow');
     const isFileManagerHotkeyFocus =
       focusStore.canUseFileManagerHotkeys || focusStore.effectiveFocus === 'filesBrowser';
-    const matchedForFocus =
-      isFileManagerHotkeyFocus && isArrowKey
-        ? matched.filter((cmdId) => getHotkeyCommandGroup(cmdId) === 'fileManager')
-        : matched;
 
-    if (matchedForFocus.length === 0) {
-      return false;
+    // Arrow keys inside the file manager drive local list selection. They are
+    // intentionally excluded from the global customizable commands, so bridge
+    // them to the focused browser here. This works even when DOM focus is not
+    // on a list item (e.g. after selecting via click) — the previous code only
+    // filtered these out, so list navigation silently died in that state.
+    if (isFileManagerHotkeyFocus && isArrowKey && !modalOpen) {
+      const fileManagerMatched = matched.filter(
+        (cmdId) => getHotkeyCommandGroup(cmdId) === 'fileManager',
+      );
+      if (fileManagerMatched.length === 0) {
+        const hasArrowModifier =
+          keyboardEvent.ctrlKey || keyboardEvent.altKey || keyboardEvent.metaKey;
+        const dir = hasArrowModifier ? undefined : ARROW_KEY_DIRECTIONS[keyboardEvent.key];
+        if (dir) {
+          uiStore.triggerFileBrowserMoveSelection(dir);
+          e.preventDefault();
+          return true;
+        }
+        return false;
+      }
+      matched = fileManagerMatched;
     }
 
+    if (matched.length === 0) return false;
+
+    const isEditableEventTarget = isEditableTarget((e as KeyboardEvent).target);
+    const isEditableActiveElement = isEditableTarget(getActiveElement());
+
     const focusAwareOrder = getFocusAwareHotkeyOrder({
-      matched: matchedForFocus,
+      matched,
       canUseFileManagerHotkeys: focusStore.canUseFileManagerHotkeys,
       canUseTimelineHotkeys: focusStore.canUseTimelineHotkeys,
       canUseMonitorHotkeys: focusStore.canUseMonitorHotkeys,
     });
 
     for (const cmdId of focusAwareOrder) {
-      const isPlayback = cmdId.startsWith('playback.');
-      const isZoom = cmdId.includes('zoom');
       if (
         !canExecuteHotkeyCommand({
           cmdId,
-          hasBlockingModalState: modalOpen || (fullscreen && !isPlayback && !isZoom),
+          hasBlockingModalState: modalOpen,
+          isFullscreen: fullscreen,
           isEditableEventTarget,
           isEditableActiveElement,
         })
@@ -174,14 +190,16 @@ export function useEditorHotkeys() {
     if (!literalCombo && !layeredCombo) return;
 
     let matched = getMatchedHotkeyCommands({ combo: literalCombo, lookup: hotkeyLookup.value });
-    let matchedCombo: HotkeyCombo | null = literalCombo;
 
     if (matched.length === 0 && layeredCombo && layeredCombo !== literalCombo) {
+      // Match the virtual-layer combo against the user's effective bindings so
+      // customised/removed hotkeys are honoured (previously matched against the
+      // built-in defaults, which resurrected removed bindings and ignored
+      // custom ones for users with non-default modifier layers).
       matched = getMatchedHotkeyCommands({
         combo: layeredCombo,
-        lookup: defaultHotkeyLookup.value,
+        lookup: hotkeyLookup.value,
       });
-      matchedCombo = layeredCombo;
     }
 
     if (matched.length === 0) return;
@@ -197,7 +215,7 @@ export function useEditorHotkeys() {
       }
     }
 
-    if (dispatchMatchedCommands(matched, matchedCombo, e)) {
+    if (dispatchMatchedCommands(matched, e)) {
       suppressedKeyupCodes.add(e.code);
     }
   }

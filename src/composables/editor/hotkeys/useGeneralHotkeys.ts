@@ -19,7 +19,6 @@ import type { TimelineClipItem } from '~/timeline/types';
 export function useGeneralHotkeys(
   zoomHoldRunner: ReturnType<typeof createHotkeyHoldRunner>,
   volumeHoldRunner: ReturnType<typeof createHotkeyHoldRunner>,
-  _navigationHoldRunner: ReturnType<typeof createHotkeyHoldRunner>,
 ) {
   const timelineStore = useTimelineStore();
   const uiStore = useUiStore();

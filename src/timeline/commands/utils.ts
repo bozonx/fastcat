@@ -25,6 +25,14 @@ export function getDocFps(doc: TimelineDocument): number {
   return sanitizeFps(doc.timebase.fps);
 }
 
+/** Frame rate of the doc, or a safe fallback when no document is loaded. */
+export function getDocFpsOrDefault(
+  doc: TimelineDocument | null | undefined,
+  fallback = 30,
+): number {
+  return doc ? getDocFps(doc) : fallback;
+}
+
 export type QuantizeMode = 'round' | 'floor' | 'ceil';
 
 export function usToFrame(timeUs: number, fps: number, mode: QuantizeMode): number {

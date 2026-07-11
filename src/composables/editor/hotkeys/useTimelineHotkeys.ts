@@ -6,7 +6,8 @@ import { useUiStore } from '~/stores/ui.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useAppClipboard } from '~/composables/useAppClipboard';
 import type { HotkeyCommandId } from '~/utils/hotkeys/defaultHotkeys';
-import { getDocFps } from '~/timeline/commands/utils';
+import { getHotkeyCommandGroup } from '~/utils/hotkeys/runtime';
+import { getDocFpsOrDefault } from '~/timeline/commands/utils';
 import type { TimelineClipItem } from '~/timeline/types';
 import type { TimelineCommand } from '~/timeline/commands';
 import { createClipParametersSnapshot } from '~/utils/timeline/clip-parameters';
@@ -75,61 +76,51 @@ export function useTimelineHotkeys(
 
   const handlers: Partial<Record<HotkeyCommandId, (e: KeyboardEvent) => boolean>> = {
     'timeline.addTextClipAtPlayhead': () => {
-      if (!focusStore.canUseTimelineHotkeys) return false;
       timelineStore.addTextClipAtPlayhead();
       return true;
     },
 
     'timeline.addBackgroundClipAtPlayhead': () => {
-      if (!focusStore.canUseTimelineHotkeys) return false;
       timelineStore.addBackgroundClipAtPlayhead();
       return true;
     },
 
     'timeline.addAdjustmentClipAtPlayhead': () => {
-      if (!focusStore.canUseTimelineHotkeys) return false;
       timelineStore.addAdjustmentClipAtPlayhead();
       return true;
     },
 
     'timeline.selectSnapModeSnap': () => {
-      if (!focusStore.canUseTimelineHotkeys) return false;
       settingsStore.selectToolbarSnapMode('snap');
       return true;
     },
 
     'timeline.selectSnapModeNoSnap': () => {
-      if (!focusStore.canUseTimelineHotkeys) return false;
       settingsStore.selectToolbarSnapMode('no_snap');
       return true;
     },
 
     'timeline.selectSnapModeFree': () => {
-      if (!focusStore.canUseTimelineHotkeys) return false;
       settingsStore.selectToolbarSnapMode('free_mode');
       return true;
     },
 
     'timeline.selectDragModeMove': () => {
-      if (!focusStore.canUseTimelineHotkeys) return false;
       settingsStore.toolbarDragModeEnabled = false;
       return true;
     },
 
     'timeline.selectDragModePseudoOverlap': () => {
-      if (!focusStore.canUseTimelineHotkeys) return false;
       settingsStore.selectToolbarDragMode('pseudo_overlap');
       return true;
     },
 
     'timeline.selectDragModeSlip': () => {
-      if (!focusStore.canUseTimelineHotkeys) return false;
       settingsStore.selectToolbarDragMode('slip');
       return true;
     },
 
     'general.copy': () => {
-      if (!focusStore.canUseTimelineHotkeys) return false;
       if (timelineStore.selectedItemIds.length === 0) return false;
 
       clipboardStore.setClipboardPayload({
@@ -145,7 +136,6 @@ export function useTimelineHotkeys(
     },
 
     'general.cut': () => {
-      if (!focusStore.canUseTimelineHotkeys) return false;
       if (timelineStore.selectedItemIds.length === 0) return false;
 
       clipboardStore.setClipboardPayload({
@@ -161,8 +151,6 @@ export function useTimelineHotkeys(
     },
 
     'general.paste': () => {
-      if (!focusStore.canUseTimelineHotkeys) return false;
-
       const payload = clipboardStore.clipboardPayload;
       if (!payload || payload.source !== 'timeline' || payload.items.length === 0) return false;
 
@@ -189,7 +177,6 @@ export function useTimelineHotkeys(
     },
 
     'timeline.selectClipsLeftOfPlayhead': () => {
-      if (!focusStore.canUseTimelineHotkeys) return false;
       timelineStore.selectClipsRelativeToPlayhead({
         direction: 'left',
         trackId: getTargetTrackId(),
@@ -198,7 +185,6 @@ export function useTimelineHotkeys(
     },
 
     'timeline.selectClipsRightOfPlayhead': () => {
-      if (!focusStore.canUseTimelineHotkeys) return false;
       timelineStore.selectClipsRelativeToPlayhead({
         direction: 'right',
         trackId: getTargetTrackId(),
@@ -207,50 +193,41 @@ export function useTimelineHotkeys(
     },
 
     'timeline.trimToPlayheadLeft': () => {
-      if (!focusStore.canUseTimelineHotkeys) return false;
       void timelineStore.trimToPlayheadLeftNoRipple();
       return true;
     },
 
     'timeline.trimToPlayheadRight': () => {
-      if (!focusStore.canUseTimelineHotkeys) return false;
       void timelineStore.trimToPlayheadRightNoRipple();
       return true;
     },
 
     'timeline.rippleTrimLeft': () => {
-      if (!focusStore.canUseTimelineHotkeys) return false;
       void timelineStore.rippleTrimLeft();
       return true;
     },
 
     'timeline.rippleTrimRight': () => {
-      if (!focusStore.canUseTimelineHotkeys) return false;
       void timelineStore.rippleTrimRight();
       return true;
     },
 
     'timeline.advancedRippleTrimLeft': () => {
-      if (!focusStore.canUseTimelineHotkeys) return false;
       void timelineStore.advancedRippleTrimLeft();
       return true;
     },
 
     'timeline.advancedRippleTrimRight': () => {
-      if (!focusStore.canUseTimelineHotkeys) return false;
       void timelineStore.advancedRippleTrimRight();
       return true;
     },
 
     'timeline.rippleDeleteSelectedClipRange': () => {
-      if (!focusStore.canUseTimelineHotkeys) return false;
       timelineStore.rippleDeleteSelectedClipRangeAllTracks();
       return true;
     },
 
     'timeline.rippleDelete': () => {
-      if (!focusStore.canUseTimelineHotkeys) return false;
-
       if (timelineStore.selectedItemIds.length > 0) {
         timelineStore.rippleDeleteFirstSelectedItem();
         return true;
@@ -266,50 +243,42 @@ export function useTimelineHotkeys(
     },
 
     'timeline.splitAtPlayhead': () => {
-      if (!focusStore.canUseTimelineHotkeys) return false;
       void timelineStore.splitClipAtPlayhead();
       return true;
     },
 
     'timeline.splitAllAtPlayhead': () => {
-      if (!focusStore.canUseTimelineHotkeys) return false;
       void timelineStore.splitAllClipsAtPlayhead();
       return true;
     },
 
     'timeline.toggleDisableClip': () => {
-      if (!focusStore.canUseTimelineHotkeys) return false;
       void timelineStore.toggleDisableTargetClip();
       return true;
     },
 
     'timeline.toggleMuteClip': () => {
-      if (!focusStore.canUseTimelineHotkeys) return false;
       if (toggleAudioMixerMute()) return true;
       void timelineStore.toggleMuteTargetClip();
       return true;
     },
 
     'timeline.toggleVisibilityTrack': () => {
-      if (!focusStore.canUseTimelineHotkeys) return false;
       void timelineStore.toggleVisibilityTargetTrack();
       return true;
     },
 
     'timeline.toggleMuteTrack': () => {
-      if (!focusStore.canUseTimelineHotkeys) return false;
       void timelineStore.toggleMuteTargetTrack();
       return true;
     },
 
     'timeline.toggleSoloTrack': () => {
-      if (!focusStore.canUseTimelineHotkeys) return false;
       void timelineStore.toggleSoloTargetTrack();
       return true;
     },
 
     'timeline.moveSelectedClipsLeft': (e) => {
-      if (!focusStore.canUseTimelineHotkeys) return false;
       if (timelineStore.selectedItemIds.length === 0) return false;
       navigationHoldRunner.startHold({
         keyCode: e.code,
@@ -321,7 +290,6 @@ export function useTimelineHotkeys(
     },
 
     'timeline.moveSelectedClipsRight': (e) => {
-      if (!focusStore.canUseTimelineHotkeys) return false;
       if (timelineStore.selectedItemIds.length === 0) return false;
       navigationHoldRunner.startHold({
         keyCode: e.code,
@@ -333,15 +301,11 @@ export function useTimelineHotkeys(
     },
 
     'timeline.moveSelectedClipsLeftLarge': (e) => {
-      if (!focusStore.canUseTimelineHotkeys) return false;
       if (timelineStore.selectedItemIds.length === 0) return false;
       navigationHoldRunner.startHold({
         keyCode: e.code,
         action: () => {
-          const fps = getDocFps(
-            (timelineStore.timelineDoc ||
-              ({} as { format?: { fps?: number } })) as import('~/timeline/types').TimelineDocument,
-          );
+          const fps = getDocFpsOrDefault(timelineStore.timelineDoc);
           timelineStore.moveSelectedClips(-fps);
         },
       });
@@ -349,15 +313,11 @@ export function useTimelineHotkeys(
     },
 
     'timeline.moveSelectedClipsRightLarge': (e) => {
-      if (!focusStore.canUseTimelineHotkeys) return false;
       if (timelineStore.selectedItemIds.length === 0) return false;
       navigationHoldRunner.startHold({
         keyCode: e.code,
         action: () => {
-          const fps = getDocFps(
-            (timelineStore.timelineDoc ||
-              ({} as { format?: { fps?: number } })) as import('~/timeline/types').TimelineDocument,
-          );
+          const fps = getDocFpsOrDefault(timelineStore.timelineDoc);
           timelineStore.moveSelectedClips(fps);
         },
       });
@@ -365,7 +325,6 @@ export function useTimelineHotkeys(
     },
 
     'timeline.increaseSelectedClipsVolume': (e) => {
-      if (!focusStore.canUseTimelineHotkeys) return false;
       navigationHoldRunner.startHold({
         keyCode: e.code,
         action: () => {
@@ -377,7 +336,6 @@ export function useTimelineHotkeys(
     },
 
     'timeline.decreaseSelectedClipsVolume': (e) => {
-      if (!focusStore.canUseTimelineHotkeys) return false;
       navigationHoldRunner.startHold({
         keyCode: e.code,
         action: () => {
@@ -389,7 +347,6 @@ export function useTimelineHotkeys(
     },
 
     'timeline.increaseSelectedClipsVolumeLarge': (e) => {
-      if (!focusStore.canUseTimelineHotkeys) return false;
       navigationHoldRunner.startHold({
         keyCode: e.code,
         action: () => {
@@ -401,7 +358,6 @@ export function useTimelineHotkeys(
     },
 
     'timeline.decreaseSelectedClipsVolumeLarge': (e) => {
-      if (!focusStore.canUseTimelineHotkeys) return false;
       navigationHoldRunner.startHold({
         keyCode: e.code,
         action: () => {
@@ -413,7 +369,6 @@ export function useTimelineHotkeys(
     },
 
     'timeline.copyClipParameters': () => {
-      if (!focusStore.canUseTimelineHotkeys) return false;
       if (timelineStore.selectedItemIds.length !== 1) return false;
       const itemId = timelineStore.selectedItemIds[0];
       const doc = timelineStore.timelineDoc;
@@ -435,7 +390,6 @@ export function useTimelineHotkeys(
     },
 
     'timeline.pasteClipParameters': () => {
-      if (!focusStore.canUseTimelineHotkeys) return false;
       // At least one clip must be selected. When several are selected the paste
       // fans out across the whole selection; the first selected clip drives the
       // paste modal (applicable groups) and is expanded downstream.
@@ -461,7 +415,6 @@ export function useTimelineHotkeys(
     },
 
     'timeline.toggleWaveformMode': () => {
-      if (!focusStore.canUseTimelineHotkeys) return false;
       if (timelineStore.selectedItemIds.length === 0) return false;
 
       const doc = timelineStore.timelineDoc;
@@ -488,7 +441,6 @@ export function useTimelineHotkeys(
     },
 
     'timeline.toggleShowWaveform': () => {
-      if (!focusStore.canUseTimelineHotkeys) return false;
       if (timelineStore.selectedItemIds.length === 0) return false;
 
       const doc = timelineStore.timelineDoc;
@@ -515,7 +467,6 @@ export function useTimelineHotkeys(
     },
 
     'timeline.toggleShowThumbnails': () => {
-      if (!focusStore.canUseTimelineHotkeys) return false;
       if (timelineStore.selectedItemIds.length === 0) return false;
 
       const doc = timelineStore.timelineDoc;
@@ -542,7 +493,6 @@ export function useTimelineHotkeys(
     },
 
     'timeline.toggleFreezeFrame': () => {
-      if (!focusStore.canUseTimelineHotkeys) return false;
       if (timelineStore.selectedItemIds.length !== 1) return false;
 
       const doc = timelineStore.timelineDoc;
@@ -569,7 +519,6 @@ export function useTimelineHotkeys(
     },
 
     'timeline.toggleLockClip': () => {
-      if (!focusStore.canUseTimelineHotkeys) return false;
       if (timelineStore.selectedItemIds.length === 0) return false;
 
       const doc = timelineStore.timelineDoc;
@@ -611,7 +560,6 @@ export function useTimelineHotkeys(
     },
 
     'timeline.toggleLockTrack': () => {
-      if (!focusStore.canUseTimelineHotkeys) return false;
       void timelineStore.toggleLockTargetTrack();
       return true;
     },
@@ -667,19 +615,16 @@ export function useTimelineHotkeys(
     },
 
     'timeline.centerPlayhead': () => {
-      if (!focusStore.canUseTimelineHotkeys) return false;
       timelineStore.requestCenterPlayhead();
       return true;
     },
 
     'timeline.toggleBladeTool': () => {
-      if (!focusStore.canUseTimelineHotkeys) return false;
       timelineStore.isTrimModeActive = !timelineStore.isTrimModeActive;
       return true;
     },
 
     'timeline.reverseSpeed': () => {
-      if (!focusStore.canUseTimelineHotkeys) return false;
       const doc = timelineStore.timelineDoc;
       if (!doc) return false;
 
@@ -709,7 +654,6 @@ export function useTimelineHotkeys(
     },
 
     'timeline.openSpeedModal': () => {
-      if (!focusStore.canUseTimelineHotkeys) return false;
       const doc = timelineStore.timelineDoc;
       if (!doc) return false;
 
@@ -731,7 +675,6 @@ export function useTimelineHotkeys(
     },
 
     'timeline.groupClips': () => {
-      if (!focusStore.canUseTimelineHotkeys) return false;
       const clips = getSelectedClips();
       if (clips.length < 2) return false;
 
@@ -752,7 +695,6 @@ export function useTimelineHotkeys(
     },
 
     'timeline.ungroupClips': () => {
-      if (!focusStore.canUseTimelineHotkeys) return false;
       const clips = getSelectedClips();
       if (clips.length === 0) return false;
 
@@ -784,5 +726,21 @@ export function useTimelineHotkeys(
     return [];
   }
 
-  return handlers;
+  // Single enforcement point for the timeline-focus precondition. Every handler
+  // in the `timeline` group requires timeline focus; the copy/cut/paste handlers
+  // (group `general`) are gated separately by the dispatcher's merge wrapper.
+  const guarded: Partial<Record<HotkeyCommandId, (e: KeyboardEvent) => boolean>> = {};
+  for (const key of Object.keys(handlers) as HotkeyCommandId[]) {
+    const handler = handlers[key]!;
+    if (getHotkeyCommandGroup(key) === 'timeline') {
+      guarded[key] = (e: KeyboardEvent) => {
+        if (!focusStore.canUseTimelineHotkeys) return false;
+        return handler(e);
+      };
+    } else {
+      guarded[key] = handler;
+    }
+  }
+
+  return guarded;
 }

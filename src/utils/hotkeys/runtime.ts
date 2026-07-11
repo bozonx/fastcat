@@ -8,6 +8,8 @@ import type { FastCatUserSettings } from '../settings/defaults';
 export interface HotkeyCommandPolicy {
   allowInEditable?: boolean;
   allowWhenModalOpen?: boolean;
+  /** Command stays active while the fullscreen preview view is open. */
+  allowInFullscreen?: boolean;
   repeatable?: boolean;
   blurActiveElementOnExecute?: boolean;
 }
@@ -17,6 +19,7 @@ export type HotkeyLookup = Readonly<Record<HotkeyCombo, HotkeyCommandId[]>>;
 export const DEFAULT_HOTKEY_COMMAND_POLICY: Readonly<HotkeyCommandPolicy> = {
   allowInEditable: false,
   allowWhenModalOpen: false,
+  allowInFullscreen: false,
   repeatable: false,
   blurActiveElementOnExecute: false,
 };
@@ -41,28 +44,44 @@ export const HOTKEY_COMMAND_POLICIES: Readonly<
   },
   'general.fullscreen': {
     allowWhenModalOpen: true,
+    allowInFullscreen: true,
   },
   'general.zoomIn': {
     allowWhenModalOpen: true,
+    allowInFullscreen: true,
     repeatable: true,
   },
   'general.zoomOut': {
     allowWhenModalOpen: true,
+    allowInFullscreen: true,
     repeatable: true,
   },
   'general.zoomReset': {
     allowWhenModalOpen: true,
+    allowInFullscreen: true,
   },
   'general.zoomFit': {
     allowWhenModalOpen: true,
+    allowInFullscreen: true,
   },
 };
 
 export function getHotkeyCommandPolicy(cmdId: HotkeyCommandId): HotkeyCommandPolicy {
-  return {
+  const policy: HotkeyCommandPolicy = {
     ...DEFAULT_HOTKEY_COMMAND_POLICY,
     ...HOTKEY_COMMAND_POLICIES[cmdId],
   };
+
+  // Transport controls (play/pause, stepping, shuttle, speed) remain usable in
+  // the fullscreen preview view unless a command opts out explicitly.
+  if (
+    cmdId.startsWith('playback.') &&
+    HOTKEY_COMMAND_POLICIES[cmdId]?.allowInFullscreen === undefined
+  ) {
+    policy.allowInFullscreen = true;
+  }
+
+  return policy;
 }
 
 export function createHotkeyLookup(
@@ -141,11 +160,16 @@ export function canExecuteHotkeyCommand(params: {
   hasBlockingModalState: boolean;
   isEditableEventTarget: boolean;
   isEditableActiveElement: boolean;
+  isFullscreen?: boolean;
 }): boolean {
   const { cmdId, hasBlockingModalState, isEditableEventTarget, isEditableActiveElement } = params;
   const policy = getHotkeyCommandPolicy(cmdId);
 
   if (hasBlockingModalState && !policy.allowWhenModalOpen) {
+    return false;
+  }
+
+  if (params.isFullscreen && !policy.allowInFullscreen) {
     return false;
   }
 
