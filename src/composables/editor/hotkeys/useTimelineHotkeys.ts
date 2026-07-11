@@ -436,7 +436,10 @@ export function useTimelineHotkeys(
 
     'timeline.pasteClipParameters': () => {
       if (!focusStore.canUseTimelineHotkeys) return false;
-      if (timelineStore.selectedItemIds.length !== 1) return false;
+      // At least one clip must be selected. When several are selected the paste
+      // fans out across the whole selection; the first selected clip drives the
+      // paste modal (applicable groups) and is expanded downstream.
+      if (timelineStore.selectedItemIds.length === 0) return false;
 
       const payload = clipboardStore.clipboardPayload;
       if (!payload || payload.source !== 'clipParameters') return false;

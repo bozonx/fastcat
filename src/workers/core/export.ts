@@ -15,8 +15,10 @@ import {
 } from './export-helpers';
 import {
   buildPassthroughVideoTrack,
+  computePayloadVideoEndUs,
   findVideoPassthroughCandidate,
   writeVideoPassthrough,
+  type PassthroughPacketSink,
 } from './export-video-passthrough';
 import { usToS } from './time';
 import { yieldToEventLoop } from './yield-scheduler';
@@ -840,7 +842,74 @@ export async function runExport(
   }
 
   await loadFonts();
-  const localCompositor = options.videoCodec !== 'none' ? new VideoCompositor() : null;
+
+  // Video passthrough (pure remux of a single untouched clip) is decided
+  // BEFORE the compositor exists: a successful probe makes the whole
+  // decode/composite stack — including loadTimeline's per-source decode
+  // validation — unnecessary. The duration the eligibility gate needs is
+  // derived purely from the payload; for the passthrough-eligible shape
+  // (single full-coverage clip) it equals what loadTimeline would return.
+  const payloadVideoEndUs =
+    options.videoCodec !== 'none' ? computePayloadVideoEndUs(timelineClips) : 0;
+  const passthroughMaxDurationUs = Math.max(
+    payloadVideoEndUs,
+    options.audio ? computeMaxAudioDurationUs(audioClips) : 0,
+  );
+  const buildVideoPassthrough = async (): Promise<
+    Awaited<ReturnType<typeof buildPassthroughVideoTrack>>
+  > => {
+    const candidate = findVideoPassthroughCandidate({
+      timelineClips,
+      options,
+      maxDurationUs: passthroughMaxDurationUs,
+    });
+    if (!candidate.ok) {
+      log.info(`[Worker Export] video passthrough not applicable: ${candidate.reason}`);
+      return null;
+    }
+    try {
+      return await buildPassthroughVideoTrack({
+        clip: candidate.clip,
+        options,
+        hostClient,
+        getFile: async (path, handle) =>
+          (await hostClient?.getFileByPath?.(path)) ??
+          (await runResilientWorkerFileIo(handle, () => handle.getFile())),
+        openInput: async (file) => {
+          const { Input, BlobSource, ALL_FORMATS, EncodedPacketSink, EncodedVideoPacketSource } =
+            await import('mediabunny');
+          const input = new Input({
+            source: new BlobSource(governedBlobWorker(file)),
+            formats: ALL_FORMATS,
+          } as ConstructorParameters<typeof Input>[0]);
+          return {
+            input,
+            // Structural cast: InputVideoTrack satisfies the minimal track
+            // surface buildPassthroughVideoTrack needs.
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            videoTrack: (await input.getPrimaryVideoTrack()) as any,
+            makePacketSink: (track: unknown) =>
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              new EncodedPacketSink(track as any) as unknown as PassthroughPacketSink,
+            makeVideoSource: (codec: string) =>
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              new EncodedVideoPacketSource(codec as any) as unknown as {
+                add: (packet: unknown, meta?: { decoderConfig?: unknown }) => Promise<void>;
+              },
+            dispose: (openedInput: unknown) => safeDispose(openedInput),
+          };
+        },
+      });
+    } catch (error) {
+      log.warn('[Worker Export] Video passthrough setup failed; re-encoding.', error);
+      return null;
+    }
+  };
+  let prebuiltPassthrough = options.videoCodec !== 'none' ? await buildVideoPassthrough() : null;
+  const passthroughChosen = prebuiltPassthrough !== null;
+
+  const localCompositor =
+    options.videoCodec !== 'none' && !passthroughChosen ? new VideoCompositor() : null;
   if (localCompositor) {
     await localCompositor.init(options.width, options.height, '#000', true, undefined, {
       rendererPreference,
@@ -849,7 +918,9 @@ export async function runExport(
 
   try {
     let maxVideoDurationUs = 0;
-    if (localCompositor) {
+    if (passthroughChosen) {
+      maxVideoDurationUs = payloadVideoEndUs;
+    } else if (localCompositor) {
       maxVideoDurationUs = await localCompositor.loadTimeline(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         timelineClips as any,
@@ -1013,65 +1084,19 @@ export async function runExport(
         );
       }
 
-      // Video passthrough: pure remux of a single untouched source clip. Built
-      // per attempt (like the audio passthrough) so a hardware→software retry
-      // gets a fresh, unconsumed packet stream. Any gate failure falls back to
-      // the normal render+encode path below.
-      let videoPassthroughState: Awaited<ReturnType<typeof buildPassthroughVideoTrack>> = null;
-      const passthroughCandidate = findVideoPassthroughCandidate({
-        timelineClips,
-        options,
-        maxDurationUs,
-      });
-      if (passthroughCandidate.ok) {
-        try {
-          videoPassthroughState = await buildPassthroughVideoTrack({
-            clip: passthroughCandidate.clip,
-            options,
-            hostClient,
-            getFile: async (path, handle) =>
-              (await hostClient?.getFileByPath?.(path)) ??
-              (await runResilientWorkerFileIo(handle, () => handle.getFile())),
-            openInput: async (file) => {
-              const {
-                Input,
-                BlobSource,
-                ALL_FORMATS,
-                EncodedPacketSink,
-                EncodedVideoPacketSource,
-              } = await import('mediabunny');
-              const input = new Input({
-                source: new BlobSource(governedBlobWorker(file)),
-                formats: ALL_FORMATS,
-              } as ConstructorParameters<typeof Input>[0]);
-              return {
-                input,
-                // Structural cast: InputVideoTrack satisfies the minimal track
-                // surface buildPassthroughVideoTrack needs.
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                videoTrack: (await input.getPrimaryVideoTrack()) as any,
-                makePacketSink: (track: unknown) =>
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  new EncodedPacketSink(track as any) as unknown as {
-                    packets: () => AsyncIterable<unknown>;
-                  },
-                makeVideoSource: (codec: string) =>
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  new EncodedVideoPacketSource(codec as any) as unknown as {
-                    add: (packet: unknown, meta?: { decoderConfig?: unknown }) => Promise<void>;
-                  },
-                dispose: (openedInput: unknown) => safeDispose(openedInput),
-              };
-            },
-          });
-        } catch (error) {
-          log.warn('[Worker Export] Video passthrough setup failed; re-encoding.', error);
-          videoPassthroughState = null;
+      // Video passthrough: the decision was made before the compositor was
+      // built (see buildVideoPassthrough above). The first attempt consumes
+      // the prebuilt state; a hardware→software retry rebuilds it so the
+      // packet stream is fresh. The compositor was skipped entirely when the
+      // probe succeeded, so passthrough cannot fall back mid-attempt — a
+      // rebuild failure on retry is a hard error.
+      let videoPassthroughState = prebuiltPassthrough;
+      prebuiltPassthrough = null;
+      if (!videoPassthroughState && passthroughChosen) {
+        videoPassthroughState = await buildVideoPassthrough();
+        if (!videoPassthroughState) {
+          throw new Error('Video passthrough became unavailable on retry');
         }
-      } else {
-        log.info(
-          `[Worker Export] video passthrough not applicable: ${passthroughCandidate.reason}`,
-        );
       }
 
       const videoSource = videoPassthroughState
@@ -1096,7 +1121,7 @@ export async function runExport(
         output as unknown as { addAudioTrack: (source: unknown) => void },
       );
       const writerIds: ExportWriterId[] = [];
-      if (videoSource && localCompositor) writerIds.push('video');
+      if (videoSource) writerIds.push('video');
       if ((audioSource && writeMixedAudioToSource) || audioPacketState) writerIds.push('audio');
       const writerProgress = createExportWriterProgressAggregator({
         progressReporter,
@@ -1213,6 +1238,12 @@ export async function runExport(
       }
     }
   } finally {
+    // A prebuilt passthrough state that no attempt consumed (failure/cancel
+    // before the writer ran) still holds its opened Input.
+    if (prebuiltPassthrough) {
+      safeDispose(prebuiltPassthrough.input);
+      prebuiltPassthrough = null;
+    }
     if (localCompositor) {
       await localCompositor.destroy();
     }

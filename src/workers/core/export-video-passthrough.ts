@@ -5,17 +5,24 @@ import { getBunnyVideoCodec } from './utils';
 const log = createDevLogger('ExportVideoPassthrough');
 
 /**
- * Video passthrough: when the export is a pure remux of one untouched source
- * video (no edits, matching codec/resolution/fps), copy the encoded packets
- * instead of decoding + compositing + re-encoding every frame. This mirrors the
- * audio Opus passthrough and the native "direct" fast path in spirit; unlike
- * the native path (which still re-encodes via ffmpeg) this is a true stream
- * copy.
+ * Video passthrough: when the export renders one unmodified source video (no
+ * effects/transform/speed, matching codec/resolution/fps), copy the encoded
+ * packets instead of decoding + compositing + re-encoding every frame. This
+ * mirrors the audio Opus passthrough; unlike the native "direct" fast path
+ * (which still re-encodes via ffmpeg) this is a true stream copy.
  *
- * v1 deliberately requires FULL source coverage (no head or tail trim): the
- * packet stream is then copied whole in decode order, which is trivially
- * correct with B-frames and open GOPs. Keyframe-aligned trims are a possible
- * follow-up, but require GOP-boundary reasoning on both ends.
+ * v2 trim support:
+ * - head trim is allowed when the trim point lands on a keyframe (within half
+ *   a frame) — the copy then starts at that keyframe and timestamps shift to
+ *   zero. A mid-GOP head trim falls back to re-encode: packets before the cut
+ *   would be needed as references but must not be shown, and splicing a
+ *   re-encoded head GOP onto copied packets would need a second decoder config.
+ * - tail trim is always allowed: a metadata-only prescan (no packet data reads)
+ *   finds the last decode-order packet whose presentation time is inside the
+ *   range, and everything up to it is copied. Forward references that display
+ *   past the cut are kept (dropping them would corrupt trailing B-frames), so
+ *   the output may run a reorder-window (~2–4 frames) longer than requested —
+ *   never a whole GOP.
  */
 
 /** Frame-ish tolerance for duration comparisons (one 24fps frame). */
@@ -24,6 +31,14 @@ const DURATION_EPSILON_US = 42_000;
 /** How far the source bitrate may exceed the requested one before passthrough
  * would violate the user's compression intent and we re-encode instead. */
 const BITRATE_TOLERANCE = 1.25;
+
+/**
+ * How far (s) past the trim end the metadata prescan keeps scanning for
+ * late-decode-order packets that still display inside the range. Frame
+ * reordering windows are a handful of frames; anything beyond this is
+ * pathological and simply loses those frames at the cut.
+ */
+const TAIL_SCAN_LOOKAHEAD_S = 2;
 
 interface PassthroughExportOptions {
   videoCodec: string;
@@ -37,6 +52,24 @@ interface PassthroughExportOptions {
 }
 
 type PayloadClip = Extract<WorkerVideoPayloadItem, { kind: 'clip' }>;
+
+/**
+ * Timeline end (µs) of the video payload, computed purely from the payload so
+ * the passthrough decision can run before (and instead of) the compositor's
+ * `loadTimeline`.
+ */
+export function computePayloadVideoEndUs(timelineClips: readonly WorkerVideoPayloadItem[]): number {
+  let end = 0;
+  for (const item of timelineClips) {
+    if (!item || typeof item !== 'object' || item.kind !== 'clip') continue;
+    const start = Number(item.timelineRange?.startUs ?? 0);
+    const duration = Number(item.timelineRange?.durationUs ?? 0);
+    if (Number.isFinite(start) && Number.isFinite(duration)) {
+      end = Math.max(end, start + duration);
+    }
+  }
+  return end;
+}
 
 function isDefaultTransform(transform: unknown): boolean {
   if (transform === undefined || transform === null) return true;
@@ -67,8 +100,8 @@ function hasEnabledVideoEffects(clip: PayloadClip): boolean {
 
 /**
  * Pure eligibility gate over the timeline payload. Runs before any file I/O;
- * source-level checks (codec/resolution/fps/bitrate) happen later in
- * {@link buildPassthroughVideoTrack}.
+ * source-level checks (codec/resolution/fps/bitrate/keyframe alignment) happen
+ * later in {@link buildPassthroughVideoTrack}.
  */
 export function findVideoPassthroughCandidate(params: {
   timelineClips: readonly WorkerVideoPayloadItem[];
@@ -167,29 +200,53 @@ export function findVideoPassthroughCandidate(params: {
     return { ok: false, reason: 'clip does not cover the whole export' };
   }
 
-  const sourceStartUs = Number(clip.sourceRange?.startUs ?? 0);
+  // With speed 1 the timeline and source windows must agree; a mismatch means
+  // some engine-side stretching/holding would happen that a copy can't express.
   const sourceRangeDurationUs = Number(clip.sourceRange?.durationUs ?? 0);
-  const sourceDurationUs = Number(clip.sourceDurationUs ?? 0);
-  if (sourceStartUs > 0) {
-    return { ok: false, reason: 'clip head is trimmed' };
+  if (Math.abs(sourceRangeDurationUs - timelineDurationUs) > DURATION_EPSILON_US) {
+    return { ok: false, reason: 'timeline and source windows disagree' };
   }
-  if (!(sourceDurationUs > 0) || sourceRangeDurationUs + DURATION_EPSILON_US < sourceDurationUs) {
-    return { ok: false, reason: 'clip tail is trimmed' };
+  if (!(sourceRangeDurationUs > 0)) {
+    return { ok: false, reason: 'empty source range' };
   }
 
   return { ok: true, clip };
+}
+
+interface PacketLike {
+  timestamp: number;
+  duration: number;
+  type?: string;
+  clone: (options: { timestamp: number }) => unknown;
+}
+
+export interface PassthroughPacketSink {
+  getKeyPacket: (
+    timestampS: number,
+    options?: { verifyKeyPackets?: boolean },
+  ) => Promise<PacketLike | null>;
+  packets: (
+    startPacket?: PacketLike,
+    endPacket?: PacketLike,
+    options?: { metadataOnly?: boolean },
+  ) => AsyncIterable<PacketLike>;
 }
 
 export interface VideoPassthroughState {
   videoSource: {
     add: (packet: unknown, meta?: { decoderConfig?: unknown }) => Promise<void>;
   };
-  packetSink: {
-    packets: () => AsyncIterable<unknown>;
-  };
+  packetSink: PassthroughPacketSink;
   decoderConfig: unknown;
-  durationS: number;
-  input: { dispose?: () => void } | unknown;
+  /** Keyframe the copy starts from (source time domain). */
+  startPacket: PacketLike;
+  /** Source-domain copy window; timestamps shift by `-copyStartS` on write. */
+  copyStartS: number;
+  copyEndS: number;
+  /** True when the tail is untrimmed — the whole stream from `startPacket` is
+   * copied without the metadata prescan. */
+  wholeStream: boolean;
+  input: unknown;
 }
 
 interface HostClientLike {
@@ -200,10 +257,9 @@ interface HostClientLike {
 /**
  * Opens the source and validates the source-level passthrough gates: codec
  * family must match the requested output codec, resolution/rotation/fps must
- * match the requested output, and the source bitrate must not exceed the
- * requested one beyond {@link BITRATE_TOLERANCE} (the user asked for
- * compression). Returns `null` (with a logged reason) to fall back to the
- * re-encode path.
+ * match the requested output, the source bitrate must not exceed the requested
+ * one beyond {@link BITRATE_TOLERANCE}, and a head trim must land on a
+ * keyframe. Returns `null` (with a logged reason) to fall back to re-encode.
  */
 export async function buildPassthroughVideoTrack(params: {
   clip: PayloadClip;
@@ -224,7 +280,7 @@ export async function buildPassthroughVideoTrack(params: {
       }>;
       computeDuration: () => Promise<number>;
     } | null;
-    makePacketSink: (track: unknown) => { packets: () => AsyncIterable<unknown> };
+    makePacketSink: (track: unknown) => PassthroughPacketSink;
     makeVideoSource: (codec: string) => VideoPassthroughState['videoSource'];
     dispose: (input: unknown) => void;
   }>;
@@ -282,16 +338,45 @@ export async function buildPassthroughVideoTrack(params: {
     if (!decoderConfig) {
       return bail('source decoder config unavailable');
     }
-    const durationS = await videoTrack.computeDuration();
+
+    const packetSink = makePacketSink(videoTrack);
+    const sourceStartS = Math.max(0, Number(clip.sourceRange?.startUs ?? 0) / 1_000_000);
+    const requestedEndS =
+      sourceStartS + Math.max(0, Number(clip.sourceRange?.durationUs ?? 0) / 1_000_000);
+    const halfFrameS = 1 / (2 * requestedFps);
+
+    // Head trim must land on a keyframe: the copy has to start at one, and
+    // starting earlier would show frames the user cut away.
+    const startPacket = await packetSink.getKeyPacket(sourceStartS + halfFrameS, {
+      verifyKeyPackets: true,
+    });
+    if (!startPacket) {
+      return bail('no keyframe at or before the trim start');
+    }
+    if (Math.abs(startPacket.timestamp - sourceStartS) > halfFrameS) {
+      return bail(
+        `head trim at ${sourceStartS.toFixed(3)}s is not keyframe-aligned (nearest key at ${startPacket.timestamp.toFixed(3)}s)`,
+      );
+    }
+    const copyStartS = startPacket.timestamp;
+    const copyEndS = copyStartS + (requestedEndS - sourceStartS);
+
+    const trackDurationS = await videoTrack.computeDuration();
+    const wholeStream = copyEndS >= trackDurationS - halfFrameS * 2;
 
     log.info(
-      `video passthrough ENABLED: copying ${requestedCodec} stream (${options.width}x${options.height} @ ${sourceFps.toFixed(3)}fps, ~${Math.round(stats.averageBitrate / 1000)}kbps)`,
+      `video passthrough ENABLED: copying ${requestedCodec} stream ` +
+        `[${copyStartS.toFixed(3)}s..${wholeStream ? 'end' : `${copyEndS.toFixed(3)}s`}] ` +
+        `(${options.width}x${options.height} @ ${sourceFps.toFixed(3)}fps, ~${Math.round(stats.averageBitrate / 1000)}kbps)`,
     );
     return {
       videoSource: makeVideoSource(requestedCodec),
-      packetSink: makePacketSink(videoTrack),
+      packetSink,
       decoderConfig,
-      durationS,
+      startPacket,
+      copyStartS,
+      copyEndS,
+      wholeStream,
       input,
     };
   } catch (error) {
@@ -301,8 +386,36 @@ export async function buildPassthroughVideoTrack(params: {
 }
 
 /**
- * Copies the whole packet stream (decode order, timestamps unchanged — the
- * eligibility gate guarantees an untrimmed clip starting at timeline zero).
+ * Metadata-only prescan for a tail-trimmed copy: walks decode order from the
+ * start keyframe and returns the index of the last packet that still displays
+ * inside the copy window. Everything up to that index must be copied — packets
+ * past the window that sit before it in decode order are forward references
+ * for in-window B-frames and dropping them would corrupt the tail.
+ */
+export async function findLastNeededPacketIndex(params: {
+  packetSink: PassthroughPacketSink;
+  startPacket: PacketLike;
+  copyEndS: number;
+}): Promise<number> {
+  const { packetSink, startPacket, copyEndS } = params;
+  let lastNeeded = -1;
+  let index = 0;
+  for await (const packet of packetSink.packets(startPacket, undefined, { metadataOnly: true })) {
+    if (packet.timestamp < copyEndS - 1e-6) {
+      lastNeeded = index;
+    } else if (packet.timestamp >= copyEndS + TAIL_SCAN_LOOKAHEAD_S) {
+      // Reorder windows are a handful of frames; nothing this far past the cut
+      // can still display inside the window.
+      break;
+    }
+    index++;
+  }
+  return lastNeeded;
+}
+
+/**
+ * Copies the packet stream (decode order) from the start keyframe, shifting
+ * presentation timestamps so the copy window starts at zero.
  */
 export async function writeVideoPassthrough(params: {
   state: VideoPassthroughState;
@@ -311,22 +424,39 @@ export async function writeVideoPassthrough(params: {
   disposeInput: (input: unknown) => void;
 }): Promise<void> {
   const { state, ensureNotCancelled, onProgress, disposeInput } = params;
+  const { copyStartS, copyEndS } = state;
+  const copyDurationS = Math.max(0, copyEndS - copyStartS);
   let isFirstPacket = true;
   try {
-    for await (const packetRaw of state.packetSink.packets()) {
+    const lastNeededIndex = state.wholeStream
+      ? Number.POSITIVE_INFINITY
+      : await findLastNeededPacketIndex({
+          packetSink: state.packetSink,
+          startPacket: state.startPacket,
+          copyEndS,
+        });
+    if (lastNeededIndex < 0) {
+      throw new Error('video passthrough: no packets inside the copy window');
+    }
+
+    let index = 0;
+    for await (const packet of state.packetSink.packets(state.startPacket)) {
+      if (index > lastNeededIndex) break;
+      index++;
       ensureNotCancelled();
-      const packet = packetRaw as { timestamp?: number; duration?: number };
+      const adjusted =
+        copyStartS > 0 ? packet.clone({ timestamp: packet.timestamp - copyStartS }) : packet;
       if (isFirstPacket) {
-        await state.videoSource.add(packetRaw, {
+        await state.videoSource.add(adjusted, {
           decoderConfig: state.decoderConfig as VideoDecoderConfig,
         });
         isFirstPacket = false;
       } else {
-        await state.videoSource.add(packetRaw);
+        await state.videoSource.add(adjusted);
       }
-      if (state.durationS > 0) {
-        const packetEnd = Number(packet.timestamp || 0) + Number(packet.duration || 0);
-        onProgress?.(Math.min(1, Math.max(0, packetEnd / state.durationS)));
+      if (copyDurationS > 0) {
+        const packetEnd = packet.timestamp + packet.duration - copyStartS;
+        onProgress?.(Math.min(1, Math.max(0, packetEnd / copyDurationS)));
       }
     }
     onProgress?.(1);

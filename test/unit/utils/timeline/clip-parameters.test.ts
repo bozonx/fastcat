@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import type { TimelineClipItem } from '~/timeline/types';
+import type { TimelineClipItem, TimelineDocument } from '~/timeline/types';
 import {
   buildClipParametersPatch,
   createClipParametersSnapshot,
   getApplicableClipParameterGroups,
   hasClipParametersPatch,
+  resolveClipParametersApplyTargets,
 } from '~/utils/timeline/clip-parameters';
 
 function makeClip(patch: Partial<TimelineClipItem> = {}): TimelineClipItem {
@@ -486,5 +487,65 @@ describe('clip parameters clipboard helpers', () => {
       groups: ['animation'],
     });
     expect(patch.properties.animations).toEqual(animations);
+  });
+});
+
+describe('resolveClipParametersApplyTargets', () => {
+  const clipA = makeClip({ id: 'a', trackId: 'v1' });
+  const clipB = makeClip({ id: 'b', trackId: 'v1' });
+  const clipC = makeClip({ id: 'c', trackId: 'v2' });
+  const doc = {
+    tracks: [
+      { id: 'v1', kind: 'video', items: [clipA, clipB] },
+      { id: 'v2', kind: 'video', items: [clipC] },
+    ],
+  } as unknown as TimelineDocument;
+
+  const target = { trackId: 'v1', trackKind: 'video' as const, clip: clipA };
+
+  it('stays single-clip when only one item is selected', () => {
+    const result = resolveClipParametersApplyTargets({
+      doc,
+      selectedItemIds: ['a'],
+      target,
+    });
+    expect(result).toEqual([target]);
+  });
+
+  it('stays single-clip when the target is not part of the selection', () => {
+    const result = resolveClipParametersApplyTargets({
+      doc,
+      selectedItemIds: ['b', 'c'],
+      target,
+    });
+    expect(result).toEqual([target]);
+  });
+
+  it('fans out across the whole selection when the target is in a multi-selection', () => {
+    const result = resolveClipParametersApplyTargets({
+      doc,
+      selectedItemIds: ['a', 'b', 'c'],
+      target,
+    });
+    expect(result.map((t) => t.clip.id)).toEqual(['a', 'b', 'c']);
+    expect(result.map((t) => t.trackId)).toEqual(['v1', 'v1', 'v2']);
+  });
+
+  it('skips selection ids that no longer resolve to a clip', () => {
+    const result = resolveClipParametersApplyTargets({
+      doc,
+      selectedItemIds: ['a', 'missing', 'c'],
+      target,
+    });
+    expect(result.map((t) => t.clip.id)).toEqual(['a', 'c']);
+  });
+
+  it('falls back to the target when the doc is null', () => {
+    const result = resolveClipParametersApplyTargets({
+      doc: null,
+      selectedItemIds: ['a', 'b'],
+      target,
+    });
+    expect(result).toEqual([target]);
   });
 });

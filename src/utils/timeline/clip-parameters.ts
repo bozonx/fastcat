@@ -1,5 +1,11 @@
 import type { UpdateClipPropertiesCommand } from '~/timeline/commands';
-import type { ClipTransition, TimelineClipItem, TrackKind, ClipTransform } from '~/timeline/types';
+import type {
+  ClipTransition,
+  TimelineClipItem,
+  TimelineDocument,
+  TrackKind,
+  ClipTransform,
+} from '~/timeline/types';
 import { cloneValue } from '~/utils/clone';
 
 export type ClipParameterGroup =
@@ -619,6 +625,48 @@ function setOrDelete(target: object, key: string, value: unknown) {
     return;
   }
   targetRecord[key] = cloneValue(value);
+}
+
+/** A single clip that pasted parameters should be applied to. */
+export interface ClipParametersApplyTarget {
+  trackId: string;
+  trackKind: TrackKind;
+  clip: TimelineClipItem;
+}
+
+/**
+ * Expands a paste target into every clip the parameters should be applied to.
+ *
+ * Paste fans out across the whole selection only when the target clip is itself
+ * part of a real multi-selection (>1 selected, target included) — matching how
+ * direct multi-selection property edits behave. Otherwise it stays a single-clip
+ * paste. Selection ids that no longer resolve to a clip (e.g. markers) are
+ * skipped, and an empty resolution falls back to the target so paste never
+ * silently no-ops.
+ */
+export function resolveClipParametersApplyTargets(params: {
+  doc: TimelineDocument | null;
+  selectedItemIds: string[];
+  target: ClipParametersApplyTarget;
+}): ClipParametersApplyTarget[] {
+  const { doc, selectedItemIds, target } = params;
+  if (!doc || selectedItemIds.length <= 1 || !selectedItemIds.includes(target.clip.id)) {
+    return [target];
+  }
+
+  const targets: ClipParametersApplyTarget[] = [];
+  for (const id of selectedItemIds) {
+    for (const track of doc.tracks) {
+      const clip = track.items.find((it) => it.id === id && it.kind === 'clip') as
+        | TimelineClipItem
+        | undefined;
+      if (clip) {
+        targets.push({ trackId: track.id, trackKind: track.kind, clip });
+        break;
+      }
+    }
+  }
+  return targets.length > 0 ? targets : [target];
 }
 
 export function hasClipParametersPatch(patch: ClipParametersPatch) {

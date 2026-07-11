@@ -196,6 +196,19 @@ export function buildMultiSelectionContextMenu(
     });
   }
 
+  // Paste parameters onto every selected clip. The right-clicked clip drives the
+  // paste modal (which groups are applicable) and the paste then fans out across
+  // the whole selection. Only offered when the clipboard holds copied parameters.
+  if (item.kind === 'clip' && options.getClipParametersSnapshot()) {
+    mainGroup.push({
+      label: options.t('fastcat.clip.parameters.paste'),
+      icon: 'i-heroicons-clipboard-document-check',
+      disabled: state.hasLockedTrack,
+      kbds: options.getHotkeyKbds('timeline.pasteClipParameters'),
+      onSelect: () => options.pasteClipParameters(item, options.track.value.kind),
+    });
+  }
+
   const actionGroup: ContextMenuGroup = [
     {
       label: options.t('common.copy'),

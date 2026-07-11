@@ -1,8 +1,11 @@
 import { describe, it, expect, vi } from 'vitest';
 import {
+  computePayloadVideoEndUs,
+  findLastNeededPacketIndex,
   findVideoPassthroughCandidate,
   buildPassthroughVideoTrack,
   writeVideoPassthrough,
+  type PassthroughPacketSink,
 } from '~/workers/core/export-video-passthrough';
 import type { WorkerVideoPayloadItem } from '~/types/worker-payload';
 
@@ -45,9 +48,53 @@ function candidate(
   });
 }
 
+describe('computePayloadVideoEndUs', () => {
+  it('returns the max timeline end across clip items only', () => {
+    const end = computePayloadVideoEndUs([
+      { kind: 'meta', masterEffects: [] } as never,
+      { kind: 'track', id: 't', layer: 0 } as never,
+      baseClip({ timelineRange: { startUs: 1_000_000, durationUs: 3_000_000 } }),
+      baseClip({ id: 'c2', timelineRange: { startUs: 0, durationUs: 2_000_000 } }),
+    ]);
+    expect(end).toBe(4_000_000);
+  });
+
+  it('returns 0 for an empty payload', () => {
+    expect(computePayloadVideoEndUs([])).toBe(0);
+  });
+});
+
 describe('findVideoPassthroughCandidate', () => {
   it('accepts a single untouched full-coverage media clip', () => {
     const result = candidate([baseClip()]);
+    expect(result.ok).toBe(true);
+  });
+
+  it('accepts a head-trimmed clip (keyframe alignment is checked later)', () => {
+    const result = candidate(
+      [
+        baseClip({
+          timelineRange: { startUs: 0, durationUs: 8_000_000 },
+          sourceRange: { startUs: 2_000_000, durationUs: 8_000_000 },
+        }),
+      ],
+      {},
+      8_000_000,
+    );
+    expect(result.ok).toBe(true);
+  });
+
+  it('accepts a tail-trimmed clip', () => {
+    const result = candidate(
+      [
+        baseClip({
+          timelineRange: { startUs: 0, durationUs: 6_000_000 },
+          sourceRange: { startUs: 0, durationUs: 6_000_000 },
+        }),
+      ],
+      {},
+      6_000_000,
+    );
     expect(result.ok).toBe(true);
   });
 
@@ -115,16 +162,23 @@ describe('findVideoPassthroughCandidate', () => {
       () => candidate([baseClip()], {}, DURATION_US + 2_000_000),
     ],
     [
-      'clip head is trimmed',
-      () =>
-        candidate([
-          baseClip({ sourceRange: { startUs: 500_000, durationUs: DURATION_US - 500_000 } }),
-        ]),
-    ],
-    [
-      'clip tail is trimmed',
+      'timeline and source windows disagree (stretch would be needed)',
       () =>
         candidate([baseClip({ sourceRange: { startUs: 0, durationUs: DURATION_US - 2_000_000 } })]),
+    ],
+    [
+      'empty source range',
+      () =>
+        candidate(
+          [
+            baseClip({
+              timelineRange: { startUs: 0, durationUs: 0 },
+              sourceRange: { startUs: 0, durationUs: 0 },
+            }),
+          ],
+          {},
+          0,
+        ),
     ],
   ];
 
@@ -134,13 +188,6 @@ describe('findVideoPassthroughCandidate', () => {
       expect(result.ok).toBe(false);
     });
   }
-
-  it('tolerates a sub-frame tail difference (source-duration rounding)', () => {
-    const result = candidate([
-      baseClip({ sourceRange: { startUs: 0, durationUs: DURATION_US - 20_000 } }),
-    ]);
-    expect(result.ok).toBe(true);
-  });
 
   it('accepts an identity transform object', () => {
     const result = candidate([
@@ -158,14 +205,55 @@ describe('findVideoPassthroughCandidate', () => {
   });
 });
 
-function makeOpenInput(trackOverrides: Record<string, unknown> = {}) {
-  const dispose = vi.fn();
-  const addedPackets: unknown[] = [];
-  const videoSource = {
-    add: vi.fn(async (packet: unknown) => {
-      addedPackets.push(packet);
-    }),
+interface MockPacket {
+  timestamp: number;
+  duration: number;
+  type: 'key' | 'delta';
+  clone: (options: { timestamp: number }) => unknown;
+}
+
+function makePacket(timestamp: number, type: 'key' | 'delta', duration = 1 / 30): MockPacket {
+  const packet: MockPacket = {
+    timestamp,
+    duration,
+    type,
+    clone: (options) => ({ ...packet, timestamp: options.timestamp, cloned: true }),
   };
+  return packet;
+}
+
+/** Default stream: keyframes every 5s over 10s at "1 packet per 5s" scale. */
+function defaultPackets(): MockPacket[] {
+  return [makePacket(0, 'key', 5), makePacket(5, 'delta', 5)];
+}
+
+function makeSink(packets: MockPacket[]): PassthroughPacketSink {
+  return {
+    getKeyPacket: vi.fn(async (timestampS: number) => {
+      let best: MockPacket | null = null;
+      for (const p of packets) {
+        if (p.type === 'key' && p.timestamp <= timestampS) {
+          if (!best || p.timestamp > best.timestamp) best = p;
+        }
+      }
+      return best;
+    }),
+    packets: vi.fn(async function* (startPacket?: unknown) {
+      const startIndex = startPacket ? packets.indexOf(startPacket as MockPacket) : 0;
+      for (const p of packets.slice(Math.max(0, startIndex))) {
+        yield p;
+      }
+    }),
+  } as unknown as PassthroughPacketSink;
+}
+
+function makeOpenInput(
+  trackOverrides: Record<string, unknown> = {},
+  packets: MockPacket[] = defaultPackets(),
+) {
+  const dispose = vi.fn();
+  const videoSource = { add: vi.fn(async () => {}) };
+  const sink = makeSink(packets);
   const track = {
     codec: 'avc',
     displayWidth: 1920,
@@ -181,25 +269,24 @@ function makeOpenInput(trackOverrides: Record<string, unknown> = {}) {
   const openInput = vi.fn(async () => ({
     input: { marker: 'input' },
     videoTrack: track as never,
-    makePacketSink: () => ({
-      packets: async function* () {
-        yield { timestamp: 0, duration: 5, type: 'key' };
-        yield { timestamp: 5, duration: 5, type: 'delta' };
-      },
-    }),
+    makePacketSink: () => sink,
     makeVideoSource: () => videoSource,
     dispose,
   }));
-  return { openInput, dispose, videoSource, addedPackets, track };
+  return { openInput, dispose, videoSource, track, sink };
 }
 
-function buildParams(openInputBundle: ReturnType<typeof makeOpenInput>) {
+function buildParams(
+  openInputBundle: ReturnType<typeof makeOpenInput>,
+  clipOverrides: Record<string, unknown> = {},
+  maxDurationUs = DURATION_US,
+) {
   const clipResult = findVideoPassthroughCandidate({
-    timelineClips: [baseClip()],
+    timelineClips: [baseClip(clipOverrides)],
     options: baseOptions(),
-    maxDurationUs: DURATION_US,
+    maxDurationUs,
   });
-  if (!clipResult.ok) throw new Error('fixture clip must be eligible');
+  if (!clipResult.ok) throw new Error(`fixture clip must be eligible: ${clipResult.reason}`);
   return {
     clip: clipResult.clip,
     options: baseOptions(),
@@ -212,12 +299,69 @@ function buildParams(openInputBundle: ReturnType<typeof makeOpenInput>) {
 }
 
 describe('buildPassthroughVideoTrack', () => {
-  it('builds a state for a matching source', async () => {
+  it('builds a whole-stream state for an untrimmed source', async () => {
     const bundle = makeOpenInput();
     const state = await buildPassthroughVideoTrack(buildParams(bundle));
     expect(state).not.toBeNull();
-    expect(state!.durationS).toBe(10);
+    expect(state!.copyStartS).toBe(0);
+    expect(state!.copyEndS).toBe(10);
+    expect(state!.wholeStream).toBe(true);
     expect(bundle.dispose).not.toHaveBeenCalled();
+  });
+
+  it('accepts a keyframe-aligned head trim and shifts the copy window', async () => {
+    const packets = [makePacket(0, 'key', 2), makePacket(2, 'key', 4), makePacket(6, 'delta', 4)];
+    const bundle = makeOpenInput({}, packets);
+    const state = await buildPassthroughVideoTrack(
+      buildParams(
+        bundle,
+        {
+          timelineRange: { startUs: 0, durationUs: 8_000_000 },
+          sourceRange: { startUs: 2_000_000, durationUs: 8_000_000 },
+        },
+        8_000_000,
+      ),
+    );
+    expect(state).not.toBeNull();
+    expect(state!.copyStartS).toBe(2);
+    expect(state!.copyEndS).toBe(10);
+    expect(state!.wholeStream).toBe(true);
+    expect(state!.startPacket).toBe(packets[1]);
+  });
+
+  it('rejects a head trim that is not keyframe-aligned', async () => {
+    // Keyframes at 0 and 5; trim at 2s → nearest key 0, misaligned.
+    const packets = [makePacket(0, 'key', 5), makePacket(5, 'key', 5)];
+    const bundle = makeOpenInput({}, packets);
+    const state = await buildPassthroughVideoTrack(
+      buildParams(
+        bundle,
+        {
+          timelineRange: { startUs: 0, durationUs: 8_000_000 },
+          sourceRange: { startUs: 2_000_000, durationUs: 8_000_000 },
+        },
+        8_000_000,
+      ),
+    );
+    expect(state).toBeNull();
+    expect(bundle.dispose).toHaveBeenCalledTimes(1);
+  });
+
+  it('marks a tail-trimmed copy as not whole-stream', async () => {
+    const bundle = makeOpenInput();
+    const state = await buildPassthroughVideoTrack(
+      buildParams(
+        bundle,
+        {
+          timelineRange: { startUs: 0, durationUs: 6_000_000 },
+          sourceRange: { startUs: 0, durationUs: 6_000_000 },
+        },
+        6_000_000,
+      ),
+    );
+    expect(state).not.toBeNull();
+    expect(state!.copyEndS).toBe(6);
+    expect(state!.wholeStream).toBe(false);
   });
 
   const sourceRejections: Array<[string, Record<string, unknown>]> = [
@@ -264,12 +408,46 @@ describe('buildPassthroughVideoTrack', () => {
   });
 });
 
+describe('findLastNeededPacketIndex', () => {
+  it('keeps forward references needed by in-window B-frames', async () => {
+    // Decode order with reordering: key0, P3, B1, B2, P6, B4, B5, key9.
+    // Cut at 6s: B4/B5 display inside the window but decode after P6, so the
+    // last needed decode index is B5 (6) — P6 must be copied, key9 must not.
+    const packets = [
+      makePacket(0, 'key'),
+      makePacket(3, 'delta'),
+      makePacket(1, 'delta'),
+      makePacket(2, 'delta'),
+      makePacket(6, 'delta'),
+      makePacket(4, 'delta'),
+      makePacket(5, 'delta'),
+      makePacket(9, 'key'),
+    ];
+    const sink = makeSink(packets);
+    const lastNeeded = await findLastNeededPacketIndex({
+      packetSink: sink,
+      startPacket: packets[0]!,
+      copyEndS: 6,
+    });
+    expect(lastNeeded).toBe(6);
+  });
+
+  it('returns -1 when nothing displays inside the window', async () => {
+    const packets = [makePacket(5, 'key')];
+    const sink = makeSink(packets);
+    const lastNeeded = await findLastNeededPacketIndex({
+      packetSink: sink,
+      startPacket: packets[0]!,
+      copyEndS: 3,
+    });
+    expect(lastNeeded).toBe(-1);
+  });
+});
+
 describe('writeVideoPassthrough', () => {
-  it('copies all packets, attaches decoderConfig on the first, reports progress and disposes', async () => {
+  it('copies the whole stream with decoderConfig on the first packet', async () => {
     const bundle = makeOpenInput();
     const state = await buildPassthroughVideoTrack(buildParams(bundle));
-    expect(state).not.toBeNull();
-
     const disposeInput = vi.fn();
     const progress: number[] = [];
     await writeVideoPassthrough({
@@ -280,12 +458,76 @@ describe('writeVideoPassthrough', () => {
     });
 
     expect(bundle.videoSource.add).toHaveBeenCalledTimes(2);
-    const firstCall = bundle.videoSource.add.mock.calls[0]!;
-    expect(firstCall[1]).toEqual({ decoderConfig: { codec: 'avc1.64001f' } });
-    const secondCall = bundle.videoSource.add.mock.calls[1]!;
-    expect(secondCall[1]).toBeUndefined();
+    expect(bundle.videoSource.add.mock.calls[0]![1]).toEqual({
+      decoderConfig: { codec: 'avc1.64001f' },
+    });
+    expect(bundle.videoSource.add.mock.calls[1]![1]).toBeUndefined();
+    // Untrimmed head: packets pass through without cloning.
+    expect(bundle.videoSource.add.mock.calls[0]![0]).toMatchObject({ timestamp: 0 });
     expect(progress.at(-1)).toBe(1);
     expect(disposeInput).toHaveBeenCalledWith(state!.input);
+  });
+
+  it('shifts timestamps to zero for a head-trimmed copy', async () => {
+    const packets = [makePacket(0, 'key', 2), makePacket(2, 'key', 4), makePacket(6, 'delta', 4)];
+    const bundle = makeOpenInput({}, packets);
+    const state = await buildPassthroughVideoTrack(
+      buildParams(
+        bundle,
+        {
+          timelineRange: { startUs: 0, durationUs: 8_000_000 },
+          sourceRange: { startUs: 2_000_000, durationUs: 8_000_000 },
+        },
+        8_000_000,
+      ),
+    );
+    await writeVideoPassthrough({
+      state: state!,
+      ensureNotCancelled: () => {},
+      disposeInput: vi.fn(),
+    });
+
+    // Copy starts at the 2s keyframe (index 1) and shifts by -2s.
+    expect(bundle.videoSource.add).toHaveBeenCalledTimes(2);
+    expect(bundle.videoSource.add.mock.calls[0]![0]).toMatchObject({ timestamp: 0, cloned: true });
+    expect(bundle.videoSource.add.mock.calls[1]![0]).toMatchObject({ timestamp: 4, cloned: true });
+  });
+
+  it('stops a tail-trimmed copy after the last needed packet, keeping forward refs', async () => {
+    const packets = [
+      makePacket(0, 'key'),
+      makePacket(3, 'delta'),
+      makePacket(1, 'delta'),
+      makePacket(2, 'delta'),
+      makePacket(6, 'delta'),
+      makePacket(4, 'delta'),
+      makePacket(5, 'delta'),
+      makePacket(9, 'key'),
+    ];
+    const bundle = makeOpenInput({}, packets);
+    const state = await buildPassthroughVideoTrack(
+      buildParams(
+        bundle,
+        {
+          timelineRange: { startUs: 0, durationUs: 6_000_000 },
+          sourceRange: { startUs: 0, durationUs: 6_000_000 },
+        },
+        6_000_000,
+      ),
+    );
+    expect(state!.wholeStream).toBe(false);
+    await writeVideoPassthrough({
+      state: state!,
+      ensureNotCancelled: () => {},
+      disposeInput: vi.fn(),
+    });
+
+    // 7 packets copied (incl. the P6 forward reference), key9 excluded.
+    expect(bundle.videoSource.add).toHaveBeenCalledTimes(7);
+    const copied = bundle.videoSource.add.mock.calls.map(
+      (call) => (call[0] as { timestamp: number }).timestamp,
+    );
+    expect(copied).toEqual([0, 3, 1, 2, 6, 4, 5]);
   });
 
   it('disposes the input even when cancelled mid-stream', async () => {

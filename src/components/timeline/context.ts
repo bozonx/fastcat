@@ -48,7 +48,16 @@ export interface TimelineContext {
   trimToTimeLeftNoRipple: (target: { trackId: string; itemId: string }, atUs: number) => void;
   trimToTimeRightNoRipple: (target: { trackId: string; itemId: string }, atUs: number) => void;
   applyTimeline: (cmd: TimelineCommand) => string[] | Promise<string[]>;
-  batchApplyTimeline: (cmds: TimelineCommand[]) => string[] | Promise<string[]>;
+  batchApplyTimeline: (
+    cmds: TimelineCommand[],
+    options?: {
+      saveMode?: 'debounced' | 'immediate' | 'none';
+      skipHistory?: boolean;
+      historyMode?: 'immediate' | 'debounced';
+      historyDebounceMs?: number;
+      labelKey?: string;
+    },
+  ) => string[] | Promise<string[]>;
   selectTransition: (payload: TimelineTransitionSelection | null) => void;
   selectTimelineTransition: (trackId: string, itemId: string, edge: 'in' | 'out') => void;
   selectTimelineItem: (trackId: string, itemId: string, kind: 'clip' | 'gap') => void;

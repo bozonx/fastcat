@@ -104,7 +104,8 @@ export function useProvideTimelineContext() {
     trimToTimeRightNoRipple: (target: { trackId: string; itemId: string }, atUs: number) =>
       timelineStore.trimToTimeRightNoRipple(target, atUs),
     applyTimeline: (cmd: TimelineCommand) => timelineStore.applyTimeline(cmd),
-    batchApplyTimeline: (cmds: TimelineCommand[]) => timelineStore.batchApplyTimeline(cmds),
+    batchApplyTimeline: (cmds: TimelineCommand[], options) =>
+      timelineStore.batchApplyTimeline(cmds, options),
     selectTransition: (payload: { trackId: string; itemId: string; edge: 'in' | 'out' } | null) =>
       timelineStore.selectTransition(payload),
     selectTimelineTransition: (trackId: string, itemId: string, edge: 'in' | 'out') =>

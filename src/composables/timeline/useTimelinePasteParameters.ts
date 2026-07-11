@@ -3,6 +3,10 @@ import type { TimelineClipItem, TimelineTrack, TrackKind } from '~/timeline/type
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useClipParametersClipboard } from '~/composables/editor/useClipParametersClipboard';
+import { resolveClipParametersApplyTargets } from '~/utils/timeline/clip-parameters';
+
+const PASTE_PARAMETERS_HISTORY_LABEL_KEY =
+  'videoEditor.fileManager.history.entries.updateClipProperties';
 
 /**
  * Wires the "paste clip parameters" trigger to the paste modal, extracted from
@@ -25,10 +29,17 @@ export function useTimelinePasteParameters(tracks: () => TimelineTrack[]) {
   } = useClipParametersClipboard({
     clip: computed(() => activeClipForPasteParameters.value || ({} as TimelineClipItem)),
     trackKind: computed(() => activeTrackKindForPasteParameters.value),
-    updateClipProperties: (trackId, itemId, props) =>
-      timelineStore.updateClipProperties(trackId, itemId, props),
-    updateClipTransition: (trackId, itemId, patch) =>
-      timelineStore.updateClipTransition(trackId, itemId, patch),
+    resolveApplyTargets: (target) =>
+      resolveClipParametersApplyTargets({
+        doc: timelineStore.timelineDoc,
+        selectedItemIds: timelineStore.selectedItemIds,
+        target,
+      }),
+    applyCommands: (cmds) =>
+      timelineStore.batchApplyTimeline(cmds, {
+        historyMode: 'immediate',
+        labelKey: PASTE_PARAMETERS_HISTORY_LABEL_KEY,
+      }),
   });
 
   watch(

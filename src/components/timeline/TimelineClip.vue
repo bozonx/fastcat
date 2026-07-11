@@ -38,6 +38,7 @@ import {
   getClipTailTimelineHandleUs,
   getClipHeadTimelineHandleUs,
 } from '~/utils/timeline/clip';
+import { resolveClipParametersApplyTargets } from '~/utils/timeline/clip-parameters';
 import { useClipDrop } from '~/composables/timeline/useClipDrop';
 import { useClipInteractions } from '~/composables/timeline/useClipInteractions';
 import { useClickOrDrag } from '~/composables/timeline/useClickOrDrag';
@@ -622,10 +623,17 @@ const {
 } = useClipParametersClipboard({
   clip: safeClip,
   trackKind: safeTrackKind,
-  updateClipProperties: (trackId, itemId, props) =>
-    timelineContext.updateClipProperties(trackId, itemId, props),
-  updateClipTransition: (trackId, itemId, patch) =>
-    timelineContext.updateClipTransition(trackId, itemId, patch),
+  resolveApplyTargets: (target) =>
+    resolveClipParametersApplyTargets({
+      doc: timelineContext.timelineDoc.value,
+      selectedItemIds: timelineContext.selectedItemIds.value,
+      target,
+    }),
+  applyCommands: (cmds) =>
+    timelineContext.batchApplyTimeline(cmds, {
+      historyMode: 'immediate',
+      labelKey: 'videoEditor.fileManager.history.entries.updateClipProperties',
+    }),
 });
 
 const { getHotkeyKbds } = useHotkeyLabel();

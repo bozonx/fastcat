@@ -51,6 +51,7 @@ import { useClipTextProperties } from '~/composables/properties/useClipTextPrope
 import { useClipShapeProperties } from '~/composables/properties/useClipShapeProperties';
 import { useClipHudProperties } from '~/composables/properties/useClipHudProperties';
 import { useClipParametersClipboard } from '~/composables/editor/useClipParametersClipboard';
+import { resolveClipParametersApplyTargets } from '~/utils/timeline/clip-parameters';
 import { useClipKeyframes } from '~/composables/timeline/useClipKeyframes';
 import { normalizeHexColor } from '~/utils/color';
 import { upsertKeyframe } from '~/timeline/animation/ops';
@@ -199,10 +200,17 @@ const {
 } = useClipParametersClipboard({
   clip: clipRef,
   trackKind: clipTrackKind,
-  updateClipProperties: (trackId, itemId, props) =>
-    timelineStore.updateClipProperties(trackId, itemId, props),
-  updateClipTransition: (trackId, itemId, patch) =>
-    timelineStore.updateClipTransition(trackId, itemId, patch),
+  resolveApplyTargets: (target) =>
+    resolveClipParametersApplyTargets({
+      doc: timelineStore.timelineDoc,
+      selectedItemIds: timelineStore.selectedItemIds,
+      target,
+    }),
+  applyCommands: (cmds) =>
+    timelineStore.batchApplyTimeline(cmds, {
+      historyMode: 'immediate',
+      labelKey: 'videoEditor.fileManager.history.entries.updateClipProperties',
+    }),
 });
 
 function handleCutClip() {
