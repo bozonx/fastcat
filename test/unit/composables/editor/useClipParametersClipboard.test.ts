@@ -21,6 +21,7 @@ const hasClipParametersPatch = vi.fn(() => false);
 
 vi.mock('~/utils/timeline/clip-parameters', () => ({
   getApplicableClipParameterGroups: () => [{ id: 'speed', selectedByDefault: true }],
+  getApplicableClipParameterGroupsForTargets: () => [{ id: 'speed', selectedByDefault: true }],
   buildClipParametersPatch: (...args: unknown[]) => buildClipParametersPatch(...(args as [])),
   createClipParametersSnapshot: () => ({}),
   hasClipParametersPatch: (...args: unknown[]) => hasClipParametersPatch(...(args as [])),

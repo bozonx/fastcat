@@ -373,14 +373,25 @@ export function buildClipParametersPatch(input: {
   const selected = new Set(input.groups);
   const patch: ClipParametersPatch = { properties: {} };
   const targetEffects = input.targetClip.effects ?? [];
-  const nextVideoEffects =
-    selected.has('videoEffects') && input.snapshot.groups.videoEffects
-      ? ((input.snapshot.groups.videoEffects.effects as TimelineClipItem['effects']) ?? [])
-      : targetEffects.filter((effect) => effect?.target !== 'audio');
-  const nextAudioEffects =
-    selected.has('audioEffects') && input.snapshot.groups.audioEffects
-      ? ((input.snapshot.groups.audioEffects.effects as TimelineClipItem['effects']) ?? [])
-      : targetEffects.filter((effect) => effect?.target === 'audio');
+  // Effects only paste onto a clip that can actually host them: video effects
+  // need a video track, audio effects need an audio-capable clip. Without this
+  // gate a fan-out paste across a mixed selection would write the source clip's
+  // video effects onto an audio clip (and its audio effects onto a text clip),
+  // because the effects branch below runs after the per-group applicability loop.
+  const canPasteVideoEffects =
+    selected.has('videoEffects') &&
+    !!input.snapshot.groups.videoEffects &&
+    isGroupApplicable('videoEffects', input.targetClip, input.targetTrackKind);
+  const canPasteAudioEffects =
+    selected.has('audioEffects') &&
+    !!input.snapshot.groups.audioEffects &&
+    isGroupApplicable('audioEffects', input.targetClip, input.targetTrackKind);
+  const nextVideoEffects = canPasteVideoEffects
+    ? ((input.snapshot.groups.videoEffects!.effects as TimelineClipItem['effects']) ?? [])
+    : targetEffects.filter((effect) => effect?.target !== 'audio');
+  const nextAudioEffects = canPasteAudioEffects
+    ? ((input.snapshot.groups.audioEffects!.effects as TimelineClipItem['effects']) ?? [])
+    : targetEffects.filter((effect) => effect?.target === 'audio');
 
   const activeGroups = new Set<ClipParameterGroup>();
   for (const item of input.groups) {
@@ -608,7 +619,7 @@ export function buildClipParametersPatch(input: {
     Object.assign(patch.properties, cloneValue(groupValue));
   }
 
-  if (selected.has('videoEffects') || selected.has('audioEffects')) {
+  if (canPasteVideoEffects || canPasteAudioEffects) {
     patch.properties.effects = cloneValue([
       ...(nextVideoEffects ?? []),
       ...(nextAudioEffects ?? []),
@@ -650,8 +661,13 @@ export function resolveClipParametersApplyTargets(params: {
   target: ClipParametersApplyTarget;
 }): ClipParametersApplyTarget[] {
   const { doc, selectedItemIds, target } = params;
+
+  // Single-clip paste (or a target outside the selection): apply to the target
+  // alone — but never to a locked clip. A locked clip rejects property edits,
+  // and because paste is applied as one atomic batch the whole paste would roll
+  // back, so we drop it here and paste nothing rather than throwing downstream.
   if (!doc || selectedItemIds.length <= 1 || !selectedItemIds.includes(target.clip.id)) {
-    return [target];
+    return target.clip.locked ? [] : [target];
   }
 
   const targets: ClipParametersApplyTarget[] = [];
@@ -661,12 +677,64 @@ export function resolveClipParametersApplyTargets(params: {
         | TimelineClipItem
         | undefined;
       if (clip) {
-        targets.push({ trackId: track.id, trackKind: track.kind, clip });
+        // Locked clips are skipped rather than aborting the whole fan-out: a
+        // single locked clip in an atomic batch throws and rolls back every
+        // other clip's paste too. The paste simply lands on the unlocked ones.
+        if (!clip.locked) {
+          targets.push({ trackId: track.id, trackKind: track.kind, clip });
+        }
         break;
       }
     }
   }
-  return targets.length > 0 ? targets : [target];
+  return targets;
+}
+
+/**
+ * Unions the applicable parameter groups across every paste target. When a
+ * paste fans out over a mixed selection (e.g. a video clip and a text clip), the
+ * modal must offer every group that applies to *at least one* target — driving
+ * it off a single "primary" clip would hide groups the other clips could accept,
+ * and pasting off a primary with no applicable groups would silently no-op.
+ * Sub-properties are unioned per group; the per-target patch build then drops
+ * whatever doesn't apply to each individual clip.
+ */
+export function getApplicableClipParameterGroupsForTargets(input: {
+  snapshot: ClipParametersSnapshot | null | undefined;
+  targets: ClipParametersApplyTarget[];
+}): ClipParameterGroupOption[] {
+  if (!input.snapshot) return [];
+
+  const byId = new Map<ClipParameterGroup, ClipParameterGroupOption>();
+  const order: ClipParameterGroup[] = [];
+
+  for (const target of input.targets) {
+    const groups = getApplicableClipParameterGroups({
+      snapshot: input.snapshot,
+      targetClip: target.clip,
+      targetTrackKind: target.trackKind,
+    });
+    for (const group of groups) {
+      const existing = byId.get(group.id);
+      if (!existing) {
+        byId.set(group.id, {
+          ...group,
+          subProperties: group.subProperties ? [...group.subProperties] : undefined,
+        });
+        order.push(group.id);
+        continue;
+      }
+      if (group.subProperties && group.subProperties.length > 0) {
+        const merged = existing.subProperties ? [...existing.subProperties] : [];
+        for (const sub of group.subProperties) {
+          if (!merged.some((candidate) => candidate.id === sub.id)) merged.push(sub);
+        }
+        existing.subProperties = merged;
+      }
+    }
+  }
+
+  return order.map((id) => byId.get(id)!);
 }
 
 export function hasClipParametersPatch(patch: ClipParametersPatch) {

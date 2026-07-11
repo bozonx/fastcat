@@ -4,6 +4,7 @@ import {
   buildClipParametersPatch,
   createClipParametersSnapshot,
   getApplicableClipParameterGroups,
+  getApplicableClipParameterGroupsForTargets,
   hasClipParametersPatch,
   resolveClipParametersApplyTargets,
 } from '~/utils/timeline/clip-parameters';
@@ -110,6 +111,57 @@ describe('clip parameters clipboard helpers', () => {
     expect(patch.properties.effects).toEqual([
       { id: 'copied-video', manifestId: 'blur', params: {}, target: 'video' },
       { id: 'target-audio', manifestId: 'compressor', params: {}, target: 'audio' },
+    ]);
+  });
+
+  it('does not paste video effects onto an audio-track target (and keeps its own effects)', () => {
+    const snapshot = createClipParametersSnapshot({
+      trackKind: 'video',
+      clip: makeClip({
+        effects: [{ id: 'copied-video', manifestId: 'blur', params: {}, target: 'video' }],
+      }),
+    });
+
+    const audioTarget = makeClip({
+      trackId: 'a1',
+      effects: [{ id: 'target-audio', manifestId: 'compressor', params: {}, target: 'audio' }],
+    });
+
+    const patch = buildClipParametersPatch({
+      snapshot,
+      targetClip: audioTarget,
+      targetTrackKind: 'audio',
+      // videoEffects is inapplicable to an audio target; selecting it must not
+      // overwrite the target's effects with the source clip's video effects.
+      groups: ['videoEffects'],
+    });
+
+    expect(patch.properties.effects).toBeUndefined();
+    expect(hasClipParametersPatch(patch)).toBe(false);
+  });
+
+  it('pastes only applicable audio effects onto an audio target, preserving nothing video', () => {
+    const snapshot = createClipParametersSnapshot({
+      trackKind: 'video',
+      clip: makeClip({
+        effects: [
+          { id: 'copied-video', manifestId: 'blur', params: {}, target: 'video' },
+          { id: 'copied-audio', manifestId: 'echo', params: {}, target: 'audio' },
+        ],
+      }),
+    });
+
+    const audioTarget = makeClip({ trackId: 'a1' });
+
+    const patch = buildClipParametersPatch({
+      snapshot,
+      targetClip: audioTarget,
+      targetTrackKind: 'audio',
+      groups: ['audioEffects'],
+    });
+
+    expect(patch.properties.effects).toEqual([
+      { id: 'copied-audio', manifestId: 'echo', params: {}, target: 'audio' },
     ]);
   });
 
@@ -547,5 +599,79 @@ describe('resolveClipParametersApplyTargets', () => {
       target,
     });
     expect(result).toEqual([target]);
+  });
+
+  it('returns no targets for a locked single clip so the atomic paste is skipped', () => {
+    const lockedClip = makeClip({ id: 'a', trackId: 'v1', locked: true });
+    const lockedDoc = {
+      tracks: [{ id: 'v1', kind: 'video', items: [lockedClip] }],
+    } as unknown as TimelineDocument;
+
+    const result = resolveClipParametersApplyTargets({
+      doc: lockedDoc,
+      selectedItemIds: ['a'],
+      target: { trackId: 'v1', trackKind: 'video', clip: lockedClip },
+    });
+    expect(result).toEqual([]);
+  });
+
+  it('skips locked clips in a fan-out instead of aborting the whole paste', () => {
+    const lockedB = makeClip({ id: 'b', trackId: 'v1', locked: true });
+    const mixedDoc = {
+      tracks: [
+        { id: 'v1', kind: 'video', items: [clipA, lockedB] },
+        { id: 'v2', kind: 'video', items: [clipC] },
+      ],
+    } as unknown as TimelineDocument;
+
+    const result = resolveClipParametersApplyTargets({
+      doc: mixedDoc,
+      selectedItemIds: ['a', 'b', 'c'],
+      target,
+    });
+    expect(result.map((t) => t.clip.id)).toEqual(['a', 'c']);
+  });
+});
+
+describe('getApplicableClipParameterGroupsForTargets', () => {
+  it('unions applicable groups across a mixed selection', () => {
+    const snapshot = createClipParametersSnapshot({
+      trackKind: 'video',
+      clip: makeClip({
+        clipType: 'text',
+        opacity: 0.5,
+        transform: { position: { x: 1, y: 2 } },
+        style: { fontSize: 12 },
+      }),
+    });
+
+    // A text clip contributes text (+transform/opacity); a media clip on a video
+    // track also accepts transform/opacity but not text. The union must expose
+    // every group that at least one target can receive.
+    const groups = getApplicableClipParameterGroupsForTargets({
+      snapshot,
+      targets: [
+        { trackId: 'v1', trackKind: 'video', clip: makeClip({ clipType: 'text' }) },
+        { trackId: 'v1', trackKind: 'video', clip: makeClip({ clipType: 'media' }) },
+      ],
+    }).map((g) => g.id);
+
+    expect(groups).toContain('transform');
+    expect(groups).toContain('opacity');
+    expect(groups).toContain('text');
+  });
+
+  it('returns nothing when there are no targets or no snapshot', () => {
+    const snapshot = createClipParametersSnapshot({
+      trackKind: 'video',
+      clip: makeClip({ opacity: 0.5 }),
+    });
+    expect(getApplicableClipParameterGroupsForTargets({ snapshot, targets: [] })).toEqual([]);
+    expect(
+      getApplicableClipParameterGroupsForTargets({
+        snapshot: null,
+        targets: [{ trackId: 'v1', trackKind: 'video', clip: makeClip() }],
+      }),
+    ).toEqual([]);
   });
 });

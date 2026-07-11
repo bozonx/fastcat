@@ -4,6 +4,7 @@ import {
   buildClipParametersPatch,
   createClipParametersSnapshot,
   getApplicableClipParameterGroups,
+  getApplicableClipParameterGroupsForTargets,
   hasClipParametersPatch,
 } from '~/utils/timeline/clip-parameters';
 import type { ClipParametersApplyTarget } from '~/utils/timeline/clip-parameters';
@@ -55,10 +56,17 @@ export function useClipParametersClipboard(options: UseClipParametersClipboardOp
     const payload = clipboardStore.clipboardPayload;
     const target = pasteParametersTarget.value;
     if (!payload || payload.source !== 'clipParameters' || !target) return [];
-    return getApplicableClipParameterGroups({
+    const targets = options.resolveApplyTargets({
+      trackId: target.clip.trackId,
+      trackKind: target.trackKind,
+      clip: target.clip,
+    });
+    if (targets.length === 0) return [];
+    // Offer every group applicable to at least one clip in the paste fan-out, so
+    // a mixed selection isn't limited to the primary clip's groups.
+    return getApplicableClipParameterGroupsForTargets({
       snapshot: payload.snapshot,
-      targetClip: target.clip,
-      targetTrackKind: target.trackKind,
+      targets,
     });
   });
 
@@ -91,10 +99,15 @@ export function useClipParametersClipboard(options: UseClipParametersClipboardOp
     const payload = clipboardStore.clipboardPayload;
     if (!payload || payload.source !== 'clipParameters') return;
 
-    const groups = getApplicableClipParameterGroups({
+    // Resolve the full fan-out up front (dropping locked clips) so the modal
+    // opens against the union of what every target can accept, and never opens
+    // when there is nothing to paste onto (all targets locked / incompatible).
+    const targets = options.resolveApplyTargets({ trackId: c.trackId, trackKind: tk, clip: c });
+    if (targets.length === 0) return;
+
+    const groups = getApplicableClipParameterGroupsForTargets({
       snapshot: payload.snapshot,
-      targetClip: c,
-      targetTrackKind: tk,
+      targets,
     });
     if (groups.length === 0) return;
 
