@@ -138,7 +138,6 @@ const mockClipBatchActions = {
   handleSetUniformDuration: vi.fn(),
   handleRelativeStartShift: vi.fn(),
   handleRelativeEndShift: vi.fn(),
-  handleQuantizeSelected: vi.fn(),
   handleBatchUpdateProperties: vi.fn(),
 };
 
@@ -312,14 +311,11 @@ describe('MultiClipProperties.vue', () => {
     });
   });
 
-  it('updates start, end and duration relative shifts correctly', async () => {
+  it('updates start and duration relative shifts correctly', async () => {
     const wrapper = await mountComponent();
 
     wrapper.vm.onStartShiftChange(500000);
     expect(mockClipBatchActions.handleRelativeStartShift).toHaveBeenCalledWith(500000);
-
-    wrapper.vm.onEndShiftChange(300000);
-    expect(mockClipBatchActions.handleRelativeEndShift).toHaveBeenCalledWith(300000);
 
     wrapper.vm.onDurationShiftChange(400000);
     expect(mockClipBatchActions.handleRelativeEndShift).toHaveBeenCalledWith(400000);

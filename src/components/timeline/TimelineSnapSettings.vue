@@ -12,6 +12,11 @@ const snapThresholdPx = computed({
   set: (val: number) => settingsStore.setGlobalSnapThresholdPx(val),
 });
 
+const freeAudioPlacement = computed({
+  get: () => workspaceStore.userSettings.timeline.freeAudioPlacement,
+  set: (val: boolean) => (workspaceStore.userSettings.timeline.freeAudioPlacement = val),
+});
+
 const timelineEdges = computed({
   get: () => workspaceStore.userSettings.timeline.snapping.timelineEdges,
   set: (val: boolean) => (workspaceStore.userSettings.timeline.snapping.timelineEdges = val),
@@ -70,6 +75,8 @@ const playheadClick = computed({
           {{ t('videoEditor.settings.snapToTargets') }}
         </h4>
 
+
+
         <UCheckbox v-model="timelineEdges" :label="t('videoEditor.settings.snapToTimelineEdges')" />
 
         <UCheckbox v-model="clips" :label="t('videoEditor.settings.snapToClips')" />
@@ -81,6 +88,8 @@ const playheadClick = computed({
         <UCheckbox v-model="playhead" :label="t('videoEditor.settings.snapToPlayhead')" />
 
         <UCheckbox v-model="playheadClick" :label="t('videoEditor.settings.snapPlayheadOnClick')" />
+
+        <UCheckbox v-model="freeAudioPlacement" :label="t('fastcat.timeline.freeAudioPlacement')" />
       </div>
     </div>
   </div>

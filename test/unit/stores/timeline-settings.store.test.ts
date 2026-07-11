@@ -15,6 +15,7 @@ vi.mock('~/stores/workspace.store', () => ({
         snapThresholdPx: 10,
         frameSnapMode: 'frames',
         toolbarSnapMode: 'snap',
+        freeAudioPlacement: false,
         toolbarDragMode: 'pseudo_overlap',
         toolbarDragModeEnabled: false,
       },
@@ -59,9 +60,14 @@ describe('useTimelineSettingsStore', () => {
     store.cycleToolbarSnapMode();
     expect(store.toolbarSnapMode).toBe('no_snap');
     store.cycleToolbarSnapMode();
-    expect(store.toolbarSnapMode).toBe('free_mode');
-    store.cycleToolbarSnapMode();
     expect(store.toolbarSnapMode).toBe('snap');
+  });
+
+  it('toggles free audio placement', () => {
+    const store = useTimelineSettingsStore();
+    expect(store.freeAudioPlacement).toBe(false);
+    store.freeAudioPlacement = true;
+    expect(store.freeAudioPlacement).toBe(true);
   });
 
   it('selects toolbar drag mode', () => {

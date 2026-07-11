@@ -233,9 +233,11 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
       zoom: timelineStore.timelineZoom,
       snapThresholdPx: timelineSettingsStore.snapThresholdPx,
       snapTargetsUs,
-      enableFrameSnap:
-        timelineSettingsStore.frameSnapMode === 'frames' &&
-        timelineSettingsStore.toolbarSnapMode !== 'free_mode',
+      enableFrameSnap: (() => {
+        const track = getTrackById(params.trackId);
+        const isVideo = track?.kind === 'video';
+        return isVideo ? true : !timelineSettingsStore.freeAudioPlacement;
+      })(),
       enableClipSnap: timelineSettingsStore.toolbarSnapMode === 'snap',
       frameOffsetUs: 0,
     });
@@ -254,9 +256,12 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
     const track = getTrackById(params.trackId);
     if (!track) return false;
 
+    const isVideo = track.kind === 'video';
+    const enableFrameSnap = isVideo ? true : !timelineSettingsStore.freeAudioPlacement;
+
     const fps = sanitizeFps(timelineStore.timelineDoc?.timebase.fps);
-    const startUs = quantizeTimeUsToFrames(params.startUs, fps, 'round');
-    const durationUs = quantizeTimeUsToFrames(params.durationUs, fps, 'round');
+    const startUs = enableFrameSnap ? quantizeTimeUsToFrames(params.startUs, fps, 'round') : params.startUs;
+    const durationUs = enableFrameSnap ? quantizeTimeUsToFrames(params.durationUs, fps, 'round') : params.durationUs;
 
     try {
       assertNoOverlap(track, '', startUs, durationUs);

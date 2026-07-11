@@ -4,7 +4,7 @@ import type { FrameSnapMode } from '~/utils/timeline-modes';
 import { DEFAULT_SNAP_SETTINGS } from '~/utils/timeline-modes';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 
-export type ToolbarSnapMode = 'snap' | 'no_snap' | 'free_mode';
+export type ToolbarSnapMode = 'snap' | 'no_snap';
 export type ToolbarDragMode = 'pseudo_overlap' | 'copy' | 'slip';
 
 export const useTimelineSettingsStore = defineStore('timelineSettings', () => {
@@ -21,6 +21,13 @@ export const useTimelineSettingsStore = defineStore('timelineSettings', () => {
     get: () => workspaceStore.userSettings.timeline.toolbarSnapMode,
     set: (v) => {
       workspaceStore.userSettings.timeline.toolbarSnapMode = v;
+    },
+  });
+
+  const freeAudioPlacement = computed({
+    get: () => workspaceStore.userSettings.timeline.freeAudioPlacement,
+    set: (v) => {
+      workspaceStore.userSettings.timeline.freeAudioPlacement = v;
     },
   });
   const toolbarDragMode = computed({
@@ -49,8 +56,7 @@ export const useTimelineSettingsStore = defineStore('timelineSettings', () => {
 
   if (
     toolbarSnapMode.value !== 'snap' &&
-    toolbarSnapMode.value !== 'no_snap' &&
-    toolbarSnapMode.value !== 'free_mode'
+    toolbarSnapMode.value !== 'no_snap'
   ) {
     toolbarSnapMode.value = 'snap';
   }
@@ -92,32 +98,14 @@ export const useTimelineSettingsStore = defineStore('timelineSettings', () => {
   function cycleToolbarSnapMode() {
     if (toolbarSnapMode.value === 'snap') {
       toolbarSnapMode.value = 'no_snap';
-      return;
-    }
-
-    if (toolbarSnapMode.value === 'no_snap') {
-      toolbarSnapMode.value = 'free_mode';
-      return;
-    }
-
-    toolbarSnapMode.value = 'snap';
-  }
-
-  function toggleToolbarSnapMode() {
-    if (toolbarSnapMode.value === 'snap') {
-      toolbarSnapMode.value = 'no_snap';
-    } else if (toolbarSnapMode.value === 'free_mode') {
-      toolbarSnapMode.value = 'no_snap';
     } else {
       toolbarSnapMode.value = 'snap';
     }
   }
 
-  function toggleToolbarSnapModeFree() {
+  function toggleToolbarSnapMode() {
     if (toolbarSnapMode.value === 'snap') {
-      toolbarSnapMode.value = 'free_mode';
-    } else if (toolbarSnapMode.value === 'no_snap') {
-      toolbarSnapMode.value = 'free_mode';
+      toolbarSnapMode.value = 'no_snap';
     } else {
       toolbarSnapMode.value = 'snap';
     }
@@ -147,6 +135,7 @@ export const useTimelineSettingsStore = defineStore('timelineSettings', () => {
   return {
     frameSnapMode,
     toolbarSnapMode,
+    freeAudioPlacement,
     toolbarDragMode,
     toolbarDragModeEnabled,
     isPseudoOverlapEnabled,
@@ -156,7 +145,6 @@ export const useTimelineSettingsStore = defineStore('timelineSettings', () => {
     selectToolbarSnapMode,
     cycleToolbarSnapMode,
     toggleToolbarSnapMode,
-    toggleToolbarSnapModeFree,
     selectToolbarDragMode,
     toggleSelectedToolbarDragMode,
     landscapeDrawerPosition,

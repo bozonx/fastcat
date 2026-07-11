@@ -132,20 +132,7 @@ describe('useClipPropertiesActions', () => {
     });
   });
 
-  describe('handleQuantizeClip', () => {
-    it('issues a move_item then a trim_item to snap to frames', () => {
-      const clip = makeClip({ timelineRange: { startUs: 16_700, durationUs: 5_000_001 } });
-      const timelineStore = makeTimelineStore({
-        timelineDoc: makeDoc([makeTrack({ items: [clip] })], 30),
-      });
-      const { actions } = build({ clip, timelineStore });
 
-      actions.handleQuantizeClip();
-
-      const types = timelineStore.applyTimeline.mock.calls.map((c: any[]) => c[0].type);
-      expect(types).toEqual(['move_item', 'trim_item']);
-    });
-  });
 
   describe('toggle handlers', () => {
     it.each([
@@ -233,15 +220,7 @@ describe('useClipPropertiesActions', () => {
     });
   });
 
-  describe('otherActionsList', () => {
-    it('offers quantize only for free-positioned clips', () => {
-      const freeClip = makeClip({ timelineRange: { startUs: 1234, durationUs: 5_000_001 } });
-      const { actions } = build({ clip: freeClip });
-      expect(actions.otherActionsList.value.some((a) => a.id === 'quantize')).toBe(true);
 
-      const { actions: aligned } = build();
-      expect(aligned.otherActionsList.value.some((a) => a.id === 'quantize')).toBe(false);
-    });
 
     it('exposes media-specific actions for media clips', () => {
       const { actions } = build();

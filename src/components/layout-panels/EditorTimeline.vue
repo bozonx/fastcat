@@ -1280,42 +1280,40 @@ async function handleConfirmCreateVersion(newName: string) {
       @pointercancel="onTimelinePointerUp"
       @dragover="onNonTrackDragOver"
     >
-      <UContextMenu :items="emptyAreaContextMenuItems">
-        <div
-          class="shrink-0 border-r border-ui-border bg-ui-bg-elevated flex items-center px-2 gap-2 cursor-pointer"
-          :style="{ width: `${TRACK_LABELS_WIDTH}px` }"
-          @click="
-            timelineStore.selectTimelineProperties();
-            selectionStore.selectTimelineProperties();
-          "
-        >
-          <UiTimecode
-            class="flex-1"
-            :model-value="timelineStore.currentTime"
-            :min="0"
-            wheel-without-focus
-            @update:model-value="timelineStore.setCurrentTimeUs($event)"
-          />
+      <div
+        class="shrink-0 border-r border-ui-border bg-ui-bg-elevated flex items-center px-2 gap-2 cursor-pointer"
+        :style="{ width: `${TRACK_LABELS_WIDTH}px` }"
+        @click="
+          timelineStore.selectTimelineProperties();
+          selectionStore.selectTimelineProperties();
+        "
+      >
+        <UiTimecode
+          class="flex-1"
+          :model-value="timelineStore.currentTime"
+          :min="0"
+          wheel-without-focus
+          @update:model-value="timelineStore.setCurrentTimeUs($event)"
+        />
 
-          <div class="flex items-center gap-1">
-            <UiTooltip
-              v-for="button in trackResetButtons"
-              :key="button.icon"
-              :text="button.tooltip"
-            >
-              <UButton
-                :icon="button.icon"
-                variant="solid"
-                size="xs"
-                :ui="{ leadingIcon: 'size-3' }"
-                :class="['w-5 h-5 p-0! rounded-full justify-center', button.class]"
-                :style="{ backgroundColor: button.color, color: button.textColor }"
-                @click="button.onClick"
-              />
-            </UiTooltip>
-          </div>
+        <div class="flex items-center gap-1">
+          <UiTooltip
+            v-for="button in trackResetButtons"
+            :key="button.icon"
+            :text="button.tooltip"
+          >
+            <UButton
+              :icon="button.icon"
+              variant="solid"
+              size="xs"
+              :ui="{ leadingIcon: 'size-3' }"
+              :class="['w-5 h-5 p-0! rounded-full justify-center', button.class]"
+              :style="{ backgroundColor: button.color, color: button.textColor }"
+              @click="button.onClick"
+            />
+          </UiTooltip>
         </div>
-      </UContextMenu>
+      </div>
       <div
         ref="rulerContainerRef"
         class="flex-1 min-w-0 relative z-10 timeline-ruler-container overflow-hidden bg-ui-bg-elevated"
@@ -1324,7 +1322,6 @@ async function handleConfirmCreateVersion(newName: string) {
           class="absolute top-0 bottom-0 left-0 h-full"
           :style="{ right: `${scrollbarHeight}px` }"
         >
-          <UContextMenu :items="emptyAreaContextMenuItems" class="w-full h-full">
             <TimelineRuler
               class="w-full h-full border-b border-ui-border bg-ui-bg-elevated cursor-pointer"
               :scroll-el="masterScrollEl"
@@ -1334,7 +1331,6 @@ async function handleConfirmCreateVersion(newName: string) {
               @start-pan="onRulerStartPan"
               @middleclick-ruler="onRulerMiddleClick"
             />
-          </UContextMenu>
         </div>
       </div>
     </div>

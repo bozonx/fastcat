@@ -146,38 +146,4 @@ describe('buildMultiSelectionContextMenu', () => {
     ]);
   });
 
-  it('quantizes only free selected clips with move and trim commands', async () => {
-    const options = createOptions(['audio-1', 'text-1']);
-    const audioClip = options.timelineDoc.value.tracks
-      .flatMap((track) => track.items)
-      .find((item) => item.id === 'audio-1');
-    if (audioClip?.kind === 'clip') {
-      audioClip.timelineRange = { startUs: 5_333, durationUs: 5_000_000 };
-    }
-
-    const action = (buildMultiSelectionContextMenu(options) ?? [])
-      .flat()
-      .find((candidate) => candidate.label === 'fastcat.timeline.quantize');
-
-    await action?.onSelect();
-
-    expect(options.batchApplyTimeline).toHaveBeenCalledWith([
-      {
-        type: 'move_item',
-        trackId: 'a1',
-        itemId: 'audio-1',
-        startUs: 0,
-        quantizeToFrames: false,
-      },
-      {
-        type: 'trim_item',
-        trackId: 'a1',
-        itemId: 'audio-1',
-        edge: 'end',
-        deltaUs: 0,
-        quantizeToFrames: false,
-      },
-    ]);
-    expect(options.requestTimelineSave).toHaveBeenCalledWith({ immediate: true });
-  });
 });

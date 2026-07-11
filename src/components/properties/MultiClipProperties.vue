@@ -103,7 +103,6 @@ const {
   handleSetUniformDuration,
   handleRelativeStartShift,
   handleRelativeEndShift,
-  handleQuantizeSelected,
   handleBatchUpdateProperties,
 } = useClipBatchActions(itemsRef, {
   timelineDoc: computed(() => timelineStore.timelineDoc),
@@ -534,14 +533,7 @@ const otherActions = computed(() => {
     onClick: handleUngroupSelected,
   });
 
-  if (hasFreeClip.value) {
-    result.push({
-      id: 'quantize',
-      label: t('fastcat.timeline.quantize'),
-      icon: 'i-heroicons-squares-2x2',
-      onClick: handleQuantizeSelected,
-    });
-  }
+
 
   if (hasAutoMontageControls.value) {
     result.push({

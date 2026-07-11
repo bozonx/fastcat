@@ -1,9 +1,8 @@
 import type { TimelineCommand } from '~/timeline/commands';
 import type { ContextMenuGroup, UseClipContextMenuOptions } from './types';
-import { collectMultiSelectionState, isClipFreePosition } from './utils';
+import { collectMultiSelectionState } from './utils';
 import { createLinkedGroupId } from '~/timeline/id';
 import { sanitizeFps } from '~/timeline/commands/utils';
-import { buildQuantizeClipCommands } from '~/utils/timeline/clip-quantize';
 
 export function buildMultiSelectionContextMenu(
   options: UseClipContextMenuOptions,
@@ -94,32 +93,7 @@ export function buildMultiSelectionContextMenu(
     });
   }
 
-  if (state.hasFreeClip) {
-    mainGroup.push({
-      label: options.t('fastcat.timeline.quantize'),
-      icon: 'i-heroicons-squares-2x2',
-      onSelect: async () => {
-        if (!state.doc) return;
 
-        const cmds: TimelineCommand[] = [];
-        const fps = sanitizeFps(state.doc.timebase?.fps);
-        for (const { trackId, itemId } of state.itemsToUpdate) {
-          const track = state.doc.tracks.find((candidateTrack) => candidateTrack.id === trackId);
-          const clip = track?.items.find((candidateItem) => candidateItem.id === itemId);
-          if (!clip || clip.kind !== 'clip') continue;
-          if (clip.locked) continue;
-          if (!isClipFreePosition(clip, state.doc)) continue;
-
-          cmds.push(...buildQuantizeClipCommands({ trackId, clip, fps }));
-        }
-
-        if (cmds.length === 0) return;
-
-        options.batchApplyTimeline(cmds);
-        await options.requestTimelineSave({ immediate: true });
-      },
-    });
-  }
 
   mainGroup.push({
     label: state.hasGroupedClip

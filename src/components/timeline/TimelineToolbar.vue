@@ -149,14 +149,6 @@ const snapModeOptions = computed(() => [
       'timeline.selectSnapModeNoSnap',
     ),
   },
-  {
-    value: 'free_mode' as ToolbarSnapMode,
-    icon: 'i-heroicons-arrows-pointing-out',
-    tooltip: getHotkeyTitle(
-      t('fastcat.timeline.snapModeFreeDescription'),
-      'timeline.selectSnapModeFree',
-    ),
-  },
 ]);
 
 const moveModeOptions = computed<
@@ -242,7 +234,7 @@ function toggleTrimMode(event?: MouseEvent) {
   timelineStore.isTrimModeActive = !timelineStore.isTrimModeActive;
 }
 
-const isSnapSettingsDisabled = computed(() => settingsStore.toolbarSnapMode !== 'snap');
+const isSnapSettingsDisabled = computed(() => false);
 
 const standardTextPresets = computed<Record<string, { style: TextClipStyle; text?: string }>>(
   () => ({

@@ -184,51 +184,7 @@ describe('useClipBatchActions', () => {
     );
   });
 
-  it('quantizes only frame-free clips and reports them via hasFreeClip', () => {
-    // 5333us start at 30fps lands between frame boundaries → not aligned.
-    const freeClip = makeClip({
-      id: 'free-1',
-      trackId: 'v1',
-      timelineRange: { startUs: 5_333, durationUs: 5_000_000 },
-    });
-    const alignedClip = makeClip({
-      id: 'aligned-1',
-      trackId: 'v1',
-      timelineRange: { startUs: 0, durationUs: 5_000_000 },
-    });
-    const { actions, batchApplyTimeline } = build({
-      tracks: [
-        makeTrack({ id: 'v1', kind: 'video', name: 'Video', items: [freeClip, alignedClip] }),
-      ],
-      selection: [
-        { trackId: 'v1', itemId: 'free-1' },
-        { trackId: 'v1', itemId: 'aligned-1' },
-      ],
-    });
 
-    expect(actions.hasFreeClip.value).toBe(true);
-
-    actions.handleQuantizeSelected();
-
-    expect(batchApplyTimeline).toHaveBeenCalledTimes(1);
-    expect(batchApplyTimeline).toHaveBeenCalledWith([
-      {
-        type: 'move_item',
-        trackId: 'v1',
-        itemId: 'free-1',
-        startUs: 0,
-        quantizeToFrames: false,
-      },
-      {
-        type: 'trim_item',
-        trackId: 'v1',
-        itemId: 'free-1',
-        edge: 'end',
-        deltaUs: 0,
-        quantizeToFrames: false,
-      },
-    ]);
-  });
 
   it('reports isSingleGroupSelection as false for empty or single selections', () => {
     const { actions } = build({ selection: [] });

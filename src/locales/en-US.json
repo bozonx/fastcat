@@ -916,8 +916,7 @@
         "title": "Timeline settings",
         "zoom": "Zoom"
       },
-      "quantize": "Quantize to frames",
-      "freePositionHint": "Clip is not frame-aligned (click 'Quantize to frames' in the context menu)",
+      "freeAudioPlacement": "Allow subframe audio placement",
       "freezeFrameTitle": "Freeze Frame",
       "removeFromGroup": "Remove from group",
       "removeTransitionIn": "Remove transition in",

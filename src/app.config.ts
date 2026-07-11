@@ -63,7 +63,7 @@ export default defineAppConfig({
       variants: {
         size: {
           xs: {
-            base: 'leading-8 py-0 md:leading-8',
+            base: 'h-8 py-1 px-2.5 leading-5 md:leading-5',
           },
         },
       },

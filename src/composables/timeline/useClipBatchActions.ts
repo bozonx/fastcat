@@ -13,9 +13,7 @@ import {
   clipSupportsVisualControls,
   clipSupportsWaveformControls,
   getSelectedClipRefs,
-  isClipFrameAligned,
 } from '~/utils/timeline/clip-capabilities';
-import { buildQuantizeClipCommands } from '~/utils/timeline/clip-quantize';
 
 type ClipPropertiesPatch = UpdateClipPropertiesCommand['properties'];
 
@@ -83,12 +81,7 @@ export function useClipBatchActions(
     );
   });
 
-  const hasFreeClip = computed(() => {
-    const doc = ctx.timelineDoc.value;
-    if (!doc) return false;
-    const fps = sanitizeFps(doc.timebase?.fps);
-    return selectedClips.value.some((clip) => !isClipFrameAligned(clip, fps));
-  });
+
 
   const allDisabled = computed(() => {
     if (selectedClips.value.length === 0) return false;
@@ -376,27 +369,12 @@ export function useClipBatchActions(
     });
   }
 
-  function handleQuantizeSelected() {
-    const doc = ctx.timelineDoc.value;
-    if (!doc) return;
-    const fps = sanitizeFps(doc.timebase?.fps);
 
-    const cmds: TimelineCommand[] = [];
-    for (const { track, clip } of editableClipRefs.value) {
-      if (isClipFrameAligned(clip, fps)) continue;
-
-      cmds.push(...buildQuantizeClipCommands({ trackId: track.id, clip, fps }));
-    }
-
-    if (cmds.length === 0) return;
-    ctx.batchApplyTimeline(cmds);
-  }
 
   return {
     selectedClips,
     hasGroupedClip,
     isSingleGroupSelection,
-    hasFreeClip,
     allDisabled,
     allMuted,
     allLocked,
@@ -430,7 +408,6 @@ export function useClipBatchActions(
     handleSetUniformDuration,
     handleRelativeStartShift,
     handleRelativeEndShift,
-    handleQuantizeSelected,
     handleBatchUpdateProperties,
     firstVideoClip,
     firstWaveformClip,

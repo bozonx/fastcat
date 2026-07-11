@@ -18,7 +18,6 @@ import {
   clipSupportsSpeedControls,
   clipSupportsReverseControls,
 } from '~/utils/timeline/clip-capabilities';
-import { buildQuantizeClipCommands } from '~/utils/timeline/clip-quantize';
 import { useMediaStore, resolveMediaMetadata } from '~/stores/media.store';
 
 interface TimelineStoreActions {
@@ -224,16 +223,7 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
     }
   }
 
-  function handleQuantizeClip() {
-    const doc = timelineStore.timelineDoc;
-    const clip = options.clip.value;
-    if (!doc) return;
 
-    const fps = sanitizeFps(doc.timebase?.fps);
-    for (const cmd of buildQuantizeClipCommands({ trackId: clip.trackId, clip, fps })) {
-      timelineStore.applyTimeline(cmd);
-    }
-  }
 
   function handleRemoveFromGroup() {
     if (!isInLinkedGroup.value) return;
@@ -550,15 +540,7 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
 
     // --- Remaining actions (if applicable) ---
 
-    // Snap to grid (Quantize)
-    if (isFreePosition.value) {
-      list.push({
-        id: 'quantize',
-        label: t('fastcat.timeline.quantize'),
-        icon: 'i-heroicons-squares-2x2',
-        onClick: handleQuantizeClip,
-      });
-    }
+
 
     // Remove from group
     if (isInLinkedGroup.value) {
@@ -717,7 +699,6 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
     isFreePosition,
     isInLinkedGroup,
     handleDeleteClip,
-    handleQuantizeClip,
     handleRemoveFromGroup,
     toggleAudioWaveformMode,
     toggleShowWaveform,

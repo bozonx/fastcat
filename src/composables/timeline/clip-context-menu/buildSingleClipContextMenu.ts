@@ -1,5 +1,5 @@
 import type { ContextMenuGroup, UseClipContextMenuOptions } from './types';
-import { isClipFreePosition } from './utils';
+
 import {
   clipSupportsAudioControls,
   clipSupportsAutoMontage,
@@ -9,7 +9,6 @@ import {
 } from '~/utils/timeline/clip-capabilities';
 import { getApplicableClipParameterGroups } from '~/utils/timeline/clip-parameters';
 import { sanitizeFps } from '~/timeline/commands/utils';
-import { buildQuantizeClipCommands } from '~/utils/timeline/clip-quantize';
 import { useMediaStore, resolveMediaMetadata } from '~/stores/media.store';
 
 export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): ContextMenuGroup[] {
@@ -21,7 +20,7 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
   const speedGroup: ContextMenuGroup = [];
   const montageGroup: ContextMenuGroup = [];
   const stateGroup: ContextMenuGroup = [];
-  const isFree = isClipFreePosition(clipItem, options.timelineDoc.value);
+
 
   const mediaStore = useMediaStore();
   const meta = clipItem.source?.path
@@ -236,20 +235,7 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
     },
   });
 
-  // Snap to grid (Quantize)
-  if (isFree && !clipItem.locked) {
-    stateGroup.push({
-      label: options.t('fastcat.timeline.quantize'),
-      icon: 'i-heroicons-squares-2x2',
-      onSelect: async () => {
-        const fps = sanitizeFps(options.timelineDoc.value?.timebase?.fps);
-        options.batchApplyTimeline(
-          buildQuantizeClipCommands({ trackId: track.id, clip: clipItem, fps }),
-        );
-        await options.requestTimelineSave({ immediate: true });
-      },
-    });
-  }
+
 
   return [speedGroup, montageGroup, stateGroup].filter((group) => group.length > 0);
 }

@@ -861,10 +861,23 @@ export function useTimelineItemDrag(
 
     const fps = sanitizeFps(timelineStore.timelineDoc?.timebase?.fps);
     const zoom = timelineStore.timelineZoom;
-    const enableFrameSnap =
-      settingsStore.frameSnapMode === 'frames' &&
-      !dragIsFreeOverride.value &&
-      !dragDisableFrameSnapOverride.value;
+    let enableFrameSnap = true;
+    if (mode === 'move') {
+      const selectedMovableItemIds = getSelectedMovableItemIds({
+        selectedItemIds: timelineStore.selectedItemIds,
+        tracks: tracks.value,
+      });
+      const itemsToMove = selectedMovableItemIds.length > 0 ? selectedMovableItemIds : [itemId];
+      const hasVideo = tracks.value.some(t =>
+        t.kind === 'video' &&
+        t.items.some(item => itemsToMove.includes(item.id))
+      );
+      enableFrameSnap = hasVideo ? true : !settingsStore.freeAudioPlacement;
+    } else {
+      const track = tracks.value.find(t => t.id === trackId);
+      const isVideo = track?.kind === 'video';
+      enableFrameSnap = isVideo ? true : !settingsStore.freeAudioPlacement;
+    }
     const enableClipSnapBase =
       !dragIsFreeOverride.value && settingsStore.toolbarSnapMode === 'snap';
     const enableClipSnap =
@@ -989,10 +1002,11 @@ export function useTimelineItemDrag(
 
       const commit = pendingMoveCommit.value;
       if (commit && commit.moves.length > 0 && !commit.isCollision) {
-        const enableFrameSnap =
-          settingsStore.frameSnapMode === 'frames' &&
-          !dragIsFreeOverride.value &&
-          !dragDisableFrameSnapOverride.value;
+        const hasVideo = commit.moves.some((move) => {
+          const track = tracks.value.find((t) => t.id === move.toTrackId);
+          return track?.kind === 'video';
+        });
+        const enableFrameSnap = hasVideo ? true : !settingsStore.freeAudioPlacement;
 
         const docBeforeApply = timelineStore.timelineDoc;
         let appliedCmdLocal: TimelineCommand | null = null;

@@ -107,41 +107,6 @@ describe('useClipPropertiesActions', () => {
     expect(timelineStore.selectedItemIds).toEqual(['c2']);
   });
 
-  it('quantizes clip start and duration via move and trim commands', () => {
-    const clip = makeClip({
-      timelineRange: { startUs: 101_000, durationUs: 1_033_000 },
-    });
-    const { api, appliedCommands, timelineStore } = createOptions(clip);
-
-    api.handleQuantizeClip();
-
-    expect(timelineStore.applyTimeline).toHaveBeenCalledTimes(2);
-
-    const fps = sanitizeFps(timelineStore.timelineDoc.timebase.fps);
-    const expectedStartUs = quantizeTimeUsToFrames(clip.timelineRange.startUs, fps, 'round');
-    const expectedEndUs = quantizeTimeUsToFrames(
-      clip.timelineRange.startUs + clip.timelineRange.durationUs,
-      fps,
-      'round',
-    );
-    const expectedDurationUs = Math.max(1, expectedEndUs - expectedStartUs);
-
-    expect(appliedCommands[0]).toEqual({
-      type: 'move_item',
-      trackId: clip.trackId,
-      itemId: clip.id,
-      startUs: expectedStartUs,
-      quantizeToFrames: false,
-    });
-    expect(appliedCommands[1]).toEqual({
-      type: 'trim_item',
-      trackId: clip.trackId,
-      itemId: clip.id,
-      edge: 'end',
-      deltaUs: expectedDurationUs - clip.timelineRange.durationUs,
-      quantizeToFrames: false,
-    });
-  });
 
   it('opens parent folder but keeps the file selected in file manager', async () => {
     const clip = makeClip({ source: { path: ' media / nested / clip.mp4 ' } });

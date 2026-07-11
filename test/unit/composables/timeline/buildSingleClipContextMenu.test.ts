@@ -146,45 +146,7 @@ describe('buildSingleClipContextMenu', () => {
     expect(labels).not.toContain('fastcat.timeline.showFullWaveform');
   });
 
-  it('quantizes a free clip with move and trim commands', async () => {
-    const options = createOptions({
-      item: ref({
-        id: 'clip-1',
-        kind: 'clip',
-        trackId: 'track-1',
-        clipType: 'media',
-        name: 'Clip 1',
-        timelineRange: { startUs: 5_333, durationUs: 5_000_000 },
-        sourceRange: { startUs: 0, durationUs: 5_000_000 },
-        sourceDurationUs: 5_000_000,
-      } as any),
-    });
 
-    const action = buildSingleClipMainGroup(options)
-      .flat()
-      .find((candidate) => candidate.label === 'fastcat.timeline.quantize');
-
-    await action?.onSelect();
-
-    expect(options.batchApplyTimeline).toHaveBeenCalledWith([
-      {
-        type: 'move_item',
-        trackId: 'track-1',
-        itemId: 'clip-1',
-        startUs: 0,
-        quantizeToFrames: false,
-      },
-      {
-        type: 'trim_item',
-        trackId: 'track-1',
-        itemId: 'clip-1',
-        edge: 'end',
-        deltaUs: 0,
-        quantizeToFrames: false,
-      },
-    ]);
-    expect(options.requestTimelineSave).toHaveBeenCalledWith({ immediate: true });
-  });
 
   it('adds rename action for a single clip', () => {
     const options = createOptions();

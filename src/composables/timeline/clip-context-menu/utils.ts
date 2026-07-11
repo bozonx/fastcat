@@ -1,19 +1,12 @@
-import { sanitizeFps } from '~/timeline/commands/utils';
 import type { TimelineClipItem, TimelineDocument } from '~/timeline/types';
 import {
   clipSupportsAudioControls,
   clipSupportsAutoMontage,
   clipSupportsThumbnailControls,
-  isClipFrameAligned,
 } from '~/utils/timeline/clip-capabilities';
 import type { MultiSelectionItemRef, MultiSelectionState } from './types';
 
-export function isClipFreePosition(clip: TimelineClipItem, doc: TimelineDocument | null): boolean {
-  if (!doc) return false;
 
-  const fps = sanitizeFps(doc.timebase?.fps);
-  return !isClipFrameAligned(clip, fps);
-}
 
 export function collectMultiSelectionState(
   doc: TimelineDocument | null,
@@ -95,7 +88,6 @@ export function collectMultiSelectionState(
     selectedClips,
     selectedIds: new Set(selectedItemIds),
     allDisabled: selectedClips.length > 0 && selectedClips.every((clip) => clip.disabled),
-    hasFreeClip: selectedClips.some((clip) => isClipFreePosition(clip, doc)),
     hasLockedTrack: lockedTrackIds.size > 0,
     hasAudioOrVideoWithAudio,
     hasVideo,

@@ -85,7 +85,8 @@ export interface FastCatUserSettings {
     };
     /** Per-user timeline snapping and drag modes (not project-specific). */
     frameSnapMode: 'free' | 'frames';
-    toolbarSnapMode: 'snap' | 'no_snap' | 'free_mode';
+    toolbarSnapMode: 'snap' | 'no_snap';
+    freeAudioPlacement: boolean;
     toolbarDragMode: 'pseudo_overlap' | 'copy' | 'slip';
     toolbarDragModeEnabled: boolean;
   };
@@ -260,6 +261,7 @@ export const DEFAULT_USER_SETTINGS: FastCatUserSettings = {
     },
     frameSnapMode: 'frames',
     toolbarSnapMode: 'snap',
+    freeAudioPlacement: false,
     toolbarDragMode: 'pseudo_overlap',
     toolbarDragModeEnabled: false,
   },
