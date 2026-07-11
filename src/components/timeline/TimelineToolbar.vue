@@ -27,7 +27,7 @@ import { useUiStore } from '~/stores/ui.store';
 import TimelineSnapSettingsModal from './TimelineSnapSettingsModal.vue';
 import { useHotkeyLabel } from '~/composables/useHotkeyLabel';
 
-import { useTimelineEmptyAreaContextMenu } from '~/composables/timeline/useTimelineEmptyAreaContextMenu';
+
 import { useExclusiveContextMenu } from '~/composables/ui/useExclusiveContextMenu';
 import type { HotkeyCommandId } from '~/utils/hotkeys/defaultHotkeys';
 import { useDraggedFile } from '~/composables/useDraggedFile';
@@ -346,12 +346,7 @@ function onToolbarPointerDown(e: PointerEvent, type: 'adjustment' | 'background'
   });
 }
 
-const { emptyAreaContextMenuItems: toolbarEmptyAreaContextMenuItems } =
-  useTimelineEmptyAreaContextMenu();
-const {
-  isContextMenuOpen: isToolbarEmptyContextMenuOpen,
-  setContextMenuOpen: setToolbarEmptyContextMenuOpen,
-} = useExclusiveContextMenu();
+
 const { isContextMenuOpen: isTextContextMenuOpen, setContextMenuOpen: setTextContextMenuOpen } =
   useExclusiveContextMenu();
 
@@ -361,11 +356,6 @@ function onToolbarContextMenu(e: MouseEvent) {
 </script>
 
 <template>
-  <UContextMenu
-    :open="isToolbarEmptyContextMenuOpen"
-    :items="toolbarEmptyAreaContextMenuItems"
-    @update:open="setToolbarEmptyContextMenuOpen"
-  >
     <div
       class="h-12 w-full border-b border-ui-border bg-ui-bg-elevated flex items-center px-4 shrink-0"
       data-timeline-toolbar
@@ -620,5 +610,5 @@ function onToolbarContextMenu(e: MouseEvent) {
     </div>
 
     <TimelineSnapSettingsModal />
-  </UContextMenu>
+
 </template>

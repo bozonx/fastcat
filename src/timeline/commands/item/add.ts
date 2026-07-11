@@ -143,7 +143,7 @@ export function addVirtualClipToTrack(
         clipType: 'text',
         text: typeof cmd.text === 'string' ? cmd.text : 'Text',
         style: cmd.style,
-        snapToPixelGrid: cmd.snapToPixelGrid ?? true,
+        snapToPixelGrid: cmd.snapToPixelGrid ?? false,
       };
       break;
     case 'shape':
@@ -155,7 +155,7 @@ export function addVirtualClipToTrack(
         strokeColor: cmd.strokeColor,
         strokeWidth: cmd.strokeWidth,
         shapeConfig: cmd.shapeConfig,
-        snapToPixelGrid: cmd.snapToPixelGrid ?? true,
+        snapToPixelGrid: cmd.snapToPixelGrid ?? false,
       };
       break;
     case 'hud':

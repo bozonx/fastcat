@@ -27,7 +27,7 @@ const emit = defineEmits<{
 const { t } = useI18n();
 
 const snapToPixelGrid = computed({
-  get: () => Boolean(props.clip.snapToPixelGrid ?? true),
+  get: () => Boolean(props.clip.snapToPixelGrid ?? false),
   set: (value: boolean) => emit('updateSnapToPixelGrid', value),
 });
 </script>

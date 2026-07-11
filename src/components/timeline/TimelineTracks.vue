@@ -25,14 +25,12 @@ import UiContextMenuPortal from '~/components/ui/UiContextMenuPortal.vue';
 import UiRenameModal from '~/components/ui/UiRenameModal.vue';
 import ClipParametersPasteModal from '~/components/properties/clip/ClipParametersPasteModal.vue';
 
-import { useTimelineEmptyAreaContextMenu } from '~/composables/timeline/useTimelineEmptyAreaContextMenu';
 import { useProvideTimelineContext } from '~/composables/timeline/useProvideTimelineContext';
 import { useTimelineTrackVirtualization } from '~/composables/timeline/useTimelineTrackVirtualization';
 import { useTimelineMovePreviews } from '~/composables/timeline/useTimelineMovePreviews';
 import { useTimelineAutoMontage } from '~/composables/timeline/useTimelineAutoMontage';
 import { useTimelineTrackContextMenu } from '~/composables/timeline/useTimelineTrackContextMenu';
 import { useTimelinePasteParameters } from '~/composables/timeline/useTimelinePasteParameters';
-import { useExclusiveContextMenu } from '~/composables/ui/useExclusiveContextMenu';
 import type { TimelineTrimPreview } from '~/composables/timeline/useTimelineItemDrag';
 
 import { isLayer1Active, isLayer2Active } from '~/utils/hotkeys/layerUtils';
@@ -260,14 +258,7 @@ const { autoMontageModal, applyAutoMontage, openAutoMontage } = useTimelineAutoM
   () => props.tracks,
 );
 
-const { emptyAreaContextMenuItems: timelineEmptyAreaContextMenuItems } =
-  useTimelineEmptyAreaContextMenu({
-    onZoomToFit: () => props.onZoomToFit?.(),
-  });
-const {
-  isContextMenuOpen: isTimelineEmptyContextMenuOpen,
-  setContextMenuOpen: setTimelineEmptyContextMenuOpen,
-} = useExclusiveContextMenu();
+
 
 const {
   isTrackRenameModalOpen,
@@ -416,12 +407,6 @@ watch(
 </script>
 
 <template>
-  <UContextMenu
-    :open="isTimelineEmptyContextMenuOpen"
-    :items="timelineEmptyAreaContextMenuItems"
-    :disabled="isMobile"
-    @update:open="setTimelineEmptyContextMenuOpen"
-  >
     <div
       ref="containerRef"
       tabindex="-1"
@@ -656,7 +641,7 @@ watch(
       <div class="w-full flex-1 min-h-7" @click="timelineStore.selectTrack(null)" />
       <div class="h-16 shrink-0" />
     </div>
-  </UContextMenu>
+
 
   <UiRenameModal
     :open="isTrackRenameModalOpen"

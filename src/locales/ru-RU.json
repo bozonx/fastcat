@@ -1935,7 +1935,7 @@
       "hotkeysDuplicateConfirm": "Всё равно добавить",
       "hotkeysDuplicateReplace": "Заменить",
       "hotkeysDuplicateTitle": "Дубликат горячей клавиши",
-      "hotkeysDuplicateWarning": "Эта горячая клавиша уже назначена.",
+      "hotkeysDuplicateWarning": "Сочетание клавиш «{combo}» уже назначено действию «{owner}». Вы хотите добавить его как дубликат для «{target}» или заменить им старое назначение?",
       "hotkeysGroupGeneral": "Общие",
       "hotkeysGroupFileManager": "Файловый менеджер",
       "hotkeysGroupMonitor": "Монитор",

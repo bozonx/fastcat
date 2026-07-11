@@ -1935,7 +1935,7 @@
       "hotkeysDuplicateConfirm": "Add anyway",
       "hotkeysDuplicateReplace": "Replace",
       "hotkeysDuplicateTitle": "Duplicate hotkey",
-      "hotkeysDuplicateWarning": "This hotkey is already assigned.",
+      "hotkeysDuplicateWarning": "The hotkey \"{combo}\" is already assigned to \"{owner}\". Do you want to add it as a duplicate for \"{target}\" or replace the old assignment?",
       "hotkeysGroupGeneral": "General",
       "hotkeysGroupFileManager": "File manager",
       "hotkeysGroupMonitor": "Monitor",

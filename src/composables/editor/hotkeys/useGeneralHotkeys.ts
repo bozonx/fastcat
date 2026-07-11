@@ -364,6 +364,13 @@ export function useGeneralHotkeys(
             timelineStore.removeMarker(markerId);
           }
           selectionStore.clearSelection();
+        } else if (selected?.kind === 'transition') {
+          if (selected.edge === 'in') {
+            timelineStore.updateClipTransition(selected.trackId, selected.itemId, { transitionIn: null });
+          } else {
+            timelineStore.updateClipTransition(selected.trackId, selected.itemId, { transitionOut: null });
+          }
+          selectionStore.selectTimelineItem(selected.trackId, selected.itemId, 'clip');
         } else {
           timelineStore.deleteFirstSelectedItem();
         }

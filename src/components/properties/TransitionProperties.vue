@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
+import { useSelectionStore } from '~/stores/selection.store';
 import ClipTransitionPanel from '~/components/timeline/ClipTransitionPanel.vue';
 import type { TimelineClipItem, TimelineTrack } from '~/timeline/types';
 import {
@@ -90,6 +91,21 @@ function handleTransitionUpdate(payload: {
     timelineStore.updateClipTransition(payload.trackId, payload.itemId, {
       transitionOut: payload.transition,
     });
+  }
+
+  if (payload.transition === null) {
+    const selectionStore = useSelectionStore();
+    const current = selectionStore.selectedEntity;
+    if (
+      current &&
+      current.source === 'timeline' &&
+      current.kind === 'transition' &&
+      current.trackId === payload.trackId &&
+      current.itemId === payload.itemId &&
+      current.edge === payload.edge
+    ) {
+      selectionStore.selectTimelineItem(payload.trackId, payload.itemId, 'clip');
+    }
   }
 }
 

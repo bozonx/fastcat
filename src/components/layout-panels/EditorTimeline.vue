@@ -49,7 +49,6 @@ import { useTimelineClickActions } from '~/composables/timeline/useTimelineClick
 import { useTimelineTextPreset } from '~/composables/timeline/useTimelineTextPreset';
 import { useTimelineDropHandling } from '~/composables/timeline/useTimelineDropHandling';
 import { useTimelineInteraction } from '~/composables/timeline/useTimelineInteraction';
-import { useTimelineEmptyAreaContextMenu } from '~/composables/timeline/useTimelineEmptyAreaContextMenu';
 import { useTimelineClipActions } from '~/composables/timeline/useTimelineClipActions';
 import { useTimelineSpeedModal } from '~/composables/timeline/useTimelineSpeedModal';
 import TextPresetSelectionModal from '~/components/timeline/TextPresetSelectionModal.vue';
@@ -265,13 +264,7 @@ const {
 
 const { applyClipAction } = useTimelineClipActions();
 
-// --- Context menu ---
-const { emptyAreaContextMenuItems } = useTimelineEmptyAreaContextMenu({
-  onZoomToFit: () => fitTimelineZoom(),
-});
-
 const timelineMenuItems = computed(() => [
-  ...emptyAreaContextMenuItems.value,
   [
     {
       label: t('common.actions.reset'),

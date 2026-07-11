@@ -160,7 +160,7 @@ describe('ClipTextProperties.vue', () => {
   });
 
   it('emits updateSnapToPixelGrid when the snap toggle is clicked', async () => {
-    const wrapper = await mountComponent();
+    const wrapper = await mountComponent({ clip: createClip({ snapToPixelGrid: true }) });
 
     const switches = wrapper.findAll('.u-switch');
     const snapSwitch = switches[switches.length - 1];

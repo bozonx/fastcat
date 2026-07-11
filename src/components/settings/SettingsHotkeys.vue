@@ -51,9 +51,11 @@ const { isCapturingHotkey, captureTargetCommandId, capturedCombo, startCapture, 
       setBindings(cmdId, Array.from(new Set(next)));
     },
     onDuplicate: (cmdId, combo, owner) => {
+      const formattedCombo = formatHotkeyComboForDisplay(combo, workspaceStore.userSettings);
       duplicateWarningText.value = t('videoEditor.settings.hotkeysDuplicateWarning', {
-        combo,
-        cmd: getCommandTitle(owner),
+        combo: formattedCombo,
+        owner: getCommandTitle(owner),
+        target: getCommandTitle(cmdId),
       });
       duplicateOwnerCommandId.value = owner;
       isDuplicateConfirmOpen.value = true;
