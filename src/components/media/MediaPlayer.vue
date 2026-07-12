@@ -177,7 +177,11 @@ async function applyResumeState() {
       if (Number.isFinite(nextTime)) {
         mediaElement.value.currentTime = nextTime;
       }
-      if (props.resumeState?.isPlaying) {
+      // Never resume playback on an instance that is being force-paused (i.e. the
+      // inline player while the fullscreen modal is open). Otherwise every
+      // sync-state token the active instance emits (once per timeupdate) would
+      // restart this element underneath it, producing doubled audio.
+      if (props.resumeState?.isPlaying && !props.forcePaused) {
         void mediaElement.value.play().catch(() => {});
       } else {
         mediaElement.value.pause();
