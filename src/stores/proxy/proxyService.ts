@@ -3,7 +3,7 @@ import type PQueue from 'p-queue';
 import type { Ref } from 'vue';
 
 import { VIDEO_DIR_NAME } from '~/utils/constants';
-import { MEDIA_TASK_PRIORITIES } from '~/utils/media-task-queue';
+import { ENCODE_TASK_PRIORITIES } from '~/utils/media-task-queue';
 import { getProxyWorkerClient, setProxyHostApi } from '~/utils/video-editor/worker-client';
 import { createVideoCoreHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
@@ -470,7 +470,7 @@ export function createProxyService(params: {
             params.bgTaskIdsByPath.value = nextBgTaskIds;
           }
         },
-        { priority: MEDIA_TASK_PRIORITIES.proxy, signal: controller.signal },
+        { priority: ENCODE_TASK_PRIORITIES.proxy, signal: controller.signal },
       );
     } catch (e) {
       const isAbort = (e as Error)?.name === 'AbortError';

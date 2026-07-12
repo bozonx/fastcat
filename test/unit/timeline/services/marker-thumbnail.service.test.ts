@@ -15,7 +15,7 @@ vi.mock('~/utils/file-thumbnail-generator', () => ({
 
 // Run the queued task synchronously so we can assert without real timers.
 vi.mock('~/utils/media-task-queue', () => ({
-  MEDIA_TASK_PRIORITIES: { timelineThumbnailLazy: 0 },
+  MEDIA_TASK_PRIORITIES: { markerThumbnail: 0 },
   addLatestMediaTask: (input: { task: () => Promise<void> }) => input.task(),
 }));
 

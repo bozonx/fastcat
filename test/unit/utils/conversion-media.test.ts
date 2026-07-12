@@ -2,7 +2,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
-  addMediaTask: vi.fn((task: () => Promise<unknown>) => task()),
+  addEncodeTask: vi.fn((task: () => Promise<unknown>) => task()),
   restartExportWorker: vi.fn(),
   extractMetadata: vi.fn(),
   transcodeMedia: vi.fn(),
@@ -15,10 +15,11 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('~/utils/media-task-queue', () => ({
-  MEDIA_TASK_PRIORITIES: {
-    conversionBackground: 1,
+  ENCODE_TASK_PRIORITIES: {
+    proxy: 0,
+    conversion: 1,
   },
-  addMediaTask: mocks.addMediaTask,
+  addEncodeTask: mocks.addEncodeTask,
 }));
 
 vi.mock('~/utils/video-editor/worker-client', () => ({
@@ -137,7 +138,7 @@ describe('executeMediaConversion', () => {
       signal: controller.signal,
     });
 
-    expect(mocks.addMediaTask).toHaveBeenCalledWith(expect.any(Function), {
+    expect(mocks.addEncodeTask).toHaveBeenCalledWith(expect.any(Function), {
       priority: 1,
       signal: controller.signal,
     });

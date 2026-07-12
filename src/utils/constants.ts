@@ -86,6 +86,33 @@ export const FILE_IO_LIMITS = {
   SLOT_HOLD_WARN_MS_STREAMING: 1_800_000,
 } as const;
 
+/**
+ * Concurrency budgets for the background media-task schedulers (thumbnails,
+ * encodes, waveforms). Centralised here so the web↔native values stay visible
+ * side by side and are unified wherever the two runtimes have no reason to
+ * differ. Each entry is `{ web, native }`.
+ *
+ * Design rationale (best-practice task tiers):
+ * - `interactiveTasks` — quick, user-visible frame extraction (timeline & file
+ *   thumbnails). Short-lived, so a small parallel pool keeps the UI responsive.
+ *   Native gets +1 because desktop FS/decode has more headroom than OPFS.
+ * - `encodeTasks` — long-running background encodes (proxy, conversion). Kept
+ *   SERIAL (1) on both runtimes: a single encode occupies its slot for minutes,
+ *   so running two would (a) starve the interactive pool if they shared it —
+ *   which is why encodes live in their OWN queue — and (b) oversubscribe the
+ *   CPU. Native additionally gates these via `media_job_gate`; web has no such
+ *   backstop, so serialising here is what bounds it.
+ * - `waveformExtraction` — audio peak extraction, the highest-value hidden task.
+ *   Runs in its OWN pool so a thumbnail/encode backlog can never delay it. Web
+ *   routes every request through a single shared audio-decode worker, so >1 buys
+ *   nothing there; native peak extraction is ungated and can run 2 in parallel.
+ */
+export const MEDIA_CONCURRENCY = {
+  interactiveTasks: { web: 2, native: 3 },
+  encodeTasks: { web: 1, native: 1 },
+  waveformExtraction: { web: 1, native: 2 },
+} as const;
+
 export const VIDEO_CORE_LIMITS = {
   MAX_CONCURRENT_VIDEO_SAMPLE_REQUESTS: 4,
   MAX_VIDEO_SAMPLE_REQUEST_TIMEOUT_MS: 5_000,

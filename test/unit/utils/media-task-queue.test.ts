@@ -6,11 +6,44 @@ describe('media-task-queue', () => {
     vi.resetModules();
   });
 
-  it('exports priorities', async () => {
-    const { MEDIA_TASK_PRIORITIES } = await import('~/utils/media-task-queue');
+  it('exports interactive + encode priorities on separate scales', async () => {
+    const { MEDIA_TASK_PRIORITIES, ENCODE_TASK_PRIORITIES } =
+      await import('~/utils/media-task-queue');
 
-    expect(MEDIA_TASK_PRIORITIES.timelineThumbnailLazy).toBeDefined();
-    expect(MEDIA_TASK_PRIORITIES.proxy).toBeDefined();
+    // Interactive queue: visible timeline thumbnails outrank file thumbnails,
+    // which outrank the lazy marker stills.
+    expect(MEDIA_TASK_PRIORITIES.timelineThumbnail).toBeGreaterThan(
+      MEDIA_TASK_PRIORITIES.fileThumbnail,
+    );
+    expect(MEDIA_TASK_PRIORITIES.fileThumbnail).toBeGreaterThan(
+      MEDIA_TASK_PRIORITIES.markerThumbnail,
+    );
+
+    // Encodes live on their own scale; an explicit conversion is ordered ahead
+    // of an automatic proxy.
+    expect(ENCODE_TASK_PRIORITIES.conversion).toBeGreaterThan(ENCODE_TASK_PRIORITIES.proxy);
+  });
+
+  it('runs encodes on a pool isolated from the interactive queue', async () => {
+    const { addMediaTask, addEncodeTask, __resetMediaTaskQueueForTesting } =
+      await import('~/utils/media-task-queue');
+    // Saturate the interactive queue with a task that never resolves.
+    __resetMediaTaskQueueForTesting(1);
+    let releaseInteractive!: () => void;
+    void addMediaTask(
+      () =>
+        new Promise<void>((resolve) => {
+          releaseInteractive = resolve;
+        }),
+    );
+
+    // An encode must still run to completion even though the interactive queue
+    // is fully occupied — proving encodes don't share those slots.
+    const encode = vi.fn().mockResolvedValue('ok');
+    await expect(addEncodeTask(encode)).resolves.toBe('ok');
+    expect(encode).toHaveBeenCalledOnce();
+
+    releaseInteractive();
   });
 
   it('runs queued tasks', async () => {

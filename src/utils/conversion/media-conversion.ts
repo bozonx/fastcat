@@ -1,5 +1,5 @@
 import { createDevLogger } from '~/utils/dev-logger';
-import { addMediaTask, MEDIA_TASK_PRIORITIES } from '~/utils/media-task-queue';
+import { addEncodeTask, ENCODE_TASK_PRIORITIES } from '~/utils/media-task-queue';
 import {
   getExportWorkerClient,
   registerExportTaskHostApi,
@@ -50,7 +50,7 @@ export async function executeMediaConversion(params: {
     return await projectStore.getFileByPath(path);
   }
 
-  return addMediaTask(
+  return addEncodeTask(
     async () => {
       const audioChannels =
         params.request.sharedAudio.channels === 1
@@ -167,7 +167,7 @@ export async function executeMediaConversion(params: {
       );
     },
     {
-      priority: MEDIA_TASK_PRIORITIES.conversionBackground,
+      priority: ENCODE_TASK_PRIORITIES.conversion,
       signal: params.signal,
     },
   );

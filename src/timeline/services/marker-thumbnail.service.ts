@@ -58,6 +58,6 @@ export function dispatchMarkerThumbnailGeneration(params: MarkerThumbnailParams)
         params.onError?.(error instanceof Error ? error : new Error(String(error)));
       }
     },
-    priority: MEDIA_TASK_PRIORITIES.timelineThumbnailLazy,
+    priority: MEDIA_TASK_PRIORITIES.markerThumbnail,
   });
 }

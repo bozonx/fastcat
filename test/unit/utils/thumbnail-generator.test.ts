@@ -63,11 +63,9 @@ vi.mock('~/stores/project.store', () => ({
 vi.mock('~/utils/media-task-queue', () => ({
   addMediaTask: vi.fn((task: () => Promise<void>) => task()),
   MEDIA_TASK_PRIORITIES: {
-    timelineThumbnail: 3,
-    timelineThumbnailLazy: 0,
-    fileThumbnail: 2,
-    proxy: 1,
-    conversionBackground: 1,
+    timelineThumbnail: 2,
+    markerThumbnail: 0,
+    fileThumbnail: 1,
   },
 }));
 

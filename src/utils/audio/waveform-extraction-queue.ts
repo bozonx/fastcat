@@ -1,8 +1,6 @@
 import PQueue from 'p-queue';
 import { isTauriRuntime } from '~/utils/runtime';
-
-const BROWSER_WAVEFORM_EXTRACTION_CONCURRENCY = 1;
-const TAURI_WAVEFORM_EXTRACTION_CONCURRENCY = 2;
+import { MEDIA_CONCURRENCY } from '~/utils/constants';
 
 export const WAVEFORM_EXTRACTION_PRIORITIES = {
   prefetch: 0,
@@ -16,8 +14,8 @@ let peakExtractionQueue = createPeakExtractionQueue();
 
 function resolveWaveformExtractionConcurrency(): number {
   return isTauriRuntime()
-    ? TAURI_WAVEFORM_EXTRACTION_CONCURRENCY
-    : BROWSER_WAVEFORM_EXTRACTION_CONCURRENCY;
+    ? MEDIA_CONCURRENCY.waveformExtraction.native
+    : MEDIA_CONCURRENCY.waveformExtraction.web;
 }
 
 function createPeakExtractionQueue(concurrency = resolveWaveformExtractionConcurrency()): PQueue {
