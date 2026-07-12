@@ -7,7 +7,6 @@ import TrackProperties from '~/components/properties/TrackProperties.vue';
 import MobilePropertiesDrawer from './MobilePropertiesDrawer.vue';
 import MobileDrawerToolbarButton from './MobileDrawerToolbarButton.vue';
 import { useDrawerToolbarOrientation } from '~/composables/timeline/useDrawerToolbarOrientation';
-import { useAppClipboard } from '~/composables/useAppClipboard';
 import { useHotkeyLabel } from '~/composables/useHotkeyLabel';
 
 const props = defineProps<{
@@ -33,9 +32,7 @@ const { t } = useI18n();
 const { toolbarOrientation } = useDrawerToolbarOrientation();
 const timelineStore = useTimelineStore();
 const workspaceStore = useWorkspaceStore();
-const clipboardStore = useAppClipboard();
 const { getHotkeyTitle } = useHotkeyLabel();
-const hasClipboard = computed(() => clipboardStore.hasTimelinePayload);
 
 const tracks = computed(
   () => (timelineStore.timelineDoc?.tracks as TimelineTrack[] | undefined) ?? [],
@@ -110,31 +107,6 @@ function deleteGap() {
   emit('close');
 }
 
-function handlePasteToTrack() {
-  if (!selectedTrack.value) return;
-  const payload = clipboardStore.clipboardPayload;
-  if (!payload || payload.source !== 'timeline' || payload.items.length === 0) return;
-
-  let insertStartUs = timelineStore.currentTime;
-
-  if (isGapMode.value && props.gapItemId) {
-    const gapItem = selectedTrack.value.items.find((item) => item.id === props.gapItemId);
-    if (gapItem && gapItem.kind === 'gap') {
-      insertStartUs = gapItem.timelineRange.startUs;
-    }
-  }
-
-  void timelineStore.pasteClips(payload.items, {
-    insertStartUs,
-    targetTrackId: selectedTrack.value.id,
-  });
-
-  if (payload.operation === 'cut') {
-    clipboardStore.setClipboardPayload(null);
-  }
-
-  emit('close');
-}
 </script>
 
 <template>
@@ -172,14 +144,6 @@ function handlePasteToTrack() {
         @click="selectedTrack && emit('add-content', selectedTrack.id)"
       />
 
-      <!-- Paste content -->
-      <MobileDrawerToolbarButton
-        v-if="selectedTrack && hasClipboard"
-        icon="i-heroicons-clipboard-document-check"
-        primary
-        :label="t('common.paste')"
-        @click="handlePasteToTrack"
-      />
 
       <!-- Toggle track height -->
       <MobileDrawerToolbarButton

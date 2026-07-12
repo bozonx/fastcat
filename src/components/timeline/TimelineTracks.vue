@@ -73,6 +73,18 @@ const props = defineProps<{
   /** Mobile multi-selection mode: tint selected clips as a multi-selection even with one selected. */
   isMultiSelectMode?: boolean;
   onZoomToFit?: () => void;
+  pastePreviews?: {
+    trackId: string;
+    startUs: number;
+    durationUs: number;
+    label: string;
+  }[] | null;
+  sourcePreviews?: {
+    trackId: string;
+    startUs: number;
+    durationUs: number;
+    label: string;
+  }[] | null;
 }>();
 
 const emit = defineEmits<{
@@ -489,6 +501,8 @@ watch(
           selectedTransition?.trackId === trackViewModel.track.id
             ? `${selectedTransition.itemId}-${selectedTransition.edge}`
             : null,
+          props.pastePreviews?.filter((p) => p.trackId === trackViewModel.track.id).map((p) => `${p.startUs}:${p.durationUs}`).join(',') ?? '',
+          props.sourcePreviews?.filter((p) => p.trackId === trackViewModel.track.id).map((p) => `${p.startUs}:${p.durationUs}`).join(',') ?? '',
         ]"
         :data-track-id="trackViewModel.track.id"
         class="flex items-center relative transition-colors border-b border-ui-border"
@@ -534,6 +548,37 @@ watch(
         >
           <span class="truncate" :title="dragPreview.label">{{ dragPreview.label }}</span>
         </div>
+
+        <!-- Source Previews (Original positions) inside track on mobile -->
+        <template v-if="isMobile && sourcePreviews && sourcePreviews.length > 0">
+          <div
+            v-for="(sourcePreview, index) in sourcePreviews.filter(p => p.trackId === trackViewModel.track.id)"
+            :key="`source-${trackViewModel.track.id}-${index}`"
+            class="absolute top-0.5 bottom-0.5 rounded px-2 flex items-center text-xs text-zinc-400/95 z-20 pointer-events-none opacity-50 border-2 border-dashed border-zinc-500/50 bg-zinc-600/10"
+            :style="{
+              left: `${timeUsToPx(sourcePreview.startUs, timelineStore.timelineZoom)}px`,
+              width: `${Math.max(2, timeUsToPx(sourcePreview.durationUs, timelineStore.timelineZoom))}px`,
+            }"
+          >
+            <span class="truncate">{{ sourcePreview.label }}</span>
+          </div>
+        </template>
+
+        <!-- Target Previews (Phantoms) inside track on mobile -->
+        <template v-if="isMobile && pastePreviews && pastePreviews.length > 0">
+          <div
+            v-for="(pastePreview, index) in pastePreviews.filter(p => p.trackId === trackViewModel.track.id)"
+            :key="`paste-${trackViewModel.track.id}-${index}`"
+            class="absolute top-0.5 bottom-0.5 rounded px-2 flex items-center text-xs text-zinc-100 z-30 pointer-events-none opacity-75 border-2 border-dashed border-primary-500/80 bg-primary-600/20 backdrop-blur-[1px]"
+            :style="{
+              left: `${timeUsToPx(pastePreview.startUs, timelineStore.timelineZoom)}px`,
+              width: `${Math.max(2, timeUsToPx(pastePreview.durationUs, timelineStore.timelineZoom))}px`,
+            }"
+          >
+            <UIcon name="i-heroicons-clipboard-document-check" class="w-4 h-4 mr-1.5 shrink-0 text-primary-300" />
+            <span class="truncate">{{ pastePreview.label }}</span>
+          </div>
+        </template>
 
         <TimelineClip
           v-for="{ preview, item: previewItem } in movePreviewItemsByTrack[

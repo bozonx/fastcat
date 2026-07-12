@@ -292,6 +292,107 @@ const {
   projectStore,
   t,
 });
+
+const pastePreviews = computed(() => {
+  if (!clipboardStore.hasTimelinePayload) return [];
+  const payload = clipboardStore.clipboardPayload;
+  if (!payload || payload.source !== 'timeline' || payload.items.length === 0) return [];
+
+  const doc = timelineStore.timelineDoc;
+  if (!doc) return [];
+
+  const baseTargetTrackId =
+    timelineStore.selectedTrackId ?? payload.items[0]?.sourceTrackId ?? tracks.value[0]?.id;
+
+  if (!baseTargetTrackId) return [];
+
+  const baseTargetTrackIndex = doc.tracks.findIndex((t) => t.id === baseTargetTrackId);
+  if (baseTargetTrackIndex === -1) return [];
+
+  const sourceTrackIdsSet = new Set(payload.items.map((it) => it.sourceTrackId));
+  const sourceTrackIndices = Array.from(sourceTrackIdsSet)
+    .map((id) => doc.tracks.findIndex((t) => t.id === id))
+    .filter((idx) => idx !== -1)
+    .sort((a, b) => a - b);
+  const minSourceTrackIndex = sourceTrackIndices[0] ?? 0;
+
+  const minStartUs = Math.min(...payload.items.map((item) => item.clip.timelineRange.startUs));
+  const playheadUs = timelineStore.currentTime;
+
+  return payload.items.flatMap((item) => {
+    const sourceTrackIndex = doc.tracks.findIndex((t) => t.id === item.sourceTrackId);
+    const targetTrackIndex =
+      sourceTrackIndex === -1
+        ? baseTargetTrackIndex
+        : baseTargetTrackIndex + (sourceTrackIndex - minSourceTrackIndex);
+
+    const clampedIndex = Math.min(Math.max(0, targetTrackIndex), doc.tracks.length - 1);
+    const targetTrack = doc.tracks[clampedIndex];
+    if (!targetTrack) return [];
+
+    const offsetUs = item.clip.timelineRange.startUs - minStartUs;
+    const startUs = playheadUs + offsetUs;
+    const durationUs = item.clip.timelineRange.durationUs;
+    const label =
+      item.clip.name || (payload.operation === 'cut' ? t('common.cut') : t('common.copied'));
+
+    return [
+      {
+        trackId: targetTrack.id,
+        startUs,
+        durationUs,
+        label,
+      },
+    ];
+  });
+});
+
+const sourcePreviews = computed(() => {
+  if (!clipboardStore.hasTimelinePayload) return [];
+  const payload = clipboardStore.clipboardPayload;
+  if (!payload || payload.source !== 'timeline' || payload.items.length === 0) return [];
+
+  // Only meaningful for a cut: the original clip has been removed from the
+  // timeline, so the ghost marks the now-empty slot it came from. For a copy the
+  // clip is still present, so a dashed ghost drawn over it would be redundant.
+  if (payload.operation !== 'cut') return [];
+
+  return payload.items.map((item) => {
+    const label = item.clip.name || t('common.cut');
+    return {
+      trackId: item.sourceTrackId,
+      startUs: item.clip.timelineRange.startUs,
+      durationUs: item.clip.timelineRange.durationUs,
+      label,
+    };
+  });
+});
+
+watch(
+  [
+    isSettingsDrawerOpen,
+    isTrackMixerDrawerOpen,
+    isHistoryDrawerOpen,
+    isMarkersDrawerOpen,
+    isTrackManagerDrawerOpen,
+    isAddContentDrawerOpen,
+  ],
+  (states) => {
+    const isAnyNonPasteDrawerOpen = states.some(Boolean);
+    if (isAnyNonPasteDrawerOpen && clipboardStore.hasTimelinePayload) {
+      clipboardStore.clearClipboardPayload();
+    }
+  },
+);
+
+watch(
+  () => focusStore.mainFocus,
+  (focus) => {
+    if (focus === 'monitor' && clipboardStore.hasTimelinePayload) {
+      clipboardStore.clearClipboardPayload();
+    }
+  },
+);
 </script>
 
 <template>
@@ -599,6 +700,8 @@ const {
             :dragging-item-id="draggingItemId"
             :move-preview="movePreview"
             :trim-preview="trimPreview"
+            :paste-previews="pastePreviews"
+            :source-previews="sourcePreviews"
             is-mobile
             :is-any-drawer-open="isAnyDrawerOpen"
             :is-multi-select-mode="isMultiSelectionMode"

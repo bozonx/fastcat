@@ -385,6 +385,11 @@ const {
 
 function onClipPointerdown(e: PointerEvent) {
   if (timelineContext.isTrimModeActive.value) return;
+  // Mobile insert mode: don't capture the pointer or start a move drag on the
+  // clip — the tap has to fall through to the timeline so it seeks the playhead
+  // (and moves the paste phantom). Returning without stopping propagation lets
+  // the subsequent click bubble to the timeline seek handler.
+  if (props.isMobile && timelineContext.hasTimelinePayload.value) return;
   if (!props.canEditClipContent || !clipItem.value) return;
 
   timelineContext.setPanelFocus('timeline');
@@ -470,9 +475,19 @@ const effectiveClipItem = computed(() => {
 });
 
 function onClipClick(e: MouseEvent) {
+  // Mobile insert mode: the whole timeline acts as a seek surface. Let the tap
+  // bubble up to the timeline click handler so it moves the playhead (and the
+  // paste phantom with it) instead of being swallowed by clip selection. Without
+  // this, taps that happen to land on an existing clip never move the playhead,
+  // so the phantom appears to only follow taps on empty track areas.
+  if (props.isMobile && timelineContext.hasTimelinePayload.value) {
+    return;
+  }
+  // Normal mode: this click belongs to the clip — stop it from reaching the
+  // timeline background handler (which would otherwise reposition the playhead).
+  e.stopPropagation();
   if (longPressTriggered.value) {
     e.preventDefault();
-    e.stopPropagation();
     return;
   }
   onClipClickInteraction(e);
@@ -876,7 +891,7 @@ function addTransition(edge: 'in' | 'out') {
         isMovePreviewCollision ? 'bg-red-600/80! border-red-500! border-2! text-white! z-50!' : '',
       ]"
       @pointerdown="onClipPointerdown"
-      @click.stop="onClipClick"
+      @click="onClipClick"
       @dblclick="onClipDblClick"
       @contextmenu="onContextMenu"
       @pointerenter="isHovered = true"
@@ -944,7 +959,9 @@ function addTransition(edge: 'in' | 'out') {
             timelineContext.userSettings.value.timeline.defaultAudioFadeDurationUs ??
             timelineContext.userSettings.value.timeline.defaultTransitionDurationUs
           "
-          :default-fade-curve="timelineContext.userSettings.value.projectDefaults.defaultAudioFadeCurve"
+          :default-fade-curve="
+            timelineContext.userSettings.value.projectDefaults.defaultAudioFadeCurve
+          "
           @start-resize-fade="
             (e, payload) =>
               emit('startResizeFade', e, {

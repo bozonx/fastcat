@@ -9,6 +9,7 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
 import { useSelectionStore } from '~/stores/selection.store';
+import { useAppClipboard } from '~/composables/useAppClipboard';
 import type {
   TimelineClipActionPayload,
   TimelineMoveItemPayload,
@@ -66,6 +67,7 @@ export function useMobileTimelineGestures(options: UseMobileTimelineGesturesOpti
   const workspaceStore = useWorkspaceStore();
   const timelineSettingsStore = useTimelineSettingsStore();
   const selectionStore = useSelectionStore();
+  const clipboardStore = useAppClipboard();
   const { t } = useI18n();
   const toast = useToast();
 
@@ -74,6 +76,9 @@ export function useMobileTimelineGestures(options: UseMobileTimelineGesturesOpti
   const clickStartY = ref(0);
 
   function handleMobileTimelineItemSelect(ev: PointerEvent, id: string) {
+    if (clipboardStore.hasTimelinePayload) {
+      return;
+    }
     const pointerType = ev.pointerType || lastPointerType.value;
     if (pointerType === 'touch') {
       const wasLongPress = isLongPress.value;
@@ -181,6 +186,39 @@ export function useMobileTimelineGestures(options: UseMobileTimelineGesturesOpti
     if (target?.closest('button')) return;
     if (target?.closest('.cursor-ew-resize')) return;
     if (target?.closest('.cursor-ns-resize')) return;
+    if (clipboardStore.hasTimelinePayload) {
+      const trackEl = target?.closest('[data-track-id]');
+      const trackId = trackEl?.getAttribute('data-track-id');
+      if (trackId) {
+        timelineStore.selectTrack(trackId);
+      }
+
+      const el = scrollEl.value;
+      if (el) {
+        const scrollerRectY = getCachedScrollRect(el);
+        const scrollX = el.scrollLeft;
+        const x = e.clientX - scrollerRectY.left + scrollX;
+        const rawTimeUs = pxToTimeUs(x, timelineStore.timelineZoom);
+        const timelineEndUs = Number.isFinite(timelineStore.duration)
+          ? Math.max(0, Math.round(timelineStore.duration))
+          : null;
+        const timeUs = resolvePlayheadClickTimeUs({
+          rawTimeUs,
+          zoom: timelineStore.timelineZoom,
+          snapThresholdPx: workspaceStore.userSettings.timeline.snapThresholdPx,
+          toolbarSnapMode: timelineSettingsStore.toolbarSnapMode,
+          snapping: workspaceStore.userSettings.timeline.snapping,
+          tracks: timelineStore.timelineDoc?.tracks ?? [],
+          markers: timelineStore.markers,
+          durationUs: timelineEndUs,
+          selectionRangeUs: timelineStore.selectionRange,
+        });
+
+        timelineStore.setCurrentTimeUs(timeUs);
+      }
+      return;
+    }
+
     if (target?.closest('[data-clip-id]')) return;
     if (target?.closest('[data-gap-id]')) return;
     if (target?.closest('[data-track-id]')) return;

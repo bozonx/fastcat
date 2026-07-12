@@ -3,11 +3,13 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useTimelineSelectionEntities } from './useTimelineSelectionEntities';
+import { useAppClipboard } from '~/composables/useAppClipboard';
 
 export function useMobileTimelineDrawers() {
   const timelineStore = useTimelineStore();
   const selectionStore = useSelectionStore();
   const uiStore = useUiStore();
+  const clipboardStore = useAppClipboard();
 
   const { selectedMarkerId, selectedGap } = useTimelineSelectionEntities();
 
@@ -120,6 +122,11 @@ export function useMobileTimelineDrawers() {
       if (isTrimDrawerOpen.value || isTransitionsPanelOpen.value || isDeleteDrawerOpen.value)
         return;
       if (suppressDrawerSelectionClear.value) return;
+
+      if (clipboardStore.hasTimelinePayload) {
+        closeAllDrawers();
+        return;
+      }
 
       const { trackId, itemIds, entity, transition: _transition, markerId, gap } = state;
 
