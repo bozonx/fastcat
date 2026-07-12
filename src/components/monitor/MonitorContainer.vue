@@ -15,6 +15,7 @@ import { useThrottleFn } from '@vueuse/core';
 import MonitorAudioControl from './MonitorAudioControl.vue';
 import MonitorViewport from './MonitorViewport.vue';
 import MonitorOverlayContent from './MonitorOverlayContent.vue';
+import AddMarkerWithTextModal from './AddMarkerWithTextModal.vue';
 import { registerMonitorActions } from '~/composables/editor/hotkeys/monitorActions';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useProjectActions } from '~/composables/editor/useProjectActions';
@@ -247,6 +248,8 @@ const {
   togglePreviewEffects,
   toggleProxyUsage,
   toolbarPosition,
+  isAddMarkerModalOpen,
+  createMarkerWithTextAtPlayhead,
 } = useMonitorContainerControls({
   t,
   getHotkeyTitle,
@@ -479,6 +482,7 @@ watch(viewportRef, (vp) => {
       >
         <div
           ref="panelRef"
+          id="monitor-fullscreen-panel"
           class="panel-focus-frame flex h-full min-w-0 min-h-0 transition-colors duration-300 relative select-none"
           :class="[
             effectiveFullscreen
@@ -839,6 +843,13 @@ watch(viewportRef, (vp) => {
                 :title="t('common.more')"
               />
             </UDropdownMenu>
+
+            <!-- Add Marker with Text Modal -->
+            <AddMarkerWithTextModal
+              v-model:open="isAddMarkerModalOpen"
+              :portal="effectiveFullscreen ? '#monitor-fullscreen-panel' : true"
+              @create="createMarkerWithTextAtPlayhead"
+            />
           </div>
         </div>
       </UContextMenu>

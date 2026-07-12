@@ -107,8 +107,11 @@ export function normalizeTimelineSettings(raw: unknown): FastCatUserSettings['ti
       snapping: snapSchema,
       frameSnapMode: z.enum(['free', 'frames']).catch(DEFAULT_USER_SETTINGS.timeline.frameSnapMode),
       toolbarSnapMode: z
-        .enum(['snap', 'no_snap', 'free_mode'])
+        .enum(['snap', 'no_snap'])
         .catch(DEFAULT_USER_SETTINGS.timeline.toolbarSnapMode),
+      freeAudioPlacement: z.coerce
+        .boolean()
+        .catch(DEFAULT_USER_SETTINGS.timeline.freeAudioPlacement),
       toolbarDragMode: z
         .enum(['pseudo_overlap', 'copy', 'slip'])
         .catch(DEFAULT_USER_SETTINGS.timeline.toolbarDragMode),

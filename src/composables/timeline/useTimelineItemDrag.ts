@@ -143,8 +143,19 @@ export function useTimelineItemDrag(
   const dragIsMobileTouch = ref(false);
   const isTrimEdgeBlocked = ref(false);
 
-  function getToolbarSnapAction(): 'snap' | 'no_snap' | 'free_mode' {
+  function getToolbarSnapAction(): 'snap' | 'no_snap' {
     return settingsStore.toolbarSnapMode;
+  }
+
+  /**
+   * Frame quantization for a drag. Only audio-only drags may be sub-frame:
+   * every non-audio (or mixed) drag stays frame-locked regardless of the free
+   * override or the `freeAudioPlacement` setting. Free positioning is audio-only.
+   */
+  function resolveDragFrameSnap(isAudioOnly: boolean): boolean {
+    if (!isAudioOnly) return true;
+    const freeSubframe = settingsStore.freeAudioPlacement || dragDisableFrameSnapOverride.value;
+    return !freeSubframe;
   }
 
   function getToolbarDragAction(): ToolbarDragMode | 'none' {
@@ -177,7 +188,7 @@ export function useTimelineItemDrag(
   }
 
   function applyDragAction(action: string) {
-    let snapAction = getToolbarSnapAction();
+    let snapAction: 'snap' | 'no_snap' | 'free_mode' = getToolbarSnapAction();
     let dragAction = getToolbarDragAction();
 
     if (action === 'none') {
@@ -191,8 +202,9 @@ export function useTimelineItemDrag(
       dragAction = 'none';
     }
 
-    // Copy-drag must respect the toolbar snap mode (snap / no_snap / free_mode),
-    // so it only forces free behavior when the active snap action is free_mode.
+    // `free_mode` can only come from a mouse-modifier action here (the toolbar
+    // snap mode is snap/no_snap). It is honored per-drag but only takes effect
+    // for audio-only drags (see resolveDragFrameSnap / the free-override gating).
     dragIsFreeOverride.value = snapAction === 'free_mode';
     dragUsePseudoOverlapOverride.value = dragAction === 'pseudo_overlap';
     dragDisableFrameSnapOverride.value = snapAction === 'free_mode';
@@ -862,26 +874,28 @@ export function useTimelineItemDrag(
     const fps = sanitizeFps(timelineStore.timelineDoc?.timebase?.fps);
     const zoom = timelineStore.timelineZoom;
     let enableFrameSnap = true;
+    let isAudioOnlyDrag = false;
     if (mode === 'move') {
       const selectedMovableItemIds = getSelectedMovableItemIds({
         selectedItemIds: timelineStore.selectedItemIds,
         tracks: tracks.value,
       });
       const itemsToMove = selectedMovableItemIds.length > 0 ? selectedMovableItemIds : [itemId];
-      const hasVideo = tracks.value.some(t =>
-        t.kind === 'video' &&
-        t.items.some(item => itemsToMove.includes(item.id))
+      const hasVideo = tracks.value.some(
+        (t) => t.kind === 'video' && t.items.some((item) => itemsToMove.includes(item.id)),
       );
-      enableFrameSnap = hasVideo ? true : !settingsStore.freeAudioPlacement;
+      isAudioOnlyDrag = !hasVideo;
     } else {
-      const track = tracks.value.find(t => t.id === trackId);
-      const isVideo = track?.kind === 'video';
-      enableFrameSnap = isVideo ? true : !settingsStore.freeAudioPlacement;
+      const track = tracks.value.find((t) => t.id === trackId);
+      isAudioOnlyDrag = track?.kind === 'audio';
     }
-    const enableClipSnapBase =
-      !dragIsFreeOverride.value && settingsStore.toolbarSnapMode === 'snap';
+    enableFrameSnap = resolveDragFrameSnap(isAudioOnlyDrag);
+    // The free override (clip-snap bypass) is audio-only too: on video/mixed
+    // drags it is ignored so nothing but audio can be placed freely.
+    const freeOverrideActive = dragIsFreeOverride.value && isAudioOnlyDrag;
+    const enableClipSnapBase = !freeOverrideActive && settingsStore.toolbarSnapMode === 'snap';
     const enableClipSnap =
-      !dragIsFreeOverride.value &&
+      !freeOverrideActive &&
       (dragToggleSnapOverride.value ? !enableClipSnapBase : enableClipSnapBase);
     const snapThresholdPx = settingsStore.snapThresholdPx;
     const overlapMode = dragUsePseudoOverlapOverride.value ? 'pseudo' : 'none';
@@ -1006,7 +1020,7 @@ export function useTimelineItemDrag(
           const track = tracks.value.find((t) => t.id === move.toTrackId);
           return track?.kind === 'video';
         });
-        const enableFrameSnap = hasVideo ? true : !settingsStore.freeAudioPlacement;
+        const enableFrameSnap = resolveDragFrameSnap(!hasVideo);
 
         const docBeforeApply = timelineStore.timelineDoc;
         let appliedCmdLocal: TimelineCommand | null = null;

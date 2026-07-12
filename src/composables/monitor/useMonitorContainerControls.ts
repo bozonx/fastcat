@@ -1,4 +1,4 @@
-import { computed, type Ref } from 'vue';
+import { computed, ref, type Ref } from 'vue';
 import { nativeMonitorIpc } from '~/composables/monitor/native-monitor-ipc';
 import { useMonitorSettings } from '~/composables/monitor/useMonitorSettings';
 import type { useProjectStore } from '~/stores/project.store';
@@ -331,6 +331,25 @@ export function useMonitorContainerControls(options: UseMonitorContainerControls
     }
   }
 
+  const isAddMarkerModalOpen = ref(false);
+
+  function createMarkerWithTextAtPlayhead(text: string, color: string) {
+    const existingMarkers = options.timelineStore.markers;
+    options.timelineStore.addMarker({
+      timeUs: options.timelineStore.currentTime,
+      text,
+      color,
+    });
+    const nextMarkers = options.timelineStore.markers;
+    const createdMarker =
+      nextMarkers.find((marker) => !existingMarkers.some((item) => item.id === marker.id)) ??
+      nextMarkers[nextMarkers.length - 1];
+
+    if (createdMarker) {
+      options.selectionStore.selectTimelineMarker(createdMarker.id);
+    }
+  }
+
   function openNativeMonitorWindow() {
     void nativeMonitorIpc.openNativeWindow();
   }
@@ -341,12 +360,11 @@ export function useMonitorContainerControls(options: UseMonitorContainerControls
         ? []
         : [
             {
-              label: getHotkeyTitle(
-                options.t('fastcat.timeline.addMarkerAtPlayhead'),
-                'general.addMarker',
-              ),
+              label: options.t('fastcat.timeline.addMarkerWithText'),
               icon: 'i-heroicons-tag',
-              onSelect: createMarkerAtPlayhead,
+              onSelect: () => {
+                isAddMarkerModalOpen.value = true;
+              },
             },
           ]),
       {
@@ -592,6 +610,8 @@ export function useMonitorContainerControls(options: UseMonitorContainerControls
     centerMonitor,
     contextMenuItems,
     createMarkerAtPlayhead,
+    isAddMarkerModalOpen,
+    createMarkerWithTextAtPlayhead,
     handleBoundaryWheel,
     handleEndBoundaryWheel,
     handleSpeedWheel,

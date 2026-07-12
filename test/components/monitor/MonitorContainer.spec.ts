@@ -41,6 +41,8 @@ vi.mock('~/composables/monitor/useMonitorContainerControls', () => ({
     centerMonitor: vi.fn(),
     contextMenuItems: [],
     createMarkerAtPlayhead: vi.fn(),
+    isAddMarkerModalOpen: ref(false),
+    createMarkerWithTextAtPlayhead: vi.fn(),
     handleSpeedWheel: vi.fn(),
     onPlaybackSpeedChange: vi.fn(),
     playbackSpeedOptions: [{ label: '1x', value: 1 }],

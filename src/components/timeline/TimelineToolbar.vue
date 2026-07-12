@@ -3,7 +3,7 @@ import { computed, toRaw } from 'vue';
 import { storeToRefs } from 'pinia';
 import { cloneValue } from '~/utils/clone';
 import UiTooltip from '~/components/ui/UiTooltip.vue';
-import type { ToolbarDragMode, ToolbarSnapMode } from '~/stores/timeline-settings.store';
+import type { ToolbarDragMode } from '~/stores/timeline-settings.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
 import { useFocusStore } from '~/stores/focus.store';
@@ -26,7 +26,6 @@ import { useTimelineTextPreset } from '~/composables/timeline/useTimelineTextPre
 import { useUiStore } from '~/stores/ui.store';
 import TimelineSnapSettingsModal from './TimelineSnapSettingsModal.vue';
 import { useHotkeyLabel } from '~/composables/useHotkeyLabel';
-
 
 import { useExclusiveContextMenu } from '~/composables/ui/useExclusiveContextMenu';
 import type { HotkeyCommandId } from '~/utils/hotkeys/defaultHotkeys';
@@ -127,29 +126,34 @@ const trimMenuItems = computed(() => {
   ];
 });
 
-const snapModeModel = computed({
-  get: () => settingsStore.toolbarSnapMode,
-  set: (value: ToolbarSnapMode) => settingsStore.selectToolbarSnapMode(value),
+const { isMobileLayout } = useMobileLayout();
+
+// Snapping is a single on/off toggle: on = snap to clips/playhead/markers,
+// off = no snapping (both stay frame-aligned).
+const snapEnabled = computed({
+  get: () => settingsStore.toolbarSnapMode === 'snap',
+  set: (value: boolean) => settingsStore.selectToolbarSnapMode(value ? 'snap' : 'no_snap'),
 });
 
-const snapModeOptions = computed(() => [
-  {
-    value: 'snap' as ToolbarSnapMode,
-    icon: 'i-heroicons-link',
-    tooltip: getHotkeyTitle(
-      t('fastcat.timeline.snapModeFullDescription'),
-      'timeline.selectSnapModeSnap',
-    ),
-  },
-  {
-    value: 'no_snap' as ToolbarSnapMode,
-    icon: 'i-heroicons-link-slash',
-    tooltip: getHotkeyTitle(
-      t('fastcat.timeline.snapModeFramesDescription'),
-      'timeline.selectSnapModeNoSnap',
-    ),
-  },
-]);
+const snapToggleTooltip = computed(() =>
+  getHotkeyTitle(
+    snapEnabled.value
+      ? t('fastcat.timeline.snapModeFramesDescription')
+      : t('fastcat.timeline.snapModeFullDescription'),
+    snapEnabled.value ? 'timeline.selectSnapModeNoSnap' : 'timeline.selectSnapModeSnap',
+  ),
+);
+
+// Free positioning is audio-only and desktop-only: when on, audio clips may be
+// placed with sub-frame precision. Video clips are always frame-aligned.
+const freeAudioPlacement = computed({
+  get: () => settingsStore.freeAudioPlacement,
+  set: (value: boolean) => (settingsStore.freeAudioPlacement = value),
+});
+
+const freeAudioTooltip = computed(() =>
+  getHotkeyTitle(t('fastcat.timeline.freeAudioPlacement'), 'timeline.selectSnapModeFree'),
+);
 
 const moveModeOptions = computed<
   {
@@ -233,8 +237,6 @@ function toggleTrimMode(event?: MouseEvent) {
   event?.stopPropagation();
   timelineStore.isTrimModeActive = !timelineStore.isTrimModeActive;
 }
-
-const isSnapSettingsDisabled = computed(() => false);
 
 const standardTextPresets = computed<Record<string, { style: TextClipStyle; text?: string }>>(
   () => ({
@@ -338,7 +340,6 @@ function onToolbarPointerDown(e: PointerEvent, type: 'adjustment' | 'background'
   });
 }
 
-
 const { isContextMenuOpen: isTextContextMenuOpen, setContextMenuOpen: setTextContextMenuOpen } =
   useExclusiveContextMenu();
 
@@ -348,259 +349,277 @@ function onToolbarContextMenu(e: MouseEvent) {
 </script>
 
 <template>
+  <div
+    class="h-12 w-full border-b border-ui-border bg-ui-bg-elevated flex items-center px-4 shrink-0"
+    data-timeline-toolbar
+    @pointerdown.capture="focusStore.setPanelFocus('timeline')"
+    @click.self="timelineStore.selectTimelineProperties()"
+    @contextmenu="onToolbarContextMenu"
+  >
+    <!-- Left column: Main actions -->
     <div
-      class="h-12 w-full border-b border-ui-border bg-ui-bg-elevated flex items-center px-4 shrink-0"
-      data-timeline-toolbar
-      @pointerdown.capture="focusStore.setPanelFocus('timeline')"
+      class="flex-1 flex items-center justify-center gap-2"
       @click.self="timelineStore.selectTimelineProperties()"
-      @contextmenu="onToolbarContextMenu"
     >
-      <!-- Left column: Main actions -->
-      <div
-        class="flex-1 flex items-center justify-center gap-2"
-        @click.self="timelineStore.selectTimelineProperties()"
-      >
-        <UiIconToggleGroup v-model="snapModeModel" :options="snapModeOptions" />
+      <UiTooltip :text="snapToggleTooltip">
+        <UiActionButton
+          size="xs"
+          :variant="snapEnabled ? 'solid' : 'ghost'"
+          :color="snapEnabled ? 'primary' : 'neutral'"
+          :icon="snapEnabled ? 'i-heroicons-link' : 'i-heroicons-link-slash'"
+          :aria-pressed="snapEnabled"
+          @click="snapEnabled = !snapEnabled"
+        />
+      </UiTooltip>
 
-        <UiTooltip :text="t('videoEditor.settings.snappingTitle')">
+      <UiTooltip :text="t('videoEditor.settings.snappingTitle')">
+        <UiActionButton
+          size="xs"
+          variant="ghost"
+          color="neutral"
+          icon="i-heroicons-cog-6-tooth"
+          @click="isSnapSettingsModalOpen = true"
+        />
+      </UiTooltip>
+
+      <UiTooltip v-if="!isMobileLayout" :text="freeAudioTooltip">
+        <UiActionButton
+          size="xs"
+          :variant="freeAudioPlacement ? 'solid' : 'ghost'"
+          :color="freeAudioPlacement ? 'primary' : 'neutral'"
+          icon="i-heroicons-arrows-pointing-out"
+          :aria-pressed="freeAudioPlacement"
+          @click="freeAudioPlacement = !freeAudioPlacement"
+        />
+      </UiTooltip>
+
+      <div class="w-px h-4 bg-ui-border mx-1 opacity-50" />
+
+      <UiIconToggleGroup v-model="currentMoveMode" :options="moveModeToggleOptions" />
+
+      <UiTooltip :text="getHotkeyTitle(t('fastcat.timeline.trim'), 'timeline.toggleBladeTool')">
+        <UiSplitDropdownButton
+          v-bind="
+            {
+              size: 'xs',
+              variant: timelineStore.isTrimModeActive ? 'solid' : 'ghost',
+              color: timelineStore.isTrimModeActive ? 'primary' : 'neutral',
+              icon: 'i-heroicons-scissors',
+              'aria-label': t('fastcat.timeline.trim'),
+              items: trimMenuItems,
+              buttonClass: 'hover:bg-ui-bg-hover/60',
+              caretButtonClass: 'px-0.5 hover:bg-ui-bg-hover/60',
+              caretIconClass: 'size-2.5',
+              onClick: toggleTrimMode,
+              disabled: timelineStore.previewMode,
+            } as any
+          "
+        />
+      </UiTooltip>
+
+      <div v-if="timelineStore.isAnyTrackSoloed" class="ml-2 flex items-center">
+        <UiTooltip :text="t('fastcat.timeline.clearSolos')">
+          <UiActionButton
+            size="xs"
+            color="amber"
+            variant="solid"
+            icon="i-heroicons-musical-note"
+            class="h-6 text-2xs px-2 gap-1 font-bold animate-pulse hover:animate-none"
+            :disabled="timelineStore.previewMode"
+            @click="
+              (e) => {
+                timelineStore.unsoloAllTracks();
+                (e.currentTarget as HTMLElement).blur();
+              }
+            "
+          >
+            {{ t('fastcat.timeline.soloActive') }}
+          </UiActionButton>
+        </UiTooltip>
+      </div>
+      <div class="w-px h-4 bg-ui-border mx-1 opacity-50" />
+
+      <UiTooltip
+        :text="
+          getHotkeyTitle(
+            `${t('fastcat.timeline.addAdjustment')} (${t('fastcat.timeline.dragToTimeline')})`,
+            'timeline.addAdjustmentClipAtPlayhead',
+          )
+        "
+      >
+        <div
+          data-toolbar-drag="adjustment"
+          @pointerdown="onToolbarPointerDown($event, 'adjustment')"
+          @contextmenu.prevent
+        >
           <UiActionButton
             size="xs"
             variant="ghost"
             color="neutral"
-            icon="i-heroicons-cog-6-tooth"
-            :disabled="isSnapSettingsDisabled"
-            @click="isSnapSettingsModalOpen = true"
-          />
-        </UiTooltip>
-
-        <div class="w-px h-4 bg-ui-border mx-1 opacity-50" />
-
-        <UiIconToggleGroup v-model="currentMoveMode" :options="moveModeToggleOptions" />
-
-        <UiTooltip :text="getHotkeyTitle(t('fastcat.timeline.trim'), 'timeline.toggleBladeTool')">
-          <UiSplitDropdownButton
-            v-bind="
-              {
-                size: 'xs',
-                variant: timelineStore.isTrimModeActive ? 'solid' : 'ghost',
-                color: timelineStore.isTrimModeActive ? 'primary' : 'neutral',
-                icon: 'i-heroicons-scissors',
-                'aria-label': t('fastcat.timeline.trim'),
-                items: trimMenuItems,
-                buttonClass: 'hover:bg-ui-bg-hover/60',
-                caretButtonClass: 'px-0.5 hover:bg-ui-bg-hover/60',
-                caretIconClass: 'size-2.5',
-                onClick: toggleTrimMode,
-                disabled: timelineStore.previewMode,
-              } as any
+            icon="i-heroicons-adjustments-horizontal"
+            :disabled="timelineStore.previewMode"
+            @click="
+              (e) => {
+                timelineStore.addAdjustmentClipAtPlayhead();
+                (e.currentTarget as HTMLElement).blur();
+              }
             "
           />
-        </UiTooltip>
-
-        <div v-if="timelineStore.isAnyTrackSoloed" class="ml-2 flex items-center">
-          <UiTooltip :text="t('fastcat.timeline.clearSolos')">
-            <UiActionButton
-              size="xs"
-              color="amber"
-              variant="solid"
-              icon="i-heroicons-musical-note"
-              class="h-6 text-2xs px-2 gap-1 font-bold animate-pulse hover:animate-none"
-              :disabled="timelineStore.previewMode"
-              @click="
-                (e) => {
-                  timelineStore.unsoloAllTracks();
-                  (e.currentTarget as HTMLElement).blur();
-                }
-              "
-            >
-              {{ t('fastcat.timeline.soloActive') }}
-            </UiActionButton>
-          </UiTooltip>
         </div>
-        <div class="w-px h-4 bg-ui-border mx-1 opacity-50" />
+      </UiTooltip>
 
-        <UiTooltip
-          :text="
-            getHotkeyTitle(
-              `${t('fastcat.timeline.addAdjustment')} (${t('fastcat.timeline.dragToTimeline')})`,
-              'timeline.addAdjustmentClipAtPlayhead',
-            )
-          "
-        >
-          <div
-            data-toolbar-drag="adjustment"
-            @pointerdown="onToolbarPointerDown($event, 'adjustment')"
-            @contextmenu.prevent
-          >
-            <UiActionButton
-              size="xs"
-              variant="ghost"
-              color="neutral"
-              icon="i-heroicons-adjustments-horizontal"
-              :disabled="timelineStore.previewMode"
-              @click="
-                (e) => {
-                  timelineStore.addAdjustmentClipAtPlayhead();
-                  (e.currentTarget as HTMLElement).blur();
-                }
-              "
-            />
-          </div>
-        </UiTooltip>
-
-        <UiTooltip
-          :text="
-            getHotkeyTitle(
-              `${t('fastcat.timeline.addBackground')} (${t('fastcat.timeline.dragToTimeline')})`,
-              'timeline.addBackgroundClipAtPlayhead',
-            )
-          "
-        >
-          <div
-            data-toolbar-drag="background"
-            @pointerdown="onToolbarPointerDown($event, 'background')"
-            @contextmenu.prevent
-          >
-            <UiActionButton
-              size="xs"
-              variant="ghost"
-              color="neutral"
-              icon="i-heroicons-swatch"
-              :disabled="timelineStore.previewMode"
-              @click="
-                (e) => {
-                  timelineStore.addBackgroundClipAtPlayhead();
-                  (e.currentTarget as HTMLElement).blur();
-                }
-              "
-            />
-          </div>
-        </UiTooltip>
-
-        <UiTooltip
-          :text="
-            getHotkeyTitle(
-              `${t('fastcat.timeline.addText')} (${t('fastcat.timeline.dragToTimeline')}). ${t('fastcat.timeline.shiftForPresets').replace('{key}', layer1Label)}`,
-              'timeline.addTextClipAtPlayhead',
-            )
-          "
-        >
-          <UContextMenu
-            :open="isTextContextMenuOpen"
-            :items="textContextMenuItems"
-            @update:open="setTextContextMenuOpen"
-          >
-            <div
-              data-toolbar-drag="text"
-              @pointerdown="onToolbarPointerDown($event, 'text')"
-              @contextmenu.prevent
-            >
-              <UiActionButton
-                size="xs"
-                variant="ghost"
-                color="neutral"
-                icon="i-heroicons-chat-bubble-bottom-center-text"
-                :disabled="timelineStore.previewMode"
-                @click="
-                  (e) => {
-                    addTextClip(e);
-                    (e.currentTarget as HTMLElement).blur();
-                  }
-                "
-              />
-            </div>
-          </UContextMenu>
-        </UiTooltip>
-
-        <!-- Separator -->
-        <div class="w-px h-4 bg-ui-border mx-2 opacity-50" />
-
-        <!-- Marker controls -->
-        <div class="flex items-center gap-1">
-          <UiTooltip
-            :text="getHotkeyTitle(t('fastcat.timeline.previousMarker'), 'general.prevMarker')"
-          >
-            <UiActionButton
-              size="xs"
-              variant="ghost"
-              color="neutral"
-              icon="i-heroicons-chevron-left"
-              @click="timelineStore.goToPreviousMarker()"
-            />
-          </UiTooltip>
-
-          <UiTooltip :text="getHotkeyTitle(t('fastcat.timeline.addMarker'), 'general.addMarker')">
-            <UiActionButton
-              size="xs"
-              variant="ghost"
-              color="neutral"
-              icon="i-heroicons-bookmark"
-              :disabled="timelineStore.previewMode"
-              @click="timelineStore.addMarkerAtPlayhead()"
-            />
-          </UiTooltip>
-
-          <UiTooltip :text="getHotkeyTitle(t('fastcat.timeline.nextMarker'), 'general.nextMarker')">
-            <UiActionButton
-              size="xs"
-              variant="ghost"
-              color="neutral"
-              icon="i-heroicons-chevron-right"
-              @click="timelineStore.goToNextMarker()"
-            />
-          </UiTooltip>
-        </div>
-      </div>
-
-      <!-- Right column: Zoom controls -->
-      <div
-        class="w-[240px] flex items-center gap-2 pl-4 border-l border-ui-border/30"
-        @click.self="timelineStore.selectTimelineProperties()"
+      <UiTooltip
+        :text="
+          getHotkeyTitle(
+            `${t('fastcat.timeline.addBackground')} (${t('fastcat.timeline.dragToTimeline')})`,
+            'timeline.addBackgroundClipAtPlayhead',
+          )
+        "
       >
-        <UiTooltip :text="getHotkeyTitle(t('fastcat.timeline.zoomToFit'), 'general.zoomFit')">
+        <div
+          data-toolbar-drag="background"
+          @pointerdown="onToolbarPointerDown($event, 'background')"
+          @contextmenu.prevent
+        >
           <UiActionButton
             size="xs"
-            color="neutral"
             variant="ghost"
-            icon="i-heroicons-arrows-pointing-out"
-            @click="timelineStore.fitTimelineZoom()"
+            color="neutral"
+            icon="i-heroicons-swatch"
+            :disabled="timelineStore.previewMode"
+            @click="
+              (e) => {
+                timelineStore.addBackgroundClipAtPlayhead();
+                (e.currentTarget as HTMLElement).blur();
+              }
+            "
           />
-        </UiTooltip>
+        </div>
+      </UiTooltip>
 
-        <UiTooltip :text="zoomCombinedTooltip" class="flex-1 min-w-0">
-          <UiWheelSlider
-            v-model="timelineZoom"
-            :min="MIN_TIMELINE_ZOOM_POSITION"
-            :max="MAX_TIMELINE_ZOOM_POSITION"
-            :step="1"
-            :default-value="DEFAULT_TIMELINE_ZOOM_POSITION"
-            wheel-without-focus
-          />
-        </UiTooltip>
-
-        <UiTooltip :text="zoomCombinedTooltip">
-          <span
-            class="text-2xs font-mono tabular-nums text-ui-text-muted select-none leading-none w-12 text-center shrink-0 cursor-pointer hover:text-ui-text transition-colors"
-            @click="timelineZoom = DEFAULT_TIMELINE_ZOOM_POSITION"
+      <UiTooltip
+        :text="
+          getHotkeyTitle(
+            `${t('fastcat.timeline.addText')} (${t('fastcat.timeline.dragToTimeline')}). ${t('fastcat.timeline.shiftForPresets').replace('{key}', layer1Label)}`,
+            'timeline.addTextClipAtPlayhead',
+          )
+        "
+      >
+        <UContextMenu
+          :open="isTextContextMenuOpen"
+          :items="textContextMenuItems"
+          @update:open="setTextContextMenuOpen"
+        >
+          <div
+            data-toolbar-drag="text"
+            @pointerdown="onToolbarPointerDown($event, 'text')"
+            @contextmenu.prevent
           >
-            {{ timelineZoomMultiplierInput }}
-          </span>
-        </UiTooltip>
+            <UiActionButton
+              size="xs"
+              variant="ghost"
+              color="neutral"
+              icon="i-heroicons-chat-bubble-bottom-center-text"
+              :disabled="timelineStore.previewMode"
+              @click="
+                (e) => {
+                  addTextClip(e);
+                  (e.currentTarget as HTMLElement).blur();
+                }
+              "
+            />
+          </div>
+        </UContextMenu>
+      </UiTooltip>
 
-        <div class="w-px h-4 bg-ui-border mx-1 opacity-50" />
+      <!-- Separator -->
+      <div class="w-px h-4 bg-ui-border mx-2 opacity-50" />
 
-        <UiTooltip :text="t('fastcat.timeline.properties.title')">
+      <!-- Marker controls -->
+      <div class="flex items-center gap-1">
+        <UiTooltip
+          :text="getHotkeyTitle(t('fastcat.timeline.previousMarker'), 'general.prevMarker')"
+        >
           <UiActionButton
             size="xs"
             variant="ghost"
             color="neutral"
-            icon="i-heroicons-cog-6-tooth"
-            @click="timelineStore.selectTimelineProperties()"
+            icon="i-heroicons-chevron-left"
+            @click="timelineStore.goToPreviousMarker()"
+          />
+        </UiTooltip>
+
+        <UiTooltip :text="getHotkeyTitle(t('fastcat.timeline.addMarker'), 'general.addMarker')">
+          <UiActionButton
+            size="xs"
+            variant="ghost"
+            color="neutral"
+            icon="i-heroicons-bookmark"
+            :disabled="timelineStore.previewMode"
+            @click="timelineStore.addMarkerAtPlayhead()"
+          />
+        </UiTooltip>
+
+        <UiTooltip :text="getHotkeyTitle(t('fastcat.timeline.nextMarker'), 'general.nextMarker')">
+          <UiActionButton
+            size="xs"
+            variant="ghost"
+            color="neutral"
+            icon="i-heroicons-chevron-right"
+            @click="timelineStore.goToNextMarker()"
           />
         </UiTooltip>
       </div>
     </div>
 
-    <TimelineSnapSettingsModal />
+    <!-- Right column: Zoom controls -->
+    <div
+      class="w-[240px] flex items-center gap-2 pl-4 border-l border-ui-border/30"
+      @click.self="timelineStore.selectTimelineProperties()"
+    >
+      <UiTooltip :text="getHotkeyTitle(t('fastcat.timeline.zoomToFit'), 'general.zoomFit')">
+        <UiActionButton
+          size="xs"
+          color="neutral"
+          variant="ghost"
+          icon="i-heroicons-arrows-pointing-out"
+          @click="timelineStore.fitTimelineZoom()"
+        />
+      </UiTooltip>
 
+      <UiTooltip :text="zoomCombinedTooltip" class="flex-1 min-w-0">
+        <UiWheelSlider
+          v-model="timelineZoom"
+          :min="MIN_TIMELINE_ZOOM_POSITION"
+          :max="MAX_TIMELINE_ZOOM_POSITION"
+          :step="1"
+          :default-value="DEFAULT_TIMELINE_ZOOM_POSITION"
+          wheel-without-focus
+        />
+      </UiTooltip>
+
+      <UiTooltip :text="zoomCombinedTooltip">
+        <span
+          class="text-2xs font-mono tabular-nums text-ui-text-muted select-none leading-none w-12 text-center shrink-0 cursor-pointer hover:text-ui-text transition-colors"
+          @click="timelineZoom = DEFAULT_TIMELINE_ZOOM_POSITION"
+        >
+          {{ timelineZoomMultiplierInput }}
+        </span>
+      </UiTooltip>
+
+      <div class="w-px h-4 bg-ui-border mx-1 opacity-50" />
+
+      <UiTooltip :text="t('fastcat.timeline.properties.title')">
+        <UiActionButton
+          size="xs"
+          variant="ghost"
+          color="neutral"
+          icon="i-heroicons-cog-6-tooth"
+          @click="timelineStore.selectTimelineProperties()"
+        />
+      </UiTooltip>
+    </div>
+  </div>
+
+  <TimelineSnapSettingsModal />
 </template>

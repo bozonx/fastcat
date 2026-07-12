@@ -59,6 +59,7 @@ const settingsStoreMock = {
   toolbarDragModeEnabled: false,
   toolbarDragMode: 'copy',
   frameSnapMode: 'none',
+  freeAudioPlacement: false,
   snapThresholdPx: 8,
 };
 
@@ -468,7 +469,7 @@ describe('useTimelineItemDrag', () => {
     );
   });
 
-  it('respects free-mode modifier by bypassing clip snap while dragging', () => {
+  it('ignores the free-mode modifier for video clips (free positioning is audio-only)', () => {
     workspaceStoreMock.userSettings.timeline.snapping.clips = true;
 
     const scrollEl = ref({
@@ -513,9 +514,80 @@ describe('useTimelineItemDrag', () => {
       ctrlKey: true,
     } as PointerEvent);
 
+    // Video: the free override is ignored, so clip snap still pulls it to 2_000_000.
     expect(movePreview.value[0]).toEqual(
       expect.objectContaining({
         itemId: 'clip-1',
+        startUs: 2_000_000,
+      }),
+    );
+  });
+
+  it('respects the free-mode modifier for audio clips by bypassing clip snap', () => {
+    workspaceStoreMock.userSettings.timeline.snapping.clips = true;
+    // Standalone audio drag (detach the link so no video is dragged along).
+    delete timelineStoreMock.timelineDoc.tracks[1].items[0].linkedGroupId;
+    // Add a snap target on the audio track so bypass is observable.
+    timelineStoreMock.timelineDoc.tracks[1].items.push({
+      id: 'clip-a2',
+      kind: 'clip',
+      clipType: 'media',
+      name: 'Clip A2',
+      source: { path: 'clip-a2.wav' },
+      sourceRange: { startUs: 0, durationUs: 2_000_000 },
+      sourceDurationUs: 2_000_000,
+      timelineRange: { startUs: 7_000_000, durationUs: 2_000_000 },
+      speed: 1,
+      isImage: false,
+      locked: false,
+    });
+
+    const scrollEl = ref({
+      scrollLeft: 0,
+    } as HTMLElement);
+    const tracks = computed(() => timelineStoreMock.timelineDoc.tracks);
+    const { startMoveItem, movePreview } = useTimelineItemDrag(scrollEl, tracks);
+
+    const pointerTarget = {
+      setPointerCapture: vi.fn(),
+      releasePointerCapture: vi.fn(),
+    };
+
+    startMoveItem(
+      {
+        button: 0,
+        buttons: 1,
+        clientX: 100,
+        clientY: 20,
+        pointerId: 23,
+        pointerType: 'mouse',
+        ctrlKey: true,
+        currentTarget: pointerTarget,
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn(),
+      } as unknown as PointerEvent,
+      {
+        trackId: 'track-2',
+        itemId: 'clip-a1',
+        startUs: 1_000_000,
+        mode: 'move',
+      },
+    );
+
+    const handlers = bindSessionMock.mock.calls[0]?.[0];
+
+    handlers.onPointerMove({
+      buttons: 1,
+      button: 0,
+      clientX: 112,
+      clientY: 20,
+      ctrlKey: true,
+    } as PointerEvent);
+
+    // Audio: the free override applies, so it stays at the raw, unsnapped position.
+    expect(movePreview.value[0]).toEqual(
+      expect.objectContaining({
+        itemId: 'clip-a1',
         startUs: 2_200_000,
       }),
     );

@@ -18,6 +18,8 @@ interface Props {
   preventClose?: boolean;
   /** Whether to restore focus to the trigger element when closed */
   restoreFocus?: boolean;
+  /** Target element selector/id or boolean to configure teleporting */
+  portal?: boolean | string;
   /** Nuxt UI modal configuration */
   ui?: {
     overlay?: string;
@@ -38,6 +40,7 @@ const props = withDefaults(defineProps<Props>(), {
   closeButton: true,
   preventClose: false,
   restoreFocus: true,
+  portal: true,
   ui: () => ({}),
 });
 
@@ -180,6 +183,7 @@ onBeforeUnmount(() => {
     :description="props.description"
     :aria-describedby="props.description ? undefined : 'undefined'"
     :close="props.closeButton"
+    :portal="props.portal"
     :ui="modalUi"
     @close="handleClose"
     @after:enter="handleAfterEnter"

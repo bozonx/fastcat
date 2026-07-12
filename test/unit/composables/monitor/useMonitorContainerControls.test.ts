@@ -3,8 +3,9 @@ import { ref } from 'vue';
 
 import { useMonitorContainerControls } from '~/composables/monitor/useMonitorContainerControls';
 
-const { openNativeWindowMock } = vi.hoisted(() => ({
+const { openNativeWindowMock, addMarkerMock } = vi.hoisted(() => ({
   openNativeWindowMock: vi.fn(async () => undefined),
+  addMarkerMock: vi.fn(),
 }));
 
 const mockActiveMonitor = {
@@ -46,6 +47,7 @@ function createControls(options: { isMobile?: boolean } = {}) {
     workspaceStore: mockWorkspaceStore as never,
     timelineStore: {
       playbackSpeed: 1,
+      currentTime: 5000,
       markers: [],
       timelineFormat: {
         height: 1080,
@@ -57,6 +59,7 @@ function createControls(options: { isMobile?: boolean } = {}) {
       jumpToNextClipBoundary: vi.fn(),
       jumpToPrevClipBoundary: vi.fn(),
       addMarkerAtPlayhead: vi.fn(),
+      addMarker: addMarkerMock,
     } as never,
     selectionStore: {
       selectTimelineMarker: vi.fn(),
@@ -105,6 +108,7 @@ function flattenMenuItems(groups: unknown[][]): MenuItem[] {
 describe('useMonitorContainerControls', () => {
   beforeEach(() => {
     openNativeWindowMock.mockClear();
+    addMarkerMock.mockClear();
     mockActiveMonitor.previewBlurQuality = 'auto';
     Object.defineProperty(window, '__TAURI_INTERNALS__', {
       configurable: true,
@@ -161,18 +165,18 @@ describe('useMonitorContainerControls', () => {
     );
   });
 
-  it('hides addMarkerAtPlayhead option in context menu if isMobile is true', () => {
+  it('hides addMarkerWithText option in context menu if isMobile is true', () => {
     const controls = createControls({ isMobile: true });
     const items = flattenMenuItems(controls.contextMenuItems.value);
-    expect(items.some((entry) => entry.label === 'fastcat.timeline.addMarkerAtPlayhead')).toBe(
+    expect(items.some((entry) => entry.label === 'fastcat.timeline.addMarkerWithText')).toBe(
       false,
     );
   });
 
-  it('shows addMarkerAtPlayhead option in context menu if isMobile is false or undefined', () => {
+  it('shows addMarkerWithText option in context menu if isMobile is false or undefined', () => {
     const controls = createControls({ isMobile: false });
     const items = flattenMenuItems(controls.contextMenuItems.value);
-    expect(items.some((entry) => entry.label === 'fastcat.timeline.addMarkerAtPlayhead')).toBe(
+    expect(items.some((entry) => entry.label === 'fastcat.timeline.addMarkerWithText')).toBe(
       true,
     );
   });
@@ -221,5 +225,16 @@ describe('useMonitorContainerControls', () => {
     expect(halfOption).toBeTruthy();
     halfOption?.onSelect?.();
     expect(mockActiveMonitor.previewResolution).toBe(0.5);
+  });
+
+  it('creates marker with text at playhead position', () => {
+    const controls = createControls();
+    controls.createMarkerWithTextAtPlayhead('hello', '#eab308');
+    expect(addMarkerMock).toHaveBeenCalledOnce();
+    expect(addMarkerMock).toHaveBeenCalledWith({
+      timeUs: 5000,
+      text: 'hello',
+      color: '#eab308',
+    });
   });
 });

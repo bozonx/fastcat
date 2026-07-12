@@ -907,8 +907,10 @@ describe('useEditorHotkeys', () => {
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'j', code: 'KeyJ', bubbles: true }));
     expect(settingsStore.toolbarSnapMode).toBe('no_snap');
 
+    // K now toggles free (sub-frame) audio placement, not the snap mode.
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', code: 'KeyK', bubbles: true }));
-    expect(settingsStore.toolbarSnapMode).toBe('free_mode');
+    expect(settingsStore.freeAudioPlacement).toBe(true);
+    expect(settingsStore.toolbarSnapMode).toBe('no_snap');
 
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'h', code: 'KeyH', bubbles: true }));
     expect(settingsStore.toolbarSnapMode).toBe('snap');

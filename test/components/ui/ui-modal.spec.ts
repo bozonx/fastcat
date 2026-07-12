@@ -142,4 +142,24 @@ describe('UiModal', () => {
     expect(stopPropagation).toHaveBeenCalledOnce();
     expect(stopImmediatePropagation).toHaveBeenCalledOnce();
   });
+
+  it('forwards the portal prop to UModal', async () => {
+    const component = await mountSuspended(UiModal, {
+      props: {
+        open: true,
+        portal: '#custom-portal',
+      },
+      global: {
+        stubs: {
+          UModal: {
+            ...modalStub,
+            props: [...modalStub.props, 'portal'],
+          },
+        },
+      },
+    });
+
+    const modal = component.findComponent({ name: 'UModal' });
+    expect(modal.props('portal')).toBe('#custom-portal');
+  });
 });

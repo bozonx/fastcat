@@ -84,7 +84,7 @@ export interface ResolvePlayheadClickTimeUsParams {
   rawTimeUs: number;
   zoom: number;
   snapThresholdPx: number;
-  toolbarSnapMode: 'snap' | 'no_snap' | 'free_mode';
+  toolbarSnapMode: 'snap' | 'no_snap';
   snapping: FastCatUserSettings['timeline']['snapping'];
   tracks: TimelineTrack[];
   markers: TimelineMarker[];

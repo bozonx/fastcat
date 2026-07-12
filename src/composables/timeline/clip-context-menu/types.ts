@@ -75,7 +75,6 @@ export interface MultiSelectionState {
   selectedClips: TimelineClipItem[];
   selectedIds: Set<string>;
   allDisabled: boolean;
-  hasFreeClip: boolean;
   hasGroupedClip: boolean;
   hasLockedTrack: boolean;
   hasAudioOrVideoWithAudio: boolean;

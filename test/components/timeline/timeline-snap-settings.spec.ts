@@ -58,7 +58,7 @@ describe('TimelineSnapSettings', () => {
 
     expect(component.exists()).toBe(true);
     expect(component.find('input[type="range"]').exists()).toBe(true);
-    expect(component.findAll('input[type="checkbox"]').length).toBe(7);
+    expect(component.findAll('input[type="checkbox"]').length).toBe(6);
   });
 
   it('emits setGlobalSnapThresholdPx when slider changes', async () => {
@@ -100,16 +100,5 @@ describe('TimelineSnapSettings', () => {
 
     expect(component.text()).toContain('videoEditor.settings.snappingTitle');
     expect(component.text()).toContain('videoEditor.settings.snappingDescription');
-  });
-
-  it('toggles freeAudioPlacement checkbox', async () => {
-    const component = await mountSuspended(TimelineSnapSettings, {
-      global: { stubs },
-    });
-
-    const checkboxes = component.findAll('input[type="checkbox"]');
-    await checkboxes[6].setValue(true);
-
-    expect(mockWorkspaceStore.userSettings.timeline.freeAudioPlacement).toBe(true);
   });
 });

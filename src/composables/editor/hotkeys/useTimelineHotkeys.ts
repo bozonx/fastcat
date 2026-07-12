@@ -101,7 +101,7 @@ export function useTimelineHotkeys(
     },
 
     'timeline.selectSnapModeFree': () => {
-      settingsStore.selectToolbarSnapMode('free_mode');
+      settingsStore.freeAudioPlacement = !settingsStore.freeAudioPlacement;
       return true;
     },
 

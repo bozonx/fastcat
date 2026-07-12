@@ -566,7 +566,7 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     {
       id: 'timeline.selectSnapModeFree',
       groupId: 'timeline',
-      title: 'Switch to free mode',
+      title: 'Toggle free audio placement',
       visibility: 'advanced',
     },
     {

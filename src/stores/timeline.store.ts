@@ -318,7 +318,8 @@ export const useTimelineStore = defineStore('timeline', () => {
       totalDurationUs,
     }) => {
       const pseudo = timelineSettingsStore.isPseudoOverlapEnabled;
-      const quantizeToFrames = timelineSettingsStore.toolbarSnapMode !== 'free_mode';
+      // Paste always lands frame-aligned (video can never be placed freely).
+      const quantizeToFrames = timelineSettingsStore.frameSnapMode === 'frames';
       const doc = timelineDoc.value;
       if (!doc) return { pseudo, insertStartUs, quantizeToFrames };
 
@@ -343,9 +344,7 @@ export const useTimelineStore = defineStore('timeline', () => {
         zoom: timelineZoom.value,
         snapThresholdPx: timelineSettingsStore.snapThresholdPx,
         snapTargetsUs,
-        enableFrameSnap:
-          timelineSettingsStore.frameSnapMode === 'frames' &&
-          timelineSettingsStore.toolbarSnapMode !== 'free_mode',
+        enableFrameSnap: timelineSettingsStore.frameSnapMode === 'frames',
         enableClipSnap: timelineSettingsStore.toolbarSnapMode === 'snap',
         frameOffsetUs: 0,
       });

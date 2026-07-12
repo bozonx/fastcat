@@ -69,7 +69,6 @@ const {
   selectedClips,
   hasGroupedClip,
   isSingleGroupSelection,
-  hasFreeClip,
   allDisabled,
   allMuted,
   allLocked,
@@ -532,8 +531,6 @@ const otherActions = computed(() => {
     hidden: !hasGroupedClip.value,
     onClick: handleUngroupSelected,
   });
-
-
 
   if (hasAutoMontageControls.value) {
     result.push({
