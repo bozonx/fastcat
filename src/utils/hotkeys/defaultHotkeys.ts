@@ -183,7 +183,7 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     { id: 'general.redo', groupId: 'general', title: 'Redo' },
     { id: 'general.save', groupId: 'general', title: 'Save' },
     { id: 'general.selectAll', groupId: 'general', title: 'Select all' },
-    { id: 'general.deselect', groupId: 'general', title: 'Deselect all / Close modals' },
+    { id: 'general.deselect', groupId: 'general', title: 'Deselect all / Cancel' },
     { id: 'general.focus', groupId: 'general', title: 'Focus / Search' },
     { id: 'general.rename', groupId: 'general', title: 'Rename' },
 

@@ -1663,7 +1663,7 @@
         "createFolder": "Create folder",
         "cut": "Cut",
         "delete": "Delete",
-        "deselect": "Deselect / Close modals",
+        "deselect": "Deselect all / Cancel",
         "focus": "Focus",
         "fullscreen": "Fullscreen",
         "mute": "Toggle Monitor Mute",

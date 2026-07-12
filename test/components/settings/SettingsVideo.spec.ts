@@ -158,6 +158,7 @@ vi.mock('~/stores/workspace.store', () => ({
 const mockIsTauriRuntime = vi.fn();
 vi.mock('~/utils/runtime', () => ({
   isTauriRuntime: () => mockIsTauriRuntime(),
+  isMacPlatform: () => false,
 }));
 
 // Mock videoDiagnostics

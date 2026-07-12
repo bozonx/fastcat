@@ -1709,4 +1709,36 @@ describe('hasBlockingModalState', () => {
   it('returns false when no modal elements exist', () => {
     expect(hasBlockingModalState()).toBe(false);
   });
+
+  it('ignores popover/menu content that is role="dialog" inside a popper wrapper', () => {
+    const wrapper = document.createElement('div');
+    wrapper.setAttribute('data-reka-popper-content-wrapper', '');
+    const popover = document.createElement('div');
+    popover.setAttribute('role', 'dialog');
+    wrapper.appendChild(popover);
+    document.body.appendChild(wrapper);
+
+    try {
+      expect(hasBlockingModalState()).toBe(false);
+    } finally {
+      wrapper.remove();
+    }
+  });
+
+  it('still blocks for a real modal dialog rendered outside any popper wrapper', () => {
+    const wrapper = document.createElement('div');
+    wrapper.setAttribute('data-reka-popper-content-wrapper', '');
+    document.body.appendChild(wrapper);
+
+    const modal = document.createElement('div');
+    modal.setAttribute('role', 'dialog');
+    document.body.appendChild(modal);
+
+    try {
+      expect(hasBlockingModalState()).toBe(true);
+    } finally {
+      wrapper.remove();
+      modal.remove();
+    }
+  });
 });

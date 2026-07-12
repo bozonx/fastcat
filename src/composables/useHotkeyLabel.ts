@@ -2,22 +2,16 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import type { HotkeyCommandId } from '~/utils/hotkeys/defaultHotkeys';
 import { getEffectiveHotkeyBindings } from '~/utils/hotkeys/effectiveHotkeys';
 import { formatHotkeyComboForDisplay } from '~/utils/hotkeys/hotkeyUtils';
+import { isMacPlatform } from '~/utils/runtime';
 
-const isMac =
-  typeof navigator !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+const isMac = isMacPlatform();
 
 function formatHotkey(
   combo: string,
   settings: ReturnType<typeof useWorkspaceStore>['userSettings'],
 ): string {
-  const display = formatHotkeyComboForDisplay(combo, settings);
-  if (!isMac) return display;
-
-  return display
-    .replace(/\bMeta\b/g, '⌘')
-    .replace(/\bAlt\b/g, '⌥')
-    .replace(/\bShift\b/g, '⇧')
-    .replace(/\bSpace\b/g, '␣');
+  // formatHotkeyComboForDisplay already renders macOS glyphs (⌘/⌥/⇧/␣).
+  return formatHotkeyComboForDisplay(combo, settings);
 }
 
 export function useHotkeyLabel() {

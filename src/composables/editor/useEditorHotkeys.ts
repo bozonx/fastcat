@@ -26,7 +26,18 @@ import { useTimelineHotkeys } from './hotkeys/useTimelineHotkeys';
 import { usePlaybackHotkeys } from './hotkeys/usePlaybackHotkeys';
 
 export function hasBlockingModalState(): boolean {
-  return !!document.querySelector('dialog[open], [role="dialog"], [role="alertdialog"]');
+  if (document.querySelector('dialog[open]')) return true;
+
+  // Reka renders popovers, dropdown menus and tooltips as popper-positioned
+  // content that ALSO carries role="dialog" — those are non-modal and must not
+  // block hotkeys (otherwise an open colour picker/dropdown silently disables
+  // every shortcut). A real modal dialog is never inside a popper wrapper.
+  const dialogs = document.querySelectorAll('[role="dialog"], [role="alertdialog"]');
+  for (const el of dialogs) {
+    if (!el.closest('[data-reka-popper-content-wrapper]')) return true;
+  }
+
+  return false;
 }
 
 const ARROW_KEY_DIRECTIONS: Record<string, 'up' | 'down' | 'left' | 'right' | undefined> = {
@@ -254,7 +265,10 @@ export function useEditorHotkeys() {
 
     if (e.repeat && !shouldHandleRepeatForMatchedCommands(matched)) return;
 
-    if (matched.includes('general.deselect')) {
+    // Escape exits trim mode, but only when nothing more urgent (an open modal)
+    // owns the key first — otherwise Escape would silently drop trim mode
+    // instead of closing the modal the user is looking at.
+    if (matched.includes('general.deselect') && !hasBlockingModalState()) {
       if (timelineStore.isTrimModeActive) {
         timelineStore.isTrimModeActive = false;
         e.preventDefault();

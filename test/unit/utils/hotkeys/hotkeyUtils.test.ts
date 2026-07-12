@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
+import * as runtime from '~/utils/runtime';
 import {
   stringifyHotkey,
   parseHotkeyCombo,
@@ -138,6 +139,16 @@ describe('isEditableTarget', () => {
     input.type = 'checkbox';
     expect(isEditableTarget(input)).toBe(false);
   });
+
+  it('treats ARIA combobox and listbox roles as editable', () => {
+    const combobox = document.createElement('div');
+    combobox.setAttribute('role', 'combobox');
+    expect(isEditableTarget(combobox)).toBe(true);
+
+    const listbox = document.createElement('div');
+    listbox.setAttribute('role', 'listbox');
+    expect(isEditableTarget(listbox)).toBe(true);
+  });
 });
 
 describe('hotkeyFromKeyboardEvent', () => {
@@ -250,5 +261,86 @@ describe('hotkeyFromKeyboardEvent', () => {
 
     // The combo itself is still resolved; protection happens in canExecuteHotkeyCommand
     expect(hotkeyFromKeyboardEvent(hEvent)).toBe('H');
+  });
+});
+
+describe('hotkeyFromKeyboardEvent on macOS (Cmd as primary modifier)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const macSettings = {
+    hotkeys: { layer1: 'Shift', layer2: 'Control', bindings: {} },
+  } as unknown as Parameters<typeof hotkeyFromKeyboardEvent>[1];
+
+  function mockMac() {
+    vi.spyOn(runtime, 'isMacPlatform').mockReturnValue(true);
+  }
+
+  it('maps Cmd (Meta) onto the stored Ctrl binding (literal path)', () => {
+    mockMac();
+    const cmdC = new KeyboardEvent('keydown', { code: 'KeyC', key: 'c', metaKey: true });
+    expect(hotkeyFromKeyboardEvent(cmdC)).toBe('Ctrl+C');
+  });
+
+  it('maps Cmd onto the stored Ctrl binding through the layer path too', () => {
+    mockMac();
+    const cmdC = new KeyboardEvent('keydown', { code: 'KeyC', key: 'c', metaKey: true });
+    expect(hotkeyFromKeyboardEvent(cmdC, macSettings)).toBe('Ctrl+C');
+  });
+
+  it('keeps physical Control inert on macOS (literal and layer paths)', () => {
+    mockMac();
+    const ctrlC = new KeyboardEvent('keydown', { code: 'KeyC', key: 'c', ctrlKey: true });
+    expect(hotkeyFromKeyboardEvent(ctrlC)).toBe('C');
+    expect(hotkeyFromKeyboardEvent(ctrlC, macSettings)).toBe('C');
+  });
+
+  it('does not double-count Meta when it feeds the primary modifier', () => {
+    mockMac();
+    // Cmd+Shift+Z should resolve to the redo-style combo, never "Ctrl+Meta+…"
+    const cmdShiftZ = new KeyboardEvent('keydown', {
+      code: 'KeyZ',
+      key: 'z',
+      metaKey: true,
+      shiftKey: true,
+    });
+    expect(hotkeyFromKeyboardEvent(cmdShiftZ, macSettings)).toBe('Ctrl+Shift+Z');
+  });
+
+  it('leaves non-macOS behaviour unchanged (Ctrl stays Ctrl, Cmd unbound)', () => {
+    vi.spyOn(runtime, 'isMacPlatform').mockReturnValue(false);
+    const ctrlC = new KeyboardEvent('keydown', { code: 'KeyC', key: 'c', ctrlKey: true });
+    expect(hotkeyFromKeyboardEvent(ctrlC)).toBe('Ctrl+C');
+    const metaC = new KeyboardEvent('keydown', { code: 'KeyC', key: 'c', metaKey: true });
+    expect(hotkeyFromKeyboardEvent(metaC)).toBe('Meta+C');
+  });
+
+  it('renders stored Ctrl/Shift bindings as macOS glyphs for display', () => {
+    mockMac();
+    expect(formatHotkeyComboForDisplay('Ctrl+Shift+A')).toBe('⌘+⇧+A');
+    expect(formatHotkeyComboForDisplay('Ctrl+C')).toBe('⌘+C');
+  });
+
+  it('keeps word-based labels on non-macOS', () => {
+    vi.spyOn(runtime, 'isMacPlatform').mockReturnValue(false);
+    expect(formatHotkeyComboForDisplay('Ctrl+Shift+A')).toBe('Ctrl+Shift+A');
+  });
+});
+
+describe('hotkeyFromKeyboardEvent with a Meta virtual layer', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('consumes the Meta key into the layer instead of double-counting it', () => {
+    vi.spyOn(runtime, 'isMacPlatform').mockReturnValue(false);
+    const settings = {
+      hotkeys: { layer1: 'Shift', layer2: 'Meta', bindings: {} },
+    } as unknown as Parameters<typeof hotkeyFromKeyboardEvent>[1];
+
+    const metaZ = new KeyboardEvent('keydown', { code: 'KeyZ', key: 'z', metaKey: true });
+    // Layer2 (Meta) maps to virtual Ctrl; Meta must not also appear literally.
+    expect(hotkeyFromKeyboardEvent(metaZ, settings)).toBe('Ctrl+Z');
   });
 });

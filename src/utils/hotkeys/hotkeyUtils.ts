@@ -1,7 +1,31 @@
+import { isMacPlatform } from '../runtime';
 import type { FastCatUserSettings } from '../settings/defaults';
 import type { HotkeyCombo } from './defaultHotkeys';
 import type { LayerKey } from './layerUtils';
 import { isLayer1Active, isLayer2Active } from './layerUtils';
+
+interface EventModifierState {
+  ctrlKey: boolean;
+  metaKey: boolean;
+  altKey: boolean;
+  shiftKey: boolean;
+}
+
+/**
+ * Normalise the physical modifier flags of a keyboard/mouse event.
+ *
+ * Bindings are stored with the primary command modifier as `Ctrl` (from
+ * `Modifier2`). On macOS the primary modifier is Cmd, so we map the physical
+ * Meta key onto the virtual `ctrl` slot and drop physical Control entirely —
+ * Ctrl-based shortcuts stay inert, matching native Mac apps. On every other
+ * platform the flags pass through unchanged.
+ */
+function readEventModifiers(e: KeyboardEvent | MouseEvent | WheelEvent): EventModifierState {
+  if (isMacPlatform()) {
+    return { ctrlKey: e.metaKey, metaKey: false, altKey: e.altKey, shiftKey: e.shiftKey };
+  }
+  return { ctrlKey: e.ctrlKey, metaKey: e.metaKey, altKey: e.altKey, shiftKey: e.shiftKey };
+}
 
 export interface NormalizedHotkey {
   ctrl: boolean;
@@ -101,10 +125,7 @@ function formatLayerKey(layerKey: LayerKey): string {
   if (layerKey === 'Shift' || layerKey === 'Alt' || layerKey === 'Meta') return layerKey;
 
   const side = layerKey.endsWith('Left') ? 'Left' : 'Right';
-  const key = layerKey
-    .replace('Left', '')
-    .replace('Right', '')
-    .replace('Control', 'Ctrl');
+  const key = layerKey.replace('Left', '').replace('Right', '').replace('Control', 'Ctrl');
 
   return `${side} ${key}`;
 }
@@ -127,15 +148,31 @@ function formatHotkeyTokenForDisplay(
   return normalized;
 }
 
+/**
+ * On macOS render modifier words as their conventional glyphs. `Ctrl` maps to
+ * ⌘ because the stored `Ctrl` binding is driven by the Cmd key on Mac (see
+ * {@link hotkeyFromKeyboardEvent}); `Meta` also maps to ⌘ for completeness.
+ */
+function applyMacGlyphs(display: string): string {
+  return display
+    .replace(/\bCtrl\b/g, '⌘')
+    .replace(/\bMeta\b/g, '⌘')
+    .replace(/\bAlt\b/g, '⌥')
+    .replace(/\bShift\b/g, '⇧')
+    .replace(/\bSpace\b/g, '␣');
+}
+
 export function formatHotkeyComboForDisplay(
   combo: HotkeyCombo,
   settings?: Pick<FastCatUserSettings, 'hotkeys'>,
 ): string {
-  return combo
+  const display = combo
     .split('+')
     .map((token) => formatHotkeyTokenForDisplay(token, settings))
     .filter(Boolean)
     .join('+');
+
+  return isMacPlatform() ? applyMacGlyphs(display) : display;
 }
 
 export function stringifyHotkey(input: NormalizedHotkey): HotkeyCombo {
@@ -242,18 +279,27 @@ export function hotkeyFromKeyboardEvent(
     return null;
   }
 
+  // Physical modifier flags, normalised for the platform (Cmd → Ctrl on macOS).
+  const mods = readEventModifiers(e);
+
   // If settings are provided, use virtual layers.
   // Layer 1 maps to virtual Shift, Layer 2 maps to virtual Ctrl.
   if (settings) {
-    const isL1 = isLayer1Active(e, settings);
-    const isL2 = isLayer2Active(e, settings);
+    // Layer activity is evaluated against the normalised modifiers so that on
+    // macOS a layer assigned to Control is driven by the Cmd key (and physical
+    // Control stays inert). Side-specific layers (e.g. ControlLeft) still read
+    // raw pressed key codes inside isLayerActive.
+    const layerEvent = { ...mods } as unknown as KeyboardEvent;
+    const isL1 = isLayer1Active(layerEvent, settings);
+    const isL2 = isLayer2Active(layerEvent, settings);
 
     // Identify which physical modifiers are assigned to layers
     const l1Phys = settings.hotkeys.layer1;
     const l2Phys = settings.hotkeys.layer2;
 
-    // We only pass through Meta as it's typically the global OS key.
-    // Alt and Shift are only passed through if they are NOT assigned to either layer.
+    // A physical modifier assigned to a layer is consumed by that layer and is
+    // no longer passed through literally (otherwise it would be double-counted,
+    // e.g. a Meta layer producing "Ctrl+Meta+…").
     const isAltLayer =
       l1Phys?.startsWith('Alt') ||
       l2Phys?.startsWith('Alt') ||
@@ -269,21 +315,26 @@ export function hotkeyFromKeyboardEvent(
       l2Phys?.startsWith('Control') ||
       l1Phys === 'Control' ||
       l2Phys === 'Control';
+    const isMetaLayer =
+      l1Phys?.startsWith('Meta') ||
+      l2Phys?.startsWith('Meta') ||
+      l1Phys === 'Meta' ||
+      l2Phys === 'Meta';
 
     return stringifyHotkey({
-      ctrl: isL2 || (!isCtrlLayer && e.ctrlKey),
-      meta: e.metaKey,
-      alt: !isAltLayer && e.altKey,
-      shift: isL1 || (!isShiftLayer && e.shiftKey),
+      ctrl: isL2 || (!isCtrlLayer && mods.ctrlKey),
+      meta: !isMetaLayer && mods.metaKey,
+      alt: !isAltLayer && mods.altKey,
+      shift: isL1 || (!isShiftLayer && mods.shiftKey),
       key,
     });
   }
 
   return stringifyHotkey({
-    ctrl: e.ctrlKey,
-    meta: e.metaKey,
-    alt: e.altKey,
-    shift: e.shiftKey,
+    ctrl: mods.ctrlKey,
+    meta: mods.metaKey,
+    alt: mods.altKey,
+    shift: mods.shiftKey,
     key,
   });
 }
@@ -298,9 +349,19 @@ export function isEditableTarget(target: EventTarget | null): boolean {
   const tag = el.tagName;
   if (tag === 'TEXTAREA' || tag === 'SELECT') return true;
 
-  // Custom components (sliders, custom text inputs)
+  // Custom components (sliders, custom text inputs, comboboxes and listboxes).
+  // Comboboxes accept typing and listboxes/comboboxes consume arrow keys for
+  // their own navigation, so global bare-key hotkeys must stay out of them.
   const role = el.getAttribute('role');
-  if (role === 'slider' || role === 'textbox' || role === 'spinbutton') return true;
+  if (
+    role === 'slider' ||
+    role === 'textbox' ||
+    role === 'spinbutton' ||
+    role === 'combobox' ||
+    role === 'listbox'
+  ) {
+    return true;
+  }
 
   if (tag !== 'INPUT') return false;
 
