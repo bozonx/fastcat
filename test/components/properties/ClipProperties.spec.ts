@@ -390,6 +390,84 @@ describe('ClipProperties.vue', () => {
     expect(infoSection.vm.$.emitsOptions).not.toHaveProperty('update-duration');
   });
 
+  it('clamps start time and end time to neighboring clip boundaries', async () => {
+    const clip = createClip({
+      id: 'clip-center',
+      timelineRange: { startUs: 3000000, durationUs: 2000000 },
+    });
+
+    // Set up neighboring clips on the same track
+    mockTimelineStore.timelineDoc.tracks = [
+      {
+        id: 'track-1',
+        kind: 'video',
+        items: [
+          {
+            id: 'clip-left',
+            kind: 'clip',
+            timelineRange: { startUs: 500000, durationUs: 1500000 }, // ends at 2000000
+          },
+          clip as any,
+          {
+            id: 'clip-right',
+            kind: 'clip',
+            timelineRange: { startUs: 6000000, durationUs: 1000000 }, // starts at 6000000
+          },
+        ],
+      },
+    ];
+
+    const wrapper = await mountComponent({ clip });
+    const infoSection = wrapper.findComponent({ name: 'ClipInfoSection' });
+
+    // Test startUs clamping (moving clip-center leftwards)
+    // Desired start is 1000000, but left clip ends at 2000000. Start should be clamped to 2000000.
+    infoSection.vm.$emit('update-start-time', 1000000);
+    await nextTick();
+    expect(mockTimelineStore.applyTimeline).toHaveBeenLastCalledWith(
+      {
+        type: 'move_item',
+        trackId: 'track-1',
+        itemId: 'clip-center',
+        startUs: 2000000,
+        quantizeToFrames: false,
+      },
+      { historyMode: 'debounced' },
+    );
+
+    // Test startUs clamping (moving clip-center rightwards)
+    // Desired start is 5000000. Right clip starts at 6000000. Clip duration is 2000000.
+    // Max startUs is 6000000 - 2000000 = 4000000. Start should be clamped to 4000000.
+    infoSection.vm.$emit('update-start-time', 5000000);
+    await nextTick();
+    expect(mockTimelineStore.applyTimeline).toHaveBeenLastCalledWith(
+      {
+        type: 'move_item',
+        trackId: 'track-1',
+        itemId: 'clip-center',
+        startUs: 4000000,
+        quantizeToFrames: false,
+      },
+      { historyMode: 'debounced' },
+    );
+
+    // Test endUs clamping (trimming clip-center end rightwards)
+    // Desired end is 7000000, but right clip starts at 6000000.
+    // End should be clamped to 6000000, which means deltaUs is 6000000 - (3000000 + 2000000) = 1000000.
+    infoSection.vm.$emit('update-end-time', 7000000);
+    await nextTick();
+    expect(mockTimelineStore.applyTimeline).toHaveBeenLastCalledWith(
+      {
+        type: 'trim_item',
+        trackId: 'track-1',
+        itemId: 'clip-center',
+        edge: 'end',
+        deltaUs: 1000000,
+      },
+      { historyMode: 'debounced' },
+    );
+  });
+
   it('updates opacity and blendMode correctly', async () => {
     const clip = createClip();
     const wrapper = await mountComponent({ clip });

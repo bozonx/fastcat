@@ -229,7 +229,7 @@ describe('useMonitorContainerControls', () => {
 
   it('creates marker with text at playhead position', () => {
     const controls = createControls();
-    controls.createMarkerWithTextAtPlayhead('hello', '#eab308');
+    controls.createMarkerWithTextAtPlayhead({ text: 'hello', color: '#eab308' });
     expect(addMarkerMock).toHaveBeenCalledOnce();
     expect(addMarkerMock).toHaveBeenCalledWith({
       timeUs: 5000,

@@ -333,12 +333,12 @@ export function useMonitorContainerControls(options: UseMonitorContainerControls
 
   const isAddMarkerModalOpen = ref(false);
 
-  function createMarkerWithTextAtPlayhead(text: string, color: string) {
+  function createMarkerWithTextAtPlayhead(params: { text: string; color: string }) {
     const existingMarkers = options.timelineStore.markers;
     options.timelineStore.addMarker({
       timeUs: options.timelineStore.currentTime,
-      text,
-      color,
+      text: params.text,
+      color: params.color,
     });
     const nextMarkers = options.timelineStore.markers;
     const createdMarker =

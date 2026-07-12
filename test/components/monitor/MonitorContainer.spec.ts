@@ -654,6 +654,11 @@ describe('MonitorContainer', () => {
   });
 
   it('shows, updates, and hides hover timecode tooltip on pointer events', async () => {
+    const timelineStore = useTimelineStore(pinia);
+    timelineStore.timelineDoc = {
+      timebase: { fps: 30 },
+    } as any;
+
     wrapper = mount(MonitorContainer, {
       global: {
         plugins: [pinia],

@@ -251,8 +251,37 @@ const visibleOtherActionsList = computed(() =>
     : otherActionsList.value,
 );
 
+const otherClips = computed(() => {
+  const track = timelineStore.timelineDoc?.tracks.find((t) => t.id === props.clip.trackId);
+  if (!track) return [];
+  return track.items
+    .filter((it) => it.kind === 'clip' && it.id !== props.clip.id)
+    .sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
+});
+
 function handleUpdateStartTime(val: number) {
-  const newStartUs = Math.max(0, Math.round(val));
+  const currentDurationUs = props.clip.timelineRange.durationUs;
+
+  let minStartUs = 0;
+  let maxStartUs = Number.POSITIVE_INFINITY;
+
+  for (const it of otherClips.value) {
+    const itStart = it.timelineRange.startUs;
+    const itEnd = itStart + it.timelineRange.durationUs;
+
+    if (itEnd <= props.clip.timelineRange.startUs) {
+      minStartUs = Math.max(minStartUs, itEnd);
+    } else if (itStart >= props.clip.timelineRange.startUs + currentDurationUs) {
+      maxStartUs = Math.min(maxStartUs, itStart - currentDurationUs);
+    }
+  }
+
+  let newStartUs = Math.round(val);
+  newStartUs = Math.max(minStartUs, newStartUs);
+  if (Number.isFinite(maxStartUs)) {
+    newStartUs = Math.min(maxStartUs, newStartUs);
+  }
+
   if (newStartUs === props.clip.timelineRange.startUs) return;
   timelineStore.applyTimeline(
     {
@@ -273,10 +302,25 @@ function handleUpdateEndTime(val: number) {
   // programmatic callers and prevents a manual entry from exceeding the clip's
   // source material (which would otherwise trigger a source-window slip).
   const maxEndUs = startUs + getClipMaxTimelineDurationUs(props.clip);
+
+  let nextClipStartUs = Number.POSITIVE_INFINITY;
+  for (const it of otherClips.value) {
+    if (it.timelineRange.startUs >= startUs + props.clip.timelineRange.durationUs) {
+      nextClipStartUs = Math.min(nextClipStartUs, it.timelineRange.startUs);
+      break;
+    }
+  }
+
+  const limitEndUs = Math.min(
+    Number.isFinite(maxEndUs) ? maxEndUs : Number.POSITIVE_INFINITY,
+    nextClipStartUs
+  );
+
   const newEndUs = Math.min(
     Math.max(startUs, Math.round(val)),
-    Number.isFinite(maxEndUs) ? maxEndUs : Number.POSITIVE_INFINITY,
+    limitEndUs
   );
+
   const currentEndUs = startUs + props.clip.timelineRange.durationUs;
   if (newEndUs === currentEndUs) return;
   timelineStore.applyTimeline(
