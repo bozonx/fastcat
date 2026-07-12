@@ -170,6 +170,12 @@ async function applyResumeState() {
 
   const element = mediaElement.value;
   const nextTime = Math.max(0, props.resumeState.currentTime);
+  // Snapshot the intent now. When the element isn't ready yet (a freshly mounted
+  // fullscreen modal), playback is deferred to `loadedmetadata`; by then the
+  // shared transfer state may have been overwritten (e.g. this instance's own
+  // onMounted `emitPlaybackState` reports `isPlaying: false`), so re-reading
+  // `props.resumeState` inside the deferred callback would wrongly pause.
+  const shouldPlay = props.resumeState.isPlaying;
 
   if (props.type === 'video' || props.type === 'audio') {
     const setTime = () => {
@@ -181,7 +187,7 @@ async function applyResumeState() {
       // inline player while the fullscreen modal is open). Otherwise every
       // sync-state token the active instance emits (once per timeupdate) would
       // restart this element underneath it, producing doubled audio.
-      if (props.resumeState?.isPlaying && !props.forcePaused) {
+      if (shouldPlay && !props.forcePaused) {
         void mediaElement.value.play().catch(() => {});
       } else {
         mediaElement.value.pause();
