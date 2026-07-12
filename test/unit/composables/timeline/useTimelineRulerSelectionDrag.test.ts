@@ -57,4 +57,49 @@ describe('useTimelineRulerSelectionDrag', () => {
 
     wrapper.unmount();
   });
+
+  it('cancels creation of selection range and resets state on pointercancel', async () => {
+    const selectionRange = ref<{ startUs: number; endUs: number } | null>(null);
+    const createSelectionRange = vi.fn();
+    const updateSelectionRange = vi.fn();
+
+    let api!: ReturnType<typeof useTimelineRulerSelectionDrag>;
+
+    const TestComponent = defineComponent({
+      setup() {
+        api = useTimelineRulerSelectionDrag({
+          selectionRange,
+          zoom: ref(50),
+          fps: ref(25),
+          getTimeUsFromPointerEvent: (event) => event.clientX * 1000,
+          selectSelectionRange: vi.fn(),
+          updateSelectionRange,
+          createSelectionRange,
+          computeSnapTargets: () => [],
+          snapThresholdPx: 1,
+        });
+
+        return () => h('div');
+      },
+    });
+
+    const wrapper = mount(TestComponent);
+
+    api.startSelectionRangeCreate({
+      clientX: 0,
+      preventDefault: vi.fn(),
+      stopPropagation: vi.fn(),
+    } as unknown as PointerEvent);
+
+    window.dispatchEvent(new PointerEvent('pointermove', { clientX: 500 }));
+    expect(api.isCreatingSelectionRange.value).toBe(true);
+
+    window.dispatchEvent(new PointerEvent('pointercancel'));
+
+    expect(api.isCreatingSelectionRange.value).toBe(false);
+    expect(api.displaySelectionRange.value).toBeNull();
+    expect(createSelectionRange).toHaveBeenCalled();
+
+    wrapper.unmount();
+  });
 });

@@ -21,7 +21,6 @@ const vfs = useVfs();
 
 const emit = defineEmits<{
   clearTemp: [];
-  deleteProject: [];
 }>();
 
 const projectStats = ref<DirectoryStats | null>(null);
@@ -127,27 +126,6 @@ watch(
         </div>
       </div>
 
-      <!-- Delete Project -->
-      <div
-        class="flex items-center justify-between gap-3 p-3 rounded border border-error-500/20 bg-error-500/5"
-      >
-        <div class="flex flex-col gap-1 min-w-0">
-          <div class="font-medium text-error-400">
-            {{ t('videoEditor.projectSettings.deleteProject') }}
-          </div>
-          <div class="text-sm text-error-400/70">
-            {{ t('videoEditor.projectSettings.deleteProjectConfirmDescription') }}
-          </div>
-        </div>
-
-        <UButton
-          color="error"
-          variant="solid"
-          icon="i-heroicons-trash"
-          :label="t('videoEditor.projectSettings.deleteProjectAction')"
-          @click="emit('deleteProject')"
-        />
-      </div>
     </div>
   </div>
 </template>

@@ -181,25 +181,6 @@ describe('ProjectSettingsModal.vue', () => {
     expect(component.find('.storage-settings-mock').exists()).toBe(true);
   });
 
-  it('calls deleteCurrentProject on confirmation', async () => {
-    const component = await mountWithNuxt(ProjectSettingsModal, {
-      props: {
-        open: true,
-      },
-    });
-
-    // Manually trigger the delete confirmation modal to open
-    component.vm.isDeleteProjectConfirmOpen = true;
-    await component.vm.$nextTick();
-
-    const deleteConfirmModal = component.find('.confirm-modal-mock');
-    expect(deleteConfirmModal.exists()).toBe(true);
-
-    const confirmBtn = deleteConfirmModal.find('.confirm-btn');
-    await confirmBtn.trigger('click');
-
-    expect(mockProjectStore.deleteCurrentProject).toHaveBeenCalled();
-  });
 
   it('calls clearProjectVardata on confirmation', async () => {
     const component = await mountWithNuxt(ProjectSettingsModal, {

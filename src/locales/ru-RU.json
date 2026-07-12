@@ -1820,7 +1820,6 @@
       "clearTempConfirm": "Очистить",
       "clearTempDescription": "Это удалит временные файлы для этого проекта.",
       "clearTempTitle": "Очистка временных файлов",
-      "deleteProject": "Удалить проект",
       "deleteProjectAction": "Удалить",
       "deleteProjectConfirmDescription": "Это навсегда удалит папку проекта и все её содержимое. Это действие нельзя отменить.",
       "deleteProjectConfirmTitle": "Удалить проект?",

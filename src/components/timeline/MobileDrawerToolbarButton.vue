@@ -9,6 +9,7 @@ interface Props {
   danger?: boolean;
   success?: boolean;
   primary?: boolean;
+  status?: 'muted' | 'solo' | 'locked' | 'hidden' | 'disabled';
 }
 
 const props = defineProps<Props>();
@@ -46,7 +47,15 @@ function onPointerLeave() {
           : primary
             ? 'text-white bg-blue-500 border-none shadow-lg shadow-blue-500/20'
             : active
-              ? 'text-blue-400 bg-blue-400/15 border border-blue-500/30'
+              ? status === 'muted'
+                ? 'text-white bg-red-500 border-none shadow-lg shadow-red-500/20'
+                : status === 'solo'
+                  ? 'text-white bg-green-500 border-none shadow-lg shadow-green-500/20'
+                  : status === 'locked'
+                    ? 'text-white bg-blue-500 border-none shadow-lg shadow-blue-500/20'
+                    : status === 'hidden' || status === 'disabled'
+                      ? 'text-black bg-white dark:text-black dark:bg-white border-none shadow-lg shadow-white/10'
+                      : 'text-blue-400 bg-blue-400/15 border border-blue-500/30'
               : 'text-ui-text bg-ui-bg-muted/50',
       disabled ? 'opacity-40 pointer-events-none' : 'active:scale-95',
     ]"

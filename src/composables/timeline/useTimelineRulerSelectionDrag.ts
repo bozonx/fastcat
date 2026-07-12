@@ -67,6 +67,7 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
 
     if (activeSelectionPointerUp) {
       window.removeEventListener('pointerup', activeSelectionPointerUp);
+      window.removeEventListener('pointercancel', activeSelectionPointerUp);
       activeSelectionPointerUp = null;
     }
 
@@ -263,6 +264,14 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
     event.stopPropagation();
     event.preventDefault();
 
+    if (event.pointerId !== undefined && event.target && 'setPointerCapture' in event.target) {
+      try {
+        (event.target as HTMLElement).setPointerCapture(event.pointerId);
+      } catch (e) {
+        console.warn('Failed to setPointerCapture on selection drag handle', e);
+      }
+    }
+
     options.selectSelectionRange();
     isDraggingSelectionRange.value = true;
     selectionDragPart.value = part;
@@ -280,6 +289,7 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
     activeSelectionKeyDown = onSelectionKeyDown;
     window.addEventListener('pointermove', activeSelectionPointerMove);
     window.addEventListener('pointerup', activeSelectionPointerUp);
+    window.addEventListener('pointercancel', activeSelectionPointerUp);
     window.addEventListener('keydown', activeSelectionKeyDown);
   }
 
@@ -337,6 +347,14 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
     event.preventDefault();
     event.stopPropagation();
 
+    if (event.pointerId !== undefined && event.target && 'setPointerCapture' in event.target) {
+      try {
+        (event.target as HTMLElement).setPointerCapture(event.pointerId);
+      } catch (e) {
+        console.warn('Failed to setPointerCapture on selection create handle', e);
+      }
+    }
+
     const timeUs = quantize(options.getTimeUsFromPointerEvent(event));
     selectionCreateStartUs.value = timeUs;
     isCreatingSelectionRange.value = true;
@@ -356,6 +374,7 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
     activeSelectionKeyDown = onSelectionKeyDown;
     window.addEventListener('pointermove', activeSelectionPointerMove);
     window.addEventListener('pointerup', activeSelectionPointerUp);
+    window.addEventListener('pointercancel', activeSelectionPointerUp);
     window.addEventListener('keydown', activeSelectionKeyDown);
   }
 

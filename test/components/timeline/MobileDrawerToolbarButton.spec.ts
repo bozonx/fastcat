@@ -65,6 +65,56 @@ describe('MobileDrawerToolbarButton', () => {
     expect(wrapper.find('button').classes().join(' ')).toContain('text-blue-400');
   });
 
+  it('applies active styling for muted status', async () => {
+    const wrapper = await mountSuspended(MobileDrawerToolbarButton, {
+      props: { icon: 'x', active: true, status: 'muted' },
+      global: globalOptions,
+    });
+    const buttonClasses = wrapper.find('button').classes().join(' ');
+    expect(buttonClasses).toContain('bg-red-500');
+    expect(buttonClasses).toContain('text-white');
+  });
+
+  it('applies active styling for solo status', async () => {
+    const wrapper = await mountSuspended(MobileDrawerToolbarButton, {
+      props: { icon: 'x', active: true, status: 'solo' },
+      global: globalOptions,
+    });
+    const buttonClasses = wrapper.find('button').classes().join(' ');
+    expect(buttonClasses).toContain('bg-green-500');
+    expect(buttonClasses).toContain('text-white');
+  });
+
+  it('applies active styling for locked status', async () => {
+    const wrapper = await mountSuspended(MobileDrawerToolbarButton, {
+      props: { icon: 'x', active: true, status: 'locked' },
+      global: globalOptions,
+    });
+    const buttonClasses = wrapper.find('button').classes().join(' ');
+    expect(buttonClasses).toContain('bg-blue-500');
+    expect(buttonClasses).toContain('text-white');
+  });
+
+  it('applies active styling for hidden status', async () => {
+    const wrapper = await mountSuspended(MobileDrawerToolbarButton, {
+      props: { icon: 'x', active: true, status: 'hidden' },
+      global: globalOptions,
+    });
+    const buttonClasses = wrapper.find('button').classes().join(' ');
+    expect(buttonClasses).toContain('bg-white');
+    expect(buttonClasses).toContain('text-black');
+  });
+
+  it('applies active styling for disabled status', async () => {
+    const wrapper = await mountSuspended(MobileDrawerToolbarButton, {
+      props: { icon: 'x', active: true, status: 'disabled' },
+      global: globalOptions,
+    });
+    const buttonClasses = wrapper.find('button').classes().join(' ');
+    expect(buttonClasses).toContain('bg-white');
+    expect(buttonClasses).toContain('text-black');
+  });
+
   it('disables the button and removes the active press animation', async () => {
     const wrapper = await mountSuspended(MobileDrawerToolbarButton, {
       props: { icon: 'x', disabled: true },

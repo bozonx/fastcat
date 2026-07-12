@@ -208,6 +208,7 @@ function handlePasteToTrack() {
         v-if="selectedTrack?.kind === 'video'"
         :icon="selectedTrack?.videoHidden ? 'i-heroicons-eye-slash' : 'i-heroicons-eye'"
         :active="selectedTrack?.videoHidden"
+        status="hidden"
         :label="
           getHotkeyTitle(
             t('videoEditor.hotkeys.timeline.toggleVisibilityTrack'),
@@ -223,6 +224,7 @@ function handlePasteToTrack() {
           selectedTrack?.audioMuted ? 'i-heroicons-speaker-x-mark' : 'i-heroicons-speaker-wave'
         "
         :active="selectedTrack?.audioMuted"
+        status="muted"
         :label="
           getHotkeyTitle(
             t('videoEditor.hotkeys.timeline.toggleMuteTrack'),
@@ -236,6 +238,7 @@ function handlePasteToTrack() {
       <MobileDrawerToolbarButton
         icon="i-heroicons-musical-note"
         :active="selectedTrack?.audioSolo"
+        status="solo"
         :label="
           getHotkeyTitle(
             t('videoEditor.hotkeys.timeline.toggleSoloTrack'),
@@ -249,6 +252,7 @@ function handlePasteToTrack() {
       <MobileDrawerToolbarButton
         :icon="selectedTrack?.locked ? 'i-heroicons-lock-open' : 'i-heroicons-lock-closed'"
         :active="selectedTrack?.locked"
+        status="locked"
         :label="
           getHotkeyTitle(
             t('videoEditor.hotkeys.timeline.toggleLockTrack'),

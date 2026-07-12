@@ -76,6 +76,7 @@ export function useTimelineRulerMarkerDrag(options: UseTimelineRulerMarkerDragOp
 
     if (activeMarkerPointerUp) {
       window.removeEventListener('pointerup', activeMarkerPointerUp);
+      window.removeEventListener('pointercancel', activeMarkerPointerUp);
       activeMarkerPointerUp = null;
     }
 
@@ -248,6 +249,15 @@ export function useTimelineRulerMarkerDrag(options: UseTimelineRulerMarkerDragOp
     if (event.button !== 0) return;
 
     event.stopPropagation();
+    
+    if (event.pointerId !== undefined && event.target && 'setPointerCapture' in event.target) {
+      try {
+        (event.target as HTMLElement).setPointerCapture(event.pointerId);
+      } catch (e) {
+        console.warn('Failed to setPointerCapture on marker element', e);
+      }
+    }
+
     options.selectMarker(markerId, event);
 
     let selectedIds = options.getSelectedMarkerIds();
@@ -283,6 +293,7 @@ export function useTimelineRulerMarkerDrag(options: UseTimelineRulerMarkerDragOp
     activeMarkerKeyDown = onWindowKeyDown;
     window.addEventListener('pointermove', activeMarkerPointerMove);
     window.addEventListener('pointerup', activeMarkerPointerUp);
+    window.addEventListener('pointercancel', activeMarkerPointerUp);
     window.addEventListener('keydown', activeMarkerKeyDown);
   }
 

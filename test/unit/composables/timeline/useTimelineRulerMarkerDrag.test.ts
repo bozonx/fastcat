@@ -146,4 +146,21 @@ describe('useTimelineRulerMarkerDrag', () => {
 
     window.dispatchEvent(pointerEvent('pointerup', 300));
   });
+
+  it('cancels the drag gesture and resets state on pointercancel', () => {
+    const { api, updateMarker } = setupDrag([{ id: 'a', timeUs: 1_000_000 }], ['a']);
+
+    api.onMarkerPointerDown(pointerEvent('pointerdown', 100), 'a', 'left');
+    window.dispatchEvent(pointerEvent('pointermove', 400));
+
+    expect(api.draggedMarkerId.value).toBe('a');
+    expect(api.hasDragged.value).toBe(true);
+
+    window.dispatchEvent(pointerEvent('pointercancel', 400));
+
+    expect(api.draggedMarkerId.value).toBeNull();
+    expect(api.draggedMarkerIds.value).toHaveLength(0);
+    expect(updateMarker).toHaveBeenCalled(); // Since pointercancel maps to pointerup handler in our implementation
+  });
 });
+

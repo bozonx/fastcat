@@ -55,6 +55,7 @@ import { TIMELINE_DEFAULTS } from '~/utils/constants';
 import { normalizeMediaCachePath } from '~/utils/path';
 import { useNuxtApp } from 'nuxt/app';
 import { useTimelineMediaUsageStore } from './timeline-media-usage.store';
+import { useMobileLayout } from '~/composables/useMobileLayout';
 
 import type { AppNotificationService } from '~/services/app-notification.service';
 import type { I18nService } from '~/services/i18n.service';
@@ -77,11 +78,8 @@ export const useTimelineStore = defineStore('timeline', () => {
   const toast = nuxtApp.$notificationService as AppNotificationService;
   const { t } = nuxtApp.$i18nService as I18nService;
   const timelineMediaUsageStore = useTimelineMediaUsageStore();
-  const isMobileLayout = computed(() => {
-    if (typeof window === 'undefined') return false;
-    const path = window.location.pathname;
-    return path === '/m' || path.startsWith('/m/');
-  });
+  const { isMobileLayout } = useMobileLayout();
+
 
   const historyDebounce = createTimelineHistoryDebounceModule({ historyStore });
 

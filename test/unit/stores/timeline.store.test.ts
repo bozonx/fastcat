@@ -6,7 +6,7 @@ import { useSelectionStore } from '~/stores/selection.store';
 import { createTestTimeline } from '../utils/timeline-builder';
 import { parseTimelineFromOtio } from '~/timeline/otio-serializer';
 
-import { ref, nextTick } from 'vue';
+import { ref, nextTick, reactive } from 'vue';
 
 global.Worker = class {
   postMessage(data: any) {
@@ -151,13 +151,25 @@ const mockVfs = {
   getFile: vi.fn().mockResolvedValue(new File([], 'test.mp4')),
 };
 
+const mockRoute = reactive({ path: '/' });
+
+vi.mock('#app/composables/router', () => ({
+  useRoute: () => mockRoute,
+  useRouter: () => ({
+    push: vi.fn(),
+    replace: vi.fn(),
+    go: vi.fn(),
+    back: vi.fn(),
+  }),
+}));
+
 vi.mock('#app', () => ({
   useNuxtApp: () => ({
     $notificationService: { add: vi.fn() },
     $i18nService: { t: (key: string) => key },
     $vfs: mockVfs,
   }),
-  useRoute: () => ({ path: '/', fullPath: '/', query: {}, params: {}, hash: '' }),
+  useRoute: () => mockRoute,
 }));
 
 describe('TimelineStore', () => {
@@ -585,11 +597,7 @@ describe('TimelineStore', () => {
   });
 
   it('does not select timeline properties after loading on mobile layout', async () => {
-    // isMobileLayout is a cached computed reading window.location.pathname. It must
-    // read the mobile route on first access, so stub window before creating a fresh
-    // store instance (the beforeEach store already cached the desktop value).
-    const originalWindow = (globalThis as any).window;
-    vi.stubGlobal('window', { location: { pathname: '/m/editor/test' } });
+    mockRoute.path = '/m/editor/test';
 
     setActivePinia(createPinia());
     const mobileStore = useTimelineStore();
@@ -603,13 +611,7 @@ describe('TimelineStore', () => {
 
       expect(selectionStore.selectedEntity).toBeNull();
     } finally {
-      // Restore the prior window state so subsequent tests are unaffected.
-      if (originalWindow === undefined) {
-        (globalThis as any).window = undefined;
-      } else {
-        (globalThis as any).window = originalWindow;
-      }
-      vi.unstubAllGlobals();
+      mockRoute.path = '/';
     }
   });
 

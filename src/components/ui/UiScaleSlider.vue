@@ -186,7 +186,7 @@ function resetToDefault() {
     <!-- Track area — captures all pointer events -->
     <div
       ref="trackRef"
-      class="relative h-10 flex items-center px-4 slider-cursor-self cursor-pointer"
+      class="relative h-10 flex items-center px-4 slider-cursor-self cursor-pointer touch-none"
       role="slider"
       :aria-valuenow="isDiscreteMode ? currentIndex + 1 : clampedValue"
       :aria-valuemin="isDiscreteMode ? 1 : min"
@@ -244,7 +244,7 @@ function resetToDefault() {
           <div class="flex flex-col items-center" style="margin-top: -26px">
             <!-- Rounded pill body showing current value or drag handle bars -->
             <div
-              class="h-4 rounded bg-primary-500 shadow-md flex items-center justify-center transition-transform duration-75 px-1 pointer-events-auto"
+              class="h-4 rounded bg-primary-500 shadow-md flex items-center justify-center transition-transform duration-75 px-1 pointer-events-auto touch-none"
               :class="[
                 isDragging ? 'scale-110 cursor-grabbing' : 'cursor-grab',
                 withInput ? 'w-6' : isDiscreteMode ? 'min-w-[3rem]' : 'w-6',

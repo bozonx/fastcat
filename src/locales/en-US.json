@@ -1820,7 +1820,6 @@
       "clearTempConfirm": "Clear",
       "clearTempDescription": "This will remove temporary files for this project.",
       "clearTempTitle": "Clear temporary files",
-      "deleteProject": "Delete Project",
       "deleteProjectAction": "Delete",
       "deleteProjectConfirmDescription": "This will permanently delete the project folder and all its contents. This action cannot be undone.",
       "deleteProjectConfirmTitle": "Delete Project?",

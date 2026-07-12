@@ -194,6 +194,8 @@ const hasAudio = computed(() => {
               clip?.disabled ? t('fastcat.timeline.enableClip') : t('fastcat.timeline.disableClip')
             "
             :active="clip?.disabled"
+            :disabled="isLocked"
+            status="disabled"
             @click="handleToggleDisabled"
           />
 
@@ -205,6 +207,8 @@ const hasAudio = computed(() => {
                 clip?.audioMuted ? t('fastcat.timeline.unmuteClip') : t('fastcat.timeline.muteClip')
               "
               :active="clip?.audioMuted"
+              :disabled="isLocked"
+              status="muted"
               @click="handleToggleMuted"
             />
           </template>
@@ -216,6 +220,7 @@ const hasAudio = computed(() => {
               clip?.locked ? t('fastcat.timeline.unlockClip') : t('fastcat.timeline.lockClip')
             "
             :active="clip?.locked"
+            status="locked"
             @click="handleToggleLocked"
           />
         </MobileDrawerToolbar>

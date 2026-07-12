@@ -427,17 +427,25 @@ const {
             :label="
               allDisabled ? t('fastcat.timeline.enableClip') : t('fastcat.timeline.disableClip')
             "
+            :active="allDisabled"
+            :disabled="allLocked"
+            status="disabled"
             @click="toggleDisabled"
           />
           <MobileDrawerToolbarButton
             v-if="hasAudioOrVideoWithAudio"
             :icon="allMuted ? 'i-heroicons-speaker-wave' : 'i-heroicons-speaker-x-mark'"
             :label="allMuted ? t('fastcat.timeline.unmuteClip') : t('fastcat.timeline.muteClip')"
+            :active="allMuted"
+            :disabled="allLocked"
+            status="muted"
             @click="toggleMuted"
           />
           <MobileDrawerToolbarButton
             :icon="allLocked ? 'i-heroicons-lock-closed' : 'i-heroicons-lock-open'"
             :label="allLocked ? t('fastcat.timeline.unlockClip') : t('fastcat.timeline.lockClip')"
+            :active="allLocked"
+            status="locked"
             @click="toggleLocked"
           />
           <div

@@ -33,7 +33,6 @@ const storageStatsKey = ref(0);
 const isOpen = useModalOpenModel(props, emit);
 
 const isClearProjectVardataConfirmOpen = ref(false);
-const isDeleteProjectConfirmOpen = ref(false);
 const isResetConfirmOpen = ref(false);
 
 async function confirmClearProjectVardata() {
@@ -43,12 +42,7 @@ async function confirmClearProjectVardata() {
   storageStatsKey.value++;
 }
 
-async function confirmDeleteProject() {
-  isDeleteProjectConfirmOpen.value = false;
-  await projectStore.deleteCurrentProject();
-  // Closing the current project will automatically return the user to the projects list
-  // because projectStore.currentProjectName becomes null and the view switches in index.vue
-}
+
 
 async function resetToDefaults() {
   if (!projectStore.projectSettings) return;
@@ -103,16 +97,7 @@ async function resetToDefaults() {
       @confirm="confirmClearProjectVardata"
     />
 
-    <UiConfirmModal
-      v-model:open="isDeleteProjectConfirmOpen"
-      :title="t('videoEditor.projectSettings.deleteProjectConfirmTitle')"
-      :description="t('videoEditor.projectSettings.deleteProjectConfirmDescription')"
-      :confirm-text="t('videoEditor.projectSettings.deleteProjectAction')"
-      :cancel-text="t('common.cancel')"
-      color="error"
-      icon="i-heroicons-trash"
-      @confirm="confirmDeleteProject"
-    />
+
 
     <UiConfirmModal
       v-model:open="isResetConfirmOpen"
@@ -146,7 +131,6 @@ async function resetToDefaults() {
         <StorageSettings
           :key="storageStatsKey"
           @clear-temp="isClearProjectVardataConfirmOpen = true"
-          @delete-project="isDeleteProjectConfirmOpen = true"
         />
       </div>
     </div>

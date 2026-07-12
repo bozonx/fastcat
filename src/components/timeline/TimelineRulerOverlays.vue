@@ -73,7 +73,7 @@ function getMarkerButtonClass(marker: MarkerPoint) {
       v-for="point in markerPoints.filter((p) => p.isZone)"
       :key="`zone-bg-${point.id}`"
       v-memo="[point.id, point.x, point.width, point.color, isMarkerSelected(point.id)]"
-      class="absolute bottom-0 h-full pointer-events-auto z-10"
+      class="absolute bottom-0 h-full pointer-events-auto z-10 touch-none"
       :style="{ left: `${point.x}px`, width: `${point.width}px` }"
       @mouseenter="hoveredMarkerId = point.id"
       @mouseleave="hoveredMarkerId = null"
@@ -101,7 +101,7 @@ function getMarkerButtonClass(marker: MarkerPoint) {
       >
         <button
           type="button"
-          class="absolute inset-y-0 left-0 right-0 border-l border-r bg-selection-range-bg border-selection-range-border shadow-[0_0_0_1px_color-mix(in_srgb,var(--color-selection-range)_15%,transparent)] opacity-60"
+          class="absolute inset-y-0 left-0 right-0 border-l border-r bg-selection-range-bg border-selection-range-border shadow-[0_0_0_1px_color-mix(in_srgb,var(--color-selection-range)_15%,transparent)] opacity-60 touch-none"
           :class="isSelectionRangeSelected ? 'ring-2 ring-selection-range/60' : ''"
           @click="emit('select-selection-range', $event)"
           @pointerdown.stop="emit('selection-range-pointerdown', $event, 'move')"
@@ -141,7 +141,7 @@ function getMarkerButtonClass(marker: MarkerPoint) {
           <UiTooltip :text="truncateTooltip(point.text)" :disabled="!point.text">
             <button
               type="button"
-              class="-translate-x-1/2 relative z-30 outline-none"
+              class="-translate-x-1/2 relative z-30 outline-none touch-none"
               :class="getMarkerButtonClass(point)"
               :style="point.color ? { color: point.color } : {}"
               :aria-label="point.isZone ? zoneMarkerStartLabel : markerLabel"
@@ -179,7 +179,7 @@ function getMarkerButtonClass(marker: MarkerPoint) {
           <UiTooltip :text="truncateTooltip(point.text)" :disabled="!point.text">
             <button
               type="button"
-              class="translate-x-1/2 relative z-30 outline-none"
+              class="translate-x-1/2 relative z-30 outline-none touch-none"
               :class="getMarkerButtonClass(point)"
               :style="point.color ? { color: point.color } : {}"
               :aria-label="zoneMarkerEndLabel"
@@ -223,13 +223,13 @@ function getMarkerButtonClass(marker: MarkerPoint) {
     >
       <button
         type="button"
-        class="absolute inset-y-0 left-0 w-2 cursor-ew-resize bg-selection-range/30 pointer-events-auto"
+        class="absolute inset-y-0 left-0 w-2 cursor-ew-resize bg-selection-range/30 pointer-events-auto touch-none"
         :aria-label="selectionStartHandleLabel"
         @pointerdown.stop="emit('selection-range-pointerdown', $event, 'left')"
       />
       <button
         type="button"
-        class="absolute inset-y-0 right-0 w-2 cursor-ew-resize bg-selection-range/30 pointer-events-auto"
+        class="absolute inset-y-0 right-0 w-2 cursor-ew-resize bg-selection-range/30 pointer-events-auto touch-none"
         :aria-label="selectionEndHandleLabel"
         @pointerdown.stop="emit('selection-range-pointerdown', $event, 'right')"
       />
