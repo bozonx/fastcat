@@ -99,6 +99,14 @@ async function loadDiagnostics() {
           return { supported: false, error: err instanceof Error ? err.message : String(err) };
         }
       },
+      getCompositorPerf: async () => {
+        try {
+          const { client } = getPreviewWorkerClient();
+          return await client.getCompositorPerfSnapshot();
+        } catch {
+          return null;
+        }
+      },
     });
   } catch {
     diagnostics.value = null;

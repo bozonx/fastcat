@@ -23,6 +23,24 @@ export type GpuComputePath = 'effects' | 'blur-fill' | 'transition' | 'adjustmen
  */
 export type GpuComputeOutcome = 'zero-copy' | 'bitmap-fallback' | 'raw-fallback';
 
+/** Cumulative zero-copy coverage tallies (survive the dev flush window). */
+export interface GpuCoverageBucket {
+  zeroCopy: number;
+  bitmapFallback: number;
+  rawFallback: number;
+  total: number;
+}
+
+/**
+ * Session-cumulative snapshot of how effect work was executed. Unlike the dev
+ * flush line (rolling 3s window, dev-only), this is always collected and can be
+ * surfaced in prod diagnostics to confirm real-world zero-copy coverage.
+ */
+export interface GpuCoverageSnapshot {
+  overall: GpuCoverageBucket & { zeroCopyPct: number };
+  byPath: Partial<Record<GpuComputePath, GpuCoverageBucket>>;
+}
+
 class CompositorPerfStats {
   private renders = 0;
   private renderMsTotal = 0;
@@ -35,6 +53,8 @@ class CompositorPerfStats {
   private prewarmFramesStored = 0;
   private prewarmMsTotal = 0;
   private gpuPathCounts = new Map<string, number>();
+  /** Never reset by the flush window — feeds {@link snapshot}. */
+  private gpuPathCountsCumulative = new Map<string, number>();
   private gpuChains = 0;
   private gpuChainMsTotal = 0;
   private gpuChainMsMax = 0;
@@ -44,6 +64,48 @@ class CompositorPerfStats {
   public onGpuComputePath(path: GpuComputePath, outcome: GpuComputeOutcome) {
     const key = `${path}:${outcome}`;
     this.gpuPathCounts.set(key, (this.gpuPathCounts.get(key) ?? 0) + 1);
+    this.gpuPathCountsCumulative.set(key, (this.gpuPathCountsCumulative.get(key) ?? 0) + 1);
+  }
+
+  /**
+   * Session-cumulative zero-copy coverage, safe to read in prod. Answers "what
+   * fraction of effect work actually went zero-copy on this machine" — the
+   * gate for deciding whether the bitmap-fallback surface can be retired.
+   */
+  public snapshot(): GpuCoverageSnapshot {
+    const emptyBucket = (): GpuCoverageBucket => ({
+      zeroCopy: 0,
+      bitmapFallback: 0,
+      rawFallback: 0,
+      total: 0,
+    });
+    const overall = emptyBucket();
+    const byPath: Partial<Record<GpuComputePath, GpuCoverageBucket>> = {};
+
+    for (const [key, count] of this.gpuPathCountsCumulative) {
+      const [path, outcome] = key.split(':') as [GpuComputePath, GpuComputeOutcome];
+      const bucket = (byPath[path] ??= emptyBucket());
+      if (outcome === 'zero-copy') {
+        bucket.zeroCopy += count;
+        overall.zeroCopy += count;
+      } else if (outcome === 'bitmap-fallback') {
+        bucket.bitmapFallback += count;
+        overall.bitmapFallback += count;
+      } else {
+        bucket.rawFallback += count;
+        overall.rawFallback += count;
+      }
+      bucket.total += count;
+      overall.total += count;
+    }
+
+    return {
+      overall: {
+        ...overall,
+        zeroCopyPct: overall.total > 0 ? Math.round((overall.zeroCopy / overall.total) * 100) : 0,
+      },
+      byPath,
+    };
   }
 
   /** Sampled submit→onSubmittedWorkDone duration of a compute chain. */

@@ -155,10 +155,6 @@ export class VideoCompositor {
     this.resetRuntimeDependencies();
   }
 
-  public async initComputeRunner(): Promise<boolean> {
-    return this.computeRunner.init();
-  }
-
   public supportsComputeEffects(): boolean {
     return this.computeRunner.isReady();
   }

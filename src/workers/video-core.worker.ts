@@ -4,6 +4,7 @@ import { DOMAdapter, WebWorkerAdapter } from 'pixi.js';
 
 import type { VideoCoreHostAPI } from '../utils/video-editor/worker-client';
 import { VideoCompositor } from '../utils/video-editor/VideoCompositor';
+import { compositorPerfStats } from '../utils/video-editor/compositor/CompositorPerfStats';
 import { parseMediaMetadata, PreviewRenderOptionsSchema } from '../utils/video-editor/worker-rpc';
 import type {
   PreviewRenderOptions,
@@ -127,6 +128,10 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
 } = {
   async setPixiRendererPreference(preference: 'webgl' | 'webgpu') {
     pixiRendererPreference = preference;
+  },
+
+  async getCompositorPerfSnapshot() {
+    return compositorPerfStats.snapshot();
   },
 
   async checkWebGpuSupport(): Promise<{ supported: boolean; error: string | null }> {

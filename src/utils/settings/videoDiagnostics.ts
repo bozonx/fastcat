@@ -1,4 +1,5 @@
 import { BASE_VIDEO_CODEC_OPTIONS } from '~/utils/webcodecs';
+import type { GpuCoverageSnapshot } from '~/utils/video-editor/compositor/CompositorPerfStats';
 
 export interface VideoDiagnosticsProbeOptions {
   audioCodec: string;
@@ -144,6 +145,7 @@ interface GatherVideoDiagnosticsOptions {
   navigatorObject?: NavigatorLike;
   probe: VideoDiagnosticsProbeOptions;
   checkWorkerWebGpu?: () => Promise<{ supported: boolean; error: string | null }>;
+  getCompositorPerf?: () => Promise<GpuCoverageSnapshot | null>;
 }
 
 function formatBoolean(
@@ -502,6 +504,68 @@ async function getWebGpuInfo(navigatorObject: NavigatorLike): Promise<WebGpuInfo
   }
 }
 
+const GPU_COVERAGE_PATH_LABELS: Record<string, string> = {
+  effects: 'Video / image effects',
+  'blur-fill': 'Blur-fill background',
+  transition: 'Shader transitions',
+  adjustment: 'Adjustment layers',
+  'non-video': 'Text / shape effects',
+};
+
+/**
+ * Turns the compositor's session-cumulative zero-copy coverage into a
+ * diagnostics section. `null` (no snapshot / no effect work sampled yet) is
+ * rendered by the caller as "not sampled" rather than a fake 0%.
+ */
+function buildCompositorCoverageSection(
+  perf: GpuCoverageSnapshot | null,
+): VideoDiagnosticsSection | null {
+  if (!perf) {
+    return null;
+  }
+  if (perf.overall.total === 0) {
+    return {
+      description:
+        'Fraction of effect work that ran fully on the GPU (zero-copy) versus a bitmap round-trip or skipped effects. Cumulative for this session; play a clip with effects to sample it.',
+      items: [{ label: 'Effect operations sampled', value: '0 (none yet)' }],
+      status: buildStatus('No effect work sampled yet', 'neutral'),
+      title: 'GPU zero-copy coverage',
+    };
+  }
+
+  const { overall } = perf;
+  const status =
+    overall.rawFallback > 0
+      ? buildStatus(`${overall.zeroCopyPct}% zero-copy — effects skipped on some frames`, 'danger')
+      : overall.bitmapFallback > 0
+        ? buildStatus(`${overall.zeroCopyPct}% zero-copy — bitmap fallback in use`, 'warning')
+        : buildStatus(`${overall.zeroCopyPct}% zero-copy`, 'success');
+
+  const items: VideoDiagnosticsKeyValueItem[] = [
+    { label: 'Zero-copy', value: `${overall.zeroCopy} (${overall.zeroCopyPct}%)` },
+    { label: 'Bitmap fallback', value: String(overall.bitmapFallback) },
+    { label: 'Skipped (raw fallback)', value: String(overall.rawFallback) },
+    { label: 'Total effect operations', value: String(overall.total) },
+  ];
+  for (const [path, bucket] of Object.entries(perf.byPath)) {
+    if (!bucket || bucket.total === 0) continue;
+    const label = GPU_COVERAGE_PATH_LABELS[path] ?? path;
+    const pct = Math.round((bucket.zeroCopy / bucket.total) * 100);
+    items.push({
+      label,
+      value: `${pct}% zero-copy (${bucket.bitmapFallback} bitmap, ${bucket.rawFallback} skipped)`,
+    });
+  }
+
+  return {
+    description:
+      'Fraction of effect work that ran fully on the GPU (zero-copy) versus a bitmap round-trip or skipped effects. Cumulative for this session.',
+    items,
+    status,
+    title: 'GPU zero-copy coverage',
+  };
+}
+
 export function createVideoDiagnosticsSnapshot(params: {
   audioEncoderSupported: boolean | null;
   crossOriginIsolated: boolean | null;
@@ -518,6 +582,7 @@ export function createVideoDiagnosticsSnapshot(params: {
   webGlInfo: WebGlInfo;
   webGpuInfo: Awaited<ReturnType<typeof getWebGpuInfo>>;
   workerWebGpuInfo: { supported: boolean; error: string | null } | null;
+  compositorPerf?: GpuCoverageSnapshot | null;
   secureContext: boolean | null;
   selectedVideoCodec: string;
   userAgent: string | null;
@@ -564,6 +629,8 @@ export function createVideoDiagnosticsSnapshot(params: {
     apiAvailable: params.webGpuInfo.apiAvailable,
     userAgent: params.userAgent,
   });
+
+  const compositorCoverageSection = buildCompositorCoverageSection(params.compositorPerf ?? null);
 
   const sections: VideoDiagnosticsSection[] = [
     {
@@ -638,6 +705,7 @@ export function createVideoDiagnosticsSnapshot(params: {
       status: compositorStatus,
       title: 'Preview compositor',
     },
+    ...(compositorCoverageSection ? [compositorCoverageSection] : []),
     {
       description:
         'These APIs affect media metadata extraction, image import, video decoding and frame preparation before compositing.',
@@ -872,6 +940,7 @@ export async function gatherVideoDiagnostics(
     encodingInfo,
     videoCodecDiagnostics,
     workerWebGpuInfo,
+    compositorPerf,
   ] = await Promise.all([
     getVideoEncoderSupport(browser, options.probe, 'prefer-hardware'),
     getVideoEncoderSupport(browser, options.probe, 'prefer-software'),
@@ -881,6 +950,9 @@ export async function gatherVideoDiagnostics(
     getVideoCodecDiagnostics(browser, options.probe),
     options.checkWorkerWebGpu
       ? options.checkWorkerWebGpu().catch((err) => ({ supported: false, error: String(err) }))
+      : Promise.resolve(null),
+    options.getCompositorPerf
+      ? options.getCompositorPerf().catch(() => null)
       : Promise.resolve(null),
   ]);
 
@@ -904,6 +976,7 @@ export async function gatherVideoDiagnostics(
     webGlInfo,
     webGpuInfo,
     workerWebGpuInfo,
+    compositorPerf,
     secureContext,
     selectedVideoCodec: options.probe.videoCodec,
     userAgent: navigatorObject.userAgent ?? null,

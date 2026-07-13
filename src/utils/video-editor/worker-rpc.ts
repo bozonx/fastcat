@@ -8,6 +8,7 @@ import type { MediaMetadata } from '~/types/media';
 import type { VideoCoreHostAPI } from './worker-client';
 import { z } from 'zod';
 import type { PreviewEffectQuality } from '../preview-effect-quality';
+import type { GpuCoverageSnapshot } from './compositor/CompositorPerfStats';
 
 export interface PreviewRenderOptions {
   previewEffectsEnabled?: boolean;
@@ -139,6 +140,9 @@ export interface VideoCoreWorkerAPI {
   setPixiRendererPreference(preference: 'webgl' | 'webgpu'): Promise<void>;
 
   checkWebGpuSupport(): Promise<{ supported: boolean; error: string | null }>;
+
+  /** Session-cumulative zero-copy coverage of the compositor's effect hot path. */
+  getCompositorPerfSnapshot(): Promise<GpuCoverageSnapshot>;
 
   // initCompositor is implemented manually in the client proxy
   initCompositor(
