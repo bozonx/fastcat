@@ -24,6 +24,7 @@ const TestHost = {
       v-model:is-custom-resolution="isCustomResolution"
       v-model:sample-rate="sampleRate"
       :disabled="disabled"
+      :standard-fps-only="standardFpsOnly"
     />
   `,
   setup() {
@@ -36,6 +37,7 @@ const TestHost = {
     const isCustomResolution = ref(false);
     const sampleRate = ref(48000);
     const disabled = ref(false);
+    const standardFpsOnly = ref(false);
 
     return {
       width,
@@ -47,6 +49,7 @@ const TestHost = {
       isCustomResolution,
       sampleRate,
       disabled,
+      standardFpsOnly,
     };
   },
 };
@@ -67,5 +70,26 @@ describe('MediaResolutionSettings', () => {
 
     expect(formField.classes()).toContain('cursor-not-allowed');
     expect(switchComponent.classes()).toContain('cursor-not-allowed');
+  });
+
+  it('uses a fixed standard fps select when requested by the timeline', async () => {
+    const wrapper = await mountSuspended(TestHost);
+    (wrapper.vm as any).standardFpsOnly = true;
+    await wrapper.vm.$nextTick();
+
+    const fpsSelect = wrapper
+      .findAllComponents({ name: 'UiSelect' })
+      .find((select) =>
+        select.props('items')?.some((item: { label?: string }) => item.label === '29.97'),
+      );
+
+    expect(fpsSelect).toBeDefined();
+    expect(fpsSelect?.props('items')).toHaveLength(15);
+    expect(
+      fpsSelect?.props('items').find((item: { label: string }) => item.label === '29.97'),
+    ).toEqual({
+      label: '29.97',
+      value: 29.97,
+    });
   });
 });

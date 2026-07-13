@@ -41,6 +41,8 @@ export const STANDARD_FRAME_RATES = [
 
 export type QuantizeMode = 'round' | 'floor' | 'ceil';
 
+export const DEFAULT_FRAME_RATE: FrameRate = { num: 30, den: 1 };
+
 export function frameRateToNumber(frameRate: FrameRate): number {
   if (
     !Number.isFinite(frameRate.num) ||
@@ -52,6 +54,32 @@ export function frameRateToNumber(frameRate: FrameRate): number {
   }
 
   return frameRate.num / frameRate.den;
+}
+
+export function sanitizeFrameRate(
+  value: unknown,
+  fallback: FrameRate = DEFAULT_FRAME_RATE,
+): FrameRate {
+  const parsed = parseFrameRate(value);
+  if (!parsed) return { ...fallback };
+
+  const normalized = reduceFrameRate(parsed);
+  const fps = frameRateToNumber(normalized);
+  if (fps < 1 || fps > 240) return { ...fallback };
+
+  const standard = STANDARD_FRAME_RATES.find(
+    (candidate) => Math.abs(frameRateToNumber(candidate) - fps) < 0.001,
+  );
+  return standard ? { num: standard.num, den: standard.den } : normalized;
+}
+
+export function findStandardFrameRate(value: unknown): StandardFrameRate | null {
+  const frameRate = sanitizeFrameRate(value);
+  return (
+    STANDARD_FRAME_RATES.find(
+      (candidate) => candidate.num === frameRate.num && candidate.den === frameRate.den,
+    ) ?? null
+  );
 }
 
 export function ticksToSeconds(ticks: number): number {
@@ -171,13 +199,45 @@ export function parseTimecodeToTicks(params: { timecode: string; fps: number }):
   const totalFrames = (hh * 3600 + mm * 60 + ss) * fps + ff;
   const ticks = toTicks(Math.round((totalFrames / fps) * TICKS_PER_SECOND));
 
-  return isNegative ? -ticks : ticks;
+  return isNegative ? toTicks(-ticks) : ticks;
 }
 
 function roundToMode(value: number, mode: QuantizeMode): number {
   if (mode === 'floor') return Math.floor(value);
   if (mode === 'ceil') return Math.ceil(value);
   return Math.round(value);
+}
+
+function parseFrameRate(value: unknown): FrameRate | null {
+  if (typeof value === 'object' && value !== null) {
+    const record = value as Record<string, unknown>;
+    const num = Number(record.num);
+    const den = Number(record.den);
+    if (Number.isFinite(num) && Number.isFinite(den) && num > 0 && den > 0) {
+      return { num: Math.round(num), den: Math.round(den) };
+    }
+
+    if ('fps' in record) return parseFrameRate(record.fps);
+    return null;
+  }
+
+  const fps = Number(value);
+  if (!Number.isFinite(fps) || fps <= 0) return null;
+  return { num: Math.round(fps * 1_000), den: 1_000 };
+}
+
+function reduceFrameRate(frameRate: FrameRate): FrameRate {
+  const divisor = greatestCommonDivisor(frameRate.num, frameRate.den);
+  return { num: frameRate.num / divisor, den: frameRate.den / divisor };
+}
+
+function greatestCommonDivisor(left: number, right: number): number {
+  let a = Math.abs(left);
+  let b = Math.abs(right);
+  while (b > 0) {
+    [a, b] = [b, a % b];
+  }
+  return a || 1;
 }
 
 function toTicks(value: number): Ticks {

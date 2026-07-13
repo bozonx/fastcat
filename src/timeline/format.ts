@@ -1,4 +1,5 @@
 import type { TimelineDocument, TimelineFormat } from './types';
+import { createTimelineTimebaseFromFps, getTimelineFps } from './timebase';
 import { getResolutionPreset } from '~/utils/settings/helpers';
 
 export const DEFAULT_TIMELINE_FORMAT: TimelineFormat = {
@@ -160,7 +161,7 @@ export function resolveEffectiveTimelineFormat(
 export function getTimelineFormat(doc: TimelineDocument | null | undefined): TimelineFormat {
   return normalizeTimelineFormat(doc?.metadata?.fastcat?.format, {
     ...DEFAULT_TIMELINE_FORMAT,
-    fps: doc?.timebase?.fps ?? DEFAULT_TIMELINE_FORMAT.fps,
+    fps: getTimelineFps(doc?.timebase, { num: DEFAULT_TIMELINE_FORMAT.fps, den: 1 }),
   });
 }
 
@@ -169,15 +170,16 @@ export function setTimelineFormat(
   nextFormat: TimelineFormatInput,
 ): TimelineDocument {
   const format = normalizeTimelineFormat(nextFormat, getTimelineFormat(doc));
+  const timebase = createTimelineTimebaseFromFps(format.fps);
 
   return {
     ...doc,
-    timebase: { fps: format.fps },
+    timebase,
     metadata: {
       ...(doc.metadata ?? {}),
       fastcat: {
         ...(doc.metadata?.fastcat ?? {}),
-        timebase: { fps: format.fps },
+        timebase,
         format,
       },
     },

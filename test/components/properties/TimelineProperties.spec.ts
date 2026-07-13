@@ -51,7 +51,7 @@ vi.mock('~/components/properties/file/FileTimelineUsageSection.vue', () => ({
 vi.mock('~/components/media/MediaResolutionSettings.vue', () => ({
   default: {
     name: 'MediaResolutionSettings',
-    props: ['disabled'],
+    props: ['disabled', 'standardFpsOnly'],
     template: '<div data-testid="media-resolution-settings"></div>',
   },
 }));
@@ -260,6 +260,7 @@ describe('TimelineProperties', () => {
 
     const resolutionSettings = wrapper.findComponent({ name: 'MediaResolutionSettings' });
     expect(resolutionSettings.props('disabled')).toBeUndefined();
+    expect(resolutionSettings.props('standardFpsOnly')).toBe(true);
 
     await (wrapper.vm as any).resetTimelineFormatToProjectDefaults();
 

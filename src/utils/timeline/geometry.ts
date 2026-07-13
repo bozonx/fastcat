@@ -1,4 +1,7 @@
 import { quantizeTicksToFrame, secondsToTicks, ticksToSeconds } from '~/utils/time/ticks';
+import { sanitizeFps } from '~/utils/time';
+
+export { sanitizeFps };
 
 export const BASE_PX_PER_SECOND = 10;
 
@@ -225,17 +228,6 @@ export function computeTimelineCenteredScrollLeftForPlayhead(
   return Math.min(maxScrollLeft, Math.max(0, rawNextScrollLeft));
 }
 
-/**
- * Sanitize fps preserving non-integer rates (29.97, 23.976, 59.94 …) so NTSC timebases survive.
- * Clamped to [1, 240] and quantized to 3 decimals; mirror of `sanitizeFps` in commands/utils.
- */
-export function sanitizeFps(value: unknown): number {
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed)) return 30;
-  const clamped = Math.min(240, Math.max(1, parsed));
-  return Math.round(clamped * 1000) / 1000;
-}
-
 export function quantizeDeltaUsToFrames(deltaUs: number, fps: number): number {
   const safeDeltaUs = Number.isFinite(deltaUs) ? Math.round(deltaUs) : 0;
   const safeFps = sanitizeFps(fps);
@@ -327,7 +319,7 @@ export function computeSnappedStartUs(params: {
   const thresholdUs = secondsToTicks({ seconds: snapThresholdPx / zoomToPxPerSecond(zoom) });
 
   let best = rawStartUs;
-  let bestDist = thresholdUs;
+  let bestDist: number = thresholdUs;
 
   if (enableClipSnap) {
     const rawEndUs = rawStartUs + Math.max(0, Math.round(draggingItemDurationUs));

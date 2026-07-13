@@ -586,6 +586,7 @@ const addTrackActions = computed(() => [
         v-model:aspect-ratio="timelineAspectRatio"
         v-model:is-custom-resolution="timelineIsCustomResolution"
         v-model:sample-rate="timelineSampleRate"
+        :standard-fps-only="true"
       />
     </PropertySection>
 

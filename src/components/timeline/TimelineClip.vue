@@ -258,7 +258,7 @@ const trimOverlay = computed<TrimOverlayView | null>(() => {
   const startPercent = hasSourceRange ? (sourceRangeStartUs / sourceDurationUs) * 100 : 0;
   const widthPercent = hasSourceRange ? (sourceRangeDurationUs / sourceDurationUs) * 100 : 100;
 
-  const fps = sanitizeFps(timelineContext.timelineDoc.value?.timebase?.fps);
+  const fps = sanitizeFps(timelineContext.timelineDoc.value?.timebase);
   const timecode = `${preview.deltaUs >= 0 ? '+' : '-'}${formatStopFrameTimecode({
     timeUs: Math.abs(preview.deltaUs),
     fps,
@@ -444,7 +444,7 @@ const { clipItem, onClipClick: onClipClickInteraction } = useClipInteractions({
 const effectiveSourceRange = computed(() => {
   const preview = myTrimPreview.value;
   if (preview && clipItem.value) {
-    const fps = sanitizeFps(timelineContext.timelineDoc.value?.timebase?.fps);
+    const fps = sanitizeFps(timelineContext.timelineDoc.value?.timebase);
     const hasFixedSourceDuration =
       (clipItem.value.clipType === 'media' && !clipItem.value.isImage) ||
       clipItem.value.clipType === 'timeline';
@@ -549,7 +549,7 @@ const isAudioMuted = computed(() => {
 
 const isFreePosition = computed(() => {
   if (!clipItem.value) return false;
-  const fps = sanitizeFps(timelineContext.timelineDoc.value?.timebase?.fps);
+  const fps = sanitizeFps(timelineContext.timelineDoc.value?.timebase);
   return isClipFreePosition(clipItem.value, timelineContext.timelineDoc.value, fps || 30);
 });
 

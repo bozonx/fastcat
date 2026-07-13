@@ -879,7 +879,7 @@ export function useTimelineItemDrag(
 
     if (!mode || !trackId || !itemId || clientX === null || clientY === null) return;
 
-    const fps = sanitizeFps(timelineStore.timelineDoc?.timebase?.fps);
+    const fps = sanitizeFps(timelineStore.timelineDoc?.timebase);
     const zoom = timelineStore.timelineZoom;
     let enableFrameSnap = true;
     let isAudioOnlyDrag = false;

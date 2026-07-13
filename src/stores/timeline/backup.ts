@@ -6,6 +6,7 @@ import type { AppNotificationService } from '~/services/app-notification.service
 import type { I18nService } from '~/services/i18n.service';
 import { withFileIoSlot } from '~/utils/io/io-governor';
 import { parseTimelineFromOtio } from '~/timeline/otio-serializer';
+import { getTimelineFps } from '~/timeline/timebase';
 import { selectTimelineDurationUs } from '~/timeline/selectors';
 import { getNextBackupName, getBackupsToDelete, getBackupNumber } from '~/utils/timeline-backup';
 const log = createDevLogger('backup');
@@ -221,7 +222,7 @@ export function createTimelineBackupModule(deps: TimelineBackupDeps): TimelineBa
       const parsed = parseTimelineFromOtio(text, {
         id: fallback.id,
         name: fallback.name,
-        format: fallback.metadata?.fastcat?.format ?? { fps: fallback.timebase.fps },
+        format: fallback.metadata?.fastcat?.format ?? { fps: getTimelineFps(fallback.timebase) },
       });
 
       deps.timelineDoc.value = parsed;
@@ -265,7 +266,7 @@ export function createTimelineBackupModule(deps: TimelineBackupDeps): TimelineBa
       const parsed = parseTimelineFromOtio(text, {
         id: fallback.id,
         name: fallback.name,
-        format: fallback.metadata?.fastcat?.format ?? { fps: fallback.timebase.fps },
+        format: fallback.metadata?.fastcat?.format ?? { fps: getTimelineFps(fallback.timebase) },
       });
 
       deps.timelineDoc.value = parsed;

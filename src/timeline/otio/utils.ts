@@ -9,6 +9,8 @@ import type {
   ClipAnchorPreset,
   KeyframeTrack,
 } from '../types';
+import { createTimelineTimebase, createTimelineTimebaseFromFps } from '../timebase';
+import { sanitizeFrameRate } from '~/utils/time/ticks';
 import type { OtioRationalTime, OtioTimeRange, OtioColor } from './types';
 import { isAnimatableParamPath, normalizeKeyframeTrack } from '../animation/evaluate';
 const log = createDevLogger('utils');
@@ -74,10 +76,8 @@ export function trackKindFromOtioKind(kind: unknown): TrackKind {
 }
 
 export function assertTimelineTimebase(raw: unknown): TimelineTimebase {
-  if (!raw || typeof raw !== 'object') return { fps: 25 };
-  const fps = Number((raw as Record<string, unknown>).fps);
-  if (!Number.isFinite(fps) || fps <= 0) return { fps: 25 };
-  return { fps: Math.min(240, Math.max(1, Math.round(fps * 1000) / 1000)) };
+  if (!raw || typeof raw !== 'object') return createTimelineTimebaseFromFps(25);
+  return createTimelineTimebase(sanitizeFrameRate(raw, { num: 25, den: 1 }));
 }
 
 export function coerceId(raw: unknown, fallback: string): string {

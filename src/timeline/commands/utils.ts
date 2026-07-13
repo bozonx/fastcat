@@ -7,6 +7,7 @@ import type {
 } from '../types';
 import { genUuid, genPrefixedIdBatch } from '~/utils/ids';
 import { sanitizeFps } from '~/utils/time';
+import { getTimelineFps } from '~/timeline/timebase';
 import {
   framesToTicks,
   quantizeTicksToFrame,
@@ -30,7 +31,7 @@ export function assertClipNotLocked(item: TimelineTrackItem, action: string) {
 }
 
 export function getDocFps(doc: TimelineDocument): number {
-  return sanitizeFps(doc.timebase.fps);
+  return getTimelineFps(doc.timebase);
 }
 
 /** Frame rate of the doc, or a safe fallback when no document is loaded. */

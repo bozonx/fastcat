@@ -8,6 +8,7 @@ import type {
   ClipTransition,
   ClipEffect,
   TimelineFormat,
+  TimelineTimebase,
 } from './types';
 import type { OtioTrack, OtioTrackChild, OtioMediaReference, OtioTimeline } from './otio/types';
 import {
@@ -36,6 +37,7 @@ import {
 import { parseGapItem, parseClipItem, parseItemSequenceDurationUs } from './otio/items';
 import { TimelineDocFastCatMetaSchema, TimelineTrackFastCatMetaSchema } from './otio/schemas';
 import { getTimelineFormat, normalizeTimelineFormat, type TimelineFormatInput } from './format';
+import { createTimelineTimebaseFromFps, getTimelineFps } from './timebase';
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -55,11 +57,12 @@ export function createDefaultTimelineDocument(params: {
   format: TimelineFormatInput;
 }): TimelineDocument {
   const format = normalizeTimelineFormat(params.format);
+  const timebase = createTimelineTimebaseFromFps(format.fps);
   return {
     OTIO_SCHEMA: 'Timeline.1',
     id: params.id,
     name: params.name,
-    timebase: { fps: format.fps },
+    timebase,
     tracks: [
       { id: 'v2', kind: 'video', name: 'Video 2', videoHidden: false, items: [] },
       { id: 'v1', kind: 'video', name: 'Video 1', videoHidden: false, items: [] },
@@ -70,7 +73,7 @@ export function createDefaultTimelineDocument(params: {
       fastcat: {
         version: 1,
         docId: params.id,
-        timebase: { fps: format.fps },
+        timebase,
         format,
       },
     },
@@ -369,6 +372,7 @@ function serializeTrackItems(
 export function serializeTimelineToOtio(doc: TimelineDocument): string {
   const format = getTimelineFormat(doc);
   const fps = format.fps;
+  const timebase = createTimelineTimebaseFromFps(fps);
 
   const tracks: OtioTrack[] = sortTracksForOtioStack(doc.tracks).map((t) => {
     const trackItems = Array.isArray(t.items) ? t.items : [];
@@ -433,7 +437,7 @@ export function serializeTimelineToOtio(doc: TimelineDocument): string {
         version: 1,
         document: {
           docId: doc.id,
-          timebase: { fps },
+          timebase,
           format,
           selectionRange: fastcatMeta?.selectionRange,
         },
@@ -457,7 +461,7 @@ export function serializeTimelineToOtio(doc: TimelineDocument): string {
 
 function parseDocumentMetadata(raw: unknown): {
   docId?: string;
-  timebase?: { fps: number };
+  timebase?: TimelineTimebase;
   format?: TimelineFormat;
   masterGain?: number;
   masterMuted?: boolean;
@@ -472,7 +476,7 @@ function parseDocumentMetadata(raw: unknown): {
   const format = rawFormat
     ? normalizeTimelineFormat(rawFormat, {
         ...normalizeTimelineFormat(null),
-        fps: timebase?.fps ?? 25,
+        fps: getTimelineFps(timebase, { num: 25, den: 1 }),
       })
     : undefined;
   return {
@@ -528,11 +532,12 @@ export function parseTimelineFromOtio(
   const docMeta = parseDocumentMetadata((parsed.metadata as { fastcat?: unknown })?.fastcat ?? {});
   const fallbackFormat = normalizeTimelineFormat(fallback.format);
   const timebase = assertTimelineTimebase(docMeta.timebase ?? { fps: fallbackFormat.fps });
+  const timebaseFps = getTimelineFps(timebase, { num: fallbackFormat.fps, den: 1 });
   const format = normalizeTimelineFormat(
-    docMeta.format ?? { ...fallbackFormat, fps: timebase.fps },
+    docMeta.format ?? { ...fallbackFormat, fps: timebaseFps },
     {
       ...fallbackFormat,
-      fps: timebase.fps,
+      fps: timebaseFps,
     },
   );
 
@@ -717,7 +722,7 @@ export function parseTimelineFromOtio(
         ...(base.metadata?.fastcat ?? {}),
         version,
         docId,
-        timebase: { fps: format.fps },
+        timebase,
         format,
         markers,
         selectionRange,
@@ -736,13 +741,13 @@ export function parseTimelineFromOtio(
     OTIO_SCHEMA: 'Timeline.1',
     id: docId,
     name,
-    timebase: { fps: format.fps },
+    timebase,
     tracks: normalizedTracks,
     metadata: {
       fastcat: {
         version,
         docId,
-        timebase: { fps: format.fps },
+        timebase,
         format,
         markers,
         selectionRange,

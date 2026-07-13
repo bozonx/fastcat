@@ -327,7 +327,7 @@ export function createTimelineCaptionsModule(params: TimelineCaptionsDeps): Time
     });
     const stylePreset = createDefaultCaptionStylePreset();
 
-    const fps = sanitizeFps(doc.timebase?.fps ?? 30);
+    const fps = sanitizeFps(doc.timebase ?? 30);
     const commands: TimelineCommand[] = [];
     let lastEndUs = 0;
 

@@ -131,6 +131,11 @@ describe('getTimelineFormat', () => {
     expect(result.height).toBe(2160);
     expect(result.fps).toBe(30);
   });
+
+  it('uses a rational timebase when metadata has no fps snapshot', () => {
+    const result = getTimelineFormat({ timebase: { num: 30_000, den: 1_001 } } as any);
+    expect(result.fps).toBe(29.97);
+  });
 });
 
 describe('setTimelineFormat', () => {
@@ -141,8 +146,14 @@ describe('setTimelineFormat', () => {
       metadata: { fastcat: {} },
     };
     const result = setTimelineFormat(doc, { width: 1280, height: 720, fps: 30 });
-    expect(result.timebase.fps).toBe(30);
+    expect(result.timebase).toEqual({ num: 30, den: 1 });
     expect(result.metadata.fastcat.format.width).toBe(1280);
     expect(result.metadata.fastcat.format.height).toBe(720);
+  });
+
+  it('stores NTSC fps as its standard rational rate', () => {
+    const doc: any = { id: 'doc-1', timebase: { fps: 25 }, metadata: { fastcat: {} } };
+    const result = setTimelineFormat(doc, { fps: 29.97 });
+    expect(result.timebase).toEqual({ num: 30_000, den: 1_001 });
   });
 });

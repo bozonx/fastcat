@@ -329,9 +329,7 @@ export const useTimelineStore = defineStore('timeline', () => {
       // clips have phase 0 too, so they are unaffected.
       const baseTrack = doc.tracks.find((t) => t.id === baseTargetTrackId);
       const frameOffsetUs =
-        baseTrack?.kind === 'audio'
-          ? subframePhaseUs(insertStartUs, sanitizeFps(doc.timebase.fps))
-          : 0;
+        baseTrack?.kind === 'audio' ? subframePhaseUs(insertStartUs, sanitizeFps(doc.timebase)) : 0;
 
       const snapSettings = workspaceStore.userSettings.timeline.snapping;
       const timelineEndUs = Number.isFinite(duration.value)
@@ -350,7 +348,7 @@ export const useTimelineStore = defineStore('timeline', () => {
       const snappedStartUs = computeSnappedStartUs({
         rawStartUs: insertStartUs,
         draggingItemDurationUs: totalDurationUs,
-        fps: sanitizeFps(doc.timebase.fps),
+        fps: sanitizeFps(doc.timebase),
         zoom: timelineZoom.value,
         snapThresholdPx: timelineSettingsStore.snapThresholdPx,
         snapTargetsUs,
@@ -1281,7 +1279,8 @@ export const useTimelineStore = defineStore('timeline', () => {
       if (duration.value <= 0) {
         lifecycle.resetTimelineZoom();
       } else {
-        const desiredPPS = (timelineViewportWidth.value * 0.9) / (duration.value / TICKS_PER_SECOND);
+        const desiredPPS =
+          (timelineViewportWidth.value * 0.9) / (duration.value / TICKS_PER_SECOND);
         setTimelineZoomExact(pxPerSecondToZoom(desiredPPS));
       }
       scrollResetTicket.value++;

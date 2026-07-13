@@ -108,7 +108,7 @@ export function createTimelineLifecycleModule(
   }
 
   function setCurrentTimeUs(nextTimeUs: number) {
-    const fps = sanitizeFps(deps.timelineDoc.value?.timebase?.fps);
+    const fps = sanitizeFps(deps.timelineDoc.value?.timebase);
     const quantized = quantizeTimeUsToFrames(nextTimeUs, fps, 'round');
     const max = Number.isFinite(deps.duration.value)
       ? Math.max(0, Math.round(deps.duration.value))

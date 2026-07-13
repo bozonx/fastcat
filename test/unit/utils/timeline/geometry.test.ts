@@ -229,7 +229,7 @@ describe('sanitizeFps', () => {
   });
 
   it('preserves non-integer rates', () => {
-    expect(sanitizeFps(29.97)).toBe(29.97);
+    expect(sanitizeFps(29.97)).toBeCloseTo(30_000 / 1_001, 10);
   });
 });
 

@@ -11,6 +11,7 @@ import {
   isTickRateSampleCompatible,
   parseTimecodeToTicks,
   quantizeTicksToFrame,
+  sanitizeFrameRate,
   secondsToTicks,
   ticksPerFrame,
   ticksToFrames,
@@ -57,6 +58,17 @@ describe('canonical tick-rate compatibility', () => {
         frameRate: { num: 30_000, den: 1_001 },
       }),
     ).toBe(8_475_667_200);
+  });
+});
+
+describe('frame-rate normalization', () => {
+  it('maps legacy NTSC decimals to the exact standard rational rate', () => {
+    expect(sanitizeFrameRate(29.97)).toEqual({ num: 30_000, den: 1_001 });
+    expect(sanitizeFrameRate({ fps: 23.976 })).toEqual({ num: 24_000, den: 1_001 });
+  });
+
+  it('preserves a valid non-standard legacy rate as a reduced rational', () => {
+    expect(sanitizeFrameRate(27.5)).toEqual({ num: 55, den: 2 });
   });
 });
 

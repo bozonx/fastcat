@@ -74,9 +74,9 @@ describe('sanitizeFps', () => {
   });
 
   it('preserves NTSC rates', () => {
-    expect(sanitizeFps(29.97)).toBe(29.97);
-    expect(sanitizeFps(23.976)).toBe(23.976);
-    expect(sanitizeFps(59.94)).toBe(59.94);
+    expect(sanitizeFps(29.97)).toBeCloseTo(30_000 / 1_001, 10);
+    expect(sanitizeFps(23.976)).toBeCloseTo(24_000 / 1_001, 10);
+    expect(sanitizeFps(59.94)).toBeCloseTo(60_000 / 1_001, 10);
   });
 });
 

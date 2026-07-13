@@ -8,6 +8,7 @@ import { TIMELINE_DEFAULTS } from '~/utils/constants';
 
 import type { TimelineDocument, TimelineSelectionRange } from '~/timeline/types';
 import type { TimelineFormatInput } from '~/timeline/format';
+import { getTimelineFps } from '~/timeline/timebase';
 const log = createDevLogger('persistence');
 
 export interface TimelinePersistenceDeps {
@@ -389,7 +390,9 @@ export function createTimelinePersistenceModule(
   }
 
   function getRestoreFallbackFormat(doc: TimelineDocument): TimelineFormatInput {
-    return doc.metadata?.fastcat?.format ?? { fps: doc.timebase?.fps ?? 25 };
+    return (
+      doc.metadata?.fastcat?.format ?? { fps: getTimelineFps(doc.timebase, { num: 25, den: 1 }) }
+    );
   }
 
   function restoreSavedTimelineSnapshot(serialized: string, fallbackDoc: TimelineDocument) {

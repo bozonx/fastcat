@@ -341,7 +341,7 @@ function handleUpdateEndTime(val: number) {
 // whole number of frames — clearing the clip's free-position state entirely.
 function handleSnapClipToGrid() {
   const clip = props.clip;
-  const fps = sanitizeFps(timelineStore.timelineDoc?.timebase?.fps);
+  const fps = sanitizeFps(timelineStore.timelineDoc?.timebase);
   const startUs = clip.timelineRange.startUs;
   const durationUs = clip.timelineRange.durationUs;
 

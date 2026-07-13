@@ -9,6 +9,7 @@ import { computed } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { getClipMaxTimelineDurationUs } from '~/utils/timeline/clip';
 import { isClipFreePosition } from '~/utils/timeline/clip-checks';
+import { getTimelineFps } from '~/timeline/timebase';
 
 const props = withDefaults(
   defineProps<{
@@ -54,7 +55,9 @@ const isClipOffGrid = computed(() =>
   isClipFreePosition(
     props.clip,
     timelineStore.timelineDoc,
-    timelineStore.timelineDoc?.timebase?.fps ?? timelineFps.value,
+    timelineStore.timelineDoc
+      ? getTimelineFps(timelineStore.timelineDoc.timebase)
+      : timelineFps.value,
   ),
 );
 </script>

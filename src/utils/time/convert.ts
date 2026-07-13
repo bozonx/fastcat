@@ -1,4 +1,9 @@
-import { TICKS_PER_SECOND } from './ticks';
+import {
+  DEFAULT_FRAME_RATE,
+  frameRateToNumber,
+  sanitizeFrameRate,
+  TICKS_PER_SECOND,
+} from './ticks';
 
 export const US_PER_SEC = TICKS_PER_SECOND;
 
@@ -46,10 +51,21 @@ export function sToUs(seconds: number): number {
  * and free of float noise without forcing integer-only fps.
  */
 export function sanitizeFps(value: unknown): number {
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed)) return FALLBACK_FPS;
-  const clamped = Math.min(MAX_FPS, Math.max(MIN_FPS, parsed));
-  return Math.round(clamped * 1000) / 1000;
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) return FALLBACK_FPS;
+    return frameRateToNumber(
+      sanitizeFrameRate(Math.min(MAX_FPS, Math.max(MIN_FPS, value)), DEFAULT_FRAME_RATE),
+    );
+  }
+
+  if (typeof value === 'object' && value !== null && 'fps' in value) {
+    const fps = Number((value as { fps?: unknown }).fps);
+    if (Number.isFinite(fps)) {
+      return sanitizeFps(fps);
+    }
+  }
+
+  return frameRateToNumber(sanitizeFrameRate(value, DEFAULT_FRAME_RATE));
 }
 
 /** Round a microsecond value to an integer, clamping non-finite/negative to 0. */

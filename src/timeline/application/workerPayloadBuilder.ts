@@ -1,6 +1,7 @@
 import { createDevLogger } from '~/utils/dev-logger';
 import { parseTimelineFromOtio } from '~/timeline/otio-serializer';
 import type { TimelineFormatInput } from '~/timeline/format';
+import { getTimelineFps } from '~/timeline/timebase';
 import type {
   TimelineTrack,
   TimelineTrackItem,
@@ -222,7 +223,7 @@ async function computeDocLayerSpan(params: {
         visitedPaths: params.visitedPaths,
         nestedDepth: params.nestedDepth,
         nestedTimelinePath: params.path,
-        fallbackFormat: { fps: doc.timebase.fps },
+        fallbackFormat: { fps: getTimelineFps(doc.timebase) },
         nestedDocCache: params.nestedDocCache,
         docSpanMemo: params.docSpanMemo,
       });
@@ -906,7 +907,7 @@ async function expandNestedTimeline(params: {
           visitedPaths: nextVisited,
           nestedDepth: nextNestedPathStack.length,
           nestedTimelinePath: path,
-          fallbackFormat: { fps: nestedDoc.timebase.fps },
+          fallbackFormat: { fps: getTimelineFps(nestedDoc.timebase) },
           nestedDocCache,
           docSpanMemo,
         }),
@@ -958,7 +959,7 @@ async function expandNestedTimeline(params: {
           nestedParentOpacity: nestedTrackOpacity,
           nestedParentBlendMode: nestedTrackBlendMode,
           nestedParentEffects: combinedTrackEffects,
-          fallbackFormat: { fps: nestedDoc.timebase.fps },
+          fallbackFormat: { fps: getTimelineFps(nestedDoc.timebase) },
           onWarning: options?.onWarning,
           nestedTimelinePath: path,
           nestedDocCache,

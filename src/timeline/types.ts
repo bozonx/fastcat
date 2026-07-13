@@ -1,10 +1,12 @@
 import type { ClipEffect as BaseClipEffect, EffectTarget } from '../effects/core/registry';
 import type { TransitionCurve, TransitionMode } from '../transitions';
+import type { FrameRate } from '~/utils/time/ticks';
 
 export type TrackKind = 'video' | 'audio';
 
-export interface TimelineTimebase {
-  fps: number;
+export interface TimelineTimebase extends Partial<FrameRate> {
+  /** Legacy persisted field, accepted on read and replaced with num/den on write. */
+  fps?: number;
 }
 
 export type TimelineFormatSettingsSource = 'projectDefaults' | 'firstClip' | 'manual';

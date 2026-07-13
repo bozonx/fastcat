@@ -406,7 +406,13 @@ export const TimelineDocFastCatMetaSchema = z
     schema: z.string().optional(),
     version: z.number().optional(),
     docId: z.string().trim().min(1).optional(),
-    timebase: z.object({ fps: z.number() }).optional(),
+    timebase: z
+      .object({
+        fps: z.number().optional(),
+        num: z.number().int().positive().optional(),
+        den: z.number().int().positive().optional(),
+      })
+      .optional(),
     selectionRange: z
       .object({
         startUs: z.number(),
@@ -424,7 +430,13 @@ export const TimelineDocFastCatMetaSchema = z
     document: z
       .object({
         docId: z.string().trim().min(1).optional(),
-        timebase: z.object({ fps: z.number() }).optional(),
+        timebase: z
+          .object({
+            fps: z.number().optional(),
+            num: z.number().int().positive().optional(),
+            den: z.number().int().positive().optional(),
+          })
+          .optional(),
         selectionRange: z
           .object({
             startUs: z.number(),

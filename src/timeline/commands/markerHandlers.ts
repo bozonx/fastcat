@@ -41,7 +41,7 @@ export function addMarker(doc: TimelineDocument, cmd: AddMarkerCommand): Timelin
     throw new Error('Marker already exists');
   }
 
-  const fps = sanitizeFps(doc.timebase?.fps);
+  const fps = sanitizeFps(doc.timebase);
   const marker: TimelineMarker = {
     id: cmd.id,
     timeUs: snapMarkerTimeUs(cmd.timeUs, fps),
@@ -74,7 +74,7 @@ export function updateMarker(
 
   const prev = markers[idx]!;
 
-  const fps = sanitizeFps(doc.timebase?.fps);
+  const fps = sanitizeFps(doc.timebase);
   const nextMarker: TimelineMarker = {
     ...prev,
     timeUs: cmd.timeUs !== undefined ? snapMarkerTimeUs(cmd.timeUs, fps) : prev.timeUs,

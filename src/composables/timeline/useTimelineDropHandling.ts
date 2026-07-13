@@ -229,7 +229,7 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
     const snappedStartUs = computeSnappedStartUs({
       rawStartUs: params.startUs,
       draggingItemDurationUs: params.durationUs,
-      fps: sanitizeFps(timelineDoc.timebase.fps),
+      fps: sanitizeFps(timelineDoc.timebase),
       zoom: timelineStore.timelineZoom,
       snapThresholdPx: timelineSettingsStore.snapThresholdPx,
       snapTargetsUs,
@@ -259,7 +259,7 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
     const isVideo = track.kind === 'video';
     const enableFrameSnap = isVideo ? true : !timelineSettingsStore.freeAudioPlacement;
 
-    const fps = sanitizeFps(timelineStore.timelineDoc?.timebase.fps);
+    const fps = sanitizeFps(timelineStore.timelineDoc?.timebase);
     const startUs = enableFrameSnap
       ? quantizeTimeUsToFrames(params.startUs, fps, 'round')
       : params.startUs;

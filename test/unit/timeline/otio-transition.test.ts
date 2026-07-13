@@ -863,14 +863,14 @@ describe('timeline/otio-serializer: transitions', () => {
 
     const serialized = serializeTimelineToOtio(doc);
     const raw = JSON.parse(serialized);
-    expect(raw.metadata.fastcat.document.timebase.fps).toBe(29.97);
+    expect(raw.metadata.fastcat.document.timebase).toEqual({ num: 30_000, den: 1_001 });
 
     const parsed = parseTimelineFromOtio(serialized, {
       id: 'doc-ntsc',
       name: 'NTSC',
       format: { fps: 29.97 },
     });
-    expect(parsed.timebase.fps).toBe(29.97);
+    expect(parsed.timebase).toEqual({ num: 30_000, den: 1_001 });
   });
 
   it('uses fps-aware RationalTime when fps is known', () => {
