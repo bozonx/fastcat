@@ -103,4 +103,50 @@ describe('TimelineClipContent', () => {
     expect(wrapper.find('button[title]').exists()).toBe(false);
     expect(wrapper.text()).not.toContain('keyframesLane');
   });
+
+  it('calculates no toolbar transform and no title maxWidth when clip is fully visible', async () => {
+    const wrapper = await mountSuspended(TimelineClipContent, {
+      props: {
+        ...defaultProps,
+        clipWidthPx: 200,
+        scrollLeft: 0,
+        viewportWidth: 1000,
+        effectiveTimelineStartUs: 0,
+        zoom: 100,
+      } as any,
+    });
+
+    const titleDiv = wrapper.find('.flex-1.min-w-0');
+    expect(titleDiv.exists()).toBe(true);
+    expect(titleDiv.element.style.maxWidth).toBe('');
+
+    const keyframesBtn = wrapper.find('button[title]');
+    const toolbarDiv = keyframesBtn.element.parentElement;
+    expect(toolbarDiv).toBeTruthy();
+    expect(toolbarDiv!.style.transform).toBe('translateX(0px)');
+  });
+
+  it('shifts toolbar left and sets title maxWidth when clip right edge is off-screen', async () => {
+    const wrapper = await mountSuspended(TimelineClipContent, {
+      props: {
+        ...defaultProps,
+        clipWidthPx: 800,
+        scrollLeft: 0,
+        viewportWidth: 500,
+        effectiveTimelineStartUs: 0,
+        zoom: 100,
+        canAddTransitionIn: true,
+        canAddTransitionOut: true,
+      } as any,
+    });
+
+    const keyframesBtn = wrapper.find('button[title]');
+    const toolbarDiv = keyframesBtn.element.parentElement;
+    expect(toolbarDiv).toBeTruthy();
+    expect(toolbarDiv!.style.transform).toBe('translateX(-300px)');
+
+    const titleDiv = wrapper.find('.flex-1.min-w-0');
+    expect(titleDiv.exists()).toBe(true);
+    expect(titleDiv.element.style.maxWidth).toBe('412px');
+  });
 });

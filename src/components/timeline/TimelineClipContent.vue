@@ -69,6 +69,66 @@ const props = defineProps<{
 const emit = defineEmits<{
   addTransition: [edge: 'in' | 'out'];
 }>();
+
+const toolbarWidth = computed(() => {
+  let numButtons = 1; // Keyframes button is always present
+  if (props.canAddTransitionIn) numButtons++;
+  if (props.canAddTransitionOut) numButtons++;
+  return numButtons * 16 + (numButtons > 1 ? (numButtons - 1) * 2 : 0);
+});
+
+const toolbarStyle = computed(() => {
+  if (props.isHeaderOnly) return {};
+
+  const zoom = props.zoom;
+  const scrollLeft = props.scrollLeft;
+  const viewportWidth = props.viewportWidth;
+  const clipWidthPx = props.clipWidthPx;
+
+  const clipLeftPx = Math.round(timeUsToPx(props.effectiveTimelineStartUs, zoom));
+  const clipRightPx = clipLeftPx + clipWidthPx;
+  const viewportRightPx = scrollLeft + viewportWidth;
+
+  const width = toolbarWidth.value;
+  // We want the toolbar to stay visible. Its right edge should be at min(clipRightPx, viewportRightPx).
+  // But it must not shift past the left edge of the clip (clipLeftPx) plus its own width + padding/gap.
+  const idealRightPx = Math.max(clipLeftPx + width + 8, Math.min(clipRightPx, viewportRightPx));
+  const offsetPx = Math.min(0, idealRightPx - clipRightPx);
+
+  return {
+    transform: `translateX(${offsetPx}px)`,
+  };
+});
+
+const titleStyle = computed(() => {
+  if (props.isHeaderOnly) return {};
+
+  const zoom = props.zoom;
+  const scrollLeft = props.scrollLeft;
+  const viewportWidth = props.viewportWidth;
+  const clipWidthPx = props.clipWidthPx;
+
+  const clipLeftPx = Math.round(timeUsToPx(props.effectiveTimelineStartUs, zoom));
+  const clipRightPx = clipLeftPx + clipWidthPx;
+  const viewportRightPx = scrollLeft + viewportWidth;
+
+  const width = toolbarWidth.value;
+  const idealRightPx = Math.max(clipLeftPx + width + 8, Math.min(clipRightPx, viewportRightPx));
+  const offsetPx = Math.min(0, idealRightPx - clipRightPx);
+
+  if (offsetPx === 0) return {};
+
+  // The local right edge of the toolbar is: clipWidthPx - 6 (right padding of header) + offsetPx
+  // The local left edge of the toolbar is: localRightPx - width
+  const localLeftPx = clipWidthPx - 6 + offsetPx - width;
+  const titleStartPx = 22; // 6px padding + 12px icon + 4px gap
+  const safetyGap = 8;
+  const maxWidthPx = Math.max(20, localLeftPx - titleStartPx - safetyGap);
+
+  return {
+    maxWidth: `${maxWidthPx}px`,
+  };
+});
 </script>
 
 <template>
@@ -85,7 +145,10 @@ const emit = defineEmits<{
       :class="isHeaderOnly ? 'flex-1 min-h-0' : 'h-5'"
       :style="{ zIndex: 'var(--z-clip-name)' }"
     >
-      <div class="flex items-center gap-1 min-w-0 flex-1">
+      <div
+        class="flex items-center gap-1 min-w-0 flex-1"
+        :style="titleStyle"
+      >
         <UIcon
           :name="
             isVideo(item, track)
@@ -108,7 +171,10 @@ const emit = defineEmits<{
         v-if="!isHeaderOnly"
         class="flex items-center gap-0.5 shrink-0 pointer-events-auto transition-opacity"
         :class="showHeaderActions ? 'opacity-100' : 'opacity-0 group-hover/clip:opacity-100'"
-        :style="{ zIndex: 'calc(var(--z-clip-trim) + 1)' }"
+        :style="{
+          zIndex: 'calc(var(--z-clip-trim) + 1)',
+          ...toolbarStyle,
+        }"
       >
         <UiTooltip v-if="canAddTransitionIn" :text="t('fastcat.timeline.addTransitionIn')">
           <button
