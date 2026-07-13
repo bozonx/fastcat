@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { TICKS_PER_SECOND } from '~/utils/time';
 import { computed } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useSelectionStore } from '~/stores/selection.store';
@@ -56,9 +57,9 @@ const currentFrameHighlightStyle = computed(() => {
   const pxPerFrame = zoomToPxPerSecond(timelineStore.timelineZoom) / fps.value;
   if (pxPerFrame < 6) return null;
 
-  const currentFrameIndex = Math.floor(((timelineStore.currentTime + 0.5) * fps.value) / 1_000_000);
-  const currentFrameStartUs = Math.round((currentFrameIndex * 1_000_000) / fps.value);
-  const nextFrameStartUs = Math.round(((currentFrameIndex + 1) * 1_000_000) / fps.value);
+  const currentFrameIndex = Math.floor(((timelineStore.currentTime + 0.5) * fps.value) / TICKS_PER_SECOND);
+  const currentFrameStartUs = Math.round((currentFrameIndex * TICKS_PER_SECOND) / fps.value);
+  const nextFrameStartUs = Math.round(((currentFrameIndex + 1) * TICKS_PER_SECOND) / fps.value);
 
   const currentFrameStartPx = viewportX(
     timeUsToPx(currentFrameStartUs, timelineStore.timelineZoom),

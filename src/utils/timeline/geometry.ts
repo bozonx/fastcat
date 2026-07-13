@@ -1,3 +1,5 @@
+import { quantizeTicksToFrame, secondsToTicks, ticksToSeconds } from '~/utils/time/ticks';
+
 export const BASE_PX_PER_SECOND = 10;
 
 export function zoomToPxPerSecond(zoom: number) {
@@ -16,7 +18,7 @@ export function pxPerSecondToZoom(pps: number): number {
 
 export function timeUsToPx(timeUs: number, zoom = 100) {
   const pxPerSecond = zoomToPxPerSecond(zoom);
-  return (timeUs / 1e6) * pxPerSecond;
+  return ticksToSeconds(timeUs) * pxPerSecond;
 }
 
 export interface TimelinePixelRange {
@@ -43,7 +45,7 @@ export function timelineRangeToRoundedPx(
 
 export function pxToTimeUs(px: number, zoom = 100) {
   const pxPerSecond = zoomToPxPerSecond(zoom);
-  return Math.max(0, Math.round((px / pxPerSecond) * 1e6));
+  return Math.max(0, secondsToTicks({ seconds: px / pxPerSecond }));
 }
 
 /**
@@ -103,7 +105,7 @@ export function computeClipCenteredOverlayLeftPx(params: {
 
 export function pxToDeltaUs(px: number, zoom = 100) {
   const pxPerSecond = zoomToPxPerSecond(zoom);
-  return Math.round((px / pxPerSecond) * 1e6);
+  return secondsToTicks({ seconds: px / pxPerSecond });
 }
 
 export interface TimelineZoomAnchor {
@@ -237,15 +239,23 @@ export function sanitizeFps(value: unknown): number {
 export function quantizeDeltaUsToFrames(deltaUs: number, fps: number): number {
   const safeDeltaUs = Number.isFinite(deltaUs) ? Math.round(deltaUs) : 0;
   const safeFps = sanitizeFps(fps);
-  const framesFloat = (safeDeltaUs * safeFps) / 1e6;
-  const frames = Math.round(framesFloat);
-  return Math.round((frames * 1e6) / safeFps);
+  return quantizeTicksToFrame({
+    ticks: safeDeltaUs,
+    frameRate: { num: safeFps, den: 1 },
+    mode: 'round',
+  });
 }
 
 export function quantizeStartUsToFrames(startUs: number, fps: number): number {
   const safeFps = sanitizeFps(fps);
-  const frame = Math.round((Math.max(0, startUs) * safeFps) / 1e6);
-  return Math.round((frame * 1e6) / safeFps);
+  return Math.max(
+    0,
+    quantizeTicksToFrame({
+      ticks: Math.max(0, startUs),
+      frameRate: { num: safeFps, den: 1 },
+      mode: 'round',
+    }),
+  );
 }
 
 /**
@@ -314,7 +324,7 @@ export function computeSnappedStartUs(params: {
     enableClipSnap,
     frameOffsetUs,
   } = params;
-  const thresholdUs = Math.round((snapThresholdPx / zoomToPxPerSecond(zoom)) * 1e6);
+  const thresholdUs = secondsToTicks({ seconds: snapThresholdPx / zoomToPxPerSecond(zoom) });
 
   let best = rawStartUs;
   let bestDist = thresholdUs;

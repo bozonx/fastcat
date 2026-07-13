@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { TICKS_PER_SECOND } from '~/utils/time';
 import { computed, ref } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useUiStore } from '~/stores/ui.store';
@@ -519,7 +520,7 @@ const addTrackActions = computed(() => [
         />
         <PropertyRow
           :label="t('common.duration')"
-          :value="formatDurationSeconds((computedSummary.durationUs ?? 0) / 1_000_000)"
+          :value="formatDurationSeconds((computedSummary.durationUs ?? 0) / TICKS_PER_SECOND)"
         />
         <PropertyRow
           :label="t('videoEditor.fileManager.otio.videoTracks')"

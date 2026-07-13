@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { TICKS_PER_SECOND } from '~/utils/time';
 import { computed, ref } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useSelectionStore } from '~/stores/selection.store';
@@ -74,7 +75,7 @@ const maxDurationSec = computed(() => {
     }
   }
 
-  return Math.max(0.1, maxUs / 1_000_000);
+  return Math.max(0.1, maxUs / TICKS_PER_SECOND);
 });
 
 function handleTransitionUpdate(payload: {

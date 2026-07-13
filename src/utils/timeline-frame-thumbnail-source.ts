@@ -1,3 +1,4 @@
+import { TICKS_PER_SECOND } from '~/utils/time';
 import { createDevLogger } from '~/utils/dev-logger';
 import { useProjectStore } from '~/stores/project.store';
 import { parseTimelineFromOtio } from '~/timeline/otio-serializer';
@@ -123,7 +124,7 @@ export async function createTimelineFrameSource(params: {
           blobs.push(
             await processor.extractTimelineFrameBlob({
               timelineDoc: doc,
-              timeUs: Math.round(timeSec * 1_000_000),
+              timeUs: Math.round(timeSec * TICKS_PER_SECOND),
               width,
               height,
               quality: params.quality,

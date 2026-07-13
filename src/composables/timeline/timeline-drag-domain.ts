@@ -1,3 +1,4 @@
+import { TICKS_PER_SECOND } from '~/utils/time';
 import type {
   TimelineDocument,
   TimelineMarker,
@@ -114,7 +115,7 @@ export function resolvePlayheadClickTimeUs(params: ResolvePlayheadClickTimeUsPar
     return rawTimeUs;
   }
 
-  const thresholdUs = Math.round((params.snapThresholdPx / zoomToPxPerSecond(params.zoom)) * 1e6);
+  const thresholdUs = Math.round((params.snapThresholdPx / zoomToPxPerSecond(params.zoom)) * TICKS_PER_SECOND);
   const snap = pickBestSnapCandidateUs({
     rawUs: rawTimeUs,
     thresholdUs,

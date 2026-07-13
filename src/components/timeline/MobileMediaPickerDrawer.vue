@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { TICKS_PER_SECOND } from '~/utils/time';
 import { computed, provide, ref, watch } from 'vue';
 import {
   FILE_MANAGER_INJECTION_KEY,
@@ -180,7 +181,7 @@ async function addToTimeline() {
         const durationS = Number(metadata?.duration);
         const newSourceDurationUs =
           metadata && Number.isFinite(durationS) && durationS > 0
-            ? Math.floor(durationS * 1_000_000)
+            ? Math.floor(durationS * TICKS_PER_SECOND)
             : 0;
 
         const properties =

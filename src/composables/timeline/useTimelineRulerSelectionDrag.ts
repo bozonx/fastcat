@@ -1,3 +1,4 @@
+import { TICKS_PER_SECOND } from '~/utils/time';
 import { onUnmounted, ref, type Ref, computed } from 'vue';
 import { pxToTimeUs, pickBestSnapCandidateUs, zoomToPxPerSecond } from '~/utils/timeline/geometry';
 import { TIMELINE_RULER_CONSTANTS } from '~/utils/constants';
@@ -88,7 +89,7 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
   }
 
   function getFrameDurationUs() {
-    return Math.max(1, Math.round(1_000_000 / options.fps.value));
+    return Math.max(1, Math.round(TICKS_PER_SECOND / options.fps.value));
   }
 
   function getSnapThresholdPx() {
@@ -109,7 +110,7 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
       event.clientX -
       selectionDragStartX.value +
       (options.scrollLeft.value - selectionDragStartScrollLeft.value);
-    const mouseDeltaUs = Math.round((dxPx / zoomToPxPerSecond(options.zoom.value)) * 1e6);
+    const mouseDeltaUs = Math.round((dxPx / zoomToPxPerSecond(options.zoom.value)) * TICKS_PER_SECOND);
     const minDurationUs = Math.max(
       getFrameDurationUs(),
       pxToTimeUs(TIMELINE_RULER_CONSTANTS.MIN_SELECTION_DURATION_PX, options.zoom.value),
@@ -122,7 +123,7 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
 
       if (getIsSnappingEnabled() && options.computeSnapTargets && options.snapThresholdPx) {
         const thresholdUs = Math.round(
-          (getSnapThresholdPx() / zoomToPxPerSecond(options.zoom.value)) * 1e6,
+          (getSnapThresholdPx() / zoomToPxPerSecond(options.zoom.value)) * TICKS_PER_SECOND,
         );
         const targets = options.computeSnapTargets();
 
@@ -165,7 +166,7 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
 
       if (getIsSnappingEnabled() && options.computeSnapTargets && options.snapThresholdPx) {
         const thresholdUs = Math.round(
-          (getSnapThresholdPx() / zoomToPxPerSecond(options.zoom.value)) * 1e6,
+          (getSnapThresholdPx() / zoomToPxPerSecond(options.zoom.value)) * TICKS_PER_SECOND,
         );
         const targets = options.computeSnapTargets();
         const snap = pickBestSnapCandidateUs({
@@ -195,7 +196,7 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
 
     if (getIsSnappingEnabled() && options.computeSnapTargets && options.snapThresholdPx) {
       const thresholdUs = Math.round(
-        (getSnapThresholdPx() / zoomToPxPerSecond(options.zoom.value)) * 1e6,
+        (getSnapThresholdPx() / zoomToPxPerSecond(options.zoom.value)) * TICKS_PER_SECOND,
       );
       const targets = options.computeSnapTargets();
       const snap = pickBestSnapCandidateUs({ rawUs: nextEndUs, thresholdUs, targetsUs: targets });
@@ -301,7 +302,7 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
 
     if (getIsSnappingEnabled() && options.computeSnapTargets && options.snapThresholdPx) {
       const thresholdUs = Math.round(
-        (getSnapThresholdPx() / zoomToPxPerSecond(options.zoom.value)) * 1e6,
+        (getSnapThresholdPx() / zoomToPxPerSecond(options.zoom.value)) * TICKS_PER_SECOND,
       );
       const targets = options.computeSnapTargets();
       const snap = pickBestSnapCandidateUs({

@@ -1,4 +1,5 @@
 import { createDevLogger } from '~/utils/dev-logger';
+import { TICKS_PER_SECOND } from '~/utils/time';
 import type { Application } from 'pixi.js';
 import { CanvasSource, RenderTexture, Sprite, Texture } from 'pixi.js';
 import { safeDispose } from '../utils';
@@ -887,7 +888,7 @@ export class ClipResourceManager {
     if (!stream) {
       const rangeEndS =
         clip.sourceRangeDurationUs > 0
-          ? (clip.sourceStartUs + clip.sourceRangeDurationUs) / 1_000_000
+          ? (clip.sourceStartUs + clip.sourceRangeDurationUs) / TICKS_PER_SECOND
           : undefined;
       stream = {
         iterator: sink.samples(params.nowSourceTimeS, rangeEndS),
@@ -926,7 +927,7 @@ export class ClipResourceManager {
           params.timelineNowUs +
           Math.max(
             0,
-            Math.round((sampleTimeS * 1_000_000 - params.nowSourceTimeS * 1_000_000) / speed),
+            Math.round((sampleTimeS * TICKS_PER_SECOND - params.nowSourceTimeS * TICKS_PER_SECOND) / speed),
           );
 
         this.storeDecodedFrame({

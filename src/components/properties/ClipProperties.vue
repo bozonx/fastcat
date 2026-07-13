@@ -43,7 +43,7 @@ import ClipMaskSection from '~/components/properties/clip/ClipMaskSection.vue';
 import ClipParametersPasteModal from '~/components/properties/clip/ClipParametersPasteModal.vue';
 import ClipBackgroundProperties from '~/components/properties/clip/ClipBackgroundProperties.vue';
 import { getClipMaxTimelineDurationUs } from '~/utils/timeline/clip';
-import { quantizeTimeUsToFrames, sanitizeFps } from '~/timeline/commands/utils';
+import { frameToUs, quantizeTimeUsToFrames, sanitizeFps } from '~/timeline/commands/utils';
 import type { TimelineCommand } from '~/timeline/commands';
 import ClipEffectsEditor from '~/components/effects/ClipEffectsEditor.vue';
 import { useClipAudio } from '~/composables/properties/useClipAudio';
@@ -374,7 +374,7 @@ function handleSnapClipToGrid() {
     Number.isFinite(maxEndUs) ? maxEndUs : Number.POSITIVE_INFINITY,
     nextClipStartUs,
   );
-  const oneFrameUs = quantizeTimeUsToFrames(Math.round(1e6 / fps), fps, 'round');
+  const oneFrameUs = frameToUs(1, fps);
   let snappedEndUs = quantizeTimeUsToFrames(snappedStartUs + durationUs, fps, 'round');
   // Never grow past the limit: if rounding up would collide/overrun, round the
   // limit down to the grid instead so the clip only ever shrinks to fit.

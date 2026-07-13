@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { TICKS_PER_SECOND } from '~/utils/time';
 import { createDevLogger } from '~/utils/dev-logger';
 
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue';
@@ -102,7 +103,7 @@ const effectiveSourceDurationUs = computed(() => {
     const meta = mediaStore.getCachedMetadata(fileUrl.value);
     const metaDurationS = meta?.duration;
     if (metaDurationS && metaDurationS > 0) {
-      return Math.max(Math.floor(metaDurationS * 1_000_000), explicitDurationUs, sourceRangeEndUs);
+      return Math.max(Math.floor(metaDurationS * TICKS_PER_SECOND), explicitDurationUs, sourceRangeEndUs);
     }
   }
 
@@ -197,7 +198,7 @@ function isMissingAudioTrackError(err: unknown): boolean {
 
 const extractPeaks = async () => {
   if (!fileUrl.value || !projectStore.currentProjectId) return;
-  const maxLength = waveformMaxLength(effectiveSourceDurationUs.value / 1_000_000);
+  const maxLength = waveformMaxLength(effectiveSourceDurationUs.value / TICKS_PER_SECOND);
   if (hasSufficientPeaks(audioPeaks.value, maxLength)) return;
   if (isExtracting.value) {
     hasDeferredExtraction.value = true;
@@ -265,7 +266,7 @@ const extractPeaks = async () => {
         getMediaDurationUs: (path) => {
           const meta = mediaStore.getCachedMetadata(path);
           const metaDurationS = meta?.duration;
-          return metaDurationS && metaDurationS > 0 ? Math.floor(metaDurationS * 1_000_000) : 0;
+          return metaDurationS && metaDurationS > 0 ? Math.floor(metaDurationS * TICKS_PER_SECOND) : 0;
         },
         loadTimelineDocument: async (path, clip) => {
           const file = await fileManager.vfs.getFile(path);
@@ -302,7 +303,7 @@ const extractPeaks = async () => {
     const peaks = await ensureMediaPeaks({
       path: fileUrl.value,
       maxLength,
-      durationS: effectiveSourceDurationUs.value / 1_000_000,
+      durationS: effectiveSourceDurationUs.value / TICKS_PER_SECOND,
       priority: timelineStore.selectedItemIds?.includes(props.item.id)
         ? WAVEFORM_EXTRACTION_PRIORITIES.selectedClip
         : WAVEFORM_EXTRACTION_PRIORITIES.visibleClip,
@@ -326,7 +327,7 @@ const extractPeaks = async () => {
   } finally {
     isExtracting.value = false;
     if (hasDeferredExtraction.value && !timelineStore.isPlaying) {
-      const latestMaxLength = waveformMaxLength(effectiveSourceDurationUs.value / 1_000_000);
+      const latestMaxLength = waveformMaxLength(effectiveSourceDurationUs.value / TICKS_PER_SECOND);
       if (!hasSufficientPeaks(audioPeaks.value, latestMaxLength)) {
         requestPeaksExtraction();
       } else {
@@ -337,7 +338,7 @@ const extractPeaks = async () => {
 };
 
 function requestPeaksExtraction() {
-  const maxLength = waveformMaxLength(effectiveSourceDurationUs.value / 1_000_000);
+  const maxLength = waveformMaxLength(effectiveSourceDurationUs.value / TICKS_PER_SECOND);
   if (hasSufficientPeaks(audioPeaks.value, maxLength)) return;
   if (isExtracting.value) {
     hasDeferredExtraction.value = true;
@@ -383,7 +384,7 @@ watch(
       return;
     }
 
-    const maxLength = waveformMaxLength(effectiveSourceDurationUs.value / 1_000_000);
+    const maxLength = waveformMaxLength(effectiveSourceDurationUs.value / TICKS_PER_SECOND);
     if (hasDeferredExtraction.value && !hasSufficientPeaks(audioPeaks.value, maxLength)) {
       requestPeaksExtraction();
     }
@@ -791,7 +792,7 @@ watch(
 // External peaks updates (cache refresh / late extraction) must trigger a redraw,
 // otherwise the canvas stays empty until the user pans/zooms.
 watch(audioPeaks, () => {
-  const maxLength = waveformMaxLength(effectiveSourceDurationUs.value / 1_000_000);
+  const maxLength = waveformMaxLength(effectiveSourceDurationUs.value / TICKS_PER_SECOND);
   if (hasSufficientPeaks(audioPeaks.value, maxLength)) {
     hasDeferredExtraction.value = false;
   } else {

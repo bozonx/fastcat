@@ -1,3 +1,4 @@
+import { TICKS_PER_SECOND } from '~/utils/time';
 import { nextTick, onBeforeUnmount, watch, type Ref } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import {
@@ -212,7 +213,7 @@ export function useTimelineZoom({ scrollEl }: UseTimelineZoomOptions) {
     if (viewportWidth <= 0) return;
 
     // Add 5% padding on each side (total 10%)
-    const desiredPPS = (viewportWidth * 0.9) / (durationUs / 1e6);
+    const desiredPPS = (viewportWidth * 0.9) / (durationUs / TICKS_PER_SECOND);
 
     const nextZoom = pxPerSecondToZoom(desiredPPS);
 

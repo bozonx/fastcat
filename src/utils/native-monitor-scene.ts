@@ -1,3 +1,4 @@
+import { TICKS_PER_SECOND } from '~/utils/time';
 import {
   buildVideoWorkerPayloadFromTracks,
   toWorkerTimelineClips,
@@ -434,14 +435,14 @@ function buildBaseLayer(params: {
       const spec = manifest?.toTransitionSpec
         ? manifest.toTransitionSpec(
             effectiveTransitionIn.params ?? {},
-            effectiveTransitionIn.durationUs / 1_000_000,
+            effectiveTransitionIn.durationUs / TICKS_PER_SECOND,
             { isExport, isPlaying, idleSettled, previewBlurQuality },
           )
         : undefined;
 
       return {
         type,
-        duration_sec: effectiveTransitionIn.durationUs / 1_000_000,
+        duration_sec: effectiveTransitionIn.durationUs / TICKS_PER_SECOND,
         curve: effectiveTransitionIn.curve,
         from_layer_id: fromClip?.id,
         mode,
@@ -472,14 +473,14 @@ function buildBaseLayer(params: {
       const spec = manifest?.toTransitionSpec
         ? manifest.toTransitionSpec(
             clip.transitionOut.params ?? {},
-            clip.transitionOut.durationUs / 1_000_000,
+            clip.transitionOut.durationUs / TICKS_PER_SECOND,
             { isExport, isPlaying, idleSettled, previewBlurQuality },
           )
         : undefined;
 
       return {
         type,
-        duration_sec: clip.transitionOut.durationUs / 1_000_000,
+        duration_sec: clip.transitionOut.durationUs / TICKS_PER_SECOND,
         curve: clip.transitionOut.curve,
         from_layer_id: toClip?.id,
         mode,
@@ -494,21 +495,21 @@ function buildBaseLayer(params: {
     // `path` is required by the generated SceneLayer; media layers override it
     // below, virtual layers (text/shape/background) leave it empty.
     path: '',
-    timeline_start_sec: startUs / 1_000_000,
-    timeline_end_sec: (startUs + durationUs) / 1_000_000,
-    source_start_sec: sourceStartUs / 1_000_000,
-    source_range_duration_sec: Math.max(0, sourceDurationUs) / 1_000_000,
+    timeline_start_sec: startUs / TICKS_PER_SECOND,
+    timeline_end_sec: (startUs + durationUs) / TICKS_PER_SECOND,
+    source_start_sec: sourceStartUs / TICKS_PER_SECOND,
+    source_range_duration_sec: Math.max(0, sourceDurationUs) / TICKS_PER_SECOND,
     // Full media duration (not the trimmed range): lets the native renderer play
     // the outgoing clip's tail/handle during a transition instead of freezing on
     // the trimmed out-point, matching the web compositor. Omitted when unknown.
     source_duration_sec:
       typeof clip.sourceDurationUs === 'number' && clip.sourceDurationUs > 0
-        ? clip.sourceDurationUs / 1_000_000
+        ? clip.sourceDurationUs / TICKS_PER_SECOND
         : undefined,
     speed: sanitizeVideoSpeed(clip.speed),
     freeze_frame_source_sec:
       typeof clip.freezeFrameSourceUs === 'number'
-        ? Math.max(0, clip.freezeFrameSourceUs) / 1_000_000
+        ? Math.max(0, clip.freezeFrameSourceUs) / TICKS_PER_SECOND
         : undefined,
     source_orientation: String(clip.sourceOrientation ?? 'auto'),
     z,

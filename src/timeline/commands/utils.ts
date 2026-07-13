@@ -7,9 +7,16 @@ import type {
 } from '../types';
 import { genUuid, genPrefixedIdBatch } from '~/utils/ids';
 import { sanitizeFps } from '~/utils/time';
+import {
+  framesToTicks,
+  quantizeTicksToFrame,
+  ticksToFrames,
+  type QuantizeMode,
+} from '~/utils/time/ticks';
 import { isClipFrameAligned } from '~/utils/timeline/clip-capabilities';
 
 export { sanitizeFps };
+export type { QuantizeMode };
 
 /**
  * Throws if the given item is a locked clip — single source of truth for the
@@ -34,39 +41,47 @@ export function getDocFpsOrDefault(
   return doc ? getDocFps(doc) : fallback;
 }
 
-export type QuantizeMode = 'round' | 'floor' | 'ceil';
-
 export function usToFrame(timeUs: number, fps: number, mode: QuantizeMode): number {
   const safeTimeUs = Number.isFinite(timeUs) ? Math.max(0, Math.round(timeUs)) : 0;
   const safeFps = sanitizeFps(fps);
-  const framesFloat = (safeTimeUs * safeFps) / 1e6;
-  if (mode === 'floor') return Math.max(0, Math.floor(framesFloat));
-  if (mode === 'ceil') return Math.max(0, Math.ceil(framesFloat));
-  return Math.max(0, Math.round(framesFloat));
+  return Math.max(
+    0,
+    ticksToFrames({ ticks: safeTimeUs, frameRate: { num: safeFps, den: 1 }, mode }),
+  );
 }
 
 export function deltaUsToFrames(deltaUs: number, fps: number, mode: QuantizeMode): number {
   const safeDeltaUs = Number.isFinite(deltaUs) ? Math.round(deltaUs) : 0;
   const safeFps = sanitizeFps(fps);
-  const framesFloat = (safeDeltaUs * safeFps) / 1e6;
-  if (mode === 'floor') return Math.floor(framesFloat);
-  if (mode === 'ceil') return Math.ceil(framesFloat);
-  return Math.round(framesFloat);
+  return ticksToFrames({ ticks: safeDeltaUs, frameRate: { num: safeFps, den: 1 }, mode });
 }
 
 export function frameToUs(frameIndex: number, fps: number): number {
   const safeFrameIndex = Number.isFinite(frameIndex) ? Math.max(0, Math.round(frameIndex)) : 0;
   const safeFps = sanitizeFps(fps);
-  return Math.max(0, Math.round((safeFrameIndex * 1e6) / safeFps));
+  return Math.max(
+    0,
+    framesToTicks({ frames: safeFrameIndex, frameRate: { num: safeFps, den: 1 } }),
+  );
 }
 
 export function quantizeTimeUsToFrames(timeUs: number, fps: number, mode: QuantizeMode): number {
-  return frameToUs(usToFrame(timeUs, fps, mode), fps);
+  return Math.max(
+    0,
+    quantizeTicksToFrame({
+      ticks: Number.isFinite(timeUs) ? Math.max(0, Math.round(timeUs)) : 0,
+      frameRate: { num: sanitizeFps(fps), den: 1 },
+      mode,
+    }),
+  );
 }
 
 export function quantizeDeltaUsToFrames(deltaUs: number, fps: number, mode: QuantizeMode): number {
-  const frames = deltaUsToFrames(deltaUs, fps, mode);
-  return Math.round((frames * 1e6) / sanitizeFps(fps));
+  return quantizeTicksToFrame({
+    ticks: Number.isFinite(deltaUs) ? Math.round(deltaUs) : 0,
+    frameRate: { num: sanitizeFps(fps), den: 1 },
+    mode,
+  });
 }
 
 export function quantizeRangeToFrames(

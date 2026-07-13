@@ -1,3 +1,4 @@
+import { TICKS_PER_SECOND } from '~/utils/time';
 import { usToFrame, sanitizeFps } from '~/timeline/commands/utils';
 
 function sanitizeBaseName(name: string): string {
@@ -31,7 +32,7 @@ export function formatStopFrameTimecode(params: FormatStopFrameTimecodeParams): 
     frameDigits > 0
       ? Math.max(
           0,
-          Math.round(((Math.max(0, params.timeUs) * fps) / 1e6) * frameScale) / frameScale,
+          Math.round(((Math.max(0, params.timeUs) * fps) / TICKS_PER_SECOND) * frameScale) / frameScale,
         )
       : usToFrame(params.timeUs, fps, 'round');
 

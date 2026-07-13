@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { TICKS_PER_SECOND } from '~/utils/time';
 import { computed, reactive } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
@@ -31,7 +32,7 @@ const defaultDurationUs = computed(() =>
   Math.max(
     0,
     Math.round(
-      Number(workspaceStore.userSettings.timeline.defaultTransitionDurationUs ?? 1_000_000),
+      Number(workspaceStore.userSettings.timeline.defaultTransitionDurationUs ?? TICKS_PER_SECOND),
     ),
   ),
 );
@@ -71,7 +72,7 @@ const curveOptions = computed<{ label: string; value: TransitionCurve }[]>(() =>
 function maxDurationSec(edge: 'in' | 'out'): number {
   const other = edge === 'in' ? transitionOut.value : transitionIn.value;
   const otherDurationUs = Math.max(0, Number(other?.durationUs ?? 0));
-  return Math.max(MIN_DURATION_SEC, (clipDurationUs.value - otherDurationUs) / 1_000_000);
+  return Math.max(MIN_DURATION_SEC, (clipDurationUs.value - otherDurationUs) / TICKS_PER_SECOND);
 }
 
 function selectValue(value: unknown): string | undefined {
@@ -108,7 +109,7 @@ const drag = reactive<{
 function durationSec(edge: 'in' | 'out'): number {
   if (drag.edge === edge) return drag.previewSec;
   const transition = edge === 'in' ? transitionIn.value : transitionOut.value;
-  return Math.max(0, Number(transition?.durationUs ?? 0) / 1_000_000);
+  return Math.max(0, Number(transition?.durationUs ?? 0) / TICKS_PER_SECOND);
 }
 
 function getTouchX(event: TouchEvent): number | null {
@@ -125,7 +126,7 @@ function onDurationStart(edge: 'in' | 'out', event: TouchEvent) {
   event.preventDefault();
   drag.edge = edge;
   drag.startX = x;
-  drag.startSec = Math.max(0, Number(transition.durationUs ?? 0) / 1_000_000);
+  drag.startSec = Math.max(0, Number(transition.durationUs ?? 0) / TICKS_PER_SECOND);
   drag.previewSec = drag.startSec;
 }
 

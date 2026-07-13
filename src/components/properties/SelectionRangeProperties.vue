@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { TICKS_PER_SECOND } from '~/utils/time';
 import { computed } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useSelectionStore } from '~/stores/selection.store';
@@ -30,7 +31,7 @@ function handleUpdateStartTime(val: number | string) {
   const range = selectionRange.value;
   if (!range) return;
 
-  const startUs = typeof val === 'number' ? val : Math.max(0, Math.round(Number(val) * 1_000_000));
+  const startUs = typeof val === 'number' ? val : Math.max(0, Math.round(Number(val) * TICKS_PER_SECOND));
   if (!Number.isFinite(startUs)) return;
 
   timelineStore.updateSelectionRange({
@@ -43,7 +44,7 @@ function handleUpdateEndTime(val: number | string) {
   const range = selectionRange.value;
   if (!range) return;
 
-  const endUs = typeof val === 'number' ? val : Math.max(0, Math.round(Number(val) * 1_000_000));
+  const endUs = typeof val === 'number' ? val : Math.max(0, Math.round(Number(val) * TICKS_PER_SECOND));
   if (!Number.isFinite(endUs) || endUs <= range.startUs) return;
 
   timelineStore.updateSelectionRange({

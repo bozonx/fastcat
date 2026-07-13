@@ -1,3 +1,4 @@
+import { TICKS_PER_SECOND } from '~/utils/time';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { MONITOR_EVENTS, nativeMonitorIpc } from '~/composables/monitor/native-monitor-ipc';
 import { createDevLogger } from '~/utils/dev-logger';
@@ -62,7 +63,7 @@ export class TauriAudioEngine implements IAudioEngine {
     void listen<number>(EVT_TIME, (event) => {
       if (this.destroyed) return;
       if (event.payload !== undefined && event.payload !== null) {
-        this.scheduler.syncTime(Math.round(event.payload * 1_000_000));
+        this.scheduler.syncTime(Math.round(event.payload * TICKS_PER_SECOND));
       }
     }).then((unlisten) => {
       if (this.destroyed) {
@@ -177,10 +178,10 @@ export class TauriAudioEngine implements IAudioEngine {
     // (toUs <= fromUs) stays silent — only forward scrub previews audio.
     const spanUs = toUs - fromUs;
     if (spanUs <= 0) return;
-    const durationSec = Math.min(spanUs, maxPreviewDurationUs) / 1_000_000;
+    const durationSec = Math.min(spanUs, maxPreviewDurationUs) / TICKS_PER_SECOND;
     if (durationSec <= 0) return;
     try {
-      await nativeMonitorIpc.scrubPreview(fromUs / 1_000_000, durationSec);
+      await nativeMonitorIpc.scrubPreview(fromUs / TICKS_PER_SECOND, durationSec);
     } catch (error) {
       logger.debug('previewScrubForward failed', error);
     }

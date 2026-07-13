@@ -1,3 +1,4 @@
+import { TICKS_PER_SECOND } from '~/utils/time';
 import type { ComputedRef, Ref } from 'vue';
 import { computed, onBeforeUnmount, ref, toRaw } from 'vue';
 
@@ -692,7 +693,7 @@ export function useTimelineItemDrag(
 
     const rawDeltaUs = getDragDeltaUs(clientX, zoom);
 
-    const thresholdUs = Math.round((snapThresholdPx / zoomToPxPerSecond(zoom)) * 1e6);
+    const thresholdUs = Math.round((snapThresholdPx / zoomToPxPerSecond(zoom)) * TICKS_PER_SECOND);
     const anchorStartUs = Math.max(0, Math.round(dragAnchorStartUs.value));
     const anchorDurationUs = Math.max(0, Math.round(dragAnchorItemDurationUs.value));
     const anchorEndUs = anchorStartUs + anchorDurationUs;

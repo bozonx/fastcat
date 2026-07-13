@@ -1,4 +1,6 @@
-export const US_PER_SEC = 1_000_000;
+import { TICKS_PER_SECOND } from './ticks';
+
+export const US_PER_SEC = TICKS_PER_SECOND;
 
 export const FALLBACK_FPS = 30;
 export const MIN_FPS = 1;

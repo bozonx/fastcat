@@ -1,3 +1,4 @@
+import { TICKS_PER_SECOND } from '~/utils/time';
 import { createDevLogger } from '~/utils/dev-logger';
 import { TimelineActiveTracker } from './TimelineActiveTracker';
 import { Sprite, Texture, ImageSource } from 'pixi.js';
@@ -903,12 +904,12 @@ export class VideoCompositor {
       });
       // Source-domain look-ahead; scaled by |speed| so fast playback still covers
       // the same wall-clock horizon.
-      const aheadSourceUs = nowSourceUs + Math.round((maxFrames / frameRate) * 1_000_000 * speed);
+      const aheadSourceUs = nowSourceUs + Math.round((maxFrames / frameRate) * TICKS_PER_SECOND * speed);
 
       plans.push({
         clip,
-        nowSourceTimeS: nowSourceUs / 1_000_000,
-        aheadSourceTimeS: aheadSourceUs / 1_000_000,
+        nowSourceTimeS: nowSourceUs / TICKS_PER_SECOND,
+        aheadSourceTimeS: aheadSourceUs / TICKS_PER_SECOND,
         // Timeline slot of `nowSourceUs` (for scrub-locality eviction): the
         // playhead for active clips, the clip start for not-yet-entered ones.
         timelineNowUs: Math.max(nowUs, clip.startUs),
@@ -1005,7 +1006,7 @@ export class VideoCompositor {
 
         await this.getVideoSampleForClip({
           clip,
-          sampleTimeS: sampleTimeUs / 1_000_000,
+          sampleTimeS: sampleTimeUs / TICKS_PER_SECOND,
           timelineTimeUs: clip.startUs,
         });
       }),

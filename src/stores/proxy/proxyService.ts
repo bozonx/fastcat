@@ -1,4 +1,5 @@
 import { createDevLogger } from '~/utils/dev-logger';
+import { TICKS_PER_SECOND } from '~/utils/time';
 import type PQueue from 'p-queue';
 import type { Ref } from 'vue';
 
@@ -298,7 +299,7 @@ export function createProxyService(params: {
                 throw new Error('Could not resolve native file paths for proxy generation');
               }
               const meta = await nativeMediaMetadata(sourcePath);
-              const durationUs = Math.round((meta.duration || 0) * 1_000_000);
+              const durationUs = Math.round((meta.duration || 0) * TICKS_PER_SECOND);
               if (!durationUs) throw new Error('Invalid video duration');
               await nativeGenerateProxy({
                 taskId,
@@ -355,7 +356,7 @@ export function createProxyService(params: {
             const width = Math.max(16, Math.round((sourceWidth * scale) / 2) * 2);
             const height = Math.max(16, Math.round((sourceHeight * scale) / 2) * 2);
 
-            const durationUs = Math.round((meta.duration || 0) * 1_000_000);
+            const durationUs = Math.round((meta.duration || 0) * TICKS_PER_SECOND);
 
             if (!durationUs) throw new Error('Invalid video duration');
 

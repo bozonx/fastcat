@@ -1,4 +1,5 @@
 import { createDevLogger } from '~/utils/dev-logger';
+import { TICKS_PER_SECOND } from '~/utils/time';
 import { addEncodeTask, ENCODE_TASK_PRIORITIES } from '~/utils/media-task-queue';
 import {
   getExportWorkerClient,
@@ -110,7 +111,7 @@ export async function executeMediaConversion(params: {
                 window.clearTimeout(metadataTimeoutId);
               }
             });
-            const durationUs = Math.round((meta.duration || 0) * 1_000_000);
+            const durationUs = Math.round((meta.duration || 0) * TICKS_PER_SECOND);
             if (!durationUs && params.request.type === 'video') {
               throw new Error('Invalid media duration');
             }

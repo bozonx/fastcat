@@ -1,3 +1,4 @@
+import { TICKS_PER_SECOND } from '~/utils/time';
 import type { Ref } from 'vue';
 
 import type { TimelineDocument } from '~/timeline/types';
@@ -25,7 +26,7 @@ export function createTimelineHydrationModule(
           if (meta) {
             const durationS = Number(meta.duration);
             const durationUs =
-              Number.isFinite(durationS) && durationS > 0 ? Math.floor(durationS * 1_000_000) : 0;
+              Number.isFinite(durationS) && durationS > 0 ? Math.floor(durationS * TICKS_PER_SECOND) : 0;
             const isImageLike = !meta.video && !meta.audio;
             if (
               (durationUs > 0 && it.sourceDurationUs !== durationUs) ||
@@ -50,7 +51,7 @@ export function createTimelineHydrationModule(
           if (meta) {
             const durationS = Number(meta.duration);
             const durationUs =
-              Number.isFinite(durationS) && durationS > 0 ? Math.floor(durationS * 1_000_000) : 0;
+              Number.isFinite(durationS) && durationS > 0 ? Math.floor(durationS * TICKS_PER_SECOND) : 0;
             const isImageLike = !meta.video && !meta.audio;
 
             const needsSourceDurationPatch = durationUs > 0 && it.sourceDurationUs !== durationUs;
@@ -115,7 +116,7 @@ export function createTimelineHydrationModule(
 
     const durationS = Number(meta.duration);
     const durationUs =
-      Number.isFinite(durationS) && durationS > 0 ? Math.floor(durationS * 1_000_000) : 0;
+      Number.isFinite(durationS) && durationS > 0 ? Math.floor(durationS * TICKS_PER_SECOND) : 0;
 
     const needsSourceDurationPatch = durationUs > 0 && item.sourceDurationUs !== durationUs;
     const needsIsImagePatch = item.isImage !== isImageLike;

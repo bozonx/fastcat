@@ -1,3 +1,4 @@
+import { TICKS_PER_SECOND } from '~/utils/time';
 import { createDevLogger } from '~/utils/dev-logger';
 import { PIXI_RENDERER_PREFERENCE } from '~/utils/constants';
 import { useWorkspaceStore } from '~/stores/workspace.store';
@@ -66,8 +67,8 @@ export function buildNativeExportOptions(
     width: options.width,
     height: options.height,
     fps: options.fps,
-    startSec: rangeStartUs / 1_000_000,
-    endSec: rangeEndUs / 1_000_000,
+    startSec: rangeStartUs / TICKS_PER_SECOND,
+    endSec: rangeEndUs / TICKS_PER_SECOND,
     videoCodec: options.videoCodec,
     videoBitrateBps: options.bitrate,
     format: options.format,

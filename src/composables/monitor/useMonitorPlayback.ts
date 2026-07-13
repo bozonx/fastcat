@@ -1,3 +1,4 @@
+import { TICKS_PER_SECOND } from '~/utils/time';
 import { createDevLogger } from '~/utils/dev-logger';
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
@@ -54,7 +55,7 @@ function advanceMonitorPlaybackLoop(params: {
 // where a frame boundary falls.
 export function computeMonitorFrameIndex(params: { timeUs: number; fps: number }): number {
   const fps = Number.isFinite(params.fps) && params.fps > 0 ? params.fps : 30;
-  const timeS = Number.isFinite(params.timeUs) ? Math.max(0, params.timeUs / 1_000_000) : 0;
+  const timeS = Number.isFinite(params.timeUs) ? Math.max(0, params.timeUs / TICKS_PER_SECOND) : 0;
   return Math.max(0, Math.floor(timeS * fps + 1e-6));
 }
 

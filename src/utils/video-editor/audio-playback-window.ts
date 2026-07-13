@@ -1,3 +1,4 @@
+import { TICKS_PER_SECOND } from '~/utils/time';
 import {
   normalizeBalance,
   normalizeGain,
@@ -47,7 +48,7 @@ export function hasPanAnimation(window: ClipPlaybackWindow): boolean {
 export function resolveAnimatedBaseGain(window: ClipPlaybackWindow, clipLocalS: number): number {
   const track = window.animations?.['audio.volume'];
   if (!track?.keyframes.length) return window.audioGain;
-  const sourceUs = Math.round(getSourceTimeForClipLocal(window, clipLocalS) * 1_000_000);
+  const sourceUs = Math.round(getSourceTimeForClipLocal(window, clipLocalS) * TICKS_PER_SECOND);
   const value = evalTrackAt(track, sourceUs);
   return value === undefined ? window.audioGain : Math.max(0, Math.min(10, value));
 }
@@ -59,7 +60,7 @@ export function resolveAnimatedBaseGain(window: ClipPlaybackWindow, clipLocalS: 
 export function resolveAnimatedPan(window: ClipPlaybackWindow, clipLocalS: number): number {
   const track = window.animations?.['audio.pan'];
   if (!track?.keyframes.length) return window.audioBalance;
-  const sourceUs = Math.round(getSourceTimeForClipLocal(window, clipLocalS) * 1_000_000);
+  const sourceUs = Math.round(getSourceTimeForClipLocal(window, clipLocalS) * TICKS_PER_SECOND);
   const value = evalTrackAt(track, sourceUs);
   return value === undefined ? window.audioBalance : Math.max(-1, Math.min(1, value));
 }
@@ -68,7 +69,7 @@ export function buildClipPlaybackWindow(
   params: BuildClipPlaybackWindowParams,
 ): ClipPlaybackWindow | null {
   const { clip, currentTimeS, speed, startAtS, adjacentClips } = params;
-  const clipDurationS = clip.durationUs / 1_000_000;
+  const clipDurationS = clip.durationUs / TICKS_PER_SECOND;
   const speedRaw = clip.speed;
 
   const clipSpeed =
@@ -102,7 +103,7 @@ export function buildClipPlaybackWindow(
     Number(clip.transitionOut.durationUs) > 0 &&
     clip.transitionOut.mode === 'adjacent'
   ) {
-    effectivePlayDurationS += Number(clip.transitionOut.durationUs) / 1_000_000;
+    effectivePlayDurationS += Number(clip.transitionOut.durationUs) / TICKS_PER_SECOND;
   }
 
   if (
@@ -110,7 +111,7 @@ export function buildClipPlaybackWindow(
     Number(clip.transitionIn.durationUs) > 0 &&
     clip.transitionIn.mode === 'adjacent'
   ) {
-    effectivePlayDurationS += Number(clip.transitionIn.durationUs) / 1_000_000;
+    effectivePlayDurationS += Number(clip.transitionIn.durationUs) / TICKS_PER_SECOND;
     effectiveStartUs = Math.max(0, clip.startUs - Number(clip.transitionIn.durationUs));
     effectiveSourceStartUs = Math.max(
       0,
@@ -118,8 +119,8 @@ export function buildClipPlaybackWindow(
     );
   }
 
-  const effectiveStartS = effectiveStartUs / 1_000_000;
-  const effectiveSourceStartS = effectiveSourceStartUs / 1_000_000;
+  const effectiveStartS = effectiveStartUs / TICKS_PER_SECOND;
+  const effectiveSourceStartS = effectiveSourceStartUs / TICKS_PER_SECOND;
   const effectiveSourceEndS = effectiveSourceStartS + effectivePlayDurationS * clipSpeed;
   const currentClipLocalS = Math.max(0, currentTimeS - effectiveStartS);
   const remainingInClipS = Math.max(0, effectivePlayDurationS - currentClipLocalS);

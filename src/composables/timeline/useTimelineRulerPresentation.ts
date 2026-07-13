@@ -1,3 +1,4 @@
+import { TICKS_PER_SECOND } from '~/utils/time';
 import { computed, type Ref } from 'vue';
 import {
   absolutePxToViewportPx,
@@ -108,10 +109,10 @@ export function useTimelineRulerPresentation(options: UseTimelineRulerPresentati
     // Exact math: currentTime is rounded to whole microseconds.
     // Add 0.5 µs (the max rounding error) to determine the frame precisely.
     const currentFrameIndex = Math.floor(
-      ((options.currentTime.value + 0.5) * currentFps) / 1_000_000,
+      ((options.currentTime.value + 0.5) * currentFps) / TICKS_PER_SECOND,
     );
-    const currentFrameStartUs = Math.round((currentFrameIndex * 1_000_000) / currentFps);
-    const nextFrameStartUs = Math.round(((currentFrameIndex + 1) * 1_000_000) / currentFps);
+    const currentFrameStartUs = Math.round((currentFrameIndex * TICKS_PER_SECOND) / currentFps);
+    const nextFrameStartUs = Math.round(((currentFrameIndex + 1) * TICKS_PER_SECOND) / currentFps);
 
     const currentFrameStartX = timeUsToViewportPx(
       currentFrameStartUs,

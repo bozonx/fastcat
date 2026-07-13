@@ -1,3 +1,4 @@
+import { TICKS_PER_SECOND } from '~/utils/time';
 import { computed, type Ref } from 'vue';
 import type { TimelineClipItem } from '~/timeline/types';
 import {
@@ -103,7 +104,7 @@ export function useClipTransitions(options: UseClipTransitionsOptions) {
       edge,
       transition: {
         ...current,
-        durationUs: Math.round(durationSec * 1_000_000),
+        durationUs: Math.round(durationSec * TICKS_PER_SECOND),
       },
     });
   }

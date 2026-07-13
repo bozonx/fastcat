@@ -1,4 +1,5 @@
 import type { TimelineClipItem, TimelineTrack } from '~/timeline/types';
+import { TICKS_PER_SECOND } from '~/utils/time';
 
 export interface TimelineClipRef {
   track: TimelineTrack;
@@ -92,8 +93,8 @@ export function isClipFrameAligned(
   clip: Pick<TimelineClipItem, 'timelineRange'>,
   fps: number,
 ): boolean {
-  const startFrame = (clip.timelineRange.startUs * fps) / 1_000_000;
-  const durationFrame = (clip.timelineRange.durationUs * fps) / 1_000_000;
+  const startFrame = (clip.timelineRange.startUs * fps) / TICKS_PER_SECOND;
+  const durationFrame = (clip.timelineRange.durationUs * fps) / TICKS_PER_SECOND;
   const isStartAligned = Math.abs(startFrame - Math.round(startFrame)) < 0.001;
   const isDurationAligned = Math.abs(durationFrame - Math.round(durationFrame)) < 0.001;
   return isStartAligned && isDurationAligned;

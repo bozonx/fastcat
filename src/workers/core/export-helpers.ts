@@ -1,4 +1,5 @@
 import { usToS } from './time';
+import { TICKS_PER_SECOND } from '~/utils/time';
 
 export interface ClipRangesS {
   timelineStartS: number;
@@ -85,7 +86,7 @@ function gcd(a: number, b: number): number {
 
 function rationalFrameTimeUs(frameNum: number, fps: ExportFpsRatio): number {
   return Number(
-    (BigInt(frameNum) * 1_000_000n * BigInt(fps.denominator) +
+    (BigInt(frameNum) * BigInt(TICKS_PER_SECOND) * BigInt(fps.denominator) +
       BigInt(Math.floor(fps.numerator / 2))) /
       BigInt(fps.numerator),
   );
@@ -94,7 +95,7 @@ function rationalFrameTimeUs(frameNum: number, fps: ExportFpsRatio): number {
 export function computeExportTotalFrames(params: { durationUs: number; fps: number }): number {
   const durationUs = Math.max(0, Math.round(Number(params.durationUs) || 0));
   const fps = normalizeExportFps(params.fps);
-  const divisor = 1_000_000n * BigInt(fps.denominator);
+  const divisor = BigInt(TICKS_PER_SECOND) * BigInt(fps.denominator);
   const value = BigInt(durationUs) * BigInt(fps.numerator);
   return Number((value + divisor / 2n) / divisor);
 }
@@ -127,12 +128,12 @@ export function getExportFrameTiming(params: {
   const clampedStartUs = Math.min(frameStartUs, durationUs);
   const clampedNextFrameStartUs = Math.min(nextFrameStartUs, durationUs);
   const frameDurationUs = Math.max(1, clampedNextFrameStartUs - clampedStartUs);
-  const durationS = totalFrames > 0 ? frameDurationUs / 1_000_000 : 0;
+  const durationS = totalFrames > 0 ? frameDurationUs / TICKS_PER_SECOND : 0;
 
   return {
     frameNum,
     timeUs: clampedStartUs,
-    timestampS: clampedStartUs / 1_000_000,
+    timestampS: clampedStartUs / TICKS_PER_SECOND,
     durationS,
   };
 }

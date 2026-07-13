@@ -5,6 +5,7 @@ import {
   MIN_TIMELINE_ZOOM_POSITION,
 } from '~/utils/zoom';
 import { clampGain } from '~/utils/audio/clamp';
+import { frameToUs } from '~/timeline/commands/utils';
 
 export interface TimelinePlaybackDeps {
   currentTime: Ref<number>;
@@ -116,7 +117,7 @@ export function createTimelinePlaybackModule(deps: TimelinePlaybackDeps): Timeli
 
   function seekFrames(deltaFrames: number) {
     const fps = deps.getDocFps();
-    const frameUs = 1_000_000 / fps;
+    const frameUs = frameToUs(1, fps);
     deps.setCurrentTimeUs(deps.currentTime.value + deltaFrames * frameUs);
   }
 

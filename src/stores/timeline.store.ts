@@ -1,3 +1,4 @@
+import { TICKS_PER_SECOND } from '~/utils/time';
 import { createDevLogger } from '~/utils/dev-logger';
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
@@ -1280,7 +1281,7 @@ export const useTimelineStore = defineStore('timeline', () => {
       if (duration.value <= 0) {
         lifecycle.resetTimelineZoom();
       } else {
-        const desiredPPS = (timelineViewportWidth.value * 0.9) / (duration.value / 1e6);
+        const desiredPPS = (timelineViewportWidth.value * 0.9) / (duration.value / TICKS_PER_SECOND);
         setTimelineZoomExact(pxPerSecondToZoom(desiredPPS));
       }
       scrollResetTicket.value++;

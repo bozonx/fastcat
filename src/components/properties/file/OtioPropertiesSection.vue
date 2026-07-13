@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { TICKS_PER_SECOND } from '~/utils/time';
 import PropertyRow from '~/components/properties/PropertyRow.vue';
 import PropertySection from '~/components/properties/PropertySection.vue';
 
@@ -21,7 +22,7 @@ const { t } = useI18n();
     <template v-if="props.summary">
       <PropertyRow
         :label="t('common.duration')"
-        :value="props.formatDurationSeconds(props.summary.durationUs / 1000000)"
+        :value="props.formatDurationSeconds(props.summary.durationUs / TICKS_PER_SECOND)"
       />
       <PropertyRow :label="t('fastcat.timeline.videoTracks')" :value="props.summary.videoTracks" />
       <PropertyRow :label="t('fastcat.timeline.audioTracks')" :value="props.summary.audioTracks" />

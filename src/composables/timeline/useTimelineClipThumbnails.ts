@@ -1,3 +1,4 @@
+import { TICKS_PER_SECOND } from '~/utils/time';
 import { createDevLogger } from '~/utils/dev-logger';
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch, type Ref } from 'vue';
 import { useSafeObjectUrl } from '~/composables/useSafeObjectUrl';
@@ -86,7 +87,7 @@ export function useTimelineClipThumbnails(options: UseTimelineClipThumbnailsOpti
   let isUnmounted = false;
 
   const intervalSeconds = TIMELINE_CLIP_THUMBNAILS.INTERVAL_SECONDS;
-  const intervalUs = intervalSeconds * 1_000_000;
+  const intervalUs = intervalSeconds * TICKS_PER_SECOND;
 
   const isGenerating = ref(false);
   // `shallowRef`, not `ref`: every write reassigns the whole Map (see below),
@@ -141,7 +142,7 @@ export function useTimelineClipThumbnails(options: UseTimelineClipThumbnailsOpti
   );
 
   const duration = computed(() => {
-    return (options.item.value.sourceDurationUs || 0) / 1_000_000;
+    return (options.item.value.sourceDurationUs || 0) / TICKS_PER_SECOND;
   });
 
   // Content fingerprint (mtime) for a nested timeline's `.otio` file. Folded
@@ -224,7 +225,7 @@ export function useTimelineClipThumbnails(options: UseTimelineClipThumbnailsOpti
   });
 
   const pxPerSecond = computed(() => {
-    return timeUsToPx(1_000_000, timelineStore.timelineZoom);
+    return timeUsToPx(TICKS_PER_SECOND, timelineStore.timelineZoom);
   });
 
   const thumbnailGridStepSeconds = computed(() => {
@@ -274,7 +275,7 @@ export function useTimelineClipThumbnails(options: UseTimelineClipThumbnailsOpti
 
       for (let idx = firstIdx; idx <= lastIdx; idx++) {
         if (idx === 0 || idx === totalTiles - 1) {
-          const sourceTimeSec = sourceStartUs / 1_000_000 + (idx * tileW) / pxPerSec;
+          const sourceTimeSec = sourceStartUs / TICKS_PER_SECOND + (idx * tileW) / pxPerSec;
           const nearestSecond = Math.round(sourceTimeSec / intervalSeconds) * intervalSeconds;
           const roundedTime = Math.round(nearestSecond);
           if (roundedTime >= 0 && roundedTime <= duration.value && !addedTimes.has(roundedTime)) {
@@ -287,10 +288,10 @@ export function useTimelineClipThumbnails(options: UseTimelineClipThumbnailsOpti
       return times.sort((a, b) => a - b);
     }
 
-    const sourceStartSec = Math.max(0, sourceStartUs / 1_000_000 + visibleStartLocalPx / pxPerSec);
+    const sourceStartSec = Math.max(0, sourceStartUs / TICKS_PER_SECOND + visibleStartLocalPx / pxPerSec);
     const sourceEndSec = Math.min(
       duration.value,
-      sourceStartUs / 1_000_000 + visibleEndLocalPx / pxPerSec,
+      sourceStartUs / TICKS_PER_SECOND + visibleEndLocalPx / pxPerSec,
     );
 
     const step = thumbnailGridStepSeconds.value;

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { TICKS_PER_SECOND } from '~/utils/time';
 import { createDevLogger } from '~/utils/dev-logger';
 
 import { computed, ref, watch } from 'vue';
@@ -69,7 +70,7 @@ watch(
 );
 
 const currentTimeLabel = computed(() => {
-  return formatDurationSeconds(timelineStore.currentTime / 1e6);
+  return formatDurationSeconds(timelineStore.currentTime / TICKS_PER_SECOND);
 });
 
 const isAdding = ref(false);

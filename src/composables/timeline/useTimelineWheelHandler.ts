@@ -1,3 +1,4 @@
+import { TICKS_PER_SECOND } from '~/utils/time';
 import { computed, type Ref } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useEventListener } from '@vueuse/core';
@@ -166,7 +167,7 @@ export function useTimelineWheelHandler({
       if (zoomStep < 0 && durationUs > 0 && viewportWidth > 0) {
         const minCursorZoom = Math.min(
           110,
-          Math.max(0, pxPerSecondToZoom(viewportWidth / (durationUs / 1e6))),
+          Math.max(0, pxPerSecondToZoom(viewportWidth / (durationUs / TICKS_PER_SECOND))),
         );
 
         if (prevZoom <= minCursorZoom) return;
@@ -222,7 +223,7 @@ export function useTimelineWheelHandler({
 
     if (action === 'seek_frame') {
       e.preventDefault();
-      const frameDurationUs = 1_000_000 / fps.value;
+      const frameDurationUs = TICKS_PER_SECOND / fps.value;
       timelineStore.setCurrentTimeUs(
         Math.max(0, Math.round(timelineStore.currentTime + (delta > 0 ? 1 : -1) * frameDurationUs)),
       );
@@ -232,7 +233,7 @@ export function useTimelineWheelHandler({
     if (action === 'seek_second') {
       e.preventDefault();
       timelineStore.setCurrentTimeUs(
-        Math.max(0, Math.round(timelineStore.currentTime + (delta > 0 ? 1 : -1) * 1_000_000)),
+        Math.max(0, Math.round(timelineStore.currentTime + (delta > 0 ? 1 : -1) * TICKS_PER_SECOND)),
       );
       return;
     }

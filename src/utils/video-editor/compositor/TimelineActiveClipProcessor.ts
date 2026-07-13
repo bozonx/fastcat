@@ -1,3 +1,4 @@
+import { TICKS_PER_SECOND } from '~/utils/time';
 import { createDevLogger } from '~/utils/dev-logger';
 import { toPixiBlendMode, type CompositorClip } from './types';
 import {
@@ -85,7 +86,7 @@ export class TimelineActiveClipProcessor {
             frameRate: state.frameRate,
           });
 
-          let sampleTimeS = sampleUs / 1_000_000;
+          let sampleTimeS = sampleUs / TICKS_PER_SECOND;
           if (!Number.isFinite(sampleTimeS) || Number.isNaN(sampleTimeS)) sampleTimeS = 0;
 
           const mockClip = {
@@ -177,14 +178,14 @@ export class TimelineActiveClipProcessor {
       const freezeUs = clip.freezeFrameSourceUs;
       let sampleTimeS =
         typeof freezeUs === 'number'
-          ? Math.max(0, freezeUs) / 1_000_000
+          ? Math.max(0, freezeUs) / TICKS_PER_SECOND
           : resolveClipSourceTimeUs({
               localTimeUs,
               sourceStartUs: clip.sourceStartUs,
               sourceRangeDurationUs: clip.sourceRangeDurationUs,
               speed,
               frameRate: clip.frameRate,
-            }) / 1_000_000;
+            }) / TICKS_PER_SECOND;
 
       if (!Number.isFinite(sampleTimeS) || Number.isNaN(sampleTimeS)) {
         sampleTimeS = 0;

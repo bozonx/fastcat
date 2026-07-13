@@ -1,3 +1,4 @@
+import { TICKS_PER_SECOND } from '~/utils/time';
 import { createDevLogger } from '~/utils/dev-logger';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 
@@ -486,8 +487,8 @@ export class WebAudioEngine implements IAudioEngine {
     const sourceKey = clip.sourcePath;
     if (!sourceKey) return [];
 
-    const startOffsetS = clip.sourceStartUs / 1_000_000;
-    const durationS = clip.sourceRangeDurationUs / 1_000_000;
+    const startOffsetS = clip.sourceStartUs / TICKS_PER_SECOND;
+    const durationS = clip.sourceRangeDurationUs / TICKS_PER_SECOND;
 
     return this.chunkDecoder.getForRange({
       sourceKey,
@@ -720,8 +721,8 @@ export class WebAudioEngine implements IAudioEngine {
       if (this.scheduler.hasScheduledClip(clip.id)) continue;
       if (this.schedulingClipIds.has(clip.id)) continue;
 
-      const clipStartS = clip.startUs / 1_000_000;
-      const clipEndS = clipStartS + clip.durationUs / 1_000_000;
+      const clipStartS = clip.startUs / TICKS_PER_SECOND;
+      const clipEndS = clipStartS + clip.durationUs / TICKS_PER_SECOND;
 
       if (clipStartS <= endS && clipEndS >= currentS) {
         const generation = this.scheduleGeneration;
@@ -768,14 +769,14 @@ export class WebAudioEngine implements IAudioEngine {
   private async prepareForPlayback(timeUs: number): Promise<void> {
     if (!this.ctx) return;
 
-    const timeS = timeUs / 1_000_000;
+    const timeS = timeUs / TICKS_PER_SECOND;
     const LOOKAHEAD_S = 0.5;
     const windowEndS = timeS + LOOKAHEAD_S;
 
     const activeClips = this.currentClips.filter((clip) => {
       if (isReversedClip(clip)) return false; // Reverse audio muted in preview — never decode it.
-      const startS = clip.startUs / 1_000_000;
-      const endS = startS + clip.durationUs / 1_000_000;
+      const startS = clip.startUs / TICKS_PER_SECOND;
+      const endS = startS + clip.durationUs / TICKS_PER_SECOND;
       return endS > timeS && startS <= windowEndS;
     });
 
@@ -785,13 +786,13 @@ export class WebAudioEngine implements IAudioEngine {
       const sourceKey = clip.sourcePath;
       if (!sourceKey) return;
 
-      const clipStartS = clip.startUs / 1_000_000;
+      const clipStartS = clip.startUs / TICKS_PER_SECOND;
       const clipLocalS = Math.max(0, timeS - clipStartS);
       const clipSpeed =
         typeof clip.speed === 'number' && Number.isFinite(clip.speed) && clip.speed !== 0
           ? Math.min(10, Math.abs(clip.speed))
           : 1;
-      const sourceStartS = clip.sourceStartUs / 1_000_000;
+      const sourceStartS = clip.sourceStartUs / TICKS_PER_SECOND;
 
       const sourceTimeS = sourceStartS + clipLocalS * clipSpeed;
       const sourceEndS = sourceTimeS + LOOKAHEAD_S * clipSpeed;
@@ -844,15 +845,15 @@ export class WebAudioEngine implements IAudioEngine {
 
     this.stopScrubPreview();
 
-    const previewStartS = normalizedFromUs / 1_000_000;
-    const previewEndS = normalizedToUs / 1_000_000;
-    const maxPlaybackDurationS = previewDurationUs / 1_000_000;
+    const previewStartS = normalizedFromUs / TICKS_PER_SECOND;
+    const previewEndS = normalizedToUs / TICKS_PER_SECOND;
+    const maxPlaybackDurationS = previewDurationUs / TICKS_PER_SECOND;
 
     const previewClips = this.currentClips.filter((clip) => {
       if (isReversedClip(clip)) return false; // Reverse audio muted in preview
 
-      const clipStartS = clip.startUs / 1_000_000;
-      const clipEndS = clipStartS + clip.durationUs / 1_000_000;
+      const clipStartS = clip.startUs / TICKS_PER_SECOND;
+      const clipEndS = clipStartS + clip.durationUs / TICKS_PER_SECOND;
 
       return clipEndS > previewStartS && clipStartS < previewEndS;
     });
@@ -1015,7 +1016,7 @@ export class WebAudioEngine implements IAudioEngine {
 
   getCurrentTimeUs(): number {
     const s = this.getCurrentTimeS();
-    return Math.round(s * 1_000_000);
+    return Math.round(s * TICKS_PER_SECOND);
   }
 
   private getTrackClipsCache(): Map<string, AudioEngineClip[]> {
@@ -1055,8 +1056,8 @@ export class WebAudioEngine implements IAudioEngine {
     const sourceKey = clip.sourcePath;
     if (!sourceKey) return false;
 
-    const clipStartS = clip.startUs / 1_000_000;
-    const clipDurationS = clip.durationUs / 1_000_000;
+    const clipStartS = clip.startUs / TICKS_PER_SECOND;
+    const clipDurationS = clip.durationUs / TICKS_PER_SECOND;
     const clipEndS = clipStartS + clipDurationS;
     const currentTimeS = this.getCurrentTimeS();
     if (clipEndS <= currentTimeS) return false;

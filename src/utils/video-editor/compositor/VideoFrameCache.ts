@@ -1,3 +1,4 @@
+import { TICKS_PER_SECOND } from '~/utils/time';
 export interface CachedVideoFrameEntry {
   key: string;
   clipId: string;
@@ -232,7 +233,7 @@ export function computeFrameIndex(clip: VideoFrameCacheClipLike, sampleTimeS: nu
       : 0;
   const frameRate = resolveClipFrameRate(clip);
   if (frameRate === null) {
-    return Math.max(0, Math.round(safeTimeS * 1_000_000));
+    return Math.max(0, Math.round(safeTimeS * TICKS_PER_SECOND));
   }
   const relativeTimeS = Math.max(0, safeTimeS - originS);
   return Math.max(0, Math.floor(relativeTimeS * frameRate + 1e-6));

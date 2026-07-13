@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { TICKS_PER_SECOND } from '~/utils/time';
 import { computed, ref, watch } from 'vue';
 import type { TimelineMarker } from '~/timeline/types';
 import { formatTimecode, formatHms, formatMsOrHms } from '~/utils/time';
@@ -161,9 +162,9 @@ const exportText = computed(() => {
   if (exportFormat.value === 'audacity') {
     return markers
       .map((m) => {
-        const startSec = (m.timeUs / 1_000_000).toFixed(6);
+        const startSec = (m.timeUs / TICKS_PER_SECOND).toFixed(6);
         const endUs = m.durationUs ? m.timeUs + m.durationUs : m.timeUs;
-        const endSec = (endUs / 1_000_000).toFixed(6);
+        const endSec = (endUs / TICKS_PER_SECOND).toFixed(6);
         return `${startSec}\t${endSec}\t${m.text || ''}`;
       })
       .join('\n');

@@ -1,3 +1,4 @@
+import { TICKS_PER_SECOND } from '~/utils/time';
 import type { TimelineTrack, TimelineClipItem } from '~/timeline/types';
 import {
   getClipHeadTimelineHandleUs,
@@ -22,8 +23,8 @@ export function validateTransitionIn(
   const mode = tr.mode ?? DEFAULT_TRANSITION_MODE;
   if (mode === 'background' || mode === 'transparent') return null;
 
-  const needS = (tr.durationUs / 1e6).toFixed(2);
-  const clipDurS = (item.timelineRange.durationUs / 1e6).toFixed(2);
+  const needS = (tr.durationUs / TICKS_PER_SECOND).toFixed(2);
+  const clipDurS = (item.timelineRange.durationUs / TICKS_PER_SECOND).toFixed(2);
 
   if (item.timelineRange.durationUs < tr.durationUs) {
     return {
@@ -44,7 +45,7 @@ export function validateTransitionIn(
     if (gapUs > 1_000) {
       return {
         key: 'fastcat.timeline.transition.errorGapBetweenClips',
-        params: { gapSeconds: (gapUs / 1e6).toFixed(2) },
+        params: { gapSeconds: (gapUs / TICKS_PER_SECOND).toFixed(2) },
       };
     }
 
@@ -54,7 +55,7 @@ export function validateTransitionIn(
         key: 'fastcat.timeline.transition.errorPrevHandleTooShort',
         params: {
           needSeconds: needS,
-          haveSeconds: Math.max(0, prevTailHandleUs / 1e6).toFixed(2),
+          haveSeconds: Math.max(0, prevTailHandleUs / TICKS_PER_SECOND).toFixed(2),
         },
       };
     }
@@ -73,8 +74,8 @@ export function validateTransitionOut(
   const mode = tr.mode ?? DEFAULT_TRANSITION_MODE;
   if (mode === 'background' || mode === 'transparent') return null;
 
-  const clipDurS = (item.timelineRange.durationUs / 1e6).toFixed(2);
-  const needS = (tr.durationUs / 1e6).toFixed(2);
+  const clipDurS = (item.timelineRange.durationUs / TICKS_PER_SECOND).toFixed(2);
+  const needS = (tr.durationUs / TICKS_PER_SECOND).toFixed(2);
 
   if (item.timelineRange.durationUs < tr.durationUs) {
     return {
@@ -95,7 +96,7 @@ export function validateTransitionOut(
     if (gapUs > 1_000) {
       return {
         key: 'fastcat.timeline.transition.errorGapBetweenClips',
-        params: { gapSeconds: (gapUs / 1e6).toFixed(2) },
+        params: { gapSeconds: (gapUs / TICKS_PER_SECOND).toFixed(2) },
       };
     }
 
@@ -105,7 +106,7 @@ export function validateTransitionOut(
         key: 'fastcat.timeline.transition.errorNextHandleTooShort',
         params: {
           needSeconds: needS,
-          haveSeconds: Math.max(0, nextHeadHandleUs / 1e6).toFixed(2),
+          haveSeconds: Math.max(0, nextHeadHandleUs / TICKS_PER_SECOND).toFixed(2),
         },
       };
     }

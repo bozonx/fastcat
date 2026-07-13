@@ -5,7 +5,7 @@ import { useBlurOnPointerDownOutside } from '~/composables/useBlurOnPointerDownO
 import { isLayer1Active } from '~/utils/hotkeys/layerUtils';
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue';
 
-import { formatTimecode } from '~/utils/time';
+import { formatTimecode, parseTimecodeToTicks, TICKS_PER_SECOND } from '~/utils/time';
 
 const props = withDefaults(
   defineProps<{
@@ -58,43 +58,7 @@ function clampValue(value: number): number {
 
 // Parse HH:MM:SS:FF or MM:SS:FF or SS:FF or just SS to microseconds
 function parseTimecode(tc: string, fpsValue: number): number {
-  const trimmed = tc.trim();
-  if (!trimmed) return NaN;
-
-  const isNegative = trimmed.startsWith('-');
-  const clean = trimmed.replace(/^-/, '');
-
-  if (!/^[0-9:]+$/.test(clean)) return NaN;
-
-  const parts = clean.split(':').map((p) => (p === '' ? 0 : Number(p)));
-
-  let hh = 0;
-  let mm = 0;
-  let ss = 0;
-  let ff = 0;
-
-  if (parts.length === 4) {
-    hh = parts[0] ?? 0;
-    mm = parts[1] ?? 0;
-    ss = parts[2] ?? 0;
-    ff = parts[3] ?? 0;
-  } else if (parts.length === 3) {
-    mm = parts[0] ?? 0;
-    ss = parts[1] ?? 0;
-    ff = parts[2] ?? 0;
-  } else if (parts.length === 2) {
-    ss = parts[0] ?? 0;
-    ff = parts[1] ?? 0;
-  } else if (parts.length === 1) {
-    ss = parts[0] ?? 0;
-  } else {
-    return NaN;
-  }
-
-  const totalSeconds = hh * 3600 + mm * 60 + ss;
-  const totalFrames = totalSeconds * fpsValue + ff;
-  const result = Math.round((totalFrames / fpsValue) * 1_000_000);
-  return isNegative ? -result : result;
+  return parseTimecodeToTicks({ timecode: tc, fps: fpsValue }) ?? NaN;
 }
 
 watch(
@@ -174,8 +138,8 @@ function stepValue(direction: number, isFrame: boolean) {
   const currentUs = isFocused.value ? parseTimecode(localValue.value, fps.value) : props.modelValue;
   const validUs = isNaN(currentUs) ? props.modelValue : currentUs;
 
-  const frameUs = 1_000_000 / fps.value;
-  const stepUs = isFrame ? frameUs : 1_000_000; // frame or 1 second
+  const frameUs = TICKS_PER_SECOND / fps.value;
+  const stepUs = isFrame ? frameUs : TICKS_PER_SECOND; // frame or 1 second
 
   let newUs = validUs + direction * stepUs;
   newUs = clampValue(newUs);

@@ -1,3 +1,4 @@
+import { TICKS_PER_SECOND } from '~/utils/time';
 import { onUnmounted, ref, type Ref, computed } from 'vue';
 import { pxToDeltaUs, pickBestSnapCandidateUs, zoomToPxPerSecond } from '~/utils/timeline/geometry';
 import { quantizeTimeUsToFrames } from '~/timeline/commands/utils';
@@ -133,7 +134,7 @@ export function useTimelineRulerMarkerDrag(options: UseTimelineRulerMarkerDragOp
         if (getIsSnappingEnabled() && options.computeSnapTargets && options.snapThresholdPx) {
           const endUs = leadState.timeUs + newDurationUs;
           const thresholdUs = Math.round(
-            (options.snapThresholdPx.value / zoomToPxPerSecond(currentZoom)) * 1e6,
+            (options.snapThresholdPx.value / zoomToPxPerSecond(currentZoom)) * TICKS_PER_SECOND,
           );
           const targets = options.computeSnapTargets(leadId ?? undefined);
           const snap = pickBestSnapCandidateUs({ rawUs: endUs, thresholdUs, targetsUs: targets });
@@ -153,7 +154,7 @@ export function useTimelineRulerMarkerDrag(options: UseTimelineRulerMarkerDragOp
           options.snapThresholdPx
         ) {
           const thresholdUs = Math.round(
-            (options.snapThresholdPx.value / zoomToPxPerSecond(currentZoom)) * 1e6,
+            (options.snapThresholdPx.value / zoomToPxPerSecond(currentZoom)) * TICKS_PER_SECOND,
           );
           const targets = options.computeSnapTargets(leadId ?? undefined);
           const snap = pickBestSnapCandidateUs({ rawUs: newUs, thresholdUs, targetsUs: targets });

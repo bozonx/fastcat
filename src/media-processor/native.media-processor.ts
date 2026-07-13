@@ -1,3 +1,4 @@
+import { TICKS_PER_SECOND } from '~/utils/time';
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { getTimelineFormat, resolveEffectiveTimelineFormat } from '~/timeline/format';
@@ -82,7 +83,7 @@ export function createNativeMediaProcessor(): IMediaProcessor {
       const { width, height } = resolveTimelineFrameDimensions(scene, options);
       return await nativeRenderTimelineFrameWebp({
         scene,
-        timeSec: options.timeUs / 1_000_000,
+        timeSec: options.timeUs / TICKS_PER_SECOND,
         width,
         height,
         quality: options.quality ?? 0.8,

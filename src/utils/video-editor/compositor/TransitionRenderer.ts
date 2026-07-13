@@ -1,4 +1,5 @@
 import { createDevLogger } from '~/utils/dev-logger';
+import { TICKS_PER_SECOND } from '~/utils/time';
 import { compositorPerfStats } from './CompositorPerfStats';
 import { ImageSource, Sprite, Texture, type Application, type RenderTexture } from 'pixi.js';
 import {
@@ -175,7 +176,7 @@ export class TransitionRenderer {
         >) ?? {};
       const spec = manifest.toTransitionSpec(
         normalizedParams,
-        (state.transition.durationUs ?? 0) / 1_000_000,
+        (state.transition.durationUs ?? 0) / TICKS_PER_SECOND,
         {
           isPlaying: true,
           previewBlurQuality: params.previewEffectQuality,
@@ -397,7 +398,7 @@ export class TransitionRenderer {
     try {
       sample = await params.getVideoSampleForClip({
         clip,
-        sampleTimeS: sampleUs / 1_000_000,
+        sampleTimeS: sampleUs / TICKS_PER_SECOND,
         timelineTimeUs: params.timelineTimeUs,
         abortSignal: abortController.signal,
       });

@@ -1,3 +1,4 @@
+import { TICKS_PER_SECOND } from '~/utils/time';
 import { createDevLogger } from '~/utils/dev-logger';
 const log = createDevLogger('AudioScheduler');
 export interface AudioSchedulerOptions {
@@ -60,7 +61,7 @@ export class AudioScheduler {
     }
     this.isPlaying = true;
     this.globalSpeed = speed;
-    this.baseTimeS = timeUs / 1_000_000;
+    this.baseTimeS = timeUs / TICKS_PER_SECOND;
     this.scheduledClipIds.clear();
 
     const ctx = this.getContext();
@@ -139,7 +140,7 @@ export class AudioScheduler {
 
     this.onStopNodes({ fadeOutS: TRANSITION_FADE_OUT_S });
     this.scheduledClipIds.clear();
-    this.baseTimeS = timeUs / 1_000_000;
+    this.baseTimeS = timeUs / TICKS_PER_SECOND;
 
     const ctx = this.getContext();
     if (!ctx) {
@@ -176,7 +177,7 @@ export class AudioScheduler {
    */
   syncTime(timeUs: number) {
     if (!this.isPlaying) return;
-    const timeS = timeUs / 1_000_000;
+    const timeS = timeUs / TICKS_PER_SECOND;
     const ctx = this.getContext();
     const nowS = ctx ? ctx.currentTime : this.wallClockS();
     this.baseTimeS = timeS;
@@ -197,7 +198,7 @@ export class AudioScheduler {
   }
 
   getCurrentTimeUs(): number {
-    return Math.round(this.getCurrentTimeS() * 1_000_000);
+    return Math.round(this.getCurrentTimeS() * TICKS_PER_SECOND);
   }
 
   getGlobalSpeed() {

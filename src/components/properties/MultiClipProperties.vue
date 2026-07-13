@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { TICKS_PER_SECOND } from '~/utils/time';
 import { computed, toRef } from 'vue';
 import ClipTransitionsSection from '~/components/properties/clip/ClipTransitionsSection.vue';
 import ClipTransformSection from '~/components/properties/clip/ClipTransformSection.vue';
@@ -246,7 +247,7 @@ function handleBatchToggleTransition(edge: 'in' | 'out') {
     const safeDefaultDurationUs = Math.max(
       0,
       Math.round(
-        Number(workspaceStore.userSettings.timeline.defaultTransitionDurationUs ?? 1_000_000),
+        Number(workspaceStore.userSettings.timeline.defaultTransitionDurationUs ?? TICKS_PER_SECOND),
       ),
     );
 
@@ -282,7 +283,7 @@ function handleBatchUpdateTransitionDuration(edge: 'in' | 'out', durationSec: nu
   const doc = timelineStore.timelineDoc;
   if (!doc) return;
   const cmds: import('~/timeline/commands').TimelineCommand[] = [];
-  const durationUs = Math.round(durationSec * 1_000_000);
+  const durationUs = Math.round(durationSec * TICKS_PER_SECOND);
   for (const { track, clip } of visualClipRefs.value) {
     const current = edge === 'in' ? clip.transitionIn : clip.transitionOut;
     if (!current) continue;

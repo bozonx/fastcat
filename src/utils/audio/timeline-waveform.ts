@@ -1,3 +1,4 @@
+import { TICKS_PER_SECOND } from '~/utils/time';
 import type { TimelineClipItem, TimelineDocument } from '~/timeline/types';
 import { buildEffectiveAudioClipItems } from '~/utils/audio/track-bus';
 import { computeWaveformPeakLength, normalizeWaveformSpeed } from '~/utils/audio/waveform';
@@ -148,7 +149,7 @@ export async function buildTimelinePeaks(
       }
 
       visiting.add(path);
-      const nestedDurationS = sourceDurationUs / 1_000_000;
+      const nestedDurationS = sourceDurationUs / TICKS_PER_SECOND;
       const nestedMaxLength = computeWaveformPeakLength(nestedDurationS);
 
       sourcePeaks = await buildTimelinePeaks({
@@ -170,7 +171,7 @@ export async function buildTimelinePeaks(
       sourcePeaks = await ensureMediaPeaks({
         path,
         maxLength,
-        durationS: sourceDurationUs / 1_000_000,
+        durationS: sourceDurationUs / TICKS_PER_SECOND,
         shouldCancel,
       });
       if (shouldCancel?.()) return null;

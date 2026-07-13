@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { TICKS_PER_SECOND } from '~/utils/time';
 import { computed } from 'vue';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
@@ -96,12 +97,12 @@ const transitionOptions = computed(() =>
             {{ t('fastcat.timeline.transition.durationSec') }}
           </label>
           <UiWheelNumberInput
-            :model-value="props.transitionIn.durationUs / 1_000_000"
+            :model-value="props.transitionIn.durationUs / TICKS_PER_SECOND"
             :min="0.1"
             :max="
               Math.max(
                 0.1,
-                (props.clipDurationUs - (props.transitionOut?.durationUs ?? 0)) / 1_000_000,
+                (props.clipDurationUs - (props.transitionOut?.durationUs ?? 0)) / TICKS_PER_SECOND,
               )
             "
             :step="0.1"
@@ -171,12 +172,12 @@ const transitionOptions = computed(() =>
             {{ t('fastcat.timeline.transition.durationSec') }}
           </label>
           <UiWheelNumberInput
-            :model-value="props.transitionOut.durationUs / 1_000_000"
+            :model-value="props.transitionOut.durationUs / TICKS_PER_SECOND"
             :min="0.1"
             :max="
               Math.max(
                 0.1,
-                (props.clipDurationUs - (props.transitionIn?.durationUs ?? 0)) / 1_000_000,
+                (props.clipDurationUs - (props.transitionIn?.durationUs ?? 0)) / TICKS_PER_SECOND,
               )
             "
             :step="0.1"

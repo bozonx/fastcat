@@ -1,3 +1,4 @@
+import { TICKS_PER_SECOND } from '~/utils/time';
 import { createDevLogger } from '~/utils/dev-logger';
 import { withFileIoSlot } from '~/utils/io/io-governor';
 import type { AudioChunk, AudioEngineClip } from '~/utils/video-editor/audio-engine.types';
@@ -126,8 +127,8 @@ export class AudioChunkDecoder {
       if (!sourceKey) return;
       this.invalidateIfSourceHandleChanged(sourceKey, clip.fileHandle);
 
-      const startOffsetS = clip.sourceStartUs / 1_000_000;
-      const sourceEndS = startOffsetS + clip.sourceRangeDurationUs / 1_000_000;
+      const startOffsetS = clip.sourceStartUs / TICKS_PER_SECOND;
+      const sourceEndS = startOffsetS + clip.sourceRangeDurationUs / TICKS_PER_SECOND;
       const startChunkIndex = this.getChunkIndex(startOffsetS);
       const lastChunkIndex = this.getChunkIndex(Math.max(startOffsetS, sourceEndS - 1e-6));
 

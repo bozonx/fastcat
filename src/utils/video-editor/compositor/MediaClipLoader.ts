@@ -1,3 +1,4 @@
+import { TICKS_PER_SECOND } from '~/utils/time';
 import type { ImageSource } from 'pixi.js';
 import { safeDispose } from '../utils';
 import { governedBlobWorker } from '~/utils/io/governed-blob-worker';
@@ -112,7 +113,7 @@ export class MediaClipLoader {
       }
       const frameRate = Number(frameRateRaw);
       const sourceRotation = Number((track as { rotation?: unknown }).rotation);
-      const mediaDurationUs = Math.max(0, Math.round((await track.computeDuration()) * 1_000_000));
+      const mediaDurationUs = Math.max(0, Math.round((await track.computeDuration()) * TICKS_PER_SECOND));
       const maxSourceTailUs = Math.max(0, mediaDurationUs - sourceStartUs);
       // `sourceDurationUs` is the FULL duration of the source media, in the
       // absolute source-time domain. Consumers rely on that: transition handle

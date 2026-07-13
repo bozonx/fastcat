@@ -1,4 +1,5 @@
 import { createDevLogger } from '~/utils/dev-logger';
+import { TICKS_PER_SECOND } from '~/utils/time';
 import {
   DEFAULT_TRANSITION_CURVE,
   DEFAULT_TRANSITION_MODE,
@@ -237,7 +238,7 @@ export class FrameSampleOrchestrator {
           this.createSampleRequest({
             clip: prevClip,
             key: prevClip.itemId + '_shadow_end',
-            sampleTimeS: lastUs / 1_000_000,
+            sampleTimeS: lastUs / TICKS_PER_SECOND,
             timelineTimeUs: params.timeUs,
             monitorSyncMode: params.monitorSyncMode,
             createAbortController: params.createAbortController,
@@ -257,7 +258,7 @@ export class FrameSampleOrchestrator {
         this.createSampleRequest({
           clip: prevClip,
           key: prevClip.itemId + '_shadow_overrun',
-          sampleTimeS: Math.max(0, sampleUs / 1_000_000),
+          sampleTimeS: Math.max(0, sampleUs / TICKS_PER_SECOND),
           timelineTimeUs: params.timeUs,
           monitorSyncMode: params.monitorSyncMode,
           createAbortController: params.createAbortController,

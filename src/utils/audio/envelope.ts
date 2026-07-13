@@ -1,3 +1,4 @@
+import { TICKS_PER_SECOND } from '~/utils/time';
 import { clampNumber } from '~/utils/math';
 
 export const CLIP_AUDIO_GAIN_MAX = 2;
@@ -151,8 +152,8 @@ export function resolveEffectiveFadeDurationsSeconds(params: {
     defaultCurve: params.defaultAudioFadeCurve,
   });
 
-  let fadeInS = Math.min(clipDurationS, Math.max(0, fadeIn.durationUs / 1_000_000));
-  let fadeOutS = Math.min(clipDurationS, Math.max(0, fadeOut.durationUs / 1_000_000));
+  let fadeInS = Math.min(clipDurationS, Math.max(0, fadeIn.durationUs / TICKS_PER_SECOND));
+  let fadeOutS = Math.min(clipDurationS, Math.max(0, fadeOut.durationUs / TICKS_PER_SECOND));
 
   if (fadeInS + fadeOutS > clipDurationS && clipDurationS > 0) {
     const ratio = clipDurationS / (fadeInS + fadeOutS);
@@ -180,8 +181,8 @@ export function computeFadeDurationsSeconds(params: {
   const fadeInUs = clampNumber(params.fadeInUs, 0, Number.MAX_SAFE_INTEGER) ?? 0;
   const fadeOutUs = clampNumber(params.fadeOutUs, 0, Number.MAX_SAFE_INTEGER) ?? 0;
 
-  const rawFadeInS = fadeInUs / 1_000_000;
-  const rawFadeOutS = fadeOutUs / 1_000_000;
+  const rawFadeInS = fadeInUs / TICKS_PER_SECOND;
+  const rawFadeOutS = fadeOutUs / TICKS_PER_SECOND;
 
   let fadeInS = Math.min(clipDurationS, Math.max(0, rawFadeInS));
   let fadeOutS = Math.min(clipDurationS, Math.max(0, rawFadeOutS));

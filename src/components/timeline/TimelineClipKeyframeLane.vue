@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { TICKS_PER_SECOND } from '~/utils/time';
 import { computed, inject, ref } from 'vue';
 import type { KeyframeEasing, TimelineClipItem } from '~/timeline/types';
 import type { TimelineContext } from './context';
@@ -73,7 +74,7 @@ function diamondLeftPx(tUs: number): number {
 }
 
 function formatSeconds(tUs: number): string {
-  return `${(tUs / 1_000_000).toFixed(2)}s`;
+  return `${(tUs / TICKS_PER_SECOND).toFixed(2)}s`;
 }
 
 function easingAt(tUs: number): KeyframeEasing {

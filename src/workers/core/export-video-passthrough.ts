@@ -1,3 +1,4 @@
+import { TICKS_PER_SECOND } from '~/utils/time';
 import { createDevLogger } from '~/utils/dev-logger';
 import type { WorkerVideoPayloadItem } from '~/types/worker-payload';
 import { getBunnyVideoCodec } from './utils';
@@ -340,9 +341,9 @@ export async function buildPassthroughVideoTrack(params: {
     }
 
     const packetSink = makePacketSink(videoTrack);
-    const sourceStartS = Math.max(0, Number(clip.sourceRange?.startUs ?? 0) / 1_000_000);
+    const sourceStartS = Math.max(0, Number(clip.sourceRange?.startUs ?? 0) / TICKS_PER_SECOND);
     const requestedEndS =
-      sourceStartS + Math.max(0, Number(clip.sourceRange?.durationUs ?? 0) / 1_000_000);
+      sourceStartS + Math.max(0, Number(clip.sourceRange?.durationUs ?? 0) / TICKS_PER_SECOND);
     const halfFrameS = 1 / (2 * requestedFps);
 
     // Head trim must land on a keyframe: the copy has to start at one, and

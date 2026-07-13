@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { TICKS_PER_SECOND } from '~/utils/time';
 import { computed, provide, ref, watch } from 'vue';
 import { useUiStore } from '~/stores/ui.store';
 import { useTimelineStore } from '~/stores/timeline.store';
@@ -125,7 +126,7 @@ async function handleSelectFile(entry: FsEntry) {
     const durationS = Number(metadata?.duration);
     const newSourceDurationUs =
       metadata && Number.isFinite(durationS) && durationS > 0
-        ? Math.floor(durationS * 1_000_000)
+        ? Math.floor(durationS * TICKS_PER_SECOND)
         : 0;
 
     const properties =

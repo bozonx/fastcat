@@ -1,3 +1,4 @@
+import { TICKS_PER_SECOND } from '~/utils/time';
 import { computed, ref, type Ref } from 'vue';
 import type {
   FixedAnimatableParamPath,
@@ -110,13 +111,13 @@ export function useClipAudio(options: UseClipAudioOptions) {
   const audioFadeInSec = computed(() => {
     const v = options.clip.value.audioFadeInUs;
     const safe = typeof v === 'number' && Number.isFinite(v) ? v : 0;
-    return Math.max(0, safe / 1_000_000);
+    return Math.max(0, safe / TICKS_PER_SECOND);
   });
 
   const audioFadeOutSec = computed(() => {
     const v = options.clip.value.audioFadeOutUs;
     const safe = typeof v === 'number' && Number.isFinite(v) ? v : 0;
-    return Math.max(0, safe / 1_000_000);
+    return Math.max(0, safe / TICKS_PER_SECOND);
   });
 
   const audioFadeInMaxSec = computed(() => {
@@ -124,7 +125,7 @@ export function useClipAudio(options: UseClipAudioOptions) {
     const oppSafe = typeof oppUs === 'number' && Number.isFinite(oppUs) ? oppUs : 0;
     return Math.max(
       0,
-      (Number(options.clip.value.timelineRange?.durationUs ?? 0) - oppSafe) / 1_000_000,
+      (Number(options.clip.value.timelineRange?.durationUs ?? 0) - oppSafe) / TICKS_PER_SECOND,
     );
   });
 
@@ -133,7 +134,7 @@ export function useClipAudio(options: UseClipAudioOptions) {
     const oppSafe = typeof oppUs === 'number' && Number.isFinite(oppUs) ? oppUs : 0;
     return Math.max(
       0,
-      (Number(options.clip.value.timelineRange?.durationUs ?? 0) - oppSafe) / 1_000_000,
+      (Number(options.clip.value.timelineRange?.durationUs ?? 0) - oppSafe) / TICKS_PER_SECOND,
     );
   });
 
@@ -147,12 +148,12 @@ export function useClipAudio(options: UseClipAudioOptions) {
 
   function updateAudioFadeInSec(val: number) {
     const safeSec = clampNumber(val, 0, audioFadeInMaxSec.value);
-    options.updateAudio({ audioFadeInUs: Math.round(safeSec * 1_000_000) });
+    options.updateAudio({ audioFadeInUs: Math.round(safeSec * TICKS_PER_SECOND) });
   }
 
   function updateAudioFadeOutSec(val: number) {
     const safeSec = clampNumber(val, 0, audioFadeOutMaxSec.value);
-    options.updateAudio({ audioFadeOutUs: Math.round(safeSec * 1_000_000) });
+    options.updateAudio({ audioFadeOutUs: Math.round(safeSec * TICKS_PER_SECOND) });
   }
 
   function updateAudioFadeInCurve(val: unknown) {

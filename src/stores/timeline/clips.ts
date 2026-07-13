@@ -10,6 +10,7 @@ import type {
 import type { TimelineCommand } from '~/timeline/commands';
 import {
   getDocFps,
+  frameToUs,
   nextItemId,
   nextItemIds,
   quantizeTimeUsToFrames,
@@ -1194,7 +1195,7 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
     if (!doc || deps.selectedItemIds.value.length === 0) return;
 
     const fps = getDocFps(doc);
-    const frameUs = 1_000_000 / fps;
+    const frameUs = frameToUs(1, fps);
     const deltaUs = deltaFrames * frameUs;
 
     const moves: { fromTrackId: string; toTrackId: string; itemId: string; startUs: number }[] = [];
