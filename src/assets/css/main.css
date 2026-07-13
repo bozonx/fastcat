@@ -527,6 +527,73 @@ select {
 }
 
 
+/* Select Menu styling to prevent border/background loss on focus/hover */
+.ui-select-menu button,
+button.ui-select-menu,
+.ui-select-menu,
+button[role="combobox"],
+button.ui-select-trigger,
+.ui-select-menu-trigger {
+  border: 1px solid var(--ui-border) !important;
+  background-color: var(--ui-bg) !important;
+  color: var(--ui-text) !important;
+}
+
+/* Hover state */
+.ui-select-menu button:hover,
+button.ui-select-menu:hover,
+.ui-select-menu:hover,
+button[role="combobox"]:hover,
+button.ui-select-trigger:hover {
+  background-color: var(--ui-bg-hover) !important;
+  border-color: var(--ui-border) !important;
+}
+
+/* Focus and Open states */
+.ui-select-menu button:focus,
+.ui-select-menu button:focus-visible,
+.ui-select-menu button[data-state="open"],
+button.ui-select-menu:focus,
+button.ui-select-menu:focus-visible,
+button.ui-select-menu[data-state="open"],
+.ui-select-menu:focus,
+.ui-select-menu:focus-visible,
+.ui-select-menu[data-state="open"],
+button[role="combobox"]:focus,
+button[role="combobox"]:focus-visible,
+button[role="combobox"][data-state="open"],
+button.ui-select-trigger:focus,
+button.ui-select-trigger:focus-visible,
+button.ui-select-trigger[data-state="open"] {
+  border-color: var(--color-primary-500) !important;
+  outline: none !important;
+  box-shadow: 0 0 0 1px var(--color-primary-500) !important;
+  background-color: var(--ui-bg) !important;
+}
+
+/* Hover state when focused/open */
+.ui-select-menu button:focus:hover,
+.ui-select-menu button:focus-visible:hover,
+.ui-select-menu button[data-state="open"]:hover,
+button.ui-select-menu:focus:hover,
+button.ui-select-menu:focus-visible:hover,
+button.ui-select-menu[data-state="open"]:hover,
+.ui-select-menu:focus:hover,
+.ui-select-menu:focus-visible:hover,
+.ui-select-menu[data-state="open"]:hover,
+button[role="combobox"]:focus:hover,
+button[role="combobox"]:focus-visible:hover,
+button[role="combobox"][data-state="open"]:hover,
+button.ui-select-trigger:focus:hover,
+button.ui-select-trigger:focus-visible:hover,
+button.ui-select-trigger[data-state="open"]:hover {
+  border-color: var(--color-primary-500) !important;
+  box-shadow: 0 0 0 1px var(--color-primary-500) !important;
+  background-color: var(--ui-bg-hover) !important;
+}
+
+
+
 /* ==========================================================================
    Mobile Layout Form Overrides (.is-mobile-layout)
    ========================================================================== */
