@@ -490,8 +490,13 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
       );
 
       // Render at current time without clamping — the dispatchers already
-      // keep duration including disabled clips.
-      scheduleRender(getRenderTimeForLayoutUpdate());
+      // keep duration including disabled clips. Flag it `prewarm` so the load
+      // render also establishes the decode-ahead streams at the playhead: the
+      // first play then starts from a warm cache instead of paying a cold
+      // from-keyframe decode per frame for the first ~1-2s (the startup transient
+      // seen in CompositorPerf as a low-fps, ~60%-hit opening window). Mirrors the
+      // paused-seek prewarm; the wall-clock gate lets it fire on a fresh load.
+      scheduleRender(getRenderTimeForLayoutUpdate(), { prewarm: true });
     } catch (e: unknown) {
       const err = e instanceof Error ? e : null;
       if (err?.name === 'AbortError' && requestId !== buildRequestId) {
