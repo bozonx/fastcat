@@ -10,6 +10,7 @@ import {
   parseWorkerVideoPayload,
   type WorkerVideoPayloadItem,
 } from '~/composables/timeline/export/types';
+import { MAX_SAFE_TICKS } from '~/utils/time';
 
 describe('clip-schemas', () => {
   it('accepts valid enum values and rejects invalid ones', () => {
@@ -43,6 +44,9 @@ describe('clip-schemas', () => {
 
   it('validates transition shape', () => {
     expect(() => ClipTransitionSchema.parse({ type: 'dissolve', durationUs: -1 })).toThrow();
+    expect(() =>
+      ClipTransitionSchema.parse({ type: 'dissolve', durationUs: MAX_SAFE_TICKS + 1 }),
+    ).toThrow();
     expect(ClipTransitionSchema.parse({ type: 'dissolve', durationUs: 100_000 })).toMatchObject({
       durationUs: 100_000,
     });
@@ -59,6 +63,18 @@ describe('clip-schemas', () => {
       sourceRange: { startUs: 0, durationUs: 1000 },
     };
     expect(() => parseWorkerVideoPayload([badClip])).toThrow();
+  });
+
+  it('rejects tick values outside the JavaScript exact-integer range', () => {
+    const clip = {
+      kind: 'clip',
+      clipType: 'media',
+      id: 'c1',
+      layer: 0,
+      timelineRange: { startUs: 0, durationUs: MAX_SAFE_TICKS + 1 },
+      sourceRange: { startUs: 0, durationUs: 1000 },
+    };
+    expect(() => parseWorkerVideoPayload([clip])).toThrow();
   });
 
   it('accepts a fully-populated clip at the worker payload boundary', () => {

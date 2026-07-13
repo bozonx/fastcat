@@ -24,24 +24,25 @@ import {
   fromOtioColor,
   OtioValidationReport,
 } from '~/timeline/otio/utils';
+import { TICKS_PER_SECOND } from '~/utils/time';
 
 describe('toRationalTime', () => {
-  it('converts us to rational time with fps', () => {
-    const rt = toRationalTime(1_000_000, 30);
+  it('converts ticks to rational time with fps', () => {
+    const rt = toRationalTime(TICKS_PER_SECOND, 30);
     expect(rt.value).toBe(30);
     expect(rt.rate).toBe(30);
   });
 
-  it('converts us to rational time without fps', () => {
-    const rt = toRationalTime(500_000);
+  it('converts ticks to rational time without fps', () => {
+    const rt = toRationalTime(TICKS_PER_SECOND / 2);
     expect(rt.value).toBe(500_000);
     expect(rt.rate).toBe(1_000_000);
   });
 });
 
 describe('fromRationalTimeUs', () => {
-  it('converts rational time back to us', () => {
-    expect(fromRationalTimeUs({ value: 30, rate: 30 })).toBe(1_000_000);
+  it('converts rational time back to ticks', () => {
+    expect(fromRationalTimeUs({ value: 30, rate: 30 })).toBe(TICKS_PER_SECOND);
   });
 
   it('returns 0 for invalid input', () => {
@@ -52,7 +53,7 @@ describe('fromRationalTimeUs', () => {
 
 describe('toTimeRange', () => {
   it('converts timeline range to otio time range', () => {
-    const tr = toTimeRange({ startUs: 0, durationUs: 1_000_000 }, 30);
+    const tr = toTimeRange({ startUs: 0, durationUs: TICKS_PER_SECOND }, 30);
     expect(tr.start_time.value).toBe(0);
     expect(tr.duration.value).toBe(30);
   });
@@ -62,7 +63,7 @@ describe('fromTimeRange', () => {
   it('converts otio time range back to timeline range', () => {
     expect(
       fromTimeRange({ start_time: { value: 0, rate: 30 }, duration: { value: 30, rate: 30 } }),
-    ).toEqual({ startUs: 0, durationUs: 1_000_000 });
+    ).toEqual({ startUs: 0, durationUs: TICKS_PER_SECOND });
   });
 
   it('returns zero range for invalid input', () => {
@@ -104,12 +105,12 @@ describe('trackKindFromOtioKind', () => {
 
 describe('assertTimelineTimebase', () => {
   it('returns fps from valid object', () => {
-    expect(assertTimelineTimebase({ fps: 30 })).toEqual({ fps: 30 });
+    expect(assertTimelineTimebase({ fps: 30 })).toEqual({ num: 30, den: 1 });
   });
 
   it('returns fallback for invalid input', () => {
-    expect(assertTimelineTimebase(null)).toEqual({ fps: 25 });
-    expect(assertTimelineTimebase({ fps: -5 })).toEqual({ fps: 25 });
+    expect(assertTimelineTimebase(null)).toEqual({ num: 25, den: 1 });
+    expect(assertTimelineTimebase({ fps: -5 })).toEqual({ num: 25, den: 1 });
   });
 });
 

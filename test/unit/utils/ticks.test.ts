@@ -2,9 +2,11 @@
 import { describe, expect, it } from 'vitest';
 import {
   CANONICAL_TICKS_PER_SECOND,
+  MAX_SAFE_TICKS,
   STANDARD_AUDIO_SAMPLE_RATES,
   STANDARD_FRAME_RATES,
   TICKS_PER_SECOND,
+  TICKS_PER_MICROSECOND,
   formatTicksAsTimecode,
   framesToTicks,
   isTickRateFrameCompatible,
@@ -19,20 +21,25 @@ import {
 } from '~/utils/time/ticks';
 
 describe('tick conversions', () => {
-  it('keeps the legacy microsecond rate until the document migration', () => {
-    expect(TICKS_PER_SECOND).toBe(1_000_000);
-    expect(ticksToSeconds(500_000)).toBe(0.5);
-    expect(secondsToTicks({ seconds: 0.5 })).toBe(500_000);
-    expect(secondsToTicks({ seconds: -0.000_000_5, mode: 'floor' })).toBe(-1);
+  it('uses the canonical tick rate while retaining exact integer conversions', () => {
+    expect(TICKS_PER_SECOND).toBe(CANONICAL_TICKS_PER_SECOND);
+    expect(TICKS_PER_SECOND).toBe(254_016_000_000);
+    expect(ticksToSeconds(TICKS_PER_SECOND / 2)).toBe(0.5);
+    expect(secondsToTicks({ seconds: 0.5 })).toBe(TICKS_PER_SECOND / 2);
+    expect(secondsToTicks({ seconds: -0.000_000_5, mode: 'floor' })).toBe(
+      -TICKS_PER_MICROSECOND / 2,
+    );
   });
 
   it('quantizes frame conversions with the requested rounding mode', () => {
     const frameRate = { num: 30, den: 1 };
 
-    expect(ticksToFrames({ ticks: 1_000_001, frameRate, mode: 'floor' })).toBe(30);
-    expect(ticksToFrames({ ticks: 1_000_001, frameRate, mode: 'ceil' })).toBe(31);
-    expect(framesToTicks({ frames: 30, frameRate })).toBe(1_000_000);
-    expect(quantizeTicksToFrame({ ticks: 1_000_001, frameRate })).toBe(1_000_000);
+    expect(ticksToFrames({ ticks: TICKS_PER_SECOND + 1, frameRate, mode: 'floor' })).toBe(30);
+    expect(ticksToFrames({ ticks: TICKS_PER_SECOND + 1, frameRate, mode: 'ceil' })).toBe(31);
+    expect(framesToTicks({ frames: 30, frameRate })).toBe(TICKS_PER_SECOND);
+    expect(quantizeTicksToFrame({ ticks: TICKS_PER_SECOND + 1, frameRate })).toBe(
+      TICKS_PER_SECOND,
+    );
   });
 });
 
@@ -59,6 +66,11 @@ describe('canonical tick-rate compatibility', () => {
       }),
     ).toBe(8_475_667_200);
   });
+
+  it('keeps all supported canonical positions inside the JavaScript safe-integer range', () => {
+    expect(MAX_SAFE_TICKS).toBe(Number.MAX_SAFE_INTEGER);
+    expect(Math.floor(MAX_SAFE_TICKS / TICKS_PER_SECOND)).toBeGreaterThanOrEqual(35_000);
+  });
 });
 
 describe('frame-rate normalization', () => {
@@ -74,9 +86,13 @@ describe('frame-rate normalization', () => {
 
 describe('timecode conversion', () => {
   it('formats and parses supported timecode shapes', () => {
-    expect(formatTicksAsTimecode({ ticks: 1_000_000, fps: 30 })).toBe('00:00:01:00');
-    expect(parseTimecodeToTicks({ timecode: '01:02:03:04', fps: 30 })).toBe(3_723_133_333);
-    expect(parseTimecodeToTicks({ timecode: '03:04', fps: 30 })).toBe(3_133_333);
+    expect(formatTicksAsTimecode({ ticks: TICKS_PER_SECOND, fps: 30 })).toBe('00:00:01:00');
+    expect(parseTimecodeToTicks({ timecode: '01:02:03:04', fps: 30 })).toBe(
+      framesToTicks({ frames: 111_694, frameRate: { num: 30, den: 1 } }),
+    );
+    expect(parseTimecodeToTicks({ timecode: '03:04', fps: 30 })).toBe(
+      framesToTicks({ frames: 94, frameRate: { num: 30, den: 1 } }),
+    );
   });
 
   it('rejects malformed timecode', () => {

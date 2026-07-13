@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { MAX_SAFE_TICKS } from '~/utils/time';
 import type {
   ClipTransform,
   ClipTransition,
@@ -116,7 +117,7 @@ export const ClipTransformSchema: z.ZodType<ClipTransform> = z
  * forward-compatible track can't smuggle in an un-evaluatable path.
  */
 const KeyframeSchema = z.object({
-  tUs: z.number().finite().nonnegative(),
+  tUs: z.number().finite().nonnegative().max(MAX_SAFE_TICKS),
   value: z.number().finite(),
   easing: z.enum(['linear', 'ease', 'hold']),
 });
@@ -151,7 +152,7 @@ export const ClipAnimationsSchema: z.ZodType<ClipAnimations> = z
 export const ClipTransitionSchema: z.ZodType<ClipTransition> = z
   .object({
     type: z.string(),
-    durationUs: z.number().finite().nonnegative(),
+    durationUs: z.number().finite().nonnegative().max(MAX_SAFE_TICKS),
     mode: z.enum(['adjacent', 'background', 'transparent']).optional(),
     isOverridden: z.boolean().optional(),
     curve: z.enum(['linear', 'smooth', 'ease-in', 'ease-out']).optional(),

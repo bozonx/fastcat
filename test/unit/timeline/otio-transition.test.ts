@@ -2,6 +2,7 @@
 import { describe, it, expect } from 'vitest';
 import { serializeTimelineToOtio, parseTimelineFromOtio } from '~/timeline/otio-serializer';
 import type { TimelineDocument } from '~/timeline/types';
+import { TICKS_PER_SECOND } from '~/utils/time';
 
 function makeDoc(): TimelineDocument {
   return {
@@ -26,16 +27,16 @@ function makeDoc(): TimelineDocument {
             disabled: true,
             locked: true,
             source: { path: 'file.mp4' },
-            sourceDurationUs: 10_000_000,
-            timelineRange: { startUs: 0, durationUs: 5_000_000 },
-            sourceRange: { startUs: 0, durationUs: 5_000_000 },
+            sourceDurationUs: TICKS_PER_SECOND * 10,
+            timelineRange: { startUs: 0, durationUs: TICKS_PER_SECOND * 5 },
+            sourceRange: { startUs: 0, durationUs: TICKS_PER_SECOND * 5 },
             opacity: 0.5,
             blendMode: 'multiply',
-            transitionIn: { type: 'dissolve', durationUs: 300_000 },
-            transitionOut: { type: 'dissolve', durationUs: 500_000 },
+            transitionIn: { type: 'dissolve', durationUs: (TICKS_PER_SECOND * 3) / 10 },
+            transitionOut: { type: 'dissolve', durationUs: TICKS_PER_SECOND / 2 },
             audioGain: 1.25,
-            audioFadeInUs: 200_000,
-            audioFadeOutUs: 400_000,
+            audioFadeInUs: TICKS_PER_SECOND / 5,
+            audioFadeOutUs: (TICKS_PER_SECOND * 2) / 5,
           },
         ],
       },
@@ -45,8 +46,8 @@ function makeDoc(): TimelineDocument {
         docId: 'doc1',
         timebase: { fps: 30 },
         markers: [
-          { id: 'm1', timeUs: 1_000_000, text: 'Hello world' },
-          { id: 'm2', timeUs: 500_000, text: 'Second' },
+          { id: 'm1', timeUs: TICKS_PER_SECOND, text: 'Hello world' },
+          { id: 'm2', timeUs: TICKS_PER_SECOND / 2, text: 'Second' },
         ],
       },
     },
@@ -67,12 +68,12 @@ describe('timeline/otio-serializer: transitions', () => {
     const tIn = trackChildren[0];
     expect(tIn.transition_type).toBe('SMPTE_Dissolve');
     expect(tIn.metadata.fastcat.transition.type).toBe('dissolve');
-    expect(tIn.metadata.fastcat.transition.durationUs).toBe(300_000);
+    expect(tIn.metadata.fastcat.transition.durationUs).toBe((TICKS_PER_SECOND * 3) / 10);
     expect(tIn.metadata.fastcat.owner.edge).toBe('in');
 
     const tOut = trackChildren[2];
     expect(tOut.transition_type).toBe('SMPTE_Dissolve');
-    expect(tOut.metadata.fastcat.transition.durationUs).toBe(500_000);
+    expect(tOut.metadata.fastcat.transition.durationUs).toBe(TICKS_PER_SECOND / 2);
     expect(tOut.metadata.fastcat.owner.edge).toBe('out');
   });
 
@@ -95,17 +96,17 @@ describe('timeline/otio-serializer: transitions', () => {
     expect(clip.blendMode).toBe('multiply');
     expect(clip.transitionIn).toMatchObject({
       type: 'dissolve',
-      durationUs: 300_000,
+      durationUs: (TICKS_PER_SECOND * 3) / 10,
       curve: 'linear',
     });
     expect(clip.transitionOut).toMatchObject({
       type: 'dissolve',
-      durationUs: 500_000,
+      durationUs: TICKS_PER_SECOND / 2,
       curve: 'linear',
     });
     expect(clip.audioGain).toBe(1.25);
-    expect(clip.audioFadeInUs).toBe(200_000);
-    expect(clip.audioFadeOutUs).toBe(400_000);
+    expect(clip.audioFadeInUs).toBe(TICKS_PER_SECOND / 5);
+    expect(clip.audioFadeOutUs).toBe((TICKS_PER_SECOND * 2) / 5);
   });
 
   it('serializes markers as OTIO Marker.2 on Stack.markers (not in metadata)', () => {
@@ -136,10 +137,10 @@ describe('timeline/otio-serializer: transitions', () => {
     const markers = parsed.metadata?.fastcat?.markers as any[];
     expect(markers).toHaveLength(2);
     expect(markers[0].id).toBe('m2');
-    expect(markers[0].timeUs).toBe(500_000);
+    expect(markers[0].timeUs).toBe(TICKS_PER_SECOND / 2);
     expect(markers[0].text).toBe('Second');
     expect(markers[1].id).toBe('m1');
-    expect(markers[1].timeUs).toBe(1_000_000);
+    expect(markers[1].timeUs).toBe(TICKS_PER_SECOND);
   });
 
   it('parses legacy markers from Timeline.markers', () => {
@@ -254,7 +255,14 @@ describe('timeline/otio-serializer: transitions', () => {
           kind: 'video',
           name: 'Video 1',
           items: [],
-          markers: [{ id: 'tm1', timeUs: 300_000, durationUs: 100_000, text: 'Track mark' }],
+          markers: [
+            {
+              id: 'tm1',
+              timeUs: (TICKS_PER_SECOND * 3) / 10,
+              durationUs: TICKS_PER_SECOND / 10,
+              text: 'Track mark',
+            },
+          ],
         },
       ],
     };
@@ -269,7 +277,12 @@ describe('timeline/otio-serializer: transitions', () => {
     });
 
     expect(parsed.tracks[0]?.markers).toEqual([
-      { id: 'tm1', timeUs: 300_000, durationUs: 100_000, text: 'Track mark' },
+      {
+        id: 'tm1',
+        timeUs: (TICKS_PER_SECOND * 3) / 10,
+        durationUs: TICKS_PER_SECOND / 10,
+        text: 'Track mark',
+      },
     ]);
   });
 
@@ -488,7 +501,7 @@ describe('timeline/otio-serializer: transitions', () => {
     expect(clipA.transitionOut?.type).toBe('dissolve');
     expect(clipB.transitionIn?.type).toBe('dissolve');
 
-    const expectedDurationUs = Math.round((12 / 24) * 1_000_000);
+    const expectedDurationUs = TICKS_PER_SECOND / 2;
     expect(clipA.transitionOut?.durationUs).toBe(expectedDurationUs);
   });
 
@@ -665,10 +678,10 @@ describe('timeline/otio-serializer: transitions', () => {
     });
     const clip = parsed.tracks[0]?.items[0] as any;
 
-    // 240 frames at 24fps = 10 seconds = 10_000_000 us
-    expect(clip.sourceDurationUs).toBe(10_000_000);
+    // 240 frames at 24fps = 10 seconds.
+    expect(clip.sourceDurationUs).toBe(TICKS_PER_SECOND * 10);
     // source_range: 24 frames at 24fps = 1 second
-    expect(clip.sourceRange.durationUs).toBe(1_000_000);
+    expect(clip.sourceRange.durationUs).toBe(TICKS_PER_SECOND);
   });
 
   it('prefers ExternalReference available_range over duplicated fastcat source duration', () => {
@@ -724,7 +737,7 @@ describe('timeline/otio-serializer: transitions', () => {
     });
     const clip = parsed.tracks[0]?.items[0] as any;
 
-    expect(clip.sourceDurationUs).toBe(10_000_000);
+    expect(clip.sourceDurationUs).toBe(TICKS_PER_SECOND * 10);
   });
 
   it('serializes clips without path as MissingReference', () => {
@@ -847,8 +860,11 @@ describe('timeline/otio-serializer: transitions', () => {
     const clip = parsed.tracks[0]?.items.find((item: any) => item.kind === 'clip') as any;
     expect(clip.clipType).toBe('timeline');
     expect(clip.source?.path).toBe('_timelines/external-sequence.otio');
-    expect(clip.sourceDurationUs).toBe(4_000_000);
-    expect(clip.sourceRange).toEqual({ startUs: 1_000_000, durationUs: 4_000_000 });
+    expect(clip.sourceDurationUs).toBe(TICKS_PER_SECOND * 4);
+    expect(clip.sourceRange).toEqual({
+      startUs: TICKS_PER_SECOND,
+      durationUs: TICKS_PER_SECOND * 4,
+    });
   });
 
   it('preserves fractional fps through OTIO round-trip', () => {
@@ -890,9 +906,9 @@ describe('timeline/otio-serializer: transitions', () => {
               name: 'Clip1',
               clipType: 'media',
               source: { path: 'file.mp4' },
-              sourceDurationUs: 2_000_000,
-              timelineRange: { startUs: 0, durationUs: 2_000_000 },
-              sourceRange: { startUs: 0, durationUs: 2_000_000 },
+              sourceDurationUs: TICKS_PER_SECOND * 2,
+              timelineRange: { startUs: 0, durationUs: TICKS_PER_SECOND * 2 },
+              sourceRange: { startUs: 0, durationUs: TICKS_PER_SECOND * 2 },
             },
           ],
         },
@@ -1072,7 +1088,7 @@ describe('timeline/otio-serializer: transitions', () => {
     };
 
     const raw = JSON.parse(serializeTimelineToOtio(doc));
-    expect(raw.metadata.fastcat.version).toBe(1);
+    expect(raw.metadata.fastcat.version).toBe(2);
     expect(raw.metadata.fastcat.audio.masterGain).toBe(0.7);
     expect(raw.metadata.fastcat.audio.masterMuted).toBe(true);
     expect(raw.metadata.fastcat.masterGain).toBeUndefined();

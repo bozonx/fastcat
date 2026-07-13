@@ -11,6 +11,7 @@ import type {
 } from '../types';
 import { createTimelineTimebase, createTimelineTimebaseFromFps } from '../timebase';
 import { sanitizeFrameRate } from '~/utils/time/ticks';
+import { secondsToTicks, ticksToSeconds } from '~/utils/time/ticks';
 import type { OtioRationalTime, OtioTimeRange, OtioColor } from './types';
 import { isAnimatableParamPath, normalizeKeyframeTrack } from '../animation/evaluate';
 const log = createDevLogger('utils');
@@ -18,16 +19,17 @@ const log = createDevLogger('utils');
 export const TIME_RATE_US = 1_000_000;
 
 export function toRationalTime(us: number, fps?: number): OtioRationalTime {
+  const seconds = ticksToSeconds(us);
   if (fps && fps > 0) {
     return {
       OTIO_SCHEMA: 'RationalTime.1',
-      value: Math.round((us / TIME_RATE_US) * fps),
+      value: Math.round(seconds * fps),
       rate: fps,
     };
   }
   return {
     OTIO_SCHEMA: 'RationalTime.1',
-    value: Math.round(us),
+    value: Math.round(seconds * TIME_RATE_US),
     rate: TIME_RATE_US,
   };
 }
@@ -37,8 +39,7 @@ export function fromRationalTimeUs(rt: unknown): number {
   const value = Number((rt as Record<string, unknown>).value);
   const rate = Number((rt as Record<string, unknown>).rate);
   if (!Number.isFinite(value) || !Number.isFinite(rate) || rate <= 0) return 0;
-  if (rate === TIME_RATE_US) return Math.round(value);
-  return Math.round((value / rate) * TIME_RATE_US);
+  return secondsToTicks({ seconds: value / rate });
 }
 
 export function toTimeRange(range: TimelineRange, fps?: number): OtioTimeRange {

@@ -38,6 +38,10 @@ import { parseGapItem, parseClipItem, parseItemSequenceDurationUs } from './otio
 import { TimelineDocFastCatMetaSchema, TimelineTrackFastCatMetaSchema } from './otio/schemas';
 import { getTimelineFormat, normalizeTimelineFormat, type TimelineFormatInput } from './format';
 import { createTimelineTimebaseFromFps, getTimelineFps } from './timebase';
+import {
+  migrateLegacyOtioMetadataToTicks,
+  TIMELINE_TICKS_DOCUMENT_VERSION,
+} from './time-migration';
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -71,7 +75,7 @@ export function createDefaultTimelineDocument(params: {
     ],
     metadata: {
       fastcat: {
-        version: 1,
+        version: TIMELINE_TICKS_DOCUMENT_VERSION,
         docId: params.id,
         timebase,
         format,
@@ -434,7 +438,7 @@ export function serializeTimelineToOtio(doc: TimelineDocument): string {
     metadata: {
       fastcat: {
         schema: 'fastcat.otio.v1',
-        version: 1,
+        version: TIMELINE_TICKS_DOCUMENT_VERSION,
         document: {
           docId: doc.id,
           timebase,
@@ -528,6 +532,8 @@ export function parseTimelineFromOtio(
       format: fallback.format,
     });
   }
+
+  migrateLegacyOtioMetadataToTicks(parsed);
 
   const docMeta = parseDocumentMetadata((parsed.metadata as { fastcat?: unknown })?.fastcat ?? {});
   const fallbackFormat = normalizeTimelineFormat(fallback.format);
@@ -696,7 +702,7 @@ export function parseTimelineFromOtio(
 
   const normalizedTracks = [...video, ...audio];
   const docId = coerceId(docMeta.docId, fallback.id);
-  const version = typeof docMeta.version === 'number' ? docMeta.version : 0;
+  const version = TIMELINE_TICKS_DOCUMENT_VERSION;
   const name = coerceName(parsed.name, fallback.name);
 
   // Markers: prefer standard OTIO markers on Stack, fallback to Timeline for old files.

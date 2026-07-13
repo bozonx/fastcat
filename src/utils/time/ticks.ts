@@ -1,7 +1,14 @@
-export const TICKS_PER_SECOND = 1_000_000;
+/** Premiere-compatible canonical timeline timebase. */
+export const TICKS_PER_SECOND = 254_016_000_000;
 
-/** Tick rate selected for the canonical timeline unit in Phase 3. */
-export const CANONICAL_TICKS_PER_SECOND = 254_016_000_000;
+/** Backward-compatible alias for the selected canonical timebase. */
+export const CANONICAL_TICKS_PER_SECOND = TICKS_PER_SECOND;
+
+/** Number of canonical ticks represented by one legacy microsecond. */
+export const TICKS_PER_MICROSECOND = TICKS_PER_SECOND / 1_000_000;
+
+/** Largest integer that JavaScript can represent without losing tick precision. */
+export const MAX_SAFE_TICKS = Number.MAX_SAFE_INTEGER;
 
 declare const ticksBrand: unique symbol;
 

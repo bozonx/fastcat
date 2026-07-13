@@ -12,7 +12,7 @@ export const MIN_FPS = 1;
 export const MAX_FPS = 240;
 
 /**
- * Convert seconds to integer microseconds.
+ * Convert seconds to integer timeline ticks.
  * Centralized helper to avoid `Math.floor`/`Math.round` mismatches across the
  * timeline import pipeline (preview vs. insert duration).
  *
@@ -28,7 +28,7 @@ export function secondsToUs(seconds: number, mode: 'round' | 'floor' | 'ceil' = 
 }
 
 /**
- * Convert microseconds to seconds.
+ * Convert timeline ticks to seconds.
  * Returns 0 for non-finite or negative inputs.
  */
 export function usToS(us: number): number {
@@ -37,7 +37,7 @@ export function usToS(us: number): number {
 }
 
 /**
- * Convert seconds to microseconds, symmetric to {@link usToS} but
+ * Convert seconds to timeline ticks, symmetric to {@link usToS} but
  * sign-preserving: unlike {@link secondsToUs}, negative inputs stay negative.
  */
 export function sToUs(seconds: number): number {
@@ -68,7 +68,7 @@ export function sanitizeFps(value: unknown): number {
   return frameRateToNumber(sanitizeFrameRate(value, DEFAULT_FRAME_RATE));
 }
 
-/** Round a microsecond value to an integer, clamping non-finite/negative to 0. */
+/** Round a timeline tick value to an integer, clamping non-finite/negative to 0. */
 export function normalizeTimeUs(value: number): number {
   if (!Number.isFinite(value) || value <= 0) {
     return 0;
@@ -77,7 +77,7 @@ export function normalizeTimeUs(value: number): number {
   return Math.round(value);
 }
 
-/** Clamp a microsecond value into the inclusive range [0, maxDurationUs]. */
+/** Clamp a timeline tick value into the inclusive range [0, maxDurationUs]. */
 export function clampTimeUs(value: number, maxDurationUs: number): number {
   const normalizedValue = normalizeTimeUs(value);
   const normalizedMax = normalizeTimeUs(maxDurationUs);
