@@ -108,18 +108,17 @@ export function applyClipSpeedChange(params: {
               (max, c) => Math.max(max, c.timelineRange.startUs + c.timelineRange.durationUs),
               0,
             );
-          if (rippledEndOfCurrent > lockedStartUs + 1) {
+          if (rippledEndOfCurrent > lockedStartUs) {
             throw new Error('Item overlaps with another item');
           }
           break;
         }
 
         const newStartUs = Math.max(0, curr.timelineRange.startUs + deltaUs);
-        const qStartUs = quantizeTimeUsToFrames(newStartUs, fps, 'round');
-        if (qStartUs !== curr.timelineRange.startUs) {
+        if (newStartUs !== curr.timelineRange.startUs) {
           nextClips[i] = {
             ...curr,
-            timelineRange: { ...curr.timelineRange, startUs: qStartUs },
+            timelineRange: { ...curr.timelineRange, startUs: newStartUs },
           };
           if (track.kind === 'video') {
             movedVideoClipIds.push(curr.id);
@@ -134,7 +133,7 @@ export function applyClipSpeedChange(params: {
       const prev = nextClips[i - 1]!;
       const cur = nextClips[i]!;
       const prevEnd = prev.timelineRange.startUs + prev.timelineRange.durationUs;
-      if (cur.timelineRange.startUs + 1 < prevEnd) {
+      if (cur.timelineRange.startUs < prevEnd) {
         throw new Error('Item overlaps with another item');
       }
     }

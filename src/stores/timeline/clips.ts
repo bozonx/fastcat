@@ -975,7 +975,7 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
       if (it.kind !== 'clip') return false;
       const clipStart = it.timelineRange.startUs;
       const clipEnd = clipStart + it.timelineRange.durationUs;
-      return startUs >= clipStart && startUs < clipEnd - 1; // 1 Us epsilon
+      return startUs >= clipStart && startUs < clipEnd;
     });
 
     if (overlappingClip) {

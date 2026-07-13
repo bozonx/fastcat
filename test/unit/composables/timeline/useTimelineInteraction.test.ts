@@ -17,6 +17,7 @@ import {
 } from '~/utils/timeline/geometry';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useSelectionStore } from '~/stores/selection.store';
+import { TICKS_PER_SECOND } from '~/utils/time';
 
 describe('useTimelineInteraction', () => {
   beforeEach(() => {
@@ -25,22 +26,22 @@ describe('useTimelineInteraction', () => {
 
   it('timeUsToPx should convert microseconds to pixels correctly', () => {
     // 1 second (1000000 us) should be BASE_PX_PER_SECOND at 1x zoom (slider position 50)
-    expect(timeUsToPx(1_000_000, 50)).toBe(BASE_PX_PER_SECOND);
+    expect(timeUsToPx(TICKS_PER_SECOND, 50)).toBe(BASE_PX_PER_SECOND);
     // 0.5 second
-    expect(timeUsToPx(500_000, 50)).toBe(BASE_PX_PER_SECOND / 2);
+    expect(timeUsToPx(TICKS_PER_SECOND / 2, 50)).toBe(BASE_PX_PER_SECOND / 2);
   });
 
   it('pxToTimeUs should convert pixels to microseconds correctly', () => {
-    expect(pxToTimeUs(BASE_PX_PER_SECOND, 50)).toBe(1_000_000);
-    expect(pxToTimeUs(BASE_PX_PER_SECOND / 2, 50)).toBe(500_000);
+    expect(pxToTimeUs(BASE_PX_PER_SECOND, 50)).toBe(TICKS_PER_SECOND);
+    expect(pxToTimeUs(BASE_PX_PER_SECOND / 2, 50)).toBe(TICKS_PER_SECOND / 2);
     // Should never return negative
     expect(pxToTimeUs(-10, 50)).toBe(0);
   });
 
   it('pxToDeltaUs should convert pixels to delta microseconds correctly', () => {
-    expect(pxToDeltaUs(BASE_PX_PER_SECOND, 50)).toBe(1_000_000);
+    expect(pxToDeltaUs(BASE_PX_PER_SECOND, 50)).toBe(TICKS_PER_SECOND);
     // Delta CAN be negative
-    expect(pxToDeltaUs(-BASE_PX_PER_SECOND, 50)).toBe(-1_000_000);
+    expect(pxToDeltaUs(-BASE_PX_PER_SECOND, 50)).toBe(-TICKS_PER_SECOND);
   });
 
   it('computeAnchoredScrollLeft should keep anchor time at same viewport position', () => {
@@ -50,7 +51,7 @@ describe('useTimelineInteraction', () => {
     const nextZoom = 60;
     const viewportWidth = 300;
 
-    const anchorTimeUs = 10_000_000;
+    const anchorTimeUs = 10 * TICKS_PER_SECOND;
     const anchorViewportX = 100;
 
     const anchorPxAtPrevZoom = timeUsToPx(anchorTimeUs, prevZoom);
@@ -113,16 +114,16 @@ describe('useTimelineInteraction', () => {
     expect(nextScrollLeft).toBe(4200);
   });
 
-  it('computeSnappedStartUs should always quantize to frames when frame snapping is enabled', () => {
+  it('computeSnappedStartUs preserves an exact clip boundary over frame snapping', () => {
     const fps = 30;
 
     // Pick a target that is not on a frame boundary.
-    const targetUs = 101_000;
+    const targetUs = TICKS_PER_SECOND + 1;
     expect(targetUs).not.toBe(quantizeStartUsToFrames(targetUs, fps));
 
     const snapped = computeSnappedStartUs({
-      rawStartUs: 123_456,
-      draggingItemDurationUs: 1_000_000,
+      rawStartUs: targetUs + 100,
+      draggingItemDurationUs: TICKS_PER_SECOND,
       fps,
       zoom: 50,
       snapThresholdPx: 10,
@@ -132,12 +133,12 @@ describe('useTimelineInteraction', () => {
       frameOffsetUs: 0,
     });
 
-    expect(snapped).toBe(quantizeStartUsToFrames(snapped, fps));
+    expect(snapped).toBe(targetUs);
   });
 
   it('computeSnappedStartUs should preserve frame offset when snapping (free clip offset is kept)', () => {
     const fps = 30;
-    const frameUs = Math.round(1e6 / fps);
+    const frameUs = Math.round(TICKS_PER_SECOND / fps);
 
     // Simulate a clip that initially sits between frames (has offset).
     const frameOffsetUs = 7_000;
@@ -147,7 +148,7 @@ describe('useTimelineInteraction', () => {
 
     const snapped = computeSnappedStartUs({
       rawStartUs,
-      draggingItemDurationUs: 1_000_000,
+      draggingItemDurationUs: TICKS_PER_SECOND,
       fps,
       zoom: 50,
       snapThresholdPx: 10,

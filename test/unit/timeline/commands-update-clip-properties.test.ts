@@ -3,6 +3,7 @@ import { describe, it, expect } from 'vitest';
 import { timelineUs } from '../utils/timeline-time';
 import { applyTimelineCommand } from '~/timeline/commands';
 import type { TimelineDocument, TimelineTrack } from '~/timeline/types';
+import { TICKS_PER_SECOND } from '~/utils/time';
 
 function makeDoc(track: TimelineTrack): TimelineDocument {
   return {
@@ -488,6 +489,53 @@ describe('timeline/commands update_clip_properties', () => {
     expect(c1.speed).toBe(0.5);
     expect(c1.timelineRange.durationUs).toBe(timelineUs(2_000_000));
     expect(c2.timelineRange.startUs).toBe(timelineUs(2_000_000));
+  });
+
+  it('preserves exact adjacency when a speed ripple starts off the frame grid', () => {
+    const frameTicks = TICKS_PER_SECOND / 30;
+    const doc = makeDoc({
+      id: 'v1',
+      kind: 'video',
+      name: 'V1',
+      items: [
+        {
+          kind: 'clip',
+          clipType: 'media',
+          id: 'c1',
+          trackId: 'v1',
+          name: 'C1',
+          source: { path: 'a.mp4' },
+          sourceDurationUs: 4 * frameTicks,
+          timelineRange: { startUs: 1, durationUs: frameTicks },
+          sourceRange: { startUs: 0, durationUs: 2 * frameTicks },
+        },
+        {
+          kind: 'clip',
+          clipType: 'media',
+          id: 'c2',
+          trackId: 'v1',
+          name: 'C2',
+          source: { path: 'b.mp4' },
+          sourceDurationUs: 4 * frameTicks,
+          timelineRange: { startUs: frameTicks + 1, durationUs: frameTicks },
+          sourceRange: { startUs: 0, durationUs: frameTicks },
+        },
+      ],
+    });
+
+    const next = applyTimelineCommand(doc, {
+      type: 'update_clip_properties',
+      trackId: 'v1',
+      itemId: 'c1',
+      properties: { speed: 0.5 },
+    }).next;
+
+    const clips = next.tracks[0]!.items.filter((item: any) => item.kind === 'clip') as any[];
+    const c1 = clips.find((item) => item.id === 'c1');
+    const c2 = clips.find((item) => item.id === 'c2');
+
+    expect(c2.timelineRange.startUs).toBe(c1.timelineRange.startUs + c1.timelineRange.durationUs);
+    expect(c2.timelineRange.startUs).toBe(4 * frameTicks + 1);
   });
 
   it('preserves audio fade lengths when clip duration increases', () => {

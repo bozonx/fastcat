@@ -4,6 +4,7 @@ import { ref } from 'vue';
 import { useClipTransitionPanel } from '~/composables/timeline/useClipTransitionPanel';
 import type { ClipTransition } from '~/timeline/types';
 import { initTransitions, registerTransition } from '~/transitions';
+import { timelineUs } from '../../utils/timeline-time';
 
 describe('useClipTransitionPanel', () => {
   initTransitions();
@@ -16,7 +17,7 @@ describe('useClipTransitionPanel', () => {
       itemId: ref('c1'),
       transition: ref<ClipTransition | undefined>({
         type: 'dissolve',
-        durationUs: 1_000_000,
+        durationUs: timelineUs(1_000_000),
         mode: 'fade',
         curve: 'linear',
       }),
@@ -70,7 +71,7 @@ describe('useClipTransitionPanel', () => {
       itemId: ref('c1'),
       transition: ref<ClipTransition | undefined>({
         type: 'wipe',
-        durationUs: 1_000_000,
+        durationUs: timelineUs(1_000_000),
         mode: 'transition',
         curve: 'linear',
         params: {
@@ -112,7 +113,7 @@ describe('useClipTransitionPanel', () => {
       icon: 'i-test',
       baseType: 'wipe',
       isCustom: true,
-      defaultDurationUs: 500_000,
+      defaultDurationUs: timelineUs(500_000),
       defaultParams: {
         direction: 'left',
         edgeMode: 'gap',
@@ -129,7 +130,7 @@ describe('useClipTransitionPanel', () => {
       itemId: ref('c1'),
       transition: ref<ClipTransition | undefined>({
         type: 'dissolve',
-        durationUs: 1_000_000,
+        durationUs: timelineUs(1_000_000),
         mode: 'transparent',
         curve: 'linear',
       }),
@@ -164,7 +165,7 @@ describe('useClipTransitionPanel', () => {
       itemId: ref('c1'),
       transition: ref<ClipTransition | undefined>({
         type: 'dissolve',
-        durationUs: 2_000_000,
+        durationUs: timelineUs(2_000_000),
         mode: 'adjacent',
         curve: 'linear',
       }),
@@ -183,7 +184,7 @@ describe('useClipTransitionPanel', () => {
     expect(onUpdate).toHaveBeenCalled();
     expect(onUpdate.mock.calls.at(-1)?.[0]).toMatchObject({
       transition: expect.objectContaining({
-        durationUs: 500_000,
+        durationUs: timelineUs(500_000),
       }),
     });
   });

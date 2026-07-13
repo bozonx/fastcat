@@ -255,11 +255,12 @@ export function quantizeStartUsToFrames(startUs: number, fps: number): number {
  * clip's sub-frame "phase". Zero for frame-aligned starts. Feeding this back as
  * `computeSnappedStartUs`'s `frameOffsetUs` frame-snaps by whole-frame deltas
  * while preserving the phase (so a hand-dialed audio sync survives a move).
- * Sub-µs residue (float noise on an aligned start) is clamped to 0.
+ * Canonical positions are integer ticks, so only an exact boundary has zero
+ * phase.
  */
 export function subframePhaseUs(startUs: number, fps: number): number {
   const phase = Math.round(startUs) - quantizeStartUsToFrames(startUs, fps);
-  return Math.abs(phase) <= 1 ? 0 : phase;
+  return phase === 0 ? 0 : phase;
 }
 
 export function sanitizeSnapTargetsUs(targets: number[]): number[] {
@@ -320,6 +321,7 @@ export function computeSnappedStartUs(params: {
 
   let best = rawStartUs;
   let bestDist: number = thresholdUs;
+  let snappedToClip = false;
 
   if (enableClipSnap) {
     const rawEndUs = rawStartUs + Math.max(0, Math.round(draggingItemDurationUs));
@@ -329,17 +331,19 @@ export function computeSnappedStartUs(params: {
       if (distStart < bestDist) {
         bestDist = distStart;
         best = target;
+        snappedToClip = true;
       }
 
       const distEnd = Math.abs(rawEndUs - target);
       if (distEnd < bestDist) {
         bestDist = distEnd;
         best = target - Math.max(0, Math.round(draggingItemDurationUs));
+        snappedToClip = true;
       }
     }
   }
 
-  if (enableFrameSnap) {
+  if (enableFrameSnap && !snappedToClip) {
     const offsetUs = Number.isFinite(frameOffsetUs) ? Math.round(frameOffsetUs) : 0;
     best = quantizeStartUsToFrames(best - offsetUs, fps) + offsetUs;
   }

@@ -104,7 +104,7 @@ const isAdjacentAvailable = computed(() => {
       ? adjacent.timelineRange.startUs + adjacent.timelineRange.durationUs
       : adjacent.timelineRange.startUs;
 
-  return Math.abs(clipEdgeUs - adjacentEdgeUs) <= 1_000;
+  return clipEdgeUs === adjacentEdgeUs;
 });
 
 const sourceOptions = computed(() => [

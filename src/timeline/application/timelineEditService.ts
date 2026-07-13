@@ -135,7 +135,7 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
         if (it.kind !== 'clip') continue;
         if (groupIds.has(it.id)) continue;
         if (it.locked) continue;
-        if (it.timelineRange.startUs < memberEnd - 10) continue;
+        if (it.timelineRange.startUs < memberEnd) continue;
         moves.push({
           fromTrackId: t.id,
           toTrackId: t.id,
@@ -200,11 +200,10 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
       deps.batchApplyTimeline(splitCmdsStart, internalBatchOptions);
     }
 
-    // Phase 2: delete clips that lie entirely (or all but an epsilon) within the cut range.
+    // Phase 2: delete clips that lie entirely within the cut range.
     const updated = deps.getDoc();
     if (!updated) return null;
 
-    const EPSILON = 10;
     const deleteCmds: TimelineCommand[] = [];
     for (const track of updated.tracks) {
       if (!trackIdSet.has(track.id)) continue;
@@ -218,10 +217,9 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
         const itStart = it.timelineRange.startUs;
         const itEnd = itStart + it.timelineRange.durationUs;
         // After the splits at startUs and endUs every survivor either lies entirely
-        // inside or entirely outside [startUs, endUs]. Use the actual edges (with
-        // epsilon) instead of the midpoint — the midpoint heuristic fails when the
-        // split was quantized to a frame boundary.
-        if (itStart >= startUs - EPSILON && itEnd <= endUs + EPSILON) {
+        // inside or entirely outside [startUs, endUs]. Use exact edges instead
+        // of the midpoint heuristic, which fails around split boundaries.
+        if (itStart >= startUs && itEnd <= endUs) {
           toDelete.push(it.id);
         }
       }
@@ -234,7 +232,7 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
       deps.batchApplyTimeline(deleteCmds, internalBatchOptions);
     }
 
-    // Phase 3: shift clips after the deleted range, preserving frame alignment.
+    // Phase 3: shift clips after the deleted range by the exact removed delta.
     const afterDelete = deps.getDoc();
     if (!afterDelete) return null;
 
@@ -257,9 +255,9 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
       for (const clip of clips) {
         if (clip.locked) continue;
         const clipStart = clip.timelineRange.startUs;
-        if (clipStart >= endUs - EPSILON) {
-          // Clamp to startUs so a clip that straddles the right edge by a few µs
-          // (sub-frame split residue) does not overlap the pre-cut region.
+        if (clipStart >= endUs) {
+          // Clamp to startUs so a clip that starts at the cut boundary cannot
+          // overlap the pre-cut region.
           const nextStart = Math.max(startUs, clipStart - deltaUs);
           moves.push({
             fromTrackId: track.id,
@@ -272,7 +270,7 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
     }
     if (moves.length > 0) {
       deps.batchApplyTimeline(
-        [{ type: 'move_items', moves, quantizeToFrames: true, ignoreLinks: true }],
+        [{ type: 'move_items', moves, quantizeToFrames: false, ignoreLinks: true }],
         internalBatchOptions,
       );
     }
@@ -340,7 +338,7 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
       cmds.push({
         type: 'move_items',
         moves,
-        quantizeToFrames: true,
+        quantizeToFrames: false,
         ignoreLinks: true,
       });
     }
@@ -400,7 +398,7 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
         trackId: target.trackId,
         itemId: target.itemId,
         startUs,
-        quantizeToFrames: true,
+        quantizeToFrames: false,
       },
     ];
 
@@ -410,7 +408,7 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
       cmds.push({
         type: 'move_items',
         moves,
-        quantizeToFrames: true,
+        quantizeToFrames: false,
         ignoreLinks: true,
       });
     }

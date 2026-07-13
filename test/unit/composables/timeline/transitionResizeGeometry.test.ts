@@ -6,9 +6,10 @@ import {
   computeMaxResizableTransitionDurationUs,
   computeTransitionHandleSnapDurationUs,
 } from '~/composables/timeline/transitionResizeGeometry';
+import { timelineUs } from '../../utils/timeline-time';
 
 function clip(overrides: Record<string, unknown> = {}): any {
-  return {
+  const result = {
     id: 'c',
     kind: 'clip',
     clipType: 'media',
@@ -16,6 +17,27 @@ function clip(overrides: Record<string, unknown> = {}): any {
     timelineRange: { startUs: 0, durationUs: 5_000_000 },
     sourceRange: { startUs: 0, durationUs: 5_000_000 },
     ...overrides,
+  };
+  return {
+    ...result,
+    timelineRange: {
+      startUs: timelineUs(result.timelineRange.startUs),
+      durationUs: timelineUs(result.timelineRange.durationUs),
+    },
+    sourceRange: {
+      startUs: timelineUs(result.sourceRange.startUs),
+      durationUs: timelineUs(result.sourceRange.durationUs),
+    },
+    sourceDurationUs:
+      result.sourceDurationUs === undefined ? undefined : timelineUs(result.sourceDurationUs),
+    transitionIn: result.transitionIn && {
+      ...result.transitionIn,
+      durationUs: timelineUs(result.transitionIn.durationUs),
+    },
+    transitionOut: result.transitionOut && {
+      ...result.transitionOut,
+      durationUs: timelineUs(result.transitionOut.durationUs),
+    },
   };
 }
 
@@ -95,12 +117,16 @@ describe('getTransitionAdjacentHandleLimitUs', () => {
       sourceDurationUs: 5_000_000,
     });
     // headroom = total source (5s) - currently used source end (2s) = 3s
-    expect(getTransitionAdjacentHandleLimitUs({ edge: 'in', adjacent: prev })).toBe(3_000_000);
+    expect(getTransitionAdjacentHandleLimitUs({ edge: 'in', adjacent: prev })).toBe(
+      timelineUs(3_000_000),
+    );
   });
 
   it('for an out edge, returns the next clip leading source offset', () => {
     const next = clip({ sourceRange: { startUs: 1_500_000, durationUs: 2_000_000 } });
-    expect(getTransitionAdjacentHandleLimitUs({ edge: 'out', adjacent: next })).toBe(1_500_000);
+    expect(getTransitionAdjacentHandleLimitUs({ edge: 'out', adjacent: next })).toBe(
+      timelineUs(1_500_000),
+    );
   });
 
   it('is infinite for non-source clips (e.g. text)', () => {
@@ -121,7 +147,7 @@ describe('computeMaxResizableTransitionDurationUs', () => {
         edge: 'in',
         currentTransition: {} as any,
       }),
-    ).toBe(10_000_000);
+    ).toBe(timelineUs(10_000_000));
   });
 
   it('caps by the clip length minus the opposite-edge transition', () => {
@@ -137,7 +163,7 @@ describe('computeMaxResizableTransitionDurationUs', () => {
       edge: 'in',
       currentTransition: { mode: 'single' } as any,
     });
-    expect(result).toBe(3_000_000);
+    expect(result).toBe(timelineUs(3_000_000));
   });
 
   it('in adjacent mode, also caps by the neighbour source headroom', () => {
@@ -169,7 +195,7 @@ describe('computeTransitionHandleSnapDurationUs', () => {
         itemId: 'b',
         edge: 'in',
         currentTransition: { mode: 'single' } as any,
-        rawDurationUs: 500_000,
+        rawDurationUs: timelineUs(500_000),
       }),
     ).toBeNull();
   });
@@ -206,6 +232,23 @@ describe('computeTransitionHandleSnapDurationUs', () => {
         currentTransition: { mode: 'adjacent' } as any,
         rawDurationUs: 500_000,
       }),
-    ).toBe(3_000_000);
+    ).toBe(timelineUs(3_000_000));
+  });
+
+  it('does not snap a handle across a one-tick gap', () => {
+    const prev = clip({ id: 'a', timelineRange: { startUs: 0, durationUs: 2_000_000 } });
+    const cur = clip({ id: 'b', timelineRange: { startUs: 2_000_000, durationUs: 2_000_000 } });
+    cur.timelineRange.startUs += 1;
+
+    expect(
+      computeTransitionHandleSnapDurationUs({
+        tracks: [track([prev, cur])],
+        trackId: 'v1',
+        itemId: 'b',
+        edge: 'in',
+        currentTransition: { mode: 'adjacent' } as any,
+        rawDurationUs: timelineUs(500_000),
+      }),
+    ).toBeNull();
   });
 });

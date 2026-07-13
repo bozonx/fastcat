@@ -84,7 +84,7 @@ describe('timeline/commands gap behavior', () => {
     expect(clip.timelineRange.startUs).toBe(timelineUs(2_000_000));
   });
 
-  it('does not create a gap when moving clip to abut previous clip with rounding noise', () => {
+  it('preserves a nonzero gap when clips do not share an exact boundary', () => {
     const doc = makeDoc({
       id: 'v1',
       kind: 'video',
@@ -122,12 +122,13 @@ describe('timeline/commands gap behavior', () => {
 
     const items = moved.tracks[0].items;
     const gaps = items.filter((x: TimelineTrackItem) => x.kind === 'gap');
-    expect(gaps.length).toBe(0);
+    expect(gaps.length).toBe(1);
 
     const c1 = items.find((x: TimelineTrackItem) => x.kind === 'clip' && x.id === 'c1') as any;
     const c2 = items.find((x: TimelineTrackItem) => x.kind === 'clip' && x.id === 'c2') as any;
     const endC1 = c1.timelineRange.startUs + c1.timelineRange.durationUs;
-    expect(c2.timelineRange.startUs).toBe(endC1);
+    expect(c2.timelineRange.startUs).toBeGreaterThan(endC1);
+    expect(c2.timelineRange.startUs - endC1).toBe(gaps[0]?.timelineRange.durationUs);
   });
 
   it('normalizes gaps after move_item (single gap between clips)', () => {

@@ -11,6 +11,7 @@ import { getTimelineFps } from '~/timeline/timebase';
 import {
   framesToTicks,
   quantizeTicksToFrame,
+  TICKS_PER_SECOND,
   ticksToFrames,
   type QuantizeMode,
 } from '~/utils/time/ticks';
@@ -160,12 +161,8 @@ export function rangesOverlap(aStart: number, aEnd: number, bStart: number, bEnd
   return aStart < bEnd && bStart < aEnd;
 }
 
-/**
- * Tolerance in microseconds for "touching" boundaries. Two clips whose ends differ by no more than
- * this amount are considered adjacent (not overlapping). Prevents spurious overlap errors from
- * sub-microsecond quantization drift on non-integer FPS or repeated round-trips.
- */
-export const OVERLAP_EPSILON_US = 1;
+/** Exact tick boundaries make any positive overlap a real overlap. */
+export const OVERLAP_EPSILON_US = 0;
 
 export function assertNoOverlap(
   track: TimelineTrack,
@@ -180,7 +177,6 @@ export function assertNoOverlap(
     if (it.kind !== 'clip') continue;
     const itStart = it.timelineRange.startUs;
     const itEnd = itStart + it.timelineRange.durationUs;
-    // Allow a tiny epsilon of overlap caused by quantization rounding.
     if (
       rangesOverlap(startUs, endUs, itStart, itEnd) &&
       Math.min(endUs, itEnd) - Math.max(startUs, itStart) > OVERLAP_EPSILON_US
@@ -382,7 +378,7 @@ function applyTransitionAdjacencyModes(clips: TimelineClipItem[]) {
     let isAdjacentLeft = false;
     if (prev) {
       const prevEnd = prev.timelineRange.startUs + prev.timelineRange.durationUs;
-      if (Math.abs(prevEnd - current.timelineRange.startUs) <= TRANSITION_ADJACENCY_THRESHOLD_US) {
+      if (prevEnd === current.timelineRange.startUs) {
         isAdjacentLeft = true;
       }
     }
@@ -390,7 +386,7 @@ function applyTransitionAdjacencyModes(clips: TimelineClipItem[]) {
     let isAdjacentRight = false;
     if (next) {
       const currentEnd = current.timelineRange.startUs + current.timelineRange.durationUs;
-      if (Math.abs(currentEnd - next.timelineRange.startUs) <= TRANSITION_ADJACENCY_THRESHOLD_US) {
+      if (currentEnd === next.timelineRange.startUs) {
         isAdjacentRight = true;
       }
     }
@@ -528,16 +524,13 @@ export function computeTrackEndUs(track: TimelineTrack): number {
 export { clampInt } from '~/utils/math';
 
 /**
- * Minimum clip duration in microseconds below which transitions are removed entirely.
+ * Minimum clip duration below which transitions are removed entirely.
  * Used consistently across move/trim/split commands.
  */
-export const TRANSITION_MIN_CLIP_DURATION_US = 100_000;
+export const TRANSITION_MIN_CLIP_DURATION_US = TICKS_PER_SECOND / 10;
 
-/**
- * Maximum gap in microseconds between two clips to still be considered "adjacent"
- * for transition mode purposes.
- */
-export const TRANSITION_ADJACENCY_THRESHOLD_US = 1_000;
+/** Transition adjacency is exact in the canonical tick base. */
+export const TRANSITION_ADJACENCY_THRESHOLD_US = 0;
 
 function normalizeOpposingEdgeDurations(input: {
   clipDurationUs: number;
@@ -612,7 +605,7 @@ export function autoAdaptClipEdgeDurations(items: TimelineTrackItem[]): Timeline
       const gap = prev
         ? it.timelineRange.startUs - (prev.timelineRange.startUs + prev.timelineRange.durationUs)
         : Infinity;
-      if (!prev || prev.kind !== 'clip' || gap > TRANSITION_ADJACENCY_THRESHOLD_US) {
+      if (!prev || prev.kind !== 'clip' || gap !== TRANSITION_ADJACENCY_THRESHOLD_US) {
         transitionIn = { ...transitionIn, mode: 'transparent' };
       }
     }
@@ -621,7 +614,7 @@ export function autoAdaptClipEdgeDurations(items: TimelineTrackItem[]): Timeline
       const gap = next
         ? next.timelineRange.startUs - (it.timelineRange.startUs + it.timelineRange.durationUs)
         : Infinity;
-      if (!next || next.kind !== 'clip' || gap > TRANSITION_ADJACENCY_THRESHOLD_US) {
+      if (!next || next.kind !== 'clip' || gap !== TRANSITION_ADJACENCY_THRESHOLD_US) {
         transitionOut = { ...transitionOut, mode: 'transparent' };
       }
     }

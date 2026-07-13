@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
 import type { TimelineClipItem, TimelineTrack } from '~/timeline/types';
 import TransitionProperties from '~/components/properties/TransitionProperties.vue';
+import { timelineUs } from '../../unit/utils/timeline-time';
 
 const mockUpdateClipTransition = vi.fn();
 
@@ -13,8 +14,8 @@ vi.mock('~/stores/timeline.store', () => ({
 
 const getPrevClipForItemMock = vi.fn(() => null);
 const getNextClipForItemMock = vi.fn(() => null);
-const getClipTailTimelineHandleUsMock = vi.fn(() => 1_000_000);
-const getClipHeadTimelineHandleUsMock = vi.fn(() => 1_000_000);
+const getClipTailTimelineHandleUsMock = vi.fn(() => timelineUs(1_000_000));
+const getClipHeadTimelineHandleUsMock = vi.fn(() => timelineUs(1_000_000));
 
 vi.mock('~/utils/timeline/clip', () => ({
   getPrevClipForItem: (...args: unknown[]) =>
@@ -34,12 +35,11 @@ const ClipTransitionPanelStub = {
     expose({ openSaveModal: vi.fn() });
     return { exposedOpenSaveModal: vi.fn() };
   },
-  template:
-    '<div class="panel-mock" :data-edge="edge" :data-max="maxDuration"><button class="emit-update" @click="$emit(\'update\', { trackId, itemId, edge, transition: { type: \'fade\', durationUs: 500000 } })" /></div>',
+  template: `<div class="panel-mock" :data-edge="edge" :data-max="maxDuration"><button class="emit-update" @click="$emit('update', { trackId, itemId, edge, transition: { type: 'fade', durationUs: ${timelineUs(500_000)} } })" /></div>`,
 };
 
 function createClip(overrides: Partial<TimelineClipItem> = {}): TimelineClipItem {
-  return {
+  const clip = {
     kind: 'clip',
     clipType: 'media',
     id: 'item-1',
@@ -48,6 +48,26 @@ function createClip(overrides: Partial<TimelineClipItem> = {}): TimelineClipItem
     timelineRange: { startUs: 1_000_000, durationUs: 5_000_000 },
     sourceRange: { startUs: 0, durationUs: 5_000_000 },
     ...overrides,
+  } as TimelineClipItem;
+
+  return {
+    ...clip,
+    timelineRange: {
+      startUs: timelineUs(clip.timelineRange.startUs),
+      durationUs: timelineUs(clip.timelineRange.durationUs),
+    },
+    sourceRange: {
+      startUs: timelineUs(clip.sourceRange.startUs),
+      durationUs: timelineUs(clip.sourceRange.durationUs),
+    },
+    transitionIn: clip.transitionIn && {
+      ...clip.transitionIn,
+      durationUs: timelineUs(clip.transitionIn.durationUs),
+    },
+    transitionOut: clip.transitionOut && {
+      ...clip.transitionOut,
+      durationUs: timelineUs(clip.transitionOut.durationUs),
+    },
   } as TimelineClipItem;
 }
 
@@ -124,7 +144,7 @@ describe('TransitionProperties', () => {
       timelineRange: { startUs: 0, durationUs: 1_000_000 }, // ends at 1_000_000, touches clip start
     });
     getPrevClipForItemMock.mockReturnValueOnce(adjacent);
-    getClipTailTimelineHandleUsMock.mockReturnValueOnce(500_000); // 0.5s handle limit
+    getClipTailTimelineHandleUsMock.mockReturnValueOnce(timelineUs(500_000)); // 0.5s handle limit
 
     const component = await mountSuspended(TransitionProperties, {
       props: {
@@ -154,7 +174,7 @@ describe('TransitionProperties', () => {
     await component.find('.emit-update').trigger('click');
 
     expect(mockUpdateClipTransition).toHaveBeenCalledWith('track-1', 'item-1', {
-      transitionIn: { type: 'fade', durationUs: 500_000 },
+      transitionIn: { type: 'fade', durationUs: timelineUs(500_000) },
     });
   });
 
@@ -172,7 +192,7 @@ describe('TransitionProperties', () => {
     await component.find('.emit-update').trigger('click');
 
     expect(mockUpdateClipTransition).toHaveBeenCalledWith('track-1', 'item-1', {
-      transitionOut: { type: 'fade', durationUs: 500_000 },
+      transitionOut: { type: 'fade', durationUs: timelineUs(500_000) },
     });
   });
 

@@ -7,22 +7,22 @@ import {
   clipSupportsThumbnailControls,
   isClipFrameAligned,
 } from '~/utils/timeline/clip-capabilities';
+import { TICKS_PER_SECOND } from '~/utils/time';
 
 describe('clip-capabilities', () => {
   describe('isClipFrameAligned', () => {
     it('treats both edges on frame boundaries as aligned', () => {
-      const clip = { timelineRange: { startUs: 0, durationUs: 1_000_000 } };
+      const clip = { timelineRange: { startUs: 0, durationUs: TICKS_PER_SECOND } };
       expect(isClipFrameAligned(clip, 30)).toBe(true);
     });
 
     it('reports a sub-frame start offset as not aligned', () => {
-      const clip = { timelineRange: { startUs: 5_333, durationUs: 1_000_000 } };
+      const clip = { timelineRange: { startUs: 1, durationUs: TICKS_PER_SECOND } };
       expect(isClipFrameAligned(clip, 30)).toBe(false);
     });
 
     it('reports a sub-frame duration as not aligned', () => {
-      // 1_010_000us at 30fps is 30.3 frames — clearly off a frame boundary.
-      const clip = { timelineRange: { startUs: 0, durationUs: 1_010_000 } };
+      const clip = { timelineRange: { startUs: 0, durationUs: TICKS_PER_SECOND + 1 } };
       expect(isClipFrameAligned(clip, 30)).toBe(false);
     });
   });

@@ -42,7 +42,7 @@ export function validateTransitionIn(
     const prevEndUs = prev.timelineRange.startUs + prev.timelineRange.durationUs;
     const gapUs = item.timelineRange.startUs - prevEndUs;
 
-    if (gapUs > 1_000) {
+    if (gapUs !== 0) {
       return {
         key: 'fastcat.timeline.transition.errorGapBetweenClips',
         params: { gapSeconds: (gapUs / TICKS_PER_SECOND).toFixed(2) },
@@ -50,7 +50,7 @@ export function validateTransitionIn(
     }
 
     const prevTailHandleUs = getClipTailTimelineHandleUs(prev);
-    if (Number.isFinite(prevTailHandleUs) && prevTailHandleUs < tr.durationUs - 1_000) {
+    if (Number.isFinite(prevTailHandleUs) && prevTailHandleUs < tr.durationUs) {
       return {
         key: 'fastcat.timeline.transition.errorPrevHandleTooShort',
         params: {
@@ -93,7 +93,7 @@ export function validateTransitionOut(
     const clipEndUs = item.timelineRange.startUs + item.timelineRange.durationUs;
     const gapUs = next.timelineRange.startUs - clipEndUs;
 
-    if (gapUs > 1_000) {
+    if (gapUs !== 0) {
       return {
         key: 'fastcat.timeline.transition.errorGapBetweenClips',
         params: { gapSeconds: (gapUs / TICKS_PER_SECOND).toFixed(2) },
@@ -101,7 +101,7 @@ export function validateTransitionOut(
     }
 
     const nextHeadHandleUs = getClipHeadTimelineHandleUs(next);
-    if (Number.isFinite(nextHeadHandleUs) && nextHeadHandleUs < tr.durationUs - 1_000) {
+    if (Number.isFinite(nextHeadHandleUs) && nextHeadHandleUs < tr.durationUs) {
       return {
         key: 'fastcat.timeline.transition.errorNextHandleTooShort',
         params: {

@@ -4,6 +4,7 @@ import {
   validateTransitionOut,
 } from '~/utils/timeline/transition-validation';
 import type { TimelineTrack, TimelineMediaClipItem } from '~/timeline/types';
+import { timelineUs } from '../timeline-time';
 
 function createTrack(items: TimelineMediaClipItem[]): TimelineTrack {
   return {
@@ -15,7 +16,7 @@ function createTrack(items: TimelineMediaClipItem[]): TimelineTrack {
 }
 
 function createClip(overrides: Partial<TimelineMediaClipItem> = {}): TimelineMediaClipItem {
-  return {
+  const clip = {
     kind: 'clip',
     clipType: 'media',
     id: 'clip-1',
@@ -28,6 +29,27 @@ function createClip(overrides: Partial<TimelineMediaClipItem> = {}): TimelineMed
     speed: 1,
     isImage: false,
     ...overrides,
+  } as TimelineMediaClipItem;
+
+  return {
+    ...clip,
+    timelineRange: {
+      startUs: timelineUs(clip.timelineRange.startUs),
+      durationUs: timelineUs(clip.timelineRange.durationUs),
+    },
+    sourceRange: {
+      startUs: timelineUs(clip.sourceRange.startUs),
+      durationUs: timelineUs(clip.sourceRange.durationUs),
+    },
+    sourceDurationUs: timelineUs(clip.sourceDurationUs ?? 0),
+    transitionIn: clip.transitionIn && {
+      ...clip.transitionIn,
+      durationUs: timelineUs(clip.transitionIn.durationUs),
+    },
+    transitionOut: clip.transitionOut && {
+      ...clip.transitionOut,
+      durationUs: timelineUs(clip.transitionOut.durationUs),
+    },
   } as TimelineMediaClipItem;
 }
 
@@ -88,6 +110,19 @@ describe('transition-validation', () => {
       expect(result).not.toBeNull();
       expect(result!.key).toBe('fastcat.timeline.transition.errorGapBetweenClips');
       expect(result!.params).toEqual({ gapSeconds: '2.00' });
+    });
+
+    it('rejects an adjacent transition when clips are separated by one tick', () => {
+      const prev = createClip({ id: 'prev', timelineRange: { startUs: 0, durationUs: 1_000_000 } });
+      const curr = createClip({
+        id: 'curr',
+        timelineRange: { startUs: 1_000_000, durationUs: 10_000_000 },
+        transitionIn: { durationUs: 1_000_000, mode: 'adjacent' },
+      });
+      curr.timelineRange.startUs += 1;
+
+      const result = validateTransitionIn(createTrack([prev, curr]), curr);
+      expect(result?.key).toBe('fastcat.timeline.transition.errorGapBetweenClips');
     });
 
     it('returns error when previous clip handle is too short', () => {

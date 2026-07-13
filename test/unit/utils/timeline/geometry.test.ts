@@ -22,6 +22,8 @@ import {
   computeSnappedStartUs,
   calculatePointerTimeUs,
 } from '~/utils/timeline/geometry';
+import { TICKS_PER_SECOND } from '~/utils/time';
+import { timelineUs } from '../timeline-time';
 
 describe('zoomToPxPerSecond', () => {
   it('returns base value at zoom 50', () => {
@@ -47,15 +49,15 @@ describe('pxPerSecondToZoom', () => {
 
 describe('timeUsToPx / pxToTimeUs', () => {
   it('converts time to pixels and back', () => {
-    const px = timeUsToPx(1_000_000, 50);
+    const px = timeUsToPx(timelineUs(1_000_000), 50);
     expect(px).toBe(10);
-    expect(pxToTimeUs(px, 50)).toBe(1_000_000);
+    expect(pxToTimeUs(px, 50)).toBe(timelineUs(1_000_000));
   });
 });
 
 describe('timelineRangeToRoundedPx', () => {
   it('derives width from rounded absolute edges', () => {
-    const range = { startUs: 1_000_000, durationUs: 1_000_000 };
+    const range = { startUs: timelineUs(1_000_000), durationUs: timelineUs(1_000_000) };
     const zoom = pxPerSecondToZoom(10.4);
 
     expect(timelineRangeToRoundedPx(range, zoom, 1)).toEqual({
@@ -67,8 +69,12 @@ describe('timelineRangeToRoundedPx', () => {
 
   it('keeps adjacent ranges sharing the same rounded boundary', () => {
     const zoom = pxPerSecondToZoom(10.4);
-    const left = timelineRangeToRoundedPx({ startUs: 0, durationUs: 1_000_000 }, zoom, 1);
-    const right = timelineRangeToRoundedPx({ startUs: 1_000_000, durationUs: 1_000_000 }, zoom, 1);
+    const left = timelineRangeToRoundedPx({ startUs: 0, durationUs: timelineUs(1_000_000) }, zoom, 1);
+    const right = timelineRangeToRoundedPx(
+      { startUs: timelineUs(1_000_000), durationUs: timelineUs(1_000_000) },
+      zoom,
+      1,
+    );
 
     expect(left.endPx).toBe(right.leftPx);
   });
@@ -77,8 +83,8 @@ describe('timelineRangeToRoundedPx', () => {
 describe('absolutePxToViewportPx / timeUsToViewportPx', () => {
   it('rounds in absolute space, then subtracts the raw scroll offset', () => {
     expect(absolutePxToViewportPx(10.4, 3.2)).toBe(10 - 3.2);
-    expect(timeUsToViewportPx(1_000_000, 50, 3.2)).toBe(
-      Math.round(timeUsToPx(1_000_000, 50)) - 3.2,
+    expect(timeUsToViewportPx(timelineUs(1_000_000), 50, 3.2)).toBe(
+      Math.round(timeUsToPx(timelineUs(1_000_000), 50)) - 3.2,
     );
   });
 
@@ -87,7 +93,7 @@ describe('absolutePxToViewportPx / timeUsToViewportPx', () => {
     // container transform (-scrollLeft). The playhead must resolve to the exact
     // same screen pixel so they never drift apart as scrollLeft varies.
     const zoom = 73;
-    const timeUs = 12_345_678;
+    const timeUs = timelineUs(12_345_678);
 
     const clipLeftPx = timelineRangeToRoundedPx({ startUs: timeUs, durationUs: 1 }, zoom, 2).leftPx;
 
@@ -101,7 +107,7 @@ describe('absolutePxToViewportPx / timeUsToViewportPx', () => {
 
 describe('pxToDeltaUs', () => {
   it('converts pixel delta to microseconds', () => {
-    expect(pxToDeltaUs(10, 50)).toBe(1_000_000);
+    expect(pxToDeltaUs(10, 50)).toBe(timelineUs(1_000_000));
   });
 });
 
@@ -112,7 +118,7 @@ describe('computeAnchoredScrollLeft', () => {
       nextZoom: 50,
       prevScrollLeft: 0,
       viewportWidth: 1000,
-      anchor: { anchorTimeUs: 1_000_000, anchorViewportX: 500 },
+      anchor: { anchorTimeUs: timelineUs(1_000_000), anchorViewportX: 500 },
     });
     expect(result).toBe(Math.max(0, 10 - 500));
   });
@@ -123,10 +129,10 @@ describe('computeAnchoredScrollLeft', () => {
       nextZoom: 100,
       prevScrollLeft: 0,
       viewportWidth: 1000,
-      anchor: { anchorTimeUs: 500_000, anchorViewportX: 500 },
+      anchor: { anchorTimeUs: timelineUs(500_000), anchorViewportX: 500 },
     });
 
-    const expectedAnchorPx = timeUsToPx(500_000, 100);
+    const expectedAnchorPx = timeUsToPx(timelineUs(500_000), 100);
     expect(expectedAnchorPx - result).toBeCloseTo(500, 6);
   });
 
@@ -136,7 +142,7 @@ describe('computeAnchoredScrollLeft', () => {
       nextZoom: 60,
       prevScrollLeft: 0,
       viewportWidth: 1000,
-      anchor: { anchorTimeUs: 500_000, anchorViewportX: 500 },
+      anchor: { anchorTimeUs: timelineUs(500_000), anchorViewportX: 500 },
     });
 
     expect(result).toBe(0);
@@ -235,13 +241,13 @@ describe('sanitizeFps', () => {
 
 describe('quantizeDeltaUsToFrames', () => {
   it('rounds delta to frame boundary', () => {
-    expect(quantizeDeltaUsToFrames(1_000_000, 30)).toBe(1_000_000);
+    expect(quantizeDeltaUsToFrames(TICKS_PER_SECOND, 30)).toBe(TICKS_PER_SECOND);
   });
 });
 
 describe('quantizeStartUsToFrames', () => {
   it('rounds start to frame boundary', () => {
-    expect(quantizeStartUsToFrames(1_000_000, 30)).toBe(1_000_000);
+    expect(quantizeStartUsToFrames(TICKS_PER_SECOND, 30)).toBe(TICKS_PER_SECOND);
   });
 });
 
@@ -288,7 +294,7 @@ describe('computeSnappedStartUs', () => {
 
   it('snaps to frame boundary when enabled', () => {
     const result = computeSnappedStartUs({
-      rawStartUs: 1_000_001,
+      rawStartUs: TICKS_PER_SECOND + 1,
       draggingItemDurationUs: 100,
       fps: 30,
       zoom: 50,
@@ -298,7 +304,7 @@ describe('computeSnappedStartUs', () => {
       enableClipSnap: false,
       frameOffsetUs: 0,
     });
-    expect(result).toBe(1_000_000);
+    expect(result).toBe(TICKS_PER_SECOND);
   });
 
   // Regression: a clip whose start sits off the frame grid (e.g. placed flush
@@ -307,13 +313,13 @@ describe('computeSnappedStartUs', () => {
   // exactly where the move command commits it, with no 1-frame jump on release.
   it('frame-snaps off-grid starts to the absolute grid (preview == commit)', () => {
     const fps = 30;
-    const frameUs = 1e6 / fps;
+    const frameUs = TICKS_PER_SECOND / fps;
     // ~half a frame off the grid — the worst case for a phase-preserving snap.
-    const rawStartUs = quantizeStartUsToFrames(2_000_000, fps) + Math.round(frameUs / 2) + 137;
+    const rawStartUs = quantizeStartUsToFrames(2 * TICKS_PER_SECOND, fps) + Math.round(frameUs / 2) + 137;
 
     const previewStartUs = computeSnappedStartUs({
       rawStartUs,
-      draggingItemDurationUs: 500_000,
+      draggingItemDurationUs: timelineUs(500_000),
       fps,
       zoom: 50,
       snapThresholdPx: 0,
@@ -332,15 +338,15 @@ describe('computeSnappedStartUs', () => {
 describe('subframePhaseUs', () => {
   it('returns 0 for a frame-aligned start', () => {
     const fps = 30;
-    const aligned = quantizeStartUsToFrames(2_000_000, fps);
+    const aligned = quantizeStartUsToFrames(2 * TICKS_PER_SECOND, fps);
     expect(subframePhaseUs(aligned, fps)).toBe(0);
   });
 
-  it('clamps sub-µs float noise on an aligned start to 0', () => {
+  it('preserves a one-tick phase', () => {
     const fps = 30;
-    const aligned = quantizeStartUsToFrames(2_000_000, fps);
-    expect(subframePhaseUs(aligned + 1, fps)).toBe(0);
-    expect(subframePhaseUs(aligned - 1, fps)).toBe(0);
+    const aligned = quantizeStartUsToFrames(2 * TICKS_PER_SECOND, fps);
+    expect(subframePhaseUs(aligned + 1, fps)).toBe(1);
+    expect(subframePhaseUs(aligned - 1, fps)).toBe(-1);
   });
 
   it('captures a genuine sub-frame offset', () => {
@@ -352,8 +358,8 @@ describe('subframePhaseUs', () => {
 
   it('round-trips through computeSnappedStartUs to preserve phase across a whole-frame move', () => {
     const fps = 30;
-    const frameUs = Math.round(1e6 / fps);
-    const aligned = quantizeStartUsToFrames(2_000_000, fps);
+    const frameUs = Math.round(TICKS_PER_SECOND / fps);
+    const aligned = quantizeStartUsToFrames(2 * TICKS_PER_SECOND, fps);
     const originalStart = aligned + 7_000; // hand-dialed sub-frame sync offset
     const phase = subframePhaseUs(originalStart, fps);
 
@@ -362,7 +368,7 @@ describe('subframePhaseUs', () => {
     const rawStart = originalStart + Math.round(frameUs * 3.4);
     const snapped = computeSnappedStartUs({
       rawStartUs: rawStart,
-      draggingItemDurationUs: 500_000,
+      draggingItemDurationUs: timelineUs(500_000),
       fps,
       zoom: 50,
       snapThresholdPx: 0,
@@ -374,8 +380,8 @@ describe('subframePhaseUs', () => {
 
     // Same phase preserved, and moved by an exact whole number of frames.
     expect(subframePhaseUs(snapped, fps)).toBe(phase);
-    const movedFrames = ((snapped - originalStart) * fps) / 1e6;
-    expect(Math.abs(movedFrames - Math.round(movedFrames))).toBeLessThan(0.001);
+    const movedFrames = ((snapped - originalStart) * fps) / TICKS_PER_SECOND;
+    expect(movedFrames).toBe(Math.round(movedFrames));
   });
 });
 
@@ -385,10 +391,10 @@ describe('calculatePointerTimeUs', () => {
       clientX: 150,
       rectLeft: 100,
       rectWidth: 200,
-      clipStartUs: 1_000_000,
+      clipStartUs: TICKS_PER_SECOND,
       zoom: 50,
     };
-    expect(calculatePointerTimeUs(params)).toBe(6_000_000);
+    expect(calculatePointerTimeUs(params)).toBe(6 * TICKS_PER_SECOND);
   });
 
   it('clamps pointer position within rectWidth', () => {
@@ -396,10 +402,10 @@ describe('calculatePointerTimeUs', () => {
       clientX: 400,
       rectLeft: 100,
       rectWidth: 200,
-      clipStartUs: 1_000_000,
+      clipStartUs: TICKS_PER_SECOND,
       zoom: 50,
     };
-    expect(calculatePointerTimeUs(params)).toBe(21_000_000);
+    expect(calculatePointerTimeUs(params)).toBe(21 * TICKS_PER_SECOND);
   });
 
   it('clamps pointer position to 0 delta when clientX is to the left of rectLeft', () => {
@@ -407,9 +413,9 @@ describe('calculatePointerTimeUs', () => {
       clientX: 50,
       rectLeft: 100,
       rectWidth: 200,
-      clipStartUs: 1_000_000,
+      clipStartUs: TICKS_PER_SECOND,
       zoom: 50,
     };
-    expect(calculatePointerTimeUs(params)).toBe(1_000_000);
+    expect(calculatePointerTimeUs(params)).toBe(TICKS_PER_SECOND);
   });
 });

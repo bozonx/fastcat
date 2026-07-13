@@ -1,5 +1,6 @@
 import type { TimelineTrack, TimelineClipItem, ClipTransition } from '~/timeline/types';
 import { DEFAULT_TRANSITION_MODE } from '~/transitions';
+import { TICKS_PER_SECOND } from '~/utils/time';
 
 /**
  * Pure geometry helpers behind the timeline transition-resize handles.
@@ -95,7 +96,7 @@ export function computeMaxResizableTransitionDurationUs(input: {
     itemId: input.itemId,
     edge: input.edge,
   });
-  if (!resolved) return 10_000_000;
+  if (!resolved) return 10 * TICKS_PER_SECOND;
 
   const { clip, adjacent } = resolved;
   const clipFields = clip as ClipWithResizeFields;
@@ -151,7 +152,7 @@ export function computeTransitionHandleSnapDurationUs(input: {
       ? adjacent.timelineRange.startUs + adjacent.timelineRange.durationUs
       : adjacent.timelineRange.startUs;
   const gapUs = Math.abs(clipEdgeUs - adjacentEdgeUs);
-  if (gapUs > 1_000) return null;
+  if (gapUs !== 0) return null;
 
   const handleLimitUs = getTransitionAdjacentHandleLimitUs({ edge: input.edge, adjacent });
 
