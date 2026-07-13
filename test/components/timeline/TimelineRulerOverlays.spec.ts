@@ -91,4 +91,42 @@ describe('TimelineRulerOverlays', () => {
     expect(startClasses).toContain('bg-primary-500');
     expect(zoneStartBtn.find('path').attributes('stroke')).toBe('transparent');
   });
+
+  it('highlights the zone body in selected and unselected states', async () => {
+    // 1. Unselected zone marker (marker-2)
+    const wrapper = await mountSuspended(TimelineRulerOverlays, {
+      props: defaultProps,
+      global: {
+        stubs: {
+          UContextMenu: { template: '<div class="context-menu-stub"><slot /></div>' },
+          UiTooltip: { template: '<div class="tooltip-stub"><slot /></div>' },
+        },
+      },
+    });
+
+    const zoneBgUnselected = wrapper.find('div[class*="pointer-events-auto"]').find('div');
+    expect(zoneBgUnselected.exists()).toBe(true);
+    expect(zoneBgUnselected.classes()).toContain('bg-primary-500/20');
+    expect(zoneBgUnselected.classes()).toContain('border-primary-500/50');
+
+    // 2. Selected zone marker
+    const selectedProps = {
+      ...defaultProps,
+      isMarkerSelected: (id: string) => id === 'marker-2',
+    };
+    const wrapperSelected = await mountSuspended(TimelineRulerOverlays, {
+      props: selectedProps,
+      global: {
+        stubs: {
+          UContextMenu: { template: '<div class="context-menu-stub"><slot /></div>' },
+          UiTooltip: { template: '<div class="tooltip-stub"><slot /></div>' },
+        },
+      },
+    });
+
+    const zoneBgSelected = wrapperSelected.find('div[class*="pointer-events-auto"]').find('div');
+    expect(zoneBgSelected.exists()).toBe(true);
+    expect(zoneBgSelected.classes()).toContain('bg-primary-500/35');
+    expect(zoneBgSelected.classes()).toContain('border-primary-500');
+  });
 });

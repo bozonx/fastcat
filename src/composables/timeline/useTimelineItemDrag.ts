@@ -28,6 +28,7 @@ import {
   pxToDeltaUs,
   quantizeDeltaUsToFrames,
   quantizeStartUsToFrames,
+  subframePhaseUs,
   pickBestSnapCandidateUs,
   computeSnappedStartUs,
 } from '~/utils/timeline/geometry';
@@ -51,6 +52,7 @@ interface DragApplyContext {
   enableClipSnap: boolean;
   snapThresholdPx: number;
   overlapMode: 'pseudo' | 'none';
+  isAudioOnly: boolean;
 }
 
 export interface TimelineMovePreview {
@@ -540,6 +542,7 @@ export function useTimelineItemDrag(
       enableClipSnap,
       snapThresholdPx,
       overlapMode,
+      isAudioOnly,
     } = ctx;
 
     const rawDeltaUs = getDragDeltaUs(clientX, zoom);
@@ -550,6 +553,14 @@ export function useTimelineItemDrag(
       tracks: tracks.value,
     });
 
+    // Preserve the clip's sub-frame phase when frame-snapping. A free (off-grid)
+    // audio clip carries a deliberate sub-frame offset — e.g. a hand-dialed
+    // multi-mic sync. Frame-snapping it by delta (via `frameOffsetUs`) translates
+    // it by whole frames while keeping that phase, instead of re-quantizing the
+    // absolute start onto the grid and destroying the sync. Only audio can be
+    // free, so non-audio drags always use phase 0 (locked to the absolute grid).
+    const frameOffsetUs = isAudioOnly ? subframePhaseUs(dragAnchorStartUs.value, fps) : 0;
+
     const startUs = computeSnappedStartUs({
       rawStartUs,
       draggingItemDurationUs: dragAnchorDurationUs.value,
@@ -559,11 +570,7 @@ export function useTimelineItemDrag(
       snapTargetsUs: dragSnapTargetsUs.value,
       enableFrameSnap,
       enableClipSnap,
-      // Frame-snap to the absolute frame grid (no sub-frame phase). This is the
-      // same convention the move commit (`move_items`) and the file-manager drop
-      // preview use, so the live preview lands exactly where the clip is
-      // committed — no 1-frame jump on release for off-grid clip starts.
-      frameOffsetUs: 0,
+      frameOffsetUs,
     });
 
     const targetTrackId = resolveMoveTargetTrackId({
@@ -912,6 +919,7 @@ export function useTimelineItemDrag(
       enableClipSnap,
       snapThresholdPx,
       overlapMode,
+      isAudioOnly: isAudioOnlyDrag,
     };
 
     if (mode === 'slip') {

@@ -248,6 +248,18 @@ export function quantizeStartUsToFrames(startUs: number, fps: number): number {
   return Math.round((frame * 1e6) / safeFps);
 }
 
+/**
+ * The signed distance (µs) from `startUs` to its nearest frame boundary — a
+ * clip's sub-frame "phase". Zero for frame-aligned starts. Feeding this back as
+ * `computeSnappedStartUs`'s `frameOffsetUs` frame-snaps by whole-frame deltas
+ * while preserving the phase (so a hand-dialed audio sync survives a move).
+ * Sub-µs residue (float noise on an aligned start) is clamped to 0.
+ */
+export function subframePhaseUs(startUs: number, fps: number): number {
+  const phase = Math.round(startUs) - quantizeStartUsToFrames(startUs, fps);
+  return Math.abs(phase) <= 1 ? 0 : phase;
+}
+
 export function sanitizeSnapTargetsUs(targets: number[]): number[] {
   const result: number[] = [];
   for (const v of targets) {

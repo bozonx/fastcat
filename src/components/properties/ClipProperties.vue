@@ -43,6 +43,8 @@ import ClipMaskSection from '~/components/properties/clip/ClipMaskSection.vue';
 import ClipParametersPasteModal from '~/components/properties/clip/ClipParametersPasteModal.vue';
 import ClipBackgroundProperties from '~/components/properties/clip/ClipBackgroundProperties.vue';
 import { getClipMaxTimelineDurationUs } from '~/utils/timeline/clip';
+import { quantizeTimeUsToFrames, sanitizeFps } from '~/timeline/commands/utils';
+import type { TimelineCommand } from '~/timeline/commands';
 import ClipEffectsEditor from '~/components/effects/ClipEffectsEditor.vue';
 import { useClipAudio } from '~/composables/properties/useClipAudio';
 import { useClipTransitions } from '~/composables/properties/useClipTransitions';
@@ -313,13 +315,10 @@ function handleUpdateEndTime(val: number) {
 
   const limitEndUs = Math.min(
     Number.isFinite(maxEndUs) ? maxEndUs : Number.POSITIVE_INFINITY,
-    nextClipStartUs
+    nextClipStartUs,
   );
 
-  const newEndUs = Math.min(
-    Math.max(startUs, Math.round(val)),
-    limitEndUs
-  );
+  const newEndUs = Math.min(Math.max(startUs, Math.round(val)), limitEndUs);
 
   const currentEndUs = startUs + props.clip.timelineRange.durationUs;
   if (newEndUs === currentEndUs) return;
@@ -333,6 +332,88 @@ function handleUpdateEndTime(val: number) {
     },
     { historyMode: 'debounced' },
   );
+}
+
+// Snap a free (sub-frame) audio clip fully onto the frame grid: both the start
+// (position) and the end (duration) are quantized. Only audio clips can be
+// off-grid, so this is exposed audio-only. Start and end are quantized to grid
+// independently and clamped to neighbours/source, so the resulting duration is a
+// whole number of frames — clearing the clip's free-position state entirely.
+function handleSnapClipToGrid() {
+  const clip = props.clip;
+  const fps = sanitizeFps(timelineStore.timelineDoc?.timebase?.fps);
+  const startUs = clip.timelineRange.startUs;
+  const durationUs = clip.timelineRange.durationUs;
+
+  // Snap the start, clamped between neighbours (they are grid-aligned already, so
+  // a clamp keeps the result on grid). Mirrors handleUpdateStartTime's clamping.
+  let minStartUs = 0;
+  let maxStartUs = Number.POSITIVE_INFINITY;
+  for (const it of otherClips.value) {
+    const itStart = it.timelineRange.startUs;
+    const itEnd = itStart + it.timelineRange.durationUs;
+    if (itEnd <= startUs) minStartUs = Math.max(minStartUs, itEnd);
+    else if (itStart >= startUs + durationUs)
+      maxStartUs = Math.min(maxStartUs, itStart - durationUs);
+  }
+  let snappedStartUs = quantizeTimeUsToFrames(startUs, fps, 'round');
+  snappedStartUs = Math.max(minStartUs, snappedStartUs);
+  if (Number.isFinite(maxStartUs)) snappedStartUs = Math.min(maxStartUs, snappedStartUs);
+
+  // Snap the end, clamped to the source material and the next clip, evaluated at
+  // the snapped start. Mirrors handleUpdateEndTime's clamping.
+  const maxEndUs = snappedStartUs + getClipMaxTimelineDurationUs(clip);
+  let nextClipStartUs = Number.POSITIVE_INFINITY;
+  for (const it of otherClips.value) {
+    if (it.timelineRange.startUs >= snappedStartUs + durationUs) {
+      nextClipStartUs = Math.min(nextClipStartUs, it.timelineRange.startUs);
+      break;
+    }
+  }
+  const limitEndUs = Math.min(
+    Number.isFinite(maxEndUs) ? maxEndUs : Number.POSITIVE_INFINITY,
+    nextClipStartUs,
+  );
+  const oneFrameUs = quantizeTimeUsToFrames(Math.round(1e6 / fps), fps, 'round');
+  let snappedEndUs = quantizeTimeUsToFrames(snappedStartUs + durationUs, fps, 'round');
+  // Never grow past the limit: if rounding up would collide/overrun, round the
+  // limit down to the grid instead so the clip only ever shrinks to fit.
+  if (snappedEndUs > limitEndUs) {
+    snappedEndUs = quantizeTimeUsToFrames(limitEndUs, fps, 'floor');
+  }
+  snappedEndUs = Math.max(snappedStartUs + oneFrameUs, snappedEndUs);
+
+  const currentEndUs = startUs + durationUs;
+  const cmds: TimelineCommand[] = [];
+  if (snappedStartUs !== startUs) {
+    cmds.push({
+      type: 'move_item',
+      trackId: clip.trackId,
+      itemId: clip.id,
+      startUs: snappedStartUs,
+      quantizeToFrames: true,
+    });
+  }
+  // After the move the end sits at snappedStartUs + durationUs; trim it to the
+  // grid-aligned end.
+  const endAfterMoveUs = snappedStartUs + durationUs;
+  const endDeltaUs = snappedEndUs - endAfterMoveUs;
+  if (endDeltaUs !== 0) {
+    cmds.push({
+      type: 'trim_item',
+      trackId: clip.trackId,
+      itemId: clip.id,
+      edge: 'end',
+      deltaUs: endDeltaUs,
+      quantizeToFrames: true,
+    });
+  }
+
+  if (cmds.length === 0 || (snappedStartUs === startUs && snappedEndUs === currentEndUs)) return;
+  timelineStore.batchApplyTimeline(cmds, {
+    historyMode: 'immediate',
+    labelKey: 'videoEditor.fileManager.history.entries.moveItem',
+  });
 }
 
 // Keyframe animation (v1: opacity + transform). The playhead-driven "current
@@ -797,6 +878,7 @@ defineExpose({
         :show-source="false"
         @update-start-time="handleUpdateStartTime"
         @update-end-time="handleUpdateEndTime"
+        @snap-to-grid="handleSnapClipToGrid"
       />
     </template>
 
@@ -819,6 +901,7 @@ defineExpose({
         :show-source="false"
         @update-start-time="handleUpdateStartTime"
         @update-end-time="handleUpdateEndTime"
+        @snap-to-grid="handleSnapClipToGrid"
       />
 
       <ClipTypeSection

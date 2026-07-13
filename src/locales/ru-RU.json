@@ -950,6 +950,7 @@
       "shrinkTrack": "Уменьшить дорожку",
       "slipMode": "Прокрутка содержимого",
       "trimOverlayMode": "Обрезка клипа",
+      "snapClipToGrid": "Привязать к сетке кадров",
       "snapMode": "Режим привязки",
       "snapModeFramesDescription": "Отключить привязку",
       "snapModeFullDescription": "Привязка к клипам, плейхеду и маркерам",

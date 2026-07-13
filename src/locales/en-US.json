@@ -950,6 +950,7 @@
       "shrinkTrack": "Shrink track",
       "slipMode": "Slip content",
       "trimOverlayMode": "Trim clip",
+      "snapClipToGrid": "Snap to frame grid",
       "snapMode": "Snap Mode",
       "snapModeFramesDescription": "Disable snapping",
       "snapModeFullDescription": "Snap to clips, playhead and markers",

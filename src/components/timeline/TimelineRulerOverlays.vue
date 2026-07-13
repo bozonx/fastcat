@@ -80,10 +80,17 @@ function getMarkerButtonClass(marker: MarkerPoint) {
       @pointerdown="emit('zone-body-pointerdown', $event, point.id)"
     >
       <div
-        class="absolute inset-y-0 left-0 w-full bg-primary-500/20 border-l border-r border-primary-500/50 pointer-events-none"
+        class="absolute inset-y-0 left-0 w-full border-l border-r pointer-events-none transition-colors duration-150"
+        :class="[
+          isMarkerSelected(point.id)
+            ? 'bg-primary-500/35 border-primary-500'
+            : 'bg-primary-500/20 border-primary-500/50',
+        ]"
         :style="
           point.color
-            ? { backgroundColor: `${point.color}33`, borderColor: `${point.color}80` }
+            ? (isMarkerSelected(point.id)
+              ? { backgroundColor: `${point.color}59`, borderColor: `${point.color}` }
+              : { backgroundColor: `${point.color}33`, borderColor: `${point.color}80` })
             : {}
         "
       />

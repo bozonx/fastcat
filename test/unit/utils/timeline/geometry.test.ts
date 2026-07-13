@@ -16,6 +16,7 @@ import {
   sanitizeFps,
   quantizeDeltaUsToFrames,
   quantizeStartUsToFrames,
+  subframePhaseUs,
   sanitizeSnapTargetsUs,
   pickBestSnapCandidateUs,
   computeSnappedStartUs,
@@ -325,6 +326,56 @@ describe('computeSnappedStartUs', () => {
     // The commit re-quantizes to the absolute grid; with frameOffsetUs:0 the
     // preview is already grid-aligned, so that re-quantization is a no-op.
     expect(previewStartUs).toBe(quantizeStartUsToFrames(previewStartUs, fps));
+  });
+});
+
+describe('subframePhaseUs', () => {
+  it('returns 0 for a frame-aligned start', () => {
+    const fps = 30;
+    const aligned = quantizeStartUsToFrames(2_000_000, fps);
+    expect(subframePhaseUs(aligned, fps)).toBe(0);
+  });
+
+  it('clamps sub-µs float noise on an aligned start to 0', () => {
+    const fps = 30;
+    const aligned = quantizeStartUsToFrames(2_000_000, fps);
+    expect(subframePhaseUs(aligned + 1, fps)).toBe(0);
+    expect(subframePhaseUs(aligned - 1, fps)).toBe(0);
+  });
+
+  it('captures a genuine sub-frame offset', () => {
+    const fps = 30;
+    const aligned = quantizeStartUsToFrames(2_000_000, fps);
+    const phase = 7_000;
+    expect(subframePhaseUs(aligned + phase, fps)).toBe(phase);
+  });
+
+  it('round-trips through computeSnappedStartUs to preserve phase across a whole-frame move', () => {
+    const fps = 30;
+    const frameUs = Math.round(1e6 / fps);
+    const aligned = quantizeStartUsToFrames(2_000_000, fps);
+    const originalStart = aligned + 7_000; // hand-dialed sub-frame sync offset
+    const phase = subframePhaseUs(originalStart, fps);
+
+    // Drag it roughly 3.4 frames to the right; frame-snapping with the phase must
+    // land it a whole number of frames away while keeping the same phase.
+    const rawStart = originalStart + Math.round(frameUs * 3.4);
+    const snapped = computeSnappedStartUs({
+      rawStartUs: rawStart,
+      draggingItemDurationUs: 500_000,
+      fps,
+      zoom: 50,
+      snapThresholdPx: 0,
+      snapTargetsUs: [],
+      enableFrameSnap: true,
+      enableClipSnap: false,
+      frameOffsetUs: phase,
+    });
+
+    // Same phase preserved, and moved by an exact whole number of frames.
+    expect(subframePhaseUs(snapped, fps)).toBe(phase);
+    const movedFrames = ((snapped - originalStart) * fps) / 1e6;
+    expect(Math.abs(movedFrames - Math.round(movedFrames))).toBeLessThan(0.001);
   });
 });
 
