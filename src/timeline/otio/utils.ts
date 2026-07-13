@@ -18,13 +18,13 @@ const log = createDevLogger('utils');
 
 export const TIME_RATE_US = 1_000_000;
 
-export function toRationalTime(us: number, fps?: number): OtioRationalTime {
-  const seconds = ticksToSeconds(us);
-  if (fps && fps > 0) {
+export function toRationalTime(ticks: number, rate?: number): OtioRationalTime {
+  const seconds = ticksToSeconds(ticks);
+  if (rate && rate > 0) {
     return {
       OTIO_SCHEMA: 'RationalTime.1',
-      value: Math.round(seconds * fps),
-      rate: fps,
+      value: Math.round(seconds * rate),
+      rate,
     };
   }
   return {
@@ -42,11 +42,11 @@ export function fromRationalTimeUs(rt: unknown): number {
   return secondsToTicks({ seconds: value / rate });
 }
 
-export function toTimeRange(range: TimelineRange, fps?: number): OtioTimeRange {
+export function toTimeRange(range: TimelineRange, rate?: number): OtioTimeRange {
   return {
     OTIO_SCHEMA: 'TimeRange.1',
-    start_time: toRationalTime(range.startUs, fps),
-    duration: toRationalTime(range.durationUs, fps),
+    start_time: toRationalTime(range.startUs, rate),
+    duration: toRationalTime(range.durationUs, rate),
   };
 }
 

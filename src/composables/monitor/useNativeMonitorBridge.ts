@@ -1,4 +1,4 @@
-import { TICKS_PER_SECOND } from '~/utils/time';
+import { secondsToTicks, ticksToSeconds } from '~/utils/time';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { computed, onScopeDispose, watch } from 'vue';
 import {
@@ -493,7 +493,7 @@ export function useNativeMonitorBridge(): void {
         void syncScene();
       }
 
-      pendingSeekTimeSec = t / TICKS_PER_SECOND;
+      pendingSeekTimeSec = ticksToSeconds(t);
       if (seekThrottleId) {
         clearTimeout(seekThrottleId);
       }
@@ -527,7 +527,7 @@ export function useNativeMonitorBridge(): void {
   const unsubs: UnlistenFn[] = [];
   void onMonitorTime((timelineSec) => {
     if (disposed) return;
-    const timelineUs = Math.round(timelineSec * TICKS_PER_SECOND);
+    const timelineUs = secondsToTicks({ seconds: timelineSec });
     const diffUs = Math.abs(timelineUs - timelineStore.currentTime);
     const nowMs = performance.now();
     // Any native time means playback actually started — clear the deferred-start

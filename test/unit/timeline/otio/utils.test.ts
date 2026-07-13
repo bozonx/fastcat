@@ -27,7 +27,7 @@ import {
 import { TICKS_PER_SECOND } from '~/utils/time';
 
 describe('toRationalTime', () => {
-  it('converts ticks to rational time with fps', () => {
+  it('converts ticks to rational time with a video frame rate', () => {
     const rt = toRationalTime(TICKS_PER_SECOND, 30);
     expect(rt.value).toBe(30);
     expect(rt.rate).toBe(30);
@@ -37,6 +37,11 @@ describe('toRationalTime', () => {
     const rt = toRationalTime(TICKS_PER_SECOND / 2);
     expect(rt.value).toBe(500_000);
     expect(rt.rate).toBe(1_000_000);
+  });
+
+  it('converts tick-aligned audio to an integer sample count', () => {
+    const rt = toRationalTime(TICKS_PER_SECOND / 48_000, 48_000);
+    expect(rt).toMatchObject({ value: 1, rate: 48_000 });
   });
 });
 

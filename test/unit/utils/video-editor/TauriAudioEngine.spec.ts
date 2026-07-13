@@ -2,6 +2,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { TauriAudioEngine } from '~/utils/video-editor/TauriAudioEngine';
 import { runAudioEngineContract } from './audio-engine-contract';
+import { timelineUs } from '../timeline-time';
 
 const listenMock = vi.hoisted(() => vi.fn());
 const unlistenMock = vi.hoisted(() => vi.fn());
@@ -154,20 +155,20 @@ describe('TauriAudioEngine', () => {
 
   it('previewScrubForward delegates to native IPC for forward spans', async () => {
     const engine = await createEngine();
-    await engine.previewScrubForward(1_000_000, 2_000_000);
+    await engine.previewScrubForward(timelineUs(1_000_000), timelineUs(2_000_000));
     // Default maxPreviewDurationUs = 90_000, so 1_000_000 span is clamped to 0.09 s.
     expect(scrubPreviewMock).toHaveBeenCalledWith(1.0, 0.09);
   });
 
   it('previewScrubForward skips non-forward spans', async () => {
     const engine = await createEngine();
-    await engine.previewScrubForward(2_000_000, 1_000_000);
+    await engine.previewScrubForward(timelineUs(2_000_000), timelineUs(1_000_000));
     expect(scrubPreviewMock).not.toHaveBeenCalled();
   });
 
   it('previewScrubForward clamps duration to maxPreviewDurationUs', async () => {
     const engine = await createEngine();
-    await engine.previewScrubForward(0, 200_000_000, 90_000);
+    await engine.previewScrubForward(0, timelineUs(200_000_000), timelineUs(90_000));
     expect(scrubPreviewMock).toHaveBeenCalledWith(0, 0.09);
   });
 
@@ -217,7 +218,9 @@ describe('TauriAudioEngine', () => {
     const handler = listenMock.mock.calls[0]?.[1] as (event: { payload: number }) => void;
     handler({ payload: 12.34 });
     // Allow small wall-clock drift since Tauri uses performance.now()
-    expect(engine.getCurrentTimeUs()).toBeCloseTo(12_340_000, -4);
+    expect(Math.abs(engine.getCurrentTimeUs() - timelineUs(12_340_000))).toBeLessThan(
+      timelineUs(10),
+    );
   });
 
   it('syncTime event is ignored when not playing', async () => {
@@ -232,7 +235,7 @@ describe('TauriAudioEngine', () => {
 
   it('play delegates to scheduler with correct time and speed', async () => {
     const engine = await createEngine();
-    await engine.play(5_000_000, 2);
+    await engine.play(timelineUs(5_000_000), 2);
     expect((engine as any).scheduler.isPlayingActive()).toBe(true);
     expect((engine as any).scheduler.getBaseTimeS()).toBe(5);
     expect((engine as any).scheduler.getGlobalSpeed()).toBe(2);
@@ -248,7 +251,7 @@ describe('TauriAudioEngine', () => {
   it('seek delegates to scheduler', async () => {
     const engine = await createEngine();
     await engine.play(0);
-    engine.seek(10_000_000);
+    engine.seek(timelineUs(10_000_000));
     expect((engine as any).scheduler.getBaseTimeS()).toBe(10);
   });
 

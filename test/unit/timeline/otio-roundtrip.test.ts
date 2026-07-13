@@ -7,8 +7,87 @@ import {
 } from '~/timeline/otio-serializer';
 import { applyTimelineCommand } from '~/timeline/commands';
 import type { TimelineClipItem } from '~/timeline/types';
+import { TICKS_PER_SECOND } from '~/utils/time';
 
 describe('timeline OTIO roundtrip', () => {
+  it('serializes video in frames and audio in samples without changing tick ranges', () => {
+    const base = createDefaultTimelineDocument({
+      id: 'doc-rates',
+      name: 'Rates',
+      format: { fps: 29.97, sampleRate: 48_000 },
+    });
+    const frameTicks = (TICKS_PER_SECOND * 1_001) / 30_000;
+    const sampleTicks = TICKS_PER_SECOND / 48_000;
+    const videoClip = {
+      kind: 'clip' as const,
+      clipType: 'media' as const,
+      id: 'video-clip',
+      trackId: 'v1',
+      name: 'Video',
+      source: { path: '_video/video.mp4' },
+      sourceDurationUs: 20 * frameTicks,
+      timelineRange: { startUs: 2 * frameTicks, durationUs: 3 * frameTicks },
+      sourceRange: { startUs: 4 * frameTicks, durationUs: 3 * frameTicks },
+    };
+    const audioClip = {
+      kind: 'clip' as const,
+      clipType: 'media' as const,
+      id: 'audio-clip',
+      trackId: 'a1',
+      name: 'Audio',
+      source: { path: '_audio/audio.wav' },
+      sourceDurationUs: 96_000 * sampleTicks,
+      timelineRange: { startUs: 24_000 * sampleTicks, durationUs: 48_000 * sampleTicks },
+      sourceRange: { startUs: 100 * sampleTicks, durationUs: 24_000 * sampleTicks },
+    };
+    const doc = {
+      ...base,
+      tracks: base.tracks.map((track) =>
+        track.id === 'v1'
+          ? { ...track, items: [videoClip] }
+          : track.id === 'a1'
+            ? { ...track, items: [audioClip] }
+            : track,
+      ),
+    };
+
+    const otio = JSON.parse(serializeTimelineToOtio(doc));
+    const videoTrack = otio.tracks.children.find((track: { kind: string }) => track.kind === 'Video');
+    const audioTrack = otio.tracks.children.find((track: { kind: string }) => track.kind === 'Audio');
+    const videoChildren = videoTrack.children as Array<{ OTIO_SCHEMA: string; source_range: any }>;
+    const audioChildren = audioTrack.children as Array<{ OTIO_SCHEMA: string; source_range: any }>;
+    const videoGap = videoChildren.find((child) => child.OTIO_SCHEMA === 'Gap.1');
+    const videoOtioClip = videoChildren.find((child) => child.OTIO_SCHEMA === 'Clip.1');
+    const audioGap = audioChildren.find((child) => child.OTIO_SCHEMA === 'Gap.1');
+    const audioOtioClip = audioChildren.find((child) => child.OTIO_SCHEMA === 'Clip.1');
+
+    expect(videoGap?.source_range.duration).toMatchObject({ value: 2, rate: 30_000 / 1_001 });
+    expect(videoOtioClip?.source_range.start_time).toMatchObject({
+      value: 4,
+      rate: 30_000 / 1_001,
+    });
+    expect(videoOtioClip?.source_range.duration).toMatchObject({
+      value: 3,
+      rate: 30_000 / 1_001,
+    });
+    expect(audioGap?.source_range.duration).toMatchObject({ value: 24_000, rate: 48_000 });
+    expect(audioOtioClip?.source_range.start_time).toMatchObject({ value: 100, rate: 48_000 });
+    expect(audioOtioClip?.source_range.duration).toMatchObject({ value: 24_000, rate: 48_000 });
+
+    const parsed = parseTimelineFromOtio(JSON.stringify(otio), {
+      id: 'fallback',
+      name: 'Fallback',
+      format: { fps: 29.97, sampleRate: 48_000 },
+    });
+    const parsedVideo = parsed.tracks.flatMap((track) => track.items).find((item) => item.id === 'video-clip');
+    const parsedAudio = parsed.tracks.flatMap((track) => track.items).find((item) => item.id === 'audio-clip');
+
+    expect(parsedVideo?.timelineRange).toEqual(videoClip.timelineRange);
+    expect(parsedVideo?.sourceRange).toEqual(videoClip.sourceRange);
+    expect(parsedAudio?.timelineRange).toEqual(audioClip.timelineRange);
+    expect(parsedAudio?.sourceRange).toEqual(audioClip.sourceRange);
+  });
+
   it('keeps tracks and clips after serializing and parsing a saved timeline', () => {
     const base = createDefaultTimelineDocument({
       id: 'doc-1',

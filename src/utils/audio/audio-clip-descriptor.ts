@@ -8,7 +8,7 @@ import {
   type AudioEnvelopeClipLike,
 } from '~/utils/audio/envelope';
 import { clampFinite } from '~/utils/math';
-import { US_PER_SEC } from '~/utils/time';
+import { ticksToSeconds } from '~/utils/time';
 
 interface AudioWorkerClip extends WorkerTimelineClip {
   defaultAudioFadeCurve?: 'linear' | 'logarithmic';
@@ -200,9 +200,9 @@ export function toNativeSceneAudioLayer(params: ToNativeSceneAudioLayerParams): 
   // inheritance from a touching neighbour. The native mixer only carries plain
   // fade-in/out durations, so this is where the worker AudioMixer's edge handling
   // is reproduced for the native (monitor + export) path.
-  const fadeClipDurationS =
-    Math.min(sourceRangeDurationUs / absSpeed, durationUs || sourceRangeDurationUs / absSpeed) /
-    US_PER_SEC;
+  const fadeClipDurationS = ticksToSeconds(
+    Math.min(sourceRangeDurationUs / absSpeed, durationUs || sourceRangeDurationUs / absSpeed),
+  );
   const { fadeInS, fadeOutS, fadeInCurve, fadeOutCurve } = resolveEffectiveFadeDurationsSeconds({
     clipDurationS: fadeClipDurationS,
     clip: descriptorToEnvelopeClip(descriptor),
@@ -273,10 +273,10 @@ export function toNativeSceneAudioLayer(params: ToNativeSceneAudioLayerParams): 
     id: descriptor.id,
     track_id: descriptor.trackId,
     path: descriptor.sourcePath,
-    timeline_start_sec: timelineStartUs / US_PER_SEC,
-    timeline_end_sec: (timelineStartUs + timelineDurationUs) / US_PER_SEC,
-    source_start_sec: layerSourceStartUs / US_PER_SEC,
-    source_range_duration_sec: Math.max(0, layerSourceRangeUs) / US_PER_SEC,
+    timeline_start_sec: ticksToSeconds(timelineStartUs),
+    timeline_end_sec: ticksToSeconds(timelineStartUs + timelineDurationUs),
+    source_start_sec: ticksToSeconds(layerSourceStartUs),
+    source_range_duration_sec: ticksToSeconds(Math.max(0, layerSourceRangeUs)),
     speed: sanitizeNativeAudioSpeed(descriptor.speed),
     // Gain stays split: the layer carries the clip-only gain and the native bus
     // re-applies the track gain (a scalar — multiplying layer×bus reproduces the

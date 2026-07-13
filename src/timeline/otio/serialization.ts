@@ -95,7 +95,6 @@ export function serializeTimeEffects(input: {
   speed?: number;
   speedActive?: boolean;
   freezeFrameSourceUs?: number;
-  fps?: number;
 }): (OtioLinearTimeWarp | OtioFreezeFrame)[] | undefined {
   const result: (OtioLinearTimeWarp | OtioFreezeFrame)[] = [];
 
@@ -213,13 +212,13 @@ function colorToOtioColor(color: string | undefined): string {
   return map[color.toLowerCase()] ?? 'WHITE';
 }
 
-export function serializeMarker(marker: TimelineMarker, fps?: number): OtioMarker {
+export function serializeMarker(marker: TimelineMarker, rate?: number): OtioMarker {
   return {
     OTIO_SCHEMA: 'Marker.2',
     name: marker.text,
     color: colorToOtioColor(marker.color),
     comment: marker.text,
-    marked_range: toTimeRange({ startUs: marker.timeUs, durationUs: marker.durationUs ?? 0 }, fps),
+    marked_range: toTimeRange({ startUs: marker.timeUs, durationUs: marker.durationUs ?? 0 }, rate),
     metadata: {
       fastcat: {
         marker: {
@@ -278,7 +277,7 @@ function transitionTypeFromOtio(otioType: string): string {
 export function buildOtioTransition(
   transition: ClipTransition,
   name: string,
-  fps?: number,
+  rate?: number,
   owner?: {
     itemId: string;
     edge: 'in' | 'out';
@@ -295,8 +294,8 @@ export function buildOtioTransition(
     OTIO_SCHEMA: 'Transition.1',
     name,
     transition_type: transitionTypeToOtio(transition.type),
-    in_offset: toRationalTime(inUs, fps),
-    out_offset: toRationalTime(outUs, fps),
+    in_offset: toRationalTime(inUs, rate),
+    out_offset: toRationalTime(outUs, rate),
     parameters: transition.params ?? {},
     metadata: {
       fastcat: {

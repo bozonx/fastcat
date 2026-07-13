@@ -37,7 +37,8 @@ import {
 import { parseGapItem, parseClipItem, parseItemSequenceDurationUs } from './otio/items';
 import { TimelineDocFastCatMetaSchema, TimelineTrackFastCatMetaSchema } from './otio/schemas';
 import { getTimelineFormat, normalizeTimelineFormat, type TimelineFormatInput } from './format';
-import { createTimelineTimebaseFromFps, getTimelineFps } from './timebase';
+import { createTimelineTimebaseFromFps, getTimelineFps, getTimelineFrameRate } from './timebase';
+import { frameRateToNumber, sanitizeFrameRate } from '~/utils/time';
 import {
   migrateLegacyOtioMetadataToTicks,
   TIMELINE_TICKS_DOCUMENT_VERSION,
@@ -144,7 +145,7 @@ function calculateTransitionOverlaps(
 function serializeTrackItems(
   items: TimelineTrackItem[],
   trackId: string,
-  fps?: number,
+  timeRate: number,
 ): OtioTrackChild[] {
   const sortedItems = [...items].sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
   const overlaps = calculateTransitionOverlaps(sortedItems);
@@ -160,7 +161,7 @@ function serializeTrackItems(
       children.push({
         OTIO_SCHEMA: 'Gap.1',
         name: 'gap',
-        source_range: toTimeRange({ startUs: 0, durationUs: startUs - cursorUs }, fps),
+        source_range: toTimeRange({ startUs: 0, durationUs: startUs - cursorUs }, timeRate),
         metadata: {
           fastcat: {
             id: `gap_${trackId}_${cursorUs}`,
@@ -177,7 +178,7 @@ function serializeTrackItems(
       children.push({
         OTIO_SCHEMA: 'Gap.1',
         name: 'gap',
-        source_range: toTimeRange({ startUs: 0, durationUs }, fps),
+        source_range: toTimeRange({ startUs: 0, durationUs }, timeRate),
         metadata: {
           fastcat: {
             id: item.id,
@@ -204,7 +205,7 @@ function serializeTrackItems(
       const t1 = buildOtioTransition(
         item.transitionIn,
         `${item.name}_transition_in`,
-        fps,
+        timeRate,
         { itemId: item.id, edge: 'in' },
         { inOffsetUs: 0, outOffsetUs: Math.round(item.transitionIn.durationUs) },
       );
@@ -219,7 +220,7 @@ function serializeTrackItems(
           target_url: path,
           available_range:
             item.clipType === 'media' || item.clipType === 'timeline'
-              ? toTimeRange({ startUs: 0, durationUs: item.sourceDurationUs }, fps)
+              ? toTimeRange({ startUs: 0, durationUs: item.sourceDurationUs }, timeRate)
               : undefined,
         }
       : { OTIO_SCHEMA: 'MissingReference.1' };
@@ -240,7 +241,6 @@ function serializeTrackItems(
       speed: item.speed,
       speedActive: item.speedActive,
       freezeFrameSourceUs: item.clipType === 'media' ? item.freezeFrameSourceUs : undefined,
-      fps,
     });
     const allEffects = [...(standardEffects ?? []), ...(timeEffects ?? [])];
 
@@ -274,7 +274,7 @@ function serializeTrackItems(
       name: item.name,
       enabled: item.disabled ? false : undefined,
       media_reference: mediaReference,
-      source_range: toTimeRange(adjustedSourceRange, fps),
+      source_range: toTimeRange(adjustedSourceRange, timeRate),
       effects:
         allEffects.length > 0
           ? (allEffects as import('~/timeline/otio/types').OtioEffect[])
@@ -351,7 +351,7 @@ function serializeTrackItems(
       const t1 = buildOtioTransition(
         item.transitionOut!,
         `${item.name}_transition_out`,
-        fps,
+        timeRate,
         { itemId: item.id, edge: 'out' },
         { inOffsetUs: half, outOffsetUs: sharedDuration - half },
       );
@@ -360,7 +360,7 @@ function serializeTrackItems(
       const t1 = buildOtioTransition(
         item.transitionOut,
         `${item.name}_transition_out`,
-        fps,
+        timeRate,
         { itemId: item.id, edge: 'out' },
         { inOffsetUs: Math.round(item.transitionOut.durationUs), outOffsetUs: 0 },
       );
@@ -377,10 +377,16 @@ export function serializeTimelineToOtio(doc: TimelineDocument): string {
   const format = getTimelineFormat(doc);
   const fps = format.fps;
   const timebase = createTimelineTimebaseFromFps(fps);
+  const videoTimeRate = frameRateToNumber(
+    getTimelineFrameRate(doc.timebase, sanitizeFrameRate(fps)),
+  );
+  const audioTimeRate =
+    Number.isFinite(format.sampleRate) && format.sampleRate > 0 ? Math.round(format.sampleRate) : 48_000;
 
   const tracks: OtioTrack[] = sortTracksForOtioStack(doc.tracks).map((t) => {
     const trackItems = Array.isArray(t.items) ? t.items : [];
-    const children = serializeTrackItems(trackItems, t.id, fps);
+    const timeRate = t.kind === 'audio' ? audioTimeRate : videoTimeRate;
+    const children = serializeTrackItems(trackItems, t.id, timeRate);
 
     return {
       OTIO_SCHEMA: 'Track.1',
@@ -389,7 +395,9 @@ export function serializeTimelineToOtio(doc: TimelineDocument): string {
       children,
       effects: serializeEffects(t.effects),
       markers: Array.isArray(t.markers)
-        ? [...t.markers].sort((a, b) => a.timeUs - b.timeUs).map((m) => serializeMarker(m, fps))
+        ? [...t.markers]
+            .sort((a, b) => a.timeUs - b.timeUs)
+            .map((m) => serializeMarker(m, timeRate))
         : undefined,
       color: toOtioColor(t.color),
       metadata: {
@@ -422,7 +430,7 @@ export function serializeTimelineToOtio(doc: TimelineDocument): string {
   const markers = Array.isArray(fastcatMeta?.markers)
     ? [...(fastcatMeta.markers as TimelineMarker[])]
         .sort((a, b) => a.timeUs - b.timeUs)
-        .map((m) => serializeMarker(m, fps))
+        .map((m) => serializeMarker(m, videoTimeRate))
     : [];
 
   // Grouped document metadata (new format)

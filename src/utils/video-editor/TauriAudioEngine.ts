@@ -1,4 +1,4 @@
-import { TICKS_PER_SECOND } from '~/utils/time';
+import { secondsToTicks, TICKS_PER_SECOND, ticksToSeconds } from '~/utils/time';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { MONITOR_EVENTS, nativeMonitorIpc } from '~/composables/monitor/native-monitor-ipc';
 import { createDevLogger } from '~/utils/dev-logger';
@@ -63,7 +63,7 @@ export class TauriAudioEngine implements IAudioEngine {
     void listen<number>(EVT_TIME, (event) => {
       if (this.destroyed) return;
       if (event.payload !== undefined && event.payload !== null) {
-        this.scheduler.syncTime(Math.round(event.payload * TICKS_PER_SECOND));
+        this.scheduler.syncTime(secondsToTicks({ seconds: event.payload }));
       }
     }).then((unlisten) => {
       if (this.destroyed) {
@@ -170,7 +170,7 @@ export class TauriAudioEngine implements IAudioEngine {
   async previewScrubForward(
     fromUs: number,
     toUs: number,
-    maxPreviewDurationUs = 90_000,
+    maxPreviewDurationUs = (TICKS_PER_SECOND * 9) / 100,
   ): Promise<void> {
     // Play a one-shot audio snippet at the scrub position via the native engine.
     // The native side mixes [from, from+dur) once and plays it out without moving
@@ -178,10 +178,10 @@ export class TauriAudioEngine implements IAudioEngine {
     // (toUs <= fromUs) stays silent — only forward scrub previews audio.
     const spanUs = toUs - fromUs;
     if (spanUs <= 0) return;
-    const durationSec = Math.min(spanUs, maxPreviewDurationUs) / TICKS_PER_SECOND;
+    const durationSec = ticksToSeconds(Math.min(spanUs, maxPreviewDurationUs));
     if (durationSec <= 0) return;
     try {
-      await nativeMonitorIpc.scrubPreview(fromUs / TICKS_PER_SECOND, durationSec);
+      await nativeMonitorIpc.scrubPreview(ticksToSeconds(fromUs), durationSec);
     } catch (error) {
       logger.debug('previewScrubForward failed', error);
     }
