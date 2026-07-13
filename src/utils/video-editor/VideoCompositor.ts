@@ -866,12 +866,17 @@ export class VideoCompositor {
       speed: number;
     }> = [];
 
+    const headHorizonUs = Math.max(0, Math.round(VIDEO_CORE_LIMITS.PREWARM_HEAD_HORIZON_US));
+
     for (const clip of this.clips) {
       if (
         clip.clipKind !== 'video' ||
         !clip.sink ||
         typeof clip.freezeFrameSourceUs === 'number' ||
-        clip.startUs > nowUs ||
+        // Cover clips under the playhead AND imminent upcoming clips (starting
+        // within the head horizon) so a cut's head window is decoded BEFORE the
+        // crossing; exclude finished clips and ones still beyond the horizon.
+        clip.startUs > nowUs + headHorizonUs ||
         clip.endUs <= nowUs
       ) {
         continue;
@@ -884,8 +889,13 @@ export class VideoCompositor {
         typeof clip.frameRate === 'number' && Number.isFinite(clip.frameRate) && clip.frameRate > 0
           ? clip.frameRate
           : 30;
+      // For a not-yet-entered clip the playhead is before it, so warm from its
+      // first source frame (localTime 0). Clamping unifies both cases; when the
+      // playhead later crosses in, `warmClipFrameWindow` sees `nowSourceTime`
+      // still ≈ the first frame and continues the same iterator (no reopen).
+      const localTimeUs = Math.max(0, nowUs - clip.startUs);
       const nowSourceUs = resolveClipSourceTimeUs({
-        localTimeUs: nowUs - clip.startUs,
+        localTimeUs,
         sourceStartUs: clip.sourceStartUs,
         sourceRangeDurationUs: clip.sourceRangeDurationUs,
         speed,
@@ -899,41 +909,86 @@ export class VideoCompositor {
         clip,
         nowSourceTimeS: nowSourceUs / 1_000_000,
         aheadSourceTimeS: aheadSourceUs / 1_000_000,
-        timelineNowUs: nowUs,
+        // Timeline slot of `nowSourceUs` (for scrub-locality eviction): the
+        // playhead for active clips, the clip start for not-yet-entered ones.
+        timelineNowUs: Math.max(nowUs, clip.startUs),
         speed,
       });
     }
 
-    return plans;
+    // Nearest-first (active clips share the smallest key) then bound concurrent
+    // decoders when a dense cut cluster — e.g. a flattened nested timeline — packs
+    // many short clips into the head horizon.
+    plans.sort((a, b) => a.timelineNowUs - b.timelineNowUs);
+    return plans.slice(0, Math.max(1, Math.round(VIDEO_CORE_LIMITS.MAX_PREWARM_CLIPS)));
+  }
+
+  // Video clip ids that were active at the previous render + the playhead time of
+  // that check — used to detect a cut crossed while moving forward, for proactive
+  // prewarm.
+  private lastActiveVideoClipIds = new Set<string>();
+  private lastClipEntryCheckTimeUs = -1;
+
+  /**
+   * The instant a video clip enters the active set while moving forward (a cut
+   * crossed during playback, or a forward jump), top up its decode-ahead window
+   * immediately instead of waiting for the main thread's next ~250 ms prewarm
+   * tick. Fire-and-forget: queues behind the settling render on the exclusive op.
+   * Backward motion is ignored — scrubbing churns the active set and has its own
+   * prewarm path. Complements the head-window warm in
+   * {@link buildActiveClipWarmPlans}: that pre-warms while the clip is upcoming;
+   * this covers a forward jump that skipped the upcoming phase.
+   */
+  private maybeProactivePrewarmOnClipEntry(timeUs: number): void {
+    const movingForward = timeUs >= this.lastClipEntryCheckTimeUs;
+    this.lastClipEntryCheckTimeUs = timeUs;
+
+    const activeVideoIds = new Set<string>();
+    let entered = false;
+    for (const clip of this.activeTracker.getActiveClips()) {
+      if (clip.clipKind !== 'video' || typeof clip.freezeFrameSourceUs === 'number') continue;
+      activeVideoIds.add(clip.itemId);
+      if (!this.lastActiveVideoClipIds.has(clip.itemId)) entered = true;
+    }
+    this.lastActiveVideoClipIds = activeVideoIds;
+
+    if (!entered || !movingForward || this.disposed) return;
+    void this.prewarmVideoFrames(timeUs).catch(() => undefined);
   }
 
   private async prewarmVideoFramesLocked(timeUs: number, lookaheadUs: number): Promise<void> {
     const startUs = Math.max(0, Math.round(timeUs));
     this.videoFrameCache.setPriorityTimeUs(startUs);
     const endUs = startUs + Math.max(0, Math.round(lookaheadUs));
+
+    // Clips within the head horizon get a full head-window decode-ahead below
+    // (buildActiveClipWarmPlans); the single-frame warm here covers the FARTHER
+    // upcoming clips (head-horizon..lookahead) so their first displayed frame is
+    // warm at the cut without opening a decoder for every distant clip.
+    const activeWarmPlans = this.buildActiveClipWarmPlans(startUs);
+    const headWarmedIds = new Set(activeWarmPlans.map((plan) => plan.clip.itemId));
     const upcoming = this.clips
       .filter(
         (clip) =>
           clip.clipKind === 'video' &&
           Boolean(clip.sink) &&
           clip.startUs > startUs &&
-          clip.startUs <= endUs,
+          clip.startUs <= endUs &&
+          !headWarmedIds.has(clip.itemId),
       )
       .sort((a, b) => a.startUs - b.startUs)
       .slice(0, Math.max(1, Math.round(VIDEO_CORE_LIMITS.MAX_PREWARM_CLIPS)));
 
-    // Decode-ahead of the clips already under the playhead via persistent
-    // sequential iterators (each packet decoded once, no per-tick keyframe
-    // re-seek) so the render path reads warm frames from the cache instead of
-    // paying a from-keyframe `getSample` decode per displayed frame — the fix for
-    // playback running at a fraction of real-time fps. Kept in this exclusive op
+    // Decode-ahead of the clips under (or imminently ahead of) the playhead via
+    // persistent sequential iterators (each packet decoded once, no per-tick
+    // keyframe re-seek) so the render path reads warm frames from the cache
+    // instead of paying a from-keyframe `getSample` decode per displayed frame —
+    // the fix for playback running at a fraction of real-time fps, extended to
+    // the head of imminent clips so cuts don't stutter. Kept in this exclusive op
     // so the sequential read can never collide with the render path's own read of
-    // the same sink. Streams of clips no longer under the playhead are pruned so
-    // their decoders don't linger.
-    const activeWarmPlans = this.buildActiveClipWarmPlans(startUs);
-    this.clipResourceManager.pruneWarmStreams(
-      new Set(activeWarmPlans.map((plan) => plan.clip.itemId)),
-    );
+    // the same sink. Streams of clips outside the warm set are pruned so their
+    // decoders don't linger.
+    this.clipResourceManager.pruneWarmStreams(headWarmedIds);
 
     await Promise.all([
       ...upcoming.map(async (clip) => {
@@ -1105,6 +1160,7 @@ export class VideoCompositor {
       const renderStartMs = performance.now();
       return this.renderingEngine.renderFrame(timeUs, options, context).finally(() => {
         compositorPerfStats.onRender(performance.now() - renderStartMs);
+        this.maybeProactivePrewarmOnClipEntry(timeUs);
       });
     }, 'renderFrame');
   }

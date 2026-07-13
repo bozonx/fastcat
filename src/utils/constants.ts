@@ -157,6 +157,18 @@ export const VIDEO_CORE_LIMITS = {
    * a large VideoFrame backlog in the cache budget.
    */
   MAX_ACTIVE_PREWARM_FRAMES: 16,
+  /**
+   * How far ahead (timeline µs) of the playhead an upcoming clip must start to get
+   * its HEAD decode-ahead window opened early — i.e. the persistent sequential
+   * iterator is established and the first {@link MAX_ACTIVE_PREWARM_FRAMES} frames
+   * are decoded BEFORE the playhead crosses the cut. Without this, an upcoming clip
+   * only had its single first frame warmed; the moment playback entered it, frames
+   * 2..N decoded cold (from-keyframe) until the active decode-ahead stream caught up
+   * a prewarm tick later — the residual cut-boundary stutter. At the 250 ms prewarm
+   * cadence 1 s ≈ four ticks of lead: enough to fully warm the head before the cut
+   * without opening decoders for clips that are still far away.
+   */
+  PREWARM_HEAD_HORIZON_US: 1_000_000,
   MAX_WORKER_RPC_PENDING_CALLS: 500,
   /** Max gap (µs) between adjacent clips to still apply blend shadow during transitions */
   BLEND_SHADOW_GAP_THRESHOLD_US: 200_000,

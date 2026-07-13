@@ -66,6 +66,7 @@ describe('VideoCompositor render optimization', () => {
     compositor.trackById = new Map();
     compositor.activeTracker = {
       update: vi.fn(() => ({ activeClips: [], activeChanged: false })),
+      getActiveClips: vi.fn(() => []),
     };
 
     const events: string[] = [];
@@ -97,6 +98,7 @@ describe('VideoCompositor render optimization', () => {
     compositor.tracks = [];
     compositor.activeTracker = {
       update: vi.fn(() => ({ activeClips: [], activeChanged: false })),
+      getActiveClips: vi.fn(() => []),
     };
     compositor.transitionRenderer = {
       applyShaderTransitions: vi.fn(async () => {

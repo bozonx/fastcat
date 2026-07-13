@@ -40,6 +40,11 @@ export class TimelineActiveTracker<TClip> {
     this.lastTimeUs = 0;
   }
 
+  /** Clips active as of the last {@link update} (live reference — do not mutate). */
+  getActiveClips(): readonly TClip[] {
+    return this.activeClips;
+  }
+
   update(
     params: TimelineActiveTrackerUpdateParams<TClip>,
   ): TimelineActiveTrackerUpdateResult<TClip> {
