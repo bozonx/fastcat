@@ -212,6 +212,7 @@ export function usePlaybackHotkeys(
     const fps = getDocFpsOrDefault(timelineStore.timelineDoc);
     playbackStepHoldRunner.startHold({
       keyCode: e.code,
+      delayMs: 0,
       intervalMs: 3000 / fps,
       action: () => {
         timelineStore.seekFrames(direction === 'forward' ? 1 : -1);

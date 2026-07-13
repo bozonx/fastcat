@@ -1,4 +1,4 @@
-import type { ImageSource, CanvasSource, Graphics, Sprite, Texture, type Container } from 'pixi.js';
+import { CanvasSource, Graphics, Sprite, Texture, type Container, type ImageSource } from 'pixi.js';
 import type { LayoutApplier } from './LayoutApplier';
 import type { CompositorClip, CompositorTrack } from './types';
 import { createPlaceholderImageSource, createSolidColorTexture } from './placeholderImageSource';

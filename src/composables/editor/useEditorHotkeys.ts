@@ -6,9 +6,14 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import { useUiStore } from '~/stores/ui.store';
 import { getActiveElement } from '~/utils/browser-api';
 import { useEffectiveHotkeys } from '~/composables/editor/hotkeys/useEffectiveHotkeys';
-import { hotkeyFromKeyboardEvent, isEditableTarget } from '~/utils/hotkeys/hotkeyUtils';
+import {
+  hotkeyComboToBareKeyCode,
+  hotkeyFromKeyboardEvent,
+  isEditableTarget,
+} from '~/utils/hotkeys/hotkeyUtils';
 import type { HotkeyCommandId } from '~/utils/hotkeys/defaultHotkeys';
 import { createHotkeyHoldRunner } from '~/utils/hotkeys/holdRunner';
+import { pressedKeyCodes } from '~/utils/hotkeys/pressedKeys';
 import { getDocFpsOrDefault } from '~/timeline/commands/utils';
 import { resolvePreviewTransport, type PreviewRoute } from '~/utils/hotkeys/previewTransport';
 import {
@@ -133,6 +138,37 @@ export function useEditorHotkeys() {
     uiStore.triggerPreviewPlayback('toggleMute');
   }
 
+  function getShuttleStopModifierCodes(): string[] {
+    return (effectiveHotkeys.value['playback.shuttleStop'] ?? [])
+      .map((combo) => hotkeyComboToBareKeyCode(combo))
+      .filter((code): code is string => Boolean(code));
+  }
+
+  function isShuttleStopModifierHeld() {
+    return getShuttleStopModifierCodes().some((code) => pressedKeyCodes.has(code));
+  }
+
+  function handlePreviewSlowShuttle(cmdId: HotkeyCommandId, event: KeyboardEvent): boolean {
+    if (
+      (cmdId !== 'playback.shuttleForward' && cmdId !== 'playback.shuttleReverse') ||
+      !isShuttleStopModifierHeld()
+    ) {
+      return false;
+    }
+
+    const fps = getDocFpsOrDefault(timelineStore.timelineDoc);
+    const frames = cmdId === 'playback.shuttleForward' ? 1 : -1;
+    playbackStepHoldRunner.startHold({
+      keyCode: event.code,
+      delayMs: 0,
+      intervalMs: 3000 / fps,
+      action: () => {
+        uiStore.triggerPreviewPlayback('step', undefined, undefined, frames / fps);
+      },
+    });
+    return true;
+  }
+
   function dispatchMatchedCommands(matched: HotkeyCommandId[], e: Event): boolean {
     const modalOpen = hasBlockingModalState();
     const fullscreen = isFullscreen();
@@ -184,7 +220,8 @@ export function useEditorHotkeys() {
         const route = resolvePreviewTransport(cmdId);
         if (!route) continue;
 
-        if (route !== 'block') {
+        const slowShuttleHandled = handlePreviewSlowShuttle(cmdId, keyboardEvent);
+        if (!slowShuttleHandled && route !== 'block') {
           applyPreviewRoute(route);
         }
 
@@ -294,6 +331,9 @@ export function useEditorHotkeys() {
     zoomHoldRunner.handleKeyup(e.code);
     navigationHoldRunner.handleKeyup(e.code);
     playbackStepHoldRunner.handleKeyup(e.code);
+    if (getShuttleStopModifierCodes().includes(e.code)) {
+      playbackStepHoldRunner.clearTimers();
+    }
   }
 
   function onGlobalPointerDown(e: PointerEvent) {

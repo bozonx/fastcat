@@ -613,6 +613,42 @@ describe('useEditorHotkeys', () => {
     expect(uiStore.previewPlaybackTrigger.action).toBe('toggle');
   });
 
+  it('runs and releases slow shuttle stepping in a focused preview', () => {
+    vi.useFakeTimers();
+    try {
+      mockWorkspaceStore.userSettings.hotkeys.bindings = {
+        'playback.shuttleReverse': ['S'],
+        'playback.shuttleStop': ['D'],
+        'playback.shuttleForward': ['F'],
+      };
+      wrapper = mount(HotkeysHarness);
+      const focusStore = useFocusStore();
+      const uiStore = useUiStore();
+
+      focusStore.setPanelFocus('project');
+      uiStore.hasActivePreviewPlayer = true;
+
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'd', code: 'KeyD', bubbles: true }));
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'f', code: 'KeyF', bubbles: true }));
+
+      expect(uiStore.previewPlaybackTrigger).toMatchObject({
+        action: 'step',
+        seconds: 1 / 30,
+      });
+      const firstStepTimestamp = uiStore.previewPlaybackTrigger.timestamp;
+
+      vi.advanceTimersByTime(100);
+      expect(uiStore.previewPlaybackTrigger.timestamp).toBeGreaterThan(firstStepTimestamp);
+
+      window.dispatchEvent(new KeyboardEvent('keyup', { key: 'd', code: 'KeyD', bubbles: true }));
+      const releasedTimestamp = uiStore.previewPlaybackTrigger.timestamp;
+      vi.advanceTimersByTime(500);
+      expect(uiStore.previewPlaybackTrigger.timestamp).toBe(releasedTimestamp);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('blocks reverse and boundary commands while preview player is focused', async () => {
     mockWorkspaceStore.userSettings.hotkeys.bindings = {
       'playback.backward2': ['Digit2'],

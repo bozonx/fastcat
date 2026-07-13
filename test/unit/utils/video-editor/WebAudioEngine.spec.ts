@@ -214,6 +214,47 @@ describe('WebAudioEngine', () => {
       await engine.play(0);
       expect((engine as any).scheduleGeneration).toBe(before + 1);
     });
+
+    it('uses the latest speed when playback preparation resolves', async () => {
+      const engine = new WebAudioEngine();
+      await engine.init();
+      let finishPreparation: (() => void) | undefined;
+      const preparation = new Promise<void>((resolve) => {
+        finishPreparation = resolve;
+      });
+      vi.spyOn(engine as any, 'prepareForPlayback').mockReturnValue(preparation);
+      const schedulerPlay = vi
+        .spyOn((engine as any).scheduler, 'play')
+        .mockResolvedValue(undefined);
+
+      const play = engine.play(0, 1);
+      engine.setGlobalSpeed(0.5);
+      engine.setGlobalSpeed(0.75);
+      finishPreparation?.();
+      await play;
+
+      expect(schedulerPlay).toHaveBeenCalledWith(0, 0.75);
+    });
+
+    it('cancels a pending playback request when stopped during preparation', async () => {
+      const engine = new WebAudioEngine();
+      await engine.init();
+      let finishPreparation: (() => void) | undefined;
+      const preparation = new Promise<void>((resolve) => {
+        finishPreparation = resolve;
+      });
+      vi.spyOn(engine as any, 'prepareForPlayback').mockReturnValue(preparation);
+      const schedulerPlay = vi
+        .spyOn((engine as any).scheduler, 'play')
+        .mockResolvedValue(undefined);
+
+      const play = engine.play(0, 1);
+      engine.stop();
+      finishPreparation?.();
+      await play;
+
+      expect(schedulerPlay).not.toHaveBeenCalled();
+    });
   });
 
   describe('scrub preview', () => {

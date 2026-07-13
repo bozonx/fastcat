@@ -347,6 +347,7 @@ The current behavior is:
 - `Backspace` closes the currently focused detached panel in `Cut` view and restores focus to the last active main panel.
 - Text inputs and text editors keep their native keyboard behavior and do not receive editor hotkeys.
 - Clicking on buttons via pointer (mouse/touch) automatically removes focus (`blur()`) to prevent focus trapping and accidental hotkey triggers, while preserving keyboard accessibility for Tab navigation.
+- Shuttle direction presses use the latest requested playback speed even while media is still preparing. Holding the bare shuttle-stop key with either direction runs a one-third-speed frame cadence in both the timeline monitor and focused media previews; releasing either key stops that cadence.
 
 ## Testing
 

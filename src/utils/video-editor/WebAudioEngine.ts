@@ -309,7 +309,9 @@ export class WebAudioEngine implements IAudioEngine {
   private masterEffectGeneration = 0;
   private schedulingClipIds = new Set<string>();
   private scheduleGeneration = 0;
+  private playbackRequestGeneration = 0;
   private layoutGeneration = 0;
+  private requestedPlaybackSpeed = 1;
 
   private readonly levelMeter = new AudioLevelMeter();
 
@@ -739,7 +741,8 @@ export class WebAudioEngine implements IAudioEngine {
 
   async play(timeUs: number, speed = 1) {
     this.scheduleGeneration += 1;
-    const generation = this.scheduleGeneration;
+    const playbackRequestGeneration = ++this.playbackRequestGeneration;
+    this.requestedPlaybackSpeed = speed;
     this.schedulingClipIds.clear();
     this.stopScrubPreview();
 
@@ -757,9 +760,9 @@ export class WebAudioEngine implements IAudioEngine {
     await this.prepareForPlayback(timeUs);
 
     // Bail out if the user pressed Stop while we were awaiting decode.
-    if (generation !== this.scheduleGeneration) return;
+    if (playbackRequestGeneration !== this.playbackRequestGeneration) return;
 
-    await this.scheduler.play(timeUs, speed);
+    await this.scheduler.play(timeUs, this.requestedPlaybackSpeed);
   }
 
   private async prepareForPlayback(timeUs: number): Promise<void> {
@@ -812,6 +815,7 @@ export class WebAudioEngine implements IAudioEngine {
   }
 
   stop() {
+    this.playbackRequestGeneration += 1;
     this.scheduleGeneration += 1;
     this.schedulingClipIds.clear();
     this.stopScrubPreview();
@@ -886,6 +890,9 @@ export class WebAudioEngine implements IAudioEngine {
   }
 
   setGlobalSpeed(speed: number) {
+    if (Number.isFinite(speed)) {
+      this.requestedPlaybackSpeed = speed;
+    }
     this.scheduleGeneration += 1;
     this.schedulingClipIds.clear();
     this.scheduler.setGlobalSpeed(speed);
@@ -1426,6 +1433,7 @@ export class WebAudioEngine implements IAudioEngine {
       return;
     }
     this.destroyed = true;
+    this.playbackRequestGeneration += 1;
     this.layoutGeneration += 1;
     this.scheduler.destroy();
     this.stopAllNodes();

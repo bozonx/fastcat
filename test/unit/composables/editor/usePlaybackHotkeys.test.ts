@@ -280,7 +280,7 @@ describe('usePlaybackHotkeys — F / D speed cycle', () => {
         );
 
         expect(seekFrames).toHaveBeenCalledTimes(1);
-        vi.advanceTimersByTime(449);
+        vi.advanceTimersByTime(99);
         expect(seekFrames).toHaveBeenCalledTimes(1);
         vi.advanceTimersByTime(1);
         expect(seekFrames).toHaveBeenCalledTimes(2);
