@@ -1,5 +1,6 @@
 import type { TimelineRange } from '../../types';
 import { clampInt, frameToUs, quantizeDeltaUsToFrames, quantizeRangeToFrames } from '../utils';
+import { isClipFrameAligned } from '~/utils/timeline/clip-capabilities';
 
 export interface TrimGeometryInput {
   edge: 'start' | 'end';
@@ -48,6 +49,15 @@ export function computeTrimGeometry(input: TrimGeometryInput): TrimGeometryResul
   const deltaUs = quantizeToFrames
     ? quantizeDeltaUsToFrames(deltaCandidate, fps, 'round')
     : deltaCandidate;
+
+  // A free (sub-frame) audio clip keeps its phase through a quantized trim: the
+  // delta above is already whole-frame, so the moving edge shifts by whole frames
+  // while the untrimmed edge (often a hand-dialed sync anchor) stays put. Snapping
+  // the absolute range to the grid — as we do for already-aligned clips — would
+  // re-grid that untrimmed edge. Only audio can be off-grid, so this never relaxes
+  // the frame lock for video/virtual clips.
+  const snapAbsoluteToGrid =
+    quantizeToFrames && isClipFrameAligned({ timelineRange: input.timelineRange }, fps);
   const sourceDeltaUs = Math.round(deltaUs * absSpeed);
 
   const prevTimelineStartUs = Math.max(0, Math.round(input.timelineRange.startUs));
@@ -68,7 +78,7 @@ export function computeTrimGeometry(input: TrimGeometryInput): TrimGeometryResul
       nextTimelineDurationUs = Math.max(0, prevTimelineDurationUs + deltaUs);
     }
 
-    if (quantizeToFrames) {
+    if (snapAbsoluteToGrid) {
       const qTimeline = quantizeRangeToFrames(
         { startUs: nextTimelineStartUs, durationUs: nextTimelineDurationUs },
         fps,
@@ -183,7 +193,7 @@ export function computeTrimGeometry(input: TrimGeometryInput): TrimGeometryResul
 
   let nextSourceDurationUs = Math.max(0, nextSourceEndUs - nextSourceStartUs);
 
-  if (quantizeToFrames) {
+  if (snapAbsoluteToGrid) {
     const qTimeline = quantizeRangeToFrames(
       { startUs: nextTimelineStartUs, durationUs: nextTimelineDurationUs },
       fps,

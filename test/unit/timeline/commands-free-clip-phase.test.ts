@@ -208,6 +208,29 @@ describe('free (sub-frame) audio clip phase preservation', () => {
       expect(clip.timelineRange.durationUs).toBe(FREE_DURATION_US + deltaUs);
     });
 
+    it('preserves the untrimmed edge phase of a free clip even in snap mode (quantize on)', () => {
+      const doc = makeDoc([audioTrack([audioClip()])]);
+      const deltaUs = -123_000; // sub-frame request; quantized to whole frames
+
+      const { next } = applyTimelineCommand(doc, {
+        type: 'trim_item',
+        trackId: 'a1t',
+        itemId: 'a1',
+        edge: 'end',
+        deltaUs,
+        quantizeToFrames: true,
+      });
+
+      const clip = clipsOf(next, 'a1t')[0]!;
+      // The untrimmed start (the sync anchor) is untouched — NOT re-gridded.
+      expect(clip.timelineRange.startUs).toBe(FREE_START_US);
+      // The clip stays free, and the end moved by a whole number of frames.
+      expect(isClipFrameAligned(clip, FPS)).toBe(false);
+      const durationDeltaFrames =
+        ((clip.timelineRange.durationUs - FREE_DURATION_US) * FPS) / 1e6;
+      expect(Math.abs(durationDeltaFrames - Math.round(durationDeltaFrames))).toBeLessThan(0.001);
+    });
+
     it('quantizes a video clip end to the grid when trimming', () => {
       const doc = makeDoc([
         videoTrack([
