@@ -10,6 +10,7 @@
  * that a command actually produced.
  */
 import { describe, it, expect } from 'vitest';
+import { timelineUs } from '../utils/timeline-time';
 import fc from 'fast-check';
 import { applyTimelineCommand } from '~/timeline/commands';
 import type { TimelineCommand } from '~/timeline/commands';
@@ -41,7 +42,7 @@ function makeMediaClip(
     trackId,
     name: id,
     source: { path: `${id}.mp4` },
-    sourceDurationUs: 60_000_000,
+    sourceDurationUs: timelineUs(60_000_000),
     timelineRange: { startUs: spec.startUs, durationUs: spec.durationUs },
     sourceRange: { startUs: 0, durationUs: spec.durationUs },
   } as TimelineClipItem;
@@ -67,15 +68,15 @@ function makeDoc(clipsByTrack: Record<string, Omit<ClipSpec, 'trackId'>[]>): Tim
 function seedDoc(): TimelineDocument {
   return makeDoc({
     v1: [
-      { startUs: 0, durationUs: 1_000_000 },
-      { startUs: 1_000_000, durationUs: 2_000_000 },
-      { startUs: 4_000_000, durationUs: 1_000_000 },
+      { startUs: 0, durationUs: timelineUs(1_000_000) },
+      { startUs: timelineUs(1_000_000), durationUs: timelineUs(2_000_000) },
+      { startUs: timelineUs(4_000_000), durationUs: timelineUs(1_000_000) },
     ],
     v2: [
-      { startUs: 0, durationUs: 3_000_000 },
-      { startUs: 5_000_000, durationUs: 1_000_000 },
+      { startUs: 0, durationUs: timelineUs(3_000_000) },
+      { startUs: timelineUs(5_000_000), durationUs: timelineUs(1_000_000) },
     ],
-    a1: [{ startUs: 0, durationUs: 6_000_000 }],
+    a1: [{ startUs: 0, durationUs: timelineUs(6_000_000) }],
   });
 }
 
@@ -168,20 +169,20 @@ const actionArb: fc.Arbitrary<Action> = fc.oneof(
   fc.record({
     kind: fc.constant('add' as const),
     trackIndex: fc.nat(),
-    startUs: fc.integer({ min: 0, max: 20_000_000 }),
-    durationUs: fc.integer({ min: 100_000, max: 5_000_000 }),
+    startUs: fc.integer({ min: 0, max: timelineUs(20_000_000) }),
+    durationUs: fc.integer({ min: timelineUs(100_000), max: timelineUs(5_000_000) }),
     addId: fc.nat(),
   }),
   fc.record({
     kind: fc.constant('move' as const),
     itemIndex: fc.nat(),
-    startUs: fc.integer({ min: 0, max: 20_000_000 }),
+    startUs: fc.integer({ min: 0, max: timelineUs(20_000_000) }),
   }),
   fc.record({
     kind: fc.constant('trim' as const),
     itemIndex: fc.nat(),
     edge: fc.constantFrom('start' as const, 'end' as const),
-    deltaUs: fc.integer({ min: -3_000_000, max: 3_000_000 }),
+    deltaUs: fc.integer({ min: -timelineUs(3_000_000), max: timelineUs(3_000_000) }),
   }),
   fc.record({
     kind: fc.constant('split' as const),
@@ -206,7 +207,7 @@ function toCommand(doc: TimelineDocument, action: Action): TimelineCommand | nul
       path: `added-${action.addId}.mp4`,
       startUs: action.startUs,
       durationUs: action.durationUs,
-      sourceDurationUs: 60_000_000,
+      sourceDurationUs: timelineUs(60_000_000),
     };
   }
 

@@ -1,5 +1,6 @@
 /** @vitest-environment node */
 import { describe, it, expect } from 'vitest';
+import { timelineUs } from '../utils/timeline-time';
 import { applyTimelineCommand } from '~/timeline/commands';
 import type { TimelineDocument, TimelineTrack, TimelineTrackItem } from '~/timeline/types';
 
@@ -36,9 +37,9 @@ describe('timeline/commands trim_item — source material bounds', () => {
           name: 'C1',
           source: { path: 'a.mp4' },
           isImage: false,
-          sourceDurationUs: 5_000_000,
-          sourceRange: { startUs: 0, durationUs: 3_000_000 },
-          timelineRange: { startUs: 0, durationUs: 3_000_000 },
+          sourceDurationUs: timelineUs(5_000_000),
+          sourceRange: { startUs: 0, durationUs: timelineUs(3_000_000) },
+          timelineRange: { startUs: 0, durationUs: timelineUs(3_000_000) },
           speed: 1,
         },
       ],
@@ -49,13 +50,13 @@ describe('timeline/commands trim_item — source material bounds', () => {
       trackId: 'v1',
       itemId: 'c1',
       edge: 'end',
-      deltaUs: 10_000_000, // try to extend far beyond the 5s source
+      deltaUs: timelineUs(10_000_000), // try to extend far beyond the 5s source
     });
 
     const c1 = findClip(next, 'c1');
     // 2s of remaining material → 3s + 2s, never 13s.
-    expect(c1.timelineRange.durationUs).toBe(5_000_000);
-    expect(c1.sourceRange.durationUs).toBe(5_000_000);
+    expect(c1.timelineRange.durationUs).toBe(timelineUs(5_000_000));
+    expect(c1.sourceRange.durationUs).toBe(timelineUs(5_000_000));
   });
 
   it('caps an audio clip at its source duration when extending the end', () => {
@@ -72,9 +73,9 @@ describe('timeline/commands trim_item — source material bounds', () => {
           name: 'AC1',
           source: { path: 'a.wav' },
           isImage: false,
-          sourceDurationUs: 4_000_000,
-          sourceRange: { startUs: 0, durationUs: 2_000_000 },
-          timelineRange: { startUs: 0, durationUs: 2_000_000 },
+          sourceDurationUs: timelineUs(4_000_000),
+          sourceRange: { startUs: 0, durationUs: timelineUs(2_000_000) },
+          timelineRange: { startUs: 0, durationUs: timelineUs(2_000_000) },
           speed: 1,
         },
       ],
@@ -85,12 +86,12 @@ describe('timeline/commands trim_item — source material bounds', () => {
       trackId: 'a1',
       itemId: 'ac1',
       edge: 'end',
-      deltaUs: 10_000_000,
+      deltaUs: timelineUs(10_000_000),
     });
 
     const ac1 = findClip(next, 'ac1');
-    expect(ac1.timelineRange.durationUs).toBe(4_000_000);
-    expect(ac1.sourceRange.durationUs).toBe(4_000_000);
+    expect(ac1.timelineRange.durationUs).toBe(timelineUs(4_000_000));
+    expect(ac1.sourceRange.durationUs).toBe(timelineUs(4_000_000));
   });
 
   it('refuses to extend a media clip whose source duration is not yet known (no NaN)', () => {
@@ -109,8 +110,8 @@ describe('timeline/commands trim_item — source material bounds', () => {
           isImage: false,
           // Metadata not resolved yet.
           sourceDurationUs: 0,
-          sourceRange: { startUs: 0, durationUs: 3_000_000 },
-          timelineRange: { startUs: 0, durationUs: 3_000_000 },
+          sourceRange: { startUs: 0, durationUs: timelineUs(3_000_000) },
+          timelineRange: { startUs: 0, durationUs: timelineUs(3_000_000) },
           speed: 1,
         },
       ],
@@ -121,14 +122,14 @@ describe('timeline/commands trim_item — source material bounds', () => {
       trackId: 'v1',
       itemId: 'c1',
       edge: 'end',
-      deltaUs: 10_000_000,
+      deltaUs: timelineUs(10_000_000),
     });
 
     const c1 = findClip(next, 'c1');
     expect(Number.isFinite(c1.timelineRange.durationUs)).toBe(true);
     expect(Number.isFinite(c1.sourceRange.durationUs)).toBe(true);
     // Cannot grow past what is already consumed until the duration is known.
-    expect(c1.timelineRange.durationUs).toBe(3_000_000);
+    expect(c1.timelineRange.durationUs).toBe(timelineUs(3_000_000));
   });
 
   it('allows an image clip to extend beyond its initial duration (no material limit)', () => {
@@ -145,9 +146,9 @@ describe('timeline/commands trim_item — source material bounds', () => {
           name: 'Image',
           source: { path: 'a.png' },
           isImage: true,
-          sourceDurationUs: 3_000_000,
-          sourceRange: { startUs: 0, durationUs: 3_000_000 },
-          timelineRange: { startUs: 0, durationUs: 3_000_000 },
+          sourceDurationUs: timelineUs(3_000_000),
+          sourceRange: { startUs: 0, durationUs: timelineUs(3_000_000) },
+          timelineRange: { startUs: 0, durationUs: timelineUs(3_000_000) },
           speed: 1,
         },
       ],
@@ -158,11 +159,11 @@ describe('timeline/commands trim_item — source material bounds', () => {
       trackId: 'v1',
       itemId: 'img1',
       edge: 'end',
-      deltaUs: 5_000_000,
+      deltaUs: timelineUs(5_000_000),
     });
 
     const img1 = findClip(next, 'img1');
-    expect(img1.timelineRange.durationUs).toBe(8_000_000);
+    expect(img1.timelineRange.durationUs).toBe(timelineUs(8_000_000));
   });
 
   it('allows an image clip to shrink without moving source start below zero', () => {
@@ -179,9 +180,9 @@ describe('timeline/commands trim_item — source material bounds', () => {
           name: 'Image',
           source: { path: 'a.png' },
           isImage: true,
-          sourceDurationUs: 3_000_000,
-          sourceRange: { startUs: 0, durationUs: 3_000_000 },
-          timelineRange: { startUs: 0, durationUs: 3_000_000 },
+          sourceDurationUs: timelineUs(3_000_000),
+          sourceRange: { startUs: 0, durationUs: timelineUs(3_000_000) },
+          timelineRange: { startUs: 0, durationUs: timelineUs(3_000_000) },
           speed: 1,
         },
       ],
@@ -192,12 +193,12 @@ describe('timeline/commands trim_item — source material bounds', () => {
       trackId: 'v1',
       itemId: 'img1',
       edge: 'end',
-      deltaUs: -1_000_000,
+      deltaUs: -timelineUs(1_000_000),
     });
 
     const img1 = findClip(next, 'img1');
-    expect(img1.timelineRange.durationUs).toBe(2_000_000);
-    expect(img1.sourceRange).toEqual({ startUs: 0, durationUs: 2_000_000 });
+    expect(img1.timelineRange.durationUs).toBe(timelineUs(2_000_000));
+    expect(img1.sourceRange).toEqual({ startUs: 0, durationUs: timelineUs(2_000_000) });
   });
 
   it('limits start trim to the available head material', () => {
@@ -214,10 +215,10 @@ describe('timeline/commands trim_item — source material bounds', () => {
           name: 'C1',
           source: { path: 'a.mp4' },
           isImage: false,
-          sourceDurationUs: 10_000_000,
+          sourceDurationUs: timelineUs(10_000_000),
           // 2s of unused material before the in-point.
-          sourceRange: { startUs: 2_000_000, durationUs: 3_000_000 },
-          timelineRange: { startUs: 5_000_000, durationUs: 3_000_000 },
+          sourceRange: { startUs: timelineUs(2_000_000), durationUs: timelineUs(3_000_000) },
+          timelineRange: { startUs: timelineUs(5_000_000), durationUs: timelineUs(3_000_000) },
           speed: 1,
         },
       ],
@@ -228,14 +229,14 @@ describe('timeline/commands trim_item — source material bounds', () => {
       trackId: 'v1',
       itemId: 'c1',
       edge: 'start',
-      deltaUs: -10_000_000, // drag the start far to the left
+      deltaUs: -timelineUs(10_000_000), // drag the start far to the left
     });
 
     const c1 = findClip(next, 'c1');
     // Only 2s of head material exists, so the clip grows by exactly 2s.
     expect(c1.sourceRange.startUs).toBe(0);
-    expect(c1.timelineRange.startUs).toBe(3_000_000);
-    expect(c1.timelineRange.durationUs).toBe(5_000_000);
+    expect(c1.timelineRange.startUs).toBe(timelineUs(3_000_000));
+    expect(c1.timelineRange.durationUs).toBe(timelineUs(5_000_000));
   });
 
   it('rejects a shrink below one frame instead of producing a zero-length clip', () => {
@@ -252,9 +253,9 @@ describe('timeline/commands trim_item — source material bounds', () => {
           name: 'C1',
           source: { path: 'a.mp4' },
           isImage: false,
-          sourceDurationUs: 5_000_000,
-          sourceRange: { startUs: 0, durationUs: 1_000_000 },
-          timelineRange: { startUs: 0, durationUs: 1_000_000 },
+          sourceDurationUs: timelineUs(5_000_000),
+          sourceRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
+          timelineRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
           speed: 1,
         },
       ],
@@ -265,11 +266,11 @@ describe('timeline/commands trim_item — source material bounds', () => {
       trackId: 'v1',
       itemId: 'c1',
       edge: 'end',
-      deltaUs: -2_000_000,
+      deltaUs: -timelineUs(2_000_000),
     });
 
     const c1 = findClip(next, 'c1');
-    expect(c1.timelineRange.durationUs).toBe(1_000_000);
+    expect(c1.timelineRange.durationUs).toBe(timelineUs(1_000_000));
   });
 });
 
@@ -288,9 +289,9 @@ describe('timeline/commands overlay_trim_item — guards parity with trim_item',
           name: 'C1',
           source: { path: 'a.mp4' },
           isImage: false,
-          sourceDurationUs: 5_000_000,
-          sourceRange: { startUs: 0, durationUs: 1_000_000 },
-          timelineRange: { startUs: 0, durationUs: 1_000_000 },
+          sourceDurationUs: timelineUs(5_000_000),
+          sourceRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
+          timelineRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
           speed: 1,
         },
       ],
@@ -301,11 +302,11 @@ describe('timeline/commands overlay_trim_item — guards parity with trim_item',
       trackId: 'v1',
       itemId: 'c1',
       edge: 'end',
-      deltaUs: -2_000_000, // shrink past zero
+      deltaUs: -timelineUs(2_000_000), // shrink past zero
     });
 
     const c1 = findClip(next, 'c1');
-    expect(c1.timelineRange.durationUs).toBe(1_000_000);
+    expect(c1.timelineRange.durationUs).toBe(timelineUs(1_000_000));
   });
 
   it('caps a video clip at its source duration when extending the end', () => {
@@ -322,9 +323,9 @@ describe('timeline/commands overlay_trim_item — guards parity with trim_item',
           name: 'C1',
           source: { path: 'a.mp4' },
           isImage: false,
-          sourceDurationUs: 5_000_000,
-          sourceRange: { startUs: 0, durationUs: 3_000_000 },
-          timelineRange: { startUs: 0, durationUs: 3_000_000 },
+          sourceDurationUs: timelineUs(5_000_000),
+          sourceRange: { startUs: 0, durationUs: timelineUs(3_000_000) },
+          timelineRange: { startUs: 0, durationUs: timelineUs(3_000_000) },
           speed: 1,
         },
       ],
@@ -335,11 +336,11 @@ describe('timeline/commands overlay_trim_item — guards parity with trim_item',
       trackId: 'v1',
       itemId: 'c1',
       edge: 'end',
-      deltaUs: 10_000_000,
+      deltaUs: timelineUs(10_000_000),
     });
 
     const c1 = findClip(next, 'c1');
-    expect(c1.timelineRange.durationUs).toBe(5_000_000);
-    expect(c1.sourceRange.durationUs).toBe(5_000_000);
+    expect(c1.timelineRange.durationUs).toBe(timelineUs(5_000_000));
+    expect(c1.sourceRange.durationUs).toBe(timelineUs(5_000_000));
   });
 });

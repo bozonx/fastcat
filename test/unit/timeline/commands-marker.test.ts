@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { timelineUs } from '../utils/timeline-time';
 import { addMarker, updateMarker, removeMarker } from '~/timeline/commands/markerHandlers';
 import type { TimelineDocument, TimelineMarker } from '~/timeline/types';
 
@@ -25,14 +26,14 @@ describe('markerHandlers', () => {
         type: 'add_marker',
         id: 'm1',
         // Frame-aligned at 30fps (markers always snap to the frame grid).
-        timeUs: 1_000_000,
+        timeUs: timelineUs(1_000_000),
         text: 'hello',
       });
       const markers =
         (result.next.metadata?.fastcat as { markers?: TimelineMarker[] })?.markers ?? [];
       expect(markers).toHaveLength(1);
       expect(markers[0]!.id).toBe('m1');
-      expect(markers[0]!.timeUs).toBe(1_000_000);
+      expect(markers[0]!.timeUs).toBe(timelineUs(1_000_000));
     });
 
     it('sorts markers by timeUs', () => {
@@ -62,12 +63,12 @@ describe('markerHandlers', () => {
     });
 
     it('throws if another marker already exists at the same time', () => {
-      const doc = createDoc([{ id: 'm1', timeUs: 1_000_000, text: '' }] as TimelineMarker[]);
+      const doc = createDoc([{ id: 'm1', timeUs: timelineUs(1_000_000), text: '' }] as TimelineMarker[]);
       expect(() =>
         addMarker(doc, {
           type: 'add_marker',
           id: 'm2',
-          timeUs: 1_000_000,
+          timeUs: timelineUs(1_000_000),
           text: '',
         }),
       ).toThrow('Marker already exists at this time');
@@ -80,11 +81,11 @@ describe('markerHandlers', () => {
       const result = updateMarker(doc, {
         type: 'update_marker',
         id: 'm1',
-        timeUs: 3_000_000,
+        timeUs: timelineUs(3_000_000),
       });
       const markers =
         (result.next.metadata?.fastcat as { markers?: TimelineMarker[] })?.markers ?? [];
-      expect(markers[0]!.timeUs).toBe(3_000_000);
+      expect(markers[0]!.timeUs).toBe(timelineUs(3_000_000));
     });
 
     it('updates marker durationUs', () => {
@@ -92,11 +93,11 @@ describe('markerHandlers', () => {
       const result = updateMarker(doc, {
         type: 'update_marker',
         id: 'm1',
-        durationUs: 500_000,
+        durationUs: timelineUs(500_000),
       });
       const markers =
         (result.next.metadata?.fastcat as { markers?: TimelineMarker[] })?.markers ?? [];
-      expect(markers[0]!.durationUs).toBe(500_000);
+      expect(markers[0]!.durationUs).toBe(timelineUs(500_000));
     });
 
     it('updates marker text', () => {
@@ -113,30 +114,30 @@ describe('markerHandlers', () => {
 
     it('throws if moving a marker onto another marker time', () => {
       const doc = createDoc([
-        { id: 'm1', timeUs: 1_000_000, text: '' },
-        { id: 'm2', timeUs: 2_000_000, text: '' },
+        { id: 'm1', timeUs: timelineUs(1_000_000), text: '' },
+        { id: 'm2', timeUs: timelineUs(2_000_000), text: '' },
       ] as TimelineMarker[]);
 
       expect(() =>
         updateMarker(doc, {
           type: 'update_marker',
           id: 'm2',
-          timeUs: 1_000_000,
+          timeUs: timelineUs(1_000_000),
         }),
       ).toThrow('Marker already exists at this time');
     });
 
     it('throws if quantized update lands on another marker time', () => {
       const doc = createDoc([
-        { id: 'm1', timeUs: 1_000_000, text: '' },
-        { id: 'm2', timeUs: 2_000_000, text: '' },
+        { id: 'm1', timeUs: timelineUs(1_000_000), text: '' },
+        { id: 'm2', timeUs: timelineUs(2_000_000), text: '' },
       ] as TimelineMarker[]);
 
       expect(() =>
         updateMarker(doc, {
           type: 'update_marker',
           id: 'm2',
-          timeUs: 999_999,
+          timeUs: timelineUs(999_999),
         }),
       ).toThrow('Marker already exists at this time');
     });

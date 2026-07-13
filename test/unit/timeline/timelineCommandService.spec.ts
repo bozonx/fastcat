@@ -1,5 +1,6 @@
 /** @vitest-environment node */
 import { describe, it, expect, vi } from 'vitest';
+import { timelineUs } from '../utils/timeline-time';
 import { createTimelineCommandService } from '~/timeline/application/timelineCommandService';
 
 describe('createTimelineCommandService', () => {
@@ -58,8 +59,8 @@ describe('createTimelineCommandService', () => {
         hasProxy: vi.fn(() => false),
         ensureProxy: vi.fn().mockResolvedValue(undefined),
       },
-      defaultImageDurationUs: 5_000_000,
-      defaultImageSourceDurationUs: 5_000_000,
+      defaultImageDurationUs: timelineUs(5_000_000),
+      defaultImageSourceDurationUs: timelineUs(5_000_000),
       parseTimelineFromOtio: vi.fn(),
       selectTimelineDurationUs: vi.fn(),
       ...overrides,
@@ -128,7 +129,7 @@ describe('createTimelineCommandService', () => {
     });
 
     const cmd = (deps.applyTimeline as ReturnType<typeof vi.fn>).mock.calls[0][0];
-    expect(cmd.durationUs).toBe(1_033_333);
+    expect(cmd.durationUs).toBe(timelineUs(1_033_333));
   });
 
   it('uses defaultImageDurationUs for image-like files', async () => {
@@ -146,7 +147,7 @@ describe('createTimelineCommandService', () => {
     });
 
     const cmd = (deps.applyTimeline as ReturnType<typeof vi.fn>).mock.calls[0][0];
-    expect(cmd.durationUs).toBe(5_000_000);
+    expect(cmd.durationUs).toBe(timelineUs(5_000_000));
     expect(cmd.isImage).toBe(true);
   });
 
@@ -162,9 +163,9 @@ describe('createTimelineCommandService', () => {
           clipType: 'media',
           name: 'Existing',
           source: { path: 'video/existing.mp4' },
-          sourceRange: { startUs: 0, durationUs: 2_000_000 },
-          sourceDurationUs: 2_000_000,
-          timelineRange: { startUs: 0, durationUs: 2_000_000 },
+          sourceRange: { startUs: 0, durationUs: timelineUs(2_000_000) },
+          sourceDurationUs: timelineUs(2_000_000),
+          timelineRange: { startUs: 0, durationUs: timelineUs(2_000_000) },
         },
       ],
     };
@@ -185,16 +186,16 @@ describe('createTimelineCommandService', () => {
       trackId: 'v1',
       name: 'clip.mp4',
       path: 'video/clip.mp4',
-      startUs: 1_000_000,
+      startUs: timelineUs(1_000_000),
       pseudo: true,
     });
 
     const cmd = (deps.applyTimeline as ReturnType<typeof vi.fn>).mock.calls[0][0];
-    expect(cmd.startUs).toBe(1_000_000);
-    expect(cmd.durationUs).toBe(4_000_000);
-    expect(cmd.sourceRange).toEqual({ startUs: 0, durationUs: 4_000_000 });
+    expect(cmd.startUs).toBe(timelineUs(1_000_000));
+    expect(cmd.durationUs).toBe(timelineUs(4_000_000));
+    expect(cmd.sourceRange).toEqual({ startUs: 0, durationUs: timelineUs(4_000_000) });
     expect(cmd.pseudo).toBe(true);
-    expect(result.durationUs).toBe(4_000_000);
+    expect(result.durationUs).toBe(timelineUs(4_000_000));
     expect(result.warnings).toBeUndefined();
   });
 });

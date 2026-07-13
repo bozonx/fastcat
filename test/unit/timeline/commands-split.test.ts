@@ -1,5 +1,6 @@
 /** @vitest-environment node */
 import { describe, it, expect } from 'vitest';
+import { timelineUs } from '../utils/timeline-time';
 import { applyTimelineCommand } from '~/timeline/commands';
 import type { TimelineDocument, TimelineTrack, TimelineTrackItem } from '~/timeline/types';
 
@@ -28,8 +29,8 @@ describe('timeline/commands split_item', () => {
             trackId: 'v1',
             name: 'Image',
             backgroundColor: '#000000',
-            timelineRange: { startUs: 0, durationUs: 999_999 },
-            sourceRange: { startUs: 0, durationUs: 999_999 },
+            timelineRange: { startUs: 0, durationUs: timelineUs(999_999) },
+            sourceRange: { startUs: 0, durationUs: timelineUs(999_999) },
           },
         ],
       },
@@ -39,7 +40,7 @@ describe('timeline/commands split_item', () => {
       type: 'split_item',
       trackId: 'v1',
       itemId: 'img1',
-      atUs: 333_333,
+      atUs: timelineUs(333_333),
     });
 
     const items = next.tracks[0]?.items ?? [];
@@ -72,9 +73,9 @@ describe('timeline/commands split_item', () => {
             trackId: 'v1',
             name: 'C1',
             source: { path: 'a.mp4' },
-            sourceDurationUs: 10_000_000,
-            timelineRange: { startUs: 0, durationUs: 1_000_000 },
-            sourceRange: { startUs: 0, durationUs: 1_000_000 },
+            sourceDurationUs: timelineUs(10_000_000),
+            timelineRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
+            sourceRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
           },
         ],
       },
@@ -84,7 +85,7 @@ describe('timeline/commands split_item', () => {
       type: 'split_item',
       trackId: 'v1',
       itemId: 'c1',
-      atUs: 500_000,
+      atUs: timelineUs(500_000),
     });
 
     const items = next.tracks[0]?.items ?? [];
@@ -101,7 +102,7 @@ describe('timeline/commands split_item', () => {
     expect(right.timelineRange.durationUs).toBeGreaterThan(0);
 
     expect(left.sourceRange.startUs).toBe(0);
-    expect(left.sourceRange.durationUs + right.sourceRange.durationUs).toBe(1_000_000);
+    expect(left.sourceRange.durationUs + right.sourceRange.durationUs).toBe(timelineUs(1_000_000));
     expect(right.sourceRange.startUs).toBe(left.sourceRange.durationUs);
   });
 
@@ -119,9 +120,9 @@ describe('timeline/commands split_item', () => {
             trackId: 'v1',
             name: 'C1',
             source: { path: 'a.mp4' },
-            sourceDurationUs: 10_000_000,
-            timelineRange: { startUs: 0, durationUs: 1_000_000 },
-            sourceRange: { startUs: 0, durationUs: 1_000_000 },
+            sourceDurationUs: timelineUs(10_000_000),
+            timelineRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
+            sourceRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
           },
         ],
       },
@@ -138,7 +139,7 @@ describe('timeline/commands split_item', () => {
       type: 'split_item',
       trackId: 'v1',
       itemId: 'c1',
-      atUs: 1_000_000,
+      atUs: timelineUs(1_000_000),
     }).next;
 
     expect(atStart.tracks[0]?.items.filter((x) => x.kind === 'clip').length).toBe(1);
@@ -159,10 +160,10 @@ describe('timeline/commands split_item', () => {
             trackId: 'v1',
             name: 'Video',
             source: { path: 'a.mp4' },
-            sourceDurationUs: 10_000_000,
+            sourceDurationUs: timelineUs(10_000_000),
             linkedGroupId: 'group-1',
-            timelineRange: { startUs: 0, durationUs: 1_000_000 },
-            sourceRange: { startUs: 0, durationUs: 1_000_000 },
+            timelineRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
+            sourceRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
           },
         ],
       },
@@ -178,10 +179,10 @@ describe('timeline/commands split_item', () => {
             trackId: 'a1',
             name: 'Audio',
             source: { path: 'a.mp4' },
-            sourceDurationUs: 10_000_000,
+            sourceDurationUs: timelineUs(10_000_000),
             linkedGroupId: 'group-1',
-            timelineRange: { startUs: 0, durationUs: 500_000 },
-            sourceRange: { startUs: 0, durationUs: 500_000 },
+            timelineRange: { startUs: 0, durationUs: timelineUs(500_000) },
+            sourceRange: { startUs: 0, durationUs: timelineUs(500_000) },
           },
         ],
       },
@@ -191,7 +192,7 @@ describe('timeline/commands split_item', () => {
       type: 'split_item',
       trackId: 'v1',
       itemId: 'vclip',
-      atUs: 500_000,
+      atUs: timelineUs(500_000),
     });
 
     const videoClips = next.tracks[0]?.items.filter((x) => x.kind === 'clip') as any[];

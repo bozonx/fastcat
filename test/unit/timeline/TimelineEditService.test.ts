@@ -1,5 +1,6 @@
 /** @vitest-environment node */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { timelineUs } from '../utils/timeline-time';
 import { createTimelineEditService } from '~/timeline/application/timelineEditService';
 import type { TimelineDocument, TimelineCommand } from '~/timeline/types';
 
@@ -25,14 +26,14 @@ describe('TimelineEditService', () => {
               kind: 'clip',
               trackId: 'v1',
               name: 'C1',
-              timelineRange: { startUs: 0, durationUs: 10_000_000 },
+              timelineRange: { startUs: 0, durationUs: timelineUs(10_000_000) },
             },
             {
               id: 'c2',
               kind: 'clip',
               trackId: 'v1',
               name: 'C2',
-              timelineRange: { startUs: 10_000_000, durationUs: 10_000_000 },
+              timelineRange: { startUs: timelineUs(10_000_000), durationUs: timelineUs(10_000_000) },
             },
           ],
         },
@@ -97,8 +98,8 @@ describe('TimelineEditService', () => {
 
       service.rippleDeleteRange({
         trackIds: ['v1'],
-        startUs: 5_000_000,
-        endUs: 15_000_000,
+        startUs: timelineUs(5_000_000),
+        endUs: timelineUs(15_000_000),
       });
 
       // Phase 1: Split
@@ -135,8 +136,8 @@ describe('TimelineEditService', () => {
       service.rippleDeleteRange(
         {
           trackIds: ['v1'],
-          startUs: 5_000_000,
-          endUs: 15_000_000,
+          startUs: timelineUs(5_000_000),
+          endUs: timelineUs(15_000_000),
         },
         {
           labelKey: 'custom.delete',
@@ -159,7 +160,7 @@ describe('TimelineEditService', () => {
   describe('rippleTrimRight', () => {
     it('trims end and moves subsequent clips in a single batch', async () => {
       deps.getHotkeyTargetClip.mockReturnValue({ trackId: 'v1', itemId: 'c1' });
-      deps.getCurrentTime.mockReturnValue(5_000_000); // Trim C1 to 5s (current end is 10s)
+      deps.getCurrentTime.mockReturnValue(timelineUs(5_000_000)); // Trim C1 to 5s (current end is 10s)
 
       await service.rippleTrimRight();
 
@@ -176,7 +177,7 @@ describe('TimelineEditService', () => {
           type: 'trim_item',
           itemId: 'c1',
           edge: 'end',
-          deltaUs: -5_000_000,
+          deltaUs: -timelineUs(5_000_000),
         }),
       );
 
@@ -187,7 +188,7 @@ describe('TimelineEditService', () => {
         | undefined;
       expect(moveItemsCmd).toBeDefined();
       expect(moveItemsCmd!.moves).toEqual([
-        expect.objectContaining({ itemId: 'c2', startUs: 5_000_000 }),
+        expect.objectContaining({ itemId: 'c2', startUs: timelineUs(5_000_000) }),
       ]);
     });
   });
@@ -195,7 +196,7 @@ describe('TimelineEditService', () => {
   describe('rippleTrimLeft', () => {
     it('trims start, slides the remnant back, and ripples subsequent clips', async () => {
       deps.getHotkeyTargetClip.mockReturnValue({ trackId: 'v1', itemId: 'c1' });
-      deps.getCurrentTime.mockReturnValue(5_000_000); // Trim C1 start to 5s (current start is 0)
+      deps.getCurrentTime.mockReturnValue(timelineUs(5_000_000)); // Trim C1 start to 5s (current start is 0)
 
       await service.rippleTrimLeft();
 
@@ -210,7 +211,7 @@ describe('TimelineEditService', () => {
           type: 'trim_item',
           itemId: 'c1',
           edge: 'start',
-          deltaUs: 5_000_000,
+          deltaUs: timelineUs(5_000_000),
         }),
       );
 
@@ -232,7 +233,7 @@ describe('TimelineEditService', () => {
         | undefined;
       expect(moveItemsCmd).toBeDefined();
       expect(moveItemsCmd!.moves).toEqual([
-        expect.objectContaining({ itemId: 'c2', startUs: 5_000_000 }),
+        expect.objectContaining({ itemId: 'c2', startUs: timelineUs(5_000_000) }),
       ]);
     });
   });

@@ -1,5 +1,6 @@
 /** @vitest-environment node */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { timelineUs } from '../utils/timeline-time';
 import { createTimelineCommandService } from '~/timeline/application/timelineCommandService';
 
 describe('TimelineCommandService', () => {
@@ -56,10 +57,10 @@ describe('TimelineCommandService', () => {
       updateProjectFormat: vi.fn(),
       showAutoSettingsApplied: vi.fn(),
       mediaCache: { hasProxy: vi.fn(() => false), ensureProxy: vi.fn() },
-      defaultImageDurationUs: 5_000_000,
-      defaultImageSourceDurationUs: 5_000_000,
+      defaultImageDurationUs: timelineUs(5_000_000),
+      defaultImageSourceDurationUs: timelineUs(5_000_000),
       parseTimelineFromOtio: vi.fn(),
-      selectTimelineDurationUs: vi.fn(() => 10_000_000),
+      selectTimelineDurationUs: vi.fn(() => timelineUs(10_000_000)),
     };
 
     service = createTimelineCommandService(deps);
@@ -84,7 +85,7 @@ describe('TimelineCommandService', () => {
         expect.objectContaining({
           type: 'add_clip_to_track',
           path: 'video/test.mp4',
-          durationUs: 10_000_000,
+          durationUs: timelineUs(10_000_000),
         }),
         undefined,
       );
@@ -440,7 +441,7 @@ describe('TimelineCommandService', () => {
       );
       expect(timelineFormat.geometryResolved).toBe(true);
       expect(timelineFormat.sampleRateResolved).toBe(true);
-      expect(timelineFormat.sampleRate).toBe(44100);
+      expect(timelineFormat.sampleRate).toBe(44_100);
 
       // 3. Drop another Video file third - should NOT update project settings again
       deps.updateTimelineFormat.mockClear();
@@ -492,8 +493,8 @@ describe('TimelineCommandService', () => {
                 trackId: 'v1',
                 name: 'Root',
                 source: { path: './root.otio' },
-                timelineRange: { startUs: 0, durationUs: 1_000_000 },
-                sourceRange: { startUs: 0, durationUs: 1_000_000 },
+                timelineRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
+                sourceRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
               },
             ],
           },

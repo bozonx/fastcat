@@ -1,5 +1,6 @@
 /** @vitest-environment node */
 import { describe, it, expect } from 'vitest';
+import { timelineUs } from '../utils/timeline-time';
 import { applyTimelineCommand } from '~/timeline/commands';
 import type { TimelineDocument, TimelineTrack, TimelineTrackItem } from '~/timeline/types';
 
@@ -26,14 +27,14 @@ describe('timeline/commands gap behavior', () => {
           trackId: 'v1',
           name: 'C1',
           source: { path: 'a.mp4' },
-          sourceDurationUs: 10_000_000,
-          timelineRange: { startUs: 0, durationUs: 1_000_000 },
-          sourceRange: { startUs: 0, durationUs: 1_000_000 },
+          sourceDurationUs: timelineUs(10_000_000),
+          timelineRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
+          sourceRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
         },
       ],
     });
 
-    const freeStartUs = 1_000_001;
+    const freeStartUs = timelineUs(1_000_001);
     const { next } = applyTimelineCommand(doc, {
       type: 'overlay_place_item',
       fromTrackId: 'v1',
@@ -61,9 +62,9 @@ describe('timeline/commands gap behavior', () => {
           trackId: 'v1',
           name: 'C1',
           source: { path: 'a.mp4' },
-          sourceDurationUs: 10_000_000,
-          timelineRange: { startUs: 0, durationUs: 1_000_000 },
-          sourceRange: { startUs: 0, durationUs: 1_000_000 },
+          sourceDurationUs: timelineUs(10_000_000),
+          timelineRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
+          sourceRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
         },
       ],
     });
@@ -73,14 +74,14 @@ describe('timeline/commands gap behavior', () => {
       fromTrackId: 'v1',
       toTrackId: 'v1',
       itemId: 'c1',
-      startUs: 2_000_000,
+      startUs: timelineUs(2_000_000),
     });
 
     const track = next.tracks[0] as TimelineTrack;
     const clip = track.items.find((x: TimelineTrackItem) => x.kind === 'clip' && x.id === 'c1');
 
     expect(clip).toBeTruthy();
-    expect(clip.timelineRange.startUs).toBe(2_000_000);
+    expect(clip.timelineRange.startUs).toBe(timelineUs(2_000_000));
   });
 
   it('does not create a gap when moving clip to abut previous clip with rounding noise', () => {
@@ -95,9 +96,9 @@ describe('timeline/commands gap behavior', () => {
           trackId: 'v1',
           name: 'C1',
           source: { path: 'a.mp4' },
-          sourceDurationUs: 10_000_000,
-          timelineRange: { startUs: 0, durationUs: 999_999 },
-          sourceRange: { startUs: 0, durationUs: 999_999 },
+          sourceDurationUs: timelineUs(10_000_000),
+          timelineRange: { startUs: 0, durationUs: timelineUs(999_999) },
+          sourceRange: { startUs: 0, durationUs: timelineUs(999_999) },
         },
         {
           kind: 'clip',
@@ -105,9 +106,9 @@ describe('timeline/commands gap behavior', () => {
           trackId: 'v1',
           name: 'C2',
           source: { path: 'b.mp4' },
-          sourceDurationUs: 10_000_000,
-          timelineRange: { startUs: 2_000_000, durationUs: 1_000_000 },
-          sourceRange: { startUs: 0, durationUs: 1_000_000 },
+          sourceDurationUs: timelineUs(10_000_000),
+          timelineRange: { startUs: timelineUs(2_000_000), durationUs: timelineUs(1_000_000) },
+          sourceRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
         },
       ],
     });
@@ -116,7 +117,7 @@ describe('timeline/commands gap behavior', () => {
       type: 'move_item',
       trackId: 'v1',
       itemId: 'c2',
-      startUs: 1_000_000 + 1,
+      startUs: timelineUs(1_000_000) + 1,
     }).next;
 
     const items = moved.tracks[0].items;
@@ -141,9 +142,9 @@ describe('timeline/commands gap behavior', () => {
           trackId: 'v1',
           name: 'C1',
           source: { path: 'a.mp4' },
-          sourceDurationUs: 10_000_000,
-          timelineRange: { startUs: 0, durationUs: 1_000_000 },
-          sourceRange: { startUs: 0, durationUs: 1_000_000 },
+          sourceDurationUs: timelineUs(10_000_000),
+          timelineRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
+          sourceRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
         },
         {
           kind: 'clip',
@@ -151,9 +152,9 @@ describe('timeline/commands gap behavior', () => {
           trackId: 'v1',
           name: 'C2',
           source: { path: 'b.mp4' },
-          sourceDurationUs: 10_000_000,
-          timelineRange: { startUs: 2_000_000, durationUs: 1_000_000 },
-          sourceRange: { startUs: 0, durationUs: 1_000_000 },
+          sourceDurationUs: timelineUs(10_000_000),
+          timelineRange: { startUs: timelineUs(2_000_000), durationUs: timelineUs(1_000_000) },
+          sourceRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
         },
       ],
     });
@@ -162,15 +163,15 @@ describe('timeline/commands gap behavior', () => {
       type: 'move_item',
       trackId: 'v1',
       itemId: 'c2',
-      startUs: 3_000_000,
+      startUs: timelineUs(3_000_000),
     });
 
     const items = next.tracks[0].items;
     const gaps = items.filter((x: TimelineTrackItem) => x.kind === 'gap');
 
     expect(gaps.length).toBe(1);
-    expect(gaps[0]?.timelineRange.startUs).toBe(1_000_000);
-    expect(gaps[0]?.timelineRange.durationUs).toBe(2_000_000);
+    expect(gaps[0]?.timelineRange.startUs).toBe(timelineUs(1_000_000));
+    expect(gaps[0]?.timelineRange.durationUs).toBe(timelineUs(2_000_000));
   });
 
   it('deletes gap as ripple delete: shifts items to the left', () => {
@@ -185,9 +186,9 @@ describe('timeline/commands gap behavior', () => {
           trackId: 'v1',
           name: 'C1',
           source: { path: 'a.mp4' },
-          sourceDurationUs: 10_000_000,
-          timelineRange: { startUs: 0, durationUs: 1_000_000 },
-          sourceRange: { startUs: 0, durationUs: 1_000_000 },
+          sourceDurationUs: timelineUs(10_000_000),
+          timelineRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
+          sourceRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
         },
         {
           kind: 'clip',
@@ -195,9 +196,9 @@ describe('timeline/commands gap behavior', () => {
           trackId: 'v1',
           name: 'C2',
           source: { path: 'b.mp4' },
-          sourceDurationUs: 10_000_000,
-          timelineRange: { startUs: 2_000_000, durationUs: 1_000_000 },
-          sourceRange: { startUs: 0, durationUs: 1_000_000 },
+          sourceDurationUs: timelineUs(10_000_000),
+          timelineRange: { startUs: timelineUs(2_000_000), durationUs: timelineUs(1_000_000) },
+          sourceRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
         },
       ],
     });
@@ -206,7 +207,7 @@ describe('timeline/commands gap behavior', () => {
       type: 'move_item',
       trackId: 'v1',
       itemId: 'c2',
-      startUs: 2_000_000,
+      startUs: timelineUs(2_000_000),
     }).next;
 
     const gap = normalized.tracks[0].items.find((x: TimelineTrackItem) => x.kind === 'gap');
@@ -221,7 +222,7 @@ describe('timeline/commands gap behavior', () => {
     const c2 = next.tracks[0].items.find(
       (x: TimelineTrackItem) => x.kind === 'clip' && x.id === 'c2',
     );
-    expect(c2?.timelineRange.startUs).toBe(1_000_000);
+    expect(c2?.timelineRange.startUs).toBe(timelineUs(1_000_000));
 
     const gapsAfter = next.tracks[0].items.filter((x: TimelineTrackItem) => x.kind === 'gap');
     expect(gapsAfter.length).toBe(0);
@@ -239,9 +240,9 @@ describe('timeline/commands gap behavior', () => {
           trackId: 'v1',
           name: 'C1',
           source: { path: 'a.mp4' },
-          sourceDurationUs: 10_000_000,
-          timelineRange: { startUs: 0, durationUs: 1_000_000 },
-          sourceRange: { startUs: 0, durationUs: 1_000_000 },
+          sourceDurationUs: timelineUs(10_000_000),
+          timelineRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
+          sourceRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
         },
         {
           kind: 'clip',
@@ -249,9 +250,9 @@ describe('timeline/commands gap behavior', () => {
           trackId: 'v1',
           name: 'C2',
           source: { path: 'b.mp4' },
-          sourceDurationUs: 10_000_000,
-          timelineRange: { startUs: 3_000_000, durationUs: 1_000_000 },
-          sourceRange: { startUs: 0, durationUs: 1_000_000 },
+          sourceDurationUs: timelineUs(10_000_000),
+          timelineRange: { startUs: timelineUs(3_000_000), durationUs: timelineUs(1_000_000) },
+          sourceRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
         },
         {
           kind: 'clip',
@@ -259,9 +260,9 @@ describe('timeline/commands gap behavior', () => {
           trackId: 'v1',
           name: 'C3',
           source: { path: 'c.mp4' },
-          sourceDurationUs: 10_000_000,
-          timelineRange: { startUs: 5_000_000, durationUs: 1_000_000 },
-          sourceRange: { startUs: 0, durationUs: 1_000_000 },
+          sourceDurationUs: timelineUs(10_000_000),
+          timelineRange: { startUs: timelineUs(5_000_000), durationUs: timelineUs(1_000_000) },
+          sourceRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
         },
       ],
     });
@@ -276,8 +277,8 @@ describe('timeline/commands gap behavior', () => {
     const gaps = items.filter((x: TimelineTrackItem) => x.kind === 'gap');
 
     expect(gaps.length).toBe(1);
-    expect(gaps[0]?.timelineRange.startUs).toBe(1_000_000);
-    expect(gaps[0]?.timelineRange.durationUs).toBe(4_000_000);
+    expect(gaps[0]?.timelineRange.startUs).toBe(timelineUs(1_000_000));
+    expect(gaps[0]?.timelineRange.durationUs).toBe(timelineUs(4_000_000));
   });
 
   it('quantizes to frames and avoids micro-gaps (fps=30)', () => {
@@ -292,9 +293,9 @@ describe('timeline/commands gap behavior', () => {
           trackId: 'v1',
           name: 'C1',
           source: { path: 'a.mp4' },
-          sourceDurationUs: 10_000_000,
-          timelineRange: { startUs: 0, durationUs: 1_000_000 },
-          sourceRange: { startUs: 0, durationUs: 1_000_000 },
+          sourceDurationUs: timelineUs(10_000_000),
+          timelineRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
+          sourceRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
         },
         {
           kind: 'clip',
@@ -302,9 +303,9 @@ describe('timeline/commands gap behavior', () => {
           trackId: 'v1',
           name: 'C2',
           source: { path: 'b.mp4' },
-          sourceDurationUs: 10_000_000,
-          timelineRange: { startUs: 1_000_001, durationUs: 1_000_000 },
-          sourceRange: { startUs: 0, durationUs: 1_000_000 },
+          sourceDurationUs: timelineUs(10_000_000),
+          timelineRange: { startUs: timelineUs(1_000_001), durationUs: timelineUs(1_000_000) },
+          sourceRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
         },
       ],
     });
@@ -313,7 +314,7 @@ describe('timeline/commands gap behavior', () => {
       type: 'move_item',
       trackId: 'v1',
       itemId: 'c2',
-      startUs: 1_000_001,
+      startUs: timelineUs(1_000_001),
     }).next;
 
     const items = moved.tracks[0].items;
@@ -345,9 +346,9 @@ describe('timeline/commands gap behavior', () => {
           trackId: 'v1',
           name: 'C1',
           source: { path: 'a.mp4' },
-          sourceDurationUs: 10_000_000,
-          timelineRange: { startUs: 0, durationUs: 1_000_000 },
-          sourceRange: { startUs: 0, durationUs: 1_000_000 },
+          sourceDurationUs: timelineUs(10_000_000),
+          timelineRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
+          sourceRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
         },
       ],
     });
@@ -357,7 +358,7 @@ describe('timeline/commands gap behavior', () => {
       trackId: 'v1',
       itemId: 'c1',
       edge: 'end',
-      deltaUs: -123_456,
+      deltaUs: -timelineUs(123_456),
     }).next;
 
     const c1 = trimmed.tracks[0].items.find(
@@ -365,8 +366,8 @@ describe('timeline/commands gap behavior', () => {
     ) as any;
     expect(c1.timelineRange.durationUs).toBeGreaterThan(0);
     const fps = 30;
-    const frames = Math.round((c1.timelineRange.durationUs * fps) / 1_000_000);
-    const reconstructedUs = Math.round((frames * 1_000_000) / fps);
+    const frames = Math.round((c1.timelineRange.durationUs * fps) / timelineUs(1_000_000));
+    const reconstructedUs = Math.round((frames * timelineUs(1_000_000)) / fps);
     expect(c1.timelineRange.durationUs).toBe(reconstructedUs);
   });
 
@@ -383,8 +384,8 @@ describe('timeline/commands gap behavior', () => {
           trackId: 'v1',
           name: 'Background',
           backgroundColor: '#000000',
-          timelineRange: { startUs: 0, durationUs: 5_000_000 },
-          sourceRange: { startUs: 0, durationUs: 5_000_000 },
+          timelineRange: { startUs: 0, durationUs: timelineUs(5_000_000) },
+          sourceRange: { startUs: 0, durationUs: timelineUs(5_000_000) },
         },
       ],
     });
@@ -394,7 +395,7 @@ describe('timeline/commands gap behavior', () => {
       trackId: 'v1',
       itemId: 'b1',
       edge: 'end',
-      deltaUs: 20_000_000,
+      deltaUs: timelineUs(20_000_000),
     });
 
     const b1 = next.tracks[0].items.find(
@@ -402,7 +403,7 @@ describe('timeline/commands gap behavior', () => {
     ) as any;
 
     expect(b1).toBeTruthy();
-    expect(b1.timelineRange.durationUs).toBeGreaterThan(5_000_000);
+    expect(b1.timelineRange.durationUs).toBeGreaterThan(timelineUs(5_000_000));
   });
 
   it('preserves fade and transition lengths when trim extends a clip', () => {
@@ -418,13 +419,13 @@ describe('timeline/commands gap behavior', () => {
           trackId: 'v1',
           name: 'C1',
           source: { path: 'a.mp4' },
-          sourceDurationUs: 10_000_000,
-          timelineRange: { startUs: 0, durationUs: 4_000_000 },
-          sourceRange: { startUs: 0, durationUs: 4_000_000 },
-          audioFadeInUs: 1_000_000,
-          audioFadeOutUs: 1_000_000,
-          transitionIn: { type: 'dissolve', durationUs: 500_000 },
-          transitionOut: { type: 'dissolve', durationUs: 750_000 },
+          sourceDurationUs: timelineUs(10_000_000),
+          timelineRange: { startUs: 0, durationUs: timelineUs(4_000_000) },
+          sourceRange: { startUs: 0, durationUs: timelineUs(4_000_000) },
+          audioFadeInUs: timelineUs(1_000_000),
+          audioFadeOutUs: timelineUs(1_000_000),
+          transitionIn: { type: 'dissolve', durationUs: timelineUs(500_000) },
+          transitionOut: { type: 'dissolve', durationUs: timelineUs(750_000) },
         },
       ],
     });
@@ -434,18 +435,18 @@ describe('timeline/commands gap behavior', () => {
       trackId: 'v1',
       itemId: 'c1',
       edge: 'end',
-      deltaUs: 2_000_000,
+      deltaUs: timelineUs(2_000_000),
     });
 
     const c1 = next.tracks[0].items.find(
       (x: TimelineTrackItem) => x.kind === 'clip' && x.id === 'c1',
     ) as any;
 
-    expect(c1.timelineRange.durationUs).toBe(6_000_000);
-    expect(c1.audioFadeInUs).toBe(1_000_000);
-    expect(c1.audioFadeOutUs).toBe(1_000_000);
-    expect(c1.transitionIn.durationUs).toBe(500_000);
-    expect(c1.transitionOut.durationUs).toBe(750_000);
+    expect(c1.timelineRange.durationUs).toBe(timelineUs(6_000_000));
+    expect(c1.audioFadeInUs).toBe(timelineUs(1_000_000));
+    expect(c1.audioFadeOutUs).toBe(timelineUs(1_000_000));
+    expect(c1.transitionIn.durationUs).toBe(timelineUs(500_000));
+    expect(c1.transitionOut.durationUs).toBe(timelineUs(750_000));
   });
 
   it('proportionally shrinks fades and transitions when trim reduces a clip into both edges', () => {
@@ -461,13 +462,13 @@ describe('timeline/commands gap behavior', () => {
           trackId: 'v1',
           name: 'C1',
           source: { path: 'a.mp4' },
-          sourceDurationUs: 10_000_000,
-          timelineRange: { startUs: 0, durationUs: 5_000_000 },
-          sourceRange: { startUs: 0, durationUs: 5_000_000 },
-          audioFadeInUs: 3_000_000,
-          audioFadeOutUs: 3_000_000,
-          transitionIn: { type: 'dissolve', durationUs: 3_000_000 },
-          transitionOut: { type: 'dissolve', durationUs: 3_000_000 },
+          sourceDurationUs: timelineUs(10_000_000),
+          timelineRange: { startUs: 0, durationUs: timelineUs(5_000_000) },
+          sourceRange: { startUs: 0, durationUs: timelineUs(5_000_000) },
+          audioFadeInUs: timelineUs(3_000_000),
+          audioFadeOutUs: timelineUs(3_000_000),
+          transitionIn: { type: 'dissolve', durationUs: timelineUs(3_000_000) },
+          transitionOut: { type: 'dissolve', durationUs: timelineUs(3_000_000) },
         },
       ],
     });
@@ -477,17 +478,17 @@ describe('timeline/commands gap behavior', () => {
       trackId: 'v1',
       itemId: 'c1',
       edge: 'end',
-      deltaUs: -2_000_000,
+      deltaUs: -timelineUs(2_000_000),
     });
 
     const c1 = next.tracks[0].items.find(
       (x: TimelineTrackItem) => x.kind === 'clip' && x.id === 'c1',
     ) as any;
 
-    expect(c1.timelineRange.durationUs).toBe(3_000_000);
-    expect(c1.audioFadeInUs).toBe(1_500_000);
-    expect(c1.audioFadeOutUs).toBe(1_500_000);
-    expect(c1.transitionIn.durationUs).toBe(1_500_000);
-    expect(c1.transitionOut.durationUs).toBe(1_500_000);
+    expect(c1.timelineRange.durationUs).toBe(timelineUs(3_000_000));
+    expect(c1.audioFadeInUs).toBe(timelineUs(1_500_000));
+    expect(c1.audioFadeOutUs).toBe(timelineUs(1_500_000));
+    expect(c1.transitionIn.durationUs).toBe(timelineUs(1_500_000));
+    expect(c1.transitionOut.durationUs).toBe(timelineUs(1_500_000));
   });
 });

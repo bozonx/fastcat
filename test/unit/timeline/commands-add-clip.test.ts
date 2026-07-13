@@ -1,5 +1,6 @@
 /** @vitest-environment node */
 import { describe, expect, it } from 'vitest';
+import { timelineUs } from '../utils/timeline-time';
 import { applyTimelineCommand } from '~/timeline/commands';
 import type { TimelineDocument, TimelineClipItem } from '~/timeline/types';
 
@@ -21,14 +22,14 @@ describe('timeline/commands add clip', () => {
       name: 'Clip',
       path: '_video/clip.mp4',
       startUs: 0,
-      durationUs: 1_017_685,
-      sourceDurationUs: 1_017_685,
+      durationUs: timelineUs(1_017_685),
+      sourceDurationUs: timelineUs(1_017_685),
     }).next;
 
     const clip = result.tracks[0]?.items[0] as TimelineClipItem;
 
     expect(clip.timelineRange.durationUs).toBeGreaterThan(clip.sourceDurationUs ?? 0);
-    expect(clip.sourceRange).toEqual({ startUs: 0, durationUs: 1_017_685 });
+    expect(clip.sourceRange).toEqual({ startUs: 0, durationUs: timelineUs(1_017_685) });
   });
 
   it('clamps explicit source range start and duration to the available source tail', () => {
@@ -38,13 +39,13 @@ describe('timeline/commands add clip', () => {
       name: 'Clip',
       path: '_video/clip.mp4',
       startUs: 0,
-      durationUs: 1_000_000,
-      sourceDurationUs: 3_000_000,
-      sourceRange: { startUs: 2_500_000, durationUs: 1_000_000 },
+      durationUs: timelineUs(1_000_000),
+      sourceDurationUs: timelineUs(3_000_000),
+      sourceRange: { startUs: timelineUs(2_500_000), durationUs: timelineUs(1_000_000) },
     }).next;
 
     const clip = result.tracks[0]?.items[0] as TimelineClipItem;
 
-    expect(clip.sourceRange).toEqual({ startUs: 2_500_000, durationUs: 500_000 });
+    expect(clip.sourceRange).toEqual({ startUs: timelineUs(2_500_000), durationUs: timelineUs(500_000) });
   });
 });

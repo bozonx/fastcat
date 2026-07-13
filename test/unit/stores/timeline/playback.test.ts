@@ -2,6 +2,9 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ref } from 'vue';
 import { createTimelinePlaybackModule } from '~/stores/timeline/playback';
+import { TICKS_PER_MICROSECOND } from '~/utils/time';
+
+const timelineUs = (value: number) => value * TICKS_PER_MICROSECOND;
 
 vi.mock('~/utils/zoom', () => ({
   MIN_TIMELINE_ZOOM_POSITION: 0,
@@ -17,7 +20,7 @@ function createMockDeps(overrides?: Partial<Parameters<typeof createTimelinePlay
     timelineZoom: ref(50),
     audioVolume: ref(1),
     audioMuted: ref(false),
-    duration: ref(10_000_000),
+    duration: ref(timelineUs(10_000_000)),
     playbackGestureHandler: ref<((nextPlaying: boolean) => void) | null>(null),
     getDocFps: () => 30,
     setCurrentTimeUs: vi.fn((next: number) => {
@@ -45,11 +48,11 @@ describe('TimelinePlaybackModule', () => {
   });
 
   it('goes to start and end and signals the timeline to scroll', () => {
-    const deps = createMockDeps({ currentTime: ref(5_000_000) });
+    const deps = createMockDeps({ currentTime: ref(timelineUs(5_000_000)) });
     const mod = createTimelinePlaybackModule(deps);
 
     mod.goToEnd();
-    expect(deps.currentTime.value).toBe(10_000_000);
+    expect(deps.currentTime.value).toBe(timelineUs(10_000_000));
     expect(deps.onPlayheadJump).toHaveBeenCalledTimes(1);
 
     mod.goToStart();
@@ -119,7 +122,7 @@ describe('TimelinePlaybackModule', () => {
   it('stops playback and resets time', () => {
     const handler = vi.fn();
     const deps = createMockDeps({
-      currentTime: ref(5_000_000),
+      currentTime: ref(timelineUs(5_000_000)),
       isPlaying: ref(true),
       playbackGestureHandler: ref(handler),
     });
@@ -136,7 +139,7 @@ describe('TimelinePlaybackModule', () => {
     const mod = createTimelinePlaybackModule(deps);
 
     mod.seekFrames(30);
-    const expected = 30 * (1_000_000 / 30);
+    const expected = 30 * (timelineUs(1_000_000) / 30);
     expect(deps.setCurrentTimeUs).toHaveBeenCalledWith(expect.closeTo(expected, 1));
   });
 });

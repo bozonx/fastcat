@@ -1,5 +1,6 @@
 /** @vitest-environment node */
 import { describe, it, expect } from 'vitest';
+import { timelineUs } from '../utils/timeline-time';
 import { applyTimelineCommand } from '~/timeline/commands';
 import type { TimelineDocument, TimelineTrack, TimelineClipItem } from '~/timeline/types';
 import { isClipFrameAligned } from '~/utils/timeline/clip-capabilities';
@@ -9,8 +10,8 @@ import { isClipFrameAligned } from '~/utils/timeline/clip-capabilities';
 // sync produces. Structural edits must preserve this phase for audio clips and
 // must never introduce it for video clips.
 const FPS = 30;
-const FREE_START_US = 2_007_000; // ~frame 60.21
-const FREE_DURATION_US = 3_457_000; // ~103.71 frames
+const FREE_START_US = timelineUs(2_007_000); // ~frame 60.21
+const FREE_DURATION_US = timelineUs(3_457_000); // ~103.71 frames
 const FREE_END_US = FREE_START_US + FREE_DURATION_US;
 
 function makeDoc(tracks: TimelineTrack[]): TimelineDocument {
@@ -31,7 +32,7 @@ function audioClip(overrides: Partial<TimelineClipItem> = {}): TimelineClipItem 
     trackId: 'a1t',
     name: 'Audio',
     source: { path: 'sound.wav' },
-    sourceDurationUs: 60_000_000,
+    sourceDurationUs: timelineUs(60_000_000),
     isImage: false,
     timelineRange: { startUs: FREE_START_US, durationUs: FREE_DURATION_US },
     sourceRange: { startUs: 0, durationUs: FREE_DURATION_US },
@@ -65,7 +66,7 @@ describe('free (sub-frame) audio clip phase preservation', () => {
         type: 'split_item',
         trackId: 'a1t',
         itemId: 'a1',
-        atUs: 3_000_000, // already a frame boundary (frame 90)
+        atUs: timelineUs(3_000_000), // already a frame boundary (frame 90)
       });
 
       const clips = clipsOf(next, 'a1t').sort(
@@ -81,12 +82,12 @@ describe('free (sub-frame) audio clip phase preservation', () => {
       expect(right!.timelineRange.startUs).toBe(
         left!.timelineRange.startUs + left!.timelineRange.durationUs,
       );
-      expect(right!.timelineRange.startUs).toBe(3_000_000);
+      expect(right!.timelineRange.startUs).toBe(timelineUs(3_000_000));
     });
 
     it('cuts a free audio clip at an exact sub-frame point when quantize is disabled', () => {
       const doc = makeDoc([audioTrack([audioClip()])]);
-      const cutUs = 2_500_123; // sub-frame
+      const cutUs = timelineUs(2_500_123); // sub-frame
 
       const { next } = applyTimelineCommand(doc, {
         type: 'split_item',
@@ -107,8 +108,8 @@ describe('free (sub-frame) audio clip phase preservation', () => {
     });
 
     it('keeps a video clip frame-aligned through a split', () => {
-      const alignedStart = 2_000_000;
-      const alignedDuration = 4_000_000;
+      const alignedStart = timelineUs(2_000_000);
+      const alignedDuration = timelineUs(4_000_000);
       const doc = makeDoc([
         videoTrack([
           audioClip({
@@ -125,7 +126,7 @@ describe('free (sub-frame) audio clip phase preservation', () => {
         type: 'split_item',
         trackId: 'v1t',
         itemId: 'v1',
-        atUs: 3_000_000,
+        atUs: timelineUs(3_000_000),
       });
 
       for (const clip of clipsOf(next, 'v1t')) {
@@ -137,7 +138,7 @@ describe('free (sub-frame) audio clip phase preservation', () => {
   describe('move_item', () => {
     it('applies a sub-frame start verbatim when quantize is disabled', () => {
       const doc = makeDoc([audioTrack([audioClip()])]);
-      const newStartUs = 2_507_000; // sub-frame
+      const newStartUs = timelineUs(2_507_000); // sub-frame
 
       const { next } = applyTimelineCommand(doc, {
         type: 'move_item',
@@ -152,7 +153,7 @@ describe('free (sub-frame) audio clip phase preservation', () => {
 
     it('applies a sub-frame start verbatim under preserveItemOffsets (drag commit path)', () => {
       const doc = makeDoc([audioTrack([audioClip()])]);
-      const newStartUs = 2_507_000;
+      const newStartUs = timelineUs(2_507_000);
 
       const { next } = applyTimelineCommand(doc, {
         type: 'move_items',
@@ -171,8 +172,8 @@ describe('free (sub-frame) audio clip phase preservation', () => {
             id: 'v1',
             trackId: 'v1t',
             source: { path: 'clip.mp4' },
-            timelineRange: { startUs: 2_000_000, durationUs: 4_000_000 },
-            sourceRange: { startUs: 0, durationUs: 4_000_000 },
+            timelineRange: { startUs: timelineUs(2_000_000), durationUs: timelineUs(4_000_000) },
+            sourceRange: { startUs: 0, durationUs: timelineUs(4_000_000) },
           }),
         ]),
       ]);
@@ -181,7 +182,7 @@ describe('free (sub-frame) audio clip phase preservation', () => {
         type: 'move_item',
         trackId: 'v1t',
         itemId: 'v1',
-        startUs: 2_507_000, // sub-frame request
+        startUs: timelineUs(2_507_000), // sub-frame request
         quantizeToFrames: true,
       });
 
@@ -192,7 +193,7 @@ describe('free (sub-frame) audio clip phase preservation', () => {
   describe('trim_item', () => {
     it('preserves a sub-frame duration when trimming the end with quantize disabled', () => {
       const doc = makeDoc([audioTrack([audioClip()])]);
-      const deltaUs = -123_000; // shrink by a sub-frame amount
+      const deltaUs = -timelineUs(123_000); // shrink by a sub-frame amount
 
       const { next } = applyTimelineCommand(doc, {
         type: 'trim_item',
@@ -210,7 +211,7 @@ describe('free (sub-frame) audio clip phase preservation', () => {
 
     it('preserves the untrimmed edge phase of a free clip even in snap mode (quantize on)', () => {
       const doc = makeDoc([audioTrack([audioClip()])]);
-      const deltaUs = -123_000; // sub-frame request; quantized to whole frames
+      const deltaUs = -timelineUs(123_000); // sub-frame request; quantized to whole frames
 
       const { next } = applyTimelineCommand(doc, {
         type: 'trim_item',
@@ -238,8 +239,8 @@ describe('free (sub-frame) audio clip phase preservation', () => {
             id: 'v1',
             trackId: 'v1t',
             source: { path: 'clip.mp4' },
-            timelineRange: { startUs: 2_000_000, durationUs: 4_000_000 },
-            sourceRange: { startUs: 0, durationUs: 4_000_000 },
+            timelineRange: { startUs: timelineUs(2_000_000), durationUs: timelineUs(4_000_000) },
+            sourceRange: { startUs: 0, durationUs: timelineUs(4_000_000) },
           }),
         ]),
       ]);
@@ -249,7 +250,7 @@ describe('free (sub-frame) audio clip phase preservation', () => {
         trackId: 'v1t',
         itemId: 'v1',
         edge: 'end',
-        deltaUs: -123_000,
+        deltaUs: -timelineUs(123_000),
         quantizeToFrames: true,
       });
 
@@ -269,7 +270,7 @@ describe('free (sub-frame) audio clip phase preservation', () => {
         path: 'sound.wav',
         startUs: FREE_START_US,
         durationUs: FREE_DURATION_US,
-        sourceDurationUs: 60_000_000,
+        sourceDurationUs: timelineUs(60_000_000),
         sourceRange: { startUs: 0, durationUs: FREE_DURATION_US },
         isImage: false,
         quantizeToFrames: false,
@@ -292,7 +293,7 @@ describe('free (sub-frame) audio clip phase preservation', () => {
         path: 'sound.wav',
         startUs: FREE_START_US,
         durationUs: FREE_DURATION_US,
-        sourceDurationUs: 60_000_000,
+        sourceDurationUs: timelineUs(60_000_000),
         sourceRange: { startUs: 0, durationUs: FREE_DURATION_US },
         isImage: false,
       });

@@ -1,5 +1,6 @@
 /** @vitest-environment node */
 import { describe, expect, it } from 'vitest';
+import { timelineUs } from '../utils/timeline-time';
 import {
   buildSplitAllClipsCommands,
   buildSplitSelectedClipsCommands,
@@ -38,15 +39,15 @@ describe('timeline/domain editing', () => {
         kind: 'video',
         name: 'V1',
         items: [
-          makeClip('before', 0, 1_000_000),
-          makeClip('target', 2_000_000, 1_000_000),
-          makeClip('after', 4_000_000, 1_000_000),
+          makeClip('before', 0, timelineUs(1_000_000)),
+          makeClip('target', timelineUs(2_000_000), timelineUs(1_000_000)),
+          makeClip('after', timelineUs(4_000_000), timelineUs(1_000_000)),
         ],
       },
     ]);
 
-    expect(buildSplitAllClipsCommands(doc, 2_500_000)).toEqual([
-      { type: 'split_item', trackId: 'v1', itemId: 'target', atUs: 2_500_000 },
+    expect(buildSplitAllClipsCommands(doc, timelineUs(2_500_000))).toEqual([
+      { type: 'split_item', trackId: 'v1', itemId: 'target', atUs: timelineUs(2_500_000) },
     ]);
   });
 
@@ -56,10 +57,10 @@ describe('timeline/domain editing', () => {
         id: 'v1',
         kind: 'video',
         name: 'V1',
-        items: [makeClip('selected-outside', 0, 1_000_000)],
+        items: [makeClip('selected-outside', 0, timelineUs(1_000_000))],
       },
     ]);
 
-    expect(buildSplitSelectedClipsCommands(doc, 2_500_000, ['selected-outside'])).toEqual([]);
+    expect(buildSplitSelectedClipsCommands(doc, timelineUs(2_500_000), ['selected-outside'])).toEqual([]);
   });
 });
