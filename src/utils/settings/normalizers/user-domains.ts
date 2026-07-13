@@ -88,6 +88,7 @@ export function normalizeTimelineSettings(raw: unknown): FastCatUserSettings['ti
       snapThresholdPx: z.coerce
         .number()
         .min(1)
+        .max(50)
         .catch(DEFAULT_USER_SETTINGS.timeline.snapThresholdPx),
       defaultAudioFadeDurationUs: z.coerce
         .number()

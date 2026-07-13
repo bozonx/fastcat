@@ -58,9 +58,7 @@ describe('timeline/commands move_items', () => {
   });
 
   it('snaps an off-grid start to the frame grid when quantizeToFrames is on', () => {
-    const doc = makeDoc([
-      { id: 'v1', kind: 'video', name: 'V1', items: [makeClip('c1', 0)] },
-    ]);
+    const doc = makeDoc([{ id: 'v1', kind: 'video', name: 'V1', items: [makeClip('c1', 0)] }]);
 
     // 1_015_000µs @30fps sits between frame 30 (1_000_000) and 31 (1_033_333);
     // absolute quantization rounds it back onto frame 30.
@@ -76,9 +74,7 @@ describe('timeline/commands move_items', () => {
   });
 
   it('preserveItemOffsets keeps off-grid starts verbatim despite quantizeToFrames', () => {
-    const doc = makeDoc([
-      { id: 'v1', kind: 'video', name: 'V1', items: [makeClip('c1', 0)] },
-    ]);
+    const doc = makeDoc([{ id: 'v1', kind: 'video', name: 'V1', items: [makeClip('c1', 0)] }]);
 
     const { next } = applyTimelineCommand(doc, {
       type: 'move_items',

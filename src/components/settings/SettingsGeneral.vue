@@ -1,19 +1,12 @@
 <script setup lang="ts">
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import UiFormField from '~/components/ui/UiFormField.vue';
-import {
-  DEFAULT_USER_SETTINGS,
-  MAX_DEFAULT_FADE_DURATION_US,
-  MAX_DEFAULT_STATIC_CLIP_DURATION_US,
-  MAX_DEFAULT_TRANSITION_DURATION_US,
-  MIN_DEFAULT_DURATION_US,
-} from '~/utils/settings/defaults';
+import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
 import UiScaleSlider from '~/components/ui/UiScaleSlider.vue';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
 import UiAccordion from '~/components/ui/UiAccordion.vue';
-import UiButtonGroup from '~/components/ui/UiButtonGroup.vue';
 import { isTauriRuntime } from '~/utils/runtime';
 import { useMobileLayout } from '~/composables/useMobileLayout';
 
@@ -31,13 +24,8 @@ function resetGeneralDefaults() {
   // Preserve the user's language choice during a general reset.
   workspaceStore.userSettings.openLastProjectOnStart = DEFAULT_USER_SETTINGS.openLastProjectOnStart;
 
-  // Reset timeline section
-  workspaceStore.userSettings.timeline = { ...DEFAULT_USER_SETTINGS.timeline };
-
   // Reset ui section
   workspaceStore.userSettings.ui = { ...DEFAULT_USER_SETTINGS.ui };
-  workspaceStore.userSettings.projectDefaults.defaultAudioFadeCurve =
-    DEFAULT_USER_SETTINGS.projectDefaults.defaultAudioFadeCurve;
 
   // Reset other specific fields shown in this form
   workspaceStore.userSettings.stopFrames.qualityPercent =
@@ -135,70 +123,6 @@ const stopFramesQualityOptions = [
         </span>
         <USwitch v-model="workspaceStore.userSettings.deleteWithoutConfirmation" />
       </label>
-    </UiFormField>
-
-    <UiFormField :label="t('videoEditor.settings.defaultAudioFadeDuration')">
-      <UiWheelNumberInput
-        :model-value="workspaceStore.userSettings.timeline.defaultAudioFadeDurationUs / 1000000"
-        :min="MIN_DEFAULT_DURATION_US / 1000000"
-        :max="MAX_DEFAULT_FADE_DURATION_US / 1000000"
-        :step="0.1"
-        :wheel-step-multiplier="10"
-        @update:model-value="
-          (v) =>
-            (workspaceStore.userSettings.timeline.defaultAudioFadeDurationUs = Math.round(
-              v * 1000000,
-            ))
-        "
-      />
-    </UiFormField>
-
-    <UiFormField
-      :label="t('videoEditor.settings.defaultAudioFadeCurveTitle')"
-      :help="t('videoEditor.settings.defaultAudioFadeCurveHint')"
-    >
-      <UiButtonGroup
-        v-model="workspaceStore.userSettings.projectDefaults.defaultAudioFadeCurve"
-        :options="[
-          { label: t('fastcat.clip.audioFade.curve.linear'), value: 'linear' },
-          {
-            label: t('fastcat.clip.audioFade.curve.logarithmic'),
-            value: 'logarithmic',
-          },
-        ]"
-      />
-    </UiFormField>
-
-    <UiFormField :label="t('videoEditor.settings.defaultTransitionDuration')">
-      <UiWheelNumberInput
-        :model-value="workspaceStore.userSettings.timeline.defaultTransitionDurationUs / 1000000"
-        :min="MIN_DEFAULT_DURATION_US / 1000000"
-        :max="MAX_DEFAULT_TRANSITION_DURATION_US / 1000000"
-        :step="0.1"
-        :wheel-step-multiplier="10"
-        @update:model-value="
-          (v) =>
-            (workspaceStore.userSettings.timeline.defaultTransitionDurationUs = Math.round(
-              v * 1000000,
-            ))
-        "
-      />
-    </UiFormField>
-
-    <UiFormField :label="t('videoEditor.settings.defaultStaticClipDuration')">
-      <UiWheelNumberInput
-        :model-value="workspaceStore.userSettings.timeline.defaultStaticClipDurationUs / 1000000"
-        :min="MIN_DEFAULT_DURATION_US / 1000000"
-        :max="MAX_DEFAULT_STATIC_CLIP_DURATION_US / 1000000"
-        :step="0.1"
-        :wheel-step-multiplier="10"
-        @update:model-value="
-          (v) =>
-            (workspaceStore.userSettings.timeline.defaultStaticClipDurationUs = Math.round(
-              v * 1000000,
-            ))
-        "
-      />
     </UiFormField>
 
     <UiFormField :label="t('videoEditor.settings.stopFramesQuality')">

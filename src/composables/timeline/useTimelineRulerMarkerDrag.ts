@@ -249,7 +249,7 @@ export function useTimelineRulerMarkerDrag(options: UseTimelineRulerMarkerDragOp
     if (event.button !== 0) return;
 
     event.stopPropagation();
-    
+
     if (event.pointerId !== undefined && event.target && 'setPointerCapture' in event.target) {
       try {
         (event.target as HTMLElement).setPointerCapture(event.pointerId);

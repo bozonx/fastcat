@@ -81,8 +81,6 @@ export function useClipBatchActions(
     );
   });
 
-
-
   const allDisabled = computed(() => {
     if (selectedClips.value.length === 0) return false;
     return selectedClips.value.every((c) => c.disabled);
@@ -368,8 +366,6 @@ export function useClipBatchActions(
       labelKey: 'videoEditor.fileManager.history.entries.updateClipProperties',
     });
   }
-
-
 
   return {
     selectedClips,

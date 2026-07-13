@@ -124,12 +124,12 @@ describe('useHotkeyCapture', () => {
     });
 
     startCapture('general.focus' as any);
-    const keydownHandler = vi.mocked(window.addEventListener).mock.calls.find(
-      ([type]) => type === 'keydown',
-    )?.[1] as (e: KeyboardEvent) => void;
-    const keyupHandler = vi.mocked(window.addEventListener).mock.calls.find(
-      ([type]) => type === 'keyup',
-    )?.[1] as (e: KeyboardEvent) => void;
+    const keydownHandler = vi
+      .mocked(window.addEventListener)
+      .mock.calls.find(([type]) => type === 'keydown')?.[1] as (e: KeyboardEvent) => void;
+    const keyupHandler = vi
+      .mocked(window.addEventListener)
+      .mock.calls.find(([type]) => type === 'keyup')?.[1] as (e: KeyboardEvent) => void;
 
     keydownHandler({
       key: 'Control',
@@ -174,12 +174,12 @@ describe('useHotkeyCapture', () => {
     });
 
     startCapture('playback.shuttleStop' as any);
-    const keydownHandler = vi.mocked(window.addEventListener).mock.calls.find(
-      ([type]) => type === 'keydown',
-    )?.[1] as (e: KeyboardEvent) => void;
-    const keyupHandler = vi.mocked(window.addEventListener).mock.calls.find(
-      ([type]) => type === 'keyup',
-    )?.[1] as (e: KeyboardEvent) => void;
+    const keydownHandler = vi
+      .mocked(window.addEventListener)
+      .mock.calls.find(([type]) => type === 'keydown')?.[1] as (e: KeyboardEvent) => void;
+    const keyupHandler = vi
+      .mocked(window.addEventListener)
+      .mock.calls.find(([type]) => type === 'keyup')?.[1] as (e: KeyboardEvent) => void;
     const keydownEvent = {
       key: 'k',
       code: 'KeyK',
@@ -211,12 +211,12 @@ describe('useHotkeyCapture', () => {
     });
 
     startCapture('playback.shuttleStop' as any);
-    const keydownHandler = vi.mocked(window.addEventListener).mock.calls.find(
-      ([type]) => type === 'keydown',
-    )?.[1] as (e: KeyboardEvent) => void;
-    const keyupHandler = vi.mocked(window.addEventListener).mock.calls.find(
-      ([type]) => type === 'keyup',
-    )?.[1] as (e: KeyboardEvent) => void;
+    const keydownHandler = vi
+      .mocked(window.addEventListener)
+      .mock.calls.find(([type]) => type === 'keydown')?.[1] as (e: KeyboardEvent) => void;
+    const keyupHandler = vi
+      .mocked(window.addEventListener)
+      .mock.calls.find(([type]) => type === 'keyup')?.[1] as (e: KeyboardEvent) => void;
 
     keydownHandler({
       key: 'k',
@@ -247,14 +247,12 @@ describe('useHotkeyCapture', () => {
     });
 
     startCapture('general.focus' as any);
-    const keydownHandler = vi.mocked(window.addEventListener).mock.calls.find(
-      ([type]) => type === 'keydown',
-    )?.[1] as (e: KeyboardEvent) => void;
-    const keyupHandler = vi.mocked(window.addEventListener).mock.calls.find(
-      ([type]) => type === 'keyup',
-    )?.[1] as (
-      e: KeyboardEvent,
-    ) => void;
+    const keydownHandler = vi
+      .mocked(window.addEventListener)
+      .mock.calls.find(([type]) => type === 'keydown')?.[1] as (e: KeyboardEvent) => void;
+    const keyupHandler = vi
+      .mocked(window.addEventListener)
+      .mock.calls.find(([type]) => type === 'keyup')?.[1] as (e: KeyboardEvent) => void;
     const keydownEvent = {
       key: 'l',
       code: 'KeyL',

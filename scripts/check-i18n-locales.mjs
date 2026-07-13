@@ -56,6 +56,9 @@ async function check() {
     'effects.blur.description',
     'effects.blur.name',
     'videoEditor.fileManager.history.entries.unknown_command',
+    'fastcat.projects.noProjectsFound',
+    'videoEditor.projectSettings.resolutionAndFpsTooltip',
+    'videoEditor.settings.videoFrameCacheMbHelp',
   ]);
 
   const srcFiles = (await getFiles('src')).filter((f) =>

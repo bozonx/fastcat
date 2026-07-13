@@ -168,17 +168,13 @@ describe('useMonitorContainerControls', () => {
   it('hides addMarkerWithText option in context menu if isMobile is true', () => {
     const controls = createControls({ isMobile: true });
     const items = flattenMenuItems(controls.contextMenuItems.value);
-    expect(items.some((entry) => entry.label === 'fastcat.timeline.addMarkerWithText')).toBe(
-      false,
-    );
+    expect(items.some((entry) => entry.label === 'fastcat.timeline.addMarkerWithText')).toBe(false);
   });
 
   it('shows addMarkerWithText option in context menu if isMobile is false or undefined', () => {
     const controls = createControls({ isMobile: false });
     const items = flattenMenuItems(controls.contextMenuItems.value);
-    expect(items.some((entry) => entry.label === 'fastcat.timeline.addMarkerWithText')).toBe(
-      true,
-    );
+    expect(items.some((entry) => entry.label === 'fastcat.timeline.addMarkerWithText')).toBe(true);
   });
 
   it('hides playbackSpeed selection option in context menu if isMobile is true', () => {

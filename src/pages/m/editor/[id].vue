@@ -206,7 +206,9 @@ const { onDividerPointerDown } = useResizablePanel({
         <Icon name="lucide:loader-circle" class="h-8 w-8 animate-spin text-primary-400" />
         <div>
           <p class="text-sm font-medium text-ui-text">{{ t('fastcat.projects.openingProject') }}</p>
-          <p class="text-xs text-ui-text-muted">{{ t('fastcat.projects.preparingProjectMobile') }}</p>
+          <p class="text-xs text-ui-text-muted">
+            {{ t('fastcat.projects.preparingProjectMobile') }}
+          </p>
         </div>
       </div>
 

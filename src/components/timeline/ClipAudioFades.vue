@@ -310,13 +310,19 @@ const volumeIndicatorPosition = computed(() => {
         <path :d="getAudioFadePath('out', clip.audioFadeOutCurve)" fill="var(--clip-lower-tri)" />
       </svg>
     </div>
-
   </div>
 
   <!-- Keep fade handles in their own stacking root above full-height trim
        handles while the fade shapes remain below trim. -->
   <div
-    v-if="!shouldCollapseFades() && canEdit && !clip.locked && !track.locked && !isMobile && !hideFadeHandles"
+    v-if="
+      !shouldCollapseFades() &&
+      canEdit &&
+      !clip.locked &&
+      !track.locked &&
+      !isMobile &&
+      !hideFadeHandles
+    "
     data-testid="fade-handles-layer"
     class="absolute left-0 right-0 pointer-events-none"
     :style="{

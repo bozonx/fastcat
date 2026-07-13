@@ -88,9 +88,9 @@ function getMarkerButtonClass(marker: MarkerPoint) {
         ]"
         :style="
           point.color
-            ? (isMarkerSelected(point.id)
+            ? isMarkerSelected(point.id)
               ? { backgroundColor: `${point.color}59`, borderColor: `${point.color}` }
-              : { backgroundColor: `${point.color}33`, borderColor: `${point.color}80` })
+              : { backgroundColor: `${point.color}33`, borderColor: `${point.color}80` }
             : {}
         "
       />

@@ -223,8 +223,6 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
     }
   }
 
-
-
   function handleRemoveFromGroup() {
     if (!isInLinkedGroup.value) return;
 
@@ -539,8 +537,6 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
     }
 
     // --- Remaining actions (if applicable) ---
-
-
 
     // Remove from group
     if (isInLinkedGroup.value) {

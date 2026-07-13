@@ -27,4 +27,24 @@ describe('normalizeUserSettings', () => {
     expect(result.openLastProjectOnStart).toBe(true);
     expect(result.deleteWithoutConfirmation).toBe(false);
   });
+
+  it('caps snapThresholdPx at 50', () => {
+    const input = {
+      timeline: {
+        snapThresholdPx: 100,
+      },
+    };
+    const result = normalizeUserSettings(input);
+    expect(result.timeline.snapThresholdPx).toBe(8);
+  });
+
+  it('keeps valid snapThresholdPx within [1, 50]', () => {
+    const input = {
+      timeline: {
+        snapThresholdPx: 25,
+      },
+    };
+    const result = normalizeUserSettings(input);
+    expect(result.timeline.snapThresholdPx).toBe(25);
+  });
 });

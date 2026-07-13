@@ -6,8 +6,6 @@ import {
 } from '~/utils/timeline/clip-capabilities';
 import type { MultiSelectionItemRef, MultiSelectionState } from './types';
 
-
-
 export function collectMultiSelectionState(
   doc: TimelineDocument | null,
   selectedItemIds: string[],

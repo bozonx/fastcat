@@ -181,7 +181,6 @@ describe('ProjectSettingsModal.vue', () => {
     expect(component.find('.storage-settings-mock').exists()).toBe(true);
   });
 
-
   it('calls clearProjectVardata on confirmation', async () => {
     const component = await mountWithNuxt(ProjectSettingsModal, {
       props: {

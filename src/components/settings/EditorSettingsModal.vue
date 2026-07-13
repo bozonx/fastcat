@@ -3,6 +3,7 @@ import { ref, watch } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import UiModal from '~/components/ui/UiModal.vue';
 import SettingsGeneral from '~/components/settings/SettingsGeneral.vue';
+import SettingsTimeline from '~/components/settings/SettingsTimeline.vue';
 import SettingsHotkeys from '~/components/settings/SettingsHotkeys.vue';
 import SettingsMouse from '~/components/settings/SettingsMouse.vue';
 import SettingsOptimization from '~/components/settings/SettingsOptimization.vue';
@@ -34,6 +35,7 @@ const isNativeAudioPluginsAvailable = getPlatformCapabilities().nativeAudioPlugi
 
 type SettingsSection =
   | 'user.general'
+  | 'user.timeline'
   | 'user.hotkeys'
   | 'user.mouse'
   | 'user.proxy'
@@ -108,6 +110,19 @@ watch(
             no-toggle
             class="justify-start"
             @click="activeSection = 'user.general'"
+          />
+          <UiToggleButton
+            :model-value="activeSection === 'user.timeline'"
+            :label="t('videoEditor.settings.userTimeline')"
+            inactive-color="neutral"
+            active-color="neutral"
+            :active-bg="'color-mix(in srgb, var(--selection-accent-500) 15%, transparent)'"
+            :active-text="'var(--selection-accent-400)'"
+            inactive-variant="ghost"
+            active-variant="soft"
+            no-toggle
+            class="justify-start"
+            @click="activeSection = 'user.timeline'"
           />
           <UiToggleButton
             :model-value="activeSection === 'user.ui'"
@@ -246,6 +261,7 @@ watch(
 
       <div class="flex-1 min-w-0 px-4 py-4 overflow-y-auto">
         <SettingsGeneral v-if="activeSection === 'user.general'" />
+        <SettingsTimeline v-else-if="activeSection === 'user.timeline'" />
         <SettingsHotkeys v-else-if="activeSection === 'user.hotkeys'" ref="hotkeysRef" />
         <SettingsMouse v-else-if="activeSection === 'user.mouse'" />
         <SettingsOptimization v-else-if="activeSection === 'user.proxy'" />

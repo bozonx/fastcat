@@ -7,6 +7,7 @@ import type {
 } from '../types';
 import { genUuid, genPrefixedIdBatch } from '~/utils/ids';
 import { sanitizeFps } from '~/utils/time';
+import { isClipFrameAligned } from '~/utils/timeline/clip-capabilities';
 
 export { sanitizeFps };
 
@@ -413,9 +414,15 @@ export function normalizeGaps(
   let cursorUs = 0;
 
   for (const clip of clips) {
-    const qTimeline = shouldQuantizeToFrames
-      ? quantizeRangeToFrames(clip.timelineRange, fps)
-      : null;
+    // A free (sub-frame) audio clip must keep its phase even during a quantized
+    // operation on the same track — snapping it here would re-grid a hand-dialed
+    // sync. Only clips that are already frame-aligned are quantized (a no-op that
+    // just scrubs float noise); genuinely off-grid clips are left untouched. Only
+    // audio can be off-grid, so video/virtual clips are always quantized.
+    const qTimeline =
+      shouldQuantizeToFrames && isClipFrameAligned(clip, fps)
+        ? quantizeRangeToFrames(clip.timelineRange, fps)
+        : null;
     const startUs = qTimeline
       ? qTimeline.startUs
       : Math.max(0, Math.round(clip.timelineRange.startUs));

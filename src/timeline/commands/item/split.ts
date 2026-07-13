@@ -5,11 +5,9 @@ import {
   getDocFps,
   quantizeTimeUsToFrames,
   usToFrame,
-  frameToUs,
   assertClipNotLocked,
   nextItemId,
   normalizeGaps,
-  quantizeRangeToFrames,
   autoAdaptChangedTracks,
   getLinkedClipGroupItemIds,
 } from '../utils';
@@ -41,22 +39,22 @@ export function splitItem(doc: TimelineDocument, cmd: SplitItemCommand): Timelin
 
   const fps = getDocFps(doc);
   const shouldQuantizeToFrames = cmd.quantizeToFrames !== false;
-  const qTimeline = quantizeRangeToFrames(item.timelineRange, fps);
-  const startUs = qTimeline.startUs;
-  const endUs = startUs + qTimeline.durationUs;
 
-  const startFrame = usToFrame(startUs, fps, 'round');
-  const endFrame = usToFrame(endUs, fps, 'round');
-  const cutFrameCandidate = shouldQuantizeToFrames
-    ? usToFrame(quantizeTimeUsToFrames(Number(cmd.atUs), fps, 'round'), fps, 'round')
-    : usToFrame(Number(cmd.atUs), fps, 'round');
-  const cutFrame = cutFrameCandidate;
+  // Splitting must NEVER re-grid the clip's own outer boundaries — a frame-aligned
+  // clip's edges are already on the grid, and a free (sub-frame) audio clip must
+  // keep its hand-dialed phase (e.g. a multi-mic sync). Only the CUT point is
+  // frame-quantized, and only when requested. Previously the outer edges were run
+  // through `quantizeRangeToFrames` unconditionally, which snapped free clips onto
+  // the grid on every split.
+  const startUs = Math.max(0, Math.round(item.timelineRange.startUs));
+  const endUs = startUs + Math.max(0, Math.round(item.timelineRange.durationUs));
 
-  if (!(cutFrame > startFrame && cutFrame < endFrame)) {
+  const atUsRaw = Math.max(0, Math.round(Number(cmd.atUs)));
+  const atUs = shouldQuantizeToFrames ? quantizeTimeUsToFrames(atUsRaw, fps, 'round') : atUsRaw;
+
+  if (!(atUs > startUs && atUs < endUs)) {
     return { next: doc };
   }
-
-  const atUs = shouldQuantizeToFrames ? frameToUs(cutFrame, fps) : Number(cmd.atUs);
 
   // If the clip is in a group, we perform a grouped split
   if (item.linkedGroupId) {

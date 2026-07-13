@@ -38,10 +38,7 @@ test.describe('Web timeline transitions', () => {
     return clipId;
   }
 
-  test('creates a transition from the clip header button', async ({
-    page,
-    e2eProject,
-  }) => {
+  test('creates a transition from the clip header button', async ({ page, e2eProject }) => {
     const clipId = await projectWithVideoClip(page, e2eProject);
     const clipLocator = page.locator(`[data-clip-id="${clipId}"]`);
 

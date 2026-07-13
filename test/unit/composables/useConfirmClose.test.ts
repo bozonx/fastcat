@@ -99,7 +99,10 @@ describe('useConfirmClose', () => {
     expect(window.addEventListener).toHaveBeenCalledWith('blur', expect.any(Function));
     expect(window.addEventListener).toHaveBeenCalledWith('pagehide', expect.any(Function));
     expect(document.addEventListener).toHaveBeenCalledWith('freeze', expect.any(Function));
-    expect(document.addEventListener).toHaveBeenCalledWith('visibilitychange', expect.any(Function));
+    expect(document.addEventListener).toHaveBeenCalledWith(
+      'visibilitychange',
+      expect.any(Function),
+    );
 
     wrapper.unmount();
   });

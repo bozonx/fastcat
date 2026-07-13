@@ -1,4 +1,4 @@
-import { ImageSource } from 'pixi.js';
+import type { ImageSource } from 'pixi.js';
 import { safeDispose } from '../utils';
 import { governedBlobWorker } from '~/utils/io/governed-blob-worker';
 import { createPlaceholderImageSource } from './placeholderImageSource';

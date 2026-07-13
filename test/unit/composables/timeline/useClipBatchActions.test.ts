@@ -184,8 +184,6 @@ describe('useClipBatchActions', () => {
     );
   });
 
-
-
   it('reports isSingleGroupSelection as false for empty or single selections', () => {
     const { actions } = build({ selection: [] });
     expect(actions.isSingleGroupSelection.value).toBe(false);

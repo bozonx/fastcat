@@ -57,9 +57,8 @@ describe('createPlaceholderImageSource', () => {
       return canvas as unknown as OffscreenCanvas;
     }) as unknown as typeof OffscreenCanvas;
 
-    const { createPlaceholderImageSource } = await import(
-      '~/utils/video-editor/compositor/placeholderImageSource'
-    );
+    const { createPlaceholderImageSource } =
+      await import('~/utils/video-editor/compositor/placeholderImageSource');
 
     createPlaceholderImageSource();
 
@@ -86,9 +85,8 @@ describe('createPlaceholderImageSource', () => {
       return canvas as unknown as OffscreenCanvas;
     }) as unknown as typeof OffscreenCanvas;
 
-    const { createSolidColorTexture } = await import(
-      '~/utils/video-editor/compositor/placeholderImageSource'
-    );
+    const { createSolidColorTexture } =
+      await import('~/utils/video-editor/compositor/placeholderImageSource');
 
     createSolidColorTexture('#ffffff');
 

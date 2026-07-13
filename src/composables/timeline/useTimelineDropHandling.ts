@@ -260,8 +260,12 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
     const enableFrameSnap = isVideo ? true : !timelineSettingsStore.freeAudioPlacement;
 
     const fps = sanitizeFps(timelineStore.timelineDoc?.timebase.fps);
-    const startUs = enableFrameSnap ? quantizeTimeUsToFrames(params.startUs, fps, 'round') : params.startUs;
-    const durationUs = enableFrameSnap ? quantizeTimeUsToFrames(params.durationUs, fps, 'round') : params.durationUs;
+    const startUs = enableFrameSnap
+      ? quantizeTimeUsToFrames(params.startUs, fps, 'round')
+      : params.startUs;
+    const durationUs = enableFrameSnap
+      ? quantizeTimeUsToFrames(params.durationUs, fps, 'round')
+      : params.durationUs;
 
     try {
       assertNoOverlap(track, '', startUs, durationUs);

@@ -21,7 +21,6 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
   const montageGroup: ContextMenuGroup = [];
   const stateGroup: ContextMenuGroup = [];
 
-
   const mediaStore = useMediaStore();
   const meta = clipItem.source?.path
     ? resolveMediaMetadata(mediaStore.mediaMetadata, clipItem.source.path)
@@ -234,8 +233,6 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
       await options.requestTimelineSave({ immediate: true });
     },
   });
-
-
 
   return [speedGroup, montageGroup, stateGroup].filter((group) => group.length > 0);
 }

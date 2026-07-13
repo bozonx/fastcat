@@ -159,7 +159,6 @@ function onOverlayDropOutside() {
 useHead({
   title: t('navigation.fastcat'),
 });
-
 </script>
 
 <template>

@@ -106,7 +106,6 @@ function deleteGap() {
   timelineStore.clearSelection();
   emit('close');
 }
-
 </script>
 
 <template>
@@ -143,7 +142,6 @@ function deleteGap() {
         :label="t('fastcat.timeline.addContent')"
         @click="selectedTrack && emit('add-content', selectedTrack.id)"
       />
-
 
       <!-- Toggle track height -->
       <MobileDrawerToolbarButton

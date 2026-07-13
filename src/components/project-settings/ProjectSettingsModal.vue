@@ -42,8 +42,6 @@ async function confirmClearProjectVardata() {
   storageStatsKey.value++;
 }
 
-
-
 async function resetToDefaults() {
   if (!projectStore.projectSettings) return;
 
@@ -96,8 +94,6 @@ async function resetToDefaults() {
       icon="i-heroicons-trash"
       @confirm="confirmClearProjectVardata"
     />
-
-
 
     <UiConfirmModal
       v-model:open="isResetConfirmOpen"

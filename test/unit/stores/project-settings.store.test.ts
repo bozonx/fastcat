@@ -103,7 +103,10 @@ vi.mock('~/stores/ui/uiLocalStorage', () => ({
 
 const { capturedAutoSave, settingsRepoMocks, uiSaveSpy, markDirtySpy } = vi.hoisted(() => ({
   capturedAutoSave: { doSave: null as null | ((...args: unknown[]) => Promise<unknown>) },
-  settingsRepoMocks: { load: vi.fn().mockResolvedValue(null), save: vi.fn().mockResolvedValue(undefined) },
+  settingsRepoMocks: {
+    load: vi.fn().mockResolvedValue(null),
+    save: vi.fn().mockResolvedValue(undefined),
+  },
   uiSaveSpy: vi.fn().mockResolvedValue(undefined),
   markDirtySpy: vi.fn(),
 }));

@@ -75,7 +75,7 @@ describe('useTimelineZoom', () => {
   it('reveals a playhead left of the viewport at the left edge while zooming', async () => {
     const timelineStore = useTimelineStore();
     const scrollEl = document.createElement('div');
-    let maxScrollLeft = 10_000;
+    const maxScrollLeft = 10_000;
     let scrollLeft = 1_500;
 
     Object.defineProperty(scrollEl, 'scrollLeft', {
@@ -126,7 +126,7 @@ describe('useTimelineZoom', () => {
   it('reveals a playhead right of the viewport at the right edge while zooming', async () => {
     const timelineStore = useTimelineStore();
     const scrollEl = document.createElement('div');
-    let maxScrollLeft = 10_000;
+    const maxScrollLeft = 10_000;
     let scrollLeft = 0;
 
     Object.defineProperty(scrollEl, 'scrollLeft', {

@@ -145,5 +145,4 @@ describe('buildMultiSelectionContextMenu', () => {
       },
     ]);
   });
-
 });

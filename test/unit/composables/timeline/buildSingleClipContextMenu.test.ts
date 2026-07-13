@@ -146,8 +146,6 @@ describe('buildSingleClipContextMenu', () => {
     expect(labels).not.toContain('fastcat.timeline.showFullWaveform');
   });
 
-
-
   it('adds rename action for a single clip', () => {
     const options = createOptions();
 

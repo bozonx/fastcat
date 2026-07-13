@@ -8,7 +8,12 @@ import type { TimelineCommand } from '~/timeline/commands';
 import { createTimelineEditService } from '~/timeline/application/timelineEditService';
 import { parseTimelineFromOtio, serializeTimelineToOtio } from '~/timeline/otio-serializer';
 import { selectTimelineDurationUs } from '~/timeline/selectors';
-import { pxPerSecondToZoom, computeSnappedStartUs, sanitizeFps } from '~/utils/timeline/geometry';
+import {
+  pxPerSecondToZoom,
+  computeSnappedStartUs,
+  subframePhaseUs,
+  sanitizeFps,
+} from '~/utils/timeline/geometry';
 import { computeSnapTargetsUs } from '~/composables/timeline/timeline-drag-domain';
 
 import { createTimelinePersistenceModule } from '~/stores/timeline/persistence';
@@ -79,7 +84,6 @@ export const useTimelineStore = defineStore('timeline', () => {
   const { t } = nuxtApp.$i18nService as I18nService;
   const timelineMediaUsageStore = useTimelineMediaUsageStore();
   const { isMobileLayout } = useMobileLayout();
-
 
   const historyDebounce = createTimelineHistoryDebounceModule({ historyStore });
 
@@ -310,16 +314,23 @@ export const useTimelineStore = defineStore('timeline', () => {
     getSelectedOrActiveTrackId: () => selection.getSelectedOrActiveTrackId(),
     ensureNoNestedTimelineCycle: (path) =>
       commands.commandService.ensureNoNestedTimelineCycle(path),
-    resolvePastePlacement: ({
-      baseTargetTrackId: _baseTargetTrackId,
-      insertStartUs,
-      totalDurationUs,
-    }) => {
+    resolvePastePlacement: ({ baseTargetTrackId, insertStartUs, totalDurationUs }) => {
       const pseudo = timelineSettingsStore.isPseudoOverlapEnabled;
       // Paste always lands frame-aligned (video can never be placed freely).
       const quantizeToFrames = timelineSettingsStore.frameSnapMode === 'frames';
       const doc = timelineDoc.value;
       if (!doc) return { pseudo, insertStartUs, quantizeToFrames };
+
+      // Preserve a free (sub-frame) audio clip's phase when the drop lands on an
+      // audio track. The alt-drag copy hands us a phase-preserved start; snapping
+      // it with a zero frame offset would re-grid it and lose the sync. Video
+      // targets keep phase 0 (always locked to the grid). Frame-aligned audio
+      // clips have phase 0 too, so they are unaffected.
+      const baseTrack = doc.tracks.find((t) => t.id === baseTargetTrackId);
+      const frameOffsetUs =
+        baseTrack?.kind === 'audio'
+          ? subframePhaseUs(insertStartUs, sanitizeFps(doc.timebase.fps))
+          : 0;
 
       const snapSettings = workspaceStore.userSettings.timeline.snapping;
       const timelineEndUs = Number.isFinite(duration.value)
@@ -344,7 +355,7 @@ export const useTimelineStore = defineStore('timeline', () => {
         snapTargetsUs,
         enableFrameSnap: timelineSettingsStore.frameSnapMode === 'frames',
         enableClipSnap: timelineSettingsStore.toolbarSnapMode === 'snap',
-        frameOffsetUs: 0,
+        frameOffsetUs,
       });
       return { pseudo, insertStartUs: snappedStartUs, quantizeToFrames };
     },

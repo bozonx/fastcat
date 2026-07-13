@@ -73,18 +73,22 @@ const props = defineProps<{
   /** Mobile multi-selection mode: tint selected clips as a multi-selection even with one selected. */
   isMultiSelectMode?: boolean;
   onZoomToFit?: () => void;
-  pastePreviews?: {
-    trackId: string;
-    startUs: number;
-    durationUs: number;
-    label: string;
-  }[] | null;
-  sourcePreviews?: {
-    trackId: string;
-    startUs: number;
-    durationUs: number;
-    label: string;
-  }[] | null;
+  pastePreviews?:
+    | {
+        trackId: string;
+        startUs: number;
+        durationUs: number;
+        label: string;
+      }[]
+    | null;
+  sourcePreviews?:
+    | {
+        trackId: string;
+        startUs: number;
+        durationUs: number;
+        label: string;
+      }[]
+    | null;
 }>();
 
 const emit = defineEmits<{
@@ -270,8 +274,6 @@ const { autoMontageModal, applyAutoMontage, openAutoMontage } = useTimelineAutoM
   () => props.tracks,
 );
 
-
-
 const {
   isTrackRenameModalOpen,
   trackToRename,
@@ -419,274 +421,283 @@ watch(
 </script>
 
 <template>
+  <div
+    ref="containerRef"
+    tabindex="-1"
+    v-bind="$attrs"
+    class="flex flex-col min-h-full relative outline-none"
+    :style="timelineContentStyle"
+    @pointerdown="
+      focusStore.setPanelFocus('timeline');
+      if (!props.isAnyDrawerOpen && shouldStartMarquee($event)) {
+        startMarquee($event);
+      } else if (
+        !props.isAnyDrawerOpen &&
+        $event.button !== 1 &&
+        $event.target === $event.currentTarget
+      ) {
+        timelineStore.clearSelection();
+        selectionStore.clearSelection();
+        timelineStore.selectTrack(null);
+      }
+    "
+    @contextmenu.prevent.stop
+  >
     <div
-      ref="containerRef"
-      tabindex="-1"
-      v-bind="$attrs"
-      class="flex flex-col min-h-full relative outline-none"
-      :style="timelineContentStyle"
-      @pointerdown="
-        focusStore.setPanelFocus('timeline');
-        if (!props.isAnyDrawerOpen && shouldStartMarquee($event)) {
-          startMarquee($event);
-        } else if (
-          !props.isAnyDrawerOpen &&
-          $event.button !== 1 &&
-          $event.target === $event.currentTarget
-        ) {
-          timelineStore.clearSelection();
-          selectionStore.clearSelection();
-          timelineStore.selectTrack(null);
-        }
-      "
-      @contextmenu.prevent.stop
+      v-if="selectionRangeStyle"
+      class="absolute top-0 bottom-0 z-20 pointer-events-none border-l border-r border-selection-range-border bg-selection-range-bg shadow-[0_0_0_1px_color-mix(in_srgb,var(--color-selection-range)_25%,transparent)]"
+      :style="selectionRangeStyle"
+    />
+
+    <div
+      v-if="isMarqueeSelecting"
+      class="absolute border-2 border-primary-500 bg-primary-500/20 pointer-events-none z-50"
+      :style="marqueeStyle"
+    />
+
+    <AutoMontageModal
+      v-if="autoMontageModal"
+      v-model:open="autoMontageModal.open"
+      @apply="applyAutoMontage"
+    />
+
+    <UiContextMenuPortal
+      ref="trackContextMenuRef"
+      :items="activeTrackContextMenuItems"
+      :target-el="containerRef"
+      manual
+    />
+
+    <div
+      v-for="trackViewModel in trackViewModels"
+      :key="trackViewModel.track.id"
+      v-memo="[
+        trackViewModel.track.id,
+        props.scrollLeft,
+        props.viewportWidth,
+        trackViewModel.track.locked,
+        trackViewModel.track.color,
+        trackViewModel.height,
+        trackViewModel.isHovered,
+        trackViewModel.isDirectlySelected,
+        trackViewModel.isVisuallySelected,
+        props.isMultiSelectMode,
+        trackViewModel.visibleItems.length,
+        trackViewModel.track.videoHidden,
+        trackViewModel.track.audioMuted,
+        trackViewModel.track.audioSolo,
+        timelineStore.timelineZoom,
+        timelineStore.isAnyTrackSoloed,
+        trackViewModel.clipRenderMemo,
+        movePreviewMemoByTrack[trackViewModel.track.id] ?? null,
+        dragPreview?.trackId === trackViewModel.track.id
+          ? `${dragPreview.startUs}:${dragPreview.invalid ? 'invalid' : 'valid'}`
+          : null,
+        draggingItemTrackId === trackViewModel.track.id ? draggingItemId : null,
+        movePreviewSourceTracks.has(trackViewModel.track.id)
+          ? (movePreviewMemoByTrack[trackViewModel.track.id] ?? null)
+          : null,
+        slipPreviewTrackId === trackViewModel.track.id ? (slipPreview?.deltaUs ?? null) : null,
+        trimPreviewMemoByTrack[trackViewModel.track.id] ?? null,
+        selectionRenderMemoByTrack[trackViewModel.track.id] ?? null,
+        selectedTransition?.trackId === trackViewModel.track.id
+          ? `${selectedTransition.itemId}-${selectedTransition.edge}`
+          : null,
+        props.pastePreviews
+          ?.filter((p) => p.trackId === trackViewModel.track.id)
+          .map((p) => `${p.startUs}:${p.durationUs}`)
+          .join(',') ?? '',
+        props.sourcePreviews
+          ?.filter((p) => p.trackId === trackViewModel.track.id)
+          .map((p) => `${p.startUs}:${p.durationUs}`)
+          .join(',') ?? '',
+      ]"
+      :data-track-id="trackViewModel.track.id"
+      class="flex items-center relative transition-colors border-b border-ui-border"
+      :class="[
+        trackViewModel.isHovered && !trackViewModel.isVisuallySelected
+          ? 'bg-ui-bg-elevated/50'
+          : '',
+        trackViewModel.track.locked ? 'hatching-diagonal-track bg-black/10' : '',
+        trackViewModel.track.audioMuted ? 'muted-track-dots bg-black/5' : '',
+        trackViewModel.isDirectlySelected ? 'track--directly-selected' : '',
+        !trackViewModel.isDirectlySelected && trackViewModel.isVisuallySelected
+          ? 'track--visually-selected'
+          : '',
+      ]"
+      :style="{
+        height: `${trackViewModel.height}px`,
+        '--track-selection-color': trackViewModel.selectionColor,
+        backgroundColor: trackViewModel.backgroundColor,
+      }"
+      @pointerdown="onTrackPointerDown($event, trackViewModel.track.id)"
+      @click="onTrackClick($event, trackViewModel.track.id)"
+      @mouseenter="timelineStore.hoveredTrackId = trackViewModel.track.id"
+      @mouseleave="timelineStore.hoveredTrackId = null"
+      @dragover.prevent="emit('dragover', $event, trackViewModel.track.id)"
+      @drop.prevent="emit('drop', $event, trackViewModel.track.id)"
+      @contextmenu="handleTrackContextMenu($event, trackViewModel.track)"
     >
+      <!-- Drop Previews inside track -->
       <div
-        v-if="selectionRangeStyle"
-        class="absolute top-0 bottom-0 z-20 pointer-events-none border-l border-r border-selection-range-border bg-selection-range-bg shadow-[0_0_0_1px_color-mix(in_srgb,var(--color-selection-range)_25%,transparent)]"
-        :style="selectionRangeStyle"
-      />
-
-      <div
-        v-if="isMarqueeSelecting"
-        class="absolute border-2 border-primary-500 bg-primary-500/20 pointer-events-none z-50"
-        :style="marqueeStyle"
-      />
-
-      <AutoMontageModal
-        v-if="autoMontageModal"
-        v-model:open="autoMontageModal.open"
-        @apply="applyAutoMontage"
-      />
-
-      <UiContextMenuPortal
-        ref="trackContextMenuRef"
-        :items="activeTrackContextMenuItems"
-        :target-el="containerRef"
-        manual
-      />
-
-      <div
-        v-for="trackViewModel in trackViewModels"
-        :key="trackViewModel.track.id"
-        v-memo="[
-          trackViewModel.track.id,
-          props.scrollLeft,
-          props.viewportWidth,
-          trackViewModel.track.locked,
-          trackViewModel.track.color,
-          trackViewModel.height,
-          trackViewModel.isHovered,
-          trackViewModel.isDirectlySelected,
-          trackViewModel.isVisuallySelected,
-          props.isMultiSelectMode,
-          trackViewModel.visibleItems.length,
-          trackViewModel.track.videoHidden,
-          trackViewModel.track.audioMuted,
-          trackViewModel.track.audioSolo,
-          timelineStore.timelineZoom,
-          timelineStore.isAnyTrackSoloed,
-          trackViewModel.clipRenderMemo,
-          movePreviewMemoByTrack[trackViewModel.track.id] ?? null,
-          dragPreview?.trackId === trackViewModel.track.id
-            ? `${dragPreview.startUs}:${dragPreview.invalid ? 'invalid' : 'valid'}`
-            : null,
-          draggingItemTrackId === trackViewModel.track.id ? draggingItemId : null,
-          movePreviewSourceTracks.has(trackViewModel.track.id)
-            ? (movePreviewMemoByTrack[trackViewModel.track.id] ?? null)
-            : null,
-          slipPreviewTrackId === trackViewModel.track.id ? (slipPreview?.deltaUs ?? null) : null,
-          trimPreviewMemoByTrack[trackViewModel.track.id] ?? null,
-          selectionRenderMemoByTrack[trackViewModel.track.id] ?? null,
-          selectedTransition?.trackId === trackViewModel.track.id
-            ? `${selectedTransition.itemId}-${selectedTransition.edge}`
-            : null,
-          props.pastePreviews?.filter((p) => p.trackId === trackViewModel.track.id).map((p) => `${p.startUs}:${p.durationUs}`).join(',') ?? '',
-          props.sourcePreviews?.filter((p) => p.trackId === trackViewModel.track.id).map((p) => `${p.startUs}:${p.durationUs}`).join(',') ?? '',
-        ]"
-        :data-track-id="trackViewModel.track.id"
-        class="flex items-center relative transition-colors border-b border-ui-border"
-        :class="[
-          trackViewModel.isHovered && !trackViewModel.isVisuallySelected
-            ? 'bg-ui-bg-elevated/50'
-            : '',
-          trackViewModel.track.locked ? 'hatching-diagonal-track bg-black/10' : '',
-          trackViewModel.track.audioMuted ? 'muted-track-dots bg-black/5' : '',
-          trackViewModel.isDirectlySelected ? 'track--directly-selected' : '',
-          !trackViewModel.isDirectlySelected && trackViewModel.isVisuallySelected
-            ? 'track--visually-selected'
-            : '',
-        ]"
+        v-if="dragPreview && dragPreview.trackId === trackViewModel.track.id"
+        class="absolute top-0.5 bottom-0.5 rounded px-2 flex items-center text-xs text-(--clip-text) z-30 pointer-events-none opacity-80"
+        :class="
+          dragPreview.invalid
+            ? 'bg-red-600/80 border-2 border-red-500 text-white'
+            : dragPreview.kind === 'file'
+              ? 'bg-primary-600 border border-primary-400'
+              : 'bg-ui-bg-accent border border-ui-border'
+        "
         :style="{
-          height: `${trackViewModel.height}px`,
-          '--track-selection-color': trackViewModel.selectionColor,
-          backgroundColor: trackViewModel.backgroundColor,
+          left: `${timeUsToPx(dragPreview.startUs, timelineStore.timelineZoom)}px`,
+          width: `${Math.max(2, timeUsToPx(dragPreview.durationUs, timelineStore.timelineZoom))}px`,
         }"
-        @pointerdown="onTrackPointerDown($event, trackViewModel.track.id)"
-        @click="onTrackClick($event, trackViewModel.track.id)"
-        @mouseenter="timelineStore.hoveredTrackId = trackViewModel.track.id"
-        @mouseleave="timelineStore.hoveredTrackId = null"
-        @dragover.prevent="emit('dragover', $event, trackViewModel.track.id)"
-        @drop.prevent="emit('drop', $event, trackViewModel.track.id)"
-        @contextmenu="handleTrackContextMenu($event, trackViewModel.track)"
       >
-        <!-- Drop Previews inside track -->
+        <span class="truncate" :title="dragPreview.label">{{ dragPreview.label }}</span>
+      </div>
+
+      <!-- Source Previews (Original positions) inside track on mobile -->
+      <template v-if="isMobile && sourcePreviews && sourcePreviews.length > 0">
         <div
-          v-if="dragPreview && dragPreview.trackId === trackViewModel.track.id"
-          class="absolute top-0.5 bottom-0.5 rounded px-2 flex items-center text-xs text-(--clip-text) z-30 pointer-events-none opacity-80"
-          :class="
-            dragPreview.invalid
-              ? 'bg-red-600/80 border-2 border-red-500 text-white'
-              : dragPreview.kind === 'file'
-                ? 'bg-primary-600 border border-primary-400'
-                : 'bg-ui-bg-accent border border-ui-border'
-          "
+          v-for="(sourcePreview, index) in sourcePreviews.filter(
+            (p) => p.trackId === trackViewModel.track.id,
+          )"
+          :key="`source-${trackViewModel.track.id}-${index}`"
+          class="absolute top-0.5 bottom-0.5 rounded px-2 flex items-center text-xs text-zinc-400/95 z-20 pointer-events-none opacity-50 border-2 border-dashed border-zinc-500/50 bg-zinc-600/10"
           :style="{
-            left: `${timeUsToPx(dragPreview.startUs, timelineStore.timelineZoom)}px`,
-            width: `${Math.max(2, timeUsToPx(dragPreview.durationUs, timelineStore.timelineZoom))}px`,
+            left: `${timeUsToPx(sourcePreview.startUs, timelineStore.timelineZoom)}px`,
+            width: `${Math.max(2, timeUsToPx(sourcePreview.durationUs, timelineStore.timelineZoom))}px`,
           }"
         >
-          <span class="truncate" :title="dragPreview.label">{{ dragPreview.label }}</span>
+          <span class="truncate">{{ sourcePreview.label }}</span>
         </div>
+      </template>
 
-        <!-- Source Previews (Original positions) inside track on mobile -->
-        <template v-if="isMobile && sourcePreviews && sourcePreviews.length > 0">
-          <div
-            v-for="(sourcePreview, index) in sourcePreviews.filter(p => p.trackId === trackViewModel.track.id)"
-            :key="`source-${trackViewModel.track.id}-${index}`"
-            class="absolute top-0.5 bottom-0.5 rounded px-2 flex items-center text-xs text-zinc-400/95 z-20 pointer-events-none opacity-50 border-2 border-dashed border-zinc-500/50 bg-zinc-600/10"
-            :style="{
-              left: `${timeUsToPx(sourcePreview.startUs, timelineStore.timelineZoom)}px`,
-              width: `${Math.max(2, timeUsToPx(sourcePreview.durationUs, timelineStore.timelineZoom))}px`,
-            }"
-          >
-            <span class="truncate">{{ sourcePreview.label }}</span>
-          </div>
-        </template>
-
-        <!-- Target Previews (Phantoms) inside track on mobile -->
-        <template v-if="isMobile && pastePreviews && pastePreviews.length > 0">
-          <div
-            v-for="(pastePreview, index) in pastePreviews.filter(p => p.trackId === trackViewModel.track.id)"
-            :key="`paste-${trackViewModel.track.id}-${index}`"
-            class="absolute top-0.5 bottom-0.5 rounded px-2 flex items-center text-xs text-zinc-100 z-30 pointer-events-none opacity-75 border-2 border-dashed border-primary-500/80 bg-primary-600/20 backdrop-blur-[1px]"
-            :style="{
-              left: `${timeUsToPx(pastePreview.startUs, timelineStore.timelineZoom)}px`,
-              width: `${Math.max(2, timeUsToPx(pastePreview.durationUs, timelineStore.timelineZoom))}px`,
-            }"
-          >
-            <UIcon name="i-heroicons-clipboard-document-check" class="w-4 h-4 mr-1.5 shrink-0 text-primary-300" />
-            <span class="truncate">{{ pastePreview.label }}</span>
-          </div>
-        </template>
-
-        <TimelineClip
-          v-for="{ preview, item: previewItem } in movePreviewItemsByTrack[
-            trackViewModel.track.id
-          ] ?? []"
-          :key="`preview-${preview.itemId}`"
-          class="opacity-60 pointer-events-none z-40!"
-          :track="trackViewModel.track"
-          :item="
-            {
-              ...previewItem,
-              id: 'preview-' + previewItem.id,
-              timelineRange: { ...previewItem.timelineRange, startUs: preview.startUs },
-            } as TimelineTrackItem
-          "
-          :track-height="trackViewModel.height"
-          :can-edit-clip-content="false"
-          :is-dragging-current-item="false"
-          :is-move-preview-current-item="true"
-          :is-move-preview-collision="preview.isCollision"
-          :selected-transition="null"
-          :resize-volume="null"
-        />
-
-        <template v-for="item in trackViewModel.visibleItems" :key="item.id">
-          <TimelineGap
-            v-if="item.kind === 'gap'"
-            :item="item"
-            :track-id="trackViewModel.track.id"
-            :is-mobile="isMobile"
-            @select="(e) => emit('selectItem', e, item.id)"
-            @marquee-start="
-              (e) => !isMobile && startMarquee(e, () => emit('selectItem', e, item.id))
-            "
-          />
-          <TimelineClip
-            v-else
-            :track="trackViewModel.track"
-            :item="item"
-            :track-height="trackViewModel.height"
-            :can-edit-clip-content="canEditClipContent"
-            :is-dragging-current-item="draggingItemId === item.id"
-            :is-move-preview-current-item="movePreviewIds.has(item.id)"
-            :is-trim-preview-current-item="Boolean(trimPreviewByItemId[item.id])"
-            :selected-transition="selectedTransition"
-            :resize-volume="resizeVolume"
-            :scroll-left="scrollLeft"
-            :viewport-width="viewportWidth"
-            :slip-preview="slipPreview?.itemId === item.id ? slipPreview : null"
-            :trim-preview="trimPreviewByItemId[item.id] ?? null"
-            :is-mobile="isMobile"
-            :is-multi-select-mode="isMultiSelectMode"
-            @select-item="(ev, id) => emit('selectItem', ev, id)"
-            @start-move-item="(ev, payload) => emit('startMoveItem', ev, payload)"
-            @start-trim-item="(ev, payload) => emit('startTrimItem', ev, payload)"
-            @start-resize-volume="startResizeVolume"
-            @start-resize-fade="startResizeFade"
-            @start-resize-transition="startResizeTransition"
-            @select-transition="selectTransition"
-            @clip-action="
-              (p) => {
-                if (p.action === 'openAutoMontage') {
-                  openAutoMontage(p);
-                } else if (p.action === 'longPress') {
-                  emit('long-press-item', p.itemId);
-                } else {
-                  emit('clipAction', p);
-                }
-              }
-            "
-            @open-speed-modal="(p: TimelineOpenSpeedModalPayload) => emit('open-speed-modal', p)"
-            @reset-volume="
-              (payload) =>
-                timelineStore.updateClipProperties(payload.trackId, payload.itemId, {
-                  audioGain: 1,
-                })
-            "
-          />
-        </template>
-      </div>
-
-      <!-- Mute Overlays for Muted Tracks -->
-      <div class="absolute inset-y-0 left-0 right-0 pointer-events-none z-30 overflow-hidden">
+      <!-- Target Previews (Phantoms) inside track on mobile -->
+      <template v-if="isMobile && pastePreviews && pastePreviews.length > 0">
         <div
-          v-for="track in tracks"
-          :key="'mute-overlay-' + track.id"
-          :data-mute-overlay-id="track.id"
-          class="absolute left-0 right-0 pointer-events-none"
-          :style="getTrackMuteOverlayStyle(track)"
+          v-for="(pastePreview, index) in pastePreviews.filter(
+            (p) => p.trackId === trackViewModel.track.id,
+          )"
+          :key="`paste-${trackViewModel.track.id}-${index}`"
+          class="absolute top-0.5 bottom-0.5 rounded px-2 flex items-center text-xs text-zinc-100 z-30 pointer-events-none opacity-75 border-2 border-dashed border-primary-500/80 bg-primary-600/20 backdrop-blur-[1px]"
+          :style="{
+            left: `${timeUsToPx(pastePreview.startUs, timelineStore.timelineZoom)}px`,
+            width: `${Math.max(2, timeUsToPx(pastePreview.durationUs, timelineStore.timelineZoom))}px`,
+          }"
         >
-          <div
-            v-if="track.audioMuted && isMobile"
-            class="absolute top-1/2 -translate-y-1/2 pointer-events-none"
-            :style="getMuteIconPositionStyle()"
-          >
-            <div
-              class="bg-black/60 rounded-full p-1.5 text-white/50 backdrop-blur-xs flex items-center justify-center w-7 h-7"
-            >
-              <UIcon name="i-heroicons-speaker-x-mark" class="w-4 h-4" />
-            </div>
-          </div>
+          <UIcon
+            name="i-heroicons-clipboard-document-check"
+            class="w-4 h-4 mr-1.5 shrink-0 text-primary-300"
+          />
+          <span class="truncate">{{ pastePreview.label }}</span>
         </div>
-      </div>
+      </template>
 
-      <div class="w-full flex-1 min-h-7" @click="timelineStore.selectTrack(null)" />
-      <div class="h-16 shrink-0" />
+      <TimelineClip
+        v-for="{ preview, item: previewItem } in movePreviewItemsByTrack[trackViewModel.track.id] ??
+        []"
+        :key="`preview-${preview.itemId}`"
+        class="opacity-60 pointer-events-none z-40!"
+        :track="trackViewModel.track"
+        :item="
+          {
+            ...previewItem,
+            id: 'preview-' + previewItem.id,
+            timelineRange: { ...previewItem.timelineRange, startUs: preview.startUs },
+          } as TimelineTrackItem
+        "
+        :track-height="trackViewModel.height"
+        :can-edit-clip-content="false"
+        :is-dragging-current-item="false"
+        :is-move-preview-current-item="true"
+        :is-move-preview-collision="preview.isCollision"
+        :selected-transition="null"
+        :resize-volume="null"
+      />
+
+      <template v-for="item in trackViewModel.visibleItems" :key="item.id">
+        <TimelineGap
+          v-if="item.kind === 'gap'"
+          :item="item"
+          :track-id="trackViewModel.track.id"
+          :is-mobile="isMobile"
+          @select="(e) => emit('selectItem', e, item.id)"
+          @marquee-start="(e) => !isMobile && startMarquee(e, () => emit('selectItem', e, item.id))"
+        />
+        <TimelineClip
+          v-else
+          :track="trackViewModel.track"
+          :item="item"
+          :track-height="trackViewModel.height"
+          :can-edit-clip-content="canEditClipContent"
+          :is-dragging-current-item="draggingItemId === item.id"
+          :is-move-preview-current-item="movePreviewIds.has(item.id)"
+          :is-trim-preview-current-item="Boolean(trimPreviewByItemId[item.id])"
+          :selected-transition="selectedTransition"
+          :resize-volume="resizeVolume"
+          :scroll-left="scrollLeft"
+          :viewport-width="viewportWidth"
+          :slip-preview="slipPreview?.itemId === item.id ? slipPreview : null"
+          :trim-preview="trimPreviewByItemId[item.id] ?? null"
+          :is-mobile="isMobile"
+          :is-multi-select-mode="isMultiSelectMode"
+          @select-item="(ev, id) => emit('selectItem', ev, id)"
+          @start-move-item="(ev, payload) => emit('startMoveItem', ev, payload)"
+          @start-trim-item="(ev, payload) => emit('startTrimItem', ev, payload)"
+          @start-resize-volume="startResizeVolume"
+          @start-resize-fade="startResizeFade"
+          @start-resize-transition="startResizeTransition"
+          @select-transition="selectTransition"
+          @clip-action="
+            (p) => {
+              if (p.action === 'openAutoMontage') {
+                openAutoMontage(p);
+              } else if (p.action === 'longPress') {
+                emit('long-press-item', p.itemId);
+              } else {
+                emit('clipAction', p);
+              }
+            }
+          "
+          @open-speed-modal="(p: TimelineOpenSpeedModalPayload) => emit('open-speed-modal', p)"
+          @reset-volume="
+            (payload) =>
+              timelineStore.updateClipProperties(payload.trackId, payload.itemId, {
+                audioGain: 1,
+              })
+          "
+        />
+      </template>
     </div>
 
+    <!-- Mute Overlays for Muted Tracks -->
+    <div class="absolute inset-y-0 left-0 right-0 pointer-events-none z-30 overflow-hidden">
+      <div
+        v-for="track in tracks"
+        :key="'mute-overlay-' + track.id"
+        :data-mute-overlay-id="track.id"
+        class="absolute left-0 right-0 pointer-events-none"
+        :style="getTrackMuteOverlayStyle(track)"
+      >
+        <div
+          v-if="track.audioMuted && isMobile"
+          class="absolute top-1/2 -translate-y-1/2 pointer-events-none"
+          :style="getMuteIconPositionStyle()"
+        >
+          <div
+            class="bg-black/60 rounded-full p-1.5 text-white/50 backdrop-blur-xs flex items-center justify-center w-7 h-7"
+          >
+            <UIcon name="i-heroicons-speaker-x-mark" class="w-4 h-4" />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="w-full flex-1 min-h-7" @click="timelineStore.selectTrack(null)" />
+    <div class="h-16 shrink-0" />
+  </div>
 
   <UiRenameModal
     :open="isTrackRenameModalOpen"

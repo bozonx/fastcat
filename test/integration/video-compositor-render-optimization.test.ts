@@ -479,7 +479,9 @@ describe('VideoCompositor render optimization', () => {
     expect(applyEffectsToTexture).toHaveBeenCalledWith({
       source: adjustmentTexture,
       target: adjustmentTexture,
-      effects: expect.arrayContaining([expect.objectContaining({ type: 'gaussian-blur', bleed: true })]),
+      effects: expect.arrayContaining([
+        expect.objectContaining({ type: 'gaussian-blur', bleed: true }),
+      ]),
       options: { enablePadding: false },
     });
     expect(applyEffects).not.toHaveBeenCalled();

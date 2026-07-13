@@ -163,4 +163,3 @@ describe('useTimelineRulerMarkerDrag', () => {
     expect(updateMarker).toHaveBeenCalled(); // Since pointercancel maps to pointerup handler in our implementation
   });
 });
-

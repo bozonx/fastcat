@@ -27,7 +27,7 @@ const {
         v-model="snapThresholdPx"
         :label="t('videoEditor.settings.snapThresholdDefault')"
         :min="1"
-        :max="100"
+        :max="50"
         :step="1"
         :default-value="8"
         unit="px"

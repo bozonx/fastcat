@@ -190,69 +190,66 @@ const activeTrackContextMenuItems = computed(() => {
   if (!activeTrackForContextMenu.value) return [];
   return getTrackContextMenuItems(activeTrackForContextMenu.value, props.tracks);
 });
-
-
 </script>
 
 <template>
-    <div
-      v-bind="$attrs"
-      ref="labelsScrollContainer"
-      class="h-full overflow-y-scroll overflow-x-hidden labels-scroll-container bg-ui-bg"
-      @scroll="emit('scroll', $event)"
-      @click="
-        timelineStore.selectTimelineProperties();
-        selectionStore.selectTimelineProperties();
-      "
-    >
-      <div class="flex flex-col min-h-full">
-        <UiContextMenuPortal
-          ref="trackContextMenuRef"
-          :items="activeTrackContextMenuItems"
-          :target-el="labelsScrollContainer"
-          manual
+  <div
+    v-bind="$attrs"
+    ref="labelsScrollContainer"
+    class="h-full overflow-y-scroll overflow-x-hidden labels-scroll-container bg-ui-bg"
+    @scroll="emit('scroll', $event)"
+    @click="
+      timelineStore.selectTimelineProperties();
+      selectionStore.selectTimelineProperties();
+    "
+  >
+    <div class="flex flex-col min-h-full">
+      <UiContextMenuPortal
+        ref="trackContextMenuRef"
+        :items="activeTrackContextMenuItems"
+        :target-el="labelsScrollContainer"
+        manual
+      />
+
+      <template v-for="(track, index) in tracks" :key="track.id">
+        <TimelineTrackLabelItem
+          :track="track"
+          :track-number="trackNumbers[track.id] ?? index + 1"
+          :height="trackHeights[track.id] ?? DEFAULT_TRACK_HEIGHT"
+          :is-selected="isTrackVisuallySelected(track.id)"
+          :is-directly-selected="isTrackDirectlySelected(track.id)"
+          :is-hovered="timelineStore.hoveredTrackId === track.id"
+          :is-renaming="renamingTrackId === track.id"
+          :has-audio="trackHasAudio(track, mediaStore.mediaMetadata)"
+          :level-db="timelineStore.audioLevels?.[track.id]?.peakDb"
+          @select="onSelectTrack(track.id)"
+          @middle-click="(e: MouseEvent) => onMiddleClickTrack(track.id, e)"
+          @request-rename="renamingTrackId = track.id"
+          @rename="(name) => handleRenameTrack(track.id, name)"
+          @cancel-rename="renamingTrackId = null"
+          @resize-start="(e: PointerEvent) => onResizeStart(track.id, e)"
+          @mouseenter="timelineStore.hoveredTrackId = track.id"
+          @mouseleave="timelineStore.hoveredTrackId = null"
+          @contextmenu.prevent.stop="onTrackContextMenu($event, track)"
         />
-
-        <template v-for="(track, index) in tracks" :key="track.id">
-          <TimelineTrackLabelItem
-            :track="track"
-            :track-number="trackNumbers[track.id] ?? index + 1"
-            :height="trackHeights[track.id] ?? DEFAULT_TRACK_HEIGHT"
-            :is-selected="isTrackVisuallySelected(track.id)"
-            :is-directly-selected="isTrackDirectlySelected(track.id)"
-            :is-hovered="timelineStore.hoveredTrackId === track.id"
-            :is-renaming="renamingTrackId === track.id"
-            :has-audio="trackHasAudio(track, mediaStore.mediaMetadata)"
-            :level-db="timelineStore.audioLevels?.[track.id]?.peakDb"
-            @select="onSelectTrack(track.id)"
-            @middle-click="(e: MouseEvent) => onMiddleClickTrack(track.id, e)"
-            @request-rename="renamingTrackId = track.id"
-            @rename="(name) => handleRenameTrack(track.id, name)"
-            @cancel-rename="renamingTrackId = null"
-            @resize-start="(e: PointerEvent) => onResizeStart(track.id, e)"
-            @mouseenter="timelineStore.hoveredTrackId = track.id"
-            @mouseleave="timelineStore.hoveredTrackId = null"
-            @contextmenu.prevent.stop="onTrackContextMenu($event, track)"
-          />
-        </template>
-        <div class="w-full flex-1 min-h-7 shrink-0" />
-        <!-- Trailing spacer mirrors TimelineTracks.vue so labels and tracks share
+      </template>
+      <div class="w-full flex-1 min-h-7 shrink-0" />
+      <!-- Trailing spacer mirrors TimelineTracks.vue so labels and tracks share
              identical scroll content height and stay vertically aligned. -->
-        <div class="h-16 shrink-0" />
-      </div>
+      <div class="h-16 shrink-0" />
     </div>
+  </div>
 
-    <UiConfirmModal
-      v-if="selectedTrack"
-      v-model:open="isConfirmDeleteOpen"
-      :title="t('fastcat.timeline.deleteTrackTitle')"
-      :description="t('fastcat.timeline.deleteTrackDescription')"
-      color="error"
-      icon="i-heroicons-exclamation-triangle"
-      :confirm-text="t('common.delete')"
-      @confirm="confirmDelete"
-    />
-
+  <UiConfirmModal
+    v-if="selectedTrack"
+    v-model:open="isConfirmDeleteOpen"
+    :title="t('fastcat.timeline.deleteTrackTitle')"
+    :description="t('fastcat.timeline.deleteTrackDescription')"
+    color="error"
+    icon="i-heroicons-exclamation-triangle"
+    :confirm-text="t('common.delete')"
+    @confirm="confirmDelete"
+  />
 </template>
 
 <style scoped>

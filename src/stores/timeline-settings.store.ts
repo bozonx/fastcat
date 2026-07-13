@@ -54,10 +54,7 @@ export const useTimelineSettingsStore = defineStore('timelineSettings', () => {
     frameSnapMode.value = DEFAULT_SNAP_SETTINGS.frameSnapMode;
   }
 
-  if (
-    toolbarSnapMode.value !== 'snap' &&
-    toolbarSnapMode.value !== 'no_snap'
-  ) {
+  if (toolbarSnapMode.value !== 'snap' && toolbarSnapMode.value !== 'no_snap') {
     toolbarSnapMode.value = 'snap';
   }
 

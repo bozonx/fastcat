@@ -64,6 +64,35 @@ describe('TimelineStore Copy/Paste', () => {
     expect(pastedClip.source.path).toBe('/dummy.mp4');
   });
 
+  it('preserves a free (sub-frame) audio clip duration through copy/paste', async () => {
+    const store = useTimelineStore();
+    const builder = new TimelineBuilder();
+    // 30fps → one frame ≈ 33333µs; this duration sits between frame boundaries.
+    const freeDurationUs = 3_457_000;
+    store.timelineDoc = builder
+      .withTrack('a1', 'audio', 'Audio 1')
+      .withClip('audio1', 'a1', { startUs: 2_007_000, durationUs: freeDurationUs })
+      .build() as any;
+
+    store.toggleSelection('audio1');
+    const copiedItems = store.copySelectedClips();
+    expect(copiedItems).toHaveLength(1);
+
+    // Paste at a frame-aligned playhead on the same audio track.
+    store.currentTime = 10_000_000;
+    const pastedItems = await store.pasteClips(copiedItems, { targetTrackId: 'a1' });
+    expect(pastedItems).toHaveLength(1);
+
+    const track = store.timelineDoc!.tracks.find((t: any) => t.id === 'a1')!;
+    const pastedClip = track.items.find(
+      (it: any) => it.kind === 'clip' && it.id === pastedItems[0].itemId,
+    ) as any;
+
+    expect(pastedClip).toBeDefined();
+    // The sub-frame duration survives — the copy is NOT snapped onto the grid.
+    expect(pastedClip.timelineRange.durationUs).toBe(freeDurationUs);
+  });
+
   it('cuts clips from timeline', () => {
     const store = useTimelineStore();
     const builder = new TimelineBuilder();

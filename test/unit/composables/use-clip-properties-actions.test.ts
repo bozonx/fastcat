@@ -107,7 +107,6 @@ describe('useClipPropertiesActions', () => {
     expect(timelineStore.selectedItemIds).toEqual(['c2']);
   });
 
-
   it('opens parent folder but keeps the file selected in file manager', async () => {
     const clip = makeClip({ source: { path: ' media / nested / clip.mp4 ' } });
     const {

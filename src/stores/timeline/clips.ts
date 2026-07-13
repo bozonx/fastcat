@@ -14,6 +14,7 @@ import {
   nextItemIds,
   quantizeTimeUsToFrames,
 } from '~/timeline/commands/utils';
+import { isClipFrameAligned } from '~/utils/timeline/clip-capabilities';
 import { CLIP_AUDIO_GAIN_MAX } from '~/utils/audio/envelope';
 import { cloneValue } from '~/utils/clone';
 import { resolveClipSourceTimeUs } from '~/utils/video-editor/source-time';
@@ -721,6 +722,15 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
       const relativeStartUs = clip.timelineRange.startUs - minStartUs;
       const nextStartUs = insertStartUs + relativeStartUs;
 
+      // A free (sub-frame) audio clip must survive copy/paste with its phase and
+      // duration intact — quantizing it here would snap the copy onto the frame
+      // grid (destroying a hand-dialed sync). Only audio can be off-grid, so this
+      // never affects video/virtual clips. Overrides the group-level quantize flag
+      // per clip; frame-aligned clips keep the group behaviour.
+      const clipQuantizeToFrames = !isClipFrameAligned(clip, getDocFps(doc))
+        ? false
+        : pasteQuantizeToFrames;
+
       if ((clip.clipType === 'media' || clip.clipType === 'timeline') && clip.source?.path) {
         commands.push({
           type: 'add_clip_to_track',
@@ -734,7 +744,7 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
           sourceRange: clip.sourceRange,
           isImage: clip.isImage,
           pseudo: pasteAsPseudo,
-          quantizeToFrames: pasteQuantizeToFrames,
+          quantizeToFrames: clipQuantizeToFrames,
         });
       } else {
         commands.push({
@@ -749,7 +759,7 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
           durationUs: clip.timelineRange.durationUs,
           startUs: nextStartUs,
           pseudo: pasteAsPseudo,
-          quantizeToFrames: pasteQuantizeToFrames,
+          quantizeToFrames: clipQuantizeToFrames,
           backgroundColor: 'backgroundColor' in clip ? clip.backgroundColor : undefined,
           text: 'text' in clip ? clip.text : undefined,
           style: 'style' in clip ? clip.style : undefined,

@@ -135,7 +135,6 @@ function getTransitionSvgFill(edge: 'in' | 'out', hasProblem: boolean) {
   if (hasProblem) return 'rgba(239, 68, 68, 0.45)';
   return 'var(--clip-lower-tri)';
 }
-
 </script>
 
 <template>

@@ -124,7 +124,12 @@ describe('workspace-settings.repository', () => {
         pinnedItems: ['/pinned/a'],
         lastProjectName: 'demo',
         recentProjects: [
-          { projectName: 'demo', projectId: '1', updatedAt: '2026-01-01', lastTimelinePath: 't.otio' },
+          {
+            projectName: 'demo',
+            projectId: '1',
+            updatedAt: '2026-01-01',
+            lastTimelinePath: 't.otio',
+          },
         ],
       },
       fileBrowser: {
@@ -150,7 +155,10 @@ describe('workspace-settings.repository', () => {
     it('preserves partial/empty objects literally (consumer normalizes)', async () => {
       const repo = createWorkspaceSettingsRepository({ vfs: new InMemoryFileSystemAdapter() });
 
-      await repo.saveWorkspaceState({ ui: {}, fileBrowser: { instances: {}, activeTab: 'fastcat' } });
+      await repo.saveWorkspaceState({
+        ui: {},
+        fileBrowser: { instances: {}, activeTab: 'fastcat' },
+      });
       const loaded = await repo.loadWorkspaceState();
 
       expect(loaded).toEqual({ ui: {}, fileBrowser: { instances: {}, activeTab: 'fastcat' } });
@@ -188,7 +196,10 @@ describe('workspace-settings.repository', () => {
       const vfs = new InMemoryFileSystemAdapter();
       const repo = createWorkspaceSettingsRepository({ vfs });
 
-      await repo.saveWorkspaceState({ ui: {}, fileBrowser: { instances: {}, activeTab: 'computer' } });
+      await repo.saveWorkspaceState({
+        ui: {},
+        fileBrowser: { instances: {}, activeTab: 'computer' },
+      });
 
       expect(await vfs.exists('/vardata/workspace-state.json')).toBe(true);
       expect(await vfs.exists('@config/workspace-state.json')).toBe(false);
@@ -202,7 +213,10 @@ describe('workspace-settings.repository', () => {
 
       await repo.saveUserSettings({ openLastProjectOnStart: true } as any);
       await repo.saveAppSettings({ ui: { locale: 'en' } } as any);
-      await repo.saveWorkspaceState({ ui: {}, fileBrowser: { instances: {}, activeTab: 'computer' } });
+      await repo.saveWorkspaceState({
+        ui: {},
+        fileBrowser: { instances: {}, activeTab: 'computer' },
+      });
 
       expect(await vfs.exists('@workspace/.fastcat-config/user.settings.json')).toBe(true);
       expect(await vfs.exists('@workspace/.fastcat-config/app.settings.json')).toBe(true);

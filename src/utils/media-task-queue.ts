@@ -107,7 +107,9 @@ export function addEncodeTask<T>(
  * Test-only helper: clear pending tasks, the keyed-task version map, and reset
  * the queue concurrency so specs can exercise pending-task behaviour deterministically.
  */
-export function __resetMediaTaskQueueForTesting(concurrency = resolveInteractiveConcurrency()): void {
+export function __resetMediaTaskQueueForTesting(
+  concurrency = resolveInteractiveConcurrency(),
+): void {
   mediaTaskQueue.value.clear();
   mediaTaskQueue.value.concurrency = concurrency;
   keyedTaskVersions.clear();

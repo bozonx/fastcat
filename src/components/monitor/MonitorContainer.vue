@@ -481,8 +481,8 @@ watch(viewportRef, (vp) => {
         @update:open="setMonitorContextMenuOpen"
       >
         <div
-          ref="panelRef"
           id="monitor-fullscreen-panel"
+          ref="panelRef"
           class="panel-focus-frame flex h-full min-w-0 min-h-0 transition-colors duration-300 relative select-none"
           :class="[
             effectiveFullscreen

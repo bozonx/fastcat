@@ -1,7 +1,7 @@
 /** @vitest-environment node */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
-import { reactive, toRaw } from 'vue';
+import { reactive, ref, toRaw } from 'vue';
 import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
 
 // We use the global mock from vitest.setup.ts for #app
@@ -64,6 +64,13 @@ const mockWorkspaceStore = reactive({
 
 vi.mock('~/stores/workspace.store', () => ({
   useWorkspaceStore: () => mockWorkspaceStore,
+}));
+
+const mockIsMobileLayout = ref(false);
+vi.mock('~/composables/useMobileLayout', () => ({
+  useMobileLayout: () => ({
+    isMobileLayout: mockIsMobileLayout,
+  }),
 }));
 
 // Mock Worker
@@ -375,9 +382,11 @@ describe('Timeline Persistence and AutoSave', () => {
     beforeEach(() => {
       originalPathname = window.location.pathname;
       (window as any).location.pathname = '/m/project/123';
+      mockIsMobileLayout.value = true;
     });
     afterEach(() => {
       (window as any).location.pathname = originalPathname;
+      mockIsMobileLayout.value = false;
     });
 
     it('autosaves to the main file on mobile after debounce', async () => {

@@ -37,11 +37,7 @@ function handleCreate() {
 </script>
 
 <template>
-  <UiModal
-    v-model:open="open"
-    :title="t('fastcat.timeline.addMarkerWithText')"
-    :portal="portal"
-  >
+  <UiModal v-model:open="open" :title="t('fastcat.timeline.addMarkerWithText')" :portal="portal">
     <div class="flex flex-col gap-4">
       <UiFormField :label="t('common.text')">
         <UiTextInput
@@ -54,12 +50,7 @@ function handleCreate() {
       </UiFormField>
 
       <UiFormField :label="t('common.color')">
-        <UiColorPicker
-          v-model="color"
-          mode="marker"
-          orientation="horizontal"
-          size="sm"
-        />
+        <UiColorPicker v-model="color" mode="marker" orientation="horizontal" size="sm" />
       </UiFormField>
     </div>
     <template #footer>

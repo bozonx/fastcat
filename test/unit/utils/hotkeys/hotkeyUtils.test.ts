@@ -86,9 +86,7 @@ describe('formatHotkeyComboForDisplay', () => {
       },
     } as any;
 
-    expect(formatHotkeyComboForDisplay('Modifier2+Modifier1+G', settings)).toBe(
-      'Right Ctrl+Alt+G',
-    );
+    expect(formatHotkeyComboForDisplay('Modifier2+Modifier1+G', settings)).toBe('Right Ctrl+Alt+G');
   });
 });
 

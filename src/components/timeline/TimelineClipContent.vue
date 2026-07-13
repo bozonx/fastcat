@@ -145,10 +145,7 @@ const titleStyle = computed(() => {
       :class="isHeaderOnly ? 'flex-1 min-h-0' : 'h-5'"
       :style="{ zIndex: 'var(--z-clip-name)' }"
     >
-      <div
-        class="flex items-center gap-1 min-w-0 flex-1"
-        :style="titleStyle"
-      >
+      <div class="flex items-center gap-1 min-w-0 flex-1" :style="titleStyle">
         <UIcon
           :name="
             isVideo(item, track)

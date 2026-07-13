@@ -1297,11 +1297,7 @@ async function handleConfirmCreateVersion(newName: string) {
         />
 
         <div class="flex items-center gap-1">
-          <UiTooltip
-            v-for="button in trackResetButtons"
-            :key="button.icon"
-            :text="button.tooltip"
-          >
+          <UiTooltip v-for="button in trackResetButtons" :key="button.icon" :text="button.tooltip">
             <UButton
               :icon="button.icon"
               variant="solid"
@@ -1322,15 +1318,15 @@ async function handleConfirmCreateVersion(newName: string) {
           class="absolute top-0 bottom-0 left-0 h-full"
           :style="{ right: `${scrollbarHeight}px` }"
         >
-            <TimelineRuler
-              class="w-full h-full border-b border-ui-border bg-ui-bg-elevated cursor-pointer"
-              :scroll-el="masterScrollEl"
-              :scroll-left="scrollLeftRef"
-              @pointerdown="onTimeRulerPointerDown"
-              @start-playhead-drag="onRulerStartPlayheadDrag"
-              @start-pan="onRulerStartPan"
-              @middleclick-ruler="onRulerMiddleClick"
-            />
+          <TimelineRuler
+            class="w-full h-full border-b border-ui-border bg-ui-bg-elevated cursor-pointer"
+            :scroll-el="masterScrollEl"
+            :scroll-left="scrollLeftRef"
+            @pointerdown="onTimeRulerPointerDown"
+            @start-playhead-drag="onRulerStartPlayheadDrag"
+            @start-pan="onRulerStartPan"
+            @middleclick-ruler="onRulerMiddleClick"
+          />
         </div>
       </div>
     </div>
