@@ -11,12 +11,13 @@ import type {
 } from '../types';
 import { createTimelineTimebase, createTimelineTimebaseFromFps } from '../timebase';
 import { sanitizeFrameRate } from '~/utils/time/ticks';
-import { secondsToTicks, ticksToSeconds } from '~/utils/time/ticks';
+import { secondsToTicks, TICKS_PER_SECOND, ticksToSeconds } from '~/utils/time/ticks';
 import type { OtioRationalTime, OtioTimeRange, OtioColor } from './types';
 import { isAnimatableParamPath, normalizeKeyframeTrack } from '../animation/evaluate';
 const log = createDevLogger('utils');
 
-export const TIME_RATE_US = 1_000_000;
+/** Fallback rate for generic OTIO values without track context. */
+export const DEFAULT_OTIO_TIME_RATE = TICKS_PER_SECOND;
 
 export function toRationalTime(ticks: number, rate?: number): OtioRationalTime {
   const seconds = ticksToSeconds(ticks);
@@ -29,8 +30,8 @@ export function toRationalTime(ticks: number, rate?: number): OtioRationalTime {
   }
   return {
     OTIO_SCHEMA: 'RationalTime.1',
-    value: Math.round(seconds * TIME_RATE_US),
-    rate: TIME_RATE_US,
+    value: Math.round(seconds * DEFAULT_OTIO_TIME_RATE),
+    rate: DEFAULT_OTIO_TIME_RATE,
   };
 }
 
