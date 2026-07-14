@@ -1,10 +1,11 @@
 import { describe, it, expect, vi } from 'vitest';
+import { TICKS_PER_MICROSECOND } from '~/utils/time';
 
 import { TimelineActiveClipProcessor } from '~/utils/video-editor/compositor/TimelineActiveClipProcessor';
 import type { CompositorClip } from '~/utils/video-editor/compositor/types';
 
 function makeClip(overrides: Partial<CompositorClip> = {}): CompositorClip {
-  return {
+  const clip = {
     itemId: 'clip-1',
     clipKind: 'video',
     startUs: 0,
@@ -18,11 +19,23 @@ function makeClip(overrides: Partial<CompositorClip> = {}): CompositorClip {
     sprite: { visible: false, alpha: 1, blendMode: 'normal' } as any,
     sink: {} as any,
     ...overrides,
-  } as unknown as CompositorClip;
+  };
+  for (const field of [
+    'startUs',
+    'endUs',
+    'durationUs',
+    'sourceStartUs',
+    'sourceRangeDurationUs',
+    'sourceDurationUs',
+    'freezeFrameSourceUs',
+  ] as const) {
+    if (typeof clip[field] === 'number') clip[field] *= TICKS_PER_MICROSECOND;
+  }
+  return clip as unknown as CompositorClip;
 }
 
 function makeParams(overrides: Record<string, unknown> = {}) {
-  return {
+  const params = {
     activeClips: [] as CompositorClip[],
     timeUs: 0,
     width: 1920,
@@ -35,6 +48,8 @@ function makeParams(overrides: Record<string, unknown> = {}) {
     createPrimaryVideoSampleRequest: vi.fn().mockResolvedValue({ clip: null, sample: null }),
     ...overrides,
   };
+  params.timeUs = Number(params.timeUs) * TICKS_PER_MICROSECOND;
+  return params;
 }
 
 describe('TimelineActiveClipProcessor.process', () => {
@@ -202,8 +217,11 @@ describe('TimelineActiveClipProcessor.process', () => {
       computeTransitionOpacity,
     });
     processor.process(params);
-    expect(syncTransitionFilter).toHaveBeenCalledWith(clip, 100_000);
-    expect(computeTransitionOpacity).toHaveBeenCalledWith(clip, 100_000);
+    expect(syncTransitionFilter).toHaveBeenCalledWith(clip, 100_000 * TICKS_PER_MICROSECOND);
+    expect(computeTransitionOpacity).toHaveBeenCalledWith(
+      clip,
+      100_000 * TICKS_PER_MICROSECOND,
+    );
     expect(clip.sprite!.alpha).toBe(0.8);
   });
 

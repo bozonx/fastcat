@@ -1,4 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { TICKS_PER_MICROSECOND } from '~/utils/time';
 import { MediaClipLoader } from '~/utils/video-editor/compositor/MediaClipLoader';
 import type {
   MediaClipLoaderMediabunny,
@@ -39,6 +40,18 @@ describe('MediaClipLoader', () => {
 
   beforeEach(() => {
     loader = new MediaClipLoader();
+    const loadVideoRuntime = loader.loadVideoRuntime.bind(loader);
+    vi.spyOn(loader, 'loadVideoRuntime').mockImplementation((options) =>
+      loadVideoRuntime({
+        ...options,
+        startUs: options.startUs * TICKS_PER_MICROSECOND,
+        sourceStartUs: options.sourceStartUs * TICKS_PER_MICROSECOND,
+        requestedTimelineDurationUs: options.requestedTimelineDurationUs * TICKS_PER_MICROSECOND,
+        requestedSourceDurationUs: options.requestedSourceDurationUs * TICKS_PER_MICROSECOND,
+        requestedSourceRangeDurationUs:
+          options.requestedSourceRangeDurationUs * TICKS_PER_MICROSECOND,
+      }),
+    );
   });
 
   it('computes sourceDurationUs as min(requested, full media duration)', async () => {
@@ -58,7 +71,7 @@ describe('MediaClipLoader', () => {
     expect(result).not.toBeNull();
     // mediaDurationUs = 10 * 1_000_000 = 10_000_000
     // sourceDurationUs = min(5_000_000, 10_000_000) = 5_000_000
-    expect(result!.sourceDurationUs).toBe(5_000_000);
+    expect(result!.sourceDurationUs).toBe(5_000_000 * TICKS_PER_MICROSECOND);
   });
 
   it('keeps the FULL media duration for a clip trimmed at its start', async () => {
@@ -83,9 +96,11 @@ describe('MediaClipLoader', () => {
     });
 
     expect(result).not.toBeNull();
-    expect(result!.sourceDurationUs).toBe(10_000_000);
+    expect(result!.sourceDurationUs).toBe(10_000_000 * TICKS_PER_MICROSECOND);
     // Trailing handle available past the source range: 10 - 2 - 4 = 4s.
-    expect(result!.sourceDurationUs - 2_000_000 - result!.sourceRangeDurationUs).toBe(4_000_000);
+    expect(
+      result!.sourceDurationUs - 2_000_000 * TICKS_PER_MICROSECOND - result!.sourceRangeDurationUs,
+    ).toBe(4_000_000 * TICKS_PER_MICROSECOND);
   });
 
   it('uses the full media duration when requestedSourceDurationUs is 0', async () => {
@@ -104,9 +119,9 @@ describe('MediaClipLoader', () => {
 
     expect(result).not.toBeNull();
     // mediaDurationUs = 8_000_000 (absolute, NOT reduced by sourceStartUs)
-    expect(result!.sourceDurationUs).toBe(8_000_000);
+    expect(result!.sourceDurationUs).toBe(8_000_000 * TICKS_PER_MICROSECOND);
     // The timeline-duration fallback, by contrast, is the playable tail.
-    expect(result!.durationUs).toBe(5_000_000);
+    expect(result!.durationUs).toBe(5_000_000 * TICKS_PER_MICROSECOND);
   });
 
   it('uses requestedTimelineDurationUs when > 0, else sourceDurationUs', async () => {
@@ -124,8 +139,8 @@ describe('MediaClipLoader', () => {
     });
 
     expect(result).not.toBeNull();
-    expect(result!.durationUs).toBe(3_000_000);
-    expect(result!.endUs).toBe(4_000_000);
+    expect(result!.durationUs).toBe(3_000_000 * TICKS_PER_MICROSECOND);
+    expect(result!.endUs).toBe(4_000_000 * TICKS_PER_MICROSECOND);
   });
 
   it('falls back to the playable source tail for durationUs when timelineDuration is 0', async () => {
@@ -144,8 +159,8 @@ describe('MediaClipLoader', () => {
 
     expect(result).not.toBeNull();
     // sourceDurationUs = 6_000_000, durationUs = 6_000_000
-    expect(result!.durationUs).toBe(6_000_000);
-    expect(result!.endUs).toBe(8_000_000);
+    expect(result!.durationUs).toBe(6_000_000 * TICKS_PER_MICROSECOND);
+    expect(result!.endUs).toBe(8_000_000 * TICKS_PER_MICROSECOND);
   });
 
   it('uses requestedSourceRangeDurationUs when > 0, else durationUs', async () => {
@@ -163,7 +178,7 @@ describe('MediaClipLoader', () => {
     });
 
     expect(result).not.toBeNull();
-    expect(result!.sourceRangeDurationUs).toBe(2_000_000);
+    expect(result!.sourceRangeDurationUs).toBe(2_000_000 * TICKS_PER_MICROSECOND);
   });
 
   it('returns null when track is null', async () => {
@@ -387,7 +402,7 @@ describe('MediaClipLoader', () => {
 
     expect(result).not.toBeNull();
     // sourceDurationUs stays the absolute media duration...
-    expect(result!.sourceDurationUs).toBe(5_000_000);
+    expect(result!.sourceDurationUs).toBe(5_000_000 * TICKS_PER_MICROSECOND);
     // ...while the playable tail past the trim-in point is empty.
     expect(result!.durationUs).toBe(0);
   });
