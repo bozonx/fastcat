@@ -1,5 +1,6 @@
 /** @vitest-environment node */
 import { describe, expect, it } from 'vitest';
+import { TICKS_PER_MICROSECOND } from '~/utils/time';
 
 import {
   buildStopFrameBaseName,
@@ -10,20 +11,28 @@ import {
 describe('stop-frames', () => {
   it('formats timecode as HH-MM-SS-FF', () => {
     expect(formatStopFrameTimecode({ timeUs: 0, fps: 30 })).toBe('00-00-00-00');
-    expect(formatStopFrameTimecode({ timeUs: 1_000_000, fps: 30 })).toBe('00-00-01-00');
-    expect(formatStopFrameTimecode({ timeUs: 1_500_000, fps: 30 })).toBe('00-00-01-15');
+    expect(formatStopFrameTimecode({ timeUs: 1_000_000 * TICKS_PER_MICROSECOND, fps: 30 })).toBe(
+      '00-00-01-00',
+    );
+    expect(formatStopFrameTimecode({ timeUs: 1_500_000 * TICKS_PER_MICROSECOND, fps: 30 })).toBe(
+      '00-00-01-15',
+    );
   });
 
   it('formats fractional frame numbers with bounded precision', () => {
-    expect(formatStopFrameTimecode({ timeUs: 6_863_062, fps: 29.97, frameDigits: 1 })).toBe(
-      '00-00-06-25.9',
-    );
+    expect(
+      formatStopFrameTimecode({
+        timeUs: 6_863_062 * TICKS_PER_MICROSECOND,
+        fps: 29.97,
+        frameDigits: 1,
+      }),
+    ).toBe('00-00-06-25.9');
   });
 
   it('builds base name with sanitized timeline name and timecode', () => {
     const base = buildStopFrameBaseName({
       timelineName: 'My Timeline.otio',
-      timeUs: 1_000_000,
+      timeUs: 1_000_000 * TICKS_PER_MICROSECOND,
       fps: 30,
     });
 

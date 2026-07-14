@@ -7,6 +7,7 @@ import {
   getTimelineTickCanvasX,
 } from '~/utils/timeline/ruler-ticks';
 import { timeUsToPx } from '~/utils/timeline/geometry';
+import { TICKS_PER_MICROSECOND } from '~/utils/time';
 
 describe('timeline ruler ticks', () => {
   it('keeps the same viewport pixel when canvases use different render windows', () => {
@@ -37,7 +38,7 @@ describe('timeline ruler ticks', () => {
 
     const frameX = getTimelineFrameTickCanvasX({ frame, fps, zoom, renderStartPx });
     const timeX = getTimelineTickCanvasX({
-      timeUs: Math.round((frame * 1_000_000) / fps),
+      timeUs: Math.round((frame * 1_000_000 * TICKS_PER_MICROSECOND) / fps),
       zoom,
       renderStartPx,
     });

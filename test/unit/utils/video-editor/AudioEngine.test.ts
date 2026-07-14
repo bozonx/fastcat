@@ -2,6 +2,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 import { createAudioEngine, type IAudioEngine } from '~/utils/video-editor/AudioEngine';
+import { TICKS_PER_MICROSECOND } from '~/utils/time';
 
 interface WorkerMessageEvent<T> {
   data: T;
@@ -219,7 +220,7 @@ function getDecodePostMessageCalls(worker: WorkerMock | null) {
 }
 
 function createClip(overrides: Partial<Parameters<IAudioEngine['loadClips']>[0][number]> = {}) {
-  return {
+  const clip = {
     id: 'clip-1',
     sourcePath: 'audio.mp3',
     fileHandle: createFileHandle(),
@@ -231,6 +232,19 @@ function createClip(overrides: Partial<Parameters<IAudioEngine['loadClips']>[0][
     DurationUs: 1_000_000,
     ...overrides,
   };
+
+  for (const field of [
+    'startUs',
+    'durationUs',
+    'sourceStartUs',
+    'sourceRangeDurationUs',
+    'sourceDurationUs',
+    'DurationUs',
+  ] as const) {
+    clip[field] *= TICKS_PER_MICROSECOND;
+  }
+
+  return clip;
 }
 
 describe('AudioEngine', () => {
@@ -457,7 +471,11 @@ describe('AudioEngine', () => {
     if (!audioContextInstance) throw new Error('AudioContext not initialized');
     audioContextInstance.currentTime = 3;
 
-    await engine.previewScrubForward(100_000, 160_000, 75_000);
+    await engine.previewScrubForward(
+      100_000 * TICKS_PER_MICROSECOND,
+      160_000 * TICKS_PER_MICROSECOND,
+      75_000 * TICKS_PER_MICROSECOND,
+    );
 
     expect(audioContextInstance.createdSources.length).toBe(1);
     const source = audioContextInstance.createdSources[0];
@@ -489,7 +507,11 @@ describe('AudioEngine', () => {
     audioContextInstance.currentTime = 3;
 
     // Request a 150ms (timeline) preview window.
-    await engine.previewScrubForward(0, 300_000, 150_000);
+    await engine.previewScrubForward(
+      0,
+      300_000 * TICKS_PER_MICROSECOND,
+      150_000 * TICKS_PER_MICROSECOND,
+    );
 
     expect(audioContextInstance.createdSources.length).toBe(1);
     const source = audioContextInstance.createdSources[0]!;

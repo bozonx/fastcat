@@ -1,6 +1,7 @@
 /** @vitest-environment node */
 import { describe, it, expect } from 'vitest';
 import { clampNumber } from '~/utils/math';
+import { TICKS_PER_MICROSECOND } from '~/utils/time';
 import {
   normalizeGain,
   normalizeBalance,
@@ -81,8 +82,8 @@ describe('audio/envelope', () => {
     it('computes basic fades', () => {
       const res = computeFadeDurationsSeconds({
         clipDurationS: 10,
-        fadeInUs: 2_000_000,
-        fadeOutUs: 3_000_000,
+        fadeInUs: 2_000_000 * TICKS_PER_MICROSECOND,
+        fadeOutUs: 3_000_000 * TICKS_PER_MICROSECOND,
       });
       expect(res).toEqual({ fadeInS: 2, fadeOutS: 3 });
     });
@@ -90,8 +91,8 @@ describe('audio/envelope', () => {
     it('clamps fades to clip duration proportionally when sum exceeds duration', () => {
       const res = computeFadeDurationsSeconds({
         clipDurationS: 4,
-        fadeInUs: 5_000_000,
-        fadeOutUs: 5_000_000,
+        fadeInUs: 5_000_000 * TICKS_PER_MICROSECOND,
+        fadeOutUs: 5_000_000 * TICKS_PER_MICROSECOND,
       });
       // ratio = 4 / (5 + 5) = 0.4 → each fade = 5 * 0.4 = 2
       expect(res).toEqual({ fadeInS: 2, fadeOutS: 2 });

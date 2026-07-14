@@ -1,5 +1,6 @@
 /** @vitest-environment node */
 import { describe, it, expect, vi } from 'vitest';
+import { TICKS_PER_MICROSECOND } from '~/utils/time';
 
 import {
   VideoFrameCache,
@@ -270,7 +271,7 @@ describe('computeFrameIndex', () => {
 
   it('falls back to microsecond key when no frame rate', () => {
     const clip = { itemId: 'clip' };
-    expect(computeFrameIndex(clip, 0.5)).toBe(500_000);
+    expect(computeFrameIndex(clip, 0.5)).toBe(500_000 * TICKS_PER_MICROSECOND);
   });
 
   it('keys cached frames by source fps, not timeline cadence', () => {

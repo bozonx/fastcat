@@ -13,6 +13,7 @@ import {
 } from '~/composables/timeline/export/payloadBuilder';
 import { serializeTimelineToOtio } from '~/timeline/otio-serializer';
 import type { TimelineDocument, TimelineTrack, TimelineTrackItem } from '~/timeline/types';
+import { timelineUs } from '../../../utils/timeline-time';
 
 function track(overrides: Record<string, unknown> = {}): any {
   return {
@@ -513,8 +514,8 @@ function nestedVideoTrack(id: string, overrides: Record<string, unknown> = {}): 
         clipType: 'media',
         trackId: id,
         source: { path: `_video/${id}.mp4` },
-        timelineRange: { startUs: 0, durationUs: 1_000_000 },
-        sourceRange: { startUs: 0, durationUs: 1_000_000 },
+        timelineRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
+        sourceRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
       },
     ],
     ...overrides,
@@ -1425,8 +1426,8 @@ describe('toWorkerTimelineClips', () => {
         sourceRange: { startUs: 0, durationUs: 1_000_000 },
         audioGain: 0.5,
         audioBalance: -0.2,
-        audioFadeInUs: 200_000,
-        audioFadeOutUs: 300_000,
+        audioFadeInUs: timelineUs(200_000),
+        audioFadeOutUs: timelineUs(300_000),
       } as any,
     ];
 
@@ -1448,8 +1449,8 @@ describe('toWorkerTimelineClips', () => {
     expect(clips[0]?.source?.path).toBe('_timelines/audio.wav');
     expect(clips[0]?.audioGain).toBeCloseTo(1);
     expect(clips[0]?.audioBalance).toBeCloseTo(-0.1);
-    expect(clips[0]?.audioFadeInUs).toBe(200_000);
-    expect(clips[0]?.audioFadeOutUs).toBe(300_000);
+    expect(clips[0]?.audioFadeInUs).toBe(timelineUs(200_000));
+    expect(clips[0]?.audioFadeOutUs).toBe(timelineUs(300_000));
   });
 
   it('emits explicit nested track payload items with compounded opacity/blend', async () => {

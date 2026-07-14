@@ -1,5 +1,6 @@
 /** @vitest-environment node */
 import { describe, it, expect, vi } from 'vitest';
+import { TICKS_PER_MICROSECOND } from '~/utils/time';
 import {
   safeDispose,
   parseUsToS,
@@ -29,8 +30,8 @@ describe('safeDispose', () => {
 
 describe('parseUsToS', () => {
   it('converts microseconds to seconds', () => {
-    expect(parseUsToS(1_000_000)).toBe(1);
-    expect(parseUsToS('500000')).toBe(0.5);
+    expect(parseUsToS(1_000_000 * TICKS_PER_MICROSECOND)).toBe(1);
+    expect(parseUsToS(String(500_000 * TICKS_PER_MICROSECOND))).toBe(0.5);
   });
 
   it('returns fallback for invalid input', () => {

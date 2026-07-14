@@ -8,6 +8,7 @@ import {
   toNativeSceneAudioLayer,
 } from '~/utils/audio/audio-clip-descriptor';
 import { buildClipPlaybackWindow } from '~/utils/video-editor/audio-playback-window';
+import { timelineUs } from '../timeline-time';
 
 interface AudioWorkerClip extends WorkerTimelineClip {
   defaultAudioFadeCurve?: 'linear' | 'logarithmic';
@@ -21,22 +22,22 @@ function createClip(overrides: Partial<AudioWorkerClip> = {}): AudioWorkerClip {
     trackId: 'track-1',
     layer: 0,
     source: { path: 'audio/source.mp3' },
-    timelineRange: { startUs: 1_000_000, durationUs: 2_500_000 },
-    sourceRange: { startUs: 500_000, durationUs: 1_750_000 },
-    sourceDurationUs: 8_000_000,
+    timelineRange: { startUs: timelineUs(1_000_000), durationUs: timelineUs(2_500_000) },
+    sourceRange: { startUs: timelineUs(500_000), durationUs: timelineUs(1_750_000) },
+    sourceDurationUs: timelineUs(8_000_000),
     speed: 2,
     audioGain: 0.75,
     audioBalance: -0.25,
     originalAudioGain: 0.5,
     originalAudioBalance: 0.2,
-    audioFadeInUs: 100_000,
-    audioFadeOutUs: 200_000,
+    audioFadeInUs: timelineUs(100_000),
+    audioFadeOutUs: timelineUs(200_000),
     audioFadeInCurve: 'logarithmic',
     audioFadeOutCurve: 'linear',
-    audioDeclickDurationUs: 5_000,
+    audioDeclickDurationUs: timelineUs(5_000),
     defaultAudioFadeCurve: 'logarithmic',
-    transitionIn: { type: 'dissolve', durationUs: 100_000, mode: 'adjacent' },
-    transitionOut: { type: 'dissolve', durationUs: 150_000, mode: 'adjacent' },
+    transitionIn: { type: 'dissolve', durationUs: timelineUs(100_000), mode: 'adjacent' },
+    transitionOut: { type: 'dissolve', durationUs: timelineUs(150_000), mode: 'adjacent' },
     effects: [
       {
         id: 'audio-enabled',
@@ -85,14 +86,14 @@ describe('audio clip descriptor adapters', () => {
       id: 'clip-1',
       trackId: 'track-1',
       sourcePath: '/project/audio/source.mp3',
-      startUs: 1_000_000,
-      durationUs: 2_500_000,
-      sourceStartUs: 500_000,
-      sourceRangeDurationUs: 1_750_000,
-      sourceDurationUs: 8_000_000,
+      startUs: timelineUs(1_000_000),
+      durationUs: timelineUs(2_500_000),
+      sourceStartUs: timelineUs(500_000),
+      sourceRangeDurationUs: timelineUs(1_750_000),
+      sourceDurationUs: timelineUs(8_000_000),
       speed: 2,
-      audioFadeInUs: 100_000,
-      audioFadeOutUs: 200_000,
+      audioFadeInUs: timelineUs(100_000),
+      audioFadeOutUs: timelineUs(200_000),
       audioFadeInCurve: 'logarithmic',
       audioFadeOutCurve: 'linear',
     });
@@ -209,25 +210,28 @@ describe('audio clip descriptor adapters', () => {
   it('resolves de-click, adjacent transitions, and neighbor context in native layer', () => {
     const descriptor = buildCanonicalAudioClipDescriptor({
       clip: createClip({
-        timelineRange: { startUs: 1_000_000, durationUs: 875_000 },
+        timelineRange: { startUs: timelineUs(1_000_000), durationUs: timelineUs(875_000) },
         audioFadeInUs: undefined,
         audioFadeOutUs: undefined,
-        audioDeclickDurationUs: 5_000, // 5ms auto-declick
-        transitionIn: { type: 'dissolve', durationUs: 100_000, mode: 'adjacent' },
-        transitionOut: { type: 'dissolve', durationUs: 150_000, mode: 'adjacent' },
+        audioDeclickDurationUs: timelineUs(5_000), // 5ms auto-declick
+        transitionIn: { type: 'dissolve', durationUs: timelineUs(100_000), mode: 'adjacent' },
+        transitionOut: { type: 'dissolve', durationUs: timelineUs(150_000), mode: 'adjacent' },
       }),
       sourcePath: '/project/audio/source.mp3',
     });
 
     const previous = buildCanonicalAudioClipDescriptor({
-      clip: createClip({ id: 'prev-clip', timelineRange: { startUs: 0, durationUs: 1_000_000 } }),
+      clip: createClip({
+        id: 'prev-clip',
+        timelineRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
+      }),
       sourcePath: '/project/audio/prev.mp3',
     });
 
     const next = buildCanonicalAudioClipDescriptor({
       clip: createClip({
         id: 'next-clip',
-        timelineRange: { startUs: 3_500_000, durationUs: 1_000_000 },
+        timelineRange: { startUs: timelineUs(3_500_000), durationUs: timelineUs(1_000_000) },
       }),
       sourcePath: '/project/audio/next.mp3',
     });
@@ -283,25 +287,25 @@ describe('audio clip descriptor adapters', () => {
     const outgoing = buildCanonicalAudioClipDescriptor({
       clip: createClip({
         id: 'outgoing',
-        timelineRange: { startUs: 0, durationUs: 1_000_000 },
-        sourceRange: { startUs: 0, durationUs: 1_000_000 },
-        sourceDurationUs: 3_000_000,
+        timelineRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
+        sourceRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
+        sourceDurationUs: timelineUs(3_000_000),
         speed: 1,
         audioFadeInUs: undefined,
         audioFadeOutUs: undefined,
         audioFadeOutCurve: 'logarithmic',
         audioDeclickDurationUs: undefined,
         transitionIn: undefined,
-        transitionOut: { type: 'dissolve', durationUs: 500_000, mode: 'adjacent' },
+        transitionOut: { type: 'dissolve', durationUs: timelineUs(500_000), mode: 'adjacent' },
       }),
       sourcePath: '/project/audio/outgoing.wav',
     });
     const incoming = buildCanonicalAudioClipDescriptor({
       clip: createClip({
         id: 'incoming',
-        timelineRange: { startUs: 1_000_000, durationUs: 1_000_000 },
-        sourceRange: { startUs: 500_000, durationUs: 1_000_000 },
-        sourceDurationUs: 3_000_000,
+        timelineRange: { startUs: timelineUs(1_000_000), durationUs: timelineUs(1_000_000) },
+        sourceRange: { startUs: timelineUs(500_000), durationUs: timelineUs(1_000_000) },
+        sourceDurationUs: timelineUs(3_000_000),
         speed: 1,
         audioFadeInUs: undefined,
         audioFadeOutUs: undefined,
