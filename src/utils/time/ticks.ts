@@ -105,15 +105,18 @@ export function ticksToFrames(params: {
   frameRate: FrameRate;
   mode?: QuantizeMode;
 }): number {
-  const fps = frameRateToNumber(params.frameRate);
-  if (!Number.isFinite(params.ticks) || fps <= 0) return 0;
-  return roundToMode((params.ticks * fps) / TICKS_PER_SECOND, params.mode ?? 'round');
+  const frameRate = sanitizeFrameRate(params.frameRate);
+  if (!Number.isFinite(params.ticks)) return 0;
+  return roundToMode(
+    (params.ticks * frameRate.num) / (TICKS_PER_SECOND * frameRate.den),
+    params.mode ?? 'round',
+  );
 }
 
 export function framesToTicks(params: { frames: number; frameRate: FrameRate }): Ticks {
-  const fps = frameRateToNumber(params.frameRate);
-  if (!Number.isFinite(params.frames) || fps <= 0) return toTicks(0);
-  return toTicks(Math.round((params.frames * TICKS_PER_SECOND) / fps));
+  const frameRate = sanitizeFrameRate(params.frameRate);
+  if (!Number.isFinite(params.frames)) return toTicks(0);
+  return toTicks(Math.round((params.frames * TICKS_PER_SECOND * frameRate.den) / frameRate.num));
 }
 
 export function quantizeTicksToFrame(params: {
@@ -131,7 +134,8 @@ export function isTickRateFrameCompatible(params: {
   ticksPerSecond: number;
   frameRate: FrameRate;
 }): boolean {
-  const { ticksPerSecond, frameRate } = params;
+  const { ticksPerSecond } = params;
+  const frameRate = sanitizeFrameRate(params.frameRate);
   return (
     Number.isInteger(ticksPerSecond) &&
     ticksPerSecond > 0 &&
@@ -251,5 +255,8 @@ function greatestCommonDivisor(left: number, right: number): number {
 }
 
 function toTicks(value: number): Ticks {
-  return value as Ticks;
+  if (value === Infinity) return MAX_SAFE_TICKS as Ticks;
+  if (value === -Infinity) return -MAX_SAFE_TICKS as Ticks;
+  if (!Number.isFinite(value)) return 0 as Ticks;
+  return Math.max(-MAX_SAFE_TICKS, Math.min(MAX_SAFE_TICKS, Math.round(value))) as Ticks;
 }

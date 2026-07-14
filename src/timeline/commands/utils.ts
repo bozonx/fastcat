@@ -12,6 +12,7 @@ import {
   framesToTicks,
   quantizeTicksToFrame,
   TICKS_PER_SECOND,
+  sanitizeFrameRate,
   ticksToFrames,
   type QuantizeMode,
 } from '~/utils/time/ticks';
@@ -45,26 +46,17 @@ export function getDocFpsOrDefault(
 
 export function usToFrame(timeUs: number, fps: number, mode: QuantizeMode): number {
   const safeTimeUs = Number.isFinite(timeUs) ? Math.max(0, Math.round(timeUs)) : 0;
-  const safeFps = sanitizeFps(fps);
-  return Math.max(
-    0,
-    ticksToFrames({ ticks: safeTimeUs, frameRate: { num: safeFps, den: 1 }, mode }),
-  );
+  return Math.max(0, ticksToFrames({ ticks: safeTimeUs, frameRate: sanitizeFrameRate(fps), mode }));
 }
 
 export function deltaUsToFrames(deltaUs: number, fps: number, mode: QuantizeMode): number {
   const safeDeltaUs = Number.isFinite(deltaUs) ? Math.round(deltaUs) : 0;
-  const safeFps = sanitizeFps(fps);
-  return ticksToFrames({ ticks: safeDeltaUs, frameRate: { num: safeFps, den: 1 }, mode });
+  return ticksToFrames({ ticks: safeDeltaUs, frameRate: sanitizeFrameRate(fps), mode });
 }
 
 export function frameToUs(frameIndex: number, fps: number): number {
   const safeFrameIndex = Number.isFinite(frameIndex) ? Math.max(0, Math.round(frameIndex)) : 0;
-  const safeFps = sanitizeFps(fps);
-  return Math.max(
-    0,
-    framesToTicks({ frames: safeFrameIndex, frameRate: { num: safeFps, den: 1 } }),
-  );
+  return Math.max(0, framesToTicks({ frames: safeFrameIndex, frameRate: sanitizeFrameRate(fps) }));
 }
 
 export function quantizeTimeUsToFrames(timeUs: number, fps: number, mode: QuantizeMode): number {
@@ -72,7 +64,7 @@ export function quantizeTimeUsToFrames(timeUs: number, fps: number, mode: Quanti
     0,
     quantizeTicksToFrame({
       ticks: Number.isFinite(timeUs) ? Math.max(0, Math.round(timeUs)) : 0,
-      frameRate: { num: sanitizeFps(fps), den: 1 },
+      frameRate: sanitizeFrameRate(fps),
       mode,
     }),
   );
@@ -81,7 +73,7 @@ export function quantizeTimeUsToFrames(timeUs: number, fps: number, mode: Quanti
 export function quantizeDeltaUsToFrames(deltaUs: number, fps: number, mode: QuantizeMode): number {
   return quantizeTicksToFrame({
     ticks: Number.isFinite(deltaUs) ? Math.round(deltaUs) : 0,
-    frameRate: { num: sanitizeFps(fps), den: 1 },
+    frameRate: sanitizeFrameRate(fps),
     mode,
   });
 }

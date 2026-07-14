@@ -37,9 +37,7 @@ describe('tick conversions', () => {
     expect(ticksToFrames({ ticks: TICKS_PER_SECOND + 1, frameRate, mode: 'floor' })).toBe(30);
     expect(ticksToFrames({ ticks: TICKS_PER_SECOND + 1, frameRate, mode: 'ceil' })).toBe(31);
     expect(framesToTicks({ frames: 30, frameRate })).toBe(TICKS_PER_SECOND);
-    expect(quantizeTicksToFrame({ ticks: TICKS_PER_SECOND + 1, frameRate })).toBe(
-      TICKS_PER_SECOND,
-    );
+    expect(quantizeTicksToFrame({ ticks: TICKS_PER_SECOND + 1, frameRate })).toBe(TICKS_PER_SECOND);
   });
 });
 
@@ -71,12 +69,23 @@ describe('canonical tick-rate compatibility', () => {
     expect(MAX_SAFE_TICKS).toBe(Number.MAX_SAFE_INTEGER);
     expect(Math.floor(MAX_SAFE_TICKS / TICKS_PER_SECOND)).toBeGreaterThanOrEqual(35_000);
   });
+
+  it('clamps conversion results to the exact JavaScript integer range', () => {
+    expect(secondsToTicks({ seconds: Number.MAX_VALUE })).toBe(MAX_SAFE_TICKS);
+    expect(secondsToTicks({ seconds: -Number.MAX_VALUE })).toBe(-MAX_SAFE_TICKS);
+  });
 });
 
 describe('frame-rate normalization', () => {
   it('maps legacy NTSC decimals to the exact standard rational rate', () => {
     expect(sanitizeFrameRate(29.97)).toEqual({ num: 30_000, den: 1_001 });
     expect(sanitizeFrameRate({ fps: 23.976 })).toEqual({ num: 24_000, den: 1_001 });
+  });
+
+  it('uses exact NTSC frame boundaries after normalizing a legacy decimal', () => {
+    const frameRate = sanitizeFrameRate(29.97);
+    const frameTicks = ticksPerFrame({ ticksPerSecond: TICKS_PER_SECOND, frameRate });
+    expect(framesToTicks({ frames: 10_000, frameRate })).toBe(frameTicks * 10_000);
   });
 
   it('preserves a valid non-standard legacy rate as a reduced rational', () => {
