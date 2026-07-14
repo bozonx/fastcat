@@ -12,6 +12,7 @@ import { useFocusStore } from '~/stores/focus.store';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useMobileLayout } from '~/composables/useMobileLayout';
 import { useFileManagerStore } from '~/stores/file-manager.store';
+import { TICKS_PER_SECOND } from '~/utils/time';
 import {
   BLEND_MODE_OPTIONS as RAW_BLEND_MODE_OPTIONS,
   isTimelineBlendMode,
@@ -448,7 +449,7 @@ function handleApplyAnimationPreset(preset: AnimationPreset) {
     1,
     props.clip.sourceRange.durationUs || props.clip.timelineRange.durationUs,
   );
-  const presetSpanUs = Math.min(1_000_000, durationUs);
+  const presetSpanUs = Math.min(TICKS_PER_SECOND, durationUs);
   let next = props.clip.animations;
 
   if (preset === 'fade-in') {
@@ -778,7 +779,9 @@ const { selectTransitionEdge, toggleTransition, updateTransitionDuration, update
       Math.max(
         0,
         Math.round(
-          Number(workspaceStore.userSettings.timeline.defaultTransitionDurationUs ?? 1_000_000),
+          Number(
+            workspaceStore.userSettings.timeline.defaultTransitionDurationUs ?? TICKS_PER_SECOND,
+          ),
         ),
       ),
     ),

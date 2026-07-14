@@ -1,4 +1,5 @@
 import { ref, type Ref } from 'vue';
+import { TICKS_PER_SECOND } from '~/utils/time';
 import type { TimelineClipItem, TimelineTrack } from '~/timeline/types';
 import { getVideoEffectManifest, getAudioEffectManifest } from '~/effects';
 import {
@@ -148,7 +149,7 @@ export function useClipDrop(options: UseClipDropOptions) {
 
     const defaultUs = Math.max(
       0,
-      Math.round(Number(options.defaultTransitionDurationUs.value ?? 1_000_000)),
+      Math.round(Number(options.defaultTransitionDurationUs.value ?? TICKS_PER_SECOND)),
     );
     const durationUs = Math.min(defaultUs, Math.round(clip.timelineRange.durationUs * 0.3));
 

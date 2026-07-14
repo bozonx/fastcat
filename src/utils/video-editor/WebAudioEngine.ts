@@ -823,7 +823,11 @@ export class WebAudioEngine implements IAudioEngine {
     this.scheduler.stop();
   }
 
-  async previewScrubForward(fromUs: number, toUs: number, maxPreviewDurationUs = 90_000) {
+  async previewScrubForward(
+    fromUs: number,
+    toUs: number,
+    maxPreviewDurationUs = (TICKS_PER_SECOND * 9) / 100,
+  ) {
     if (this.scheduler.isPlayingActive() || !this.ctx || !this.masterGain) {
       return;
     }

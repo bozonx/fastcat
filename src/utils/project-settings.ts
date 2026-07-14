@@ -2,6 +2,7 @@ import { z } from 'zod';
 import type { FastCatUserSettings } from './settings/defaults';
 import { DEFAULT_USER_SETTINGS } from './settings/defaults';
 import { applyResolutionPreset } from './settings/helpers';
+import { TICKS_PER_MICROSECOND, TICKS_PER_MILLISECOND } from './time';
 import type { PreviewEffectQualitySetting } from './preview-effect-quality';
 
 interface ProjectSettingsUserDefaultsInput {
@@ -183,7 +184,7 @@ export const DEFAULT_PROJECT_SETTINGS: FastCatProjectSettings = {
     aspectRatio: '16:9',
     isCustomResolution: false,
     sampleRate: 48000,
-    audioDeclickDurationUs: 5_000,
+    audioDeclickDurationUs: 5_000 * TICKS_PER_MICROSECOND,
     isAutoSettings: true,
     geometryResolved: false,
     sampleRateResolved: false,
@@ -199,7 +200,7 @@ export const DEFAULT_PROJECT_SETTINGS: FastCatProjectSettings = {
     sessions: {},
   },
   transitions: {
-    defaultDurationUs: 2_000_000,
+    defaultDurationUs: 2_000_000 * TICKS_PER_MICROSECOND,
   },
   ui: {
     activeTabId: null,
@@ -389,7 +390,7 @@ function createProjectSettingsSchema(defaults: FastCatProjectSettings) {
             audioDeclickDurationUs: z.coerce
               .number()
               .min(0)
-              .max(1_000_000)
+              .max(1_000 * TICKS_PER_MILLISECOND)
               .catch(defaults.project.audioDeclickDurationUs),
             isAutoSettings: z.coerce.boolean().catch(defaults.project.isAutoSettings),
             geometryResolved: z.coerce.boolean().optional(),
@@ -402,6 +403,10 @@ function createProjectSettingsSchema(defaults: FastCatProjectSettings) {
             const resolvedFallback = !val.isAutoSettings;
             const normalized = {
               ...val,
+              audioDeclickDurationUs:
+                val.audioDeclickDurationUs > 0 && val.audioDeclickDurationUs <= 1_000_000
+                  ? val.audioDeclickDurationUs * TICKS_PER_MICROSECOND
+                  : val.audioDeclickDurationUs,
               geometryResolved: val.geometryResolved ?? resolvedFallback,
               sampleRateResolved: val.sampleRateResolved ?? resolvedFallback,
             };
@@ -496,6 +501,10 @@ export function normalizeProjectSettings(
   // per-view entry of `monitors`. Promote them to the top-level `monitor` block
   // when missing, preferring `monitors.cut` as the source of truth.
   const inputMonitors = (input.monitors as Record<string, unknown> | undefined) ?? {};
+  const inputTransitions =
+    input.transitions && typeof input.transitions === 'object'
+      ? (input.transitions as Record<string, unknown>)
+      : undefined;
   const legacySource =
     (inputMonitors.cut as Record<string, unknown> | undefined) ??
     (inputMonitors.sound as Record<string, unknown> | undefined) ??
@@ -511,9 +520,23 @@ export function normalizeProjectSettings(
 
   const mappedInput: Record<string, unknown> = {
     ...input,
-    project: typeof input.project === 'object' ? input.project : {},
+    project:
+      input.project && typeof input.project === 'object'
+        ? { ...(input.project as Record<string, unknown>) }
+        : {},
     monitor: migratedProjectMonitor,
     monitors: inputMonitors,
+    transitions: inputTransitions
+      ? {
+          ...inputTransitions,
+          defaultDurationUs:
+            typeof inputTransitions.defaultDurationUs === 'number' &&
+            inputTransitions.defaultDurationUs > 0 &&
+            inputTransitions.defaultDurationUs <= 10_000_000
+              ? inputTransitions.defaultDurationUs * TICKS_PER_MICROSECOND
+              : inputTransitions.defaultDurationUs,
+        }
+      : {},
   };
 
   const schema = createProjectSettingsSchema(defaults);

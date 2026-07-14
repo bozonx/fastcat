@@ -5,6 +5,7 @@ import UiFormField from '~/components/ui/UiFormField.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
+import { TICKS_PER_MILLISECOND } from '~/utils/time';
 import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
 import { getPlatformCapabilities } from '~/utils/capabilities';
 import { nativeMonitorIpc } from '~/composables/monitor/native-monitor-ipc';
@@ -206,7 +207,9 @@ const hasDiagnostics = computed(() => audioCodecRows.value.length > 0);
       :help="t('videoEditor.settings.projectAudioDeclickHint')"
     >
       <UiWheelNumberInput
-        :model-value="workspaceStore.userSettings.projectDefaults.audioDeclickDurationUs / 1000"
+        :model-value="
+          workspaceStore.userSettings.projectDefaults.audioDeclickDurationUs / TICKS_PER_MILLISECOND
+        "
         size="sm"
         :step="1"
         :min="0"
@@ -214,7 +217,7 @@ const hasDiagnostics = computed(() => audioCodecRows.value.length > 0);
         @update:model-value="
           (value: number) =>
             (workspaceStore.userSettings.projectDefaults.audioDeclickDurationUs = Math.round(
-              Math.max(0, Math.min(1000, Number(value) || 0)) * 1000,
+              Math.max(0, Math.min(1000, Number(value) || 0)) * TICKS_PER_MILLISECOND,
             ))
         "
       />

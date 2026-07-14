@@ -628,7 +628,7 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
     const nested = await resolveNestedTimeline(input.path, input.name);
     ensureNestedTimelineTrackCompatibility(track, nested.summary);
 
-    let durationUs = 2_000_000;
+    let durationUs = secondsToUs(2);
     try {
       const nestedDurationUs = deps.selectTimelineDurationUs(nested.doc);
       if (Number.isFinite(nestedDurationUs) && nestedDurationUs > 0) {

@@ -1,4 +1,6 @@
 // @vitest-environment node
+import { timelineUs } from './timeline-time';
+import { TICKS_PER_MICROSECOND } from '~/utils/time';
 import { describe, it, expect } from 'vitest';
 import {
   normalizeAppSettings,
@@ -67,9 +69,17 @@ describe('settings normalization', () => {
       },
     });
 
-    expect(normalized.timeline.defaultAudioFadeDurationUs).toBe(1_000_000);
-    expect(normalized.timeline.defaultTransitionDurationUs).toBe(2_000_000);
-    expect(normalized.timeline.defaultStaticClipDurationUs).toBe(5_000_000);
+    expect(normalized.timeline.defaultAudioFadeDurationUs).toBe(timelineUs(1_000_000));
+    expect(normalized.timeline.defaultTransitionDurationUs).toBe(timelineUs(2_000_000));
+    expect(normalized.timeline.defaultStaticClipDurationUs).toBe(timelineUs(5_000_000));
+  });
+
+  it('migrates legacy project declick duration from microseconds', () => {
+    const normalized = normalizeUserSettings({
+      projectDefaults: { audioDeclickDurationUs: 5_000 },
+    });
+
+    expect(normalized.projectDefaults.audioDeclickDurationUs).toBe(5_000 * TICKS_PER_MICROSECOND);
   });
 
   it('normalizes legacy Pixi renderer settings to WebGPU-first', () => {

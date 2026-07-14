@@ -11,6 +11,7 @@ import ClipHudProperties from './clip/ClipHudProperties.vue';
 import type { ShapeType, HudType } from '~/timeline/types';
 
 import { useSelectionStore } from '~/stores/selection.store';
+import { TICKS_PER_SECOND } from '~/utils/time';
 import type { PropertyAction } from '~/components/properties/PropertyActionList.vue';
 
 const props = defineProps<{
@@ -42,8 +43,8 @@ const mockClip = computed(() => {
     name: 'Mock',
     kind: 'clip' as const,
     clipType: props.itemKind as string,
-    timelineRange: { startUs: 0, durationUs: 5000000 },
-    sourceRange: { startUs: 0, durationUs: 5000000 },
+    timelineRange: { startUs: 0, durationUs: 5 * TICKS_PER_SECOND },
+    sourceRange: { startUs: 0, durationUs: 5 * TICKS_PER_SECOND },
   };
 
   if (props.itemKind === 'text') {

@@ -23,6 +23,7 @@ import {
   calculatePointerTimeUs,
 } from '~/utils/timeline/geometry';
 import { formatStopFrameTimecode } from '~/utils/stop-frames';
+import { TICKS_PER_SECOND } from '~/utils/time';
 import { sanitizeFps } from '~/timeline/commands/utils';
 import { isClipFreePosition } from '~/utils/timeline/clip-checks';
 import { useClipContextMenu } from '~/composables/timeline/useClipContextMenu';
@@ -809,7 +810,9 @@ function getDefaultTransitionDurationUs() {
   const defaultUs = Math.max(
     0,
     Math.round(
-      Number(timelineContext.userSettings.value.timeline.defaultTransitionDurationUs ?? 1_000_000),
+      Number(
+        timelineContext.userSettings.value.timeline.defaultTransitionDurationUs ?? TICKS_PER_SECOND,
+      ),
     ),
   );
   const defaultDurationUs = Math.min(

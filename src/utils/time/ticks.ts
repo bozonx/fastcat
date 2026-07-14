@@ -7,6 +7,9 @@ export const CANONICAL_TICKS_PER_SECOND = TICKS_PER_SECOND;
 /** Number of canonical ticks represented by one legacy microsecond. */
 export const TICKS_PER_MICROSECOND = TICKS_PER_SECOND / 1_000_000;
 
+/** Number of canonical ticks represented by one millisecond. */
+export const TICKS_PER_MILLISECOND = TICKS_PER_SECOND / 1_000;
+
 /** Largest integer that JavaScript can represent without losing tick precision. */
 export const MAX_SAFE_TICKS = Number.MAX_SAFE_INTEGER;
 

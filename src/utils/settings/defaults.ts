@@ -19,16 +19,25 @@ import type {
   CustomPreset,
 } from './presets';
 import { createDefaultExportPresets, createDefaultProjectPresets } from './presets';
+import { TICKS_PER_MICROSECOND } from '~/utils/time';
 
 export interface FastCatPublicadorIntegrationSettings {
   enabled: boolean;
   bearerToken: string;
 }
 
-export const MIN_DEFAULT_DURATION_US = 100_000;
-export const MAX_DEFAULT_FADE_DURATION_US = 100_000_000;
-export const MAX_DEFAULT_TRANSITION_DURATION_US = 100_000_000;
-export const MAX_DEFAULT_STATIC_CLIP_DURATION_US = 3_600_000_000;
+const LEGACY_MIN_DEFAULT_DURATION_US = 100_000;
+const LEGACY_MAX_DEFAULT_FADE_DURATION_US = 100_000_000;
+const LEGACY_MAX_DEFAULT_TRANSITION_DURATION_US = 100_000_000;
+const LEGACY_MAX_DEFAULT_STATIC_CLIP_DURATION_US = 3_600_000_000;
+
+export const MIN_DEFAULT_DURATION_US = LEGACY_MIN_DEFAULT_DURATION_US * TICKS_PER_MICROSECOND;
+export const MAX_DEFAULT_FADE_DURATION_US =
+  LEGACY_MAX_DEFAULT_FADE_DURATION_US * TICKS_PER_MICROSECOND;
+export const MAX_DEFAULT_TRANSITION_DURATION_US =
+  LEGACY_MAX_DEFAULT_TRANSITION_DURATION_US * TICKS_PER_MICROSECOND;
+export const MAX_DEFAULT_STATIC_CLIP_DURATION_US =
+  LEGACY_MAX_DEFAULT_STATIC_CLIP_DURATION_US * TICKS_PER_MICROSECOND;
 
 export interface ManualExternalApiSettings {
   enabled: boolean;
@@ -248,9 +257,9 @@ export const DEFAULT_USER_SETTINGS: FastCatUserSettings = {
   openLastProjectOnStart: false,
   timeline: {
     snapThresholdPx: 8,
-    defaultAudioFadeDurationUs: 1_000_000,
-    defaultTransitionDurationUs: 2_000_000,
-    defaultStaticClipDurationUs: 5_000_000,
+    defaultAudioFadeDurationUs: 1_000_000 * TICKS_PER_MICROSECOND,
+    defaultTransitionDurationUs: 2_000_000 * TICKS_PER_MICROSECOND,
+    defaultStaticClipDurationUs: 5_000_000 * TICKS_PER_MICROSECOND,
     snapping: {
       timelineEdges: true,
       clips: true,
@@ -306,7 +315,7 @@ export const DEFAULT_USER_SETTINGS: FastCatUserSettings = {
     aspectRatio: '16:9',
     isCustomResolution: false,
     sampleRate: 48000,
-    audioDeclickDurationUs: 5_000,
+    audioDeclickDurationUs: 5_000 * TICKS_PER_MICROSECOND,
     defaultAudioFadeCurve: 'linear',
     audioScrubbingEnabled: true,
   },

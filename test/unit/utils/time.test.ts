@@ -1,4 +1,5 @@
 /** @vitest-environment node */
+import { timelineUs } from './timeline-time';
 import { describe, it, expect } from 'vitest';
 import {
   clampTimeUs,
@@ -12,22 +13,23 @@ import {
   sanitizeFps,
   secondsToUs,
   usToS,
+  TICKS_PER_SECOND,
 } from '~/utils/time';
 
 describe('secondsToUs', () => {
   it('rounds by default', () => {
-    expect(secondsToUs(1.000_000_4)).toBe(1_000_000);
-    expect(secondsToUs(1.000_000_5)).toBe(1_000_001);
+    expect(secondsToUs(1.000_000_4)).toBe(Math.round(1.000_000_4 * TICKS_PER_SECOND));
+    expect(secondsToUs(1.000_000_5)).toBe(Math.round(1.000_000_5 * TICKS_PER_SECOND));
   });
 
   it('floors when requested', () => {
-    expect(secondsToUs(1.000_000_9, 'floor')).toBe(1_000_000);
-    expect(secondsToUs(1.0, 'floor')).toBe(1_000_000);
+    expect(secondsToUs(1.000_000_9, 'floor')).toBe(Math.floor(1.000_000_9 * TICKS_PER_SECOND));
+    expect(secondsToUs(1.0, 'floor')).toBe(TICKS_PER_SECOND);
   });
 
   it('ceils when requested', () => {
-    expect(secondsToUs(1.000_000_1, 'ceil')).toBe(1_000_001);
-    expect(secondsToUs(1.0, 'ceil')).toBe(1_000_000);
+    expect(secondsToUs(1.000_000_1, 'ceil')).toBe(Math.ceil(1.000_000_1 * TICKS_PER_SECOND));
+    expect(secondsToUs(1.0, 'ceil')).toBe(TICKS_PER_SECOND);
   });
 
   it('returns 0 for non-finite or non-positive values', () => {
@@ -40,8 +42,8 @@ describe('secondsToUs', () => {
 
 describe('usToS', () => {
   it('converts microseconds to seconds', () => {
-    expect(usToS(1_000_000)).toBe(1);
-    expect(usToS(500_000)).toBe(0.5);
+    expect(usToS(timelineUs(1_000_000))).toBe(1);
+    expect(usToS(timelineUs(500_000))).toBe(0.5);
   });
 
   it('returns 0 for non-finite or non-positive values', () => {
@@ -52,8 +54,8 @@ describe('usToS', () => {
 
 describe('sToUs', () => {
   it('converts seconds to microseconds', () => {
-    expect(sToUs(1)).toBe(1_000_000);
-    expect(sToUs(0.5)).toBe(500_000);
+    expect(sToUs(1)).toBe(timelineUs(1_000_000));
+    expect(sToUs(0.5)).toBe(timelineUs(500_000));
   });
 
   it('returns 0 for non-finite values', () => {
@@ -119,9 +121,9 @@ describe('formatTime', () => {
 
 describe('formatTimecode', () => {
   it('returns 00:00:00:00 for invalid fps', () => {
-    expect(formatTimecode(1_000_000, 0)).toBe('00:00:00:00');
-    expect(formatTimecode(1_000_000, -1)).toBe('00:00:00:00');
-    expect(formatTimecode(1_000_000, NaN)).toBe('00:00:00:00');
+    expect(formatTimecode(timelineUs(1_000_000), 0)).toBe('00:00:00:00');
+    expect(formatTimecode(timelineUs(1_000_000), -1)).toBe('00:00:00:00');
+    expect(formatTimecode(timelineUs(1_000_000), NaN)).toBe('00:00:00:00');
   });
 
   it('formats zero time', () => {
@@ -129,20 +131,20 @@ describe('formatTimecode', () => {
   });
 
   it('formats one second at 30fps', () => {
-    expect(formatTimecode(1_000_000, 30)).toBe('00:00:01:00');
+    expect(formatTimecode(timelineUs(1_000_000), 30)).toBe('00:00:01:00');
   });
 
   it('formats one second at 25fps', () => {
-    expect(formatTimecode(1_000_000, 25)).toBe('00:00:01:00');
+    expect(formatTimecode(timelineUs(1_000_000), 25)).toBe('00:00:01:00');
   });
 
   it('formats negative time', () => {
-    expect(formatTimecode(-1_000_000, 30)).toBe('-00:00:01:00');
+    expect(formatTimecode(-timelineUs(1_000_000), 30)).toBe('-00:00:01:00');
   });
 
   it('calculates frames correctly', () => {
-    expect(formatTimecode(33_333, 30)).toBe('00:00:00:01');
-    expect(formatTimecode(1_000_000 + 33_333, 30)).toBe('00:00:01:01');
+    expect(formatTimecode(timelineUs(33_333), 30)).toBe('00:00:00:01');
+    expect(formatTimecode(timelineUs(1_000_000 + 33_333), 30)).toBe('00:00:01:01');
   });
 });
 
@@ -152,15 +154,15 @@ describe('formatHms', () => {
   });
 
   it('formats positive time', () => {
-    expect(formatHms(1_000_000)).toBe('00:00:01');
-    expect(formatHms(65_000_000)).toBe('00:01:05');
-    expect(formatHms(3600_000_000)).toBe('01:00:00');
-    expect(formatHms(3661_000_000)).toBe('01:01:01');
+    expect(formatHms(timelineUs(1_000_000))).toBe('00:00:01');
+    expect(formatHms(timelineUs(65_000_000))).toBe('00:01:05');
+    expect(formatHms(timelineUs(3600_000_000))).toBe('01:00:00');
+    expect(formatHms(timelineUs(3661_000_000))).toBe('01:01:01');
   });
 
   it('formats negative time', () => {
-    expect(formatHms(-1_000_000)).toBe('-00:00:01');
-    expect(formatHms(-3661_000_000)).toBe('-01:01:01');
+    expect(formatHms(-timelineUs(1_000_000))).toBe('-00:00:01');
+    expect(formatHms(-timelineUs(3661_000_000))).toBe('-01:01:01');
   });
 });
 
@@ -170,19 +172,19 @@ describe('formatMsOrHms', () => {
   });
 
   it('formats positive time under 1 hour', () => {
-    expect(formatMsOrHms(1_000_000)).toBe('00:01');
-    expect(formatMsOrHms(65_000_000)).toBe('01:05');
-    expect(formatMsOrHms(3599_000_000)).toBe('59:59');
+    expect(formatMsOrHms(timelineUs(1_000_000))).toBe('00:01');
+    expect(formatMsOrHms(timelineUs(65_000_000))).toBe('01:05');
+    expect(formatMsOrHms(timelineUs(3599_000_000))).toBe('59:59');
   });
 
   it('formats positive time over or equal to 1 hour', () => {
-    expect(formatMsOrHms(3600_000_000)).toBe('01:00:00');
-    expect(formatMsOrHms(3661_000_000)).toBe('01:01:01');
+    expect(formatMsOrHms(timelineUs(3600_000_000))).toBe('01:00:00');
+    expect(formatMsOrHms(timelineUs(3661_000_000))).toBe('01:01:01');
   });
 
   it('formats negative time', () => {
-    expect(formatMsOrHms(-1_000_000)).toBe('-00:01');
-    expect(formatMsOrHms(-3661_000_000)).toBe('-01:01:01');
+    expect(formatMsOrHms(-timelineUs(1_000_000))).toBe('-00:01');
+    expect(formatMsOrHms(-timelineUs(3661_000_000))).toBe('-01:01:01');
   });
 });
 

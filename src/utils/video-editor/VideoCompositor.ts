@@ -835,7 +835,7 @@ export class VideoCompositor {
     );
   }
 
-  prewarmVideoFrames(timeUs: number, lookaheadUs = 2_500_000): Promise<void> {
+  prewarmVideoFrames(timeUs: number, lookaheadUs = (TICKS_PER_SECOND * 5) / 2): Promise<void> {
     if (this.disposed) return Promise.resolve();
     return this.runExclusive(
       () => this.prewarmVideoFramesLocked(timeUs, lookaheadUs),

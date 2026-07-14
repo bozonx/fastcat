@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import { TICKS_PER_SECOND } from '~/utils/time';
+import { TICKS_PER_SECOND, formatTimecode, formatHms, formatMsOrHms } from '~/utils/time';
 import { computed, ref, watch } from 'vue';
 import type { TimelineMarker } from '~/timeline/types';
-import { formatTimecode, formatHms, formatMsOrHms } from '~/utils/time';
 import { DOCUMENTS_DIR_NAME } from '~/utils/constants';
 import { resolveNextAvailableFilename } from '~/composables/timeline/export/filenameUtils';
 import { useProjectStore } from '~/stores/project.store';
@@ -189,7 +188,7 @@ const exportText = computed(() => {
       if (!marker) continue;
       const nextMarker = markers[i + 1];
       const startUs = marker.timeUs;
-      let endUs = startUs + 5_000_000;
+      let endUs = startUs + 5 * TICKS_PER_SECOND;
       if (marker.durationUs && marker.durationUs > 0) {
         endUs = startUs + marker.durationUs;
       } else if (nextMarker) {

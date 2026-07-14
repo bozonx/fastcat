@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
+import { TICKS_PER_MILLISECOND } from '~/utils/time';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import UiFormField from '~/components/ui/UiFormField.vue';
 import SettingsSection from './SettingsSection.vue';
@@ -11,17 +12,18 @@ const projectStore = useProjectStore();
 const workspaceStore = useWorkspaceStore();
 
 const audioDeclickDurationMs = computed({
-  get: () => (projectStore.projectSettings?.project.audioDeclickDurationUs || 0) / 1000,
+  get: () =>
+    (projectStore.projectSettings?.project.audioDeclickDurationUs || 0) / TICKS_PER_MILLISECOND,
   set: (val: number) => {
     if (projectStore.projectSettings) {
-      projectStore.projectSettings.project.audioDeclickDurationUs = val * 1000;
+      projectStore.projectSettings.project.audioDeclickDurationUs = val * TICKS_PER_MILLISECOND;
     }
   },
 });
 
 const defaultDeclickMs = computed(() => {
   const us = workspaceStore.userSettings?.projectDefaults?.audioDeclickDurationUs;
-  return (us !== undefined ? us : 5_000) / 1000;
+  return (us !== undefined ? us : 5 * TICKS_PER_MILLISECOND) / TICKS_PER_MILLISECOND;
 });
 
 const isDifferentFromDefault = computed(() => {

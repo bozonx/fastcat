@@ -7,6 +7,7 @@ import {
   MIN_DEFAULT_DURATION_US,
   type FastCatUserSettings,
 } from '../defaults';
+import { TICKS_PER_MICROSECOND, TICKS_PER_MILLISECOND } from '~/utils/time';
 import {
   CLICK_ACTIONS,
   CLIP_DRAG_ACTIONS,
@@ -72,6 +73,19 @@ export function normalizeExperimentalFeatures(raw: unknown): boolean {
 
 export function normalizeTimelineSettings(raw: unknown): FastCatUserSettings['timeline'] {
   const input = (raw as Record<string, unknown>)?.['timeline'];
+  const legacyTimeline = input as Record<string, unknown> | undefined;
+  const timeline = legacyTimeline ? { ...legacyTimeline } : legacyTimeline;
+
+  for (const key of [
+    'defaultAudioFadeDurationUs',
+    'defaultTransitionDurationUs',
+    'defaultStaticClipDurationUs',
+  ] as const) {
+    const value = Number(legacyTimeline?.[key]);
+    if (Number.isFinite(value) && value >= 100_000 && value <= 3_600_000_000) {
+      timeline![key] = Math.round(value * TICKS_PER_MICROSECOND);
+    }
+  }
   const snapSchema = z
     .object({
       timelineEdges: z.boolean().catch(DEFAULT_USER_SETTINGS.timeline.snapping.timelineEdges),
@@ -122,7 +136,7 @@ export function normalizeTimelineSettings(raw: unknown): FastCatUserSettings['ti
     })
     .catch(DEFAULT_USER_SETTINGS.timeline);
 
-  return schema.parse(input);
+  return schema.parse(timeline);
 }
 
 export function normalizeStopFramesSettings(raw: unknown): FastCatUserSettings['stopFrames'] {
@@ -292,6 +306,10 @@ export function normalizeProjectDefaults(raw: unknown): FastCatUserSettings['pro
         .catch(DEFAULT_USER_SETTINGS.projectDefaults.audioScrubbingEnabled),
     })
     .transform((val) => {
+      const audioDeclickDurationUs =
+        val.audioDeclickDurationUs > 0 && val.audioDeclickDurationUs <= 1_000_000
+          ? val.audioDeclickDurationUs * TICKS_PER_MICROSECOND
+          : val.audioDeclickDurationUs;
       // Keep the display fields consistent with the geometry on load (parity with
       // project-settings / preset normalizers), so stale orientation/format can't
       // survive a round-trip. Only re-derive for non-default geometry, so an
@@ -299,7 +317,8 @@ export function normalizeProjectDefaults(raw: unknown): FastCatUserSettings['pro
       const isWidthHeightCustom =
         val.width !== DEFAULT_USER_SETTINGS.projectDefaults.width ||
         val.height !== DEFAULT_USER_SETTINGS.projectDefaults.height;
-      return isWidthHeightCustom ? applyResolutionPreset(val) : val;
+      const normalized = { ...val, audioDeclickDurationUs };
+      return isWidthHeightCustom ? applyResolutionPreset(normalized) : normalized;
     })
     .catch(DEFAULT_USER_SETTINGS.projectDefaults);
 

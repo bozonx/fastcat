@@ -1,4 +1,5 @@
 import { DEFAULT_TRANSITION_CURVE, DEFAULT_TRANSITION_MODE } from '~/transitions';
+import { TICKS_PER_SECOND } from '~/utils/time';
 import type { TimelineClipItem } from '~/timeline/types';
 import type { ContextMenuGroup, UseClipContextMenuOptions } from './types';
 
@@ -16,7 +17,7 @@ export function buildTransitionContextMenu(
   const transitionGroup: ContextMenuGroup = [];
   const defaultTransitionDurationUs = Math.max(
     0,
-    Math.round(Number(options.defaultTransitionDurationUs.value ?? 1_000_000)),
+    Math.round(Number(options.defaultTransitionDurationUs.value ?? TICKS_PER_SECOND)),
   );
   const clipDurationUs = Math.max(0, Math.round(Number(clipItem.timelineRange?.durationUs ?? 0)));
   const suggestedDurationUs =

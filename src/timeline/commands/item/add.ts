@@ -15,6 +15,7 @@ import {
   normalizeGaps,
 } from '../utils';
 import { sanitizeTimelineColor } from '~/utils/video-editor/utils';
+import { TICKS_PER_MICROSECOND } from '~/utils/time';
 
 export function addClipToTrack(
   doc: TimelineDocument,
@@ -106,8 +107,12 @@ export function addVirtualClipToTrack(
   }
 
   const durationUs = shouldQuantizeToFrames
-    ? quantizeTimeUsToFrames(Number(cmd.durationUs ?? 5_000_000), fps, 'round')
-    : Math.max(0, Math.round(Number(cmd.durationUs ?? 5_000_000)));
+    ? quantizeTimeUsToFrames(
+        Number(cmd.durationUs ?? 5_000_000 * TICKS_PER_MICROSECOND),
+        fps,
+        'round',
+      )
+    : Math.max(0, Math.round(Number(cmd.durationUs ?? 5_000_000 * TICKS_PER_MICROSECOND)));
   const startCandidate =
     cmd.startUs === undefined ? computeTrackEndUs(track) : Math.max(0, Number(cmd.startUs));
   const startUs = shouldQuantizeToFrames

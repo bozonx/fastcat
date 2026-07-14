@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { normalizeProjectSettings } from '~/utils/project-settings';
 import { createDefaultUserSettings } from '~/utils/settings';
+import { TICKS_PER_MICROSECOND } from '~/utils/time';
 
 describe('project settings normalization', () => {
   it('clamps numeric fields to reasonable bounds', () => {
@@ -58,5 +59,19 @@ describe('project settings normalization', () => {
     );
 
     expect(normalized.monitor.previewBlurQuality).toBe('high');
+  });
+
+  it('migrates legacy project duration settings from microseconds', () => {
+    const user = createDefaultUserSettings();
+    const normalized = normalizeProjectSettings(
+      {
+        project: { audioDeclickDurationUs: 5_000 },
+        transitions: { defaultDurationUs: 2_000_000 },
+      },
+      user,
+    );
+
+    expect(normalized.project.audioDeclickDurationUs).toBe(5_000 * TICKS_PER_MICROSECOND);
+    expect(normalized.transitions.defaultDurationUs).toBe(2_000_000 * TICKS_PER_MICROSECOND);
   });
 });

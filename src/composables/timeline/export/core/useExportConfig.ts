@@ -1,4 +1,3 @@
-import { TICKS_PER_SECOND } from '~/utils/time';
 import { ref, computed, watch } from 'vue';
 import { getExt } from '../filenameUtils';
 import { useTimelineStore } from '~/stores/timeline.store';
@@ -106,7 +105,7 @@ export function useExportConfig() {
     const value = Number(bitrateMbps.value);
     if (!Number.isFinite(value)) return 5_000_000;
     const clamped = Math.min(200, Math.max(0.2, value));
-    return Math.round(clamped * TICKS_PER_SECOND);
+    return Math.round(clamped * 1_000_000);
   });
 
   const audioBitrateBps = computed(() => {

@@ -19,6 +19,7 @@ import {
   TRACK_COLOR_PRESETS,
   TIMELINE_DEFAULTS,
 } from '~/utils/constants';
+import { TICKS_PER_SECOND } from '~/utils/time';
 
 describe('constants', () => {
   it('exports directory names', () => {
@@ -41,7 +42,7 @@ describe('constants', () => {
     expect(VIDEO_CORE_LIMITS.MAX_VIDEO_SAMPLE_REQUEST_TIMEOUT_MS).toBe(5_000);
     expect(VIDEO_CORE_LIMITS.MAX_VIDEO_FRAME_CACHE_MB).toBe(256);
     expect(VIDEO_CORE_LIMITS.MAX_WORKER_RPC_PENDING_CALLS).toBe(500);
-    expect(VIDEO_CORE_LIMITS.BLEND_SHADOW_GAP_THRESHOLD_US).toBe(200_000);
+    expect(VIDEO_CORE_LIMITS.BLEND_SHADOW_GAP_THRESHOLD_US).toBe(TICKS_PER_SECOND / 5);
   });
 
   it('exports timeline clip thumbnails config', () => {
@@ -53,7 +54,7 @@ describe('constants', () => {
   });
 
   it('exports ruler constants', () => {
-    expect(TIMELINE_RULER_CONSTANTS.DEFAULT_ZONE_DURATION_US).toBe(5_000_000);
+    expect(TIMELINE_RULER_CONSTANTS.DEFAULT_ZONE_DURATION_US).toBe(5 * TICKS_PER_SECOND);
     expect(TIMELINE_RULER_CONSTANTS.MIN_MARKER_DURATION_PX).toBe(10);
     expect(TIMELINE_RULER_CONSTANTS.MIN_SELECTION_DURATION_PX).toBe(6);
   });
