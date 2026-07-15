@@ -3,7 +3,7 @@ import { describe, it, expect } from 'vitest';
 import { timelineUs } from '../../utils/timeline-time';
 import {
   sanitizeFps,
-  usToFrame,
+  ticksToFrame,
   frameToUs,
   quantizeTimeUsToFrames,
   findClipById,
@@ -73,14 +73,14 @@ describe('sanitizeFps', () => {
   });
 });
 
-describe('usToFrame', () => {
-  it('converts microseconds to frames', () => {
-    expect(usToFrame(timelineUs(1_000_000), 30, 'round')).toBe(30);
+describe('ticksToFrame', () => {
+  it('converts ticks to frames', () => {
+    expect(ticksToFrame(timelineUs(1_000_000), 30, 'round')).toBe(30);
   });
 
   it('respects quantize mode', () => {
-    expect(usToFrame(timelineUs(1_000_001), 30, 'floor')).toBe(30);
-    expect(usToFrame(timelineUs(1_000_001), 30, 'ceil')).toBe(31);
+    expect(ticksToFrame(timelineUs(1_000_001), 30, 'floor')).toBe(30);
+    expect(ticksToFrame(timelineUs(1_000_001), 30, 'ceil')).toBe(31);
   });
 });
 

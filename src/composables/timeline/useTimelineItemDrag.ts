@@ -504,7 +504,7 @@ export function useTimelineItemDrag(
       trackId,
       deltaUs,
       timecode: `${deltaUs >= 0 ? '+' : '-'}${formatStopFrameTimecode({
-        timeUs: Math.abs(deltaUs),
+        timeTicks: Math.abs(deltaUs),
         fps,
         frameDigits: 1,
       })}`,

@@ -867,7 +867,7 @@ export class VideoCompositor {
       speed: number;
     }> = [];
 
-    const headHorizonUs = Math.max(0, Math.round(VIDEO_CORE_LIMITS.PREWARM_HEAD_HORIZON_US));
+    const headHorizonTicks = Math.max(0, Math.round(VIDEO_CORE_LIMITS.PREWARM_HEAD_HORIZON_TICKS));
 
     for (const clip of this.clips) {
       if (
@@ -877,7 +877,7 @@ export class VideoCompositor {
         // Cover clips under the playhead AND imminent upcoming clips (starting
         // within the head horizon) so a cut's head window is decoded BEFORE the
         // crossing; exclude finished clips and ones still beyond the horizon.
-        clip.startUs > nowUs + headHorizonUs ||
+        clip.startUs > nowUs + headHorizonTicks ||
         clip.endUs <= nowUs
       ) {
         continue;
@@ -1170,14 +1170,14 @@ export class VideoCompositor {
   private findPrevClipOnLayer(clip: CompositorClip): CompositorClip | null {
     const best = this.prevClipById.get(clip.itemId) ?? null;
     if (!best) return null;
-    if (clip.startUs - best.endUs > VIDEO_CORE_LIMITS.BLEND_SHADOW_GAP_THRESHOLD_US) return null;
+    if (clip.startUs - best.endUs > VIDEO_CORE_LIMITS.BLEND_SHADOW_GAP_THRESHOLD_TICKS) return null;
     return best;
   }
 
   private findNextClipOnLayer(clip: CompositorClip): CompositorClip | null {
     const best = this.nextClipById.get(clip.itemId) ?? null;
     if (!best) return null;
-    if (best.startUs - clip.endUs > VIDEO_CORE_LIMITS.BLEND_SHADOW_GAP_THRESHOLD_US) return null;
+    if (best.startUs - clip.endUs > VIDEO_CORE_LIMITS.BLEND_SHADOW_GAP_THRESHOLD_TICKS) return null;
     return best;
   }
 

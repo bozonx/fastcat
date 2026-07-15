@@ -49,14 +49,14 @@
         "animations": {
           "opacity": {
             "keyframes": [
-              { "tUs": 250000, "value": 0.25, "easing": "linear" },
-              { "tUs": 1250000, "value": 1.0, "easing": "linear" }
+              { "tUs": 63504000000, "value": 0.25, "easing": "linear" },
+              { "tUs": 317520000000, "value": 1.0, "easing": "linear" }
             ]
           },
           "transform.rotationDeg": {
             "keyframes": [
-              { "tUs": 250000, "value": 0.0, "easing": "linear" },
-              { "tUs": 1250000, "value": 90.0, "easing": "linear" }
+              { "tUs": 63504000000, "value": 0.0, "easing": "linear" },
+              { "tUs": 317520000000, "value": 90.0, "easing": "linear" }
             ]
           }
         },

@@ -159,8 +159,8 @@ export const VIDEO_CORE_LIMITS = {
    */
   MAX_ACTIVE_PREWARM_FRAMES: 16,
   /**
-   * How far ahead (timeline µs) of the playhead an upcoming clip must start to get
-   * its HEAD decode-ahead window opened early — i.e. the persistent sequential
+   * How far ahead (timeline ticks) of the playhead an upcoming clip must start to
+   * get its HEAD decode-ahead window opened early — i.e. the persistent sequential
    * iterator is established and the first {@link MAX_ACTIVE_PREWARM_FRAMES} frames
    * are decoded BEFORE the playhead crosses the cut. Without this, an upcoming clip
    * only had its single first frame warmed; the moment playback entered it, frames
@@ -169,10 +169,10 @@ export const VIDEO_CORE_LIMITS = {
    * cadence 1 s ≈ four ticks of lead: enough to fully warm the head before the cut
    * without opening decoders for clips that are still far away.
    */
-  PREWARM_HEAD_HORIZON_US: TICKS_PER_SECOND,
+  PREWARM_HEAD_HORIZON_TICKS: TICKS_PER_SECOND,
   MAX_WORKER_RPC_PENDING_CALLS: 500,
-  /** Max gap (µs) between adjacent clips to still apply blend shadow during transitions */
-  BLEND_SHADOW_GAP_THRESHOLD_US: TICKS_PER_SECOND / 5,
+  /** Max gap (ticks) between adjacent clips to still apply blend shadow during transitions */
+  BLEND_SHADOW_GAP_THRESHOLD_TICKS: TICKS_PER_SECOND / 5,
 };
 
 export const PIXI_RENDERER_PREFERENCE = 'webgpu' as const;
@@ -242,7 +242,7 @@ export const MARKER_THUMBNAILS = {
 } as const;
 
 export const TIMELINE_RULER_CONSTANTS = {
-  DEFAULT_ZONE_DURATION_US: 5 * TICKS_PER_SECOND,
+  DEFAULT_ZONE_DURATION_TICKS: 5 * TICKS_PER_SECOND,
   MIN_MARKER_DURATION_PX: 10,
   MIN_SELECTION_DURATION_PX: 6,
 } as const;

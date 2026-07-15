@@ -261,7 +261,7 @@ const trimOverlay = computed<TrimOverlayView | null>(() => {
 
   const fps = sanitizeFps(timelineContext.timelineDoc.value?.timebase);
   const timecode = `${preview.deltaUs >= 0 ? '+' : '-'}${formatStopFrameTimecode({
-    timeUs: Math.abs(preview.deltaUs),
+    timeTicks: Math.abs(preview.deltaUs),
     fps,
     frameDigits: 1,
   })}`;

@@ -44,9 +44,12 @@ export function getDocFpsOrDefault(
   return doc ? getDocFps(doc) : fallback;
 }
 
-export function usToFrame(timeUs: number, fps: number, mode: QuantizeMode): number {
-  const safeTimeUs = Number.isFinite(timeUs) ? Math.max(0, Math.round(timeUs)) : 0;
-  return Math.max(0, ticksToFrames({ ticks: safeTimeUs, frameRate: sanitizeFrameRate(fps), mode }));
+export function ticksToFrame(timeTicks: number, fps: number, mode: QuantizeMode): number {
+  const safeTimeTicks = Number.isFinite(timeTicks) ? Math.max(0, Math.round(timeTicks)) : 0;
+  return Math.max(
+    0,
+    ticksToFrames({ ticks: safeTimeTicks, frameRate: sanitizeFrameRate(fps), mode }),
+  );
 }
 
 export function deltaUsToFrames(deltaUs: number, fps: number, mode: QuantizeMode): number {
@@ -82,11 +85,11 @@ export function quantizeRangeToFrames(
   range: { startUs: number; durationUs: number },
   fps: number,
 ): { startUs: number; durationUs: number } {
-  const startFrame = usToFrame(range.startUs, fps, 'round');
+  const startFrame = ticksToFrame(range.startUs, fps, 'round');
   const startUs = frameToUs(startFrame, fps);
 
   const rawEndUs = Math.max(0, Math.round(range.startUs) + Math.round(range.durationUs));
-  const endFrame = usToFrame(rawEndUs, fps, 'round');
+  const endFrame = ticksToFrame(rawEndUs, fps, 'round');
   const endUs = frameToUs(Math.max(startFrame, endFrame), fps);
 
   return { startUs, durationUs: Math.max(0, endUs - startUs) };

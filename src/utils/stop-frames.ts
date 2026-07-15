@@ -1,5 +1,5 @@
 import { TICKS_PER_SECOND } from '~/utils/time';
-import { usToFrame, sanitizeFps } from '~/timeline/commands/utils';
+import { ticksToFrame, sanitizeFps } from '~/timeline/commands/utils';
 
 function sanitizeBaseName(name: string): string {
   return name
@@ -10,7 +10,7 @@ function sanitizeBaseName(name: string): string {
 }
 
 export interface FormatStopFrameTimecodeParams {
-  timeUs: number;
+  timeTicks: number;
   fps: number;
   frameDigits?: number;
 }
@@ -32,10 +32,10 @@ export function formatStopFrameTimecode(params: FormatStopFrameTimecodeParams): 
     frameDigits > 0
       ? Math.max(
           0,
-          Math.round(((Math.max(0, params.timeUs) * fps) / TICKS_PER_SECOND) * frameScale) /
+          Math.round(((Math.max(0, params.timeTicks) * fps) / TICKS_PER_SECOND) * frameScale) /
             frameScale,
         )
-      : usToFrame(params.timeUs, fps, 'round');
+      : ticksToFrame(params.timeTicks, fps, 'round');
 
   const framesPerHour = fps * 3600;
   const framesPerMinute = fps * 60;
@@ -50,13 +50,13 @@ export function formatStopFrameTimecode(params: FormatStopFrameTimecodeParams): 
 
 export interface BuildStopFrameBaseNameParams {
   timelineName: string;
-  timeUs: number;
+  timeTicks: number;
   fps: number;
 }
 
 export function buildStopFrameBaseName(params: BuildStopFrameBaseNameParams): string {
   const safeTimeline = sanitizeBaseName(params.timelineName || 'timeline') || 'timeline';
-  const tc = formatStopFrameTimecode({ timeUs: params.timeUs, fps: params.fps });
+  const tc = formatStopFrameTimecode({ timeTicks: params.timeTicks, fps: params.fps });
   return `${safeTimeline}_${tc}`;
 }
 

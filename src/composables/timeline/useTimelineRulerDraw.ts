@@ -1,7 +1,7 @@
 import { computed, ref, watch, type Ref } from 'vue';
 import { useResizeObserver } from '@vueuse/core';
 import { pxToTimeUs, zoomToPxPerSecond } from '~/utils/timeline/geometry';
-import { frameToUs, usToFrame } from '~/timeline/commands/utils';
+import { frameToUs, ticksToFrame } from '~/timeline/commands/utils';
 import {
   getFirstTimelineRulerMajorFrame,
   getTimelineFrameTickCanvasX,
@@ -148,8 +148,8 @@ export function useTimelineRulerDraw(options: TimelineRulerDrawOptions) {
     ctx.textBaseline = 'top';
 
     const mainStepFrames = Math.max(1, Math.round(mainStepS * currentFps));
-    const startFrame = usToFrame(startUs, currentFps, 'floor');
-    const endFrame = usToFrame(endUs, currentFps, 'ceil');
+    const startFrame = ticksToFrame(startUs, currentFps, 'floor');
+    const endFrame = ticksToFrame(endUs, currentFps, 'ceil');
     const firstMajorFrame = getFirstTimelineRulerMajorFrame({
       startFrame,
       endFrame,

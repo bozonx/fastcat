@@ -48,7 +48,7 @@ export function useMonitorSnapshot(input: {
     const extension = 'webp';
     const baseName = buildStopFrameBaseName({
       timelineName,
-      timeUs,
+      timeTicks: timeUs,
       fps,
     });
 

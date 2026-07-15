@@ -1,6 +1,6 @@
 /** @vitest-environment node */
 import { describe, expect, it } from 'vitest';
-import { TICKS_PER_MICROSECOND } from '~/utils/time';
+import { TICKS_PER_SECOND } from '~/utils/time';
 
 import {
   buildStopFrameBaseName,
@@ -10,11 +10,9 @@ import {
 
 describe('stop-frames', () => {
   it('formats timecode as HH-MM-SS-FF', () => {
-    expect(formatStopFrameTimecode({ timeUs: 0, fps: 30 })).toBe('00-00-00-00');
-    expect(formatStopFrameTimecode({ timeUs: 1_000_000 * TICKS_PER_MICROSECOND, fps: 30 })).toBe(
-      '00-00-01-00',
-    );
-    expect(formatStopFrameTimecode({ timeUs: 1_500_000 * TICKS_PER_MICROSECOND, fps: 30 })).toBe(
+    expect(formatStopFrameTimecode({ timeTicks: 0, fps: 30 })).toBe('00-00-00-00');
+    expect(formatStopFrameTimecode({ timeTicks: TICKS_PER_SECOND, fps: 30 })).toBe('00-00-01-00');
+    expect(formatStopFrameTimecode({ timeTicks: TICKS_PER_SECOND * 1.5, fps: 30 })).toBe(
       '00-00-01-15',
     );
   });
@@ -22,7 +20,7 @@ describe('stop-frames', () => {
   it('formats fractional frame numbers with bounded precision', () => {
     expect(
       formatStopFrameTimecode({
-        timeUs: 6_863_062 * TICKS_PER_MICROSECOND,
+        timeTicks: Math.round(TICKS_PER_SECOND * 6.863_062),
         fps: 29.97,
         frameDigits: 1,
       }),
@@ -32,7 +30,7 @@ describe('stop-frames', () => {
   it('builds base name with sanitized timeline name and timecode', () => {
     const base = buildStopFrameBaseName({
       timelineName: 'My Timeline.otio',
-      timeUs: 1_000_000 * TICKS_PER_MICROSECOND,
+      timeTicks: TICKS_PER_SECOND,
       fps: 30,
     });
 
@@ -42,7 +40,7 @@ describe('stop-frames', () => {
   it('defaults to timeline base name if empty', () => {
     const base = buildStopFrameBaseName({
       timelineName: '',
-      timeUs: 0,
+      timeTicks: 0,
       fps: 30,
     });
 

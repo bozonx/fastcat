@@ -4,7 +4,7 @@ import {
   getTrackById,
   getDocFps,
   quantizeTimeUsToFrames,
-  usToFrame,
+  ticksToFrame,
   assertClipNotLocked,
   nextItemId,
   normalizeGaps,
@@ -79,9 +79,9 @@ export function splitItem(doc: TimelineDocument, cmd: SplitItemCommand): Timelin
 
         const clipStartUs = it.timelineRange.startUs;
         const clipEndUs = clipStartUs + it.timelineRange.durationUs;
-        const clipStartFrame = usToFrame(clipStartUs, fps, 'round');
-        const clipEndFrame = usToFrame(clipEndUs, fps, 'round');
-        const cutFrameForClip = usToFrame(atUs, fps, 'round');
+        const clipStartFrame = ticksToFrame(clipStartUs, fps, 'round');
+        const clipEndFrame = ticksToFrame(clipEndUs, fps, 'round');
+        const cutFrameForClip = ticksToFrame(atUs, fps, 'round');
 
         const isSplit = shouldQuantizeToFrames
           ? cutFrameForClip > clipStartFrame && cutFrameForClip < clipEndFrame

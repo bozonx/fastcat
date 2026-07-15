@@ -6,7 +6,7 @@ import {
   normalizeGaps,
   getDocFps,
   quantizeRangeToFrames,
-  usToFrame,
+  ticksToFrame,
   frameToUs,
   autoAdaptChangedTracks,
 } from '../utils';
@@ -70,7 +70,7 @@ export function autoTrimPauses(
       const qTimeline = quantizeRangeToFrames(item.timelineRange, fps);
       const startUs = qTimeline.startUs;
       const endUs = startUs + qTimeline.durationUs;
-      const cutFrame = usToFrame(atUs, fps, 'round');
+      const cutFrame = ticksToFrame(atUs, fps, 'round');
       const quantizedAtUs = frameToUs(cutFrame, fps);
 
       if (!(quantizedAtUs > startUs && quantizedAtUs < endUs)) continue;

@@ -3,7 +3,7 @@ import { ref, watch, computed, onMounted, onUnmounted } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { pxToTimeUs, zoomToPxPerSecond } from '~/utils/timeline/geometry';
-import { usToFrame } from '~/timeline/commands/utils';
+import { ticksToFrame } from '~/timeline/commands/utils';
 import {
   getFirstTimelineRulerMajorFrame,
   getTimelineFrameTickCanvasX,
@@ -165,8 +165,8 @@ function draw() {
   });
 
   const mainStepFrames = Math.max(1, Math.round(mainStepS * currentFps));
-  const startFrame = usToFrame(startUs, currentFps, 'floor');
-  const endFrame = usToFrame(endUs, currentFps, 'ceil');
+  const startFrame = ticksToFrame(startUs, currentFps, 'floor');
+  const endFrame = ticksToFrame(endUs, currentFps, 'ceil');
   const firstMajorFrame = getFirstTimelineRulerMajorFrame({
     startFrame,
     endFrame,

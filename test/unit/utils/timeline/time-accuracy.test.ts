@@ -3,7 +3,7 @@ import { describe, it, expect } from 'vitest';
 
 import {
   frameToUs,
-  usToFrame,
+  ticksToFrame,
   quantizeTimeUsToFrames,
   sanitizeFps,
 } from '~/timeline/commands/utils';
@@ -31,13 +31,13 @@ describe('frame quantization is drift-free', () => {
     }
   });
 
-  it('frameToUs/usToFrame round-trip is stable for every frame index', () => {
+  it('frameToUs/ticksToFrame round-trip is stable for every frame index', () => {
     // Collect the first mismatch instead of asserting per-iteration to keep the
     // sweep fast; the message pinpoints the failing (fps, frame) on regression.
     let firstMismatch: { fps: number; frame: number; got: number } | null = null;
     for (const fps of FPS_CASES) {
       for (let frame = 0; frame <= 20_000 && !firstMismatch; frame++) {
-        const got = usToFrame(frameToUs(frame, fps), fps, 'round');
+        const got = ticksToFrame(frameToUs(frame, fps), fps, 'round');
         if (got !== frame) firstMismatch = { fps, frame, got };
       }
     }
