@@ -59,8 +59,8 @@ describe('MarkerExportModal.vue', () => {
     const component = await mountWithNuxt(MarkerExportModal, {
       props: {
         markers: [
-          { id: '1', timeUs: 1_000_000, text: 'Red', color: '#d0021b' },
-          { id: '2', timeUs: 2_000_000, text: 'Blue', color: '#4a90e2' },
+          { id: '1', timeUs: timelineUs(1_000_000), text: 'Red', color: '#d0021b' },
+          { id: '2', timeUs: timelineUs(2_000_000), text: 'Blue', color: '#4a90e2' },
         ],
         fps: 30,
         open: true,
@@ -78,8 +78,8 @@ describe('MarkerExportModal.vue', () => {
     const component = await mountWithNuxt(MarkerExportModal, {
       props: {
         markers: [
-          { id: '1', timeUs: 1_000_000, text: 'Red', color: '#d0021b' },
-          { id: '2', timeUs: 2_000_000, text: 'Blue', color: '#4a90e2' },
+          { id: '1', timeUs: timelineUs(1_000_000), text: 'Red', color: '#d0021b' },
+          { id: '2', timeUs: timelineUs(2_000_000), text: 'Blue', color: '#4a90e2' },
         ],
         fps: 30,
         open: true,
@@ -103,8 +103,8 @@ describe('MarkerExportModal.vue', () => {
     const component = await mountWithNuxt(MarkerExportModal, {
       props: {
         markers: [
-          { id: '1', timeUs: 1_000_000, text: 'Red', color: '#d0021b' },
-          { id: '2', timeUs: 2_000_000, text: 'Blue', color: '#4a90e2' },
+          { id: '1', timeUs: timelineUs(1_000_000), text: 'Red', color: '#d0021b' },
+          { id: '2', timeUs: timelineUs(2_000_000), text: 'Blue', color: '#4a90e2' },
         ],
         fps: 30,
         open: true,
@@ -133,7 +133,7 @@ describe('MarkerExportModal.vue', () => {
   it('formats export text according to selected export format', async () => {
     const component = await mountWithNuxt(MarkerExportModal, {
       props: {
-        markers: [{ id: '1', timeUs: 1_000_000, text: 'Intro', color: '#d0021b' }],
+        markers: [{ id: '1', timeUs: timelineUs(1_000_000), text: 'Intro', color: '#d0021b' }],
         fps: 30,
         open: true,
       },
@@ -210,8 +210,8 @@ describe('MarkerExportModal.vue', () => {
     const component = await mountWithNuxt(MarkerExportModal, {
       props: {
         markers: [
-          { id: '1', timeUs: 1_000_000, text: 'Red', color: '#d0021b' },
-          { id: '2', timeUs: 2_000_000, text: 'Blue', color: '#4a90e2' },
+          { id: '1', timeUs: timelineUs(1_000_000), text: 'Red', color: '#d0021b' },
+          { id: '2', timeUs: timelineUs(2_000_000), text: 'Blue', color: '#4a90e2' },
         ],
         fps: 30,
         open: true,
@@ -234,7 +234,7 @@ describe('MarkerExportModal.vue', () => {
   it('uses default color when marker has no color property', async () => {
     const component = await mountWithNuxt(MarkerExportModal, {
       props: {
-        markers: [{ id: '1', timeUs: 1_000_000, text: 'No Color' }],
+        markers: [{ id: '1', timeUs: timelineUs(1_000_000), text: 'No Color' }],
         fps: 30,
         open: true,
       },
@@ -253,7 +253,7 @@ describe('MarkerExportModal.vue', () => {
   it('writes export content to _documents/markers.txt via export button', async () => {
     const component = await mountWithNuxt(MarkerExportModal, {
       props: {
-        markers: [{ id: '1', timeUs: 1_000_000, text: 'Intro', color: '#d0021b' }],
+        markers: [{ id: '1', timeUs: timelineUs(1_000_000), text: 'Intro', color: '#d0021b' }],
         fps: 30,
         open: true,
       },
@@ -273,7 +273,7 @@ describe('MarkerExportModal.vue', () => {
   it('uses csv extension when csv format is selected', async () => {
     const component = await mountWithNuxt(MarkerExportModal, {
       props: {
-        markers: [{ id: '1', timeUs: 1_000_000, text: 'Intro', color: '#d0021b' }],
+        markers: [{ id: '1', timeUs: timelineUs(1_000_000), text: 'Intro', color: '#d0021b' }],
         fps: 30,
         open: true,
       },
@@ -294,7 +294,7 @@ describe('MarkerExportModal.vue', () => {
 
     const component = await mountWithNuxt(MarkerExportModal, {
       props: {
-        markers: [{ id: '1', timeUs: 1_000_000, text: 'Intro', color: '#d0021b' }],
+        markers: [{ id: '1', timeUs: timelineUs(1_000_000), text: 'Intro', color: '#d0021b' }],
         fps: 30,
         open: true,
       },

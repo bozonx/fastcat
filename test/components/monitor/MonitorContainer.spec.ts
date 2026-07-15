@@ -5,6 +5,7 @@ import MonitorContainer from '~/components/monitor/MonitorContainer.vue';
 import { ref, nextTick } from 'vue';
 import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
 import { useWorkspaceStore } from '~/stores/workspace.store';
+import { timelineUs } from '../../unit/utils/timeline-time';
 
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
@@ -16,7 +17,7 @@ vi.mock('~/composables/monitor/useMonitorRuntime', () => ({
   useMonitorRuntime: () => ({
     selectionStore: {},
     videoItems: ref([]),
-    safeDurationUs: ref(1000000),
+    safeDurationUs: ref(timelineUs(1_000_000)),
     isTextClipSelected: ref(false),
     isAdjustmentClipSelected: ref(false),
     containerEl: ref(null),
@@ -642,7 +643,7 @@ describe('MonitorContainer', () => {
     });
 
     // 50% of 1,000,000 Us is 500,000 Us
-    expect(timelineStore.setCurrentTimeUs).toHaveBeenCalledWith(500000);
+    expect(timelineStore.setCurrentTimeUs).toHaveBeenCalledWith(timelineUs(500_000));
     expect(timelineStore.requestScrollToPlayhead).toHaveBeenCalled();
 
     // Reset calls and test pointerup triggers requestScrollToPlayhead

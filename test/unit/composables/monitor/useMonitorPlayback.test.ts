@@ -8,6 +8,8 @@ import {
   useMonitorPlayback,
 } from '~/composables/monitor/useMonitorPlayback';
 import { useTimelineStore } from '~/stores/timeline.store';
+import { TICKS_PER_SECOND } from '~/utils/time';
+import { timelineUs } from '../../utils/timeline-time';
 
 describe('useMonitorPlayback', () => {
   let pinia: any;
@@ -42,17 +44,17 @@ describe('useMonitorPlayback', () => {
     // Advances exactly once per frame interval, phase-locked to the clock: at 25fps
     // the index only ticks when the audio time crosses a 40ms boundary.
     expect(computeMonitorFrameIndex({ timeUs: 0, fps: 25 })).toBe(0);
-    expect(computeMonitorFrameIndex({ timeUs: 39_000, fps: 25 })).toBe(0);
-    expect(computeMonitorFrameIndex({ timeUs: 40_000, fps: 25 })).toBe(1);
-    expect(computeMonitorFrameIndex({ timeUs: 79_999, fps: 25 })).toBe(1);
-    expect(computeMonitorFrameIndex({ timeUs: 80_000, fps: 25 })).toBe(2);
+    expect(computeMonitorFrameIndex({ timeUs: timelineUs(39_000), fps: 25 })).toBe(0);
+    expect(computeMonitorFrameIndex({ timeUs: timelineUs(40_000), fps: 25 })).toBe(1);
+    expect(computeMonitorFrameIndex({ timeUs: timelineUs(79_999), fps: 25 })).toBe(1);
+    expect(computeMonitorFrameIndex({ timeUs: timelineUs(80_000), fps: 25 })).toBe(2);
 
     // A time landing exactly on a boundary must not float just under it (epsilon).
-    expect(computeMonitorFrameIndex({ timeUs: 1_000_000, fps: 30 })).toBe(30);
+    expect(computeMonitorFrameIndex({ timeUs: timelineUs(1_000_000), fps: 30 })).toBe(30);
 
     // Invalid inputs clamp to a safe frame 0 rather than NaN.
-    expect(computeMonitorFrameIndex({ timeUs: -100, fps: 30 })).toBe(0);
-    expect(computeMonitorFrameIndex({ timeUs: 100_000, fps: 0 })).toBe(3);
+    expect(computeMonitorFrameIndex({ timeUs: timelineUs(-100), fps: 30 })).toBe(0);
+    expect(computeMonitorFrameIndex({ timeUs: timelineUs(100_000), fps: 0 })).toBe(3);
     expect(computeMonitorFrameIndex({ timeUs: Number.NaN, fps: 30 })).toBe(0);
   });
 
@@ -145,7 +147,11 @@ describe('useMonitorPlayback', () => {
     currentTime.value = 50_000;
     await nextTick();
 
-    expect(audioEngine.previewScrubForward).toHaveBeenCalledWith(0, 50_000, 75_000);
+    expect(audioEngine.previewScrubForward).toHaveBeenCalledWith(
+      0,
+      50_000,
+      (TICKS_PER_SECOND * 3) / 40,
+    );
     expect(scheduleRender).toHaveBeenCalledWith(50_000);
     wrapper.unmount();
   });

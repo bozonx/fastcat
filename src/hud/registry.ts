@@ -1,3 +1,4 @@
+import { secondsToTicks } from '~/utils/time';
 import type { ParamControl } from '~/types/params';
 import type { HudType } from '~/timeline/types';
 
@@ -85,8 +86,8 @@ registerHud({
           labelKey: 'fastcat.properties.fadeIn',
           defaultValue: 0,
           min: 0,
-          max: 10000000,
-          step: 100000,
+          max: secondsToTicks({ seconds: 10 }),
+          step: secondsToTicks({ seconds: 0.1 }),
         },
         {
           kind: 'number',
@@ -94,8 +95,8 @@ registerHud({
           labelKey: 'fastcat.properties.fadeOut',
           defaultValue: 0,
           min: 0,
-          max: 10000000,
-          step: 100000,
+          max: secondsToTicks({ seconds: 10 }),
+          step: secondsToTicks({ seconds: 0.1 }),
         },
       ],
     },
@@ -153,8 +154,8 @@ registerHud({
           labelKey: 'fastcat.properties.fadeIn',
           defaultValue: 0,
           min: 0,
-          max: 10000000,
-          step: 100000,
+          max: secondsToTicks({ seconds: 10 }),
+          step: secondsToTicks({ seconds: 0.1 }),
         },
         {
           kind: 'number',
@@ -162,8 +163,8 @@ registerHud({
           labelKey: 'fastcat.properties.fadeOut',
           defaultValue: 0,
           min: 0,
-          max: 10000000,
-          step: 100000,
+          max: secondsToTicks({ seconds: 10 }),
+          step: secondsToTicks({ seconds: 0.1 }),
         },
       ],
     },

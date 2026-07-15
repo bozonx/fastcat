@@ -4,6 +4,7 @@ import { defineComponent, h, ref } from 'vue';
 import { describe, expect, it, vi } from 'vitest';
 
 import { useTimelineRulerSelectionDrag } from '~/composables/timeline/useTimelineRulerSelectionDrag';
+import { timelineUs } from '../../utils/timeline-time';
 
 describe('useTimelineRulerSelectionDrag', () => {
   it('snaps created selection range to snap targets while dragging', async () => {
@@ -20,12 +21,12 @@ describe('useTimelineRulerSelectionDrag', () => {
           selectionRange,
           zoom: ref(50),
           fps: ref(25),
-          getTimeUsFromPointerEvent: (event) => event.clientX * 1000,
+          getTimeUsFromPointerEvent: (event) => timelineUs(event.clientX * 1000),
           selectSelectionRange: vi.fn(),
           updateSelectionRange,
           createSelectionRange,
           setPreviewSelectionRange,
-          computeSnapTargets: () => [1_000_000],
+          computeSnapTargets: () => [timelineUs(1_000_000)],
           snapThresholdPx: 1,
         });
 
@@ -45,14 +46,14 @@ describe('useTimelineRulerSelectionDrag', () => {
 
     expect(api.displaySelectionRange.value).toEqual({
       startUs: 0,
-      endUs: 1_000_000,
+      endUs: timelineUs(1_000_000),
     });
 
     window.dispatchEvent(new PointerEvent('pointerup'));
 
     expect(createSelectionRange).toHaveBeenCalledWith({
       startUs: 0,
-      endUs: 1_000_000,
+      endUs: timelineUs(1_000_000),
     });
 
     wrapper.unmount();
@@ -71,7 +72,7 @@ describe('useTimelineRulerSelectionDrag', () => {
           selectionRange,
           zoom: ref(50),
           fps: ref(25),
-          getTimeUsFromPointerEvent: (event) => event.clientX * 1000,
+          getTimeUsFromPointerEvent: (event) => timelineUs(event.clientX * 1000),
           selectSelectionRange: vi.fn(),
           updateSelectionRange,
           createSelectionRange,

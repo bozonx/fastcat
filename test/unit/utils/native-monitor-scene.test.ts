@@ -4,6 +4,7 @@ import {
   buildNativeAudioEffectSpecs,
   mapTimelineBlendModeToNative,
 } from '~/utils/native-monitor-scene';
+import { timelineUs } from './timeline-time';
 
 vi.mock('@tauri-apps/api/path', () => ({
   join: vi.fn(async (...parts: string[]) => parts.join('/')),
@@ -738,8 +739,8 @@ describe('buildNativeMonitorScene', () => {
               kind: 'clip',
               clipType: 'adjustment',
               trackId: 'v-track',
-              timelineRange: { startUs: 500_000, durationUs: 1_000_000 },
-              sourceRange: { startUs: 0, durationUs: 1_000_000 },
+              timelineRange: { startUs: timelineUs(500_000), durationUs: timelineUs(1_000_000) },
+              sourceRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
               layer: 1,
               effects: [{ id: 'blur-1', type: 'blur', enabled: true, target: 'video', radius: 3 }],
             },
@@ -958,11 +959,11 @@ describe('buildNativeMonitorScene', () => {
               type: 'media',
               trackId: 'v-track',
               source: { path: '_video/source.mp4' },
-              timelineRange: { startUs: 0, durationUs: 1_000_000 },
-              sourceRange: { startUs: 0, durationUs: 1_000_000 },
+              timelineRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
+              sourceRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
               transitionOut: {
                 type: 'wipe',
-                durationUs: 250_000,
+                durationUs: timelineUs(250_000),
                 mode: 'transparent',
               },
             },

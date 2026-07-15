@@ -20,7 +20,7 @@ const EXPORT_CHUNK_DURATION_SEC: f64 = 1.0;
 
 /// How far behind the current export chunk a finished layer's streaming state is
 /// kept before being released. A small slack absorbs resampler group-delay tails and
-/// microsecond-grid clip boundaries so a layer is never pruned a hair before its last
+/// tick-grid clip boundaries so a layer is never pruned a hair before its last
 /// sample is mixed; the mix only moves forward, so anything past this is dead weight.
 const PRUNE_BEHIND_SEC: f64 = 2.0;
 

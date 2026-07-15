@@ -2,6 +2,7 @@ import { ref } from 'vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useClipPropertiesActions } from '~/composables/properties/useClipPropertiesActions';
+import { timelineUs } from '../../utils/timeline-time';
 
 // useAppClipboard wraps a pinia store; stub it so the composable is exercised in
 // isolation without standing up the real clipboard store.
@@ -23,7 +24,7 @@ function makeClip(overrides: AnyClip = {}): any {
     kind: 'clip',
     clipType: 'media',
     name: 'Clip 1',
-    timelineRange: { startUs: 0, durationUs: 5_000_000 },
+    timelineRange: { startUs: 0, durationUs: timelineUs(5_000_000) },
     source: { path: '/media/video.mp4' },
     ...overrides,
   };
@@ -110,7 +111,9 @@ describe('useClipPropertiesActions', () => {
     });
 
     it('is true when start/duration are not frame-aligned', () => {
-      const clip = makeClip({ timelineRange: { startUs: 1234, durationUs: 5_000_001 } });
+      const clip = makeClip({
+        timelineRange: { startUs: timelineUs(1234), durationUs: timelineUs(5_000_001) },
+      });
       const { actions } = build({ clip });
       expect(actions.isFreePosition.value).toBe(true);
     });

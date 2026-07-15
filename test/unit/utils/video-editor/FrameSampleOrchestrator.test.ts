@@ -7,6 +7,8 @@ import {
   TimelineActiveClipProcessor,
 } from '~/utils/video-editor/compositor/TimelineActiveClipProcessor';
 import type { CompositorClip } from '~/utils/video-editor/compositor/types';
+import { TICKS_PER_SECOND } from '~/utils/time';
+import { timelineUs } from '../timeline-time';
 
 function makeOrchestrator() {
   return new FrameSampleOrchestrator();
@@ -34,16 +36,16 @@ async function collectShadowSampleTimesS(options: ShadowSampleScenarioOptions): 
     return null;
   });
 
-  const transitionDurationUs = 500_000;
+  const transitionDurationUs = timelineUs(500_000);
   const prevClip = {
     itemId: 'prev',
     sprite: { alpha: 1, blendMode: 'normal', visible: true },
     clipKind: 'video',
     startUs: 0,
-    durationUs: 1_000_000,
-    sourceStartUs: options.prevSourceStartUs ?? 2_000_000,
-    sourceRangeDurationUs: options.prevSourceRangeDurationUs ?? 1_000_000,
-    sourceDurationUs: options.prevSourceDurationUs ?? 10_000_000,
+    durationUs: timelineUs(1_000_000),
+    sourceStartUs: timelineUs(options.prevSourceStartUs ?? 2_000_000),
+    sourceRangeDurationUs: timelineUs(options.prevSourceRangeDurationUs ?? 1_000_000),
+    sourceDurationUs: timelineUs(options.prevSourceDurationUs ?? 10_000_000),
     speed: options.prevSpeed,
     frameRate: options.prevFrameRate,
     sink: {},
@@ -53,11 +55,11 @@ async function collectShadowSampleTimesS(options: ShadowSampleScenarioOptions): 
     itemId: 'next',
     sprite: { alpha: 1, blendMode: 'normal', visible: true },
     clipKind: 'video',
-    startUs: 1_000_000,
-    durationUs: 1_000_000,
+    startUs: timelineUs(1_000_000),
+    durationUs: timelineUs(1_000_000),
     sourceStartUs: 0,
-    sourceRangeDurationUs: 1_000_000,
-    sourceDurationUs: 5_000_000,
+    sourceRangeDurationUs: timelineUs(1_000_000),
+    sourceDurationUs: timelineUs(5_000_000),
     speed: 1,
     transitionIn: {
       durationUs: transitionDurationUs,
@@ -69,7 +71,7 @@ async function collectShadowSampleTimesS(options: ShadowSampleScenarioOptions): 
 
   await orchestrator.process({
     activeClips: [nextClip],
-    timeUs: nextClip.startUs + options.localTimeUs,
+    timeUs: nextClip.startUs + timelineUs(options.localTimeUs),
     width: 1920,
     height: 1080,
     activeClipProcessor: processor,
@@ -307,9 +309,9 @@ describe('FrameSampleOrchestrator', () => {
       sprite: { alpha: 1, blendMode: 'normal', visible: true },
       clipKind: 'video',
       startUs: 0,
-      durationUs: 1_000_000,
-      sourceStartUs: 2_000_000,
-      sourceRangeDurationUs: 1_000_000,
+      durationUs: timelineUs(1_000_000),
+      sourceStartUs: timelineUs(2_000_000),
+      sourceRangeDurationUs: timelineUs(1_000_000),
       speed: -1,
       sink: {},
     } as unknown as CompositorClip;
@@ -334,7 +336,9 @@ describe('FrameSampleOrchestrator', () => {
     });
 
     expect(getVideoSampleForClip).toHaveBeenCalledWith(
-      expect.objectContaining({ sampleTimeS: 2.999 }),
+      expect.objectContaining({
+        sampleTimeS: (timelineUs(2_000_000) + clampToLastReadableSourceUs(timelineUs(1_000_000))) / TICKS_PER_SECOND,
+      }),
     );
   });
 
@@ -353,9 +357,9 @@ describe('FrameSampleOrchestrator', () => {
       sprite: { alpha: 1, blendMode: 'normal', visible: true },
       clipKind: 'video',
       startUs: 0,
-      durationUs: 1_000_001,
-      sourceStartUs: 2_000_000,
-      sourceRangeDurationUs: 1_000_000,
+      durationUs: timelineUs(1_000_001),
+      sourceStartUs: timelineUs(2_000_000),
+      sourceRangeDurationUs: timelineUs(1_000_000),
       speed: 1,
       frameRate: 30,
       sink: {},
@@ -363,7 +367,7 @@ describe('FrameSampleOrchestrator', () => {
 
     await orchestrator.process({
       activeClips: [clip],
-      timeUs: 1_000_000,
+      timeUs: timelineUs(1_000_000),
       width: 1920,
       height: 1080,
       activeClipProcessor: processor,
@@ -381,7 +385,11 @@ describe('FrameSampleOrchestrator', () => {
     });
 
     expect(getVideoSampleForClip).toHaveBeenCalledWith(
-      expect.objectContaining({ sampleTimeS: 2.983333 }),
+      expect.objectContaining({
+        sampleTimeS:
+          (timelineUs(2_000_000) + clampToLastReadableSourceUs(timelineUs(1_000_000), 30)) /
+          TICKS_PER_SECOND,
+      }),
     );
   });
   it('continues processing when one sample request rejects (Promise.allSettled)', async () => {
@@ -512,11 +520,13 @@ describe('FrameSampleOrchestrator shadow sampling during adjacent transition', (
       prevFrameRate: frameRate,
     });
 
-    const lastReadableUs = clampToLastReadableSourceUs(5_000_000, frameRate);
+    // Production clamps the shadow to the last readable source frame in the
+    // tick domain; compute the expected using the same tick-based inputs.
+    const lastReadableUs = clampToLastReadableSourceUs(timelineUs(5_000_000), frameRate);
     // The "small handle" path uses (sourceRangeEnd - 1ms) but clamped to the
     // last readable source position; with frameRate=30 the half-frame guard
     // is larger than 1ms so we use the lastReadableUs path.
-    const sampleUs = Math.max(0, Math.min(lastReadableUs, 5_000_000 - 1_000));
-    expect(calls).toContain(sampleUs / 1_000_000);
+    const sampleUs = Math.max(0, Math.min(lastReadableUs, timelineUs(5_000_000) - 1_000));
+    expect(calls).toContain(sampleUs / TICKS_PER_SECOND);
   });
 });

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
+import { TICKS_PER_SECOND } from '~/utils/time';
 import ClipAudioFades from '~/components/timeline/ClipAudioFades.vue';
 
 describe('ClipAudioFades', () => {
@@ -7,9 +8,9 @@ describe('ClipAudioFades', () => {
     id: 'clip-1',
     kind: 'clip',
     trackId: 'track-1',
-    timelineRange: { startUs: 0, durationUs: 10_000_000 },
-    audioFadeInUs: 1_000_000,
-    audioFadeOutUs: 1_000_000,
+    timelineRange: { startUs: 0, durationUs: 10 * TICKS_PER_SECOND },
+    audioFadeInUs: TICKS_PER_SECOND,
+    audioFadeOutUs: TICKS_PER_SECOND,
     audioGain: 1,
     locked: false,
   } as any;
@@ -29,7 +30,7 @@ describe('ClipAudioFades', () => {
     canEdit: true,
     trackHeight: 100,
     isSelected: true,
-    defaultFadeDurationUs: 2_000_000,
+    defaultFadeDurationUs: 2 * TICKS_PER_SECOND,
     defaultFadeCurve: 'logarithmic' as const,
   };
 
@@ -140,7 +141,7 @@ describe('ClipAudioFades', () => {
     expect(component.emitted('startResizeFade')).toBeTruthy();
     expect(component.emitted('startResizeFade')![0][1]).toEqual({
       edge: 'in',
-      durationUs: 1_000_000,
+      durationUs: TICKS_PER_SECOND,
     });
 
     addEventListenerSpy.mockRestore();
@@ -201,7 +202,7 @@ describe('ClipAudioFades', () => {
 
     expect(component.emitted('commitFade')![0][0]).toEqual({
       edge: 'in',
-      durationUs: 2_000_000,
+      durationUs: 2 * TICKS_PER_SECOND,
       curve: 'logarithmic',
     });
     expect(component.emitted('toggleFadeCurve')).toBeUndefined();

@@ -1,4 +1,5 @@
 import type { Page } from '@playwright/test';
+import { TICKS_PER_SECOND } from '~/utils/time/ticks';
 import { getOpfsFileMetadata, opfsEntryExists, readTextFileFromOpfs } from './virtual-fs';
 import type { E2eProject } from '../../e2e/fixtures/workspace';
 
@@ -23,10 +24,10 @@ export interface TimelineItemView {
   id: string;
   type: OtioItemType;
   name: string;
-  /** In/out point into the source media (microseconds). */
+  /** In/out point into the source media (canonical timeline ticks). */
   sourceStartUs: number;
   sourceDurationUs: number;
-  /** Position on the timeline, derived positionally (microseconds). */
+  /** Position on the timeline, derived positionally (canonical timeline ticks). */
   timelineStartUs: number;
   timelineDurationUs: number;
   /** Media URL for clips (undefined for gaps / missing references). */
@@ -175,7 +176,7 @@ interface RawMarker {
 
 function rationalToUs(r: RawRational | undefined): number {
   if (!r || typeof r.value !== 'number' || typeof r.rate !== 'number' || r.rate === 0) return 0;
-  return Math.round((r.value / r.rate) * 1e6);
+  return Math.round((r.value / r.rate) * TICKS_PER_SECOND);
 }
 
 function classify(schema: string | undefined): OtioItemType {

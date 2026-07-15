@@ -78,11 +78,11 @@ export interface FastCatUserSettings {
   timeline: {
     /** Snap threshold in pixels. Used as snapping area size for clips/playhead/markers. */
     snapThresholdPx: number;
-    /** Default audio fade duration in microseconds */
+    /** Default audio fade duration in canonical timeline ticks. */
     defaultAudioFadeDurationUs: number;
-    /** Default transition duration in microseconds */
+    /** Default transition duration in canonical timeline ticks. */
     defaultTransitionDurationUs: number;
-    /** Default duration for static clips (images, text, etc) in microseconds */
+    /** Default duration for static clips (images, text, etc) in canonical timeline ticks. */
     defaultStaticClipDurationUs: number;
     snapping: {
       timelineEdges: boolean;

@@ -28,7 +28,9 @@ export interface TimelineFormat {
 }
 
 export interface TimelineRange {
+  /** Start time in canonical timeline ticks (TICKS_PER_SECOND per second). */
   startUs: number;
+  /** Duration in canonical timeline ticks (TICKS_PER_SECOND per second). */
   durationUs: number;
 }
 
@@ -186,7 +188,7 @@ export type KeyframeEasing =
   | 'hold';
 
 export interface Keyframe {
-  /** Microseconds from the source media/timeline start (always >= 0). */
+  /** Time in canonical timeline ticks from the source media/timeline start (always >= 0). */
   tUs: number;
   /** The animated parameter's value at `tUs`. */
   value: number;

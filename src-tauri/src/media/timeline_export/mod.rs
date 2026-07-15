@@ -805,14 +805,15 @@ pub fn export_timeline(
                                 return Err(anyhow!("cancelled"));
                             }
                             // Sample the CENTRE of each frame interval, not its leading
-                            // edge. Clip boundaries are stored on a microsecond grid
-                            // (`frameToUs`), so a boundary can sit up to half a microsecond
-                            // *after* the exact `i/fps` edge; the half-open `covers()` test
-                            // then kept the previous clip's last frame for one extra frame at
-                            // the cut (a duplicate frame / stutter). The centre `(i+0.5)/fps`
-                            // is always strictly inside frame `i`'s interval, on the correct
-                            // side of any frame-quantised boundary — matching the paused
-                            // monitor, which samples the quantised playhead exactly on the cut.
+                            // edge. Clip boundaries are stored on the canonical tick grid
+                            // (`frameToUs`, now ticks per second), so a boundary can sit up
+                            // to half a tick *after* the exact `i/fps` edge; the half-open
+                            // `covers()` test then kept the previous clip's last frame for
+                            // one extra frame at the cut (a duplicate frame / stutter). The
+                            // centre `(i+0.5)/fps` is always strictly inside frame `i`'s
+                            // interval, on the correct side of any frame-quantised boundary
+                            // — matching the paused monitor, which samples the quantised
+                            // playhead exactly on the cut.
                             let time = export_frame_sample_time(start, end, fps, i);
                             let build_started = trace.as_ref().map(|_| Instant::now());
                             let mut frame_scene = super::timeline_render::build_export_scene(

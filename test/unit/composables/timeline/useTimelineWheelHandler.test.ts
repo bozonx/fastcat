@@ -9,6 +9,7 @@ import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
 import { useTimelineZoom } from '~/composables/timeline/useTimelineZoom';
 import { useTimelineWheelHandler } from '~/composables/timeline/useTimelineWheelHandler';
 import { pxPerSecondToZoom, pxToTimeUs } from '~/utils/timeline/geometry';
+import { timelineUs } from '../../utils/timeline-time';
 
 vi.mock('~/composables/timeline/useTimelineZoom', () => ({
   useTimelineZoom: vi.fn(() => ({
@@ -127,8 +128,8 @@ describe('useTimelineWheelHandler', () => {
   it('zooms toward a non-zero playhead position', async () => {
     const { useTimelineStore } = await import('~/stores/timeline.store');
     const timelineStore = useTimelineStore();
-    timelineStore.duration = 10_000_000;
-    timelineStore.setCurrentTimeUs(5_000_000);
+    timelineStore.duration = timelineUs(10_000_000);
+    timelineStore.setCurrentTimeUs(timelineUs(5_000_000));
 
     mockWorkspaceStore.userSettings.mouse.timeline.wheel = 'zoom_horizontal_to_playhead';
 
@@ -187,7 +188,7 @@ describe('useTimelineWheelHandler', () => {
     expect(mockHandleZoomWheel).toHaveBeenCalledTimes(1);
 
     const [, anchor] = mockHandleZoomWheel.mock.calls[0];
-    expect(anchor.anchorTimeUs).toBe(5_000_000);
+    expect(anchor.anchorTimeUs).toBe(timelineUs(5_000_000));
 
     wrapper.unmount();
   });
@@ -199,7 +200,7 @@ describe('useTimelineWheelHandler', () => {
     const viewportWidth = 500;
     const minCursorZoom = pxPerSecondToZoom(viewportWidth / (durationUs / 1e6));
 
-    timelineStore.duration = durationUs;
+    timelineStore.duration = timelineUs(durationUs);
     timelineStore.setTimelineZoomExact(minCursorZoom + 0.4);
     mockWorkspaceStore.userSettings.mouse.timeline.wheel = 'zoom_horizontal';
 
@@ -262,7 +263,7 @@ describe('useTimelineWheelHandler', () => {
     const [zoomDelta, anchor] = mockHandleZoomWheel.mock.calls[0];
     expect(zoomDelta).toBeCloseTo(minCursorZoom - (minCursorZoom + 0.4), 6);
     expect(anchor.anchorViewportX).toBe(viewportWidth / 2);
-    expect(anchor.anchorTimeUs).toBe(durationUs / 2);
+    expect(anchor.anchorTimeUs).toBe(timelineUs(durationUs / 2));
 
     wrapper.unmount();
   });
@@ -274,8 +275,8 @@ describe('useTimelineWheelHandler', () => {
     const viewportWidth = 500;
     const minCursorZoom = pxPerSecondToZoom(viewportWidth / (durationUs / 1e6));
 
-    timelineStore.duration = durationUs;
-    timelineStore.setCurrentTimeUs(40_000_000);
+    timelineStore.duration = timelineUs(durationUs);
+    timelineStore.setCurrentTimeUs(timelineUs(40_000_000));
     timelineStore.setTimelineZoomExact(minCursorZoom + 0.4);
     mockWorkspaceStore.userSettings.mouse.timeline.wheel = 'zoom_horizontal_to_playhead';
 
@@ -336,7 +337,7 @@ describe('useTimelineWheelHandler', () => {
 
     const [zoomDelta, anchor] = mockHandleZoomWheel.mock.calls[0];
     expect(zoomDelta).toBe(-2);
-    expect(anchor.anchorTimeUs).toBe(40_000_000);
+    expect(anchor.anchorTimeUs).toBe(timelineUs(40_000_000));
 
     wrapper.unmount();
   });
@@ -349,7 +350,7 @@ describe('useTimelineWheelHandler', () => {
     const cursorX = 120;
     const minCursorZoom = pxPerSecondToZoom(viewportWidth / (durationUs / 1e6));
 
-    timelineStore.duration = durationUs;
+    timelineStore.duration = timelineUs(durationUs);
     timelineStore.setTimelineZoomExact(minCursorZoom);
     mockWorkspaceStore.userSettings.mouse.timeline.wheel = 'zoom_horizontal';
 

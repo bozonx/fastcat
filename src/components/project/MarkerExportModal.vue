@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { TICKS_PER_SECOND, formatTimecode, formatHms, formatMsOrHms } from '~/utils/time';
+import { TICKS_PER_SECOND, TICKS_PER_MICROSECOND, formatTimecode, formatHms, formatMsOrHms } from '~/utils/time';
 import { computed, ref, watch } from 'vue';
 import type { TimelineMarker } from '~/timeline/types';
 import { DOCUMENTS_DIR_NAME } from '~/utils/constants';
@@ -121,7 +121,7 @@ function formatMarkerLine(marker: TimelineMarker): string {
 }
 
 function formatVttTime(us: number): string {
-  const totalMs = Math.floor(us / 1000);
+  const totalMs = Math.floor(us / TICKS_PER_MICROSECOND / 1000);
   const ms = totalMs % 1000;
   const totalSeconds = Math.floor(totalMs / 1000);
   const ss = totalSeconds % 60;

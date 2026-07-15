@@ -2,6 +2,7 @@ import { onBeforeUnmount, ref } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
+import { TICKS_PER_SECOND } from '~/utils/time';
 import { cloneValue } from '~/utils/clone';
 import { clipGainToYPercent, clipYPercentToGain } from '~/utils/audio';
 import { pxToDeltaUs, pickBestSnapCandidateUs, zoomToPxPerSecond } from '~/utils/timeline/geometry';
@@ -246,7 +247,7 @@ export function useTimelineClipHandleResize(
       if (timelineSettingsStore.toolbarSnapMode === 'snap') {
         const thresholdUs = Math.round(
           (timelineSettingsStore.snapThresholdPx / zoomToPxPerSecond(timelineStore.timelineZoom)) *
-            1e6,
+            TICKS_PER_SECOND,
         );
 
         const edgeUs =
@@ -453,7 +454,7 @@ export function useTimelineClipHandleResize(
       if (timelineSettingsStore.toolbarSnapMode === 'snap') {
         const snapThresholdUs = Math.round(
           (timelineSettingsStore.snapThresholdPx / zoomToPxPerSecond(timelineStore.timelineZoom)) *
-            1e6,
+            TICKS_PER_SECOND,
         );
 
         const edgeUs =

@@ -5,10 +5,10 @@ import { applyTimelineCommand } from '~/timeline/commands';
 import type { TimelineDocument, TimelineTrack, TimelineClipItem } from '~/timeline/types';
 import { isClipFrameAligned } from '~/utils/timeline/clip-capabilities';
 
-// 30fps: one frame is 1e6/30 ≈ 33333.33µs, so these µs values sit deliberately
-// *between* frame boundaries — the "free" (sub-frame) phase a hand-dialed audio
-// sync produces. Structural edits must preserve this phase for audio clips and
-// must never introduce it for video clips.
+// 30fps: one frame is TICKS_PER_SECOND/30 ≈ 8_467_200 ticks, so these tick values
+// sit deliberately *between* frame boundaries — the "free" (sub-frame) phase a
+// hand-dialed audio sync produces. Structural edits must preserve this phase for
+// audio clips and must never introduce it for video clips.
 const FPS = 30;
 const FREE_START_US = timelineUs(2_007_000); // ~frame 60.21
 const FREE_DURATION_US = timelineUs(3_457_000); // ~103.71 frames

@@ -13,6 +13,7 @@ import { useProjectStore } from '~/stores/project.store';
 import { useMediaStore } from '~/stores/media.store';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 import type { TimelineClipItem } from '~/timeline/types';
+import { timelineUs } from '../../utils/timeline-time';
 
 vi.mock('~/stores/workspace.store', () => ({
   useWorkspaceStore: vi.fn(),
@@ -194,9 +195,9 @@ describe('useTimelineClipThumbnails reactive logic', () => {
       id: 'clip-1',
       clipType: 'media',
       source: { path: 'test-video.mp4' },
-      sourceDurationUs: 20_000_000, // 20 seconds
-      sourceRange: { startUs: 0, durationUs: 20_000_000 },
-      timelineRange: { startUs: 0, durationUs: 20_000_000 },
+      sourceDurationUs: timelineUs(20_000_000), // 20 seconds
+      sourceRange: { startUs: 0, durationUs: timelineUs(20_000_000) },
+      timelineRange: { startUs: 0, durationUs: timelineUs(20_000_000) },
     } as any);
 
     const scrollLeft = ref(0);

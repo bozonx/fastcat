@@ -3,7 +3,7 @@
     "Cross-engine parity contract for keyframe animation interpolation (v1: transform + opacity).",
     "  - web:    evalTrackAt() in src/timeline/animation/evaluate.ts",
     "  - native: eval_track_at() in src-tauri/src/monitor/scene/build/animation.rs",
-    "Both evaluate a single KeyframeTrack at a timeline-local time in microseconds:",
+    "Both evaluate a single KeyframeTrack at a timeline-local time in canonical timeline ticks (TICKS_PER_SECOND per second):",
     "  - before the first keyframe / after the last -> hold the boundary value (no extrapolation)",
     "  - 'linear' -> constant-rate interpolation to the next keyframe",
     "  - 'ease'   -> smoothstep (t*t*(3-2t)) interpolation to the next keyframe",

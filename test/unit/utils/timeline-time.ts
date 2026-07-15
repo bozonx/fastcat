@@ -1,6 +1,6 @@
 import { TICKS_PER_MICROSECOND } from '~/utils/time';
 
-/** Convert legacy microsecond fixture values to the active timeline tick base. */
+/** Convert legacy microsecond fixture values to canonical timeline ticks. */
 export function timelineUs(value: number): number {
   return value * TICKS_PER_MICROSECOND;
 }

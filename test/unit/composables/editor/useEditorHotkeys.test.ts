@@ -19,6 +19,7 @@ import { useFileManagerStore } from '~/stores/file-manager.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useClipboardStore } from '~/stores/clipboard.store';
+import { timelineUs } from '../../utils/timeline-time';
 
 const mockWorkspaceStore = {
   userSettings: reactive({
@@ -1073,14 +1074,17 @@ describe('useEditorHotkeys', () => {
               kind: 'clip',
               trackId: 'track-1',
               name: 'Clip 1',
-              timelineRange: { startUs: 0, durationUs: 1_000_000 },
+              timelineRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
             },
           ],
         },
       ],
     };
     timelineStore.selectTimelineItems(['clip-1']);
-    timelineStore.updateSelectionRange({ startUs: 2_000_000, endUs: 3_000_000 });
+    timelineStore.updateSelectionRange({
+      startUs: timelineUs(2_000_000),
+      endUs: timelineUs(3_000_000),
+    });
     expect(timelineStore.selectedItemIds).toEqual(['clip-1']);
     expect(focusStore.canUseTimelineHotkeys).toBe(true);
 
@@ -1090,7 +1094,10 @@ describe('useEditorHotkeys', () => {
     );
 
     expect(handled).toBe(true);
-    expect(timelineStore.getSelectionRange()).toEqual({ startUs: 1_000_000, endUs: 2_000_000 });
+    expect(timelineStore.getSelectionRange()).toEqual({
+      startUs: timelineUs(1_000_000),
+      endUs: timelineUs(2_000_000),
+    });
   });
 
   it('prioritizes file manager copy when a file manager panel is focused', async () => {

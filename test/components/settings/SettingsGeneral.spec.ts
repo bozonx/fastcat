@@ -3,6 +3,7 @@ import { mountSuspended } from '@nuxt/test-utils/runtime';
 import { reactive, nextTick, ref } from 'vue';
 import SettingsGeneral from '~/components/settings/SettingsGeneral.vue';
 import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
+import { timelineUs } from '../../unit/utils/timeline-time';
 
 const isMobileLayout = ref(false);
 
@@ -30,9 +31,9 @@ describe('SettingsGeneral', () => {
     mockWorkspaceStore.userSettings.deleteWithoutConfirmation = true;
     mockWorkspaceStore.userSettings.experimentalFeatures = true;
     mockWorkspaceStore.userSettings.stopFrames.qualityPercent = 50;
-    mockWorkspaceStore.userSettings.timeline.defaultAudioFadeDurationUs = 2_500_000;
-    mockWorkspaceStore.userSettings.timeline.defaultTransitionDurationUs = 1_000_000;
-    mockWorkspaceStore.userSettings.timeline.defaultStaticClipDurationUs = 1_000_000;
+    mockWorkspaceStore.userSettings.timeline.defaultAudioFadeDurationUs = timelineUs(2_500_000);
+    mockWorkspaceStore.userSettings.timeline.defaultTransitionDurationUs = timelineUs(1_000_000);
+    mockWorkspaceStore.userSettings.timeline.defaultStaticClipDurationUs = timelineUs(1_000_000);
     mockWorkspaceStore.userSettings.projectDefaults.defaultAudioFadeCurve = 'logarithmic';
     mockWorkspaceStore.userSettings.ui.interfaceScale = 20;
     mockWorkspaceStore.userSettings.history.maxEntries = 999;
