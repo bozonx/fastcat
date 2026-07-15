@@ -214,8 +214,9 @@ export function resolveClipFrameRate(clip: VideoFrameCacheClipLike): number | nu
   return null;
 }
 
-// Without a known frame rate, key the cache by exact sampleTime in microseconds:
-// distinct sampleTimeS values never collide. With a known frame rate we map the
+// Without a known frame rate, key the cache by exact sampleTime in canonical timeline
+// ticks (TICKS_PER_SECOND): distinct sampleTimeS values never collide. With a known frame
+// rate we map the
 // time to the SOURCE FRAME displayed at it — `floor(t * fps)` — so the key matches
 // the sample-and-hold frame the sink actually returns for that time. (Rounding to
 // the *nearest* frame instead put the bucket boundary at the half-frame mark, where

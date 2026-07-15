@@ -173,11 +173,11 @@ export type ClipSourceOrientation = 'auto' | '0' | '90' | '180' | '270';
 /**
  * Keyframe animation.
  *
- * Keyframe times are **source-relative**: `tUs` is measured in microseconds
- * from the source media/timeline start. Moving/rippling a clip keeps its
- * animation intact, while trim and speed change which part of the source-time
- * animation is sampled. The mapping from the timeline playhead to source time
- * lives in the render/editor bridge.
+ * Keyframe times are **source-relative**: `tUs` is measured in canonical timeline
+ * ticks (`TICKS_PER_SECOND` per second) from the source media/timeline start.
+ * Moving/rippling a clip keeps its animation intact, while trim and speed change
+ * which part of the source-time animation is sampled. The mapping from the
+ * timeline playhead to source time lives in the render/editor bridge.
  */
 export type KeyframeEasing =
   /** Constant-rate interpolation to the next keyframe. */

@@ -55,7 +55,7 @@ interface PassthroughExportOptions {
 type PayloadClip = Extract<WorkerVideoPayloadItem, { kind: 'clip' }>;
 
 /**
- * Timeline end (µs) of the video payload, computed purely from the payload so
+ * Timeline end (ticks) of the video payload, computed purely from the payload so
  * the passthrough decision can run before (and instead of) the compositor's
  * `loadTimeline`.
  */

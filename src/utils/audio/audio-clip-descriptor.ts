@@ -165,7 +165,7 @@ function descriptorToEnvelopeClip(d: CanonicalAudioClipDescriptor): AudioEnvelop
 }
 
 /**
- * Duration (µs) by which a clip overlaps its neighbour for an *adjacent*
+ * Duration (ticks) by which a clip overlaps its neighbour for an *adjacent*
  * transition (a true crossfade). Non-adjacent transitions (background/dip,
  * transparent) do not overlap, so they contribute no extension.
  */

@@ -102,13 +102,13 @@ export class MediaClipLoader {
         // average frame rate (FPS)" for video tracks. A small packet prefix gives a
         // solid estimate without scanning the file. Without this every clip loaded
         // with frameRate: undefined, which made computeFrameIndex fall back to
-        // exact-µs cache keys — so the frame cache/prewarm NEVER produced a
+        // exact-tick cache keys — so the frame cache/prewarm NEVER produced a
         // cross-timestamp hit and playback paid a cold from-keyframe getSample
         // decode per displayed frame (the low-fps web playback bug).
         try {
           frameRateRaw = (await trackAny.computePacketStats(60)).averagePacketRate;
         } catch {
-          // keep undefined: exact-µs cache keying still works for repeat renders
+          // keep undefined: exact-tick cache keying still works for repeat renders
         }
       }
       const frameRate = Number(frameRateRaw);

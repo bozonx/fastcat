@@ -243,7 +243,8 @@ export function hasKeyframes(track: KeyframeTrack | undefined): track is Keyfram
 }
 
 /**
- * Evaluate a keyframe track at `clipLocalUs` (microseconds from the clip start).
+ * Evaluate a keyframe track at `clipLocalUs` (canonical timeline ticks from the clip
+ * start).
  *
  * Returns `undefined` for an empty track so callers fall back to the clip's
  * static value. Before the first / after the last keyframe the track holds the

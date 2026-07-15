@@ -30,11 +30,11 @@ import {
 
 export interface UseClipKeyframesOptions {
   clip: Ref<TimelineClipItem>;
-  /** Timeline-absolute playhead time (µs); converted to clip-local internally. */
+  /** Timeline-absolute playhead time (ticks); converted to clip-local internally. */
   playheadUs: Ref<number>;
   updateAnimations: (next: ClipAnimations | undefined) => void;
   /**
-   * Move the timeline playhead (absolute µs). Wired by the caller to the
+   * Move the timeline playhead (absolute ticks). Wired by the caller to the
    * timeline store; enables keyframe navigation (jump to prev/next keyframe).
    * Optional — navigation is a no-op when absent.
    */

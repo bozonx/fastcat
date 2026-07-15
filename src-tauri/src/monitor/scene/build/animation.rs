@@ -532,7 +532,10 @@ mod tests {
             "expected {TIMELINE_TICKS_PER_SECOND} ticks, got {got}"
         );
         // Guard against a regression back to the microsecond scale.
-        assert!(got > 1_000_000.0 * 2.0, "sample time must not be microseconds");
+        assert!(
+            got > 1_000_000.0 * 2.0,
+            "sample time must not be microseconds"
+        );
     }
 
     #[test]

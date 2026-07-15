@@ -251,7 +251,7 @@ export function quantizeStartUsToFrames(startUs: number, fps: number): number {
 }
 
 /**
- * The signed distance (µs) from `startUs` to its nearest frame boundary — a
+ * The signed distance (ticks) from `startUs` to its nearest frame boundary — a
  * clip's sub-frame "phase". Zero for frame-aligned starts. Feeding this back as
  * `computeSnappedStartUs`'s `frameOffsetUs` frame-snaps by whole-frame deltas
  * while preserving the phase (so a hand-dialed audio sync survives a move).

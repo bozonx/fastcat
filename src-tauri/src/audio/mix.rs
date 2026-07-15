@@ -1037,11 +1037,21 @@ fn apply_layer_mix(params: ApplyLayerMixParams<'_>) {
         .and_then(ClipAnimations::from_value);
     let has_volume_animation = anims
         .as_ref()
-        .and_then(|a| a.eval("audio.volume", layer.source_start_sec * TIMELINE_TICKS_PER_SECOND))
+        .and_then(|a| {
+            a.eval(
+                "audio.volume",
+                layer.source_start_sec * TIMELINE_TICKS_PER_SECOND,
+            )
+        })
         .is_some();
     let has_pan_animation = anims
         .as_ref()
-        .and_then(|a| a.eval("audio.pan", layer.source_start_sec * TIMELINE_TICKS_PER_SECOND))
+        .and_then(|a| {
+            a.eval(
+                "audio.pan",
+                layer.source_start_sec * TIMELINE_TICKS_PER_SECOND,
+            )
+        })
         .is_some();
     let (static_ll, static_lr, static_rl, static_rr) = if stereo {
         let (ll, lr, rl, rr) = stereo_pan_matrix(layer.audio_balance);

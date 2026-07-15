@@ -59,11 +59,11 @@ mod tests {
             "animations": {
                 "opacity": { "keyframes": [
                     { "tUs": 0, "value": 0.0, "easing": "linear" },
-                    { "tUs": 1000000, "value": 1.0, "easing": "linear" }
+                    { "tUs": 254_016_000_000.0, "value": 1.0, "easing": "linear" }
                 ] },
                 "transform.rotationDeg": { "keyframes": [
                     { "tUs": 0, "value": 0.0, "easing": "linear" },
-                    { "tUs": 1000000, "value": 90.0, "easing": "linear" }
+                    { "tUs": 254_016_000_000.0, "value": 90.0, "easing": "linear" }
                 ] }
             }
         }))
@@ -100,12 +100,12 @@ mod tests {
             "background_color": "#123456",
             "animations": {
                 "opacity": { "keyframes": [
-                    { "tUs": 5000000, "value": 0.0, "easing": "linear" },
-                    { "tUs": 9000000, "value": 1.0, "easing": "linear" }
+                    { "tUs": 1_270_080_000_000.0, "value": 0.0, "easing": "linear" },
+                    { "tUs": 2_286_144_000_000.0, "value": 1.0, "easing": "linear" }
                 ] },
                 "transform.rotationDeg": { "keyframes": [
-                    { "tUs": 5000000, "value": 0.0, "easing": "linear" },
-                    { "tUs": 9000000, "value": 180.0, "easing": "linear" }
+                    { "tUs": 1_270_080_000_000.0, "value": 0.0, "easing": "linear" },
+                    { "tUs": 2_286_144_000_000.0, "value": 180.0, "easing": "linear" }
                 ] }
             }
         }))
@@ -141,7 +141,7 @@ mod tests {
                     "kind": "number",
                     "keyframes": [
                         { "tUs": 0, "value": 8, "easing": "linear" },
-                        { "tUs": 1000000, "value": 64, "easing": "linear" }
+                        { "tUs": 254_016_000_000.0, "value": 64, "easing": "linear" }
                     ]
                 }]
             }

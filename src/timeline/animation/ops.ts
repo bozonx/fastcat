@@ -32,7 +32,7 @@ function isEmptyAnimations(animations: ClipAnimations): boolean {
   return animatedParamPaths(animations).length === 0;
 }
 
-/** Insert or replace the keyframe at `tUs` on `path` (rounds to the nearest µs). */
+/** Insert or replace the keyframe at `tUs` on `path` (rounds to the nearest tick). */
 export function upsertKeyframe(
   animations: ClipAnimations | undefined,
   path: AnimatableParamPath,
