@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { reactive, ref } from 'vue';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
+import { TICKS_PER_SECOND } from '~/utils/time';
 import SelectionRangeProperties from '~/components/properties/SelectionRangeProperties.vue';
 
 vi.stubGlobal('useDevice', () => ({ isMobile: false }));
@@ -32,7 +33,7 @@ const mockTimelineStore = reactive({
   },
   fps: 30,
   timelineFormat: null as { fps: number } | null,
-  getSelectionRange: vi.fn(() => ({ startUs: 1_000_000, endUs: 5_000_000 })),
+  getSelectionRange: vi.fn(() => ({ startUs: TICKS_PER_SECOND, endUs: 5 * TICKS_PER_SECOND })),
   updateSelectionRange: vi.fn(),
   convertSelectionRangeToMarker: vi.fn(),
   rippleTrimSelectionRange: vi.fn(),
@@ -50,7 +51,10 @@ vi.mock('~/stores/selection.store', () => ({ useSelectionStore: () => mockSelect
 describe('SelectionRangeProperties', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockTimelineStore.getSelectionRange.mockReturnValue({ startUs: 1_000_000, endUs: 5_000_000 });
+    mockTimelineStore.getSelectionRange.mockReturnValue({
+      startUs: TICKS_PER_SECOND,
+      endUs: 5 * TICKS_PER_SECOND,
+    });
     mockTimelineStore.fps = 30;
     mockTimelineStore.timelineFormat = null;
   });

@@ -11,6 +11,7 @@ import {
 } from '~/timeline/otio-serializer';
 import { createDefaultProjectSettings } from '~/utils/project-settings';
 import { createDefaultUserSettings, createDefaultWorkspaceSettings } from '~/utils/settings';
+import { TICKS_PER_SECOND } from '~/utils/time';
 import { createDefaultWorkspaceState } from '~/utils/workspace-state';
 
 type TauriGlobal = { __TAURI_INTERNALS__?: unknown };
@@ -43,7 +44,7 @@ describe('workspace/project storage contracts', () => {
       {
         id: 'marker-intro',
         name: 'Intro',
-        timeUs: 1_000_000,
+        timeUs: TICKS_PER_SECOND,
         color: 'blue',
       },
     ];
@@ -108,7 +109,7 @@ describe('workspace/project storage contracts', () => {
       name: 'Main',
       metadata: {
         fastcat: {
-          markers: [expect.objectContaining({ id: 'marker-intro', timeUs: 1_000_000 })],
+          markers: [expect.objectContaining({ id: 'marker-intro', timeUs: TICKS_PER_SECOND })],
         },
       },
     });

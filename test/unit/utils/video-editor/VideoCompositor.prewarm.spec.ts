@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it, vi } from 'vitest';
 
+import { TICKS_PER_SECOND } from '~/utils/time';
 import { VideoCompositor } from '~/utils/video-editor/VideoCompositor';
 
 /**
@@ -11,7 +12,7 @@ import { VideoCompositor } from '~/utils/video-editor/VideoCompositor';
  *     enters the active set while moving forward.
  */
 describe('VideoCompositor decode-ahead prewarm', () => {
-  const S = 1_000_000; // µs per second
+  const S = TICKS_PER_SECOND; // canonical ticks per second
 
   function videoClip(over: Record<string, unknown>) {
     return {

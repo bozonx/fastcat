@@ -24,6 +24,12 @@ function resetGeneralDefaults() {
   // Preserve the user's language choice during a general reset.
   workspaceStore.userSettings.openLastProjectOnStart = DEFAULT_USER_SETTINGS.openLastProjectOnStart;
 
+  // Reset timeline section
+  workspaceStore.userSettings.timeline = { ...DEFAULT_USER_SETTINGS.timeline };
+
+  // Reset project defaults section
+  workspaceStore.userSettings.projectDefaults = { ...DEFAULT_USER_SETTINGS.projectDefaults };
+
   // Reset ui section
   workspaceStore.userSettings.ui = { ...DEFAULT_USER_SETTINGS.ui };
 

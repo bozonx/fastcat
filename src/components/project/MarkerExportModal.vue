@@ -1,5 +1,11 @@
 <script setup lang="ts">
-import { TICKS_PER_SECOND, TICKS_PER_MICROSECOND, formatTimecode, formatHms, formatMsOrHms } from '~/utils/time';
+import {
+  TICKS_PER_SECOND,
+  TICKS_PER_MICROSECOND,
+  formatTimecode,
+  formatHms,
+  formatMsOrHms,
+} from '~/utils/time';
 import { computed, ref, watch } from 'vue';
 import type { TimelineMarker } from '~/timeline/types';
 import { DOCUMENTS_DIR_NAME } from '~/utils/constants';

@@ -335,10 +335,11 @@ describe('FrameSampleOrchestrator', () => {
       setClipSpriteVisible: () => true,
     });
 
+    const expectedSampleS =
+      (timelineUs(2_000_000) + clampToLastReadableSourceUs(timelineUs(1_000_000))) /
+      TICKS_PER_SECOND;
     expect(getVideoSampleForClip).toHaveBeenCalledWith(
-      expect.objectContaining({
-        sampleTimeS: (timelineUs(2_000_000) + clampToLastReadableSourceUs(timelineUs(1_000_000))) / TICKS_PER_SECOND,
-      }),
+      expect.objectContaining({ sampleTimeS: expectedSampleS }),
     );
   });
 

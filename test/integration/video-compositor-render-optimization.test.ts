@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it, vi } from 'vitest';
 
+import { TICKS_PER_SECOND } from '~/utils/time';
 import { VideoCompositor } from '~/utils/video-editor/VideoCompositor';
 
 describe('VideoCompositor render optimization', () => {
@@ -181,28 +182,28 @@ describe('VideoCompositor render optimization', () => {
         sink: {},
         startUs: 0,
         sourceStartUs: 0,
-        sourceRangeDurationUs: 5_000_000,
+        sourceRangeDurationUs: 5 * TICKS_PER_SECOND,
       },
       {
         itemId: 'near',
         clipKind: 'video',
         sink: {},
-        startUs: 2_000_000,
-        sourceStartUs: 500_000,
-        sourceRangeDurationUs: 5_000_000,
+        startUs: 2 * TICKS_PER_SECOND,
+        sourceStartUs: 0.5 * TICKS_PER_SECOND,
+        sourceRangeDurationUs: 5 * TICKS_PER_SECOND,
       },
       {
         itemId: 'far',
         clipKind: 'video',
         sink: {},
-        startUs: 5_000_000,
+        startUs: 5 * TICKS_PER_SECOND,
         sourceStartUs: 0,
-        sourceRangeDurationUs: 5_000_000,
+        sourceRangeDurationUs: 5 * TICKS_PER_SECOND,
       },
     ];
     compositor.getVideoSampleForClip = vi.fn().mockResolvedValue({});
 
-    await compositor.prewarmVideoFrames(0, 2_500_000);
+    await compositor.prewarmVideoFrames(0, 2.5 * TICKS_PER_SECOND);
 
     expect(compositor.getVideoSampleForClip).toHaveBeenCalledTimes(1);
     expect(compositor.getVideoSampleForClip).toHaveBeenCalledWith(

@@ -3,6 +3,7 @@ import { mountSuspended, mockComponent } from '@nuxt/test-utils/runtime';
 import { reactive, computed, ref } from 'vue';
 import TimelineClip from '~/components/timeline/TimelineClip.vue';
 import { timeUsToPx } from '~/utils/timeline/geometry';
+import { timelineUs } from '../../unit/utils/timeline-time';
 
 mockComponent('UContextMenu', {
   template: '<div><slot /></div>',
@@ -80,8 +81,8 @@ const mockWorkspaceStore = reactive({
       defaultAudioFadeCurve: 'linear',
     },
     timeline: {
-      defaultAudioFadeDurationUs: 500000,
-      defaultTransitionDurationUs: 1000000,
+      defaultAudioFadeDurationUs: timelineUs(500000),
+      defaultTransitionDurationUs: timelineUs(1_000_000),
     },
   },
   workspaceState: {
@@ -178,10 +179,10 @@ const baseItem = {
   trackId: 'track-1',
   clipType: 'media',
   source: { path: 'file.mp4' },
-  timelineRange: { startUs: 1000000, durationUs: 5000000 },
-  mediaRange: { startUs: 0, durationUs: 5000000 },
-  sourceRange: { startUs: 0, durationUs: 5000000 },
-  sourceDurationUs: 10000000,
+  timelineRange: { startUs: timelineUs(1_000_000), durationUs: timelineUs(5_000_000) },
+  mediaRange: { startUs: 0, durationUs: timelineUs(5_000_000) },
+  sourceRange: { startUs: 0, durationUs: timelineUs(5_000_000) },
+  sourceDurationUs: timelineUs(10_000_000),
   name: 'Test Clip',
   locked: false,
   disabled: false,
@@ -215,15 +216,15 @@ async function mountClip(props = defaultProps, options: any = {}) {
 
 const clipWithAdjacentOut = {
   ...baseItem,
-  transitionOut: { type: 'dissolve', durationUs: 1_000_000, mode: 'adjacent' },
+  transitionOut: { type: 'dissolve', durationUs: timelineUs(1_000_000), mode: 'adjacent' },
 };
 
 const nextClipWithHeadHandle = {
   ...baseItem,
   id: 'clip-2',
-  timelineRange: { startUs: 6_000_000, durationUs: 5_000_000 },
-  sourceRange: { startUs: 1_000_000, durationUs: 5_000_000 },
-  sourceDurationUs: 10_000_000,
+  timelineRange: { startUs: timelineUs(6_000_000), durationUs: timelineUs(5_000_000) },
+  sourceRange: { startUs: timelineUs(1_000_000), durationUs: timelineUs(5_000_000) },
+  sourceDurationUs: timelineUs(10_000_000),
 };
 
 const trackWithAdjacentOut = {
@@ -233,16 +234,16 @@ const trackWithAdjacentOut = {
 
 const prevClipWithTailHandle = {
   ...baseItem,
-  sourceDurationUs: 6_000_000,
-  timelineRange: { startUs: 1_000_000, durationUs: 5_000_000 },
-  sourceRange: { startUs: 0, durationUs: 5_000_000 },
+  sourceDurationUs: timelineUs(6_000_000),
+  timelineRange: { startUs: timelineUs(1_000_000), durationUs: timelineUs(5_000_000) },
+  sourceRange: { startUs: 0, durationUs: timelineUs(5_000_000) },
 };
 
 const clipWithAdjacentIn = {
   ...baseItem,
   id: 'clip-2',
-  timelineRange: { startUs: 6_000_000, durationUs: 5_000_000 },
-  transitionIn: { type: 'dissolve', durationUs: 1_000_000, mode: 'adjacent' },
+  timelineRange: { startUs: timelineUs(6_000_000), durationUs: timelineUs(5_000_000) },
+  transitionIn: { type: 'dissolve', durationUs: timelineUs(1_000_000), mode: 'adjacent' },
 };
 
 const trackWithAdjacentIn = {
@@ -271,8 +272,8 @@ describe('TimelineClip', () => {
     const style = clipDiv.attributes('style');
     // Position/width are pixel-snapped (Math.round) so the browser doesn't smear
     // edges across two physical pixels at non-integer zoom.
-    const expectedLeft = Math.round(timeUsToPx(1000000, 1));
-    const expectedWidth = Math.round(Math.max(2, timeUsToPx(5000000, 1)));
+    const expectedLeft = Math.round(timeUsToPx(timelineUs(1_000_000), 1));
+    const expectedWidth = Math.round(Math.max(2, timeUsToPx(timelineUs(5_000_000), 1)));
 
     expect(style).toContain(`left: ${expectedLeft}px`);
     expect(style).toContain(`width: ${expectedWidth}px`);
@@ -366,15 +367,15 @@ describe('TimelineClip', () => {
       trackId: 'track-1',
       itemId: 'clip-1',
       edge: 'start',
-      startUs: 1000000,
+      startUs: timelineUs(1_000_000),
     });
 
-    await trims[1].trigger('pointerdown', { button: 0 });
+    await trims[1].trigger('pointerdown');
     expect(component.emitted('startTrimItem')![1][1]).toEqual({
       trackId: 'track-1',
       itemId: 'clip-1',
       edge: 'end',
-      startUs: 1000000,
+      startUs: timelineUs(1_000_000),
     });
   });
 
@@ -393,7 +394,7 @@ describe('TimelineClip', () => {
     expect(trimStart.style.bottom).toBe('0px');
     expect(audioFades.style.top).toBe('20px');
     expect(audioFades.style.bottom).toBe('0px');
-    expect(audioFades.dataset.defaultFadeDurationUs).toBe('500000');
+    expect(audioFades.dataset.defaultFadeDurationUs).toBe(String(timelineUs(500000)));
     expect(audioFades.dataset.defaultFadeCurve).toBe('linear');
   });
 
@@ -402,7 +403,7 @@ describe('TimelineClip', () => {
       ...defaultProps,
       item: {
         ...baseItem,
-        transitionOut: { type: 'dissolve', durationUs: 1_000_000, mode: 'adjacent' },
+        transitionOut: { type: 'dissolve', durationUs: timelineUs(1_000_000), mode: 'adjacent' },
       },
     });
 
@@ -432,7 +433,7 @@ describe('TimelineClip', () => {
     expect(mockTimelineStore.updateClipTransition).toHaveBeenCalledWith('track-1', 'clip-1', {
       transitionIn: {
         type: 'dissolve',
-        durationUs: 1_000_000,
+        durationUs: timelineUs(1_000_000),
         mode: 'transparent',
         curve: 'linear',
       },
@@ -454,7 +455,7 @@ describe('TimelineClip', () => {
       ...defaultProps,
       item: {
         ...baseItem,
-        transitionIn: { type: 'dissolve', durationUs: 1_000_000, mode: 'adjacent' },
+        transitionIn: { type: 'dissolve', durationUs: timelineUs(1_000_000), mode: 'adjacent' },
       },
     });
 
@@ -471,7 +472,7 @@ describe('TimelineClip', () => {
       ...defaultProps,
       item: {
         ...baseItem,
-        timelineRange: { startUs: 1000000, durationUs: 10000000 },
+        timelineRange: { startUs: timelineUs(1_000_000), durationUs: timelineUs(10_000_000) },
       },
     });
     const wideTrims = wideComponent.findAll('.cursor-ew-resize');
@@ -482,7 +483,7 @@ describe('TimelineClip', () => {
       ...defaultProps,
       item: {
         ...baseItem,
-        timelineRange: { startUs: 1000000, durationUs: 4000000 },
+        timelineRange: { startUs: timelineUs(1_000_000), durationUs: timelineUs(4_000_000) },
       },
     });
     const narrowTrims = narrowComponent.findAll('.cursor-ew-resize');
@@ -525,7 +526,7 @@ describe('TimelineClip', () => {
 
     expect(mockTimelineStore.splitClipAtTime).toHaveBeenCalledWith(
       { trackId: 'track-1', itemId: 'clip-1' },
-      3_000_000,
+      timelineUs(3_000_000),
     );
     expect(mockTimelineStore.splitClipAtPlayhead).not.toHaveBeenCalled();
   });
@@ -622,7 +623,7 @@ describe('TimelineClip', () => {
 
     const componentFreeze = await mountClip({
       ...defaultProps,
-      item: { ...baseItem, freezeFrameSourceUs: 500000 },
+      item: { ...baseItem, freezeFrameSourceUs: timelineUs(500_000) },
     });
     const freezeIndicator = componentFreeze.find('.border-dashed.border-blue-500\\/80');
     expect(freezeIndicator.exists()).toBe(true);
@@ -643,7 +644,7 @@ describe('TimelineClip', () => {
       ...defaultProps,
       item: {
         ...baseItem,
-        timelineRange: { startUs: 1012345, durationUs: 5000000 },
+        timelineRange: { startUs: timelineUs(1_012_345), durationUs: timelineUs(5_000_000) },
       },
     });
 
@@ -656,13 +657,13 @@ describe('TimelineClip', () => {
       ...defaultProps,
       item: {
         ...baseItem,
-        sourceRange: { startUs: 2_000_000, durationUs: 5_000_000 },
-        sourceDurationUs: 10_000_000,
+        sourceRange: { startUs: timelineUs(2_000_000), durationUs: timelineUs(5_000_000) },
+        sourceDurationUs: timelineUs(10_000_000),
       },
       slipPreview: {
         itemId: 'clip-1',
         trackId: 'track-1',
-        deltaUs: 2_000_000,
+        deltaUs: timelineUs(2_000_000),
         timecode: '+00-00-02-00',
       },
     });
@@ -682,16 +683,16 @@ describe('TimelineClip', () => {
       ...defaultProps,
       item: {
         ...baseItem,
-        sourceRange: { startUs: 1_000_000, durationUs: 5_000_000 },
-        sourceDurationUs: 10_000_000,
+        sourceRange: { startUs: timelineUs(1_000_000), durationUs: timelineUs(5_000_000) },
+        sourceDurationUs: timelineUs(10_000_000),
       },
       trimPreview: {
         itemId: 'clip-1',
         trackId: 'track-1',
-        startUs: 1_000_000,
-        durationUs: 4_000_000,
+        startUs: timelineUs(1_000_000),
+        durationUs: timelineUs(4_000_000),
         edge: 'start',
-        deltaUs: 1_000_000,
+        deltaUs: timelineUs(1_000_000),
       },
     });
 
@@ -717,16 +718,16 @@ describe('TimelineClip', () => {
       item: {
         ...baseItem,
         isImage: true,
-        sourceRange: { startUs: 0, durationUs: 5_000_000 },
+        sourceRange: { startUs: 0, durationUs: timelineUs(5_000_000) },
         sourceDurationUs: 0,
       },
       trimPreview: {
         itemId: 'clip-1',
         trackId: 'track-1',
-        startUs: 1_000_000,
-        durationUs: 4_000_000,
+        startUs: timelineUs(1_000_000),
+        durationUs: timelineUs(4_000_000),
         edge: 'end',
-        deltaUs: -1_000_000,
+        deltaUs: -timelineUs(1_000_000),
       },
     });
 
@@ -762,10 +763,10 @@ describe('TimelineClip', () => {
         trimPreview: {
           itemId: 'clip-1',
           trackId: 'track-1',
-          startUs: 1_000_000,
-          durationUs: 4_000_000,
+          startUs: timelineUs(1_000_000),
+          durationUs: timelineUs(4_000_000),
           edge: 'start',
-          deltaUs: 1_000_000,
+          deltaUs: timelineUs(1_000_000),
         },
       });
       const fades = component.find('.clip-audio-fades');
@@ -779,7 +780,7 @@ describe('TimelineClip', () => {
         slipPreview: {
           itemId: 'clip-1',
           trackId: 'track-1',
-          deltaUs: 2_000_000,
+          deltaUs: timelineUs(2_000_000),
           timecode: '+00-00-02-00',
         },
       });

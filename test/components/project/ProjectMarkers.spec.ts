@@ -186,7 +186,9 @@ describe('ProjectMarkers.vue', () => {
   });
 
   it('keeps selected colors in sync when marker colors appear and disappear', async () => {
-    mockTimelineStore.markers = [{ id: '1', timeUs: timelineUs(1_000_000), text: 'Red', color: '#d0021b' }];
+    mockTimelineStore.markers = [
+      { id: '1', timeUs: timelineUs(1_000_000), text: 'Red', color: '#d0021b' },
+    ];
 
     const component = await mountWithNuxt(ProjectMarkers);
     expect(component.findAll('tbody tr').length).toBe(1);
@@ -199,7 +201,9 @@ describe('ProjectMarkers.vue', () => {
 
     expect(component.findAll('tbody tr').length).toBe(2);
 
-    mockTimelineStore.markers = [{ id: '2', timeUs: timelineUs(2_000_000), text: 'Blue', color: '#4a90e2' }];
+    mockTimelineStore.markers = [
+      { id: '2', timeUs: timelineUs(2_000_000), text: 'Blue', color: '#4a90e2' },
+    ];
     await nextTick();
 
     const rows = component.findAll('tbody tr');
@@ -234,7 +238,9 @@ describe('ProjectMarkers.vue', () => {
   });
 
   it('passes vertical orientation to MarkerColorFilter', async () => {
-    mockTimelineStore.markers = [{ id: '1', timeUs: timelineUs(1_000_000), text: 'Red', color: '#d0021b' }];
+    mockTimelineStore.markers = [
+      { id: '1', timeUs: timelineUs(1_000_000), text: 'Red', color: '#d0021b' },
+    ];
 
     const component = await mountWithNuxt(ProjectMarkers, {
       props: {
@@ -250,7 +256,12 @@ describe('ProjectMarkers.vue', () => {
 
   it('renders stacked end timecode only when duration is present', async () => {
     mockTimelineStore.markers = [
-      { id: '1', timeUs: timelineUs(1_000_000), durationUs: timelineUs(5_000_000), text: 'Zone Marker' },
+      {
+        id: '1',
+        timeUs: timelineUs(1_000_000),
+        durationUs: timelineUs(5_000_000),
+        text: 'Zone Marker',
+      },
       { id: '2', timeUs: timelineUs(10_000_000), text: 'Point Marker' },
     ];
 

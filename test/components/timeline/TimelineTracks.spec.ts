@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mountSuspended, mockComponent } from '@nuxt/test-utils/runtime';
 import { reactive, nextTick, toRef, ref, inject, computed } from 'vue';
 import { defineStore } from 'pinia';
+import { TICKS_PER_SECOND } from '~/utils/time';
 import TimelineTracks from '~/components/timeline/TimelineTracks.vue';
 import { useUiStore } from '~/stores/ui.store';
 import { useAppClipboard } from '~/composables/useAppClipboard';
@@ -60,7 +61,7 @@ const selectTimelineTrackSpy = vi.fn();
 const useMockTimelineStore = defineStore('timeline-mock', {
   state: () => ({
     timelineZoom: 1,
-    duration: 10000000,
+    duration: 10 * TICKS_PER_SECOND,
     currentTime: 0,
     selectedItemIds: [] as string[],
     selectedTrackId: null as string | null,
@@ -172,15 +173,27 @@ describe('TimelineTracks', () => {
       id: 'track-1',
       kind: 'video',
       items: [
-        { id: 'clip-1', kind: 'clip', timelineRange: { startUs: 0, durationUs: 5000000 } },
-        { id: 'gap-1', kind: 'gap', timelineRange: { startUs: 5000000, durationUs: 2000000 } },
+        {
+          id: 'clip-1',
+          kind: 'clip',
+          timelineRange: { startUs: 0, durationUs: 5 * TICKS_PER_SECOND },
+        },
+        {
+          id: 'gap-1',
+          kind: 'gap',
+          timelineRange: { startUs: 5 * TICKS_PER_SECOND, durationUs: 2 * TICKS_PER_SECOND },
+        },
       ],
     },
     {
       id: 'track-2',
       kind: 'audio',
       items: [
-        { id: 'clip-2', kind: 'clip', timelineRange: { startUs: 1000000, durationUs: 3000000 } },
+        {
+          id: 'clip-2',
+          kind: 'clip',
+          timelineRange: { startUs: TICKS_PER_SECOND, durationUs: 3 * TICKS_PER_SECOND },
+        },
       ],
     },
   ];
@@ -367,17 +380,20 @@ describe('TimelineTracks', () => {
               {
                 id: 'clip-overlap',
                 kind: 'clip',
-                timelineRange: { startUs: 0, durationUs: 80_000_000 },
+                timelineRange: { startUs: 0, durationUs: 80 * TICKS_PER_SECOND },
               },
               {
                 id: 'clip-hidden-left',
                 kind: 'clip',
-                timelineRange: { startUs: 10_000_000, durationUs: 5_000_000 },
+                timelineRange: { startUs: 10 * TICKS_PER_SECOND, durationUs: 5 * TICKS_PER_SECOND },
               },
               {
                 id: 'clip-visible',
                 kind: 'clip',
-                timelineRange: { startUs: 65_000_000, durationUs: 10_000_000 },
+                timelineRange: {
+                  startUs: 65 * TICKS_PER_SECOND,
+                  durationUs: 10 * TICKS_PER_SECOND,
+                },
               },
             ],
           },
@@ -407,17 +423,20 @@ describe('TimelineTracks', () => {
               {
                 id: 'clip-visible',
                 kind: 'clip',
-                timelineRange: { startUs: 65_000_000, durationUs: 10_000_000 },
+                timelineRange: {
+                  startUs: 65 * TICKS_PER_SECOND,
+                  durationUs: 10 * TICKS_PER_SECOND,
+                },
               },
               {
                 id: 'clip-overlap',
                 kind: 'clip',
-                timelineRange: { startUs: 0, durationUs: 80_000_000 },
+                timelineRange: { startUs: 0, durationUs: 80 * TICKS_PER_SECOND },
               },
               {
                 id: 'clip-hidden-left',
                 kind: 'clip',
-                timelineRange: { startUs: 10_000_000, durationUs: 5_000_000 },
+                timelineRange: { startUs: 10 * TICKS_PER_SECOND, durationUs: 5 * TICKS_PER_SECOND },
               },
             ],
           },
@@ -443,7 +462,7 @@ describe('TimelineTracks', () => {
           trackId: 'track-1',
           startUs: 0,
           label: 'Dragging Clip',
-          durationUs: 1000000,
+          durationUs: TICKS_PER_SECOND,
           kind: 'timeline-clip',
         },
       },
@@ -462,13 +481,13 @@ describe('TimelineTracks', () => {
           {
             itemId: 'clip-1',
             trackId: 'track-1',
-            startUs: 500000,
+            startUs: TICKS_PER_SECOND / 2,
             isCollision: false,
           },
           {
             itemId: 'clip-2',
             trackId: 'track-2',
-            startUs: 1500000,
+            startUs: 1.5 * TICKS_PER_SECOND,
             isCollision: false,
           },
         ],
@@ -492,14 +511,14 @@ describe('TimelineTracks', () => {
           {
             itemId: 'clip-1',
             trackId: 'track-1',
-            startUs: 500000,
+            startUs: TICKS_PER_SECOND / 2,
             isCollision: false,
           },
         ],
         slipPreview: {
           itemId: 'clip-1',
           trackId: 'track-1',
-          deltaUs: 500000,
+          deltaUs: TICKS_PER_SECOND / 2,
           timecode: '+00-00-00-15',
         },
       },
@@ -527,7 +546,7 @@ describe('TimelineTracks', () => {
             showWaveform: true,
             showThumbnails: true,
             audioWaveformMode: 'half',
-            timelineRange: { startUs: 0, durationUs: 5_000_000 },
+            timelineRange: { startUs: 0, durationUs: 5 * TICKS_PER_SECOND },
           },
         ],
       },
@@ -572,7 +591,7 @@ describe('TimelineTracks', () => {
           {
             id: 'clip-1',
             kind: 'clip',
-            timelineRange: { startUs: 0, durationUs: 5_000_000 },
+            timelineRange: { startUs: 0, durationUs: 5 * TICKS_PER_SECOND },
           },
         ],
       },
@@ -593,7 +612,7 @@ describe('TimelineTracks', () => {
           items: [
             {
               ...tracks[0]!.items[0],
-              timelineRange: { startUs: 2_000_000, durationUs: 3_000_000 },
+              timelineRange: { startUs: 2 * TICKS_PER_SECOND, durationUs: 3 * TICKS_PER_SECOND },
             },
           ],
         },
@@ -601,8 +620,8 @@ describe('TimelineTracks', () => {
     });
 
     const clip = component.find('.mock-timeline-clip');
-    expect(clip.attributes('data-start-us')).toBe('2000000');
-    expect(clip.attributes('data-duration-us')).toBe('3000000');
+    expect(clip.attributes('data-start-us')).toBe(String(2 * TICKS_PER_SECOND));
+    expect(clip.attributes('data-duration-us')).toBe(String(3 * TICKS_PER_SECOND));
   });
 
   it('does not clear selection on container pointerdown when a drawer is open', async () => {
@@ -639,7 +658,7 @@ describe('TimelineTracks', () => {
           {
             id: 'gap-1',
             kind: 'gap',
-            timelineRange: { startUs: 1_000_000, durationUs: 2_000_000 },
+            timelineRange: { startUs: TICKS_PER_SECOND, durationUs: 2 * TICKS_PER_SECOND },
           },
         ],
       },
@@ -660,7 +679,7 @@ describe('TimelineTracks', () => {
           items: [
             {
               ...tracks[0]!.items[0],
-              timelineRange: { startUs: 2_000_000, durationUs: 4_000_000 },
+              timelineRange: { startUs: 2 * TICKS_PER_SECOND, durationUs: 4 * TICKS_PER_SECOND },
             },
           ],
         },
@@ -668,8 +687,8 @@ describe('TimelineTracks', () => {
     });
 
     const gap = component.find('.mock-timeline-gap');
-    expect(gap.attributes('data-start-us')).toBe('2000000');
-    expect(gap.attributes('data-duration-us')).toBe('4000000');
+    expect(gap.attributes('data-start-us')).toBe(String(2 * TICKS_PER_SECOND));
+    expect(gap.attributes('data-duration-us')).toBe(String(4 * TICKS_PER_SECOND));
   });
 
   it('updates clip state props such as locked without waiting for a later track rerender', async () => {
@@ -684,7 +703,7 @@ describe('TimelineTracks', () => {
             locked: false,
             disabled: false,
             audioMuted: false,
-            timelineRange: { startUs: 0, durationUs: 5_000_000 },
+            timelineRange: { startUs: 0, durationUs: 5 * TICKS_PER_SECOND },
           },
         ],
       },
@@ -732,7 +751,7 @@ describe('TimelineTracks', () => {
               id: 'clip-1',
               kind: 'clip',
               clipType: 'media',
-              timelineRange: { startUs: 0, durationUs: 5000000 },
+              timelineRange: { startUs: 0, durationUs: 5 * TICKS_PER_SECOND },
             },
           ],
         },
@@ -744,7 +763,7 @@ describe('TimelineTracks', () => {
               id: 'clip-2',
               kind: 'clip',
               clipType: 'media',
-              timelineRange: { startUs: 0, durationUs: 5000000 },
+              timelineRange: { startUs: 0, durationUs: 5 * TICKS_PER_SECOND },
             },
           ],
         },

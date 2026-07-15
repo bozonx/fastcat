@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { reactive } from 'vue';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
+import { TICKS_PER_SECOND } from '~/utils/time';
 import MarkerProperties from '~/components/properties/MarkerProperties.vue';
 
 vi.mock('vue-i18n', () => ({
@@ -69,8 +70,7 @@ vi.mock('~/components/ui/editor/UiTimecode.vue', () => ({
     name: 'UiTimecode',
     props: ['modelValue', 'min'],
     emits: ['update:modelValue'],
-    template:
-      '<button class="timecode" :data-value="modelValue" :data-min="min" @click="$emit(\'update:modelValue\', Number(modelValue) + 1000000)">timecode</button>',
+    template: `<button class="timecode" :data-value="modelValue" :data-min="min" @click="$emit('update:modelValue', Number(modelValue) + ${TICKS_PER_SECOND})">timecode</button>`,
   },
 }));
 
@@ -86,8 +86,14 @@ const timelineStore = reactive({
   fps: 30,
   timelineFormat: null as { fps: number } | null,
   markers: [
-    { id: 'point', timeUs: 1_000_000, text: 'Point', color: '#eab308' },
-    { id: 'zone', timeUs: 2_000_000, durationUs: 4_000_000, text: 'Zone', color: '#4a90e2' },
+    { id: 'point', timeUs: TICKS_PER_SECOND, text: 'Point', color: '#eab308' },
+    {
+      id: 'zone',
+      timeUs: 2 * TICKS_PER_SECOND,
+      durationUs: 4 * TICKS_PER_SECOND,
+      text: 'Zone',
+      color: '#4a90e2',
+    },
   ],
   updateMarker: vi.fn(),
   removeMarker: vi.fn(),
@@ -105,8 +111,14 @@ describe('MarkerProperties', () => {
     timelineStore.fps = 30;
     timelineStore.timelineFormat = null;
     timelineStore.markers = [
-      { id: 'point', timeUs: 1_000_000, text: 'Point', color: '#eab308' },
-      { id: 'zone', timeUs: 2_000_000, durationUs: 4_000_000, text: 'Zone', color: '#4a90e2' },
+      { id: 'point', timeUs: TICKS_PER_SECOND, text: 'Point', color: '#eab308' },
+      {
+        id: 'zone',
+        timeUs: 2 * TICKS_PER_SECOND,
+        durationUs: 4 * TICKS_PER_SECOND,
+        text: 'Zone',
+        color: '#4a90e2',
+      },
     ];
   });
 
@@ -137,7 +149,9 @@ describe('MarkerProperties', () => {
 
     await wrapper.find('.timecode').trigger('click');
 
-    expect(timelineStore.updateMarker).toHaveBeenCalledWith('point', { timeUs: 2_000_000 });
+    expect(timelineStore.updateMarker).toHaveBeenCalledWith('point', {
+      timeUs: 2 * TICKS_PER_SECOND,
+    });
   });
 
   it('keeps zone end fixed when the start time changes', async () => {
@@ -148,8 +162,8 @@ describe('MarkerProperties', () => {
     await wrapper.findAll('.timecode')[0]!.trigger('click');
 
     expect(timelineStore.updateMarker).toHaveBeenCalledWith('zone', {
-      timeUs: 3_000_000,
-      durationUs: 3_000_000,
+      timeUs: 3 * TICKS_PER_SECOND,
+      durationUs: 3 * TICKS_PER_SECOND,
     });
   });
 
@@ -161,7 +175,7 @@ describe('MarkerProperties', () => {
     await wrapper.findAll('.timecode')[1]!.trigger('click');
 
     expect(timelineStore.updateMarker).toHaveBeenCalledWith('zone', {
-      durationUs: 5_000_000,
+      durationUs: 5 * TICKS_PER_SECOND,
     });
   });
 

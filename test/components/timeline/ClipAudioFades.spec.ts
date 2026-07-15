@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
 import { TICKS_PER_SECOND } from '~/utils/time';
 import ClipAudioFades from '~/components/timeline/ClipAudioFades.vue';
+import { timelineUs } from '../../unit/utils/timeline-time';
 
 describe('ClipAudioFades', () => {
   const baseItem = {
@@ -398,8 +399,14 @@ describe('ClipAudioFades', () => {
           clipWidthPx: 400,
           scrollLeft: 0,
           viewportWidth: 1000,
-          item: { ...baseItem, timelineRange: { startUs: 100_000, durationUs: 4_000_000 } },
-          clip: { ...baseItem, timelineRange: { startUs: 100_000, durationUs: 4_000_000 } },
+          item: {
+            ...baseItem,
+            timelineRange: { startUs: timelineUs(100_000), durationUs: timelineUs(4_000_000) },
+          },
+          clip: {
+            ...baseItem,
+            timelineRange: { startUs: timelineUs(100_000), durationUs: timelineUs(4_000_000) },
+          },
         },
       });
 
@@ -417,8 +424,8 @@ describe('ClipAudioFades', () => {
           scrollLeft: 250,
           viewportWidth: 500,
           zoom: 50,
-          item: { ...baseItem, timelineRange: { startUs: 0, durationUs: 4_000_000 } },
-          clip: { ...baseItem, timelineRange: { startUs: 0, durationUs: 4_000_000 } },
+          item: { ...baseItem, timelineRange: { startUs: 0, durationUs: timelineUs(4_000_000) } },
+          clip: { ...baseItem, timelineRange: { startUs: 0, durationUs: timelineUs(4_000_000) } },
         },
       });
 

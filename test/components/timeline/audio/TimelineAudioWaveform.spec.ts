@@ -4,6 +4,7 @@ import { reactive, ref, nextTick } from 'vue';
 import TimelineAudioWaveform from '~/components/timeline/audio/TimelineAudioWaveform.vue';
 import { __resetWaveformSchedulerForTests } from '~/utils/audio/waveform-render-scheduler';
 import { timeUsToPx } from '~/utils/timeline/geometry';
+import { TICKS_PER_MICROSECOND, TICKS_PER_SECOND } from '~/utils/time';
 import type { TimelineClipItem } from '~/timeline/types';
 
 const mockMediaStore = reactive({
@@ -66,8 +67,8 @@ const baseItem: TimelineClipItem = {
   trackId: 'track-1',
   clipType: 'media' as const,
   name: 'Test Clip',
-  timelineRange: { startUs: 0, durationUs: 5_000_000 },
-  sourceRange: { startUs: 0, durationUs: 5_000_000 },
+  timelineRange: { startUs: 0, durationUs: 5 * TICKS_PER_SECOND },
+  sourceRange: { startUs: 0, durationUs: 5 * TICKS_PER_SECOND },
   sourceDurationUs: 0,
   source: { path: 'media.mp4' },
   speed: 1,
@@ -128,29 +129,29 @@ describe('TimelineAudioWaveform.vue', () => {
     it('uses explicit sourceDurationUs when available', async () => {
       const item = {
         ...baseItem,
-        sourceDurationUs: 10_000_000,
+        sourceDurationUs: 10 * TICKS_PER_SECOND,
       };
       const wrapper = await mountComponent({ item });
 
-      expect((wrapper.vm as any).effectiveSourceDurationUs).toBe(10_000_000);
+      expect((wrapper.vm as any).effectiveSourceDurationUs).toBe(10 * TICKS_PER_SECOND);
     });
 
     it('does not let sourceDurationUs truncate a later trimmed source range', async () => {
       const item = {
         ...baseItem,
-        sourceDurationUs: 3_000_000,
-        sourceRange: { startUs: 8_000_000, durationUs: 2_000_000 },
+        sourceDurationUs: 3 * TICKS_PER_SECOND,
+        sourceRange: { startUs: 8 * TICKS_PER_SECOND, durationUs: 2 * TICKS_PER_SECOND },
       };
       const wrapper = await mountComponent({ item });
 
-      expect((wrapper.vm as any).effectiveSourceDurationUs).toBe(10_000_000);
+      expect((wrapper.vm as any).effectiveSourceDurationUs).toBe(10 * TICKS_PER_SECOND);
     });
 
     it('resolves metadata by direct path', async () => {
       mockMediaStore.mediaMetadata['media.mp4'] = { duration: 12 };
       const wrapper = await mountComponent();
 
-      expect((wrapper.vm as any).effectiveSourceDurationUs).toBe(12_000_000);
+      expect((wrapper.vm as any).effectiveSourceDurationUs).toBe(12 * TICKS_PER_SECOND);
     });
 
     it('resolves metadata when path has external: prefix', async () => {
@@ -161,25 +162,25 @@ describe('TimelineAudioWaveform.vue', () => {
       };
       const wrapper = await mountComponent({ item });
 
-      expect((wrapper.vm as any).effectiveSourceDurationUs).toBe(15_000_000);
+      expect((wrapper.vm as any).effectiveSourceDurationUs).toBe(15 * TICKS_PER_SECOND);
     });
 
     it('resolves metadata by unprefixed path when store key is prefixed', async () => {
       mockMediaStore.mediaMetadata['external:media.mp4'] = { duration: 8 };
       const wrapper = await mountComponent();
 
-      expect((wrapper.vm as any).effectiveSourceDurationUs).toBe(8_000_000);
+      expect((wrapper.vm as any).effectiveSourceDurationUs).toBe(8 * TICKS_PER_SECOND);
     });
 
     it('falls back to sourceRange end when no metadata and no explicit duration', async () => {
       const item = {
         ...baseItem,
         sourceDurationUs: 0,
-        sourceRange: { startUs: 1_000_000, durationUs: 4_000_000 },
+        sourceRange: { startUs: TICKS_PER_SECOND, durationUs: 4 * TICKS_PER_SECOND },
       };
       const wrapper = await mountComponent({ item });
 
-      expect((wrapper.vm as any).effectiveSourceDurationUs).toBe(5_000_000);
+      expect((wrapper.vm as any).effectiveSourceDurationUs).toBe(5 * TICKS_PER_SECOND);
     });
   });
 
@@ -447,9 +448,9 @@ describe('TimelineAudioWaveform.vue', () => {
       // backing store is actually re-rasterized.
       const item = {
         ...baseItem,
-        timelineRange: { startUs: 0, durationUs: 2_000_000_000 },
-        sourceRange: { startUs: 0, durationUs: 2_000_000_000 },
-        sourceDurationUs: 2_000_000_000,
+        timelineRange: { startUs: 0, durationUs: 2000 * TICKS_PER_SECOND },
+        sourceRange: { startUs: 0, durationUs: 2000 * TICKS_PER_SECOND },
+        sourceDurationUs: 2000 * TICKS_PER_SECOND,
       };
       mockMediaStore.mediaMetadata['media.mp4'] = {
         duration: 2000,
@@ -497,9 +498,9 @@ describe('TimelineAudioWaveform.vue', () => {
 
       const item = {
         ...baseItem,
-        timelineRange: { startUs: 58_000_000, durationUs: 16_000_000 },
-        sourceRange: { startUs: 40_000_000, durationUs: 16_000_000 },
-        sourceDurationUs: 120_000_000,
+        timelineRange: { startUs: 58 * TICKS_PER_SECOND, durationUs: 16 * TICKS_PER_SECOND },
+        sourceRange: { startUs: 40 * TICKS_PER_SECOND, durationUs: 16 * TICKS_PER_SECOND },
+        sourceDurationUs: 120 * TICKS_PER_SECOND,
       };
       mockMediaStore.mediaMetadata['media.mp4'] = {
         duration: 120,
@@ -577,9 +578,9 @@ describe('TimelineAudioWaveform.vue', () => {
         const item: TimelineClipItem = {
           ...baseItem,
           speed,
-          timelineRange: { startUs: 58_000_000, durationUs: 16_000_000 },
-          sourceRange: { startUs: 4_000_000_000, durationUs: 16_000_000 },
-          sourceDurationUs: 10_800_000_000,
+          timelineRange: { startUs: 58 * TICKS_PER_SECOND, durationUs: 16 * TICKS_PER_SECOND },
+          sourceRange: { startUs: 4 * TICKS_PER_SECOND, durationUs: 16 * TICKS_PER_SECOND },
+          sourceDurationUs: 10_800 * TICKS_PER_SECOND,
         };
         mockMediaStore.mediaMetadata['media.mp4'] = {
           duration: 10_800,
@@ -627,9 +628,15 @@ describe('TimelineAudioWaveform.vue', () => {
 
       const item: TimelineClipItem = {
         ...baseItem,
-        timelineRange: { startUs: 440_000, durationUs: 243_680_000 },
-        sourceRange: { startUs: 480_000, durationUs: 243_680_000 },
-        sourceDurationUs: 1_160_753_167,
+        timelineRange: {
+          startUs: 440_000 * TICKS_PER_MICROSECOND,
+          durationUs: 243_680_000 * TICKS_PER_MICROSECOND,
+        },
+        sourceRange: {
+          startUs: 480_000 * TICKS_PER_MICROSECOND,
+          durationUs: 243_680_000 * TICKS_PER_MICROSECOND,
+        },
+        sourceDurationUs: 1_160_753_167 * TICKS_PER_MICROSECOND,
       };
       mockMediaStore.mediaMetadata['media.mp4'] = {
         duration: 1160.753167,
@@ -637,7 +644,8 @@ describe('TimelineAudioWaveform.vue', () => {
       };
       mockTimelineStore.timelineViewportWidth = 1180;
       mockTimelineStore.timelineZoom = 102;
-      mockTimelineStore.timelineScrollLeftPx = timeUsToPx(46_480_000, 102) - 590;
+      mockTimelineStore.timelineScrollLeftPx =
+        timeUsToPx(46_480_000 * TICKS_PER_MICROSECOND, 102) - 590;
 
       const wrapper = await mountComponent({ item });
       await nextTick();

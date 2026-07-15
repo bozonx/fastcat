@@ -2,6 +2,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { useTimelineStore } from '~/stores/timeline.store';
+import { TICKS_PER_SECOND } from '~/utils/time';
+import { timelineUs } from '../utils/timeline-time';
 import { TimelineBuilder } from '../utils/timeline-builder';
 
 // Mock dependencies if needed
@@ -43,7 +45,7 @@ describe('TimelineStore Copy/Paste', () => {
     expect(copiedItems[0].clip.opacity).toBe(0.5);
 
     // Paste at 10s on the same track
-    store.currentTime = 10_000_000;
+    store.currentTime = 10 * TICKS_PER_SECOND;
     const pastedItems = await store.pasteClips(copiedItems, {
       targetTrackId: 'v1',
     });
@@ -58,7 +60,7 @@ describe('TimelineStore Copy/Paste', () => {
     ) as any;
 
     expect(pastedClip).toBeDefined();
-    expect(pastedClip.timelineRange.startUs).toBe(10_000_000);
+    expect(pastedClip.timelineRange.startUs).toBe(10 * TICKS_PER_SECOND);
     expect(pastedClip.opacity).toBe(0.5);
     expect(pastedClip.disabled).toBe(true);
     expect(pastedClip.source.path).toBe('/dummy.mp4');
@@ -79,7 +81,7 @@ describe('TimelineStore Copy/Paste', () => {
     expect(copiedItems).toHaveLength(1);
 
     // Paste at a frame-aligned playhead on the same audio track.
-    store.currentTime = 10_000_000;
+    store.currentTime = 10 * TICKS_PER_SECOND;
     const pastedItems = await store.pasteClips(copiedItems, { targetTrackId: 'a1' });
     expect(pastedItems).toHaveLength(1);
 
@@ -90,7 +92,7 @@ describe('TimelineStore Copy/Paste', () => {
 
     expect(pastedClip).toBeDefined();
     // The sub-frame duration survives — the copy is NOT snapped onto the grid.
-    expect(pastedClip.timelineRange.durationUs).toBe(freeDurationUs);
+    expect(pastedClip.timelineRange.durationUs).toBe(timelineUs(freeDurationUs));
   });
 
   it('cuts clips from timeline', () => {
@@ -122,7 +124,7 @@ describe('TimelineStore Copy/Paste', () => {
     store.selectedItemIds = ['clip1'];
     const copiedItems = store.copySelectedClips();
 
-    store.currentTime = 2_000_000;
+    store.currentTime = 2 * TICKS_PER_SECOND;
     const [pasted] = await store.pasteClips(copiedItems);
 
     expect(pasted?.trackId).toBe('v2');
@@ -147,7 +149,7 @@ describe('TimelineStore Copy/Paste', () => {
 
     expect(store.selectedItemIds).toEqual([]);
 
-    store.currentTime = 2_000_000;
+    store.currentTime = 2 * TICKS_PER_SECOND;
     const [pasted] = await store.pasteClips(cutItems);
 
     expect(pasted?.trackId).toBe('v2');
@@ -181,7 +183,7 @@ describe('TimelineStore Copy/Paste', () => {
     store.selectedItemIds = [];
 
     // Paste at 5s
-    store.currentTime = 5_000_000;
+    store.currentTime = 5 * TICKS_PER_SECOND;
     const pastedItems = await store.pasteClips(copiedItems, {
       targetTrackId: 'v3',
     });
@@ -203,12 +205,12 @@ describe('TimelineStore Copy/Paste', () => {
 
     expect(track3.items.some((it: any) => it.id === pasted1.itemId)).toBe(true);
     expect(track3.items.find((it: any) => it.id === pasted1.itemId)!.timelineRange.startUs).toBe(
-      5_000_000,
+      5 * TICKS_PER_SECOND,
     );
 
     expect(track4.items.some((it: any) => it.id === pasted2.itemId)).toBe(true);
     expect(track4.items.find((it: any) => it.id === pasted2.itemId)!.timelineRange.startUs).toBe(
-      5_000_000,
+      5 * TICKS_PER_SECOND,
     );
   });
 
@@ -232,7 +234,7 @@ describe('TimelineStore Copy/Paste', () => {
 
     const pastedItems = await store.pasteClips(copiedItems, {
       targetTrackId: 'v1',
-      insertStartUs: 5_000_000,
+      insertStartUs: 5 * TICKS_PER_SECOND,
     });
 
     const pastedVideo = store.timelineDoc.tracks
@@ -271,7 +273,7 @@ describe('TimelineStore Copy/Paste', () => {
     const copiedItems = store.copySelectedClips();
     const [pasted] = await store.pasteClips(copiedItems, {
       targetTrackId: 'v1',
-      insertStartUs: 5_000_000,
+      insertStartUs: 5 * TICKS_PER_SECOND,
     });
 
     const pastedClip = store.timelineDoc.tracks[0].items.find(
@@ -301,7 +303,7 @@ describe('TimelineStore Copy/Paste', () => {
     const copiedItems = store.copySelectedClips();
     const [pasted] = await store.pasteClips(copiedItems, {
       targetTrackId: 'v2',
-      insertStartUs: 5_000_000,
+      insertStartUs: 5 * TICKS_PER_SECOND,
     });
 
     expect(pasted?.trackId).toBe('a1');
@@ -332,7 +334,7 @@ describe('TimelineStore Copy/Paste', () => {
     expect(copiedItems).toHaveLength(1);
     expect(copiedItems[0].clip.id).toBe('textClip');
 
-    store.currentTime = 10_000_000;
+    store.currentTime = 10 * TICKS_PER_SECOND;
     const [pasted] = await store.pasteClips(copiedItems, {
       targetTrackId: 'v1',
     });
@@ -343,7 +345,7 @@ describe('TimelineStore Copy/Paste', () => {
       (item: any) => item.id === pasted?.itemId,
     );
     expect(pastedClip).toBeDefined();
-    expect(pastedClip.timelineRange.startUs).toBe(10_000_000);
+    expect(pastedClip.timelineRange.startUs).toBe(10 * TICKS_PER_SECOND);
     expect(pastedClip.opacity).toBe(0.8);
     expect(pastedClip.blendMode).toBe('multiply');
     expect(pastedClip.text).toBe('Hello World');
