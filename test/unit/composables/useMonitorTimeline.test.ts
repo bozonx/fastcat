@@ -5,6 +5,7 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import { mount } from '@vue/test-utils';
 import { defineComponent, h } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
+import { TICKS_PER_MICROSECOND } from '~/utils/time';
 
 describe('useMonitorTimeline', () => {
   let pinia: any;
@@ -630,10 +631,10 @@ describe('useMonitorTimeline', () => {
                 kind: 'clip',
                 clipType: 'media',
                 source: { path: 'audio1.mp3' },
-                audioFadeInUs: 100_000,
+                audioFadeInUs: 100_000 * TICKS_PER_MICROSECOND,
                 audioFadeInCurve: 'linear',
-                timelineRange: { startUs: 0, durationUs: 1_000_000 },
-                sourceRange: { startUs: 0, durationUs: 1_000_000 },
+                timelineRange: { startUs: 0, durationUs: 1_000_000 * TICKS_PER_MICROSECOND },
+                sourceRange: { startUs: 0, durationUs: 1_000_000 * TICKS_PER_MICROSECOND },
               },
             ],
           },
@@ -647,7 +648,7 @@ describe('useMonitorTimeline', () => {
       const afterCurve = res.audioClipLayoutSignature.value;
       timelineStore.timelineDoc.tracks[0].items[0].transitionIn = {
         type: 'dissolve',
-        durationUs: 100_000,
+        durationUs: 100_000 * TICKS_PER_MICROSECOND,
         mode: 'adjacent',
       };
       expect(res.audioClipLayoutSignature.value).not.toBe(afterCurve);

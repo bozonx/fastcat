@@ -4,6 +4,7 @@ import { timelineUs } from '../utils/timeline-time';
 import { applyTimelineCommand } from '~/timeline/commands';
 import type { TimelineDocument, TimelineTrack, TimelineClipItem } from '~/timeline/types';
 import { isClipFrameAligned } from '~/utils/timeline/clip-capabilities';
+import { TICKS_PER_SECOND } from '~/utils/time';
 
 // 30fps: one frame is TICKS_PER_SECOND/30 ≈ 8_467_200 ticks, so these tick values
 // sit deliberately *between* frame boundaries — the "free" (sub-frame) phase a
@@ -227,7 +228,7 @@ describe('free (sub-frame) audio clip phase preservation', () => {
       expect(clip.timelineRange.startUs).toBe(FREE_START_US);
       // The clip stays free, and the end moved by a whole number of frames.
       expect(isClipFrameAligned(clip, FPS)).toBe(false);
-      const durationDeltaFrames = ((clip.timelineRange.durationUs - FREE_DURATION_US) * FPS) / 1e6;
+      const durationDeltaFrames = ((clip.timelineRange.durationUs - FREE_DURATION_US) * FPS) / TICKS_PER_SECOND;
       expect(Math.abs(durationDeltaFrames - Math.round(durationDeltaFrames))).toBeLessThan(0.001);
     });
 

@@ -221,7 +221,7 @@ describe('timeline frame media processors', () => {
 
     await processor.extractTimelineFrameBlob({
       timelineDoc,
-      timeUs: 1_000_000,
+      timeUs: timelineUs(1_000_000),
       maxWidth: 320,
       maxHeight: 320,
       quality: 0.6,
