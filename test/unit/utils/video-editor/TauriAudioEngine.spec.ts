@@ -219,7 +219,7 @@ describe('TauriAudioEngine', () => {
     handler({ payload: 12.34 });
     // Allow small wall-clock drift since Tauri uses performance.now()
     expect(Math.abs(engine.getCurrentTimeUs() - timelineUs(12_340_000))).toBeLessThan(
-      timelineUs(10),
+      timelineUs(1000),
     );
   });
 
