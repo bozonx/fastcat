@@ -5,11 +5,13 @@
 //! MUST match the TS core exactly — it is pinned by the shared parity fixture
 //! (`shared/parity/keyframe-interp.cases.json`). Keep it pure.
 //!
-//! Keyframe times are source-relative microseconds. The timeline playhead is
-//! mapped through layer trim/speed before sampling, without the decode end-frame
-//! guard used for video reads. Animated values are in the same design-space
-//! units as the web `ClipTransform` (position in 1920×1080 design px, scale as
-//! a factor, rotation in degrees); this module converts position to scene-space
+//! Keyframe times are source-relative timeline ticks (see `TIMELINE_TICKS_PER_SECOND`,
+//! the Premiere-compatible timebase mirrored from the web `TICKS_PER_SECOND`). The
+//! timeline playhead is mapped through layer trim/speed before sampling, without
+//! the decode end-frame guard used for video reads. Animated values are in the
+//! same design-space units as the web `ClipTransform` (position in 1920×1080
+//! design px, scale as a factor, rotation in degrees); this module converts
+//! position to scene-space
 //! the same way the TS DTO builder (`buildNativeTransform`) does.
 
 use serde::Deserialize;
@@ -22,6 +24,11 @@ use crate::monitor::scene::{SceneLayer, SceneLayerTransform};
 /// Transform design base — must match `TRANSFORM_DESIGN_BASE` on the web side.
 const DESIGN_BASE_W: f64 = 1920.0;
 const DESIGN_BASE_H: f64 = 1080.0;
+
+/// Canonical timeline timebase in ticks per second. MUST match the web
+/// `TICKS_PER_SECOND` (`src/utils/time/ticks.ts`): keyframe times (`tUs`) and the
+/// derived per-frame sample time are expressed in these ticks, not microseconds.
+pub const TIMELINE_TICKS_PER_SECOND: f64 = 254_016_000_000.0;
 
 #[derive(Debug, Clone, Copy, Deserialize, Default, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
@@ -63,19 +70,21 @@ impl ClipAnimations {
         Some(Self { tracks })
     }
 
-    pub fn eval(&self, path: &str, local_us: f64) -> Option<f64> {
-        eval_track_at(self.tracks.get(path)?, local_us)
+    pub fn eval(&self, path: &str, at_ticks: f64) -> Option<f64> {
+        eval_track_at(self.tracks.get(path)?, at_ticks)
     }
 }
 
-/// Evaluate a keyframe track at `local_us`. Returns `None` for an empty track.
-/// Holds boundary values (no extrapolation); mirrors the web `evalTrackAt`.
-pub fn eval_track_at(track: &KeyframeTrack, local_us: f64) -> Option<f64> {
+/// Evaluate a keyframe track at `at_ticks` (source-relative timeline ticks).
+/// Returns `None` for an empty track. Holds boundary values (no extrapolation);
+/// mirrors the web `evalTrackAt`. The interpolation itself is unit-agnostic, so
+/// the shared parity fixture may use small abstract time values.
+pub fn eval_track_at(track: &KeyframeTrack, at_ticks: f64) -> Option<f64> {
     let kfs = &track.keyframes;
     if kfs.is_empty() {
         return None;
     }
-    let t = if local_us.is_finite() { local_us } else { 0.0 };
+    let t = if at_ticks.is_finite() { at_ticks } else { 0.0 };
 
     let first = &kfs[0];
     let last = &kfs[kfs.len() - 1];
@@ -148,10 +157,10 @@ pub struct ClipBakedEffects {
     pub fields: Vec<BakedEffectField>,
 }
 
-/// Patch the base specs at `animation_t_us`, overwriting each baked field with
+/// Patch the base specs at `animation_t_ticks`, overwriting each baked field with
 /// its sampled value. Pure JSON in/out; mirrors the web `patchBakedEffectSpecs`
 /// and is pinned by the shared parity fixture.
-pub fn patch_baked_specs(baked: &ClipBakedEffects, animation_t_us: f64) -> Vec<Value> {
+pub fn patch_baked_specs(baked: &ClipBakedEffects, animation_t_ticks: f64) -> Vec<Value> {
     let mut specs = baked.base_specs.clone();
     for field in &baked.fields {
         if field.spec_index >= specs.len() {
@@ -160,7 +169,7 @@ pub fn patch_baked_specs(baked: &ClipBakedEffects, animation_t_us: f64) -> Vec<V
         let track = KeyframeTrack {
             keyframes: field.keyframes.clone(),
         };
-        let Some(value) = eval_track_at(&track, animation_t_us) else {
+        let Some(value) = eval_track_at(&track, animation_t_ticks) else {
             continue;
         };
         if let Some(obj) = specs[field.spec_index].as_object_mut() {
@@ -174,15 +183,18 @@ pub fn patch_baked_specs(baked: &ClipBakedEffects, animation_t_us: f64) -> Vec<V
     specs
 }
 
-/// Resolve a layer's effect specs at `animation_t_us` (source-relative µs) from
-/// its baked effect-param tracks. Returns `None` when the layer has no baked
+/// Resolve a layer's effect specs at `animation_t_ticks` (source-relative ticks)
+/// from its baked effect-param tracks. Returns `None` when the layer has no baked
 /// effects (callers then use the static `sl.effects`).
-pub fn resolve_baked_effect_specs(sl: &SceneLayer, animation_t_us: f64) -> Option<Vec<EffectSpec>> {
+pub fn resolve_baked_effect_specs(
+    sl: &SceneLayer,
+    animation_t_ticks: f64,
+) -> Option<Vec<EffectSpec>> {
     let baked: ClipBakedEffects =
         serde_json::from_value(sl.baked_effects.as_ref()?.clone()).ok()?;
     // Re-type the patched JSON specs, dropping any that no longer deserialize.
     Some(
-        patch_baked_specs(&baked, animation_t_us)
+        patch_baked_specs(&baked, animation_t_ticks)
             .into_iter()
             .filter_map(|v| serde_json::from_value(v).ok())
             .collect(),
@@ -227,9 +239,10 @@ fn normalize_animation_speed(speed: f64) -> f64 {
     }
 }
 
-/// Convert timeline seconds to the source-relative microseconds used by
-/// keyframes. Mirrors `resolveClipAnimationTimeUs` in the TS evaluator.
-pub fn resolve_layer_animation_time_us(sl: &SceneLayer, time_sec: f64) -> f64 {
+/// Convert timeline seconds to the source-relative timeline ticks used by
+/// keyframes. Mirrors `resolveClipAnimationTimeUs` in the TS evaluator (whose
+/// output — despite the `Us` name — is in ticks since the time-units migration).
+pub fn resolve_layer_animation_time_ticks(sl: &SceneLayer, time_sec: f64) -> f64 {
     let local_t_sec = (time_sec - sl.timeline_start_sec).max(0.0);
     let speed = normalize_animation_speed(sl.speed);
     let abs_speed = speed.abs();
@@ -247,15 +260,16 @@ pub fn resolve_layer_animation_time_us(sl: &SceneLayer, time_sec: f64) -> f64 {
     } else {
         source_delta_sec.clamp(0.0, source_range_sec)
     };
-    ((sl.source_start_sec.max(0.0) + source_offset_sec) * 1_000_000.0).round()
+    ((sl.source_start_sec.max(0.0) + source_offset_sec) * TIMELINE_TICKS_PER_SECOND).round()
 }
 
-/// Sample a layer's animation tracks at `animation_t_us` (source-relative µs)
-/// and produce the effective transform + opacity overrides. Position keyframes
-/// are converted design-space → scene-space identically to the TS DTO builder.
+/// Sample a layer's animation tracks at `animation_t_ticks` (source-relative
+/// ticks) and produce the effective transform + opacity overrides. Position
+/// keyframes are converted design-space → scene-space identically to the TS DTO
+/// builder.
 pub fn resolve_animation_override(
     sl: &SceneLayer,
-    animation_t_us: f64,
+    animation_t_ticks: f64,
     scene_size: (u32, u32),
 ) -> AnimationOverride {
     let Some(anims) = sl.animations.as_ref().and_then(ClipAnimations::from_value) else {
@@ -263,22 +277,22 @@ pub fn resolve_animation_override(
     };
 
     let opacity = anims
-        .eval("opacity", animation_t_us)
+        .eval("opacity", animation_t_ticks)
         .map(|v| v.clamp(0.0, 1.0) as f32);
 
-    let px = anims.eval("transform.position.x", animation_t_us);
-    let py = anims.eval("transform.position.y", animation_t_us);
-    let sx = anims.eval("transform.scale.x", animation_t_us);
-    let sy = anims.eval("transform.scale.y", animation_t_us);
-    let rot = anims.eval("transform.rotationDeg", animation_t_us);
-    let anchor_x = anims.eval("transform.anchor.x", animation_t_us);
-    let anchor_y = anims.eval("transform.anchor.y", animation_t_us);
-    let crop_top = anims.eval("transform.crop.top", animation_t_us);
-    let crop_bottom = anims.eval("transform.crop.bottom", animation_t_us);
-    let crop_left = anims.eval("transform.crop.left", animation_t_us);
-    let crop_right = anims.eval("transform.crop.right", animation_t_us);
-    let flip_horizontal = anims.eval("transform.flipHorizontal", animation_t_us);
-    let flip_vertical = anims.eval("transform.flipVertical", animation_t_us);
+    let px = anims.eval("transform.position.x", animation_t_ticks);
+    let py = anims.eval("transform.position.y", animation_t_ticks);
+    let sx = anims.eval("transform.scale.x", animation_t_ticks);
+    let sy = anims.eval("transform.scale.y", animation_t_ticks);
+    let rot = anims.eval("transform.rotationDeg", animation_t_ticks);
+    let anchor_x = anims.eval("transform.anchor.x", animation_t_ticks);
+    let anchor_y = anims.eval("transform.anchor.y", animation_t_ticks);
+    let crop_top = anims.eval("transform.crop.top", animation_t_ticks);
+    let crop_bottom = anims.eval("transform.crop.bottom", animation_t_ticks);
+    let crop_left = anims.eval("transform.crop.left", animation_t_ticks);
+    let crop_right = anims.eval("transform.crop.right", animation_t_ticks);
+    let flip_horizontal = anims.eval("transform.flipHorizontal", animation_t_ticks);
+    let flip_vertical = anims.eval("transform.flipVertical", animation_t_ticks);
 
     let has_transform = px.is_some()
         || py.is_some()
@@ -489,6 +503,36 @@ mod tests {
         ]);
         assert_eq!(eval_track_at(&t, 100.0), Some(0.7));
         assert!((eval_track_at(&t, 150.0).unwrap() - 0.85).abs() < 1e-9);
+    }
+
+    /// Regression guard for the time-units migration: the per-frame animation
+    /// sample time MUST be in canonical timeline ticks, not microseconds, so it
+    /// matches the tick-valued keyframe `tUs` produced by the web side. A
+    /// microsecond scale (the pre-migration bug) would sample ~254016× too early
+    /// and freeze every clip on its first keyframe on the native engine.
+    #[test]
+    fn resolve_layer_animation_time_is_in_ticks() {
+        let layer: SceneLayer = serde_json::from_value(serde_json::json!({
+            "id": "l",
+            "kind": "video",
+            "timeline_start_sec": 0.0,
+            "timeline_end_sec": 10.0,
+            "source_start_sec": 0.0,
+            "source_range_duration_sec": 10.0,
+            "speed": 1.0,
+            "z": 0,
+            "opacity": 1.0,
+        }))
+        .expect("valid layer");
+
+        // 1 s into the clip → exactly one second of source ticks.
+        let got = resolve_layer_animation_time_ticks(&layer, 1.0);
+        assert!(
+            (got - TIMELINE_TICKS_PER_SECOND).abs() < 1.0,
+            "expected {TIMELINE_TICKS_PER_SECOND} ticks, got {got}"
+        );
+        // Guard against a regression back to the microsecond scale.
+        assert!(got > 1_000_000.0 * 2.0, "sample time must not be microseconds");
     }
 
     #[test]

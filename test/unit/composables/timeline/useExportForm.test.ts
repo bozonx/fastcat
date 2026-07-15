@@ -415,7 +415,7 @@ describe('useExportForm', () => {
 
     expect(exportTimelineToFileMock).toHaveBeenCalledTimes(1);
     expect(exportTimelineToFileMock.mock.calls[0]?.[0]).toMatchObject({
-      exportRangeUs: {
+      exportRangeTicks: {
         startUs: 1_500_000,
         endUs: 4_000_000,
       },

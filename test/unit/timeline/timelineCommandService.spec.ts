@@ -114,7 +114,7 @@ describe('createTimelineCommandService', () => {
     warnSpy.mockRestore();
   });
 
-  it('uses secondsToUs for video duration', async () => {
+  it('uses secondsToTicksClamped for video duration', async () => {
     const deps = makeDeps({
       getOrFetchMetadataByPath: vi.fn().mockResolvedValue({
         duration: 1.033_333,

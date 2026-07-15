@@ -18,7 +18,7 @@ import type { FsEntry } from '~/types/fs';
 import { createDevLogger } from '~/utils/dev-logger';
 import { getMediaTypeFromFilename, validateMediaTrackCompatibility } from '~/utils/media-types';
 import { buildReplaceMediaPatch } from '~/utils/timeline/replace-media';
-import { secondsToUs } from '~/utils/time';
+import { secondsToTicksClamped } from '~/utils/time';
 import MobileAssetCategoryList from '~/components/file-manager/MobileAssetCategoryList.vue';
 import UiButtonGroup from '~/components/ui/UiButtonGroup.vue';
 import { useMobileDrawerOpen } from '~/composables/ui/useMobileDrawerOpen';
@@ -149,7 +149,7 @@ async function resolveInsertDurationUs(
 
   const metadata = await mediaStore.getOrFetchMetadataByPath(entry.path);
   const duration = Number(metadata?.duration);
-  return Number.isFinite(duration) && duration > 0 ? secondsToUs(duration) : undefined;
+  return Number.isFinite(duration) && duration > 0 ? secondsToTicksClamped(duration) : undefined;
 }
 
 async function addToTimeline() {

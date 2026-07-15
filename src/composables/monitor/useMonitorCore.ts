@@ -13,7 +13,7 @@ import {
 
 import { createAudioEngine } from '~/utils/video-editor/AudioEngine';
 import { TRANSFORM_DESIGN_BASE } from '~/utils/video-editor/clip-layout';
-import { clampTimeUs } from '~/utils/time';
+import { clampTicks } from '~/utils/time';
 import { useVfs } from '~/composables/useVfs';
 import { toProjectTempVfsPath } from '~/utils/storage-topology';
 
@@ -327,7 +327,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
   }
 
   function clampToTimeline(timeUs: number): number {
-    return clampTimeUs(timeUs, safeDurationUs.value);
+    return clampTicks(timeUs, safeDurationUs.value);
   }
 
   async function ensureCompositorReady(options?: { forceRecreate?: boolean }) {

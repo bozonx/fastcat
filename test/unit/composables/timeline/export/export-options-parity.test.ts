@@ -23,8 +23,8 @@ describe('buildNativeExportOptions', () => {
   it('maps basic video+audio options correctly', () => {
     const result = buildNativeExportOptions({
       options: baseWebOptions(),
-      rangeStartUs: 0,
-      rangeEndUs: 10_000_000,
+      rangeStartTicks: 0,
+      rangeEndTicks: 2540160000000,
     });
 
     expect(result.width).toBe(1920);
@@ -43,11 +43,11 @@ describe('buildNativeExportOptions', () => {
     expect(result.videoEnabled).toBe(true);
   });
 
-  it('converts range from microseconds to seconds', () => {
+  it('converts range from ticks to seconds', () => {
     const result = buildNativeExportOptions({
       options: baseWebOptions(),
-      rangeStartUs: 2_500_000,
-      rangeEndUs: 7_500_000,
+      rangeStartTicks: 635040000000,
+      rangeEndTicks: 1905120000000,
     });
 
     expect(result.startSec).toBe(2.5);
@@ -57,8 +57,8 @@ describe('buildNativeExportOptions', () => {
   it('maps mono audio channels to 1', () => {
     const result = buildNativeExportOptions({
       options: { ...baseWebOptions(), audioChannels: 'mono' },
-      rangeStartUs: 0,
-      rangeEndUs: 1_000_000,
+      rangeStartTicks: 0,
+      rangeEndTicks: 254016000000,
     });
 
     expect(result.audioChannels).toBe(1);
@@ -67,8 +67,8 @@ describe('buildNativeExportOptions', () => {
   it('maps stereo audio channels to 2', () => {
     const result = buildNativeExportOptions({
       options: { ...baseWebOptions(), audioChannels: 'stereo' },
-      rangeStartUs: 0,
-      rangeEndUs: 1_000_000,
+      rangeStartTicks: 0,
+      rangeEndTicks: 254016000000,
     });
 
     expect(result.audioChannels).toBe(2);
@@ -79,8 +79,8 @@ describe('buildNativeExportOptions', () => {
     delete opts.audioChannels;
     const result = buildNativeExportOptions({
       options: opts,
-      rangeStartUs: 0,
-      rangeEndUs: 1_000_000,
+      rangeStartTicks: 0,
+      rangeEndTicks: 254016000000,
     });
 
     expect(result.audioChannels).toBe(2);
@@ -90,8 +90,8 @@ describe('buildNativeExportOptions', () => {
     for (const format of ['aac', 'opus', 'ogg', 'flac', 'wav', 'pcm', 'mp3'] as const) {
       const result = buildNativeExportOptions({
         options: { ...baseWebOptions(), format },
-        rangeStartUs: 0,
-        rangeEndUs: 1_000_000,
+        rangeStartTicks: 0,
+        rangeEndTicks: 254016000000,
       });
       expect(result.videoEnabled).toBe(false);
     }
@@ -101,8 +101,8 @@ describe('buildNativeExportOptions', () => {
     for (const format of ['mp4', 'webm', 'mkv'] as const) {
       const result = buildNativeExportOptions({
         options: { ...baseWebOptions(), format },
-        rangeStartUs: 0,
-        rangeEndUs: 1_000_000,
+        rangeStartTicks: 0,
+        rangeEndTicks: 254016000000,
       });
       expect(result.videoEnabled).toBe(true);
     }
@@ -113,8 +113,8 @@ describe('buildNativeExportOptions', () => {
     delete opts.bitrateMode;
     const result = buildNativeExportOptions({
       options: opts,
-      rangeStartUs: 0,
-      rangeEndUs: 1_000_000,
+      rangeStartTicks: 0,
+      rangeEndTicks: 254016000000,
     });
 
     expect(result.bitrateMode).toBe('variable');
@@ -123,8 +123,8 @@ describe('buildNativeExportOptions', () => {
   it('passes through constant bitrateMode', () => {
     const result = buildNativeExportOptions({
       options: { ...baseWebOptions(), bitrateMode: 'constant' },
-      rangeStartUs: 0,
-      rangeEndUs: 1_000_000,
+      rangeStartTicks: 0,
+      rangeEndTicks: 254016000000,
     });
 
     expect(result.bitrateMode).toBe('constant');
@@ -133,8 +133,8 @@ describe('buildNativeExportOptions', () => {
   it('passes through keyframeIntervalSec', () => {
     const result = buildNativeExportOptions({
       options: { ...baseWebOptions(), keyframeIntervalSec: 2.0 },
-      rangeStartUs: 0,
-      rangeEndUs: 1_000_000,
+      rangeStartTicks: 0,
+      rangeEndTicks: 254016000000,
     });
 
     expect(result.keyframeIntervalSec).toBe(2.0);
@@ -151,8 +151,8 @@ describe('buildNativeExportOptions', () => {
           tags: 'tag1, tag2',
         },
       },
-      rangeStartUs: 0,
-      rangeEndUs: 1_000_000,
+      rangeStartTicks: 0,
+      rangeEndTicks: 254016000000,
     });
 
     expect(result.metadataTitle).toBe('My Title');
@@ -164,8 +164,8 @@ describe('buildNativeExportOptions', () => {
   it('maps missing metadata to null', () => {
     const result = buildNativeExportOptions({
       options: baseWebOptions(),
-      rangeStartUs: 0,
-      rangeEndUs: 1_000_000,
+      rangeStartTicks: 0,
+      rangeEndTicks: 254016000000,
     });
 
     expect(result.metadataTitle).toBeNull();
@@ -180,8 +180,8 @@ describe('buildNativeExportOptions', () => {
         ...baseWebOptions(),
         metadata: { title: '', description: '', author: '', tags: '' },
       },
-      rangeStartUs: 0,
-      rangeEndUs: 1_000_000,
+      rangeStartTicks: 0,
+      rangeEndTicks: 254016000000,
     });
 
     expect(result.metadataTitle).toBeNull();
@@ -193,8 +193,8 @@ describe('buildNativeExportOptions', () => {
   it('passes through exportAlpha', () => {
     const result = buildNativeExportOptions({
       options: { ...baseWebOptions(), exportAlpha: true },
-      rangeStartUs: 0,
-      rangeEndUs: 1_000_000,
+      rangeStartTicks: 0,
+      rangeEndTicks: 254016000000,
     });
 
     expect(result.exportAlpha).toBe(true);
@@ -203,8 +203,8 @@ describe('buildNativeExportOptions', () => {
   it('passes through fastStart', () => {
     const result = buildNativeExportOptions({
       options: { ...baseWebOptions(), fastStart: false },
-      rangeStartUs: 0,
-      rangeEndUs: 1_000_000,
+      rangeStartTicks: 0,
+      rangeEndTicks: 254016000000,
     });
 
     expect(result.fastStart).toBe(false);
@@ -215,8 +215,8 @@ describe('buildNativeExportOptions', () => {
     delete opts.audioCodec;
     const result = buildNativeExportOptions({
       options: opts,
-      rangeStartUs: 0,
-      rangeEndUs: 1_000_000,
+      rangeStartTicks: 0,
+      rangeEndTicks: 254016000000,
     });
 
     expect(result.audioCodec).toBeNull();
@@ -225,8 +225,8 @@ describe('buildNativeExportOptions', () => {
   it('handles fractional fps (29.97)', () => {
     const result = buildNativeExportOptions({
       options: { ...baseWebOptions(), fps: 29.97 },
-      rangeStartUs: 0,
-      rangeEndUs: 1_000_000,
+      rangeStartTicks: 0,
+      rangeEndTicks: 254016000000,
     });
 
     expect(result.fps).toBe(29.97);
@@ -241,8 +241,8 @@ describe('buildNativeExportOptions', () => {
         exportAlpha: true,
         audioCodec: 'opus',
       },
-      rangeStartUs: 0,
-      rangeEndUs: 5_000_000,
+      rangeStartTicks: 0,
+      rangeEndTicks: 1270080000000,
     });
 
     expect(result.format).toBe('webm');

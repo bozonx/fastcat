@@ -10,7 +10,7 @@ import type {
   TimelineTrackItem,
 } from '~/timeline/types';
 import type { WorkerTimelineClip } from './types';
-import { normalizeTimeUs } from '~/utils/time';
+import { normalizeTicks } from '~/utils/time';
 import { mergeBalance, mergeGain } from '~/utils/audio/envelope';
 import { buildEffectiveAudioClipItems } from '~/utils/audio/track-bus';
 import { sanitizeTimelineColor } from '~/utils/video-editor/utils';
@@ -197,7 +197,7 @@ export function useMonitorTimeline() {
   const workerAudioClips = ref<WorkerTimelineClip[]>([]);
   const workerTimelinePayload = ref<unknown[]>([]);
 
-  const safeDurationUs = computed(() => normalizeTimeUs(timelineStore.duration));
+  const safeDurationUs = computed(() => normalizeTicks(timelineStore.duration));
 
   const clipSourceSignature = computed(() => {
     let hash = mixHash(2166136261, videoItems.value.length);

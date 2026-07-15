@@ -17,27 +17,27 @@ export function formatTime(seconds: number): string {
 }
 
 /**
- * Formats microseconds to HH:MM:SS:FF timecode string.
+ * Formats timeline ticks to HH:MM:SS:FF timecode string.
  * Rounds the frame part to handle non-integer FPS correctly.
  *
- * @param us - Time in microseconds
+ * @param ticks - Time in timeline ticks
  * @param fps - Frames per second
  * @returns Formatted timecode string
  */
-export function formatTimecode(us: number, fps: number): string {
-  return formatTicksAsTimecode({ ticks: us, fps });
+export function formatTimecode(ticks: number, fps: number): string {
+  return formatTicksAsTimecode({ ticks, fps });
 }
 
 /**
- * Formats microseconds to HH:MM:SS string.
+ * Formats timeline ticks to HH:MM:SS string.
  *
- * @param us - Time in microseconds
+ * @param ticks - Time in timeline ticks
  * @returns Formatted time string in hours:minutes:seconds
  */
-export function formatHms(us: number): string {
-  const isNegative = us < 0;
-  const absUs = Math.abs(us);
-  const totalSeconds = Math.floor(ticksToSeconds(absUs));
+export function formatHms(ticks: number): string {
+  const isNegative = ticks < 0;
+  const absTicks = Math.abs(ticks);
+  const totalSeconds = Math.floor(ticksToSeconds(absTicks));
   const ss = totalSeconds % 60;
   const mm = Math.floor(totalSeconds / 60) % 60;
   const hh = Math.floor(totalSeconds / 3600);
@@ -49,15 +49,15 @@ export function formatHms(us: number): string {
 }
 
 /**
- * Formats microseconds to MM:SS or HH:MM:SS string if >= 1 hour.
+ * Formats timeline ticks to MM:SS or HH:MM:SS string if >= 1 hour.
  *
- * @param us - Time in microseconds
+ * @param ticks - Time in timeline ticks
  * @returns Formatted time string
  */
-export function formatMsOrHms(us: number): string {
-  const isNegative = us < 0;
-  const absUs = Math.abs(us);
-  const totalSeconds = Math.floor(ticksToSeconds(absUs));
+export function formatMsOrHms(ticks: number): string {
+  const isNegative = ticks < 0;
+  const absTicks = Math.abs(ticks);
+  const totalSeconds = Math.floor(ticksToSeconds(absTicks));
   const ss = totalSeconds % 60;
   const mm = Math.floor(totalSeconds / 60) % 60;
   const hh = Math.floor(totalSeconds / 3600);

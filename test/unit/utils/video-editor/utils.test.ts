@@ -1,10 +1,7 @@
 /** @vitest-environment node */
 import { describe, it, expect, vi } from 'vitest';
-import { TICKS_PER_MICROSECOND } from '~/utils/time';
 import {
   safeDispose,
-  parseUsToS,
-  parseUs,
   sanitizeTimelineColor,
   parseHexColor,
   isInputDisposed,
@@ -25,29 +22,6 @@ describe('safeDispose', () => {
 
   it('does not throw for null', () => {
     expect(() => safeDispose(null)).not.toThrow();
-  });
-});
-
-describe('parseUsToS', () => {
-  it('converts microseconds to seconds', () => {
-    expect(parseUsToS(1_000_000 * TICKS_PER_MICROSECOND)).toBe(1);
-    expect(parseUsToS(String(500_000 * TICKS_PER_MICROSECOND))).toBe(0.5);
-  });
-
-  it('returns fallback for invalid input', () => {
-    expect(parseUsToS(null, 5)).toBe(5);
-    expect(parseUsToS('invalid', 5)).toBe(5);
-  });
-});
-
-describe('parseUs', () => {
-  it('returns positive integer', () => {
-    expect(parseUs(1_500_000)).toBe(1_500_000);
-    expect(parseUs('1000')).toBe(1000);
-  });
-
-  it('returns fallback for invalid input', () => {
-    expect(parseUs(null, 10)).toBe(10);
   });
 });
 

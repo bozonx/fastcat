@@ -16,8 +16,8 @@ interface ParityCase {
   name: string;
   webInput: {
     options: ExportOptions & { audioSampleRate: number };
-    rangeStartUs: number;
-    rangeEndUs: number;
+    rangeStartTicks: number;
+    rangeEndTicks: number;
   };
   native: Record<string, unknown>;
 }
@@ -35,8 +35,8 @@ describe('export-options parity (shared fixture)', () => {
     it(`buildNativeExportOptions matches native for "${c.name}"`, () => {
       const result = buildNativeExportOptions({
         options: c.webInput.options,
-        rangeStartUs: c.webInput.rangeStartUs,
-        rangeEndUs: c.webInput.rangeEndUs,
+        rangeStartTicks: c.webInput.rangeStartTicks,
+        rangeEndTicks: c.webInput.rangeEndTicks,
       });
       expect(result).toEqual(c.native);
     });

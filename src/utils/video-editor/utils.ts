@@ -1,6 +1,5 @@
 import { createDevLogger } from '~/utils/dev-logger';
 import { normalizeHexColor, hexToRgbUint } from '~/utils/color';
-import { usToS } from '~/utils/time';
 const log = createDevLogger('utils');
 export function safeDispose(resource: unknown): void {
   if (!resource || typeof resource !== 'object') return;
@@ -19,20 +18,6 @@ export function safeDispose(resource: unknown): void {
       log.warn('[safeDispose] Error during close:', e);
     }
   }
-}
-
-export function parseUsToS(us: number | string | undefined | null, fallback = 0): number {
-  if (us == null) return fallback;
-  const parsed = Number(us);
-  if (Number.isNaN(parsed)) return fallback;
-  return usToS(parsed) || fallback;
-}
-
-export function parseUs(us: number | string | undefined | null, fallback = 0): number {
-  if (us == null) return fallback;
-  const parsed = Number(us);
-  if (Number.isNaN(parsed)) return fallback;
-  return Math.max(0, Math.round(parsed));
 }
 
 export function sanitizeTimelineColor(value: unknown, fallback = '#000000'): string {

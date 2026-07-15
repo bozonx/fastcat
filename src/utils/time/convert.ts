@@ -5,8 +5,6 @@ import {
   TICKS_PER_SECOND,
 } from './ticks';
 
-export const US_PER_SEC = TICKS_PER_SECOND;
-
 export const FALLBACK_FPS = 30;
 export const MIN_FPS = 1;
 export const MAX_FPS = 240;
@@ -16,33 +14,37 @@ export const MAX_FPS = 240;
  * Centralized helper to avoid `Math.floor`/`Math.round` mismatches across the
  * timeline import pipeline (preview vs. insert duration).
  *
- * Clamps non-positive inputs to 0. Use {@link sToUs} when a signed result is
- * required (e.g. negative timeline offsets).
+ * Clamps non-positive inputs to 0. Use {@link secondsToTicksSigned} when a
+ * signed result is required (e.g. negative timeline offsets).
  */
-export function secondsToUs(seconds: number, mode: 'round' | 'floor' | 'ceil' = 'round'): number {
+export function secondsToTicksClamped(
+  seconds: number,
+  mode: 'round' | 'floor' | 'ceil' = 'round',
+): number {
   if (!Number.isFinite(seconds) || seconds <= 0) return 0;
-  const us = seconds * US_PER_SEC;
-  if (mode === 'floor') return Math.floor(us);
-  if (mode === 'ceil') return Math.ceil(us);
-  return Math.round(us);
+  const ticks = seconds * TICKS_PER_SECOND;
+  if (mode === 'floor') return Math.floor(ticks);
+  if (mode === 'ceil') return Math.ceil(ticks);
+  return Math.round(ticks);
 }
 
 /**
  * Convert timeline ticks to seconds.
  * Returns 0 for non-finite or negative inputs.
  */
-export function usToS(us: number): number {
-  if (!Number.isFinite(us) || us <= 0) return 0;
-  return us / US_PER_SEC;
+export function ticksToSecondsClamped(ticks: number): number {
+  if (!Number.isFinite(ticks) || ticks <= 0) return 0;
+  return ticks / TICKS_PER_SECOND;
 }
 
 /**
- * Convert seconds to timeline ticks, symmetric to {@link usToS} but
- * sign-preserving: unlike {@link secondsToUs}, negative inputs stay negative.
+ * Convert seconds to timeline ticks, symmetric to {@link ticksToSecondsClamped}
+ * but sign-preserving: unlike {@link secondsToTicksClamped}, negative inputs
+ * stay negative.
  */
-export function sToUs(seconds: number): number {
+export function secondsToTicksSigned(seconds: number): number {
   if (!Number.isFinite(seconds)) return 0;
-  return Math.round(seconds * US_PER_SEC);
+  return Math.round(seconds * TICKS_PER_SECOND);
 }
 
 /**
@@ -69,7 +71,7 @@ export function sanitizeFps(value: unknown): number {
 }
 
 /** Round a timeline tick value to an integer, clamping non-finite/negative to 0. */
-export function normalizeTimeUs(value: number): number {
+export function normalizeTicks(value: number): number {
   if (!Number.isFinite(value) || value <= 0) {
     return 0;
   }
@@ -77,10 +79,10 @@ export function normalizeTimeUs(value: number): number {
   return Math.round(value);
 }
 
-/** Clamp a timeline tick value into the inclusive range [0, maxDurationUs]. */
-export function clampTimeUs(value: number, maxDurationUs: number): number {
-  const normalizedValue = normalizeTimeUs(value);
-  const normalizedMax = normalizeTimeUs(maxDurationUs);
+/** Clamp a timeline tick value into the inclusive range [0, maxDurationTicks]. */
+export function clampTicks(value: number, maxDurationTicks: number): number {
+  const normalizedValue = normalizeTicks(value);
+  const normalizedMax = normalizeTicks(maxDurationTicks);
 
   if (normalizedValue <= 0) {
     return 0;

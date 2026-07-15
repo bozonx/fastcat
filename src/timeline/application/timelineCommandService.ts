@@ -12,7 +12,7 @@ import type { selectTimelineDurationUs } from '~/timeline/selectors';
 import type { ProxyThumbnailService } from '~/media-cache/application/proxyThumbnailService';
 import { ensureProxyCommand } from '~/media-cache/application/proxyThumbnailCommands';
 import { buildEffectiveAudioClipItems } from '~/utils/audio/track-bus';
-import { secondsToUs } from '~/utils/time';
+import { secondsToTicksClamped } from '~/utils/time';
 import type { TimelineFormatInput } from '~/timeline/format';
 import { getTimelineFormat, resolveEffectiveTimelineFormat } from '~/timeline/format';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
@@ -364,7 +364,7 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
 
     const durationUs = isImageLike
       ? deps.defaultImageDurationUs
-      : Math.max(1, secondsToUs(Number(metadata?.duration)));
+      : Math.max(1, secondsToTicksClamped(Number(metadata?.duration)));
     const sourceDurationUs = isImageLike ? deps.defaultImageSourceDurationUs : durationUs;
 
     if (!Number.isFinite(durationUs) || durationUs <= 0) {
@@ -628,7 +628,7 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
     const nested = await resolveNestedTimeline(input.path, input.name);
     ensureNestedTimelineTrackCompatibility(track, nested.summary);
 
-    let durationUs = secondsToUs(2);
+    let durationUs = secondsToTicksClamped(2);
     try {
       const nestedDurationUs = deps.selectTimelineDurationUs(nested.doc);
       if (Number.isFinite(nestedDurationUs) && nestedDurationUs > 0) {

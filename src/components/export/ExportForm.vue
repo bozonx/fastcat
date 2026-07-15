@@ -15,6 +15,7 @@ import UiFormSectionHeader from '~/components/ui/UiFormSectionHeader.vue';
 import UiButtonGroup from '~/components/ui/UiButtonGroup.vue';
 
 import { formatFps, middleEllipsis, formatRenderDuration } from '~/utils/format';
+import { ticksToSeconds } from '~/utils/time';
 import { useExportForm, type ExportRangeOption } from '~/composables/timeline/export/useExportForm';
 
 const props = defineProps<{
@@ -103,10 +104,10 @@ const exportProgressPercent = computed(() =>
 
 function getOptionDuration(option: ExportRangeOption) {
   if (option.id === 'timeline') {
-    return (timelineStore.duration || 0) / 1000;
+    return ticksToSeconds(timelineStore.duration || 0);
   }
   if (option.range) {
-    return (option.range.endUs - option.range.startUs) / 1000;
+    return ticksToSeconds(option.range.endUs - option.range.startUs);
   }
   return 0;
 }

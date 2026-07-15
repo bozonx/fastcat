@@ -1,5 +1,5 @@
 import { createDevLogger } from '~/utils/dev-logger';
-import { normalizeTimeUs } from '~/utils/time';
+import { normalizeTicks } from '~/utils/time';
 import type { PreviewRenderOptions, VideoCoreWorkerAPI } from '~/utils/video-editor/worker-rpc';
 const log = createDevLogger('useMonitorCore.compositor');
 
@@ -191,7 +191,7 @@ export function createMonitorCompositorRuntime(options: CreateMonitorCompositorR
     if (!options.client) return; // native monitor handles preview
     rpcStats.scheduled += 1;
     latestRenderRequest = {
-      timeUs: normalizeTimeUs(timeUs),
+      timeUs: normalizeTicks(timeUs),
       prewarm: renderOptions?.prewarm === true,
     };
     pumpRenderQueue();

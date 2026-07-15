@@ -15,7 +15,7 @@ import {
   type AudioEffectData,
 } from '../../utils/audio/apply-audio-effects-offline';
 import { clampFloat32 } from './utils';
-import { usToS } from './time';
+import { ticksToSecondsClamped } from './time';
 import { runResilientWorkerFileIo } from './io-governor';
 import { governedBlobWorker } from '~/utils/io/governed-blob-worker';
 import type { ClipAnimations } from '~/timeline/types';
@@ -877,8 +877,8 @@ export class AudioMixer {
       // Fade math is done in timeline-space: source duration must be scaled by
       // 1/speed before comparing with timeline duration so the clamp doesn't
       // chop fades short when speed < 1.
-      const timelineDurationS = usToS(Number(durationUs));
-      const sourceTimelineDurationS = usToS(Number(sourceDurationUs)) / speed;
+      const timelineDurationS = ticksToSecondsClamped(Number(durationUs));
+      const sourceTimelineDurationS = ticksToSecondsClamped(Number(sourceDurationUs)) / speed;
       const fadeClipDurationS = Math.max(
         0,
         Math.min(sourceTimelineDurationS, timelineDurationS || sourceTimelineDurationS),
@@ -906,14 +906,14 @@ export class AudioMixer {
           clipData.defaultAudioFadeCurve ?? clipData.fastcat?.defaultAudioFadeCurve,
       });
 
-      const clipStartS = Math.max(0, usToS(Number(startUs)));
-      const rawOffsetS = Math.max(0, usToS(Number(sourceStartUs)));
+      const clipStartS = Math.max(0, ticksToSecondsClamped(Number(startUs)));
+      const rawOffsetS = Math.max(0, ticksToSecondsClamped(Number(sourceStartUs)));
 
       const baseClipDurationS = Math.max(
         0,
         Math.min(
-          usToS(Number(sourceDurationUs)) / speed,
-          usToS(Number(durationUs)) || usToS(Number(sourceDurationUs)) / speed,
+          ticksToSecondsClamped(Number(sourceDurationUs)) / speed,
+          ticksToSecondsClamped(Number(durationUs)) || ticksToSecondsClamped(Number(sourceDurationUs)) / speed,
         ),
       );
 
@@ -928,7 +928,7 @@ export class AudioMixer {
         Number(transitionOut.durationUs) > 0 &&
         transitionOut.mode === 'adjacent'
       ) {
-        const outExtensionS = usToS(Number(transitionOut.durationUs));
+        const outExtensionS = ticksToSecondsClamped(Number(transitionOut.durationUs));
         playDurationS += outExtensionS;
       }
 
@@ -938,7 +938,7 @@ export class AudioMixer {
         Number(transitionIn.durationUs) > 0 &&
         transitionIn.mode === 'adjacent'
       ) {
-        const inExtensionS = usToS(Number(transitionIn.durationUs));
+        const inExtensionS = ticksToSecondsClamped(Number(transitionIn.durationUs));
         playDurationS += inExtensionS;
         effectiveClipStartS = Math.max(0, clipStartS - inExtensionS);
         effectiveOffsetS = Math.max(0, effectiveOffsetS - inExtensionS * speed);

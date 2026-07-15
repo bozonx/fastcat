@@ -8,8 +8,9 @@ import {
   type PassthroughPacketSink,
 } from '~/workers/core/export-video-passthrough';
 import type { WorkerVideoPayloadItem } from '~/types/worker-payload';
+import { timelineUs } from '../../utils/timeline-time';
 
-const DURATION_US = 10_000_000;
+const DURATION_US = timelineUs(10_000_000);
 
 function baseOptions() {
   return {
@@ -53,10 +54,10 @@ describe('computePayloadVideoEndUs', () => {
     const end = computePayloadVideoEndUs([
       { kind: 'meta', masterEffects: [] } as never,
       { kind: 'track', id: 't', layer: 0 } as never,
-      baseClip({ timelineRange: { startUs: 1_000_000, durationUs: 3_000_000 } }),
-      baseClip({ id: 'c2', timelineRange: { startUs: 0, durationUs: 2_000_000 } }),
+      baseClip({ timelineRange: { startUs: timelineUs(1_000_000), durationUs: timelineUs(3_000_000) } }),
+      baseClip({ id: 'c2', timelineRange: { startUs: 0, durationUs: timelineUs(2_000_000) } }),
     ]);
-    expect(end).toBe(4_000_000);
+    expect(end).toBe(timelineUs(4_000_000));
   });
 
   it('returns 0 for an empty payload', () => {
@@ -74,12 +75,12 @@ describe('findVideoPassthroughCandidate', () => {
     const result = candidate(
       [
         baseClip({
-          timelineRange: { startUs: 0, durationUs: 8_000_000 },
-          sourceRange: { startUs: 2_000_000, durationUs: 8_000_000 },
+          timelineRange: { startUs: 0, durationUs: timelineUs(8_000_000) },
+          sourceRange: { startUs: timelineUs(2_000_000), durationUs: timelineUs(8_000_000) },
         }),
       ],
       {},
-      8_000_000,
+      timelineUs(8_000_000),
     );
     expect(result.ok).toBe(true);
   });
@@ -88,12 +89,12 @@ describe('findVideoPassthroughCandidate', () => {
     const result = candidate(
       [
         baseClip({
-          timelineRange: { startUs: 0, durationUs: 6_000_000 },
-          sourceRange: { startUs: 0, durationUs: 6_000_000 },
+          timelineRange: { startUs: 0, durationUs: timelineUs(6_000_000) },
+          sourceRange: { startUs: 0, durationUs: timelineUs(6_000_000) },
         }),
       ],
       {},
-      6_000_000,
+      timelineUs(6_000_000),
     );
     expect(result.ok).toBe(true);
   });
@@ -155,16 +156,16 @@ describe('findVideoPassthroughCandidate', () => {
     [
       'clip does not start at timeline zero',
       () =>
-        candidate([baseClip({ timelineRange: { startUs: 1_000_000, durationUs: DURATION_US } })]),
+        candidate([baseClip({ timelineRange: { startUs: timelineUs(1_000_000), durationUs: DURATION_US } })]),
     ],
     [
       'clip does not cover the whole export',
-      () => candidate([baseClip()], {}, DURATION_US + 2_000_000),
+      () => candidate([baseClip()], {}, DURATION_US + timelineUs(2_000_000)),
     ],
     [
       'timeline and source windows disagree (stretch would be needed)',
       () =>
-        candidate([baseClip({ sourceRange: { startUs: 0, durationUs: DURATION_US - 2_000_000 } })]),
+        candidate([baseClip({ sourceRange: { startUs: 0, durationUs: DURATION_US - timelineUs(2_000_000) } })]),
     ],
     [
       'empty source range',
@@ -316,10 +317,10 @@ describe('buildPassthroughVideoTrack', () => {
       buildParams(
         bundle,
         {
-          timelineRange: { startUs: 0, durationUs: 8_000_000 },
-          sourceRange: { startUs: 2_000_000, durationUs: 8_000_000 },
+          timelineRange: { startUs: 0, durationUs: timelineUs(8_000_000) },
+          sourceRange: { startUs: timelineUs(2_000_000), durationUs: timelineUs(8_000_000) },
         },
-        8_000_000,
+        timelineUs(8_000_000),
       ),
     );
     expect(state).not.toBeNull();
@@ -337,10 +338,10 @@ describe('buildPassthroughVideoTrack', () => {
       buildParams(
         bundle,
         {
-          timelineRange: { startUs: 0, durationUs: 8_000_000 },
-          sourceRange: { startUs: 2_000_000, durationUs: 8_000_000 },
+          timelineRange: { startUs: 0, durationUs: timelineUs(8_000_000) },
+          sourceRange: { startUs: timelineUs(2_000_000), durationUs: timelineUs(8_000_000) },
         },
-        8_000_000,
+        timelineUs(8_000_000),
       ),
     );
     expect(state).toBeNull();
@@ -353,10 +354,10 @@ describe('buildPassthroughVideoTrack', () => {
       buildParams(
         bundle,
         {
-          timelineRange: { startUs: 0, durationUs: 6_000_000 },
-          sourceRange: { startUs: 0, durationUs: 6_000_000 },
+          timelineRange: { startUs: 0, durationUs: timelineUs(6_000_000) },
+          sourceRange: { startUs: 0, durationUs: timelineUs(6_000_000) },
         },
-        6_000_000,
+        timelineUs(6_000_000),
       ),
     );
     expect(state).not.toBeNull();
@@ -475,10 +476,10 @@ describe('writeVideoPassthrough', () => {
       buildParams(
         bundle,
         {
-          timelineRange: { startUs: 0, durationUs: 8_000_000 },
-          sourceRange: { startUs: 2_000_000, durationUs: 8_000_000 },
+          timelineRange: { startUs: 0, durationUs: timelineUs(8_000_000) },
+          sourceRange: { startUs: timelineUs(2_000_000), durationUs: timelineUs(8_000_000) },
         },
-        8_000_000,
+        timelineUs(8_000_000),
       ),
     );
     await writeVideoPassthrough({
@@ -509,10 +510,10 @@ describe('writeVideoPassthrough', () => {
       buildParams(
         bundle,
         {
-          timelineRange: { startUs: 0, durationUs: 6_000_000 },
-          sourceRange: { startUs: 0, durationUs: 6_000_000 },
+          timelineRange: { startUs: 0, durationUs: timelineUs(6_000_000) },
+          sourceRange: { startUs: 0, durationUs: timelineUs(6_000_000) },
         },
-        6_000_000,
+        timelineUs(6_000_000),
       ),
     );
     expect(state!.wholeStream).toBe(false);

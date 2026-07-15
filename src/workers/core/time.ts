@@ -1,1 +1,1 @@
-export { usToS, sToUs } from '~/utils/time';
+export { ticksToSecondsClamped, secondsToTicksSigned } from '~/utils/time';

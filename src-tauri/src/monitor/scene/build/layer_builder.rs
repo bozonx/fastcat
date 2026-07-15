@@ -483,8 +483,8 @@ pub fn finalize_layer(
     // source-relative time; the resulting overrides fully replace the static
     // transform/opacity for this frame (the web overlay does the same).
     let local_t = time_sec - sl.timeline_start_sec;
-    let animation_t_us = super::animation::resolve_layer_animation_time_us(sl, time_sec);
-    let anim = super::animation::resolve_animation_override(sl, animation_t_us, scene_size);
+    let animation_t_ticks = super::animation::resolve_layer_animation_time_ticks(sl, time_sec);
+    let anim = super::animation::resolve_animation_override(sl, animation_t_ticks, scene_size);
     let effective_transform = anim.transform.as_ref().or(sl.transform.as_ref());
 
     let transform = match effective_transform {
@@ -649,7 +649,7 @@ pub fn finalize_layer(
         blend: sl.blend_mode,
         mask: None,
         // Baked effect-param animation overrides the static specs per frame.
-        effects: super::animation::resolve_baked_effect_specs(sl, animation_t_us)
+        effects: super::animation::resolve_baked_effect_specs(sl, animation_t_ticks)
             .unwrap_or_else(|| sl.effects.clone()),
         transition,
     }

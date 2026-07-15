@@ -1,5 +1,6 @@
 /** @vitest-environment node */
 import { describe, it, expect } from 'vitest';
+import { timelineUs } from '../../utils/timeline-time';
 import { computeExportTotalFrames, getExportFrameTiming } from '~/workers/core/export-helpers';
 import {
   computeFrameIndex,
@@ -38,7 +39,7 @@ describe('web export frame cadence', () => {
   describe('getExportFrameTiming', () => {
     it('emits CFR, leading-edge, strictly increasing timestamps', () => {
       const fps = 25;
-      const durationUs = 1_000_000;
+      const durationUs = timelineUs(1_000_000);
       const totalFrames = computeExportTotalFrames({ durationUs, fps });
       expect(totalFrames).toBe(25);
 
@@ -54,8 +55,8 @@ describe('web export frame cadence', () => {
     });
 
     it('computes total frame counts for whole and fractional rates', () => {
-      expect(computeExportTotalFrames({ durationUs: 1_000_000, fps: 30 })).toBe(30);
-      expect(computeExportTotalFrames({ durationUs: 2_000_000, fps: 25 })).toBe(50);
+      expect(computeExportTotalFrames({ durationUs: timelineUs(1_000_000), fps: 30 })).toBe(30);
+      expect(computeExportTotalFrames({ durationUs: timelineUs(2_000_000), fps: 25 })).toBe(50);
     });
   });
 

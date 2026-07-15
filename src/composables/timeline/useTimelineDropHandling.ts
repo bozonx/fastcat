@@ -19,7 +19,7 @@ import { crossVfsCopy } from '~/file-manager/core/vfs/crossVfs';
 import { LARGE_UPLOAD_BACKGROUND_THRESHOLD_BYTES } from '~/file-manager/application/fileManagerCommands';
 import { parseTimelineFromOtio } from '~/timeline/otio-serializer';
 import { assertNoOverlap, quantizeTimeUsToFrames, sanitizeFps } from '~/timeline/commands/utils';
-import { secondsToUs } from '~/utils/time';
+import { secondsToTicksClamped } from '~/utils/time';
 import { withFileIoSlot } from '~/utils/io/io-governor';
 import { useUploadProgress } from '~/composables/useUploadProgress';
 import { computeSnapTargetsUs } from './timeline-drag-domain';
@@ -155,7 +155,7 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
   }) {
     if (params.kind === 'file' && params.path) {
       const meta = await mediaStore.getOrFetchMetadataByPath(params.path);
-      if (meta && !meta.error && meta.duration) return secondsToUs(meta.duration);
+      if (meta && !meta.error && meta.duration) return secondsToTicksClamped(meta.duration);
 
       // For images/text or unknown failures fall back to a static default so the
       // preview ghost is still useful. Real failures will be caught at insert time.

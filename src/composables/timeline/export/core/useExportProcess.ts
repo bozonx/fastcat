@@ -55,20 +55,20 @@ const AUDIO_ONLY_EXPORT_FORMATS = new Set(['aac', 'opus', 'ogg', 'flac', 'wav', 
 
 export interface WebToNativeExportParams {
   options: ExportOptions & { audioSampleRate: number };
-  rangeStartUs: number;
-  rangeEndUs: number;
+  rangeStartTicks: number;
+  rangeEndTicks: number;
 }
 
 export function buildNativeExportOptions(
   params: WebToNativeExportParams,
 ): import('~/utils/tauri-media-processing').NativeTimelineExportOptions {
-  const { options, rangeStartUs, rangeEndUs } = params;
+  const { options, rangeStartTicks, rangeEndTicks } = params;
   return {
     width: options.width,
     height: options.height,
     fps: options.fps,
-    startSec: ticksToSeconds(rangeStartUs),
-    endSec: ticksToSeconds(rangeEndUs),
+    startSec: ticksToSeconds(rangeStartTicks),
+    endSec: ticksToSeconds(rangeEndTicks),
     videoCodec: options.videoCodec,
     videoBitrateBps: options.bitrate,
     format: options.format,
@@ -139,7 +139,7 @@ export function useExportProcess(
       const allVideoTracks = doc?.tracks?.filter((track) => track.kind === 'video') ?? [];
       const allAudioTracks = doc?.tracks?.filter((track) => track.kind === 'audio') ?? [];
 
-      const exportRangeUs = options.exportRangeUs;
+      const exportRangeTicks = options.exportRangeTicks;
       const reportWarning = createGroupedWarningReporter(exportWarnings);
 
       ensureNotCancelled();
@@ -155,9 +155,9 @@ export function useExportProcess(
       });
 
       ensureNotCancelled();
-      const croppedVideoClips = exportRangeUs
+      const croppedVideoClips = exportRangeTicks
         ? builtVideo.clips
-            .map((clip) => trimWorkerClipToRange(clip, exportRangeUs))
+            .map((clip) => trimWorkerClipToRange(clip, exportRangeTicks))
             .filter((clip): clip is WorkerTimelineClip => clip !== null)
         : builtVideo.clips;
 
@@ -197,9 +197,9 @@ export function useExportProcess(
           audioGain: (clip.audioGain ?? 1) * masterGain,
         }));
 
-        croppedAudioClips = exportRangeUs
+        croppedAudioClips = exportRangeTicks
           ? audioClips
-              .map((clip) => trimWorkerClipToRange(clip, exportRangeUs))
+              .map((clip) => trimWorkerClipToRange(clip, exportRangeTicks))
               .filter((clip): clip is WorkerTimelineClip => clip !== null)
           : audioClips;
       }
@@ -242,9 +242,9 @@ export function useExportProcess(
           isExport: true,
         });
         ensureNotCancelled();
-        const rangeStartUs = options.exportRangeUs?.startUs ?? 0;
-        const rangeEndUs = options.exportRangeUs?.endUs ?? timelineStore.duration;
-        if (rangeEndUs <= rangeStartUs) {
+        const rangeStartTicks = options.exportRangeTicks?.startUs ?? 0;
+        const rangeEndTicks = options.exportRangeTicks?.endUs ?? timelineStore.duration;
+        if (rangeEndTicks <= rangeStartTicks) {
           throw new Error('Export range is zero or negative');
         }
         // Native reports 1.0 once every frame has been handed to ffmpeg, but the
@@ -268,8 +268,8 @@ export function useExportProcess(
           targetPath: nativeTargetPath,
           options: buildNativeExportOptions({
             options,
-            rangeStartUs,
-            rangeEndUs,
+            rangeStartTicks,
+            rangeEndTicks,
           }),
           onProgress: onNativeProgress,
           onWarning: reportWarning,

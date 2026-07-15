@@ -2,65 +2,65 @@
 import { timelineUs } from './timeline-time';
 import { describe, it, expect } from 'vitest';
 import {
-  clampTimeUs,
+  clampTicks,
   formatDurationSeconds,
   formatHms,
   formatMsOrHms,
   formatTime,
   formatTimecode,
-  normalizeTimeUs,
-  sToUs,
+  normalizeTicks,
+  secondsToTicksSigned,
   sanitizeFps,
-  secondsToUs,
-  usToS,
+  secondsToTicksClamped,
+  ticksToSecondsClamped,
   TICKS_PER_SECOND,
 } from '~/utils/time';
 
-describe('secondsToUs', () => {
+describe('secondsToTicksClamped', () => {
   it('rounds by default', () => {
-    expect(secondsToUs(1.000_000_4)).toBe(Math.round(1.000_000_4 * TICKS_PER_SECOND));
-    expect(secondsToUs(1.000_000_5)).toBe(Math.round(1.000_000_5 * TICKS_PER_SECOND));
+    expect(secondsToTicksClamped(1.000_000_4)).toBe(Math.round(1.000_000_4 * TICKS_PER_SECOND));
+    expect(secondsToTicksClamped(1.000_000_5)).toBe(Math.round(1.000_000_5 * TICKS_PER_SECOND));
   });
 
   it('floors when requested', () => {
-    expect(secondsToUs(1.000_000_9, 'floor')).toBe(Math.floor(1.000_000_9 * TICKS_PER_SECOND));
-    expect(secondsToUs(1.0, 'floor')).toBe(TICKS_PER_SECOND);
+    expect(secondsToTicksClamped(1.000_000_9, 'floor')).toBe(Math.floor(1.000_000_9 * TICKS_PER_SECOND));
+    expect(secondsToTicksClamped(1.0, 'floor')).toBe(TICKS_PER_SECOND);
   });
 
   it('ceils when requested', () => {
-    expect(secondsToUs(1.000_000_1, 'ceil')).toBe(Math.ceil(1.000_000_1 * TICKS_PER_SECOND));
-    expect(secondsToUs(1.0, 'ceil')).toBe(TICKS_PER_SECOND);
+    expect(secondsToTicksClamped(1.000_000_1, 'ceil')).toBe(Math.ceil(1.000_000_1 * TICKS_PER_SECOND));
+    expect(secondsToTicksClamped(1.0, 'ceil')).toBe(TICKS_PER_SECOND);
   });
 
   it('returns 0 for non-finite or non-positive values', () => {
-    expect(secondsToUs(NaN)).toBe(0);
-    expect(secondsToUs(Infinity)).toBe(0);
-    expect(secondsToUs(-1)).toBe(0);
-    expect(secondsToUs(0)).toBe(0);
+    expect(secondsToTicksClamped(NaN)).toBe(0);
+    expect(secondsToTicksClamped(Infinity)).toBe(0);
+    expect(secondsToTicksClamped(-1)).toBe(0);
+    expect(secondsToTicksClamped(0)).toBe(0);
   });
 });
 
-describe('usToS', () => {
-  it('converts microseconds to seconds', () => {
-    expect(usToS(timelineUs(1_000_000))).toBe(1);
-    expect(usToS(timelineUs(500_000))).toBe(0.5);
+describe('ticksToSecondsClamped', () => {
+  it('converts ticks to seconds', () => {
+    expect(ticksToSecondsClamped(timelineUs(1_000_000))).toBe(1);
+    expect(ticksToSecondsClamped(timelineUs(500_000))).toBe(0.5);
   });
 
   it('returns 0 for non-finite or non-positive values', () => {
-    expect(usToS(NaN)).toBe(0);
-    expect(usToS(-1)).toBe(0);
+    expect(ticksToSecondsClamped(NaN)).toBe(0);
+    expect(ticksToSecondsClamped(-1)).toBe(0);
   });
 });
 
-describe('sToUs', () => {
-  it('converts seconds to microseconds', () => {
-    expect(sToUs(1)).toBe(timelineUs(1_000_000));
-    expect(sToUs(0.5)).toBe(timelineUs(500_000));
+describe('secondsToTicksSigned', () => {
+  it('converts seconds to ticks', () => {
+    expect(secondsToTicksSigned(1)).toBe(timelineUs(1_000_000));
+    expect(secondsToTicksSigned(0.5)).toBe(timelineUs(500_000));
   });
 
   it('returns 0 for non-finite values', () => {
-    expect(sToUs(NaN)).toBe(0);
-    expect(sToUs(Infinity)).toBe(0);
+    expect(secondsToTicksSigned(NaN)).toBe(0);
+    expect(secondsToTicksSigned(Infinity)).toBe(0);
   });
 });
 
@@ -197,20 +197,20 @@ describe('formatDurationSeconds', () => {
   });
 });
 
-describe('normalizeTimeUs', () => {
+describe('normalizeTicks', () => {
   it('returns rounded positive integer and guards invalid values', () => {
-    expect(normalizeTimeUs(10.4)).toBe(10);
-    expect(normalizeTimeUs(10.6)).toBe(11);
-    expect(normalizeTimeUs(-1)).toBe(0);
-    expect(normalizeTimeUs(Number.NaN)).toBe(0);
+    expect(normalizeTicks(10.4)).toBe(10);
+    expect(normalizeTicks(10.6)).toBe(11);
+    expect(normalizeTicks(-1)).toBe(0);
+    expect(normalizeTicks(Number.NaN)).toBe(0);
   });
 });
 
-describe('clampTimeUs', () => {
+describe('clampTicks', () => {
   it('clamps value to [0, duration] with normalization', () => {
-    expect(clampTimeUs(1200.8, 1000.2)).toBe(1000);
-    expect(clampTimeUs(-50, 1000)).toBe(0);
-    expect(clampTimeUs(400.7, 1000)).toBe(401);
-    expect(clampTimeUs(500, 0)).toBe(500);
+    expect(clampTicks(1200.8, 1000.2)).toBe(1000);
+    expect(clampTicks(-50, 1000)).toBe(0);
+    expect(clampTicks(400.7, 1000)).toBe(401);
+    expect(clampTicks(500, 0)).toBe(500);
   });
 });

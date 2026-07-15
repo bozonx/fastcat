@@ -1,4 +1,5 @@
 import type { TimelineDocument, TimelineTrack, TimelineClipItem } from '~/timeline/types';
+import { timelineUs } from './timeline-time';
 
 export class TimelineBuilder {
   private doc: TimelineDocument;
@@ -51,15 +52,15 @@ export class TimelineBuilder {
       disabled: options.disabled ?? false,
       audioGain: options.audioGain ?? 1,
       freezeFrameSourceUs: options.freezeFrameSourceUs,
-      sourceDurationUs: options.sourceDurationUs ?? options.durationUs,
+      sourceDurationUs: timelineUs(options.sourceDurationUs ?? options.durationUs),
       source: { path: '/dummy.mp4' },
       timelineRange: {
-        startUs: options.startUs ?? 0,
-        durationUs: options.durationUs,
+        startUs: timelineUs(options.startUs ?? 0),
+        durationUs: timelineUs(options.durationUs),
       },
       sourceRange: {
         startUs: 0,
-        durationUs: options.durationUs,
+        durationUs: timelineUs(options.durationUs),
       },
     } as unknown as TimelineClipItem;
 
@@ -108,7 +109,9 @@ export function createTestTimeline(config?: TestTimelineConfig) {
             const track = (builder as any).doc.tracks.find((t: any) => t.id === trackDef.id);
             const clip = track.items.find((i: any) => i.id === clipDef.id);
             if (clip) {
-              clip.freezeFrame = clipDef.freezeFrame;
+              clip.freezeFrame = {
+                sourceTimeUs: timelineUs(clipDef.freezeFrame.sourceTimeUs),
+              };
             }
           }
         }

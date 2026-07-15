@@ -1,4 +1,4 @@
-import { normalizeTimeUs } from '~/utils/time';
+import { normalizeTicks } from '~/utils/time';
 import type { useProjectStore } from '~/stores/project.store';
 import type { useWorkspaceStore } from '~/stores/workspace.store';
 import type { ClipEffect, TimelineTrack } from '~/timeline/types';
@@ -42,5 +42,5 @@ export function computeMonitorTimelineDuration(params: {
 }): number {
   const nextDurationUs = Math.max(params.maxDurationUs, params.audioDurationUs);
 
-  return params.normalize ? normalizeTimeUs(nextDurationUs) : nextDurationUs;
+  return params.normalize ? normalizeTicks(nextDurationUs) : nextDurationUs;
 }

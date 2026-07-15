@@ -3,7 +3,7 @@ import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 import { useMediaStore } from '~/stores/media.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
-import { secondsToUs } from '~/utils/time';
+import { secondsToTicksClamped } from '~/utils/time';
 import { withFileIoSlot } from '~/utils/io/io-governor';
 import { checkFileTimelineCompatibility } from '~/utils/media/compatibility';
 
@@ -31,7 +31,7 @@ export function useAddMediaToTimeline() {
 
     const meta = await mediaStore.getOrFetchMetadataByPath(path);
     if (!meta || meta.error) return null;
-    if (meta.duration) return Math.max(1, secondsToUs(meta.duration));
+    if (meta.duration) return Math.max(1, secondsToTicksClamped(meta.duration));
 
     return null;
   }

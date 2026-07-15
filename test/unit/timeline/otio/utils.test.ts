@@ -35,8 +35,8 @@ describe('toRationalTime', () => {
 
   it('converts ticks to rational time without fps', () => {
     const rt = toRationalTime(TICKS_PER_SECOND / 2);
-    expect(rt.value).toBe(500_000);
-    expect(rt.rate).toBe(1_000_000);
+    expect(rt.value).toBe(TICKS_PER_SECOND / 2);
+    expect(rt.rate).toBe(TICKS_PER_SECOND);
   });
 
   it('converts tick-aligned audio to an integer sample count', () => {

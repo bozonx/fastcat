@@ -52,7 +52,7 @@ export const ExportOptionsSchema = z.object({
     .max(16_384)
     .refine((value) => value % 2 === 0),
   fps: z.number().finite().min(1).max(240),
-  exportRangeUs: z
+  exportRangeTicks: z
     .object({
       startUs: z.number().finite().min(0).max(MAX_SAFE_TICKS),
       endUs: z.number().finite().min(0).max(MAX_SAFE_TICKS),

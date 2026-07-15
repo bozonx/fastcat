@@ -40,8 +40,8 @@
           "minBitrateBps": 0,
           "metadata": { "title": "", "description": "", "author": "", "tags": "" }
         },
-        "rangeStartUs": 0,
-        "rangeEndUs": 10000000
+        "rangeStartTicks": 0,
+        "rangeEndTicks": 2540160000000
       },
       "native": {
         "width": 1920,
@@ -93,8 +93,8 @@
           "minBitrateBps": 0,
           "metadata": { "title": "My Title", "description": "Desc", "author": "Me", "tags": "a, b" }
         },
-        "rangeStartUs": 2500000,
-        "rangeEndUs": 7500000
+        "rangeStartTicks": 635040000000,
+        "rangeEndTicks": 1905120000000
       },
       "native": {
         "width": 1280,
@@ -146,8 +146,8 @@
           "minBitrateBps": 0,
           "metadata": { "title": "", "description": "", "author": "", "tags": "" }
         },
-        "rangeStartUs": 0,
-        "rangeEndUs": 5000000
+        "rangeStartTicks": 0,
+        "rangeEndTicks": 1270080000000
       },
       "native": {
         "width": 1920,
@@ -199,8 +199,8 @@
           "minBitrateBps": 5000000,
           "metadata": { "title": "Film", "description": "D", "author": "A", "tags": "t1, t2" }
         },
-        "rangeStartUs": 1000000,
-        "rangeEndUs": 61000000
+        "rangeStartTicks": 254016000000,
+        "rangeEndTicks": 15494976000000
       },
       "native": {
         "width": 3840,

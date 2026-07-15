@@ -6,7 +6,7 @@ import MobileMediaPickerDrawer from './MobileMediaPickerDrawer.vue';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 import { useMediaStore } from '~/stores/media.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
-import { secondsToUs } from '~/utils/time';
+import { secondsToTicksClamped } from '~/utils/time';
 
 import { useAppClipboard } from '~/composables/useAppClipboard';
 import { useMediaTrackRedirectToast } from '~/composables/timeline/useMediaTrackRedirectToast';
@@ -54,7 +54,7 @@ async function resolveInsertDurationUs(
 
   const meta = await mediaStore.getOrFetchMetadataByPath(path);
   const duration = Number(meta?.duration);
-  return Number.isFinite(duration) && duration > 0 ? secondsToUs(duration) : undefined;
+  return Number.isFinite(duration) && duration > 0 ? secondsToTicksClamped(duration) : undefined;
 }
 
 async function handlePaste() {

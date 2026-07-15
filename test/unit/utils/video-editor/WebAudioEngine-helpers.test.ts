@@ -7,6 +7,7 @@ import {
   deepEqualEffects,
 } from '~/utils/video-editor/WebAudioEngine';
 import type { ClipPlaybackWindow } from '~/utils/video-editor/audio-engine.types';
+import { timelineUs } from '../../utils/timeline-time';
 
 function createMockGainNode() {
   const calls: Array<{ method: string; args: unknown[] }> = [];
@@ -357,7 +358,7 @@ describe('applyClipGainEnvelope', () => {
           'audio.volume': {
             keyframes: [
               { tUs: 0, value: 1, easing: 'linear' },
-              { tUs: 2_000_000, value: 0, easing: 'linear' },
+              { tUs: timelineUs(2_000_000), value: 0, easing: 'linear' },
             ],
           },
         },
@@ -452,7 +453,7 @@ describe('applyClipPanEnvelope', () => {
           'audio.pan': {
             keyframes: [
               { tUs: 0, value: -1, easing: 'linear' },
-              { tUs: 2_000_000, value: 1, easing: 'linear' },
+              { tUs: timelineUs(2_000_000), value: 1, easing: 'linear' },
             ],
           },
         },

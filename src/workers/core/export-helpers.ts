@@ -1,4 +1,4 @@
-import { usToS } from './time';
+import { ticksToSecondsClamped } from './time';
 import { TICKS_PER_SECOND } from '~/utils/time';
 
 export interface ClipRangesS {
@@ -16,9 +16,9 @@ export function getClipRangesS(clip: unknown): ClipRangesS {
   const sourceStartUs = Number(sourceRange?.startUs ?? 0);
   const sourceDurationUs = Number(sourceRange?.durationUs ?? timelineDurationUs ?? 0);
 
-  const timelineStartS = Math.max(0, usToS(timelineStartUs));
-  const sourceStartS = Math.max(0, usToS(sourceStartUs));
-  const durationS = Math.max(0, usToS(sourceDurationUs));
+  const timelineStartS = Math.max(0, ticksToSecondsClamped(timelineStartUs));
+  const sourceStartS = Math.max(0, ticksToSecondsClamped(sourceStartUs));
+  const durationS = Math.max(0, ticksToSecondsClamped(sourceDurationUs));
 
   return {
     timelineStartS,

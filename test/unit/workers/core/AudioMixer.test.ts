@@ -12,6 +12,7 @@ import {
   type PreparedClip,
 } from '~/workers/core/AudioMixer';
 import { applyAudioEffectsOffline } from '~/utils/audio/apply-audio-effects-offline';
+import { timelineUs } from '../../utils/timeline-time';
 
 vi.mock('~/utils/audio/apply-audio-effects-offline', () => ({
   applyAudioEffectsOffline: vi
@@ -312,7 +313,7 @@ describe('AudioMixer clip mix parity primitives', () => {
           'audio.volume': {
             keyframes: [
               { tUs: 0, value: 0, easing: 'linear' },
-              { tUs: 1_000_000, value: 1, easing: 'linear' },
+              { tUs: timelineUs(1_000_000), value: 1, easing: 'linear' },
             ],
           },
         },
@@ -409,9 +410,9 @@ describe('AudioMixer.prepareClips', () => {
       {
         sourcePath: 'test.mp3',
         startUs: 0,
-        durationUs: 1_000_000,
+        durationUs: timelineUs(1_000_000),
         sourceStartUs: 0,
-        sourceDurationUs: 1_000_000,
+        sourceDurationUs: timelineUs(1_000_000),
         audioGain: 0.5,
         audioBalance: 0,
         trackId: 'track1',
@@ -440,15 +441,15 @@ describe('AudioMixer.prepareClips', () => {
       {
         sourcePath: 'test1.mp3',
         startUs: 0,
-        durationUs: 1_000_000,
-        sourceDurationUs: 1_000_000,
+        durationUs: timelineUs(1_000_000),
+        sourceDurationUs: timelineUs(1_000_000),
         trackId: 'track1',
       },
       {
         sourcePath: 'test2.mp3',
-        startUs: 1_000_000,
-        durationUs: 1_000_000,
-        sourceDurationUs: 1_000_000,
+        startUs: timelineUs(1_000_000),
+        durationUs: timelineUs(1_000_000),
+        sourceDurationUs: timelineUs(1_000_000),
         trackId: 'track1',
       },
     ];
@@ -468,13 +469,13 @@ describe('AudioMixer.prepareClips', () => {
       audioClips: [
         {
           sourcePath: 'test.mp3',
-          startUs: 1_000_000,
-          durationUs: 1_000_000,
-          sourceStartUs: 500_000,
-          sourceDurationUs: 1_000_000,
+          startUs: timelineUs(1_000_000),
+          durationUs: timelineUs(1_000_000),
+          sourceStartUs: timelineUs(500_000),
+          sourceDurationUs: timelineUs(1_000_000),
           speed: 1,
-          transitionIn: { durationUs: 100_000, mode: 'adjacent' },
-          transitionOut: { durationUs: 150_000, mode: 'adjacent' },
+          transitionIn: { durationUs: timelineUs(100_000), mode: 'adjacent' },
+          transitionOut: { durationUs: timelineUs(150_000), mode: 'adjacent' },
         },
       ],
       hostClient: mockHostClient,

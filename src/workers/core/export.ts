@@ -20,7 +20,7 @@ import {
   writeVideoPassthrough,
   type PassthroughPacketSink,
 } from './export-video-passthrough';
-import { usToS } from './time';
+import { ticksToSecondsClamped } from './time';
 import { yieldToEventLoop } from './yield-scheduler';
 import { initEffects } from '../../effects';
 import { initTransitions } from '../../transitions';
@@ -970,7 +970,7 @@ export async function runExport(
 
     if (maxDurationUs <= 0) throw new Error('No clips to export');
 
-    const durationS = usToS(maxDurationUs);
+    const durationS = ticksToSecondsClamped(maxDurationUs);
     const hasAnyAudio = options.audio && audioClips.length > 0;
 
     const format = selectOutputFormat(options.format, {

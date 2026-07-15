@@ -528,7 +528,7 @@ export function useExportForm() {
                   tags: metadataTags.value,
                 }
               : undefined,
-            exportRangeUs: selectedExportRange.value?.range,
+            exportRangeTicks: selectedExportRange.value?.range,
           },
           tempFileHandle,
           (progress) => {

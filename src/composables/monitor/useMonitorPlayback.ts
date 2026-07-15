@@ -1,4 +1,4 @@
-import { TICKS_PER_SECOND, formatTimecode, normalizeTimeUs, sanitizeFps } from '~/utils/time';
+import { TICKS_PER_SECOND, formatTimecode, normalizeTicks, sanitizeFps } from '~/utils/time';
 import { createDevLogger } from '~/utils/dev-logger';
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
@@ -171,7 +171,7 @@ export function buildMonitorTimecodeText(params: {
     fps: params.fps,
   });
   const total = formatMonitorTimecode({
-    timeUs: normalizeTimeUs(params.durationUs),
+    timeUs: normalizeTicks(params.durationUs),
     fps: params.fps,
   });
 
