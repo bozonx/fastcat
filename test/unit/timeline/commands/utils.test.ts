@@ -24,7 +24,11 @@ const mockDoc: any = {
       id: 'track-1',
       kind: 'video',
       items: [
-        { id: 'clip-1', kind: 'clip', timelineRange: { startUs: 0, durationUs: timelineUs(1_000_000) } },
+        {
+          id: 'clip-1',
+          kind: 'clip',
+          timelineRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
+        },
         {
           id: 'clip-2',
           kind: 'clip',
@@ -161,7 +165,11 @@ describe('assertNoOverlap', () => {
     const track: any = {
       items: [
         { id: 'a', kind: 'clip', timelineRange: { startUs: 0, durationUs: timelineUs(1_000_000) } },
-        { id: 'b', kind: 'clip', timelineRange: { startUs: timelineUs(500_000), durationUs: timelineUs(1_000_000) } },
+        {
+          id: 'b',
+          kind: 'clip',
+          timelineRange: { startUs: timelineUs(500_000), durationUs: timelineUs(1_000_000) },
+        },
       ],
     };
     expect(() => assertNoOverlap(track, 'a', 0, timelineUs(1_000_000))).toThrow('Item overlaps');
@@ -171,7 +179,11 @@ describe('assertNoOverlap', () => {
     const track: any = {
       items: [
         { id: 'a', kind: 'clip', timelineRange: { startUs: 0, durationUs: timelineUs(500_000) } },
-        { id: 'b', kind: 'clip', timelineRange: { startUs: timelineUs(500_000), durationUs: timelineUs(500_000) } },
+        {
+          id: 'b',
+          kind: 'clip',
+          timelineRange: { startUs: timelineUs(500_000), durationUs: timelineUs(500_000) },
+        },
       ],
     };
     expect(() => assertNoOverlap(track, 'a', 0, timelineUs(500_000))).not.toThrow();
@@ -182,8 +194,14 @@ describe('mergeAdjacentGaps', () => {
   it('merges consecutive gaps', () => {
     const items: any = [
       { kind: 'gap', timelineRange: { startUs: 0, durationUs: timelineUs(500_000) } },
-      { kind: 'gap', timelineRange: { startUs: timelineUs(500_000), durationUs: timelineUs(500_000) } },
-      { kind: 'clip', timelineRange: { startUs: timelineUs(1_000_000), durationUs: timelineUs(1_000_000) } },
+      {
+        kind: 'gap',
+        timelineRange: { startUs: timelineUs(500_000), durationUs: timelineUs(500_000) },
+      },
+      {
+        kind: 'clip',
+        timelineRange: { startUs: timelineUs(1_000_000), durationUs: timelineUs(1_000_000) },
+      },
     ];
     const result = mergeAdjacentGaps(items);
     expect(result).toHaveLength(2);

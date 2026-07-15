@@ -106,7 +106,12 @@ describe('timeline/commands move_items', () => {
       type: 'move_items',
       moves: [
         { fromTrackId: 'v1', toTrackId: 'v1', itemId: 'c1', startUs: 0 + deltaUs },
-        { fromTrackId: 'v1', toTrackId: 'v1', itemId: 'c2', startUs: timelineUs(2_015_000) + deltaUs },
+        {
+          fromTrackId: 'v1',
+          toTrackId: 'v1',
+          itemId: 'c2',
+          startUs: timelineUs(2_015_000) + deltaUs,
+        },
       ],
       quantizeToFrames: true,
       ignoreLinks: true,
@@ -135,7 +140,9 @@ describe('timeline/commands move_items', () => {
     expect(() =>
       applyTimelineCommand(doc, {
         type: 'move_items',
-        moves: [{ fromTrackId: 'v1', toTrackId: 'v1', itemId: 'c1', startUs: timelineUs(2_000_000) }],
+        moves: [
+          { fromTrackId: 'v1', toTrackId: 'v1', itemId: 'c1', startUs: timelineUs(2_000_000) },
+        ],
         quantizeToFrames: false,
         ignoreLinks: true,
       }),

@@ -227,8 +227,7 @@ describe('free (sub-frame) audio clip phase preservation', () => {
       expect(clip.timelineRange.startUs).toBe(FREE_START_US);
       // The clip stays free, and the end moved by a whole number of frames.
       expect(isClipFrameAligned(clip, FPS)).toBe(false);
-      const durationDeltaFrames =
-        ((clip.timelineRange.durationUs - FREE_DURATION_US) * FPS) / 1e6;
+      const durationDeltaFrames = ((clip.timelineRange.durationUs - FREE_DURATION_US) * FPS) / 1e6;
       expect(Math.abs(durationDeltaFrames - Math.round(durationDeltaFrames))).toBeLessThan(0.001);
     });
 

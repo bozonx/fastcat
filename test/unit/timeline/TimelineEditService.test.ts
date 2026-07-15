@@ -33,7 +33,10 @@ describe('TimelineEditService', () => {
               kind: 'clip',
               trackId: 'v1',
               name: 'C2',
-              timelineRange: { startUs: timelineUs(10_000_000), durationUs: timelineUs(10_000_000) },
+              timelineRange: {
+                startUs: timelineUs(10_000_000),
+                durationUs: timelineUs(10_000_000),
+              },
             },
           ],
         },

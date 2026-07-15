@@ -381,7 +381,9 @@ export function serializeTimelineToOtio(doc: TimelineDocument): string {
     getTimelineFrameRate(doc.timebase, sanitizeFrameRate(fps)),
   );
   const audioTimeRate =
-    Number.isFinite(format.sampleRate) && format.sampleRate > 0 ? Math.round(format.sampleRate) : 48_000;
+    Number.isFinite(format.sampleRate) && format.sampleRate > 0
+      ? Math.round(format.sampleRate)
+      : 48_000;
 
   const tracks: OtioTrack[] = sortTracksForOtioStack(doc.tracks).map((t) => {
     const trackItems = Array.isArray(t.items) ? t.items : [];

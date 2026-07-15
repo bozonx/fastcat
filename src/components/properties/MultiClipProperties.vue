@@ -247,7 +247,9 @@ function handleBatchToggleTransition(edge: 'in' | 'out') {
     const safeDefaultDurationUs = Math.max(
       0,
       Math.round(
-        Number(workspaceStore.userSettings.timeline.defaultTransitionDurationUs ?? TICKS_PER_SECOND),
+        Number(
+          workspaceStore.userSettings.timeline.defaultTransitionDurationUs ?? TICKS_PER_SECOND,
+        ),
       ),
     );
 

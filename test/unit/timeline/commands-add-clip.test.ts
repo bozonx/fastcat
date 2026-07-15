@@ -46,6 +46,9 @@ describe('timeline/commands add clip', () => {
 
     const clip = result.tracks[0]?.items[0] as TimelineClipItem;
 
-    expect(clip.sourceRange).toEqual({ startUs: timelineUs(2_500_000), durationUs: timelineUs(500_000) });
+    expect(clip.sourceRange).toEqual({
+      startUs: timelineUs(2_500_000),
+      durationUs: timelineUs(500_000),
+    });
   });
 });

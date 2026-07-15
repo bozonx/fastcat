@@ -31,7 +31,8 @@ function handleUpdateStartTime(val: number | string) {
   const range = selectionRange.value;
   if (!range) return;
 
-  const startUs = typeof val === 'number' ? val : Math.max(0, Math.round(Number(val) * TICKS_PER_SECOND));
+  const startUs =
+    typeof val === 'number' ? val : Math.max(0, Math.round(Number(val) * TICKS_PER_SECOND));
   if (!Number.isFinite(startUs)) return;
 
   timelineStore.updateSelectionRange({
@@ -44,7 +45,8 @@ function handleUpdateEndTime(val: number | string) {
   const range = selectionRange.value;
   if (!range) return;
 
-  const endUs = typeof val === 'number' ? val : Math.max(0, Math.round(Number(val) * TICKS_PER_SECOND));
+  const endUs =
+    typeof val === 'number' ? val : Math.max(0, Math.round(Number(val) * TICKS_PER_SECOND));
   if (!Number.isFinite(endUs) || endUs <= range.startUs) return;
 
   timelineStore.updateSelectionRange({

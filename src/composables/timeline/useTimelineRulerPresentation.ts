@@ -1,4 +1,4 @@
-import { TICKS_PER_SECOND } from '~/utils/time';
+import { TICKS_PER_SECOND, formatTimecode } from '~/utils/time';
 import { computed, type Ref } from 'vue';
 import {
   absolutePxToViewportPx,
@@ -6,8 +6,6 @@ import {
   timeUsToViewportPx,
   zoomToPxPerSecond,
 } from '~/utils/timeline/geometry';
-
-import { formatTimecode } from '~/utils/time';
 
 interface MarkerLike {
   id: string;

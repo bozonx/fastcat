@@ -113,7 +113,10 @@ export class MediaClipLoader {
       }
       const frameRate = Number(frameRateRaw);
       const sourceRotation = Number((track as { rotation?: unknown }).rotation);
-      const mediaDurationUs = Math.max(0, Math.round((await track.computeDuration()) * TICKS_PER_SECOND));
+      const mediaDurationUs = Math.max(
+        0,
+        Math.round((await track.computeDuration()) * TICKS_PER_SECOND),
+      );
       const maxSourceTailUs = Math.max(0, mediaDurationUs - sourceStartUs);
       // `sourceDurationUs` is the FULL duration of the source media, in the
       // absolute source-time domain. Consumers rely on that: transition handle

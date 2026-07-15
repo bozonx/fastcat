@@ -23,12 +23,16 @@ describe('secondsToTicksClamped', () => {
   });
 
   it('floors when requested', () => {
-    expect(secondsToTicksClamped(1.000_000_9, 'floor')).toBe(Math.floor(1.000_000_9 * TICKS_PER_SECOND));
+    expect(secondsToTicksClamped(1.000_000_9, 'floor')).toBe(
+      Math.floor(1.000_000_9 * TICKS_PER_SECOND),
+    );
     expect(secondsToTicksClamped(1.0, 'floor')).toBe(TICKS_PER_SECOND);
   });
 
   it('ceils when requested', () => {
-    expect(secondsToTicksClamped(1.000_000_1, 'ceil')).toBe(Math.ceil(1.000_000_1 * TICKS_PER_SECOND));
+    expect(secondsToTicksClamped(1.000_000_1, 'ceil')).toBe(
+      Math.ceil(1.000_000_1 * TICKS_PER_SECOND),
+    );
     expect(secondsToTicksClamped(1.0, 'ceil')).toBe(TICKS_PER_SECOND);
   });
 

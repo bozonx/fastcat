@@ -69,7 +69,11 @@ describe('timelineRangeToRoundedPx', () => {
 
   it('keeps adjacent ranges sharing the same rounded boundary', () => {
     const zoom = pxPerSecondToZoom(10.4);
-    const left = timelineRangeToRoundedPx({ startUs: 0, durationUs: timelineUs(1_000_000) }, zoom, 1);
+    const left = timelineRangeToRoundedPx(
+      { startUs: 0, durationUs: timelineUs(1_000_000) },
+      zoom,
+      1,
+    );
     const right = timelineRangeToRoundedPx(
       { startUs: timelineUs(1_000_000), durationUs: timelineUs(1_000_000) },
       zoom,
@@ -315,7 +319,8 @@ describe('computeSnappedStartUs', () => {
     const fps = 30;
     const frameUs = TICKS_PER_SECOND / fps;
     // ~half a frame off the grid — the worst case for a phase-preserving snap.
-    const rawStartUs = quantizeStartUsToFrames(2 * TICKS_PER_SECOND, fps) + Math.round(frameUs / 2) + 137;
+    const rawStartUs =
+      quantizeStartUsToFrames(2 * TICKS_PER_SECOND, fps) + Math.round(frameUs / 2) + 137;
 
     const previewStartUs = computeSnappedStartUs({
       rawStartUs,

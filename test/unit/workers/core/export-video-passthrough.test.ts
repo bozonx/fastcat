@@ -54,7 +54,9 @@ describe('computePayloadVideoEndUs', () => {
     const end = computePayloadVideoEndUs([
       { kind: 'meta', masterEffects: [] } as never,
       { kind: 'track', id: 't', layer: 0 } as never,
-      baseClip({ timelineRange: { startUs: timelineUs(1_000_000), durationUs: timelineUs(3_000_000) } }),
+      baseClip({
+        timelineRange: { startUs: timelineUs(1_000_000), durationUs: timelineUs(3_000_000) },
+      }),
       baseClip({ id: 'c2', timelineRange: { startUs: 0, durationUs: timelineUs(2_000_000) } }),
     ]);
     expect(end).toBe(timelineUs(4_000_000));
@@ -156,7 +158,9 @@ describe('findVideoPassthroughCandidate', () => {
     [
       'clip does not start at timeline zero',
       () =>
-        candidate([baseClip({ timelineRange: { startUs: timelineUs(1_000_000), durationUs: DURATION_US } })]),
+        candidate([
+          baseClip({ timelineRange: { startUs: timelineUs(1_000_000), durationUs: DURATION_US } }),
+        ]),
     ],
     [
       'clip does not cover the whole export',
@@ -165,7 +169,11 @@ describe('findVideoPassthroughCandidate', () => {
     [
       'timeline and source windows disagree (stretch would be needed)',
       () =>
-        candidate([baseClip({ sourceRange: { startUs: 0, durationUs: DURATION_US - timelineUs(2_000_000) } })]),
+        candidate([
+          baseClip({
+            sourceRange: { startUs: 0, durationUs: DURATION_US - timelineUs(2_000_000) },
+          }),
+        ]),
     ],
     [
       'empty source range',

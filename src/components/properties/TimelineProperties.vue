@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { TICKS_PER_SECOND } from '~/utils/time';
+import { TICKS_PER_SECOND, formatDurationSeconds } from '~/utils/time';
 import { computed, ref } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useUiStore } from '~/stores/ui.store';
@@ -24,7 +24,6 @@ import type { VideoClipEffect, AudioClipEffect } from '~/timeline/types';
 import type { FsEntry } from '~/types/fs';
 import { createDevLogger } from '~/utils/dev-logger';
 import { formatBytes } from '~/utils/format';
-import { formatDurationSeconds } from '~/utils/time';
 import { selectTimelineDurationUs } from '~/timeline/selectors';
 import FileGeneralInfoSection from '~/components/properties/file/FileGeneralInfoSection.vue';
 import { useFilePropertiesBasics } from '~/composables/properties/useFilePropertiesBasics';

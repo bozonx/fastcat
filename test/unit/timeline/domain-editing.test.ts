@@ -61,6 +61,8 @@ describe('timeline/domain editing', () => {
       },
     ]);
 
-    expect(buildSplitSelectedClipsCommands(doc, timelineUs(2_500_000), ['selected-outside'])).toEqual([]);
+    expect(
+      buildSplitSelectedClipsCommands(doc, timelineUs(2_500_000), ['selected-outside']),
+    ).toEqual([]);
   });
 });

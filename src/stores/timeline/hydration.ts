@@ -26,7 +26,9 @@ export function createTimelineHydrationModule(
           if (meta) {
             const durationS = Number(meta.duration);
             const durationUs =
-              Number.isFinite(durationS) && durationS > 0 ? Math.floor(durationS * TICKS_PER_SECOND) : 0;
+              Number.isFinite(durationS) && durationS > 0
+                ? Math.floor(durationS * TICKS_PER_SECOND)
+                : 0;
             const isImageLike = !meta.video && !meta.audio;
             if (
               (durationUs > 0 && it.sourceDurationUs !== durationUs) ||
@@ -51,7 +53,9 @@ export function createTimelineHydrationModule(
           if (meta) {
             const durationS = Number(meta.duration);
             const durationUs =
-              Number.isFinite(durationS) && durationS > 0 ? Math.floor(durationS * TICKS_PER_SECOND) : 0;
+              Number.isFinite(durationS) && durationS > 0
+                ? Math.floor(durationS * TICKS_PER_SECOND)
+                : 0;
             const isImageLike = !meta.video && !meta.audio;
 
             const needsSourceDurationPatch = durationUs > 0 && it.sourceDurationUs !== durationUs;

@@ -32,7 +32,8 @@ export function formatStopFrameTimecode(params: FormatStopFrameTimecodeParams): 
     frameDigits > 0
       ? Math.max(
           0,
-          Math.round(((Math.max(0, params.timeUs) * fps) / TICKS_PER_SECOND) * frameScale) / frameScale,
+          Math.round(((Math.max(0, params.timeUs) * fps) / TICKS_PER_SECOND) * frameScale) /
+            frameScale,
         )
       : usToFrame(params.timeUs, fps, 'round');
 

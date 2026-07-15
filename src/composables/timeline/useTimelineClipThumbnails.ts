@@ -288,7 +288,10 @@ export function useTimelineClipThumbnails(options: UseTimelineClipThumbnailsOpti
       return times.sort((a, b) => a - b);
     }
 
-    const sourceStartSec = Math.max(0, sourceStartUs / TICKS_PER_SECOND + visibleStartLocalPx / pxPerSec);
+    const sourceStartSec = Math.max(
+      0,
+      sourceStartUs / TICKS_PER_SECOND + visibleStartLocalPx / pxPerSec,
+    );
     const sourceEndSec = Math.min(
       duration.value,
       sourceStartUs / TICKS_PER_SECOND + visibleEndLocalPx / pxPerSec,

@@ -39,8 +39,14 @@ describe('computeTrimGeometry', () => {
     });
 
     expect(result.valid).toBe(true);
-    expect(result.timelineRange).toEqual({ startUs: timelineUs(80000), durationUs: timelineUs(320000) });
-    expect(result.sourceRange).toEqual({ startUs: timelineUs(80000), durationUs: timelineUs(320000) });
+    expect(result.timelineRange).toEqual({
+      startUs: timelineUs(80000),
+      durationUs: timelineUs(320000),
+    });
+    expect(result.sourceRange).toEqual({
+      startUs: timelineUs(80000),
+      durationUs: timelineUs(320000),
+    });
   });
 
   it('clamps to source boundaries when extending past limits (fixed duration)', () => {
@@ -104,10 +110,16 @@ describe('computeTrimGeometry', () => {
     });
 
     expect(result.valid).toBe(true);
-    expect(result.timelineRange).toEqual({ startUs: timelineUs(40000), durationUs: timelineUs(360000) });
+    expect(result.timelineRange).toEqual({
+      startUs: timelineUs(40000),
+      durationUs: timelineUs(360000),
+    });
     // Left boundary moves: prevSourceStart (0) + appliedDelta (30000 * 1.5 = 45000) + deltaLeftUs * 1.5 (10000 * 1.5 = 15000) = 60000.
     // Right boundary should remain unchanged at 600000 because end didn't shift.
-    expect(result.sourceRange).toEqual({ startUs: timelineUs(60000), durationUs: timelineUs(540000) });
+    expect(result.sourceRange).toEqual({
+      startUs: timelineUs(60000),
+      durationUs: timelineUs(540000),
+    });
     // Invariant: source duration 540,000 Us / speed 1.5 = timeline duration 360,000 Us.
     expect(result.sourceRange.durationUs).toBe(Math.round(result.timelineRange.durationUs * 1.5));
   });
@@ -132,10 +144,16 @@ describe('computeTrimGeometry', () => {
     });
 
     expect(result.valid).toBe(true);
-    expect(result.timelineRange).toEqual({ startUs: timelineUs(80000), durationUs: timelineUs(320000) });
+    expect(result.timelineRange).toEqual({
+      startUs: timelineUs(80000),
+      durationUs: timelineUs(320000),
+    });
     // Left source moves by quantized start 80,000 * 0.8 = 64,000 Us.
     // Right source remains 320,000 Us.
-    expect(result.sourceRange).toEqual({ startUs: timelineUs(64000), durationUs: timelineUs(256000) });
+    expect(result.sourceRange).toEqual({
+      startUs: timelineUs(64000),
+      durationUs: timelineUs(256000),
+    });
     // Invariant: source duration 256,000 Us / speed 0.8 = timeline duration 320,000 Us.
     expect(result.sourceRange.durationUs).toBe(Math.round(result.timelineRange.durationUs * 0.8));
   });
@@ -156,10 +174,16 @@ describe('computeTrimGeometry', () => {
     });
 
     expect(result.valid).toBe(true);
-    expect(result.timelineRange).toEqual({ startUs: timelineUs(40000), durationUs: timelineUs(360000) });
+    expect(result.timelineRange).toEqual({
+      startUs: timelineUs(40000),
+      durationUs: timelineUs(360000),
+    });
     // Source end moves left by 40,000 Us: from 500,000 Us to 460,000 Us.
     // Source start remains 100,000 Us.
-    expect(result.sourceRange).toEqual({ startUs: timelineUs(100000), durationUs: timelineUs(360000) });
+    expect(result.sourceRange).toEqual({
+      startUs: timelineUs(100000),
+      durationUs: timelineUs(360000),
+    });
   });
 
   it('rejects trims that shrink the clip below one frame', () => {
@@ -192,7 +216,10 @@ describe('computeTrimGeometry', () => {
     });
 
     expect(result.valid).toBe(true);
-    expect(result.timelineRange).toEqual({ startUs: timelineUs(300000), durationUs: timelineUs(600000) });
+    expect(result.timelineRange).toEqual({
+      startUs: timelineUs(300000),
+      durationUs: timelineUs(600000),
+    });
     expect(result.sourceRange).toEqual({ startUs: 0, durationUs: timelineUs(600000) });
   });
 });

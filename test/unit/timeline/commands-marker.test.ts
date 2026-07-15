@@ -63,7 +63,9 @@ describe('markerHandlers', () => {
     });
 
     it('throws if another marker already exists at the same time', () => {
-      const doc = createDoc([{ id: 'm1', timeUs: timelineUs(1_000_000), text: '' }] as TimelineMarker[]);
+      const doc = createDoc([
+        { id: 'm1', timeUs: timelineUs(1_000_000), text: '' },
+      ] as TimelineMarker[]);
       expect(() =>
         addMarker(doc, {
           type: 'add_marker',

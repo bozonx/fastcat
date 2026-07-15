@@ -904,7 +904,8 @@ export class VideoCompositor {
       });
       // Source-domain look-ahead; scaled by |speed| so fast playback still covers
       // the same wall-clock horizon.
-      const aheadSourceUs = nowSourceUs + Math.round((maxFrames / frameRate) * TICKS_PER_SECOND * speed);
+      const aheadSourceUs =
+        nowSourceUs + Math.round((maxFrames / frameRate) * TICKS_PER_SECOND * speed);
 
       plans.push({
         clip,

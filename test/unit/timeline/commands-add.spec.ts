@@ -48,7 +48,10 @@ describe('addClipToTrack', () => {
     });
 
     const clip = result.next.tracks[0].items.find((it: any) => it.kind === 'clip');
-    expect(clip?.timelineRange).toEqual({ startUs: timelineUs(50_000), durationUs: timelineUs(50_001) });
+    expect(clip?.timelineRange).toEqual({
+      startUs: timelineUs(50_000),
+      durationUs: timelineUs(50_001),
+    });
   });
 
   it('keeps virtual clip free startUs and durationUs when frame quantization is disabled', () => {
@@ -64,7 +67,10 @@ describe('addClipToTrack', () => {
     });
 
     const clip = result.next.tracks[0].items.find((it: any) => it.kind === 'clip');
-    expect(clip?.timelineRange).toEqual({ startUs: timelineUs(50_000), durationUs: timelineUs(50_001) });
+    expect(clip?.timelineRange).toEqual({
+      startUs: timelineUs(50_000),
+      durationUs: timelineUs(50_001),
+    });
   });
 
   it('throws when adding an overlapping clip without pseudo', () => {
@@ -141,7 +147,10 @@ describe('addClipToTrack', () => {
     const existing = clips.find((it: any) => it.name === 'existing');
     const dropped = clips.find((it: any) => it.name === 'dropped');
 
-    expect(existing?.timelineRange).toEqual({ startUs: timelineUs(4_000_000), durationUs: timelineUs(2_000_000) });
+    expect(existing?.timelineRange).toEqual({
+      startUs: timelineUs(4_000_000),
+      durationUs: timelineUs(2_000_000),
+    });
     expect(dropped?.timelineRange).toEqual({ startUs: 0, durationUs: timelineUs(4_000_000) });
     expect(dropped?.sourceRange).toEqual({ startUs: 0, durationUs: timelineUs(4_000_000) });
   });
@@ -174,7 +183,10 @@ describe('addClipToTrack', () => {
     const dropped = clips.find((it: any) => it.name === 'dropped');
 
     expect(existing?.timelineRange).toEqual({ startUs: 0, durationUs: timelineUs(1_000_000) });
-    expect(dropped?.timelineRange).toEqual({ startUs: timelineUs(1_000_000), durationUs: timelineUs(4_000_000) });
+    expect(dropped?.timelineRange).toEqual({
+      startUs: timelineUs(1_000_000),
+      durationUs: timelineUs(4_000_000),
+    });
     expect(dropped?.sourceRange).toEqual({ startUs: 0, durationUs: timelineUs(4_000_000) });
   });
 });

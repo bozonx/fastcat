@@ -1,12 +1,11 @@
 <script setup lang="ts">
-import { TICKS_PER_SECOND } from '~/utils/time';
+import { TICKS_PER_SECOND, formatDurationSeconds } from '~/utils/time';
 import { createDevLogger } from '~/utils/dev-logger';
 
 import { computed, ref, watch } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 import type { FsEntry } from '~/types/fs';
-import { formatDurationSeconds } from '~/utils/time';
 import { useModalOpenModel } from '~/composables/ui/useModalOpenModel';
 const log = createDevLogger('MobileAddToTimelineModal');
 

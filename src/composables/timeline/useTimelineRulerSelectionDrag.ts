@@ -110,7 +110,9 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
       event.clientX -
       selectionDragStartX.value +
       (options.scrollLeft.value - selectionDragStartScrollLeft.value);
-    const mouseDeltaUs = Math.round((dxPx / zoomToPxPerSecond(options.zoom.value)) * TICKS_PER_SECOND);
+    const mouseDeltaUs = Math.round(
+      (dxPx / zoomToPxPerSecond(options.zoom.value)) * TICKS_PER_SECOND,
+    );
     const minDurationUs = Math.max(
       getFrameDurationUs(),
       pxToTimeUs(TIMELINE_RULER_CONSTANTS.MIN_SELECTION_DURATION_PX, options.zoom.value),

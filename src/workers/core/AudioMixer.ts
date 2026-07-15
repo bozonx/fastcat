@@ -284,7 +284,9 @@ export function buildGainEnvelope(params: {
       const frameInClip = startFrame + i;
       const animatedGain = evalTrackAt(
         volumeTrack,
-        Math.round((clip.offsetS + (frameInClip / targetSampleRate) * clip.speed) * TICKS_PER_SECOND),
+        Math.round(
+          (clip.offsetS + (frameInClip / targetSampleRate) * clip.speed) * TICKS_PER_SECOND,
+        ),
       );
       const baseGain =
         animatedGain === undefined ? clip.audioGain : Math.max(0, Math.min(10, animatedGain));
@@ -913,7 +915,8 @@ export class AudioMixer {
         0,
         Math.min(
           ticksToSecondsClamped(Number(sourceDurationUs)) / speed,
-          ticksToSecondsClamped(Number(durationUs)) || ticksToSecondsClamped(Number(sourceDurationUs)) / speed,
+          ticksToSecondsClamped(Number(durationUs)) ||
+            ticksToSecondsClamped(Number(sourceDurationUs)) / speed,
         ),
       );
 

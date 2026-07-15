@@ -155,7 +155,13 @@ describe('timeline/commands overlay_trim_item', () => {
     });
 
     const mover = clips(next.tracks[0]!).find((x) => x.id === 'mover');
-    expect(mover.timelineRange).toEqual({ startUs: timelineUs(3_000_000), durationUs: timelineUs(1_000_000) });
-    expect(mover.sourceRange).toEqual({ startUs: timelineUs(4_000_000), durationUs: timelineUs(1_000_000) });
+    expect(mover.timelineRange).toEqual({
+      startUs: timelineUs(3_000_000),
+      durationUs: timelineUs(1_000_000),
+    });
+    expect(mover.sourceRange).toEqual({
+      startUs: timelineUs(4_000_000),
+      durationUs: timelineUs(1_000_000),
+    });
   });
 });

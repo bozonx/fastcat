@@ -927,7 +927,9 @@ export class ClipResourceManager {
           params.timelineNowUs +
           Math.max(
             0,
-            Math.round((sampleTimeS * TICKS_PER_SECOND - params.nowSourceTimeS * TICKS_PER_SECOND) / speed),
+            Math.round(
+              (sampleTimeS * TICKS_PER_SECOND - params.nowSourceTimeS * TICKS_PER_SECOND) / speed,
+            ),
           );
 
         this.storeDecodedFrame({

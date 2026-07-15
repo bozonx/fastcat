@@ -10,8 +10,12 @@ import type {
   KeyframeTrack,
 } from '../types';
 import { createTimelineTimebase, createTimelineTimebaseFromFps } from '../timebase';
-import { sanitizeFrameRate } from '~/utils/time/ticks';
-import { secondsToTicks, TICKS_PER_SECOND, ticksToSeconds } from '~/utils/time/ticks';
+import {
+  sanitizeFrameRate,
+  secondsToTicks,
+  TICKS_PER_SECOND,
+  ticksToSeconds,
+} from '~/utils/time/ticks';
 import type { OtioRationalTime, OtioTimeRange, OtioColor } from './types';
 import { isAnimatableParamPath, normalizeKeyframeTrack } from '../animation/evaluate';
 const log = createDevLogger('utils');

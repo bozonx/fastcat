@@ -103,7 +103,11 @@ const effectiveSourceDurationUs = computed(() => {
     const meta = mediaStore.getCachedMetadata(fileUrl.value);
     const metaDurationS = meta?.duration;
     if (metaDurationS && metaDurationS > 0) {
-      return Math.max(Math.floor(metaDurationS * TICKS_PER_SECOND), explicitDurationUs, sourceRangeEndUs);
+      return Math.max(
+        Math.floor(metaDurationS * TICKS_PER_SECOND),
+        explicitDurationUs,
+        sourceRangeEndUs,
+      );
     }
   }
 
@@ -266,7 +270,9 @@ const extractPeaks = async () => {
         getMediaDurationUs: (path) => {
           const meta = mediaStore.getCachedMetadata(path);
           const metaDurationS = meta?.duration;
-          return metaDurationS && metaDurationS > 0 ? Math.floor(metaDurationS * TICKS_PER_SECOND) : 0;
+          return metaDurationS && metaDurationS > 0
+            ? Math.floor(metaDurationS * TICKS_PER_SECOND)
+            : 0;
         },
         loadTimelineDocument: async (path, clip) => {
           const file = await fileManager.vfs.getFile(path);

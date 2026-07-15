@@ -566,7 +566,10 @@ describe('TimelineStore', () => {
     const existing = clips.find((it: any) => it.id === 'existing');
     const dropped = clips.find((it: any) => it.name === 'image.jpg');
 
-    expect(existing.timelineRange).toEqual({ startUs: timelineUs(5_000_000), durationUs: timelineUs(1_000_000) });
+    expect(existing.timelineRange).toEqual({
+      startUs: timelineUs(5_000_000),
+      durationUs: timelineUs(1_000_000),
+    });
     expect(dropped.timelineRange).toEqual({ startUs: 0, durationUs: timelineUs(5_000_000) });
     expect(dropped.sourceRange).toEqual({ startUs: 0, durationUs: timelineUs(5_000_000) });
   });

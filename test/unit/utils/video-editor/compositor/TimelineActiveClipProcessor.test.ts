@@ -218,10 +218,7 @@ describe('TimelineActiveClipProcessor.process', () => {
     });
     processor.process(params);
     expect(syncTransitionFilter).toHaveBeenCalledWith(clip, 100_000 * TICKS_PER_MICROSECOND);
-    expect(computeTransitionOpacity).toHaveBeenCalledWith(
-      clip,
-      100_000 * TICKS_PER_MICROSECOND,
-    );
+    expect(computeTransitionOpacity).toHaveBeenCalledWith(clip, 100_000 * TICKS_PER_MICROSECOND);
     expect(clip.sprite!.alpha).toBe(0.8);
   });
 

@@ -52,8 +52,12 @@ describe('timeline OTIO roundtrip', () => {
     };
 
     const otio = JSON.parse(serializeTimelineToOtio(doc));
-    const videoTrack = otio.tracks.children.find((track: { kind: string }) => track.kind === 'Video');
-    const audioTrack = otio.tracks.children.find((track: { kind: string }) => track.kind === 'Audio');
+    const videoTrack = otio.tracks.children.find(
+      (track: { kind: string }) => track.kind === 'Video',
+    );
+    const audioTrack = otio.tracks.children.find(
+      (track: { kind: string }) => track.kind === 'Audio',
+    );
     const videoChildren = videoTrack.children as Array<{ OTIO_SCHEMA: string; source_range: any }>;
     const audioChildren = audioTrack.children as Array<{ OTIO_SCHEMA: string; source_range: any }>;
     const videoGap = videoChildren.find((child) => child.OTIO_SCHEMA === 'Gap.1');
@@ -79,8 +83,12 @@ describe('timeline OTIO roundtrip', () => {
       name: 'Fallback',
       format: { fps: 29.97, sampleRate: 48_000 },
     });
-    const parsedVideo = parsed.tracks.flatMap((track) => track.items).find((item) => item.id === 'video-clip');
-    const parsedAudio = parsed.tracks.flatMap((track) => track.items).find((item) => item.id === 'audio-clip');
+    const parsedVideo = parsed.tracks
+      .flatMap((track) => track.items)
+      .find((item) => item.id === 'video-clip');
+    const parsedAudio = parsed.tracks
+      .flatMap((track) => track.items)
+      .find((item) => item.id === 'audio-clip');
 
     expect(parsedVideo?.timelineRange).toEqual(videoClip.timelineRange);
     expect(parsedVideo?.sourceRange).toEqual(videoClip.sourceRange);

@@ -111,7 +111,10 @@ describe('migrateLegacyOtioMetadataToTicks', () => {
 
     const clip = doc.tracks[0]!.items[0]!;
     expect(doc.metadata?.fastcat?.version).toBe(TIMELINE_TICKS_DOCUMENT_VERSION);
-    expect(clip.timelineRange).toEqual({ startUs: TICKS_PER_SECOND, durationUs: 2 * TICKS_PER_SECOND });
+    expect(clip.timelineRange).toEqual({
+      startUs: TICKS_PER_SECOND,
+      durationUs: 2 * TICKS_PER_SECOND,
+    });
     expect(clip.sourceRange).toEqual({ startUs: 0, durationUs: 2 * TICKS_PER_SECOND });
     expect(clip.sourceDurationUs).toBe(2 * TICKS_PER_SECOND);
   });

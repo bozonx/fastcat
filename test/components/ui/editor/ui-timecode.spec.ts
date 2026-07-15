@@ -90,10 +90,14 @@ describe('UiTimecode', () => {
     const downButton = buttons[1];
 
     await upButton.trigger('click');
-    expect(component.emitted('update:modelValue')?.[0]).toEqual([timelineUs(1_000_000) + timelineUs(1_000_000) / 30]);
+    expect(component.emitted('update:modelValue')?.[0]).toEqual([
+      timelineUs(1_000_000) + timelineUs(1_000_000) / 30,
+    ]);
 
     await downButton.trigger('click');
-    expect(component.emitted('update:modelValue')?.[1]).toEqual([timelineUs(1_000_000) - timelineUs(1_000_000) / 30]);
+    expect(component.emitted('update:modelValue')?.[1]).toEqual([
+      timelineUs(1_000_000) - timelineUs(1_000_000) / 30,
+    ]);
   });
 
   it('steps value up and down via arrow keys', async () => {
@@ -106,10 +110,14 @@ describe('UiTimecode', () => {
     const input = component.find('input');
 
     await input.trigger('keydown', { key: 'ArrowUp' });
-    expect(component.emitted('update:modelValue')?.[0]).toEqual([timelineUs(1_000_000) + timelineUs(1_000_000) / 30]);
+    expect(component.emitted('update:modelValue')?.[0]).toEqual([
+      timelineUs(1_000_000) + timelineUs(1_000_000) / 30,
+    ]);
 
     await input.trigger('keydown', { key: 'ArrowDown' });
-    expect(component.emitted('update:modelValue')?.[1]).toEqual([timelineUs(1_000_000) - timelineUs(1_000_000) / 30]);
+    expect(component.emitted('update:modelValue')?.[1]).toEqual([
+      timelineUs(1_000_000) - timelineUs(1_000_000) / 30,
+    ]);
   });
 
   it('does not update localValue from props when focused', async () => {

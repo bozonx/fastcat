@@ -233,7 +233,10 @@ export function useTimelineWheelHandler({
     if (action === 'seek_second') {
       e.preventDefault();
       timelineStore.setCurrentTimeUs(
-        Math.max(0, Math.round(timelineStore.currentTime + (delta > 0 ? 1 : -1) * TICKS_PER_SECOND)),
+        Math.max(
+          0,
+          Math.round(timelineStore.currentTime + (delta > 0 ? 1 : -1) * TICKS_PER_SECOND),
+        ),
       );
       return;
     }

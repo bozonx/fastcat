@@ -336,9 +336,18 @@ describe('timeline/commands overlay_place_item', () => {
 
     expect(longPieces).toHaveLength(2);
     expect(longPieces[0].timelineRange).toEqual({ startUs: 0, durationUs: timelineUs(2_000_000) });
-    expect(longPieces[0].sourceRange).toEqual({ startUs: timelineUs(6_000_000), durationUs: timelineUs(2_000_000) });
-    expect(longPieces[1].timelineRange).toEqual({ startUs: timelineUs(4_000_000), durationUs: timelineUs(2_000_000) });
-    expect(longPieces[1].sourceRange).toEqual({ startUs: timelineUs(2_000_000), durationUs: timelineUs(2_000_000) });
+    expect(longPieces[0].sourceRange).toEqual({
+      startUs: timelineUs(6_000_000),
+      durationUs: timelineUs(2_000_000),
+    });
+    expect(longPieces[1].timelineRange).toEqual({
+      startUs: timelineUs(4_000_000),
+      durationUs: timelineUs(2_000_000),
+    });
+    expect(longPieces[1].sourceRange).toEqual({
+      startUs: timelineUs(2_000_000),
+      durationUs: timelineUs(2_000_000),
+    });
   });
 
   it('no gaps between clips after overlay placement', () => {
