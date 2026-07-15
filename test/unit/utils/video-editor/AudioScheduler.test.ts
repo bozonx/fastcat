@@ -1,6 +1,7 @@
 /** @vitest-environment node */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { AudioScheduler } from '~/utils/video-editor/AudioScheduler';
+import { timelineUs } from '../timeline-time';
 
 interface MockCtx {
   currentTime: number;
@@ -50,7 +51,7 @@ describe('AudioScheduler', () => {
       const ctx = createMockCtx(100);
       const { scheduler } = createScheduler({ ctx });
 
-      await scheduler.play(5_000_000, 1);
+      await scheduler.play(timelineUs(5_000_000), 1);
 
       expect(scheduler.isPlayingActive()).toBe(true);
       expect(scheduler.getBaseTimeS()).toBe(5);
@@ -113,7 +114,7 @@ describe('AudioScheduler', () => {
     it('uses wall-clock when ctx is null', async () => {
       const { scheduler } = createScheduler({ ctx: null });
 
-      await scheduler.play(1_000_000, 1);
+      await scheduler.play(timelineUs(1_000_000), 1);
 
       expect(scheduler.isPlayingActive()).toBe(true);
       expect(scheduler.getBaseTimeS()).toBe(1);
@@ -161,7 +162,7 @@ describe('AudioScheduler', () => {
       const { scheduler } = createScheduler({ ctx, onStopNodes });
 
       await scheduler.play(0, 1);
-      scheduler.seek(20_000_000);
+      scheduler.seek(timelineUs(20_000_000));
 
       expect(scheduler.getBaseTimeS()).toBe(20);
       expect(onStopNodes).toHaveBeenCalledWith({ fadeOutS: 0.02 });
@@ -193,7 +194,7 @@ describe('AudioScheduler', () => {
       const { scheduler } = createScheduler({ ctx: null });
 
       await scheduler.play(0, 1);
-      scheduler.seek(15_000_000);
+      scheduler.seek(timelineUs(15_000_000));
 
       expect(scheduler.getBaseTimeS()).toBe(15);
       expect(scheduler.getPlaybackStartCtxTimeS()).toBeGreaterThan(0);
@@ -206,7 +207,7 @@ describe('AudioScheduler', () => {
 
       await scheduler.play(0, 1);
       onScheduleLookahead.mockClear();
-      scheduler.seek(5_000_000);
+      scheduler.seek(timelineUs(5_000_000));
 
       expect(onScheduleLookahead).toHaveBeenCalledTimes(1);
     });
@@ -315,7 +316,7 @@ describe('AudioScheduler', () => {
       const ctx = createMockCtx(50);
       const { scheduler } = createScheduler({ ctx, kickoffLatencyS: 0.05 });
 
-      await scheduler.play(10_000_000, 1);
+      await scheduler.play(timelineUs(10_000_000), 1);
       // Advance 2 seconds at 1x → timeline at 12s
       ctx.currentTime = 52;
       expect(scheduler.getCurrentTimeS()).toBeCloseTo(12, 1);
@@ -350,7 +351,7 @@ describe('AudioScheduler', () => {
       const { scheduler } = createScheduler({ ctx });
 
       await scheduler.play(0, 1);
-      scheduler.syncTime(12_340_000);
+      scheduler.syncTime(timelineUs(12_340_000));
 
       expect(scheduler.getBaseTimeS()).toBeCloseTo(12.34, 5);
     });
@@ -368,7 +369,7 @@ describe('AudioScheduler', () => {
       const { scheduler } = createScheduler({ ctx: null });
 
       await scheduler.play(0, 1);
-      scheduler.syncTime(7_000_000);
+      scheduler.syncTime(timelineUs(7_000_000));
 
       expect(scheduler.getBaseTimeS()).toBeCloseTo(7, 5);
     });
@@ -384,7 +385,7 @@ describe('AudioScheduler', () => {
       const ctx = createMockCtx(100);
       const { scheduler } = createScheduler({ ctx, kickoffLatencyS: 0.1 });
 
-      await scheduler.play(2_000_000, 1);
+      await scheduler.play(timelineUs(2_000_000), 1);
       // ctx.currentTime is still 100, kickoff is 100.1
       // elapsed = max(0, 100 - 100.1) = 0
       expect(scheduler.getCurrentTimeS()).toBeCloseTo(2, 5);
@@ -394,7 +395,7 @@ describe('AudioScheduler', () => {
       const ctx = createMockCtx(100);
       const { scheduler } = createScheduler({ ctx, kickoffLatencyS: 0.1 });
 
-      await scheduler.play(2_000_000, 1);
+      await scheduler.play(timelineUs(2_000_000), 1);
       ctx.currentTime = 100.6;
       // elapsed = 100.6 - 100.1 = 0.5
       expect(scheduler.getCurrentTimeS()).toBeCloseTo(2.5, 5);

@@ -7,6 +7,7 @@ import {
   getCachedComposedTimelinePeaks,
   setCachedComposedTimelinePeaks,
 } from '~/utils/audio/timeline-waveform';
+import { timelineUs } from '../timeline-time';
 
 function createMediaClip(overrides: Partial<TimelineClipItem> = {}): TimelineClipItem {
   return {
@@ -15,9 +16,9 @@ function createMediaClip(overrides: Partial<TimelineClipItem> = {}): TimelineCli
     trackId: 'track-1',
     clipType: 'media',
     name: 'Clip',
-    timelineRange: { startUs: 0, durationUs: 1_000_000 },
-    sourceRange: { startUs: 0, durationUs: 1_000_000 },
-    sourceDurationUs: 1_000_000,
+    timelineRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
+    sourceRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
+    sourceDurationUs: timelineUs(1_000_000),
     source: { path: 'audio.wav' },
     speed: 1,
     audioGain: 1,
@@ -48,7 +49,7 @@ describe('timeline waveform peaks', () => {
 
     const peaks = await buildTimelinePeaks({
       doc: createDocument([createMediaClip({ audioGain: 2 })]),
-      durationUs: 1_000_000,
+      durationUs: timelineUs(1_000_000),
       maxLength: 2,
       visiting: new Set<string>(),
       ensureMediaPeaks,
@@ -86,12 +87,12 @@ describe('timeline waveform peaks', () => {
 
     const peaks = await buildTimelinePeaks({
       doc: parentDoc,
-      durationUs: 1_000_000,
+      durationUs: timelineUs(1_000_000),
       maxLength: 4,
       visiting: new Set<string>(),
       timelinePath: 'root.otio',
       docCache: new Map(),
-      getMediaDurationUs: () => 1_000_000,
+      getMediaDurationUs: () => timelineUs(1_000_000),
       ensureMediaPeaks,
       loadTimelineDocument,
       yieldEverySamples: 10_000,
@@ -119,7 +120,7 @@ describe('timeline waveform peaks', () => {
 
     const peaks = await buildTimelinePeaks({
       doc: selfReferencingDoc,
-      durationUs: 1_000_000,
+      durationUs: timelineUs(1_000_000),
       maxLength: 4,
       // The root path is already on the visiting stack, so the self-reference
       // must be skipped.

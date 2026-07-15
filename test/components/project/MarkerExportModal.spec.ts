@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mountWithNuxt } from '../../utils/mount';
+import { timelineUs } from '../../unit/utils/timeline-time';
 import MarkerExportModal from '~/components/project/MarkerExportModal.vue';
 
 const mockListEntryNames = vi.fn().mockResolvedValue([]);
@@ -37,9 +38,9 @@ describe('MarkerExportModal.vue', () => {
     const component = await mountWithNuxt(MarkerExportModal, {
       props: {
         markers: [
-          { id: '1', timeUs: 1_000_000, text: 'Intro', color: '#d0021b' },
-          { id: '2', timeUs: 5_000_000, text: 'Main', color: '#4a90e2' },
-          { id: '3', timeUs: 3661_000_000, text: 'Over Hour', color: '#d0021b' },
+          { id: '1', timeUs: timelineUs(1_000_000), text: 'Intro', color: '#d0021b' },
+          { id: '2', timeUs: timelineUs(5_000_000), text: 'Main', color: '#4a90e2' },
+          { id: '3', timeUs: timelineUs(3661_000_000), text: 'Over Hour', color: '#d0021b' },
         ],
         fps: 30,
         open: true,

@@ -8,7 +8,6 @@ import {
   clipSupportsThumbnailControls,
 } from '~/utils/timeline/clip-capabilities';
 import { getApplicableClipParameterGroups } from '~/utils/timeline/clip-parameters';
-import { sanitizeFps } from '~/timeline/commands/utils';
 import { useMediaStore, resolveMediaMetadata } from '~/stores/media.store';
 
 export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): ContextMenuGroup[] {

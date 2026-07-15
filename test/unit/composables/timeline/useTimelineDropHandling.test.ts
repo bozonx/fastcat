@@ -7,12 +7,13 @@ import { useDraggedFile } from '~/composables/useDraggedFile';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useMediaStore } from '~/stores/media.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
+import { timelineUs } from '../../utils/timeline-time';
 
 vi.mock('~/stores/workspace.store', () => ({
   useWorkspaceStore: vi.fn(() => ({
     userSettings: {
       timeline: {
-        defaultStaticClipDurationUs: 5_000_000,
+        defaultStaticClipDurationUs: timelineUs(5_000_000),
         snapThresholdPx: 8,
         snapping: {
           timelineEdges: true,
@@ -113,7 +114,7 @@ describe('useTimelineDropHandling', () => {
 
     clearDraggedFile();
     timelineStore.timelineZoom = 50;
-    timelineStore.duration = 2_000_000;
+    timelineStore.duration = timelineUs(2_000_000);
     timelineStore.timelineDoc = {
       OTIO_SCHEMA: 'Timeline.1',
       id: 'doc-1',
@@ -131,9 +132,9 @@ describe('useTimelineDropHandling', () => {
               name: 'Existing',
               clipType: 'media',
               source: { path: '_video/existing.mp4' },
-              sourceRange: { startUs: 0, durationUs: 2_000_000 },
-              sourceDurationUs: 2_000_000,
-              timelineRange: { startUs: 0, durationUs: 2_000_000 },
+              sourceRange: { startUs: 0, durationUs: timelineUs(2_000_000) },
+              sourceDurationUs: timelineUs(2_000_000),
+              timelineRange: { startUs: 0, durationUs: timelineUs(2_000_000) },
             },
           ],
         },
@@ -148,9 +149,9 @@ describe('useTimelineDropHandling', () => {
               name: 'Existing audio',
               clipType: 'media',
               source: { path: '_audio/existing.mp3' },
-              sourceRange: { startUs: 0, durationUs: 2_000_000 },
-              sourceDurationUs: 2_000_000,
-              timelineRange: { startUs: 0, durationUs: 2_000_000 },
+              sourceRange: { startUs: 0, durationUs: timelineUs(2_000_000) },
+              sourceDurationUs: timelineUs(2_000_000),
+              timelineRange: { startUs: 0, durationUs: timelineUs(2_000_000) },
             },
           ],
         },
@@ -189,7 +190,7 @@ describe('useTimelineDropHandling', () => {
       ...workspaceStore.userSettings,
       timeline: {
         ...workspaceStore.userSettings.timeline,
-        defaultStaticClipDurationUs: 5_000_000,
+        defaultStaticClipDurationUs: timelineUs(5_000_000),
       },
       hotkeys: {
         ...workspaceStore.userSettings.hotkeys,
@@ -224,8 +225,8 @@ describe('useTimelineDropHandling', () => {
 
     expect(api.dragPreview.value).not.toBeNull();
     expect(api.dragPreview.value?.trackId).toBe('v1');
-    expect(api.dragPreview.value?.startUs).toBe(500_000);
-    expect(api.dragPreview.value?.durationUs).toBe(1_500_000);
+    expect(api.dragPreview.value?.startUs).toBe(timelineUs(500_000));
+    expect(api.dragPreview.value?.durationUs).toBe(timelineUs(1_500_000));
     expect(api.dragPreview.value?.invalid).toBe(true);
   });
 
@@ -254,7 +255,7 @@ describe('useTimelineDropHandling', () => {
     });
 
     expect(api.dragPreview.value).not.toBeNull();
-    expect(api.dragPreview.value?.startUs).toBe(500_000);
+    expect(api.dragPreview.value?.startUs).toBe(timelineUs(500_000));
     expect(api.dragPreview.value?.invalid).toBe(false);
   });
 
@@ -265,7 +266,7 @@ describe('useTimelineDropHandling', () => {
     } as unknown as HTMLElement);
     const timelineStore = useTimelineStore() as any;
     timelineStore.addClipToTimelineFromPath = vi.fn().mockResolvedValue({
-      durationUs: 1_500_000,
+      durationUs: timelineUs(1_500_000),
       itemId: 'clip-2',
     });
     const api = useTimelineDropHandling({ scrollEl });
@@ -277,7 +278,7 @@ describe('useTimelineDropHandling', () => {
         path: '_video/new.mp4',
       }),
       'v1',
-      200_000,
+      timelineUs(200_000),
     );
 
     expect(timelineStore.addClipToTimelineFromPath).not.toHaveBeenCalled();
@@ -307,7 +308,7 @@ describe('useTimelineDropHandling', () => {
       },
     });
 
-    expect(api.dragPreview.value?.startUs).toBe(2_000_000);
+    expect(api.dragPreview.value?.startUs).toBe(timelineUs(2_000_000));
     expect(api.dragPreview.value?.invalid).toBe(false);
   });
 
@@ -339,7 +340,7 @@ describe('useTimelineDropHandling', () => {
       },
     });
 
-    expect(api.dragPreview.value?.startUs).toBe(2_000_000);
+    expect(api.dragPreview.value?.startUs).toBe(timelineUs(2_000_000));
     expect(api.dragPreview.value?.invalid).toBe(false);
   });
 
@@ -350,7 +351,7 @@ describe('useTimelineDropHandling', () => {
     } as unknown as HTMLElement);
     const timelineStore = useTimelineStore() as any;
     timelineStore.addClipToTimelineFromPath = vi.fn().mockResolvedValue({
-      durationUs: 1_500_000,
+      durationUs: timelineUs(1_500_000),
       itemId: 'clip-2',
     });
 
@@ -364,7 +365,7 @@ describe('useTimelineDropHandling', () => {
         isExternal: true,
       }),
       'v1',
-      2_000_000,
+      timelineUs(2_000_000),
     );
 
     expect(crossVfsCopyMock).toHaveBeenCalledWith(
@@ -417,7 +418,7 @@ describe('useTimelineDropHandling', () => {
     } as unknown as HTMLElement);
     const timelineStore = useTimelineStore() as any;
     timelineStore.addClipToTimelineFromPath = vi.fn().mockResolvedValue({
-      durationUs: 5_000_000,
+      durationUs: timelineUs(5_000_000),
       itemId: 'clip-image',
     });
     handleFilesMock.mockResolvedValue([{ targetPath: '_images/image.png', fileName: 'image.png' }]);
@@ -426,7 +427,7 @@ describe('useTimelineDropHandling', () => {
     await api.handleFileDrop(
       [new File(['image'], 'image.png', { type: 'image/png' })],
       'v1',
-      2_000_000,
+      timelineUs(2_000_000),
     );
 
     expect(handleFilesMock).toHaveBeenCalledWith(
@@ -464,7 +465,7 @@ describe('useTimelineDropHandling', () => {
             {
               id: 'nested-clip',
               kind: 'clip',
-              timelineRange: { startUs: 0, durationUs: 4_000_000 },
+              timelineRange: { startUs: 0, durationUs: timelineUs(4_000_000) },
             },
           ],
         },
@@ -492,8 +493,8 @@ describe('useTimelineDropHandling', () => {
       'otio text',
       expect.objectContaining({ name: 'nested.otio' }),
     );
-    expect(api.dragPreview.value?.durationUs).toBe(4_000_000);
-    expect(api.dragPreview.value?.startUs).toBe(1_000_000);
+    expect(api.dragPreview.value?.durationUs).toBe(timelineUs(4_000_000));
+    expect(api.dragPreview.value?.startUs).toBe(timelineUs(1_000_000));
     expect(api.dragPreview.value?.invalid).toBe(true);
   });
 
@@ -504,7 +505,7 @@ describe('useTimelineDropHandling', () => {
     } as unknown as HTMLElement);
     const timelineStore = useTimelineStore() as any;
     timelineStore.addClipToTimelineFromPath = vi.fn().mockResolvedValue({
-      durationUs: 1_500_000,
+      durationUs: timelineUs(1_500_000),
       itemId: 'audio-clip-2',
     });
     const api = useTimelineDropHandling({ scrollEl });
@@ -516,14 +517,14 @@ describe('useTimelineDropHandling', () => {
         path: '_audio/new.mp3',
       }),
       'a1',
-      2_120_000,
+      timelineUs(2_120_000),
     );
 
     expect(timelineStore.addClipToTimelineFromPath).toHaveBeenCalledWith(
       expect.objectContaining({
         trackId: 'a1',
         path: '_audio/new.mp3',
-        startUs: 2_000_000,
+        startUs: timelineUs(2_000_000),
       }),
     );
   });
@@ -556,8 +557,8 @@ describe('useTimelineDropHandling', () => {
       expect.objectContaining({
         trackId: 'v1',
         label: 'Adjustment',
-        durationUs: 5_000_000,
-        startUs: 5_000_000,
+        durationUs: timelineUs(5_000_000),
+        startUs: timelineUs(5_000_000),
       }),
     );
   });

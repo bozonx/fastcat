@@ -1,4 +1,4 @@
-import { TICKS_PER_SECOND, ticksToSeconds } from '~/utils/time';
+import { ticksToSeconds } from '~/utils/time';
 import { createDevLogger } from '~/utils/dev-logger';
 import type { WorkerVideoPayloadItem } from '~/types/worker-payload';
 import { getBunnyVideoCodec } from './utils';

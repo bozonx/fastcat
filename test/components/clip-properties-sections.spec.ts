@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { mountWithNuxt } from '../utils/mount';
+import { timelineUs } from '../unit/utils/timeline-time';
 import ClipActionsSection from '~/components/properties/clip/ClipActionsSection.vue';
 import ClipInfoSection from '~/components/properties/clip/ClipInfoSection.vue';
 import PropertyTimecode from '~/components/properties/PropertyTimecode.vue';
@@ -12,9 +13,9 @@ function createClip(overrides: Partial<TimelineClipItem> = {}): TimelineClipItem
     trackId: 'v1',
     name: 'Clip 1',
     clipType: 'media',
-    timelineRange: { startUs: 1_000_000, durationUs: 2_000_000 },
-    sourceRange: { startUs: 0, durationUs: 2_000_000 },
-    sourceDurationUs: 10_000_000,
+    timelineRange: { startUs: timelineUs(1_000_000), durationUs: timelineUs(2_000_000) },
+    sourceRange: { startUs: 0, durationUs: timelineUs(2_000_000) },
+    sourceDurationUs: timelineUs(10_000_000),
     source: { path: 'media/test.mp4' },
     ...overrides,
   } as TimelineClipItem;
@@ -93,8 +94,8 @@ describe('clip properties sections', () => {
 
   it('caps the End field at startUs + sourceDurationUs for media clips', async () => {
     const clip = createClip({
-      timelineRange: { startUs: 1_000_000, durationUs: 2_000_000 },
-      sourceDurationUs: 10_000_000,
+      timelineRange: { startUs: timelineUs(1_000_000), durationUs: timelineUs(2_000_000) },
+      sourceDurationUs: timelineUs(10_000_000),
       speed: 1.0,
     });
     const wrapper = await mountWithNuxt(ClipInfoSection, {
@@ -105,7 +106,7 @@ describe('clip properties sections', () => {
     // [0] = position, [1] = end
     const endField = timecodes[1]!;
     // max = startUs (1_000_000) + sourceDurationUs (10_000_000)
-    expect(endField.props('max')).toBe(11_000_000);
+    expect(endField.props('max')).toBe(timelineUs(11_000_000));
     expect(endField.props('min')).toBe(0);
     expect(timecodes[0]!.props('min')).toBe(0);
   });
@@ -114,8 +115,8 @@ describe('clip properties sections', () => {
     const clip = createClip({
       clipType: 'media',
       isImage: true,
-      timelineRange: { startUs: 0, durationUs: 2_000_000 },
-      sourceDurationUs: 10_000_000,
+      timelineRange: { startUs: 0, durationUs: timelineUs(2_000_000) },
+      sourceDurationUs: timelineUs(10_000_000),
       speed: 1.0,
     });
     const wrapper = await mountWithNuxt(ClipInfoSection, {
@@ -130,8 +131,8 @@ describe('clip properties sections', () => {
 
   it('scales the End cap by speed (2x -> half duration)', async () => {
     const clip = createClip({
-      timelineRange: { startUs: 0, durationUs: 2_000_000 },
-      sourceDurationUs: 10_000_000,
+      timelineRange: { startUs: 0, durationUs: timelineUs(2_000_000) },
+      sourceDurationUs: timelineUs(10_000_000),
       speed: 2.0,
     });
     const wrapper = await mountWithNuxt(ClipInfoSection, {
@@ -140,6 +141,6 @@ describe('clip properties sections', () => {
 
     const timecodes = wrapper.findAllComponents(PropertyTimecode);
     // max = 0 + (10_000_000 / 2) = 5_000_000
-    expect(timecodes[1]!.props('max')).toBe(5_000_000);
+    expect(timecodes[1]!.props('max')).toBe(timelineUs(5_000_000));
   });
 });

@@ -7,7 +7,6 @@ import type {
 } from '~/timeline/types';
 import type { TimelineCommand } from '~/timeline/commands';
 import type { TimelineClipClipboardItem } from '~/stores/timeline/clips';
-import { sanitizeFps } from '~/timeline/commands/utils';
 import type { FsEntry } from '~/types/fs';
 import { normalizeWorkspaceFilePath } from '~/utils/workspace-common';
 import { revealFileManagerEntry } from '~/composables/file-manager/revealFileManagerEntry';

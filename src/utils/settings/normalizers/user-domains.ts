@@ -7,7 +7,7 @@ import {
   MIN_DEFAULT_DURATION_US,
   type FastCatUserSettings,
 } from '../defaults';
-import { TICKS_PER_MICROSECOND, TICKS_PER_MILLISECOND } from '~/utils/time';
+import { TICKS_PER_MICROSECOND } from '~/utils/time';
 import {
   CLICK_ACTIONS,
   CLIP_DRAG_ACTIONS,

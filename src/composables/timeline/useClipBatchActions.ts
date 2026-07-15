@@ -1,5 +1,4 @@
 import { computed, type Ref } from 'vue';
-import { sanitizeFps } from '~/timeline/commands/utils';
 import type { TimelineCommand, UpdateClipPropertiesCommand } from '~/timeline/commands';
 import type { TimelineClipItem, TimelineDocument } from '~/timeline/types';
 import { isClipItem } from '~/timeline/types';

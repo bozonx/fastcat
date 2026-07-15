@@ -3,6 +3,7 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import { applyTimelineCommand } from '~/timeline/commands';
 import type { TimelineDocument, TimelineTrack } from '~/timeline/types';
 import { initTransitions } from '~/transitions';
+import { timelineUs } from '../utils/timeline-time';
 
 beforeAll(() => {
   initTransitions();
@@ -25,9 +26,9 @@ const baseClip = {
   name: 'C1',
   clipType: 'media' as const,
   source: { path: 'a.mp4' },
-  sourceDurationUs: 10_000_000,
-  timelineRange: { startUs: 0, durationUs: 5_000_000 },
-  sourceRange: { startUs: 0, durationUs: 5_000_000 },
+  sourceDurationUs: timelineUs(10_000_000),
+  timelineRange: { startUs: 0, durationUs: timelineUs(5_000_000) },
+  sourceRange: { startUs: 0, durationUs: timelineUs(5_000_000) },
 };
 
 describe('timeline/commands update_clip_transition', () => {
@@ -38,13 +39,13 @@ describe('timeline/commands update_clip_transition', () => {
       type: 'update_clip_transition',
       trackId: 'v1',
       itemId: 'c1',
-      transitionOut: { type: 'dissolve', durationUs: 500_000 },
+      transitionOut: { type: 'dissolve', durationUs: timelineUs(500_000) },
     }).next;
 
     const clip = (next.tracks[0] as TimelineTrack).items[0] as any;
     expect(clip.transitionOut).toEqual({
       type: 'dissolve',
-      durationUs: 500_000,
+      durationUs: timelineUs(500_000),
       mode: 'transparent',
       curve: 'linear',
       params: {},
@@ -60,13 +61,13 @@ describe('timeline/commands update_clip_transition', () => {
       type: 'update_clip_transition',
       trackId: 'v1',
       itemId: 'c1',
-      transitionIn: { type: 'dissolve', durationUs: 300_000 },
+      transitionIn: { type: 'dissolve', durationUs: timelineUs(300_000) },
     }).next;
 
     const clip = (next.tracks[0] as TimelineTrack).items[0] as any;
     expect(clip.transitionIn).toEqual({
       type: 'dissolve',
-      durationUs: 300_000,
+      durationUs: timelineUs(300_000),
       mode: 'transparent',
       curve: 'linear',
       params: {},
@@ -77,7 +78,7 @@ describe('timeline/commands update_clip_transition', () => {
   it('removes transitionOut when set to null', () => {
     const clipWithTransition = {
       ...baseClip,
-      transitionOut: { type: 'dissolve', durationUs: 500_000 },
+      transitionOut: { type: 'dissolve', durationUs: timelineUs(500_000) },
     };
     const doc = makeDoc({ id: 'v1', kind: 'video', name: 'V1', items: [clipWithTransition] });
 
@@ -96,8 +97,8 @@ describe('timeline/commands update_clip_transition', () => {
     const otherClip = {
       ...baseClip,
       id: 'c2',
-      timelineRange: { startUs: 5_000_000, durationUs: 5_000_000 },
-      sourceRange: { startUs: 0, durationUs: 5_000_000 },
+      timelineRange: { startUs: timelineUs(5_000_000), durationUs: timelineUs(5_000_000) },
+      sourceRange: { startUs: 0, durationUs: timelineUs(5_000_000) },
     };
     const doc = makeDoc({ id: 'v1', kind: 'video', name: 'V1', items: [baseClip, otherClip] });
 
@@ -105,7 +106,7 @@ describe('timeline/commands update_clip_transition', () => {
       type: 'update_clip_transition',
       trackId: 'v1',
       itemId: 'c1',
-      transitionOut: { type: 'dissolve', durationUs: 500_000 },
+      transitionOut: { type: 'dissolve', durationUs: timelineUs(500_000) },
     }).next;
 
     const clips = (next.tracks[0] as TimelineTrack).items as any[];
@@ -120,7 +121,7 @@ describe('timeline/commands update_clip_transition', () => {
       type: 'update_clip_transition',
       trackId: 'v1',
       itemId: 'nonexistent',
-      transitionOut: { type: 'dissolve', durationUs: 500_000 },
+      transitionOut: { type: 'dissolve', durationUs: timelineUs(500_000) },
     }).next;
 
     expect(next).toBe(doc);
@@ -131,17 +132,17 @@ describe('timeline/commands update_clip_transition', () => {
       ...baseClip,
       id: 'c1',
       trackId: 'v1',
-      sourceDurationUs: 10_000_000,
-      sourceRange: { startUs: 0, durationUs: 5_000_000 },
-      timelineRange: { startUs: 0, durationUs: 5_000_000 },
+      sourceDurationUs: timelineUs(10_000_000),
+      sourceRange: { startUs: 0, durationUs: timelineUs(5_000_000) },
+      timelineRange: { startUs: 0, durationUs: timelineUs(5_000_000) },
     };
     const right = {
       ...baseClip,
       id: 'c2',
       trackId: 'v1',
-      sourceDurationUs: 10_000_000,
-      sourceRange: { startUs: 2_000_000, durationUs: 5_000_000 },
-      timelineRange: { startUs: 5_000_000, durationUs: 5_000_000 },
+      sourceDurationUs: timelineUs(10_000_000),
+      sourceRange: { startUs: timelineUs(2_000_000), durationUs: timelineUs(5_000_000) },
+      timelineRange: { startUs: timelineUs(5_000_000), durationUs: timelineUs(5_000_000) },
     };
 
     const doc = makeDoc({ id: 'v1', kind: 'video', name: 'V1', items: [left, right] as any });
@@ -150,19 +151,19 @@ describe('timeline/commands update_clip_transition', () => {
       type: 'update_clip_transition',
       trackId: 'v1',
       itemId: 'c1',
-      transitionOut: { type: 'dissolve', durationUs: 2_000_000 },
+      transitionOut: { type: 'dissolve', durationUs: timelineUs(2_000_000) },
     }).next;
 
     const items = (next.tracks[0] as TimelineTrack).items as any[];
     const nextLeft = items.find((it) => it.id === 'c1');
     const nextRight = items.find((it) => it.id === 'c2');
 
-    expect(nextLeft.timelineRange.durationUs).toBe(5_000_000);
-    expect(nextRight.timelineRange.startUs).toBe(5_000_000);
-    expect(nextRight.timelineRange.durationUs).toBe(5_000_000);
+    expect(nextLeft.timelineRange.durationUs).toBe(timelineUs(5_000_000));
+    expect(nextRight.timelineRange.startUs).toBe(timelineUs(5_000_000));
+    expect(nextRight.timelineRange.durationUs).toBe(timelineUs(5_000_000));
     expect(nextLeft.transitionOut).toEqual({
       type: 'dissolve',
-      durationUs: 2_000_000,
+      durationUs: timelineUs(2_000_000),
       mode: 'adjacent',
       curve: 'linear',
       params: {},
@@ -175,19 +176,19 @@ describe('timeline/commands update_clip_transition', () => {
       ...baseClip,
       id: 'c1',
       trackId: 'v1',
-      sourceDurationUs: 10_000_000,
-      sourceRange: { startUs: 0, durationUs: 7_000_000 },
-      timelineRange: { startUs: 0, durationUs: 7_000_000 },
-      transitionOut: { type: 'dissolve', durationUs: 2_000_000 },
+      sourceDurationUs: timelineUs(10_000_000),
+      sourceRange: { startUs: 0, durationUs: timelineUs(7_000_000) },
+      timelineRange: { startUs: 0, durationUs: timelineUs(7_000_000) },
+      transitionOut: { type: 'dissolve', durationUs: timelineUs(2_000_000) },
     };
     const right = {
       ...baseClip,
       id: 'c2',
       trackId: 'v1',
-      sourceDurationUs: 10_000_000,
-      sourceRange: { startUs: 2_000_000, durationUs: 5_000_000 },
-      timelineRange: { startUs: 5_000_000, durationUs: 5_000_000 },
-      transitionIn: { type: 'dissolve', durationUs: 2_000_000 },
+      sourceDurationUs: timelineUs(10_000_000),
+      sourceRange: { startUs: timelineUs(2_000_000), durationUs: timelineUs(5_000_000) },
+      timelineRange: { startUs: timelineUs(5_000_000), durationUs: timelineUs(5_000_000) },
+      transitionIn: { type: 'dissolve', durationUs: timelineUs(2_000_000) },
     };
 
     const doc = makeDoc({ id: 'v1', kind: 'video', name: 'V1', items: [left, right] as any });
@@ -196,22 +197,22 @@ describe('timeline/commands update_clip_transition', () => {
       type: 'update_clip_transition',
       trackId: 'v1',
       itemId: 'c1',
-      transitionOut: { type: 'dissolve', durationUs: 2_100_000 },
+      transitionOut: { type: 'dissolve', durationUs: timelineUs(2_100_000) },
     }).next;
 
     const items = (next.tracks[0] as TimelineTrack).items as any[];
     const nextLeft = items.find((it) => it.id === 'c1');
     const nextRight = items.find((it) => it.id === 'c2');
 
-    expect(nextLeft.timelineRange.durationUs).toBe(7_000_000);
-    expect(nextLeft.transitionOut.durationUs).toBe(2_100_000);
-    expect(nextRight.transitionIn?.durationUs).toBe(2_000_000);
+    expect(nextLeft.timelineRange.durationUs).toBe(timelineUs(7_000_000));
+    expect(nextLeft.transitionOut.durationUs).toBe(timelineUs(2_100_000));
+    expect(nextRight.transitionIn?.durationUs).toBe(timelineUs(2_000_000));
   });
 
   it('clamps the changed edge against the opposite edge without resizing it', () => {
     const clip = {
       ...baseClip,
-      transitionOut: { type: 'dissolve', durationUs: 3_000_000 },
+      transitionOut: { type: 'dissolve', durationUs: timelineUs(3_000_000) },
     };
     const doc = makeDoc({ id: 'v1', kind: 'video', name: 'V1', items: [clip] as any });
 
@@ -219,16 +220,16 @@ describe('timeline/commands update_clip_transition', () => {
       type: 'update_clip_transition',
       trackId: 'v1',
       itemId: 'c1',
-      transitionIn: { type: 'dissolve', durationUs: 4_000_000 },
+      transitionIn: { type: 'dissolve', durationUs: timelineUs(4_000_000) },
     }).next;
 
     const nextClip = (next.tracks[0] as TimelineTrack).items[0] as any;
     // transitionIn requested 4s on a 5s clip with existing 3s transitionOut →
     // clamps to (clip - opposite) = 2s. The opposite edge stays untouched
     // instead of being silently shrunk by a proportional pass.
-    expect(nextClip.transitionIn.durationUs).toBe(2_000_000);
-    expect(nextClip.transitionOut.durationUs).toBe(3_000_000);
-    expect(nextClip.transitionIn.durationUs + nextClip.transitionOut.durationUs).toBe(5_000_000);
+    expect(nextClip.transitionIn.durationUs).toBe(timelineUs(2_000_000));
+    expect(nextClip.transitionOut.durationUs).toBe(timelineUs(3_000_000));
+    expect(nextClip.transitionIn.durationUs + nextClip.transitionOut.durationUs).toBe(timelineUs(5_000_000));
   });
 
   it('rejects clip overlap even when both sides have adjacent transitions', () => {
@@ -236,19 +237,19 @@ describe('timeline/commands update_clip_transition', () => {
       ...baseClip,
       id: 'c1',
       trackId: 'v1',
-      sourceDurationUs: 10_000_000,
-      sourceRange: { startUs: 0, durationUs: 7_000_000 },
-      timelineRange: { startUs: 0, durationUs: 7_000_000 },
-      transitionOut: { type: 'dissolve', durationUs: 2_000_000 },
+      sourceDurationUs: timelineUs(10_000_000),
+      sourceRange: { startUs: 0, durationUs: timelineUs(7_000_000) },
+      timelineRange: { startUs: 0, durationUs: timelineUs(7_000_000) },
+      transitionOut: { type: 'dissolve', durationUs: timelineUs(2_000_000) },
     };
     const right = {
       ...baseClip,
       id: 'c2',
       trackId: 'v1',
-      sourceDurationUs: 10_000_000,
-      sourceRange: { startUs: 2_000_000, durationUs: 5_000_000 },
-      timelineRange: { startUs: 5_000_000, durationUs: 5_000_000 },
-      transitionIn: { type: 'dissolve', durationUs: 2_000_000 },
+      sourceDurationUs: timelineUs(10_000_000),
+      sourceRange: { startUs: timelineUs(2_000_000), durationUs: timelineUs(5_000_000) },
+      timelineRange: { startUs: timelineUs(5_000_000), durationUs: timelineUs(5_000_000) },
+      transitionIn: { type: 'dissolve', durationUs: timelineUs(2_000_000) },
     };
 
     const doc = makeDoc({ id: 'v1', kind: 'video', name: 'V1', items: [left, right] as any });
@@ -258,7 +259,7 @@ describe('timeline/commands update_clip_transition', () => {
         type: 'move_item',
         trackId: 'v1',
         itemId: 'c2',
-        startUs: 4_000_000,
+        startUs: timelineUs(4_000_000),
         quantizeToFrames: false,
       }),
     ).toThrow('Item overlaps with another item');

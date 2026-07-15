@@ -13,29 +13,30 @@ import {
   isWaveformCacheEntry,
 } from '~/utils/audio/waveform';
 import { timeUsToPx } from '~/utils/timeline/geometry';
+import { timelineUs } from '../timeline-time';
 
 describe('audio waveform utilities', () => {
   it('aligns a trimmed forward clip to the matching source window', () => {
     const zoom = 50;
     const metrics = computeWaveformWindowMetrics({
-      sourceStartUs: 2_000_000,
-      sourceDurationUs: 10_000_000,
-      timelineDurationUs: 3_000_000,
+      sourceStartUs: timelineUs(2_000_000),
+      sourceDurationUs: timelineUs(10_000_000),
+      timelineDurationUs: timelineUs(3_000_000),
       speed: 1,
       zoom,
     });
 
     expect(metrics.reversed).toBe(false);
-    expect(metrics.leftPx).toBe(-Math.round(timeUsToPx(2_000_000, zoom)));
-    expect(metrics.totalWidthPx).toBe(Math.round(timeUsToPx(10_000_000, zoom)));
+    expect(metrics.leftPx).toBe(-Math.round(timeUsToPx(timelineUs(2_000_000), zoom)));
+    expect(metrics.totalWidthPx).toBe(Math.round(timeUsToPx(timelineUs(10_000_000), zoom)));
   });
 
   it('aligns a reversed clip so the visible window runs from source end to start', () => {
     const zoom = 50;
     const metrics = computeWaveformWindowMetrics({
-      sourceStartUs: 2_000_000,
-      sourceDurationUs: 10_000_000,
-      timelineDurationUs: 3_000_000,
+      sourceStartUs: timelineUs(2_000_000),
+      sourceDurationUs: timelineUs(10_000_000),
+      timelineDurationUs: timelineUs(3_000_000),
       speed: -1,
       zoom,
     });
@@ -44,67 +45,67 @@ describe('audio waveform utilities', () => {
     const sourceAtClipRightPx = sourceAtClipLeftPx - metrics.clipWidthPx;
 
     expect(metrics.reversed).toBe(true);
-    expect(sourceAtClipLeftPx).toBe(Math.round(timeUsToPx(5_000_000, zoom)));
-    expect(sourceAtClipRightPx).toBe(Math.round(timeUsToPx(2_000_000, zoom)));
+    expect(sourceAtClipLeftPx).toBe(Math.round(timeUsToPx(timelineUs(5_000_000), zoom)));
+    expect(sourceAtClipRightPx).toBe(Math.round(timeUsToPx(timelineUs(2_000_000), zoom)));
   });
 
   it('maps nested timeline positive-speed local time with clip speed', () => {
     const sourceUs = resolveWaveformSourceUs({
-      absoluteUs: 11_000_000,
-      clipStartUs: 10_000_000,
-      clipDurationUs: 2_000_000,
-      sourceStartUs: 3_000_000,
-      sourceRangeDurationUs: 4_000_000,
+      absoluteUs: timelineUs(11_000_000),
+      clipStartUs: timelineUs(10_000_000),
+      clipDurationUs: timelineUs(2_000_000),
+      sourceStartUs: timelineUs(3_000_000),
+      sourceRangeDurationUs: timelineUs(4_000_000),
       speed: 2,
     });
 
-    expect(sourceUs).toBe(5_000_000);
+    expect(sourceUs).toBe(timelineUs(5_000_000));
   });
 
   it('maps nested timeline negative-speed local time from source range end', () => {
     const sourceUs = resolveWaveformSourceUs({
-      absoluteUs: 11_000_000,
-      clipStartUs: 10_000_000,
-      clipDurationUs: 2_000_000,
-      sourceStartUs: 3_000_000,
-      sourceRangeDurationUs: 4_000_000,
+      absoluteUs: timelineUs(11_000_000),
+      clipStartUs: timelineUs(10_000_000),
+      clipDurationUs: timelineUs(2_000_000),
+      sourceStartUs: timelineUs(3_000_000),
+      sourceRangeDurationUs: timelineUs(4_000_000),
       speed: -2,
     });
 
-    expect(sourceUs).toBe(5_000_000);
+    expect(sourceUs).toBe(timelineUs(5_000_000));
   });
 
   it('reversed speed at clip start maps to source range end', () => {
     const sourceUs = resolveWaveformSourceUs({
-      absoluteUs: 10_000_000,
-      clipStartUs: 10_000_000,
-      clipDurationUs: 2_000_000,
-      sourceStartUs: 3_000_000,
-      sourceRangeDurationUs: 4_000_000,
+      absoluteUs: timelineUs(10_000_000),
+      clipStartUs: timelineUs(10_000_000),
+      clipDurationUs: timelineUs(2_000_000),
+      sourceStartUs: timelineUs(3_000_000),
+      sourceRangeDurationUs: timelineUs(4_000_000),
       speed: -2,
     });
 
-    expect(sourceUs).toBe(7_000_000);
+    expect(sourceUs).toBe(timelineUs(7_000_000));
   });
 
   it('reversed speed at clip end maps to source range start', () => {
     const sourceUs = resolveWaveformSourceUs({
-      absoluteUs: 12_000_000,
-      clipStartUs: 10_000_000,
-      clipDurationUs: 2_000_000,
-      sourceStartUs: 3_000_000,
-      sourceRangeDurationUs: 4_000_000,
+      absoluteUs: timelineUs(12_000_000),
+      clipStartUs: timelineUs(10_000_000),
+      clipDurationUs: timelineUs(2_000_000),
+      sourceStartUs: timelineUs(3_000_000),
+      sourceRangeDurationUs: timelineUs(4_000_000),
       speed: -2,
     });
 
-    expect(sourceUs).toBe(3_000_000);
+    expect(sourceUs).toBe(timelineUs(3_000_000));
   });
 
   it('reversed speed yields positive totalWidthPx', () => {
     const metrics = computeWaveformWindowMetrics({
       sourceStartUs: 0,
-      sourceDurationUs: 10_000_000,
-      timelineDurationUs: 5_000_000,
+      sourceDurationUs: timelineUs(10_000_000),
+      timelineDurationUs: timelineUs(5_000_000),
       speed: -2,
       zoom: 50,
     });

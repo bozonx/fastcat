@@ -270,8 +270,8 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
     if (event.pointerId !== undefined && event.target && 'setPointerCapture' in event.target) {
       try {
         (event.target as HTMLElement).setPointerCapture(event.pointerId);
-      } catch (e) {
-        console.warn('Failed to setPointerCapture on selection drag handle', e);
+      } catch {
+        // Capture can fail if the pointer was already released; harmless.
       }
     }
 
@@ -353,8 +353,8 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
     if (event.pointerId !== undefined && event.target && 'setPointerCapture' in event.target) {
       try {
         (event.target as HTMLElement).setPointerCapture(event.pointerId);
-      } catch (e) {
-        console.warn('Failed to setPointerCapture on selection create handle', e);
+      } catch {
+        // Capture can fail if the pointer was already released; harmless.
       }
     }
 

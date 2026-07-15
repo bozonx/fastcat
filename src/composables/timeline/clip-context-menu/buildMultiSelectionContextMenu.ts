@@ -1,8 +1,6 @@
-import type { TimelineCommand } from '~/timeline/commands';
 import type { ContextMenuGroup, UseClipContextMenuOptions } from './types';
 import { collectMultiSelectionState } from './utils';
 import { createLinkedGroupId } from '~/timeline/id';
-import { sanitizeFps } from '~/timeline/commands/utils';
 
 export function buildMultiSelectionContextMenu(
   options: UseClipContextMenuOptions,
