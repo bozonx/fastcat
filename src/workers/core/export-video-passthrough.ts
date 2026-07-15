@@ -107,7 +107,7 @@ function hasEnabledVideoEffects(clip: PayloadClip): boolean {
 export function findVideoPassthroughCandidate(params: {
   timelineClips: readonly WorkerVideoPayloadItem[];
   options: PassthroughExportOptions;
-  /** Full container duration (video + audio) in µs. */
+  /** Full container duration (video + audio) in canonical timeline ticks. */
   maxDurationUs: number;
 }): { ok: true; clip: PayloadClip } | { ok: false; reason: string } {
   const { timelineClips, options, maxDurationUs } = params;

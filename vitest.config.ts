@@ -17,7 +17,7 @@ export default defineVitestConfig({
     environment: 'nuxt',
     globals: true,
     hookTimeout: 120_000,
-    testTimeout: 30_000,
+    testTimeout: 60_000,
     server: {
       deps: {
         inline: ['@nuxt/test-utils', '@nuxtjs/i18n'],

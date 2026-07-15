@@ -9,12 +9,12 @@ import { formatTimecode, parseTimecodeToTicks, TICKS_PER_SECOND } from '~/utils/
 
 const props = withDefaults(
   defineProps<{
-    modelValue: number; // Time in microseconds
+    modelValue: number; // Time in canonical timeline ticks
     allowNegative?: boolean;
     wheelWithoutFocus?: boolean;
-    /** Lower bound in microseconds. Defaults to 0 when allowNegative is false. */
+    /** Lower bound in ticks. Defaults to 0 when allowNegative is false. */
     min?: number;
-    /** Upper bound in microseconds. Infinity/undefined = no limit. */
+    /** Upper bound in ticks. Infinity/undefined = no limit. */
     max?: number;
   }>(),
   {
@@ -50,13 +50,13 @@ const effectiveMax = computed(() =>
   Number.isFinite(props.max) ? (props.max as number) : Number.POSITIVE_INFINITY,
 );
 
-// Clamp a microsecond value into [effectiveMin, effectiveMax].
+// Clamp a tick value into [effectiveMin, effectiveMax].
 function clampValue(value: number): number {
   if (!Number.isFinite(value)) return value;
   return Math.min(effectiveMax.value, Math.max(effectiveMin.value, value));
 }
 
-// Parse HH:MM:SS:FF or MM:SS:FF or SS:FF or just SS to microseconds
+// Parse HH:MM:SS:FF or MM:SS:FF or SS:FF or just SS to ticks
 function parseTimecode(tc: string, fpsValue: number): number {
   return parseTimecodeToTicks({ timecode: tc, fps: fpsValue }) ?? NaN;
 }

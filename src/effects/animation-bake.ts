@@ -42,7 +42,7 @@ export interface BakedEffectField {
   /** The numeric/boolean field on that spec (e.g. `value`, `radius`, `bleed`). */
   field: string;
   kind: 'number' | 'bool';
-  /** Source-relative µs → number (booleans stored as 0/1). Linear easing. */
+  /** Source-relative ticks → number (booleans stored as 0/1). Linear easing. */
   keyframes: Keyframe[];
 }
 
@@ -331,7 +331,7 @@ export function bakeClipEffectAnimations(
 }
 
 /**
- * Resolve a clip's baked effect specs at `localTimeUs` (source-relative µs):
+ * Resolve a clip's baked effect specs at `localTimeUs` (source-relative ticks):
  * the base specs with every baked field overwritten by its sampled value.
  * Shared shape with the native patcher; pinned by a parity fixture.
  */

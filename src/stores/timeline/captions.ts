@@ -12,6 +12,7 @@ import {
 import type { TranscriptionRecord } from '~/utils/transcription/types';
 import { loadTranscriptionSidecar } from '~/utils/transcription/persistence';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
+import { TICKS_PER_MILLISECOND } from '~/utils/time';
 import { quantizeTimeUsToFrames, sanitizeFps } from '~/timeline/commands/utils';
 
 export interface TimelineCaptionsDeps {
@@ -113,18 +114,19 @@ export function createTimelineCaptionsModule(params: TimelineCaptionsDeps): Time
     const result: TimelineCaptionWord[] = [];
 
     for (const word of options.words) {
-      const wordStartUs = Math.round(word.start * 1000);
-      const wordEndUs = Math.round(word.end * 1000);
-      if (wordEndUs <= options.sourceStartUs || wordStartUs >= options.sourceEndUs) continue;
+      const wordStartTicks = Math.round(word.start * TICKS_PER_MILLISECOND);
+      const wordEndTicks = Math.round(word.end * TICKS_PER_MILLISECOND);
+      if (wordEndTicks <= options.sourceStartUs || wordStartTicks >= options.sourceEndUs) continue;
 
-      const clippedStartUs = Math.max(wordStartUs, options.sourceStartUs);
-      const clippedEndUs = Math.min(wordEndUs, options.sourceEndUs);
-      if (clippedEndUs <= clippedStartUs) continue;
+      const clippedStartTicks = Math.max(wordStartTicks, options.sourceStartUs);
+      const clippedEndTicks = Math.min(wordEndTicks, options.sourceEndUs);
+      if (clippedEndTicks <= clippedStartTicks) continue;
 
-      const relativeStartUs = clippedStartUs - options.sourceStartUs;
-      const relativeEndUs = clippedEndUs - options.sourceStartUs;
-      const timelineStartUs = options.timelineStartUs + Math.round(relativeStartUs / options.speed);
-      const timelineEndUs = options.timelineStartUs + Math.round(relativeEndUs / options.speed);
+      const relativeStartTicks = clippedStartTicks - options.sourceStartUs;
+      const relativeEndTicks = clippedEndTicks - options.sourceStartUs;
+      const timelineStartUs =
+        options.timelineStartUs + Math.round(relativeStartTicks / options.speed);
+      const timelineEndUs = options.timelineStartUs + Math.round(relativeEndTicks / options.speed);
       if (timelineEndUs <= timelineStartUs) continue;
 
       result.push({
@@ -132,8 +134,8 @@ export function createTimelineCaptionsModule(params: TimelineCaptionsDeps): Time
         end: word.end,
         text: word.text,
         confidence: word.confidence,
-        timelineStartMs: Math.round(timelineStartUs / 1000),
-        timelineEndMs: Math.round(timelineEndUs / 1000),
+        timelineStartMs: Math.round(timelineStartUs / TICKS_PER_MILLISECOND),
+        timelineEndMs: Math.round(timelineEndUs / TICKS_PER_MILLISECOND),
         sourcePath: options.sourcePath,
         sourceName: options.sourceName,
         trackId: options.trackId,
@@ -293,8 +295,10 @@ export function createTimelineCaptionsModule(params: TimelineCaptionsDeps): Time
           const clip = asActiveCaptionMediaClip(item);
           if (!clip) continue;
           coveredRanges.push({
-            startMs: Math.round(clip.timelineRange.startUs / 1000),
-            endMs: Math.round((clip.timelineRange.startUs + clip.timelineRange.durationUs) / 1000),
+            startMs: Math.round(clip.timelineRange.startUs / TICKS_PER_MILLISECOND),
+            endMs: Math.round(
+              (clip.timelineRange.startUs + clip.timelineRange.durationUs) / TICKS_PER_MILLISECOND,
+            ),
           });
         }
       }
@@ -332,8 +336,14 @@ export function createTimelineCaptionsModule(params: TimelineCaptionsDeps): Time
     let lastEndUs = 0;
 
     for (const chunk of chunks) {
-      const rawStartUs = Math.max(lastEndUs, Math.round(chunk.startMs * 1000));
-      const rawDurationUs = Math.max(1_000, Math.round((chunk.endMs - chunk.startMs) * 1000));
+      const rawStartUs = Math.max(
+        lastEndUs,
+        Math.round(chunk.startMs * TICKS_PER_MILLISECOND),
+      );
+      const rawDurationUs = Math.max(
+        TICKS_PER_MILLISECOND,
+        Math.round((chunk.endMs - chunk.startMs) * TICKS_PER_MILLISECOND),
+      );
 
       const startUs = quantizeTimeUsToFrames(rawStartUs, fps, 'round');
       const durationUs = quantizeTimeUsToFrames(rawDurationUs, fps, 'round');

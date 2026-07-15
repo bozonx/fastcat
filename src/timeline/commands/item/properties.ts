@@ -202,7 +202,7 @@ export function updateClipProperties(
     }
   }
 
-  // Fade values are stored in timeline microseconds.
+  // Fade values are stored in timeline ticks.
   // Clamp to the current clip duration to avoid invalid envelopes.
   if ('audioFadeInUs' in nextProps) {
     const clipDurationUs = Math.max(0, Math.round(item.timelineRange.durationUs));

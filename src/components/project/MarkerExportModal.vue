@@ -126,8 +126,8 @@ function formatMarkerLine(marker: TimelineMarker): string {
   }
 }
 
-function formatVttTime(us: number): string {
-  const totalMs = Math.floor(us / TICKS_PER_MICROSECOND / 1000);
+function formatVttTime(ticks: number): string {
+  const totalMs = Math.floor(ticks / TICKS_PER_MICROSECOND / 1000);
   const ms = totalMs % 1000;
   const totalSeconds = Math.floor(totalMs / 1000);
   const ss = totalSeconds % 60;

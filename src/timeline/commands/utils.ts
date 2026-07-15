@@ -672,7 +672,7 @@ export function autoAdaptChangedTracks(
 }
 
 /**
- * Resolve a non-overlapping insertion start (µs) on a track.
+ * Resolve a non-overlapping insertion start (ticks) on a track.
  *
  * The candidate start/duration are quantized to the track's frame grid — the
  * same grid `addClipToTrack` uses — so the collision search runs in the final

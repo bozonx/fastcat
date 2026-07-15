@@ -4,7 +4,7 @@ import { isClipFrameAligned } from '~/utils/timeline/clip-capabilities';
 
 export interface TrimGeometryInput {
   edge: 'start' | 'end';
-  /** Requested edge movement on the timeline, in microseconds (sign per edge). */
+  /** Requested edge movement on the timeline, in canonical timeline ticks (sign per edge). */
   deltaUs: number;
   /** Clip playback speed; negative values play the source in reverse. */
   speed: number | undefined;

@@ -3,6 +3,7 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { loadTranscriptionSidecar } from '~/utils/transcription/persistence';
 import { extractTranscriptionWords } from '~/utils/transcription/captions';
+import { TICKS_PER_MILLISECOND } from '~/utils/time';
 import type { TimelineMediaClipItem } from '~/timeline/types';
 const log = createDevLogger('useSilenceTrimming');
 
@@ -13,7 +14,7 @@ export function useSilenceTrimming() {
   const timelineStore = useTimelineStore();
   const workspaceStore = useWorkspaceStore();
 
-  const PAUSE_THRESHOLD_US = 500_000; // 500ms
+  const PAUSE_THRESHOLD_TICKS = 500 * TICKS_PER_MILLISECOND; // 500ms
 
   async function applySilenceTrimming(options: {
     clipIds: string[];
@@ -63,32 +64,33 @@ export function useSilenceTrimming() {
       const speed = item.speed ?? 1;
       const absSpeed = Math.abs(speed);
 
-      // Times in source microseconds
+      // Transcription word timings are in milliseconds; convert to canonical ticks.
       const firstWord = words[0]!;
       const lastWord = words[words.length - 1]!;
 
-      const firstWordStartUs = firstWord.start * 1000;
-      const lastWordEndUs = lastWord.end * 1000;
+      const firstWordStartTicks = firstWord.start * TICKS_PER_MILLISECOND;
+      const lastWordEndTicks = lastWord.end * TICKS_PER_MILLISECOND;
 
       const pauses: { startUs: number; endUs: number }[] = [];
 
       // 1. Identify start pause
-      if (options.settings.trimStart && firstWordStartUs > item.sourceRange.startUs) {
+      if (options.settings.trimStart && firstWordStartTicks > item.sourceRange.startUs) {
         pauses.push({
           startUs: item.timelineRange.startUs,
           endUs:
-            item.timelineRange.startUs + (firstWordStartUs - item.sourceRange.startUs) / absSpeed,
+            item.timelineRange.startUs +
+            (firstWordStartTicks - item.sourceRange.startUs) / absSpeed,
         });
       }
 
       // 2. Identify end pause
       if (
         options.settings.trimEnd &&
-        lastWordEndUs < item.sourceRange.startUs + item.sourceRange.durationUs
+        lastWordEndTicks < item.sourceRange.startUs + item.sourceRange.durationUs
       ) {
         pauses.push({
           startUs:
-            item.timelineRange.startUs + (lastWordEndUs - item.sourceRange.startUs) / absSpeed,
+            item.timelineRange.startUs + (lastWordEndTicks - item.sourceRange.startUs) / absSpeed,
           endUs: item.timelineRange.startUs + item.timelineRange.durationUs,
         });
       }
@@ -98,21 +100,21 @@ export function useSilenceTrimming() {
         for (let i = 0; i < words.length - 1; i++) {
           const word = words[i]!;
           const nextWord = words[i + 1]!;
-          const gapStartUs = word.end * 1000;
-          const gapEndUs = nextWord.start * 1000;
+          const gapStartTicks = word.end * TICKS_PER_MILLISECOND;
+          const gapEndTicks = nextWord.start * TICKS_PER_MILLISECOND;
 
-          if (gapEndUs - gapStartUs > PAUSE_THRESHOLD_US) {
+          if (gapEndTicks - gapStartTicks > PAUSE_THRESHOLD_TICKS) {
             const t1 =
-              item.timelineRange.startUs + (gapStartUs - item.sourceRange.startUs) / absSpeed;
+              item.timelineRange.startUs + (gapStartTicks - item.sourceRange.startUs) / absSpeed;
             const t2 =
-              item.timelineRange.startUs + (gapEndUs - item.sourceRange.startUs) / absSpeed;
+              item.timelineRange.startUs + (gapEndTicks - item.sourceRange.startUs) / absSpeed;
 
             // Only add if it's within current clip's timeline range
             const clipEndUs = item.timelineRange.startUs + item.timelineRange.durationUs;
             const pauseStart = Math.max(item.timelineRange.startUs, t1);
             const pauseEnd = Math.min(clipEndUs, t2);
 
-            if (pauseEnd - pauseStart > 100_000) {
+            if (pauseEnd - pauseStart > 100 * TICKS_PER_MILLISECOND) {
               // at least 100ms
               pauses.push({ startUs: pauseStart, endUs: pauseEnd });
             }

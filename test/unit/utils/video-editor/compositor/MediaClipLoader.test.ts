@@ -290,7 +290,7 @@ describe('MediaClipLoader', () => {
   // mediabunny's InputVideoTrack exposes no direct frame-rate accessor. When
   // getFrameRate/frameRate/fps are all absent, the loader must estimate the rate
   // from `computePacketStats().averagePacketRate`. If it does NOT, every clip loads
-  // with frameRate: undefined, computeFrameIndex falls back to exact-µs cache keys,
+  // with frameRate: undefined, computeFrameIndex falls back to exact-tick cache keys,
   // the frame cache/prewarm never produce a cross-timestamp hit, and playback pays a
   // cold from-keyframe decode per displayed frame (the ~½-fps web monitor bug).
   it('derives frameRate from computePacketStats().averagePacketRate when no rate accessor exists', async () => {
@@ -381,7 +381,7 @@ describe('MediaClipLoader', () => {
       startUs: 0,
     });
 
-    // Exact-µs cache keying still works for repeat renders — just no cross-timestamp reuse.
+    // Exact-tick cache keying still works for repeat renders — just no cross-timestamp reuse.
     expect(computePacketStats).toHaveBeenCalled();
     expect(result!.frameRate).toBeUndefined();
   });

@@ -104,8 +104,8 @@ export function useTimelineRulerPresentation(options: UseTimelineRulerPresentati
     const pxPerFrame = zoomToPxPerSecond(currentZoom) / currentFps;
     if (pxPerFrame < 6) return null;
 
-    // Exact math: currentTime is rounded to whole microseconds.
-    // Add 0.5 µs (the max rounding error) to determine the frame precisely.
+    // Exact math: currentTime is rounded to whole ticks.
+    // Add 0.5 ticks (the max rounding error) to determine the frame precisely.
     const currentFrameIndex = Math.floor(
       ((options.currentTime.value + 0.5) * currentFps) / TICKS_PER_SECOND,
     );
