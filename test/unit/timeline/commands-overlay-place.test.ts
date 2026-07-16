@@ -43,7 +43,10 @@ describe('timeline/commands overlay_place_item', () => {
             trackId: 'v1',
             name: 'C2',
             backgroundColor: '#fff',
-            timelineRange: { startTicks: timelineTicks(3_000_000), durationTicks: timelineTicks(1_000_000) },
+            timelineRange: {
+              startTicks: timelineTicks(3_000_000),
+              durationTicks: timelineTicks(1_000_000),
+            },
             sourceRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
           },
         ],
@@ -95,7 +98,10 @@ describe('timeline/commands overlay_place_item', () => {
             trackId: 'v1',
             name: 'Small',
             backgroundColor: '#fff',
-            timelineRange: { startTicks: timelineTicks(7_000_000), durationTicks: timelineTicks(500_000) },
+            timelineRange: {
+              startTicks: timelineTicks(7_000_000),
+              durationTicks: timelineTicks(500_000),
+            },
             sourceRange: { startTicks: 0, durationTicks: timelineTicks(500_000) },
           },
         ],
@@ -147,7 +153,10 @@ describe('timeline/commands overlay_place_item', () => {
             trackId: 'v1',
             name: 'Right',
             backgroundColor: '#fff',
-            timelineRange: { startTicks: timelineTicks(8_000_000), durationTicks: timelineTicks(2_000_000) },
+            timelineRange: {
+              startTicks: timelineTicks(8_000_000),
+              durationTicks: timelineTicks(2_000_000),
+            },
             sourceRange: { startTicks: 0, durationTicks: timelineTicks(2_000_000) },
           },
         ],
@@ -200,7 +209,10 @@ describe('timeline/commands overlay_place_item', () => {
             trackId: 'v1',
             name: 'Existing',
             backgroundColor: '#fff',
-            timelineRange: { startTicks: timelineTicks(3_000_000), durationTicks: timelineTicks(3_000_000) },
+            timelineRange: {
+              startTicks: timelineTicks(3_000_000),
+              durationTicks: timelineTicks(3_000_000),
+            },
             sourceRange: { startTicks: 0, durationTicks: timelineTicks(3_000_000) },
           },
         ],
@@ -255,7 +267,10 @@ describe('timeline/commands overlay_place_item', () => {
             trackId: 'v1',
             name: 'Short',
             backgroundColor: '#fff',
-            timelineRange: { startTicks: timelineTicks(20_000_000), durationTicks: timelineTicks(2_000_000) },
+            timelineRange: {
+              startTicks: timelineTicks(20_000_000),
+              durationTicks: timelineTicks(2_000_000),
+            },
             sourceRange: { startTicks: 0, durationTicks: timelineTicks(2_000_000) },
           },
         ],
@@ -304,7 +319,10 @@ describe('timeline/commands overlay_place_item', () => {
             sourceDurationTicks: timelineTicks(10_000_000),
             speed: -1,
             timelineRange: { startTicks: 0, durationTicks: timelineTicks(6_000_000) },
-            sourceRange: { startTicks: timelineTicks(2_000_000), durationTicks: timelineTicks(6_000_000) },
+            sourceRange: {
+              startTicks: timelineTicks(2_000_000),
+              durationTicks: timelineTicks(6_000_000),
+            },
           },
           {
             kind: 'clip',
@@ -313,7 +331,10 @@ describe('timeline/commands overlay_place_item', () => {
             trackId: 'v1',
             name: 'Short',
             backgroundColor: '#fff',
-            timelineRange: { startTicks: timelineTicks(20_000_000), durationTicks: timelineTicks(2_000_000) },
+            timelineRange: {
+              startTicks: timelineTicks(20_000_000),
+              durationTicks: timelineTicks(2_000_000),
+            },
             sourceRange: { startTicks: 0, durationTicks: timelineTicks(2_000_000) },
           },
         ],
@@ -335,7 +356,10 @@ describe('timeline/commands overlay_place_item', () => {
       .sort((a, b) => a.timelineRange.startTicks - b.timelineRange.startTicks);
 
     expect(longPieces).toHaveLength(2);
-    expect(longPieces[0].timelineRange).toEqual({ startTicks: 0, durationTicks: timelineTicks(2_000_000) });
+    expect(longPieces[0].timelineRange).toEqual({
+      startTicks: 0,
+      durationTicks: timelineTicks(2_000_000),
+    });
     expect(longPieces[0].sourceRange).toEqual({
       startTicks: timelineTicks(6_000_000),
       durationTicks: timelineTicks(2_000_000),
@@ -374,7 +398,10 @@ describe('timeline/commands overlay_place_item', () => {
             trackId: 'v1',
             name: 'C2',
             backgroundColor: '#fff',
-            timelineRange: { startTicks: timelineTicks(8_000_000), durationTicks: timelineTicks(2_000_000) },
+            timelineRange: {
+              startTicks: timelineTicks(8_000_000),
+              durationTicks: timelineTicks(2_000_000),
+            },
             sourceRange: { startTicks: 0, durationTicks: timelineTicks(2_000_000) },
           },
         ],

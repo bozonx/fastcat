@@ -4,7 +4,7 @@ import { computed } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useTimelineHoverState } from '~/composables/timeline/useTimelineHoverState';
-import { absolutePxToViewportPx, timeUsToPx, zoomToPxPerSecond } from '~/utils/timeline/geometry';
+import { absolutePxToViewportPx, ticksToPx, zoomToPxPerSecond } from '~/utils/timeline/geometry';
 
 const props = defineProps<{ scrollEl?: HTMLElement | null; scrollLeft?: number }>();
 
@@ -19,7 +19,7 @@ function viewportX(absolutePx: number): number {
 }
 
 const playheadTransform = computed(() => {
-  const px = viewportX(timeUsToPx(timelineStore.currentTime, timelineStore.timelineZoom));
+  const px = viewportX(ticksToPx(timelineStore.currentTime, timelineStore.timelineZoom));
   return `translate3d(${px}px, 0, 0)`;
 });
 
@@ -45,9 +45,12 @@ const activeMarkerLines = computed(() => {
     const marker = markerById.get(id);
     if (!marker) continue;
     const color = marker.color ?? '#eab308';
-    lines.push({ px: viewportX(timeUsToPx(marker.timeTicks, zoom)), color });
+    lines.push({ px: viewportX(ticksToPx(marker.timeTicks, zoom)), color });
     if (marker.durationTicks !== undefined) {
-      lines.push({ px: viewportX(timeUsToPx(marker.timeTicks + marker.durationTicks, zoom)), color });
+      lines.push({
+        px: viewportX(ticksToPx(marker.timeTicks + marker.durationTicks, zoom)),
+        color,
+      });
     }
   }
   return lines;
@@ -64,9 +67,9 @@ const currentFrameHighlightStyle = computed(() => {
   const nextFrameStartTicks = Math.round(((currentFrameIndex + 1) * TICKS_PER_SECOND) / fps.value);
 
   const currentFrameStartPx = viewportX(
-    timeUsToPx(currentFrameStartTicks, timelineStore.timelineZoom),
+    ticksToPx(currentFrameStartTicks, timelineStore.timelineZoom),
   );
-  const nextFrameStartPx = viewportX(timeUsToPx(nextFrameStartTicks, timelineStore.timelineZoom));
+  const nextFrameStartPx = viewportX(ticksToPx(nextFrameStartTicks, timelineStore.timelineZoom));
 
   return {
     transform: `translate3d(${currentFrameStartPx}px, 0, 0)`,

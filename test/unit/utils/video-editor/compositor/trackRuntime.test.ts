@@ -89,7 +89,12 @@ describe('buildTrackRuntimeList', () => {
 });
 
 describe('buildPrevClipByIdIndex', () => {
-  function makeClip(itemId: string, layer: number, startTicks: number, endTicks: number): CompositorClip {
+  function makeClip(
+    itemId: string,
+    layer: number,
+    startTicks: number,
+    endTicks: number,
+  ): CompositorClip {
     return { itemId, layer, startTicks, endTicks } as unknown as CompositorClip;
   }
 
@@ -135,7 +140,12 @@ describe('buildPrevClipByIdIndex', () => {
 });
 
 describe('buildNextClipByIdIndex', () => {
-  function makeClip(itemId: string, layer: number, startTicks: number, endTicks: number): CompositorClip {
+  function makeClip(
+    itemId: string,
+    layer: number,
+    startTicks: number,
+    endTicks: number,
+  ): CompositorClip {
     return { itemId, layer, startTicks, endTicks } as unknown as CompositorClip;
   }
 

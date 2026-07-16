@@ -71,7 +71,10 @@ export function useClipTransitions(options: UseClipTransitionsOptions) {
       return;
     }
 
-    const clipDurationTicks = Math.max(0, Math.round(Number(clip.timelineRange?.durationTicks ?? 0)));
+    const clipDurationTicks = Math.max(
+      0,
+      Math.round(Number(clip.timelineRange?.durationTicks ?? 0)),
+    );
     const safeDefaultDurationTicks = Math.max(
       0,
       Math.round(Number(options.defaultDurationTicks.value ?? 0)),

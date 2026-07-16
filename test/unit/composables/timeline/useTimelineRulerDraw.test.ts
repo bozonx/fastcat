@@ -4,7 +4,7 @@ import { defineComponent, h, ref } from 'vue';
 import { mount } from '@vue/test-utils';
 import { useTimelineRulerDraw } from '~/composables/timeline/useTimelineRulerDraw';
 import { frameToTicks } from '~/timeline/commands/utils';
-import { timeUsToPx } from '~/utils/timeline/geometry';
+import { ticksToPx } from '~/utils/timeline/geometry';
 
 vi.mock('@vueuse/core', () => ({
   useResizeObserver: vi.fn(),
@@ -134,7 +134,7 @@ describe('useTimelineRulerDraw', () => {
     const zoom = 50;
     const frameAtTenMinutesTimecode = 18_000;
     const tickTicks = frameToTicks(frameAtTenMinutesTimecode, fps);
-    const tickAbsPx = timeUsToPx(tickTicks, zoom);
+    const tickAbsPx = ticksToPx(tickTicks, zoom);
     const scrollLeft = tickAbsPx - 100;
 
     const TestComponent = defineComponent({
@@ -165,7 +165,7 @@ describe('useTimelineRulerDraw', () => {
 
     const renderStartPx = Math.max(0, scrollLeft - 512);
     const expectedCanvasX = Math.round(tickAbsPx) - renderStartPx + 0.5;
-    const oldRealSecondCanvasX = Math.round(timeUsToPx(600_000_000, zoom)) - renderStartPx + 0.5;
+    const oldRealSecondCanvasX = Math.round(ticksToPx(600_000_000, zoom)) - renderStartPx + 0.5;
     const majorTickXs = fillText.mock.calls.map((call) => call[1]);
 
     expect(majorTickXs).toContain(expectedCanvasX);

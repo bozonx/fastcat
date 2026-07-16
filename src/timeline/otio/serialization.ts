@@ -218,7 +218,10 @@ export function serializeMarker(marker: TimelineMarker, rate?: number): OtioMark
     name: marker.text,
     color: colorToOtioColor(marker.color),
     comment: marker.text,
-    marked_range: toTimeRange({ startTicks: marker.timeTicks, durationTicks: marker.durationTicks ?? 0 }, rate),
+    marked_range: toTimeRange(
+      { startTicks: marker.timeTicks, durationTicks: marker.durationTicks ?? 0 },
+      rate,
+    ),
     metadata: {
       fastcat: {
         marker: {
@@ -336,7 +339,9 @@ export function parseOtioTransition(tRaw: unknown): ClipTransition | null {
   return {
     type,
     durationTicks:
-      typeof transitionMeta.durationTicks === 'number' ? transitionMeta.durationTicks : durationTicks,
+      typeof transitionMeta.durationTicks === 'number'
+        ? transitionMeta.durationTicks
+        : durationTicks,
     mode: normalizeTransitionMode(transitionMeta.mode),
     curve: normalizeTransitionCurve(transitionMeta.curve),
     params:

@@ -12,7 +12,7 @@ import type {
   TimelineTrackItem,
   TimelineTrimItemPayload,
 } from '~/timeline/types';
-import { timeUsToPx } from '~/utils/timeline/geometry';
+import { ticksToPx } from '~/utils/timeline/geometry';
 import { useTimelineClipHandleResize } from '~/composables/timeline/useTimelineClipHandleResize';
 import { useTimelineMarquee } from '~/composables/timeline/useTimelineMarquee';
 import { useFocusStore } from '~/stores/focus.store';
@@ -160,7 +160,7 @@ const { resizeVolume, startResizeVolume, startResizeFade, startResizeTransition 
 
 const timelineWidthPx = computed(() => {
   const maxTicks = timelineStore.duration + 30_000_000;
-  return timeUsToPx(maxTicks, timelineStore.timelineZoom);
+  return ticksToPx(maxTicks, timelineStore.timelineZoom);
 });
 
 const timelineContentStyle = computed(() => {
@@ -181,8 +181,8 @@ const selectionRangeStyle = computed(() => {
   const range = timelineStore.getSelectionRange();
   if (!range) return null;
   return {
-    left: `${timeUsToPx(range.startTicks, timelineStore.timelineZoom)}px`,
-    width: `${Math.max(1, timeUsToPx(range.endTicks - range.startTicks, timelineStore.timelineZoom))}px`,
+    left: `${ticksToPx(range.startTicks, timelineStore.timelineZoom)}px`,
+    width: `${Math.max(1, ticksToPx(range.endTicks - range.startTicks, timelineStore.timelineZoom))}px`,
   };
 });
 
@@ -550,8 +550,8 @@ watch(
               : 'bg-ui-bg-accent border border-ui-border'
         "
         :style="{
-          left: `${timeUsToPx(dragPreview.startTicks, timelineStore.timelineZoom)}px`,
-          width: `${Math.max(2, timeUsToPx(dragPreview.durationTicks, timelineStore.timelineZoom))}px`,
+          left: `${ticksToPx(dragPreview.startTicks, timelineStore.timelineZoom)}px`,
+          width: `${Math.max(2, ticksToPx(dragPreview.durationTicks, timelineStore.timelineZoom))}px`,
         }"
       >
         <span class="truncate" :title="dragPreview.label">{{ dragPreview.label }}</span>
@@ -566,8 +566,8 @@ watch(
           :key="`source-${trackViewModel.track.id}-${index}`"
           class="absolute top-0.5 bottom-0.5 rounded px-2 flex items-center text-xs text-zinc-400/95 z-20 pointer-events-none opacity-50 border-2 border-dashed border-zinc-500/50 bg-zinc-600/10"
           :style="{
-            left: `${timeUsToPx(sourcePreview.startTicks, timelineStore.timelineZoom)}px`,
-            width: `${Math.max(2, timeUsToPx(sourcePreview.durationTicks, timelineStore.timelineZoom))}px`,
+            left: `${ticksToPx(sourcePreview.startTicks, timelineStore.timelineZoom)}px`,
+            width: `${Math.max(2, ticksToPx(sourcePreview.durationTicks, timelineStore.timelineZoom))}px`,
           }"
         >
           <span class="truncate">{{ sourcePreview.label }}</span>
@@ -583,8 +583,8 @@ watch(
           :key="`paste-${trackViewModel.track.id}-${index}`"
           class="absolute top-0.5 bottom-0.5 rounded px-2 flex items-center text-xs text-zinc-100 z-30 pointer-events-none opacity-75 border-2 border-dashed border-primary-500/80 bg-primary-600/20 backdrop-blur-[1px]"
           :style="{
-            left: `${timeUsToPx(pastePreview.startTicks, timelineStore.timelineZoom)}px`,
-            width: `${Math.max(2, timeUsToPx(pastePreview.durationTicks, timelineStore.timelineZoom))}px`,
+            left: `${ticksToPx(pastePreview.startTicks, timelineStore.timelineZoom)}px`,
+            width: `${Math.max(2, ticksToPx(pastePreview.durationTicks, timelineStore.timelineZoom))}px`,
           }"
         >
           <UIcon

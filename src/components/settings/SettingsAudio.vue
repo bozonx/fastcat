@@ -208,7 +208,8 @@ const hasDiagnostics = computed(() => audioCodecRows.value.length > 0);
     >
       <UiWheelNumberInput
         :model-value="
-          workspaceStore.userSettings.projectDefaults.audioDeclickDurationTicks / TICKS_PER_MILLISECOND
+          workspaceStore.userSettings.projectDefaults.audioDeclickDurationTicks /
+          TICKS_PER_MILLISECOND
         "
         size="sm"
         :step="1"

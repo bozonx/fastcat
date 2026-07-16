@@ -1,6 +1,6 @@
 import type { TimelineDocument, TimelineTrack, TimelineClipItem } from '../../types';
 import type { TimelineCommandResult } from '../../commands';
-import { quantizeTimeUsToFrames, assertNoOverlap, normalizeGaps } from '../utils';
+import { quantizeTicksToFrames, assertNoOverlap, normalizeGaps } from '../utils';
 
 /**
  * Handles the `speed` property of an `updateClipProperties` edit.
@@ -47,7 +47,7 @@ export function applyClipSpeedChange(params: {
   // not muted. Unit speed (1×) carries no time-warp, so the flag clears there.
   nextProps.speedActive = speed !== 1;
   const nextDurationUsRaw = Math.round(item.sourceRange.durationTicks / Math.abs(speed));
-  const nextDurationTicks = Math.max(0, quantizeTimeUsToFrames(nextDurationUsRaw, fps, 'round'));
+  const nextDurationTicks = Math.max(0, quantizeTicksToFrames(nextDurationUsRaw, fps, 'round'));
   const startTicks = item.timelineRange.startTicks;
   const prevDurationTicks = Math.max(0, item.timelineRange.durationTicks);
 

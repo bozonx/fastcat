@@ -55,9 +55,15 @@ describe('computePayloadVideoEndTicks', () => {
       { kind: 'meta', masterEffects: [] } as never,
       { kind: 'track', id: 't', layer: 0 } as never,
       baseClip({
-        timelineRange: { startTicks: timelineTicks(1_000_000), durationTicks: timelineTicks(3_000_000) },
+        timelineRange: {
+          startTicks: timelineTicks(1_000_000),
+          durationTicks: timelineTicks(3_000_000),
+        },
       }),
-      baseClip({ id: 'c2', timelineRange: { startTicks: 0, durationTicks: timelineTicks(2_000_000) } }),
+      baseClip({
+        id: 'c2',
+        timelineRange: { startTicks: 0, durationTicks: timelineTicks(2_000_000) },
+      }),
     ]);
     expect(end).toBe(timelineTicks(4_000_000));
   });
@@ -78,7 +84,10 @@ describe('findVideoPassthroughCandidate', () => {
       [
         baseClip({
           timelineRange: { startTicks: 0, durationTicks: timelineTicks(8_000_000) },
-          sourceRange: { startTicks: timelineTicks(2_000_000), durationTicks: timelineTicks(8_000_000) },
+          sourceRange: {
+            startTicks: timelineTicks(2_000_000),
+            durationTicks: timelineTicks(8_000_000),
+          },
         }),
       ],
       {},
@@ -159,7 +168,9 @@ describe('findVideoPassthroughCandidate', () => {
       'clip does not start at timeline zero',
       () =>
         candidate([
-          baseClip({ timelineRange: { startTicks: timelineTicks(1_000_000), durationTicks: DURATION_TICKS } }),
+          baseClip({
+            timelineRange: { startTicks: timelineTicks(1_000_000), durationTicks: DURATION_TICKS },
+          }),
         ]),
     ],
     [
@@ -171,7 +182,10 @@ describe('findVideoPassthroughCandidate', () => {
       () =>
         candidate([
           baseClip({
-            sourceRange: { startTicks: 0, durationTicks: DURATION_TICKS - timelineTicks(2_000_000) },
+            sourceRange: {
+              startTicks: 0,
+              durationTicks: DURATION_TICKS - timelineTicks(2_000_000),
+            },
           }),
         ]),
     ],
@@ -326,7 +340,10 @@ describe('buildPassthroughVideoTrack', () => {
         bundle,
         {
           timelineRange: { startTicks: 0, durationTicks: timelineTicks(8_000_000) },
-          sourceRange: { startTicks: timelineTicks(2_000_000), durationTicks: timelineTicks(8_000_000) },
+          sourceRange: {
+            startTicks: timelineTicks(2_000_000),
+            durationTicks: timelineTicks(8_000_000),
+          },
         },
         timelineTicks(8_000_000),
       ),
@@ -347,7 +364,10 @@ describe('buildPassthroughVideoTrack', () => {
         bundle,
         {
           timelineRange: { startTicks: 0, durationTicks: timelineTicks(8_000_000) },
-          sourceRange: { startTicks: timelineTicks(2_000_000), durationTicks: timelineTicks(8_000_000) },
+          sourceRange: {
+            startTicks: timelineTicks(2_000_000),
+            durationTicks: timelineTicks(8_000_000),
+          },
         },
         timelineTicks(8_000_000),
       ),
@@ -485,7 +505,10 @@ describe('writeVideoPassthrough', () => {
         bundle,
         {
           timelineRange: { startTicks: 0, durationTicks: timelineTicks(8_000_000) },
-          sourceRange: { startTicks: timelineTicks(2_000_000), durationTicks: timelineTicks(8_000_000) },
+          sourceRange: {
+            startTicks: timelineTicks(2_000_000),
+            durationTicks: timelineTicks(8_000_000),
+          },
         },
         timelineTicks(8_000_000),
       ),

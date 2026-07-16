@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { TimelineClipItem, TimelineTrack, TimelineTrackItem } from '~/timeline/types';
-import { timeUsToPx, zoomToPxPerSecond } from '~/utils/timeline/geometry';
+import { ticksToPx, zoomToPxPerSecond } from '~/utils/timeline/geometry';
 import { clipHasAudio, isAudio, isVideo } from '~/utils/timeline/clip';
 import { animatedParamPaths } from '~/timeline/animation/ops';
 import TimelineClipPreviewOverlays from './TimelineClipPreviewOverlays.vue';
@@ -85,7 +85,7 @@ const toolbarStyle = computed(() => {
   const viewportWidth = props.viewportWidth;
   const clipWidthPx = props.clipWidthPx;
 
-  const clipLeftPx = Math.round(timeUsToPx(props.effectiveTimelineStartTicks, zoom));
+  const clipLeftPx = Math.round(ticksToPx(props.effectiveTimelineStartTicks, zoom));
   const clipRightPx = clipLeftPx + clipWidthPx;
   const viewportRightPx = scrollLeft + viewportWidth;
 
@@ -108,7 +108,7 @@ const titleStyle = computed(() => {
   const viewportWidth = props.viewportWidth;
   const clipWidthPx = props.clipWidthPx;
 
-  const clipLeftPx = Math.round(timeUsToPx(props.effectiveTimelineStartTicks, zoom));
+  const clipLeftPx = Math.round(ticksToPx(props.effectiveTimelineStartTicks, zoom));
   const clipRightPx = clipLeftPx + clipWidthPx;
   const viewportRightPx = scrollLeft + viewportWidth;
 
@@ -235,7 +235,7 @@ const titleStyle = computed(() => {
         :width="clipWidthPx"
         :scroll-left="scrollLeft"
         :viewport-width="viewportWidth"
-        :clip-start-px="timeUsToPx(effectiveTimelineStartTicks, zoom)"
+        :clip-start-px="ticksToPx(effectiveTimelineStartTicks, zoom)"
       />
       <TimelineAudioWaveform
         v-if="

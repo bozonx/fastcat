@@ -96,7 +96,10 @@ describe('computeSnapTargetsTicks', () => {
       includeTimelineEndTicks: null,
       includePlayheadTicks: null,
       includeMarkers: true,
-      markers: [marker({ id: 'm1', timeTicks: 1_000_000 }), marker({ id: 'm2', timeTicks: 3_000_000 })],
+      markers: [
+        marker({ id: 'm1', timeTicks: 1_000_000 }),
+        marker({ id: 'm2', timeTicks: 3_000_000 }),
+      ],
       excludeMarkerId: 'm1',
       includeClips: false,
     });
@@ -110,7 +113,10 @@ describe('computeSnapTargetsTicks', () => {
       includeTimelineEndTicks: null,
       includePlayheadTicks: null,
       includeMarkers: true,
-      markers: [marker({ id: 'm1', timeTicks: Number.NaN }), marker({ id: 'm2', timeTicks: 2_000_000 })],
+      markers: [
+        marker({ id: 'm1', timeTicks: Number.NaN }),
+        marker({ id: 'm2', timeTicks: 2_000_000 }),
+      ],
       includeClips: false,
     });
     expect(result).toEqual([2_000_000]);
@@ -187,7 +193,9 @@ describe('computeSnapTargetsTicks', () => {
 
   it('deduplicates and sorts targets', () => {
     const result = computeSnapTargetsTicks({
-      tracks: [track([clip({ id: 'c1', timelineRange: { startTicks: 0, durationTicks: 5_000_000 } })])],
+      tracks: [
+        track([clip({ id: 'c1', timelineRange: { startTicks: 0, durationTicks: 5_000_000 } })]),
+      ],
       includeTimelineStart: true,
       includeTimelineEndTicks: 5_000_000,
       includePlayheadTicks: 0,
@@ -201,7 +209,9 @@ describe('computeSnapTargetsTicks', () => {
   it('combines all sources', () => {
     const result = computeSnapTargetsTicks({
       tracks: [
-        track([clip({ id: 'c1', timelineRange: { startTicks: 2_000_000, durationTicks: 1_000_000 } })]),
+        track([
+          clip({ id: 'c1', timelineRange: { startTicks: 2_000_000, durationTicks: 1_000_000 } }),
+        ]),
       ],
       includeTimelineStart: true,
       includeTimelineEndTicks: 10_000_000,
@@ -238,7 +248,9 @@ describe('getSelectedMovableItemIds', () => {
 
   it('excludes non-clip items', () => {
     const tracks: TimelineTrack[] = [
-      track([{ id: 'gap1', kind: 'gap', timelineRange: { startTicks: 0, durationTicks: 1 } } as any]),
+      track([
+        { id: 'gap1', kind: 'gap', timelineRange: { startTicks: 0, durationTicks: 1 } } as any,
+      ]),
     ];
     const result = getSelectedMovableItemIds({
       selectedItemIds: ['gap1'],

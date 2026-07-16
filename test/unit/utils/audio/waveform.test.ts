@@ -12,7 +12,7 @@ import {
   readWaveformCacheEntry,
   isWaveformCacheEntry,
 } from '~/utils/audio/waveform';
-import { timeUsToPx } from '~/utils/timeline/geometry';
+import { ticksToPx } from '~/utils/timeline/geometry';
 import { timelineTicks } from '../timeline-time';
 
 describe('audio waveform utilities', () => {
@@ -27,8 +27,8 @@ describe('audio waveform utilities', () => {
     });
 
     expect(metrics.reversed).toBe(false);
-    expect(metrics.leftPx).toBe(-Math.round(timeUsToPx(timelineTicks(2_000_000), zoom)));
-    expect(metrics.totalWidthPx).toBe(Math.round(timeUsToPx(timelineTicks(10_000_000), zoom)));
+    expect(metrics.leftPx).toBe(-Math.round(ticksToPx(timelineTicks(2_000_000), zoom)));
+    expect(metrics.totalWidthPx).toBe(Math.round(ticksToPx(timelineTicks(10_000_000), zoom)));
   });
 
   it('aligns a reversed clip so the visible window runs from source end to start', () => {
@@ -45,8 +45,8 @@ describe('audio waveform utilities', () => {
     const sourceAtClipRightPx = sourceAtClipLeftPx - metrics.clipWidthPx;
 
     expect(metrics.reversed).toBe(true);
-    expect(sourceAtClipLeftPx).toBe(Math.round(timeUsToPx(timelineTicks(5_000_000), zoom)));
-    expect(sourceAtClipRightPx).toBe(Math.round(timeUsToPx(timelineTicks(2_000_000), zoom)));
+    expect(sourceAtClipLeftPx).toBe(Math.round(ticksToPx(timelineTicks(5_000_000), zoom)));
+    expect(sourceAtClipRightPx).toBe(Math.round(ticksToPx(timelineTicks(2_000_000), zoom)));
   });
 
   it('maps nested timeline positive-speed local time with clip speed', () => {

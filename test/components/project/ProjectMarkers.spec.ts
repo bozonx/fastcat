@@ -212,7 +212,9 @@ describe('ProjectMarkers.vue', () => {
   });
 
   it('opens export modal on export button click', async () => {
-    mockTimelineStore.markers = [{ id: '1', timeTicks: timelineTicks(1_000_000), text: 'Marker 1' }];
+    mockTimelineStore.markers = [
+      { id: '1', timeTicks: timelineTicks(1_000_000), text: 'Marker 1' },
+    ];
 
     const component = await mountWithNuxt(ProjectMarkers);
     const exportButton = component
@@ -227,7 +229,9 @@ describe('ProjectMarkers.vue', () => {
 
   it('hides export button when premium features are disabled', async () => {
     workspaceStore.premiumFeaturesEnabled = false;
-    mockTimelineStore.markers = [{ id: '1', timeTicks: timelineTicks(1_000_000), text: 'Marker 1' }];
+    mockTimelineStore.markers = [
+      { id: '1', timeTicks: timelineTicks(1_000_000), text: 'Marker 1' },
+    ];
 
     const component = await mountWithNuxt(ProjectMarkers);
 

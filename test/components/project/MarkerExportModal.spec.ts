@@ -133,7 +133,9 @@ describe('MarkerExportModal.vue', () => {
   it('formats export text according to selected export format', async () => {
     const component = await mountWithNuxt(MarkerExportModal, {
       props: {
-        markers: [{ id: '1', timeTicks: timelineTicks(1_000_000), text: 'Intro', color: '#d0021b' }],
+        markers: [
+          { id: '1', timeTicks: timelineTicks(1_000_000), text: 'Intro', color: '#d0021b' },
+        ],
         fps: 30,
         open: true,
       },
@@ -253,7 +255,9 @@ describe('MarkerExportModal.vue', () => {
   it('writes export content to _documents/markers.txt via export button', async () => {
     const component = await mountWithNuxt(MarkerExportModal, {
       props: {
-        markers: [{ id: '1', timeTicks: timelineTicks(1_000_000), text: 'Intro', color: '#d0021b' }],
+        markers: [
+          { id: '1', timeTicks: timelineTicks(1_000_000), text: 'Intro', color: '#d0021b' },
+        ],
         fps: 30,
         open: true,
       },
@@ -273,7 +277,9 @@ describe('MarkerExportModal.vue', () => {
   it('uses csv extension when csv format is selected', async () => {
     const component = await mountWithNuxt(MarkerExportModal, {
       props: {
-        markers: [{ id: '1', timeTicks: timelineTicks(1_000_000), text: 'Intro', color: '#d0021b' }],
+        markers: [
+          { id: '1', timeTicks: timelineTicks(1_000_000), text: 'Intro', color: '#d0021b' },
+        ],
         fps: 30,
         open: true,
       },
@@ -294,7 +300,9 @@ describe('MarkerExportModal.vue', () => {
 
     const component = await mountWithNuxt(MarkerExportModal, {
       props: {
-        markers: [{ id: '1', timeTicks: timelineTicks(1_000_000), text: 'Intro', color: '#d0021b' }],
+        markers: [
+          { id: '1', timeTicks: timelineTicks(1_000_000), text: 'Intro', color: '#d0021b' },
+        ],
         fps: 30,
         open: true,
       },

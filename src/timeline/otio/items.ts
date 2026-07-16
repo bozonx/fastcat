@@ -25,7 +25,10 @@ export function parseItemSequenceDurationTicks(child: unknown): number {
   const obj = child as Record<string, unknown>;
   const schema = obj.OTIO_SCHEMA;
   if (schema === 'Gap.1' || schema === 'Clip.1' || schema === 'Clip.2') {
-    return Math.max(0, fromRationalTimeTicks((obj.source_range as Record<string, unknown>)?.duration));
+    return Math.max(
+      0,
+      fromRationalTimeTicks((obj.source_range as Record<string, unknown>)?.duration),
+    );
   }
   return 0;
 }
@@ -131,7 +134,8 @@ export function parseClipItem(input: {
   transitionOut?: ClipTransition;
   report?: OtioValidationReport;
 }): TimelineClipItem {
-  const { trackId, otio, index, occupiedIds, fallbackStartTicks, transitionIn, transitionOut } = input;
+  const { trackId, otio, index, occupiedIds, fallbackStartTicks, transitionIn, transitionOut } =
+    input;
   const sourceRange = fromTimeRange(otio.source_range);
   const name = coerceName(otio.name, `clip_${index + 1}`);
 

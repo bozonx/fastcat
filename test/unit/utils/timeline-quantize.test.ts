@@ -2,7 +2,7 @@
 import { timelineTicks } from './timeline-time';
 import { describe, it, expect } from 'vitest';
 import {
-  quantizeTimeUsToFrames,
+  quantizeTicksToFrames,
   assertNoOverlap,
   OVERLAP_EPSILON_TICKS,
   frameToTicks,
@@ -32,29 +32,29 @@ function makeClip(id: string, startTicks: number, durationTicks: number): Timeli
   };
 }
 
-describe('quantizeTimeUsToFrames', () => {
+describe('quantizeTicksToFrames', () => {
   it('rounds to nearest frame at 30fps', () => {
     const fps = 30;
     // 1 frame = 33333.333... us
-    expect(quantizeTimeUsToFrames(timelineTicks(33_333), fps, 'round')).toBe(frameToTicks(1, fps));
-    expect(quantizeTimeUsToFrames(timelineTicks(50_000), fps, 'round')).toBe(frameToTicks(2, fps));
-    expect(quantizeTimeUsToFrames(timelineTicks(66_667), fps, 'round')).toBe(frameToTicks(2, fps));
+    expect(quantizeTicksToFrames(timelineTicks(33_333), fps, 'round')).toBe(frameToTicks(1, fps));
+    expect(quantizeTicksToFrames(timelineTicks(50_000), fps, 'round')).toBe(frameToTicks(2, fps));
+    expect(quantizeTicksToFrames(timelineTicks(66_667), fps, 'round')).toBe(frameToTicks(2, fps));
   });
 
   it('floors to frame boundary', () => {
     const fps = 30;
-    expect(quantizeTimeUsToFrames(timelineTicks(66_666), fps, 'floor')).toBe(frameToTicks(1, fps));
-    expect(quantizeTimeUsToFrames(timelineTicks(66_667), fps, 'floor')).toBe(frameToTicks(2, fps));
+    expect(quantizeTicksToFrames(timelineTicks(66_666), fps, 'floor')).toBe(frameToTicks(1, fps));
+    expect(quantizeTicksToFrames(timelineTicks(66_667), fps, 'floor')).toBe(frameToTicks(2, fps));
   });
 
   it('ceils to frame boundary', () => {
     const fps = 30;
-    expect(quantizeTimeUsToFrames(timelineTicks(33_334), fps, 'ceil')).toBe(frameToTicks(2, fps));
-    expect(quantizeTimeUsToFrames(timelineTicks(33_333), fps, 'ceil')).toBe(frameToTicks(1, fps));
+    expect(quantizeTicksToFrames(timelineTicks(33_334), fps, 'ceil')).toBe(frameToTicks(2, fps));
+    expect(quantizeTicksToFrames(timelineTicks(33_333), fps, 'ceil')).toBe(frameToTicks(1, fps));
   });
 
   it('returns 0 for negative time', () => {
-    expect(quantizeTimeUsToFrames(-1000, 30, 'round')).toBe(0);
+    expect(quantizeTicksToFrames(-1000, 30, 'round')).toBe(0);
   });
 });
 
@@ -71,23 +71,28 @@ describe('assertNoOverlap', () => {
 
   it('throws when new clip overlaps existing', () => {
     const track = makeTrack([makeClip('c1', 0, timelineTicks(1_000_000))]);
-    expect(() => assertNoOverlap(track, '', timelineTicks(500_000), timelineTicks(1_000_000))).toThrow(
-      'Item overlaps with another item',
-    );
+    expect(() =>
+      assertNoOverlap(track, '', timelineTicks(500_000), timelineTicks(1_000_000)),
+    ).toThrow('Item overlaps with another item');
   });
 
   it('allows tiny epsilon overlap without throwing', () => {
     const track = makeTrack([makeClip('c1', 0, timelineTicks(1_000_000))]);
     // overlap of exactly OVERLAP_EPSILON_TICKS should not throw
     expect(() =>
-      assertNoOverlap(track, '', timelineTicks(1_000_000) - OVERLAP_EPSILON_TICKS, timelineTicks(1_000_000)),
+      assertNoOverlap(
+        track,
+        '',
+        timelineTicks(1_000_000) - OVERLAP_EPSILON_TICKS,
+        timelineTicks(1_000_000),
+      ),
     ).not.toThrow();
   });
 
   it('throws when overlap exceeds epsilon', () => {
     const track = makeTrack([makeClip('c1', 0, timelineTicks(1_000_000))]);
-    expect(() => assertNoOverlap(track, '', timelineTicks(999_998), timelineTicks(1_000_000))).toThrow(
-      'Item overlaps with another item',
-    );
+    expect(() =>
+      assertNoOverlap(track, '', timelineTicks(999_998), timelineTicks(1_000_000)),
+    ).toThrow('Item overlaps with another item');
   });
 });

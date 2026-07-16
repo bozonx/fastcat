@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { reactive, effectScope } from 'vue';
-import { TICKS_PER_MICROSECOND } from '~/utils/time';
+import { TICKS_PER_MILLISECOND } from '~/utils/time';
 
 import {
   useNativeMonitorBridge,
@@ -163,14 +163,14 @@ describe('shouldSyncNativeMonitorTime', () => {
     expect(shouldSyncNativeMonitorTime({ diffTicks: 300, nowMs: 100, lastSyncMs: 0 })).toBe(false);
     expect(
       shouldSyncNativeMonitorTime({
-        diffTicks: 10_000 * TICKS_PER_MICROSECOND,
+        diffTicks: 10 * TICKS_PER_MILLISECOND,
         nowMs: 120,
         lastSyncMs: 100,
       }),
     ).toBe(false);
     expect(
       shouldSyncNativeMonitorTime({
-        diffTicks: 10_000 * TICKS_PER_MICROSECOND,
+        diffTicks: 10 * TICKS_PER_MILLISECOND,
         nowMs: 160,
         lastSyncMs: 100,
       }),
@@ -180,7 +180,7 @@ describe('shouldSyncNativeMonitorTime', () => {
   it('forces large native time jumps through the throttle', () => {
     expect(
       shouldSyncNativeMonitorTime({
-        diffTicks: 120_000 * TICKS_PER_MICROSECOND,
+        diffTicks: 120 * TICKS_PER_MILLISECOND,
         nowMs: 120,
         lastSyncMs: 100,
       }),

@@ -27,7 +27,11 @@ const mockDoc: any = {
     {
       id: 'track-2',
       items: [
-        { id: 'clip-3', kind: 'clip', timelineRange: { startTicks: 500_000, durationTicks: 500_000 } },
+        {
+          id: 'clip-3',
+          kind: 'clip',
+          timelineRange: { startTicks: 500_000, durationTicks: 500_000 },
+        },
       ],
     },
   ],

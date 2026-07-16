@@ -1,5 +1,5 @@
 import { createDevLogger } from '~/utils/dev-logger';
-import { TICKS_PER_MICROSECOND, TICKS_PER_SECOND } from '~/utils/time';
+import { TICKS_PER_MILLISECOND, TICKS_PER_SECOND } from '~/utils/time';
 import {
   DEFAULT_TRANSITION_CURVE,
   DEFAULT_TRANSITION_MODE,
@@ -14,7 +14,7 @@ import {
 const log = createDevLogger('FrameSampleOrchestrator');
 
 /** Minimum usable handle in canonical timeline ticks (~1 ms). */
-const MIN_SOURCE_HANDLE_TICKS = 1_000 * TICKS_PER_MICROSECOND;
+const MIN_SOURCE_HANDLE_TICKS = TICKS_PER_MILLISECOND;
 
 export interface FrameSampleOrchestratorParams {
   activeClips: CompositorClip[];
@@ -222,7 +222,9 @@ export class FrameSampleOrchestrator {
       // Forward playback consumes the trailing handle; reversed consumes leading.
       const trailingHandleTicks = Math.max(
         0,
-        prevClip.sourceDurationTicks - prevClip.sourceStartTicks - prevClip.sourceRangeDurationTicks,
+        prevClip.sourceDurationTicks -
+          prevClip.sourceStartTicks -
+          prevClip.sourceRangeDurationTicks,
       );
       const leadingHandleTicks = Math.max(0, prevClip.sourceStartTicks);
       const handleTicks = reversed ? leadingHandleTicks : trailingHandleTicks;

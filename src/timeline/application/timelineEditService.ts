@@ -12,7 +12,7 @@ import { computeCutTicks } from '~/timeline/domain/editing';
 import {
   getLinkedClipGroupItemIds,
   getDocFps,
-  quantizeDeltaUsToFrames,
+  quantizeDeltaTicksToFrames,
 } from '~/timeline/commands/utils';
 
 interface HotkeyTarget {
@@ -319,7 +319,7 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
     // shift use the EXACT same delta. Otherwise the trim quantizes `endTicks - cutTicks`
     // to frames while the moves quantize each clip's start independently, which
     // can leave a sub-frame gap/overlap on legacy non-frame-aligned geometry.
-    const deltaTicks = quantizeDeltaUsToFrames(endTicks - cutTicks, getDocFps(doc), 'round');
+    const deltaTicks = quantizeDeltaTicksToFrames(endTicks - cutTicks, getDocFps(doc), 'round');
     if (deltaTicks <= 0) return null;
 
     const cmds: TimelineCommand[] = [
@@ -376,7 +376,7 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
 
     // Frame-align the ripple amount up front so the start trim, the move-back and
     // the subsequent shift all use the EXACT same delta (see rippleTrimRight).
-    const deltaTicks = quantizeDeltaUsToFrames(cutTicks - startTicks, getDocFps(doc), 'round');
+    const deltaTicks = quantizeDeltaTicksToFrames(cutTicks - startTicks, getDocFps(doc), 'round');
     if (deltaTicks <= 0) return null;
 
     const cmds: TimelineCommand[] = [

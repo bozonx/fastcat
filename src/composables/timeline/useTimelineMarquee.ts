@@ -4,7 +4,7 @@ import type { TimelineTrack } from '~/timeline/types';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useProjectStore } from '~/stores/project.store';
-import { timeUsToPx } from '~/utils/timeline/geometry';
+import { ticksToPx } from '~/utils/timeline/geometry';
 import { isTimelinePerfEnabled, sampleTimeline, flushTimelineSamples } from '~/utils/timeline/perf';
 
 export function useTimelineMarquee(
@@ -104,8 +104,8 @@ export function useTimelineMarquee(
         if (track.locked) continue;
         for (const item of track.items) {
           if (item.kind !== 'clip' || (item as { locked?: boolean }).locked) continue;
-          const startPx = timeUsToPx(item.timelineRange.startTicks, zoom);
-          const endPx = timeUsToPx(
+          const startPx = ticksToPx(item.timelineRange.startTicks, zoom);
+          const endPx = ticksToPx(
             item.timelineRange.startTicks + item.timelineRange.durationTicks,
             zoom,
           );

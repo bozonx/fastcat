@@ -8,8 +8,8 @@ import type {
 import {
   getTrackById,
   getDocFps,
-  quantizeTimeUsToFrames,
-  quantizeDeltaUsToFrames,
+  quantizeTicksToFrames,
+  quantizeDeltaTicksToFrames,
   assertNoOverlap,
   assertClipNotLocked,
   normalizeGaps,
@@ -37,7 +37,8 @@ function assertTrackItemsDoNotOverlap(items: TimelineTrackItem[]) {
 
     if (
       rangesOverlap(prevStartTicks, prevEndTicks, currentStartTicks, currentEndTicks) &&
-      Math.min(prevEndTicks, currentEndTicks) - Math.max(prevStartTicks, currentStartTicks) > OVERLAP_EPSILON_TICKS
+      Math.min(prevEndTicks, currentEndTicks) - Math.max(prevStartTicks, currentStartTicks) >
+        OVERLAP_EPSILON_TICKS
     ) {
       throw new Error('Item overlaps with another item');
     }
@@ -63,7 +64,7 @@ function moveItemsWithinTracks(
 
     const startCandidate = Math.max(0, Math.round(Number(move.startTicks)));
     const startTicks = shouldQuantizeToFrames
-      ? quantizeTimeUsToFrames(startCandidate, fps, 'round')
+      ? quantizeTicksToFrames(startCandidate, fps, 'round')
       : startCandidate;
 
     let byItem = movesByTrack.get(move.fromTrackId);
@@ -137,7 +138,9 @@ function moveItemsSequentially(
   const totalDelta = annotated.reduce((acc, m) => acc + m.deltaTicks, 0);
   const movingRight = totalDelta >= 0;
   annotated.sort((a, b) =>
-    movingRight ? b.currentStartTicks - a.currentStartTicks : a.currentStartTicks - b.currentStartTicks,
+    movingRight
+      ? b.currentStartTicks - a.currentStartTicks
+      : a.currentStartTicks - b.currentStartTicks,
   );
 
   let currentDoc = doc;
@@ -183,7 +186,7 @@ export function moveItem(doc: TimelineDocument, cmd: MoveItemCommand): TimelineC
       // frames; per-member quantization rounds in different directions for
       // non-integer fps and drifts group geometry.
       const rawDeltaTicks = shouldQuantizeToFrames
-        ? quantizeDeltaUsToFrames(requestedStartTicks - currentStartTicks, fps, 'round')
+        ? quantizeDeltaTicksToFrames(requestedStartTicks - currentStartTicks, fps, 'round')
         : requestedStartTicks - currentStartTicks;
 
       const memberStarts: number[] = [];
@@ -194,7 +197,8 @@ export function moveItem(doc: TimelineDocument, cmd: MoveItemCommand): TimelineC
         }
       }
       const minMemberStartTicks = memberStarts.length > 0 ? Math.min(...memberStarts) : 0;
-      const deltaTicks = rawDeltaTicks < 0 ? Math.max(rawDeltaTicks, -minMemberStartTicks) : rawDeltaTicks;
+      const deltaTicks =
+        rawDeltaTicks < 0 ? Math.max(rawDeltaTicks, -minMemberStartTicks) : rawDeltaTicks;
 
       const moves: Array<{
         fromTrackId: string;
@@ -210,7 +214,10 @@ export function moveItem(doc: TimelineDocument, cmd: MoveItemCommand): TimelineC
             fromTrackId: track.id,
             toTrackId: track.id,
             itemId: trackItem.id,
-            startTicks: Math.max(0, Math.round(Number(trackItem.timelineRange.startTicks)) + deltaTicks),
+            startTicks: Math.max(
+              0,
+              Math.round(Number(trackItem.timelineRange.startTicks)) + deltaTicks,
+            ),
           });
         }
       }
@@ -219,7 +226,9 @@ export function moveItem(doc: TimelineDocument, cmd: MoveItemCommand): TimelineC
         // Sort moves so we never collide with an item that hasn't moved yet:
         //   - if moving right (delta > 0): move the rightmost first
         //   - if moving left  (delta <= 0): move the leftmost first
-        moves.sort((a, b) => (deltaTicks > 0 ? b.startTicks - a.startTicks : a.startTicks - b.startTicks));
+        moves.sort((a, b) =>
+          deltaTicks > 0 ? b.startTicks - a.startTicks : a.startTicks - b.startTicks,
+        );
 
         let currentDoc = doc;
         for (const move of moves) {
@@ -247,7 +256,7 @@ export function moveItem(doc: TimelineDocument, cmd: MoveItemCommand): TimelineC
   const shouldQuantizeToFrames = cmd.quantizeToFrames !== false && !preserveItemOffsets;
   const startCandidate = Math.max(0, Math.round(Number(cmd.startTicks)));
   const startTicks = shouldQuantizeToFrames
-    ? quantizeTimeUsToFrames(startCandidate, fps, 'round')
+    ? quantizeTicksToFrames(startCandidate, fps, 'round')
     : startCandidate;
   const durationTicks = Math.max(0, item.timelineRange.durationTicks);
 
@@ -307,7 +316,7 @@ export function moveItemToTrack(
   const shouldQuantizeToFrames = cmd.quantizeToFrames !== false && !preserveItemOffsets;
   const startCandidate = Math.max(0, Math.round(Number(cmd.startTicks)));
   const startTicks = shouldQuantizeToFrames
-    ? quantizeTimeUsToFrames(startCandidate, fps, 'round')
+    ? quantizeTicksToFrames(startCandidate, fps, 'round')
     : startCandidate;
   const durationTicks = Math.max(0, item.timelineRange.durationTicks);
 

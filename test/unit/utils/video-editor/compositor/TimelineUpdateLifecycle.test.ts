@@ -69,7 +69,10 @@ describe('TimelineUpdateLifecycle', () => {
   });
 
   it('clamps maxDurationTicks to 0 when all endTicks are negative', () => {
-    const clips = [makeClip({ itemId: 'a', endTicks: -100 }), makeClip({ itemId: 'b', endTicks: -200 })];
+    const clips = [
+      makeClip({ itemId: 'a', endTicks: -100 }),
+      makeClip({ itemId: 'b', endTicks: -200 }),
+    ];
 
     const result = lifecycle.apply(clips);
 

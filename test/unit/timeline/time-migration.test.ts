@@ -41,9 +41,9 @@ describe('migrateLegacyOtioMetadataToTicks', () => {
       startTicks: 30 * TICKS_PER_MICROSECOND,
       durationTicks: 40 * TICKS_PER_MICROSECOND,
     });
-    expect(timeline.tracks.children[0].metadata.fastcat.animations.opacity.keyframes[0].tTicks).toBe(
-      50 * TICKS_PER_MICROSECOND,
-    );
+    expect(
+      timeline.tracks.children[0].metadata.fastcat.animations.opacity.keyframes[0].tTicks,
+    ).toBe(50 * TICKS_PER_MICROSECOND);
     expect(timeline.tracks.children[0].source_range.duration.value).toBe(60);
   });
 

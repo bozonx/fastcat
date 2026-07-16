@@ -3,7 +3,7 @@ import { MEDIA_FIXTURES } from '../../fixtures/media';
 import { seedProjectMedia } from '../../utils/e2e/file-manager';
 import { addFileToTrack, clipIds, trackIds, updateClipProperties } from '../../utils/e2e/timeline';
 import { waitForTimelineDoc } from '../../utils/e2e/otio';
-import { TICKS_PER_MICROSECOND } from '~/utils/time';
+import { TICKS_PER_MILLISECOND } from '~/utils/time';
 
 /**
  * Clip-level audio properties: gain, balance (pan), and fade in/out. Tests
@@ -24,8 +24,8 @@ test.describe('Web clip audio properties', () => {
       properties: {
         audioGain: 0.5,
         audioBalance: -0.5,
-        audioFadeInTicks: 100_000 * TICKS_PER_MICROSECOND,
-        audioFadeOutTicks: 100_000 * TICKS_PER_MICROSECOND,
+        audioFadeInTicks: 100_000 * TICKS_PER_MILLISECOND,
+        audioFadeOutTicks: 100_000 * TICKS_PER_MILLISECOND,
         audioFadeInCurve: 'logarithmic',
         audioFadeOutCurve: 'logarithmic',
         audioMuted: true,
@@ -40,8 +40,8 @@ test.describe('Web clip audio properties', () => {
     const clip = updated.allClips[0];
     expect(clip.audioGain).toBe(0.5);
     expect(clip.audioBalance).toBe(-0.5);
-    expect(clip.audioFadeInTicks).toBe(100_000 * TICKS_PER_MICROSECOND);
-    expect(clip.audioFadeOutTicks).toBe(100_000 * TICKS_PER_MICROSECOND);
+    expect(clip.audioFadeInTicks).toBe(100_000 * TICKS_PER_MILLISECOND);
+    expect(clip.audioFadeOutTicks).toBe(100_000 * TICKS_PER_MILLISECOND);
     expect(clip.audioFadeInCurve).toBe('logarithmic');
     expect(clip.audioFadeOutCurve).toBe('logarithmic');
     expect(clip.audioMuted).toBe(true);
@@ -53,7 +53,7 @@ test.describe('Web clip audio properties', () => {
     const reloadedClip = reloaded.allClips[0];
     expect(reloadedClip.audioGain).toBe(0.5);
     expect(reloadedClip.audioBalance).toBe(-0.5);
-    expect(reloadedClip.audioFadeInTicks).toBe(100_000 * TICKS_PER_MICROSECOND);
+    expect(reloadedClip.audioFadeInTicks).toBe(100_000 * TICKS_PER_MILLISECOND);
     expect(reloadedClip.audioMuted).toBe(true);
   });
 });

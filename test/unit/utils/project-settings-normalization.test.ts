@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { normalizeProjectSettings } from '~/utils/project-settings';
 import { createDefaultUserSettings } from '~/utils/settings';
-import { TICKS_PER_MICROSECOND } from '~/utils/time';
+import { TICKS_PER_MILLISECOND } from '~/utils/time';
 
 describe('project settings normalization', () => {
   it('clamps numeric fields to reasonable bounds', () => {
@@ -71,7 +71,7 @@ describe('project settings normalization', () => {
       user,
     );
 
-    expect(normalized.project.audioDeclickDurationTicks).toBe(5_000 * TICKS_PER_MICROSECOND);
-    expect(normalized.transitions.defaultDurationTicks).toBe(2_000_000 * TICKS_PER_MICROSECOND);
+    expect(normalized.project.audioDeclickDurationTicks).toBe(5 * TICKS_PER_MILLISECOND);
+    expect(normalized.transitions.defaultDurationTicks).toBe(2_000 * TICKS_PER_MILLISECOND);
   });
 });

@@ -1,5 +1,10 @@
 import type { TimelineRange } from '../../types';
-import { clampInt, frameToTicks, quantizeDeltaUsToFrames, quantizeRangeToFrames } from '../utils';
+import {
+  clampInt,
+  frameToTicks,
+  quantizeDeltaTicksToFrames,
+  quantizeRangeToFrames,
+} from '../utils';
 import { isClipFrameAligned } from '~/utils/timeline/clip-capabilities';
 
 export interface TrimGeometryInput {
@@ -47,7 +52,7 @@ export function computeTrimGeometry(input: TrimGeometryInput): TrimGeometryResul
 
   const deltaCandidate = Math.round(Number(input.deltaTicks));
   const deltaTicks = quantizeToFrames
-    ? quantizeDeltaUsToFrames(deltaCandidate, fps, 'round')
+    ? quantizeDeltaTicksToFrames(deltaCandidate, fps, 'round')
     : deltaCandidate;
 
   // A free (sub-frame) audio clip keeps its phase through a quantized trim: the
@@ -72,7 +77,10 @@ export function computeTrimGeometry(input: TrimGeometryInput): TrimGeometryResul
     let nextTimelineDurationTicks = prevTimelineDurationTicks;
 
     if (edge === 'start') {
-      nextTimelineStartTicks = Math.max(0, Math.min(prevTimelineEndTicks, prevTimelineStartTicks + deltaTicks));
+      nextTimelineStartTicks = Math.max(
+        0,
+        Math.min(prevTimelineEndTicks, prevTimelineStartTicks + deltaTicks),
+      );
       nextTimelineDurationTicks = Math.max(0, prevTimelineEndTicks - nextTimelineStartTicks);
     } else {
       nextTimelineDurationTicks = Math.max(0, prevTimelineDurationTicks + deltaTicks);
@@ -92,7 +100,10 @@ export function computeTrimGeometry(input: TrimGeometryInput): TrimGeometryResul
     const nextSourceDurationTicks = Math.max(0, Math.round(nextTimelineDurationTicks * absSpeed));
 
     return {
-      timelineRange: { startTicks: nextTimelineStartTicks, durationTicks: nextTimelineDurationTicks },
+      timelineRange: {
+        startTicks: nextTimelineStartTicks,
+        durationTicks: nextTimelineDurationTicks,
+      },
       sourceRange: { startTicks: 0, durationTicks: nextSourceDurationTicks },
       valid,
     };
@@ -121,16 +132,27 @@ export function computeTrimGeometry(input: TrimGeometryInput): TrimGeometryResul
       if (unclampedSourceStartTicks < minSourceStartTicks) {
         const overshoot = minSourceStartTicks - unclampedSourceStartTicks;
         nextSourceStartTicks = minSourceStartTicks;
-        nextSourceEndTicks = clampInt(prevSourceEndTicks + overshoot, prevSourceStartTicks, maxSourceEndTicks);
+        nextSourceEndTicks = clampInt(
+          prevSourceEndTicks + overshoot,
+          prevSourceStartTicks,
+          maxSourceEndTicks,
+        );
       } else {
-        nextSourceStartTicks = clampInt(unclampedSourceStartTicks, minSourceStartTicks, prevSourceEndTicks);
+        nextSourceStartTicks = clampInt(
+          unclampedSourceStartTicks,
+          minSourceStartTicks,
+          prevSourceEndTicks,
+        );
         nextSourceEndTicks = prevSourceEndTicks;
       }
       const appliedDeltaTicks = nextSourceStartTicks - prevSourceStartTicks;
       const appliedTimelineDeltaTicks = Math.round(appliedDeltaTicks / absSpeed);
 
       nextTimelineStartTicks = Math.max(0, prevTimelineStartTicks + appliedTimelineDeltaTicks);
-      nextTimelineDurationTicks = Math.max(0, prevTimelineDurationTicks - appliedTimelineDeltaTicks);
+      nextTimelineDurationTicks = Math.max(
+        0,
+        prevTimelineDurationTicks - appliedTimelineDeltaTicks,
+      );
     } else {
       // Reversed: trimming the timeline start moves the end of the source range.
       const unclampedSourceEndTicks = prevSourceEndTicks - sourceDeltaTicks;
@@ -143,14 +165,21 @@ export function computeTrimGeometry(input: TrimGeometryInput): TrimGeometryResul
           prevSourceEndTicks,
         );
       } else {
-        nextSourceEndTicks = clampInt(unclampedSourceEndTicks, prevSourceStartTicks, maxSourceEndTicks);
+        nextSourceEndTicks = clampInt(
+          unclampedSourceEndTicks,
+          prevSourceStartTicks,
+          maxSourceEndTicks,
+        );
         nextSourceStartTicks = prevSourceStartTicks;
       }
       const appliedDeltaTicks = prevSourceEndTicks - nextSourceEndTicks;
       const appliedTimelineDeltaTicks = Math.round(appliedDeltaTicks / absSpeed);
 
       nextTimelineStartTicks = Math.max(0, prevTimelineStartTicks + appliedTimelineDeltaTicks);
-      nextTimelineDurationTicks = Math.max(0, prevTimelineDurationTicks - appliedTimelineDeltaTicks);
+      nextTimelineDurationTicks = Math.max(
+        0,
+        prevTimelineDurationTicks - appliedTimelineDeltaTicks,
+      );
     }
   } else {
     if (speed >= 0) {
@@ -164,13 +193,20 @@ export function computeTrimGeometry(input: TrimGeometryInput): TrimGeometryResul
           prevSourceEndTicks,
         );
       } else {
-        nextSourceEndTicks = clampInt(unclampedSourceEndTicks, prevSourceStartTicks, maxSourceEndTicks);
+        nextSourceEndTicks = clampInt(
+          unclampedSourceEndTicks,
+          prevSourceStartTicks,
+          maxSourceEndTicks,
+        );
         nextSourceStartTicks = prevSourceStartTicks;
       }
       const appliedDeltaTicks = nextSourceEndTicks - prevSourceEndTicks;
       const appliedTimelineDeltaTicks = Math.round(appliedDeltaTicks / absSpeed);
 
-      nextTimelineDurationTicks = Math.max(0, prevTimelineDurationTicks + appliedTimelineDeltaTicks);
+      nextTimelineDurationTicks = Math.max(
+        0,
+        prevTimelineDurationTicks + appliedTimelineDeltaTicks,
+      );
       nextTimelineStartTicks = prevTimelineStartTicks;
     } else {
       // Reversed: trimming the timeline end moves the start of the source range.
@@ -178,15 +214,26 @@ export function computeTrimGeometry(input: TrimGeometryInput): TrimGeometryResul
       if (unclampedSourceStartTicks < minSourceStartTicks) {
         const overshoot = minSourceStartTicks - unclampedSourceStartTicks;
         nextSourceStartTicks = minSourceStartTicks;
-        nextSourceEndTicks = clampInt(prevSourceEndTicks + overshoot, prevSourceStartTicks, maxSourceEndTicks);
+        nextSourceEndTicks = clampInt(
+          prevSourceEndTicks + overshoot,
+          prevSourceStartTicks,
+          maxSourceEndTicks,
+        );
       } else {
-        nextSourceStartTicks = clampInt(unclampedSourceStartTicks, minSourceStartTicks, prevSourceEndTicks);
+        nextSourceStartTicks = clampInt(
+          unclampedSourceStartTicks,
+          minSourceStartTicks,
+          prevSourceEndTicks,
+        );
         nextSourceEndTicks = prevSourceEndTicks;
       }
       const appliedDeltaTicks = prevSourceStartTicks - nextSourceStartTicks;
       const appliedTimelineDeltaTicks = Math.round(appliedDeltaTicks / absSpeed);
 
-      nextTimelineDurationTicks = Math.max(0, prevTimelineDurationTicks + appliedTimelineDeltaTicks);
+      nextTimelineDurationTicks = Math.max(
+        0,
+        prevTimelineDurationTicks + appliedTimelineDeltaTicks,
+      );
       nextTimelineStartTicks = prevTimelineStartTicks;
     }
   }
@@ -205,19 +252,27 @@ export function computeTrimGeometry(input: TrimGeometryInput): TrimGeometryResul
     // accumulate sub-frame source drift.
     const deltaLeftTicks = qTimeline.startTicks - nextTimelineStartTicks;
     const deltaRightTicks =
-      qTimeline.startTicks + qTimeline.durationTicks - (nextTimelineStartTicks + nextTimelineDurationTicks);
+      qTimeline.startTicks +
+      qTimeline.durationTicks -
+      (nextTimelineStartTicks + nextTimelineDurationTicks);
 
     nextTimelineStartTicks = qTimeline.startTicks;
     nextTimelineDurationTicks = qTimeline.durationTicks;
 
     if (speed >= 0) {
-      nextSourceStartTicks = Math.max(0, nextSourceStartTicks + Math.round(deltaLeftTicks * absSpeed));
+      nextSourceStartTicks = Math.max(
+        0,
+        nextSourceStartTicks + Math.round(deltaLeftTicks * absSpeed),
+      );
       nextSourceEndTicks = Math.max(
         nextSourceStartTicks,
         nextSourceEndTicks + Math.round(deltaRightTicks * absSpeed),
       );
     } else {
-      nextSourceStartTicks = Math.max(0, nextSourceStartTicks - Math.round(deltaRightTicks * absSpeed));
+      nextSourceStartTicks = Math.max(
+        0,
+        nextSourceStartTicks - Math.round(deltaRightTicks * absSpeed),
+      );
       nextSourceEndTicks = Math.max(
         nextSourceStartTicks,
         nextSourceEndTicks - Math.round(deltaLeftTicks * absSpeed),
@@ -230,7 +285,10 @@ export function computeTrimGeometry(input: TrimGeometryInput): TrimGeometryResul
     // so pin the source back inside the material bounds. The timeline range stays
     // frame-quantized; only the source edge is clamped (a sub-frame correction).
     nextSourceEndTicks = Math.min(nextSourceEndTicks, maxSourceEndTicks);
-    nextSourceStartTicks = Math.max(minSourceStartTicks, Math.min(nextSourceStartTicks, nextSourceEndTicks));
+    nextSourceStartTicks = Math.max(
+      minSourceStartTicks,
+      Math.min(nextSourceStartTicks, nextSourceEndTicks),
+    );
 
     nextSourceDurationTicks = Math.max(0, nextSourceEndTicks - nextSourceStartTicks);
   }

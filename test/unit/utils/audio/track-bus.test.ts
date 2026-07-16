@@ -1,7 +1,7 @@
 /** @vitest-environment node */
 import { describe, it, expect } from 'vitest';
 import { buildEffectiveAudioClipItems } from '~/utils/audio/track-bus';
-import { TICKS_PER_MICROSECOND, TICKS_PER_SECOND } from '~/utils/time';
+import { TICKS_PER_MILLISECOND, TICKS_PER_SECOND } from '~/utils/time';
 
 describe('buildEffectiveAudioClipItems', () => {
   it('builds effective items from audio tracks', () => {
@@ -50,8 +50,8 @@ describe('buildEffectiveAudioClipItems', () => {
       audioFadesActive: false,
       audioGain: 0.25,
       audioBalance: -0.5,
-      audioFadeInTicks: 100_000 * TICKS_PER_MICROSECOND,
-      audioFadeOutTicks: 200_000 * TICKS_PER_MICROSECOND,
+      audioFadeInTicks: 100 * TICKS_PER_MILLISECOND,
+      audioFadeOutTicks: 200 * TICKS_PER_MILLISECOND,
       audioFadeInCurve: 'logarithmic',
       audioFadeOutCurve: 'logarithmic',
     };
@@ -79,7 +79,7 @@ describe('buildEffectiveAudioClipItems', () => {
     expect(result.items[0]!.audioFadeInCurve).toBeUndefined();
     expect(result.items[0]!.audioFadeOutCurve).toBeUndefined();
     expect(item.audioGain).toBe(0.25);
-    expect(item.audioFadeInTicks).toBe(100_000 * TICKS_PER_MICROSECOND);
+    expect(item.audioFadeInTicks).toBe(100 * TICKS_PER_MILLISECOND);
   });
 
   it('builds effective items from video tracks when audio from video is enabled', () => {

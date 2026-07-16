@@ -401,11 +401,17 @@ describe('ClipAudioFades', () => {
           viewportWidth: 1000,
           item: {
             ...baseItem,
-            timelineRange: { startTicks: timelineTicks(100_000), durationTicks: timelineTicks(4_000_000) },
+            timelineRange: {
+              startTicks: timelineTicks(100_000),
+              durationTicks: timelineTicks(4_000_000),
+            },
           },
           clip: {
             ...baseItem,
-            timelineRange: { startTicks: timelineTicks(100_000), durationTicks: timelineTicks(4_000_000) },
+            timelineRange: {
+              startTicks: timelineTicks(100_000),
+              durationTicks: timelineTicks(4_000_000),
+            },
           },
         },
       });
@@ -424,8 +430,14 @@ describe('ClipAudioFades', () => {
           scrollLeft: 250,
           viewportWidth: 500,
           zoom: 50,
-          item: { ...baseItem, timelineRange: { startTicks: 0, durationTicks: timelineTicks(4_000_000) } },
-          clip: { ...baseItem, timelineRange: { startTicks: 0, durationTicks: timelineTicks(4_000_000) } },
+          item: {
+            ...baseItem,
+            timelineRange: { startTicks: 0, durationTicks: timelineTicks(4_000_000) },
+          },
+          clip: {
+            ...baseItem,
+            timelineRange: { startTicks: 0, durationTicks: timelineTicks(4_000_000) },
+          },
         },
       });
 

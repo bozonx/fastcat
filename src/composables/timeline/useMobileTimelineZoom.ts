@@ -2,7 +2,7 @@ import { ref, onMounted, onBeforeUnmount, watch, type Ref } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import {
   computeAnchoredScrollLeft,
-  timeUsToPx,
+  ticksToPx,
   pxToTimeTicks,
   type TimelineZoomAnchor,
 } from '~/utils/timeline/geometry';
@@ -27,7 +27,7 @@ export function useMobileTimelineZoom(
   function makePlayheadAnchor(params: { zoom: number }): TimelineZoomAnchor {
     const viewportWidth = getViewportWidth();
     const prevScrollLeft = scrollEl.value?.scrollLeft ?? 0;
-    const playheadPx = timeUsToPx(timelineStore.currentTime, params.zoom);
+    const playheadPx = ticksToPx(timelineStore.currentTime, params.zoom);
     const isVisible = playheadPx >= prevScrollLeft && playheadPx <= prevScrollLeft + viewportWidth;
     return {
       anchorTimeTicks: timelineStore.currentTime,
@@ -100,7 +100,10 @@ export function useMobileTimelineZoom(
 
     const rect = getCachedScrollRect(el);
     const anchorViewportX = e.clientX - rect.left;
-    const anchorTimeTicks = pxToTimeTicks(el.scrollLeft + anchorViewportX, timelineStore.timelineZoom);
+    const anchorTimeTicks = pxToTimeTicks(
+      el.scrollLeft + anchorViewportX,
+      timelineStore.timelineZoom,
+    );
 
     const step = e.deltaY > 0 ? -5 : 5;
     const nextZoom = Math.min(

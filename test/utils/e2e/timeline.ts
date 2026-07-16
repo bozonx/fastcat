@@ -477,7 +477,12 @@ export async function updateMarker(
       window as Window & {
         __fastcatE2eUpdateMarker?: (params: {
           markerId: string;
-          patch: { timeTicks?: number; durationTicks?: number | null; text?: string; color?: string };
+          patch: {
+            timeTicks?: number;
+            durationTicks?: number | null;
+            text?: string;
+            color?: string;
+          };
         }) => Promise<void>;
       }
     ).__fastcatE2eUpdateMarker;

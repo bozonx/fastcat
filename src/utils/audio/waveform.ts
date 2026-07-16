@@ -1,4 +1,4 @@
-import { timeUsToPx, zoomToPxPerSecond } from '~/utils/timeline/geometry';
+import { ticksToPx, zoomToPxPerSecond } from '~/utils/timeline/geometry';
 
 /**
  * Hard ceiling on the number of peak samples per channel. Must mirror
@@ -76,11 +76,11 @@ export function computeWaveformWindowMetrics(
   const sourceStartTicks = Math.max(0, Math.round(params.sourceStartTicks));
   const sourceDurationTicks = Math.max(0, Math.round(params.sourceDurationTicks));
   const timelineDurationTicks = Math.max(0, Math.round(params.timelineDurationTicks));
-  const clipWidthPx = Math.round(timeUsToPx(timelineDurationTicks, params.zoom));
+  const clipWidthPx = Math.round(ticksToPx(timelineDurationTicks, params.zoom));
   // `speed` is already normalized to a positive magnitude; direction is handled
   // separately via `reversed`, so both metrics divide by the same positive speed.
-  const totalWidthPx = Math.round(timeUsToPx(sourceDurationTicks / speed, params.zoom));
-  const trimOffsetPx = Math.round(timeUsToPx(sourceStartTicks / speed, params.zoom));
+  const totalWidthPx = Math.round(ticksToPx(sourceDurationTicks / speed, params.zoom));
+  const trimOffsetPx = Math.round(ticksToPx(sourceStartTicks / speed, params.zoom));
   const reversed =
     typeof params.speed === 'number' && Number.isFinite(params.speed) && params.speed < 0;
   const leftPx = reversed ? trimOffsetPx + clipWidthPx - totalWidthPx : -trimOffsetPx;

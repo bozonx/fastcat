@@ -10,8 +10,12 @@ describe('DEFAULT_USER_SETTINGS', () => {
 
   it('has timeline defaults', () => {
     expect(DEFAULT_USER_SETTINGS.timeline.snapThresholdPx).toBe(8);
-    expect(DEFAULT_USER_SETTINGS.timeline.defaultAudioFadeDurationTicks).toBe(timelineTicks(1_000_000));
-    expect(DEFAULT_USER_SETTINGS.timeline.defaultTransitionDurationTicks).toBe(timelineTicks(2_000_000));
+    expect(DEFAULT_USER_SETTINGS.timeline.defaultAudioFadeDurationTicks).toBe(
+      timelineTicks(1_000_000),
+    );
+    expect(DEFAULT_USER_SETTINGS.timeline.defaultTransitionDurationTicks).toBe(
+      timelineTicks(2_000_000),
+    );
   });
 
   it('has hotkey defaults', () => {

@@ -9,7 +9,7 @@ import { useFocusStore } from '~/stores/focus.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useTimelineInteraction } from '~/composables/timeline/useTimelineInteraction';
-import { timeUsToPx } from '~/utils/timeline/geometry';
+import { ticksToPx } from '~/utils/timeline/geometry';
 import MultiClipProperties from '~/components/properties/MultiClipProperties.vue';
 import { useClipBatchActions } from '~/composables/timeline/useClipBatchActions';
 import { useMediaStore } from '~/stores/media.store';
@@ -172,7 +172,7 @@ function handleAddContent(trackId: string) {
 }
 
 const playheadPx = computed(() =>
-  Math.round(timeUsToPx(timelineStore.currentTime, timelineStore.timelineZoom)),
+  Math.round(ticksToPx(timelineStore.currentTime, timelineStore.timelineZoom)),
 );
 
 const scrollEl = ref<HTMLElement | null>(null);
@@ -316,7 +316,9 @@ const pastePreviews = computed(() => {
     .sort((a, b) => a - b);
   const minSourceTrackIndex = sourceTrackIndices[0] ?? 0;
 
-  const minStartTicks = Math.min(...payload.items.map((item) => item.clip.timelineRange.startTicks));
+  const minStartTicks = Math.min(
+    ...payload.items.map((item) => item.clip.timelineRange.startTicks),
+  );
   const playheadTicks = timelineStore.currentTime;
 
   return payload.items.flatMap((item) => {

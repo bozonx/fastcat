@@ -865,7 +865,8 @@ export class AudioMixer {
 
       const startTicks = clipData.startTicks ?? clipData.timelineRange?.startTicks ?? 0;
       const sourceStartTicks = clipData.sourceStartTicks ?? clipData.sourceRange?.startTicks ?? 0;
-      const sourceDurationTicks = clipData.sourceDurationTicks ?? clipData.sourceRange?.durationTicks ?? 0;
+      const sourceDurationTicks =
+        clipData.sourceDurationTicks ?? clipData.sourceRange?.durationTicks ?? 0;
       const durationTicks = clipData.durationTicks ?? clipData.timelineRange?.durationTicks ?? 0;
 
       const speedRaw = Number(clipData.speed);

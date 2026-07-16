@@ -739,7 +739,10 @@ describe('buildNativeMonitorScene', () => {
               kind: 'clip',
               clipType: 'adjustment',
               trackId: 'v-track',
-              timelineRange: { startTicks: timelineTicks(500_000), durationTicks: timelineTicks(1_000_000) },
+              timelineRange: {
+                startTicks: timelineTicks(500_000),
+                durationTicks: timelineTicks(1_000_000),
+              },
               sourceRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
               layer: 1,
               effects: [{ id: 'blur-1', type: 'blur', enabled: true, target: 'video', radius: 3 }],

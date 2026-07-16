@@ -254,7 +254,10 @@ function handleBatchToggleTransition(edge: 'in' | 'out') {
     );
 
     for (const { track, clip } of visualClipRefs.value) {
-      const clipDurationTicks = Math.max(0, Math.round(Number(clip.timelineRange?.durationTicks ?? 0)));
+      const clipDurationTicks = Math.max(
+        0,
+        Math.round(Number(clip.timelineRange?.durationTicks ?? 0)),
+      );
       const suggestedDurationTicks =
         clipDurationTicks > 0 && clipDurationTicks < safeDefaultDurationTicks
           ? Math.round(clipDurationTicks * 0.3)
@@ -606,7 +609,7 @@ const otherActions = computed(() => {
       :is-video-track="true"
       :transition-in="firstVideoClip.transitionIn ?? null"
       :transition-out="firstVideoClip.transitionOut ?? null"
-      :clip-duration-us="firstVideoClip.timelineRange.durationTicks"
+      :clip-duration-ticks="firstVideoClip.timelineRange.durationTicks"
       @select-edge="handleBatchSelectTransitionEdge"
       @toggle="handleBatchToggleTransition"
       @update-duration="

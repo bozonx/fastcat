@@ -22,12 +22,18 @@ const mockDoc = {
           kind: 'clip',
           timelineRange: { startTicks: 2_000_000, durationTicks: 1_000_000 },
         },
-        { id: 'gap-1', kind: 'gap', timelineRange: { startTicks: 1_000_000, durationTicks: 1_000_000 } },
+        {
+          id: 'gap-1',
+          kind: 'gap',
+          timelineRange: { startTicks: 1_000_000, durationTicks: 1_000_000 },
+        },
       ],
     },
     {
       id: 'track-2',
-      items: [{ id: 'clip-3', kind: 'clip', timelineRange: { startTicks: 0, durationTicks: 500_000 } }],
+      items: [
+        { id: 'clip-3', kind: 'clip', timelineRange: { startTicks: 0, durationTicks: 500_000 } },
+      ],
     },
   ],
 };

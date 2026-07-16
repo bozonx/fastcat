@@ -48,7 +48,10 @@ export function buildReplaceMediaPatch(args: {
   const speed = Math.abs(clip.speed ?? 1) || 1;
   const timelineDurationTicks = Math.floor(sourceDurationTicks / speed);
 
-  if (startTicks !== clip.sourceRange.startTicks || sourceDurationTicks !== clip.sourceRange.durationTicks) {
+  if (
+    startTicks !== clip.sourceRange.startTicks ||
+    sourceDurationTicks !== clip.sourceRange.durationTicks
+  ) {
     patch.sourceRange = { ...clip.sourceRange, startTicks, durationTicks: sourceDurationTicks };
   }
   if (timelineDurationTicks !== clip.timelineRange.durationTicks) {

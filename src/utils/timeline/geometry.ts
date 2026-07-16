@@ -19,7 +19,7 @@ export function pxPerSecondToZoom(pps: number): number {
   return 7 * Math.log2(pps / BASE_PX_PER_SECOND) + 50;
 }
 
-export function timeUsToPx(timeTicks: number, zoom = 100) {
+export function ticksToPx(timeTicks: number, zoom = 100) {
   const pxPerSecond = zoomToPxPerSecond(zoom);
   return ticksToSeconds(timeTicks) * pxPerSecond;
 }
@@ -35,8 +35,8 @@ export function timelineRangeToRoundedPx(
   zoom = 100,
   minWidthPx = 1,
 ): TimelinePixelRange {
-  const leftPx = Math.round(timeUsToPx(range.startTicks, zoom));
-  const rawEndPx = Math.round(timeUsToPx(range.startTicks + range.durationTicks, zoom));
+  const leftPx = Math.round(ticksToPx(range.startTicks, zoom));
+  const rawEndPx = Math.round(ticksToPx(range.startTicks + range.durationTicks, zoom));
   const endPx = Math.max(leftPx + minWidthPx, rawEndPx);
 
   return {
@@ -68,12 +68,12 @@ export function absolutePxToViewportPx(absolutePx: number, scrollLeft: number): 
 }
 
 /** Convenience wrapper: project a timeTicks straight into viewport pixels. */
-export function timeUsToViewportPx(timeTicks: number, zoom: number, scrollLeft: number): number {
-  return absolutePxToViewportPx(timeUsToPx(timeTicks, zoom), scrollLeft);
+export function ticksToViewportPx(timeTicks: number, zoom: number, scrollLeft: number): number {
+  return absolutePxToViewportPx(ticksToPx(timeTicks, zoom), scrollLeft);
 }
 
-export function quantizeTimeUsToPixelGrid(timeTicks: number, zoom = 100) {
-  return pxToTimeTicks(Math.round(timeUsToPx(timeTicks, zoom)), zoom);
+export function quantizeTicksToPixelGrid(timeTicks: number, zoom = 100) {
+  return pxToTimeTicks(Math.round(ticksToPx(timeTicks, zoom)), zoom);
 }
 
 /**
@@ -136,7 +136,7 @@ export function computeAnchoredScrollLeft(params: {
     : safeViewportWidth / 2;
   const anchorViewportX = Math.min(safeViewportWidth, Math.max(0, anchorViewportXRaw));
 
-  const anchorPxAtNextZoom = timeUsToPx(anchorTimeTicks, nextZoom);
+  const anchorPxAtNextZoom = ticksToPx(anchorTimeTicks, nextZoom);
   const nextScrollLeft = anchorPxAtNextZoom - anchorViewportX;
 
   if (!Number.isFinite(nextScrollLeft)) return safePrevScrollLeft;
@@ -228,7 +228,7 @@ export function computeTimelineCenteredScrollLeftForPlayhead(
   return Math.min(maxScrollLeft, Math.max(0, rawNextScrollLeft));
 }
 
-export function quantizeDeltaUsToFrames(deltaTicks: number, fps: number): number {
+export function quantizeDeltaTicksToFrames(deltaTicks: number, fps: number): number {
   const safeDeltaTicks = Number.isFinite(deltaTicks) ? Math.round(deltaTicks) : 0;
   const safeFps = sanitizeFps(fps);
   return quantizeTicksToFrame({
@@ -238,7 +238,7 @@ export function quantizeDeltaUsToFrames(deltaTicks: number, fps: number): number
   });
 }
 
-export function quantizeStartUsToFrames(startTicks: number, fps: number): number {
+export function quantizeStartTicksToFrames(startTicks: number, fps: number): number {
   const safeFps = sanitizeFps(fps);
   return Math.max(
     0,
@@ -259,7 +259,7 @@ export function quantizeStartUsToFrames(startTicks: number, fps: number): number
  * phase.
  */
 export function subframePhaseTicks(startTicks: number, fps: number): number {
-  const phase = Math.round(startTicks) - quantizeStartUsToFrames(startTicks, fps);
+  const phase = Math.round(startTicks) - quantizeStartTicksToFrames(startTicks, fps);
   return phase === 0 ? 0 : phase;
 }
 
@@ -345,7 +345,7 @@ export function computeSnappedStartTicks(params: {
 
   if (enableFrameSnap && !snappedToClip) {
     const offsetTicks = Number.isFinite(frameOffsetTicks) ? Math.round(frameOffsetTicks) : 0;
-    best = quantizeStartUsToFrames(best - offsetTicks, fps) + offsetTicks;
+    best = quantizeStartTicksToFrames(best - offsetTicks, fps) + offsetTicks;
   }
 
   return Math.max(0, best);

@@ -6,7 +6,7 @@ import {
   STANDARD_AUDIO_SAMPLE_RATES,
   STANDARD_FRAME_RATES,
   TICKS_PER_SECOND,
-  TICKS_PER_MICROSECOND,
+  TICKS_PER_MILLISECOND,
   formatTicksAsTimecode,
   framesToTicks,
   isTickRateFrameCompatible,
@@ -27,7 +27,7 @@ describe('tick conversions', () => {
     expect(ticksToSeconds(TICKS_PER_SECOND / 2)).toBe(0.5);
     expect(secondsToTicks({ seconds: 0.5 })).toBe(TICKS_PER_SECOND / 2);
     expect(secondsToTicks({ seconds: -0.000_000_5, mode: 'floor' })).toBe(
-      -TICKS_PER_MICROSECOND / 2,
+      -TICKS_PER_MILLISECOND / 2000,
     );
   });
 

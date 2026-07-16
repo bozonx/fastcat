@@ -19,7 +19,11 @@ function migrateTimeFields(value: unknown): void {
   if (!isRecord(value)) return;
 
   for (const [key, child] of Object.entries(value)) {
-    if (key.endsWith('Us') && typeof child === 'number' && Number.isFinite(child)) {
+    if (
+      (key.endsWith('Us') || key.endsWith('Ticks')) &&
+      typeof child === 'number' &&
+      Number.isFinite(child)
+    ) {
       value[key] = legacyUsToTicks(child);
       continue;
     }

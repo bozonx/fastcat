@@ -127,7 +127,10 @@ describe('buildOtioTransition', () => {
   });
 
   it('builds otio transition', () => {
-    const result = buildOtioTransition({ type: 'dissolve', durationTicks: 500_000 } as any, 'trans');
+    const result = buildOtioTransition(
+      { type: 'dissolve', durationTicks: 500_000 } as any,
+      'trans',
+    );
     expect(result?.OTIO_SCHEMA).toBe('Transition.1');
     expect(result?.transition_type).toBe('SMPTE_Dissolve');
   });

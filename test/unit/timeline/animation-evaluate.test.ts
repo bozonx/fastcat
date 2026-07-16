@@ -193,7 +193,10 @@ describe('resolveKeyframeTimelineTimeTicks', () => {
       sourceRangeDurationTicks: 10_000_000,
       speed: 2,
     };
-    const sourceTimeTicks = resolveClipAnimationTimeTicks({ ...base, timelineTimeTicks: 1_000_000 });
+    const sourceTimeTicks = resolveClipAnimationTimeTicks({
+      ...base,
+      timelineTimeTicks: 1_000_000,
+    });
     // 1s of timeline at 2x = 2s of source
     expect(sourceTimeTicks).toBe(2_000_000);
     expect(resolveKeyframeTimelineTimeTicks({ ...base, sourceTimeTicks })).toBe(1_000_000);

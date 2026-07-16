@@ -40,7 +40,9 @@ const timelineFps = computed(() => timelineStore.timelineFormat?.fps ?? timeline
 // The end timecode may never exceed the clip's source material. For images and
 // virtual clips getClipMaxTimelineDurationTicks returns Infinity (no upper bound).
 const clipMaxDurationTicks = computed(() => getClipMaxTimelineDurationTicks(props.clip));
-const endMaxTicks = computed(() => props.clip.timelineRange.startTicks + clipMaxDurationTicks.value);
+const endMaxTicks = computed(
+  () => props.clip.timelineRange.startTicks + clipMaxDurationTicks.value,
+);
 
 // Only audio clips may be freely (sub-frame) positioned, so the "snap to grid"
 // affordance is audio-only. It stays visible but disabled once both edges are

@@ -55,8 +55,12 @@ describe('web export frame cadence', () => {
     });
 
     it('computes total frame counts for whole and fractional rates', () => {
-      expect(computeExportTotalFrames({ durationTicks: timelineTicks(1_000_000), fps: 30 })).toBe(30);
-      expect(computeExportTotalFrames({ durationTicks: timelineTicks(2_000_000), fps: 25 })).toBe(50);
+      expect(computeExportTotalFrames({ durationTicks: timelineTicks(1_000_000), fps: 30 })).toBe(
+        30,
+      );
+      expect(computeExportTotalFrames({ durationTicks: timelineTicks(2_000_000), fps: 25 })).toBe(
+        50,
+      );
     });
   });
 

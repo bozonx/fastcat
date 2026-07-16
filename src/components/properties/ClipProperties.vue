@@ -44,7 +44,7 @@ import ClipMaskSection from '~/components/properties/clip/ClipMaskSection.vue';
 import ClipParametersPasteModal from '~/components/properties/clip/ClipParametersPasteModal.vue';
 import ClipBackgroundProperties from '~/components/properties/clip/ClipBackgroundProperties.vue';
 import { getClipMaxTimelineDurationTicks } from '~/utils/timeline/clip';
-import { frameToTicks, quantizeTimeUsToFrames, sanitizeFps } from '~/timeline/commands/utils';
+import { frameToTicks, quantizeTicksToFrames, sanitizeFps } from '~/timeline/commands/utils';
 import type { TimelineCommand } from '~/timeline/commands';
 import ClipEffectsEditor from '~/components/effects/ClipEffectsEditor.vue';
 import { useClipAudio } from '~/composables/properties/useClipAudio';
@@ -357,9 +357,10 @@ function handleSnapClipToGrid() {
     else if (itStart >= startTicks + durationTicks)
       maxStartTicks = Math.min(maxStartTicks, itStart - durationTicks);
   }
-  let snappedStartTicks = quantizeTimeUsToFrames(startTicks, fps, 'round');
+  let snappedStartTicks = quantizeTicksToFrames(startTicks, fps, 'round');
   snappedStartTicks = Math.max(minStartTicks, snappedStartTicks);
-  if (Number.isFinite(maxStartTicks)) snappedStartTicks = Math.min(maxStartTicks, snappedStartTicks);
+  if (Number.isFinite(maxStartTicks))
+    snappedStartTicks = Math.min(maxStartTicks, snappedStartTicks);
 
   // Snap the end, clamped to the source material and the next clip, evaluated at
   // the snapped start. Mirrors handleUpdateEndTime's clamping.
@@ -376,11 +377,11 @@ function handleSnapClipToGrid() {
     nextClipStartTicks,
   );
   const oneFrameTicks = frameToTicks(1, fps);
-  let snappedEndTicks = quantizeTimeUsToFrames(snappedStartTicks + durationTicks, fps, 'round');
+  let snappedEndTicks = quantizeTicksToFrames(snappedStartTicks + durationTicks, fps, 'round');
   // Never grow past the limit: if rounding up would collide/overrun, round the
   // limit down to the grid instead so the clip only ever shrinks to fit.
   if (snappedEndTicks > limitEndTicks) {
-    snappedEndTicks = quantizeTimeUsToFrames(limitEndTicks, fps, 'floor');
+    snappedEndTicks = quantizeTicksToFrames(limitEndTicks, fps, 'floor');
   }
   snappedEndTicks = Math.max(snappedStartTicks + oneFrameTicks, snappedEndTicks);
 
@@ -410,7 +411,11 @@ function handleSnapClipToGrid() {
     });
   }
 
-  if (cmds.length === 0 || (snappedStartTicks === startTicks && snappedEndTicks === currentEndTicks)) return;
+  if (
+    cmds.length === 0 ||
+    (snappedStartTicks === startTicks && snappedEndTicks === currentEndTicks)
+  )
+    return;
   timelineStore.batchApplyTimeline(cmds, {
     historyMode: 'immediate',
     labelKey: 'videoEditor.fileManager.history.entries.moveItem',
@@ -857,7 +862,7 @@ defineExpose({
         :is-video-track="isVideoTrack"
         :transition-in="clip.transitionIn ?? null"
         :transition-out="clip.transitionOut ?? null"
-        :clip-duration-us="clip.timelineRange.durationTicks"
+        :clip-duration-ticks="clip.timelineRange.durationTicks"
         @select-edge="selectTransitionEdge"
         @toggle="toggleTransition"
         @update-duration="({ edge, durationSec }) => updateTransitionDuration(edge, durationSec)"
@@ -1059,7 +1064,7 @@ defineExpose({
         :is-video-track="isVideoTrack"
         :transition-in="clip.transitionIn ?? null"
         :transition-out="clip.transitionOut ?? null"
-        :clip-duration-us="clip.timelineRange.durationTicks"
+        :clip-duration-ticks="clip.timelineRange.durationTicks"
         @select-edge="selectTransitionEdge"
         @toggle="toggleTransition"
         @update-duration="({ edge, durationSec }) => updateTransitionDuration(edge, durationSec)"

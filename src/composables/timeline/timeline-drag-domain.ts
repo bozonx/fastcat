@@ -43,7 +43,10 @@ export function computeSnapTargetsTicks(params: {
   ) {
     targets.push(params.includeTimelineEndTicks);
   }
-  if (typeof params.includePlayheadTicks === 'number' && Number.isFinite(params.includePlayheadTicks)) {
+  if (
+    typeof params.includePlayheadTicks === 'number' &&
+    Number.isFinite(params.includePlayheadTicks)
+  ) {
     targets.push(params.includePlayheadTicks);
   }
 
@@ -280,7 +283,9 @@ export function buildMultiItemMoves(params: {
   }
 
   moves.sort((left, right) => {
-    return clampedDeltaTicks >= 0 ? right.startTicks - left.startTicks : left.startTicks - right.startTicks;
+    return clampedDeltaTicks >= 0
+      ? right.startTicks - left.startTicks
+      : left.startTicks - right.startTicks;
   });
 
   return moves;

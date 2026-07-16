@@ -113,7 +113,10 @@ describe('transition-validation', () => {
     });
 
     it('rejects an adjacent transition when clips are separated by one tick', () => {
-      const prev = createClip({ id: 'prev', timelineRange: { startTicks: 0, durationTicks: 1_000_000 } });
+      const prev = createClip({
+        id: 'prev',
+        timelineRange: { startTicks: 0, durationTicks: 1_000_000 },
+      });
       const curr = createClip({
         id: 'curr',
         timelineRange: { startTicks: 1_000_000, durationTicks: 10_000_000 },

@@ -6,12 +6,12 @@ import type {
   TimelineCommandResult,
   UpdateMarkerCommand,
 } from '../commands';
-import { sanitizeFps, quantizeTimeUsToFrames } from './utils';
+import { sanitizeFps, quantizeTicksToFrames } from './utils';
 const log = createDevLogger('markerHandlers');
 
 /** Markers always live on the frame grid, regardless of the entry path. */
 function snapMarkerTimeTicks(value: number, fps: number): number {
-  return Math.max(0, quantizeTimeUsToFrames(Math.max(0, Number(value)), fps, 'round'));
+  return Math.max(0, quantizeTicksToFrames(Math.max(0, Number(value)), fps, 'round'));
 }
 
 function getMarkers(doc: TimelineDocument): TimelineMarker[] {
@@ -45,7 +45,8 @@ export function addMarker(doc: TimelineDocument, cmd: AddMarkerCommand): Timelin
   const marker: TimelineMarker = {
     id: cmd.id,
     timeTicks: snapMarkerTimeTicks(cmd.timeTicks, fps),
-    durationTicks: cmd.durationTicks !== undefined ? snapMarkerTimeTicks(cmd.durationTicks, fps) : undefined,
+    durationTicks:
+      cmd.durationTicks !== undefined ? snapMarkerTimeTicks(cmd.durationTicks, fps) : undefined,
     text: typeof cmd.text === 'string' ? cmd.text : '',
     color:
       typeof (cmd as { color?: string }).color === 'string'
@@ -77,7 +78,8 @@ export function updateMarker(
   const fps = sanitizeFps(doc.timebase);
   const nextMarker: TimelineMarker = {
     ...prev,
-    timeTicks: cmd.timeTicks !== undefined ? snapMarkerTimeTicks(cmd.timeTicks, fps) : prev.timeTicks,
+    timeTicks:
+      cmd.timeTicks !== undefined ? snapMarkerTimeTicks(cmd.timeTicks, fps) : prev.timeTicks,
     durationTicks:
       cmd.durationTicks !== undefined
         ? cmd.durationTicks === null

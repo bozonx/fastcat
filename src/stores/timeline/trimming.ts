@@ -370,7 +370,10 @@ export function createTimelineTrimmingModule(deps: TimelineTrimmingDeps): Timeli
     }
   }
 
-  async function splitClipAtTime(target: { trackId: string; itemId: string } | null, atTicks: number) {
+  async function splitClipAtTime(
+    target: { trackId: string; itemId: string } | null,
+    atTicks: number,
+  ) {
     const doc = deps.timelineDoc.value;
     if (!doc) return;
 

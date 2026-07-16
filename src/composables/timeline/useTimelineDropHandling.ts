@@ -18,7 +18,7 @@ import { useAppClipboard } from '~/composables/useAppClipboard';
 import { crossVfsCopy } from '~/file-manager/core/vfs/crossVfs';
 import { LARGE_UPLOAD_BACKGROUND_THRESHOLD_BYTES } from '~/file-manager/application/fileManagerCommands';
 import { parseTimelineFromOtio } from '~/timeline/otio-serializer';
-import { assertNoOverlap, quantizeTimeUsToFrames, sanitizeFps } from '~/timeline/commands/utils';
+import { assertNoOverlap, quantizeTicksToFrames, sanitizeFps } from '~/timeline/commands/utils';
 import { secondsToTicksClamped } from '~/utils/time';
 import { withFileIoSlot } from '~/utils/io/io-governor';
 import { useUploadProgress } from '~/composables/useUploadProgress';
@@ -261,10 +261,10 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
 
     const fps = sanitizeFps(timelineStore.timelineDoc?.timebase);
     const startTicks = enableFrameSnap
-      ? quantizeTimeUsToFrames(params.startTicks, fps, 'round')
+      ? quantizeTicksToFrames(params.startTicks, fps, 'round')
       : params.startTicks;
     const durationTicks = enableFrameSnap
-      ? quantizeTimeUsToFrames(params.durationTicks, fps, 'round')
+      ? quantizeTicksToFrames(params.durationTicks, fps, 'round')
       : params.durationTicks;
 
     try {

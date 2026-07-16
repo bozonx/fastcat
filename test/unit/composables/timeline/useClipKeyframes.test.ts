@@ -67,7 +67,11 @@ describe('useClipKeyframes', () => {
     const updateAnimations = vi.fn((next: ClipAnimations | undefined) => {
       animations = next;
     });
-    const { toggleAnimated, isAnimated } = useClipKeyframes({ clip, playheadTicks, updateAnimations });
+    const { toggleAnimated, isAnimated } = useClipKeyframes({
+      clip,
+      playheadTicks,
+      updateAnimations,
+    });
 
     expect(isAnimated('opacity')).toBe(false);
     toggleAnimated(['opacity']);

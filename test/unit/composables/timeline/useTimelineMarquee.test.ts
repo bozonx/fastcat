@@ -55,7 +55,10 @@ describe('useTimelineMarquee', () => {
           {
             id: 'clip-visible',
             kind: 'clip',
-            timelineRange: { startTicks: timelineTicks(61_000_000), durationTicks: timelineTicks(2_000_000) },
+            timelineRange: {
+              startTicks: timelineTicks(61_000_000),
+              durationTicks: timelineTicks(2_000_000),
+            },
           },
         ],
       } as TimelineTrack,

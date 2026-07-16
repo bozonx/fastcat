@@ -19,25 +19,23 @@ import type {
   CustomPreset,
 } from './presets';
 import { createDefaultExportPresets, createDefaultProjectPresets } from './presets';
-import { TICKS_PER_MICROSECOND } from '~/utils/time';
+import { TICKS_PER_SECOND } from '~/utils/time';
 
 export interface FastCatPublicadorIntegrationSettings {
   enabled: boolean;
   bearerToken: string;
 }
 
-const LEGACY_MIN_DEFAULT_DURATION_US = 100_000;
-const LEGACY_MAX_DEFAULT_FADE_DURATION_US = 100_000_000;
-const LEGACY_MAX_DEFAULT_TRANSITION_DURATION_US = 100_000_000;
-const LEGACY_MAX_DEFAULT_STATIC_CLIP_DURATION_US = 3_600_000_000;
-
-export const MIN_DEFAULT_DURATION_TICKS = LEGACY_MIN_DEFAULT_DURATION_US * TICKS_PER_MICROSECOND;
-export const MAX_DEFAULT_FADE_DURATION_TICKS =
-  LEGACY_MAX_DEFAULT_FADE_DURATION_US * TICKS_PER_MICROSECOND;
-export const MAX_DEFAULT_TRANSITION_DURATION_TICKS =
-  LEGACY_MAX_DEFAULT_TRANSITION_DURATION_US * TICKS_PER_MICROSECOND;
-export const MAX_DEFAULT_STATIC_CLIP_DURATION_TICKS =
-  LEGACY_MAX_DEFAULT_STATIC_CLIP_DURATION_US * TICKS_PER_MICROSECOND;
+export const MIN_DEFAULT_DURATION_TICKS = Math.round((100_000 / 1_000_000) * TICKS_PER_SECOND);
+export const MAX_DEFAULT_FADE_DURATION_TICKS = Math.round(
+  (100_000_000 / 1_000_000) * TICKS_PER_SECOND,
+);
+export const MAX_DEFAULT_TRANSITION_DURATION_TICKS = Math.round(
+  (100_000_000 / 1_000_000) * TICKS_PER_SECOND,
+);
+export const MAX_DEFAULT_STATIC_CLIP_DURATION_TICKS = Math.round(
+  (3_600_000_000 / 1_000_000) * TICKS_PER_SECOND,
+);
 
 export interface ManualExternalApiSettings {
   enabled: boolean;
@@ -257,9 +255,9 @@ export const DEFAULT_USER_SETTINGS: FastCatUserSettings = {
   openLastProjectOnStart: false,
   timeline: {
     snapThresholdPx: 8,
-    defaultAudioFadeDurationTicks: 1_000_000 * TICKS_PER_MICROSECOND,
-    defaultTransitionDurationTicks: 2_000_000 * TICKS_PER_MICROSECOND,
-    defaultStaticClipDurationTicks: 5_000_000 * TICKS_PER_MICROSECOND,
+    defaultAudioFadeDurationTicks: TICKS_PER_SECOND,
+    defaultTransitionDurationTicks: 2 * TICKS_PER_SECOND,
+    defaultStaticClipDurationTicks: 5 * TICKS_PER_SECOND,
     snapping: {
       timelineEdges: true,
       clips: true,
@@ -315,7 +313,7 @@ export const DEFAULT_USER_SETTINGS: FastCatUserSettings = {
     aspectRatio: '16:9',
     isCustomResolution: false,
     sampleRate: 48000,
-    audioDeclickDurationTicks: 5_000 * TICKS_PER_MICROSECOND,
+    audioDeclickDurationTicks: Math.round((5_000 / 1_000_000) * TICKS_PER_SECOND),
     defaultAudioFadeCurve: 'linear',
     audioScrubbingEnabled: true,
   },

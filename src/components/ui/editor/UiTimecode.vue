@@ -135,7 +135,9 @@ onBeforeUnmount(() => {
 });
 
 function stepValue(direction: number, isFrame: boolean) {
-  const currentTicks = isFocused.value ? parseTimecode(localValue.value, fps.value) : props.modelValue;
+  const currentTicks = isFocused.value
+    ? parseTimecode(localValue.value, fps.value)
+    : props.modelValue;
   const validTicks = isNaN(currentTicks) ? props.modelValue : currentTicks;
 
   const frameTicks = TICKS_PER_SECOND / fps.value;

@@ -6,7 +6,7 @@ import { mount } from '@vue/test-utils';
 
 import { useTimelineZoom } from '~/composables/timeline/useTimelineZoom';
 import { useTimelineStore } from '~/stores/timeline.store';
-import { timeUsToPx } from '~/utils/timeline/geometry';
+import { ticksToPx } from '~/utils/timeline/geometry';
 import { timelineTicks } from '../../utils/timeline-time';
 
 vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
@@ -66,7 +66,7 @@ describe('useTimelineZoom', () => {
     await nextTick();
 
     expect(scrollLeft).toBeCloseTo(
-      timeUsToPx(anchorTimeTicks, timelineStore.timelineZoom) - anchorViewportX,
+      ticksToPx(anchorTimeTicks, timelineStore.timelineZoom) - anchorViewportX,
       3,
     );
     expect(timelineStore.timelineScrollLeftPx).toBe(scrollLeft);
@@ -112,14 +112,14 @@ describe('useTimelineZoom', () => {
     );
 
     const playheadTimeTicks = timelineTicks(100_000_000);
-    const anchorViewportX = timeUsToPx(playheadTimeTicks, timelineStore.timelineZoom) - scrollLeft;
+    const anchorViewportX = ticksToPx(playheadTimeTicks, timelineStore.timelineZoom) - scrollLeft;
 
     expect(anchorViewportX).toBeLessThan(0);
 
     handleZoomWheel?.(7, { anchorTimeTicks: playheadTimeTicks, anchorViewportX });
     await nextTick();
 
-    expect(scrollLeft).toBeCloseTo(timeUsToPx(playheadTimeTicks, timelineStore.timelineZoom), 3);
+    expect(scrollLeft).toBeCloseTo(ticksToPx(playheadTimeTicks, timelineStore.timelineZoom), 3);
     expect(timelineStore.timelineScrollLeftPx).toBe(scrollLeft);
     wrapper.unmount();
   });
@@ -164,7 +164,7 @@ describe('useTimelineZoom', () => {
 
     const playheadTimeTicks = timelineTicks(100_000_000);
     const viewportWidth = 500;
-    const anchorViewportX = timeUsToPx(playheadTimeTicks, timelineStore.timelineZoom) - scrollLeft;
+    const anchorViewportX = ticksToPx(playheadTimeTicks, timelineStore.timelineZoom) - scrollLeft;
 
     expect(anchorViewportX).toBeGreaterThan(viewportWidth);
 
@@ -172,7 +172,7 @@ describe('useTimelineZoom', () => {
     await nextTick();
 
     expect(scrollLeft).toBeCloseTo(
-      timeUsToPx(playheadTimeTicks, timelineStore.timelineZoom) - viewportWidth,
+      ticksToPx(playheadTimeTicks, timelineStore.timelineZoom) - viewportWidth,
       3,
     );
     expect(timelineStore.timelineScrollLeftPx).toBe(scrollLeft);

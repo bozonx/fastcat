@@ -205,7 +205,10 @@ describe('MonitorViewport', () => {
   });
 
   it('renders only selection duration in selection color when selectionRange is active', () => {
-    mockSelectionRange.value = { startTicks: timelineTicks(1_000_000), endTicks: timelineTicks(4_000_000) };
+    mockSelectionRange.value = {
+      startTicks: timelineTicks(1_000_000),
+      endTicks: timelineTicks(4_000_000),
+    };
     mockFps.value = 30;
 
     const wrapper = mount(MonitorViewport, {

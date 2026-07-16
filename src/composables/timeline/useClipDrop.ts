@@ -151,7 +151,10 @@ export function useClipDrop(options: UseClipDropOptions) {
       0,
       Math.round(Number(options.defaultTransitionDurationTicks.value ?? TICKS_PER_SECOND)),
     );
-    const durationTicks = Math.min(defaultTicks, Math.round(clip.timelineRange.durationTicks * 0.3));
+    const durationTicks = Math.min(
+      defaultTicks,
+      Math.round(clip.timelineRange.durationTicks * 0.3),
+    );
 
     const appliedTransition = resolveAppliedTransitionPreset(transitionType);
     const transition = {

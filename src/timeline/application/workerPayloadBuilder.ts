@@ -786,7 +786,8 @@ function buildBaseWorkerClip(params: {
     sourceOrientation: item.transformActive !== false ? item.sourceOrientation : undefined,
     transitionIn: clonePlain(item.transitionIn),
     transitionOut: clonePlain(item.transitionOut),
-    sourceDurationTicks: typeof item.sourceDurationTicks === 'number' ? item.sourceDurationTicks : undefined,
+    sourceDurationTicks:
+      typeof item.sourceDurationTicks === 'number' ? item.sourceDurationTicks : undefined,
     snapToPixelGrid: item.snapToPixelGrid,
     timelineRange: {
       startTicks: item.timelineRange.startTicks,

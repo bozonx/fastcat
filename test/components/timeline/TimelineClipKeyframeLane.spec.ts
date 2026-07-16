@@ -22,7 +22,7 @@ vi.mock('~/composables/timeline/useClipKeyframes', () => ({
 
 vi.mock('~/utils/timeline/geometry', () => ({
   pxToDeltaTicks: (px: number) => px * 1000,
-  timeUsToPx: (us: number) => us / 1000,
+  ticksToPx: (us: number) => us / 1000,
 }));
 
 vi.mock('~/timeline/animation/evaluate', () => ({
@@ -184,7 +184,7 @@ describe('TimelineClipKeyframeLane', () => {
 
     const diamond = component.find('button');
     const style = diamond.attributes('style') ?? '';
-    // timeUsToPx(1_000_000) = 1000px → left: 1000px
+    // ticksToPx(1_000_000) = 1000px → left: 1000px
     expect(style).toContain('left: 1000px');
   });
 });

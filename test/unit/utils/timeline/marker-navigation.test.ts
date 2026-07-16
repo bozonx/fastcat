@@ -37,7 +37,9 @@ describe('findNextMarkerTime', () => {
 
   it('jumps from zone end to next marker', () => {
     const markers = [makeMarker(0, timelineTicks(1_000_000)), makeMarker(timelineTicks(2_000_000))];
-    expect(findNextMarkerTime(markers, timelineTicks(1_000_000), FPS)).toBe(timelineTicks(2_000_000));
+    expect(findNextMarkerTime(markers, timelineTicks(1_000_000), FPS)).toBe(
+      timelineTicks(2_000_000),
+    );
   });
 
   it('skips duplicate boundary points (zone end == next start)', () => {
@@ -55,13 +57,17 @@ describe('findNextMarkerTime', () => {
   it('does not get stuck when currentTime is slightly off due to frame quantization', () => {
     const markers = [makeMarker(timelineTicks(1_000_000)), makeMarker(timelineTicks(2_000_000))];
     // If currentTime quantizes to the 1s marker, next should still be 2s.
-    expect(findNextMarkerTime(markers, timelineTicks(1_000_000), FPS)).toBe(timelineTicks(2_000_000));
+    expect(findNextMarkerTime(markers, timelineTicks(1_000_000), FPS)).toBe(
+      timelineTicks(2_000_000),
+    );
   });
 
   it('handles non-30fps quantization correctly', () => {
     // 25 fps => frame = 1/25s. 1_000_000us -> exactly 25 frames.
     const markers = [makeMarker(timelineTicks(1_000_000)), makeMarker(timelineTicks(2_000_000))];
-    expect(findNextMarkerTime(markers, timelineTicks(1_000_000), 25)).toBe(timelineTicks(2_000_000));
+    expect(findNextMarkerTime(markers, timelineTicks(1_000_000), 25)).toBe(
+      timelineTicks(2_000_000),
+    );
   });
 });
 
@@ -72,12 +78,16 @@ describe('findPreviousMarkerTime', () => {
 
   it('jumps back to a point marker', () => {
     const markers = [makeMarker(timelineTicks(1_000_000))];
-    expect(findPreviousMarkerTime(markers, timelineTicks(2_000_000), FPS)).toBe(timelineTicks(1_000_000));
+    expect(findPreviousMarkerTime(markers, timelineTicks(2_000_000), FPS)).toBe(
+      timelineTicks(1_000_000),
+    );
   });
 
   it('jumps from after a zone to its end', () => {
     const markers = [makeMarker(0, timelineTicks(1_000_000))];
-    expect(findPreviousMarkerTime(markers, timelineTicks(2_000_000), FPS)).toBe(timelineTicks(1_000_000));
+    expect(findPreviousMarkerTime(markers, timelineTicks(2_000_000), FPS)).toBe(
+      timelineTicks(1_000_000),
+    );
   });
 
   it('jumps from inside a zone back to its start', () => {
@@ -93,7 +103,9 @@ describe('findPreviousMarkerTime', () => {
   it('skips duplicate boundary points (zone end == next start)', () => {
     const markers = [makeMarker(0, timelineTicks(1_000_000)), makeMarker(timelineTicks(1_000_000))];
     // from after 1s, previous should be the 1s point (the closest previous unique point)
-    expect(findPreviousMarkerTime(markers, timelineTicks(2_000_000), FPS)).toBe(timelineTicks(1_000_000));
+    expect(findPreviousMarkerTime(markers, timelineTicks(2_000_000), FPS)).toBe(
+      timelineTicks(1_000_000),
+    );
     // from 1s, previous should be 0
     expect(findPreviousMarkerTime(markers, timelineTicks(1_000_000), FPS)).toBe(0);
   });
@@ -105,6 +117,8 @@ describe('findPreviousMarkerTime', () => {
 
   it('does not get stuck when currentTime is slightly off due to frame quantization', () => {
     const markers = [makeMarker(timelineTicks(1_000_000)), makeMarker(timelineTicks(2_000_000))];
-    expect(findPreviousMarkerTime(markers, timelineTicks(2_000_000), FPS)).toBe(timelineTicks(1_000_000));
+    expect(findPreviousMarkerTime(markers, timelineTicks(2_000_000), FPS)).toBe(
+      timelineTicks(1_000_000),
+    );
   });
 });

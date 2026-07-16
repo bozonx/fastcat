@@ -187,7 +187,10 @@ export class CanvasFallbackRenderer {
     const getLayerOpacity = (params?: import('../../../../timeline/types').HudMediaParams) => {
       let opacity = 1;
       if (!params) return opacity;
-      if (params.transitionIn?.durationTicks && localTimeTicks < params.transitionIn.durationTicks) {
+      if (
+        params.transitionIn?.durationTicks &&
+        localTimeTicks < params.transitionIn.durationTicks
+      ) {
         opacity = Math.max(0, localTimeTicks / params.transitionIn.durationTicks);
       } else if (
         params.transitionOut?.durationTicks &&

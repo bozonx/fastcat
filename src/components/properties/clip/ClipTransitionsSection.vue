@@ -102,7 +102,8 @@ const transitionOptions = computed(() =>
             :max="
               Math.max(
                 0.1,
-                (props.clipDurationTicks - (props.transitionOut?.durationTicks ?? 0)) / TICKS_PER_SECOND,
+                (props.clipDurationTicks - (props.transitionOut?.durationTicks ?? 0)) /
+                  TICKS_PER_SECOND,
               )
             "
             :step="0.1"
@@ -177,7 +178,8 @@ const transitionOptions = computed(() =>
             :max="
               Math.max(
                 0.1,
-                (props.clipDurationTicks - (props.transitionIn?.durationTicks ?? 0)) / TICKS_PER_SECOND,
+                (props.clipDurationTicks - (props.transitionIn?.durationTicks ?? 0)) /
+                  TICKS_PER_SECOND,
               )
             "
             :step="0.1"

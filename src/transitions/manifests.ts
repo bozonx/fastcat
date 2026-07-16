@@ -2,7 +2,7 @@ import type { TransitionManifest, TransitionSpec } from './core/registry';
 import { clamp, clampFinite } from '~/utils/math';
 import { hexToRgb01, normalizeHexColor } from '~/utils/color';
 import { resolvePreviewQualityOverride } from '~/utils/preview-effect-quality';
-import { TICKS_PER_MICROSECOND } from '~/utils/time';
+import { TICKS_PER_SECOND } from '~/utils/time';
 import barnDoorWgsl from '~shared/transitions/barn_door.wgsl?raw';
 import blindsWgsl from '~shared/transitions/blinds.wgsl?raw';
 import bloomWgsl from '~shared/transitions/bloom.wgsl?raw';
@@ -275,7 +275,7 @@ export const transitionManifests: TransitionManifest[] = [
     name: 'Dissolve',
     nameKey: 'fastcat.transitions.dissolve.name',
     icon: 'i-heroicons-arrows-right-left',
-    defaultDurationTicks: 500_000 * TICKS_PER_MICROSECOND,
+    defaultDurationTicks: (500_000 * TICKS_PER_SECOND) / 1_000_000,
     defaultParams: {},
     renderMode: 'shader',
     renderer: 'wgpu',
@@ -289,7 +289,7 @@ export const transitionManifests: TransitionManifest[] = [
     name: 'Wipe',
     nameKey: 'fastcat.transitions.wipe.name',
     icon: 'i-heroicons-bars-3-bottom-left',
-    defaultDurationTicks: 500_000 * TICKS_PER_MICROSECOND,
+    defaultDurationTicks: (500_000 * TICKS_PER_SECOND) / 1_000_000,
     defaultParams: {
       direction: 'left',
       edgeMode: 'gap',
@@ -387,7 +387,7 @@ export const transitionManifests: TransitionManifest[] = [
     name: 'Slide',
     nameKey: 'fastcat.transitions.slide.name',
     icon: 'i-heroicons-arrows-right-left',
-    defaultDurationTicks: 500_000 * TICKS_PER_MICROSECOND,
+    defaultDurationTicks: (500_000 * TICKS_PER_SECOND) / 1_000_000,
     defaultParams: {
       direction: 'left',
       gap: 0.02,
@@ -490,7 +490,7 @@ export const transitionManifests: TransitionManifest[] = [
     name: 'Clock',
     nameKey: 'fastcat.transitions.clock.name',
     icon: 'i-heroicons-clock',
-    defaultDurationTicks: 600_000 * TICKS_PER_MICROSECOND,
+    defaultDurationTicks: (600_000 * TICKS_PER_SECOND) / 1_000_000,
     defaultParams: normalizeClockParams(),
     normalizeParams: normalizeClockParams,
     renderMode: 'shader',
@@ -543,7 +543,7 @@ export const transitionManifests: TransitionManifest[] = [
     name: 'Motion Blur',
     nameKey: 'fastcat.transitions.motion-blur.name',
     icon: 'i-heroicons-forward',
-    defaultDurationTicks: 500_000 * TICKS_PER_MICROSECOND,
+    defaultDurationTicks: (500_000 * TICKS_PER_SECOND) / 1_000_000,
     defaultParams: normalizeMotionBlurParams(),
     normalizeParams: normalizeMotionBlurParams,
     renderMode: 'shader',
@@ -624,7 +624,7 @@ export const transitionManifests: TransitionManifest[] = [
     name: 'Barn Door',
     nameKey: 'fastcat.transitions.barn-door.name',
     icon: 'i-heroicons-arrows-right-left',
-    defaultDurationTicks: 500_000 * TICKS_PER_MICROSECOND,
+    defaultDurationTicks: (500_000 * TICKS_PER_SECOND) / 1_000_000,
     defaultParams: {
       mode: 'open',
       edgeMode: 'gap',
@@ -722,7 +722,7 @@ export const transitionManifests: TransitionManifest[] = [
     name: 'Fade to Black',
     nameKey: 'fastcat.transitions.fade-to-black.name',
     icon: 'i-heroicons-moon',
-    defaultDurationTicks: 700_000 * TICKS_PER_MICROSECOND,
+    defaultDurationTicks: (700_000 * TICKS_PER_SECOND) / 1_000_000,
     defaultParams: { color: '#000000' },
     renderMode: 'shader',
     renderer: 'wgpu',
@@ -742,7 +742,7 @@ export const transitionManifests: TransitionManifest[] = [
     name: 'Circle',
     nameKey: 'fastcat.transitions.circle.name',
     icon: 'i-heroicons-stop-circle',
-    defaultDurationTicks: 600_000 * TICKS_PER_MICROSECOND,
+    defaultDurationTicks: (600_000 * TICKS_PER_SECOND) / 1_000_000,
     defaultParams: normalizeCircleParams(),
     normalizeParams: normalizeCircleParams,
     renderMode: 'shader',
@@ -804,7 +804,7 @@ export const transitionManifests: TransitionManifest[] = [
     name: 'Rectangle',
     nameKey: 'fastcat.transitions.rectangle.name',
     icon: 'i-heroicons-stop',
-    defaultDurationTicks: 600_000 * TICKS_PER_MICROSECOND,
+    defaultDurationTicks: (600_000 * TICKS_PER_SECOND) / 1_000_000,
     defaultParams: normalizeRectangleParams(),
     normalizeParams: normalizeRectangleParams,
     renderMode: 'shader',
@@ -848,7 +848,7 @@ export const transitionManifests: TransitionManifest[] = [
     name: 'Blinds',
     nameKey: 'fastcat.transitions.blinds.name',
     icon: 'i-heroicons-bars-3',
-    defaultDurationTicks: 1_000_000 * TICKS_PER_MICROSECOND,
+    defaultDurationTicks: (1_000_000 * TICKS_PER_SECOND) / 1_000_000,
     defaultParams: {
       angle: 0,
       stripCount: 10,
@@ -966,7 +966,7 @@ export const transitionManifests: TransitionManifest[] = [
     name: 'Zoom',
     nameKey: 'fastcat.transitions.zoom.name',
     icon: 'i-heroicons-magnifying-glass',
-    defaultDurationTicks: 500_000 * TICKS_PER_MICROSECOND,
+    defaultDurationTicks: (500_000 * TICKS_PER_SECOND) / 1_000_000,
     defaultParams: {
       scale: 3.0,
       fromRotation: 0,
@@ -1061,7 +1061,7 @@ export const transitionManifests: TransitionManifest[] = [
     name: 'Bloom',
     nameKey: 'fastcat.transitions.bloom.name',
     icon: 'i-heroicons-sparkles',
-    defaultDurationTicks: 500_000 * TICKS_PER_MICROSECOND,
+    defaultDurationTicks: (500_000 * TICKS_PER_SECOND) / 1_000_000,
     defaultParams: { brightness: 1.5, blurLevel: 1.0, mode: 'bloom' },
     renderMode: 'shader',
     renderer: 'wgpu',
@@ -1118,7 +1118,7 @@ export const transitionManifests: TransitionManifest[] = [
     name: 'Cube',
     nameKey: 'fastcat.transitions.cube.name',
     icon: 'i-heroicons-cube',
-    defaultDurationTicks: 500_000 * TICKS_PER_MICROSECOND,
+    defaultDurationTicks: (500_000 * TICKS_PER_SECOND) / 1_000_000,
     defaultParams: normalizeCubeParams(),
     normalizeParams: normalizeCubeParams,
     renderMode: 'shader',
@@ -1204,7 +1204,7 @@ export const transitionManifests: TransitionManifest[] = [
     name: 'Card Swap',
     nameKey: 'fastcat.transitions.card-swap.name',
     icon: 'i-heroicons-arrow-path-rounded-square',
-    defaultDurationTicks: 500_000 * TICKS_PER_MICROSECOND,
+    defaultDurationTicks: (500_000 * TICKS_PER_SECOND) / 1_000_000,
     defaultParams: {
       direction: 'horizontal',
       mode: 'zoom',
@@ -1321,7 +1321,7 @@ export const transitionManifests: TransitionManifest[] = [
     name: 'Falling Card',
     nameKey: 'fastcat.transitions.falling-card.name',
     icon: 'i-heroicons-square-3-stack-3d',
-    defaultDurationTicks: 500_000 * TICKS_PER_MICROSECOND,
+    defaultDurationTicks: (500_000 * TICKS_PER_SECOND) / 1_000_000,
     defaultParams: {
       direction: 'down',
       depthDirection: 'backward',

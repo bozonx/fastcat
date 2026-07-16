@@ -32,7 +32,9 @@ const defaultDurationTicks = computed(() =>
   Math.max(
     0,
     Math.round(
-      Number(workspaceStore.userSettings.timeline.defaultTransitionDurationTicks ?? TICKS_PER_SECOND),
+      Number(
+        workspaceStore.userSettings.timeline.defaultTransitionDurationTicks ?? TICKS_PER_SECOND,
+      ),
     ),
   ),
 );
@@ -72,7 +74,10 @@ const curveOptions = computed<{ label: string; value: TransitionCurve }[]>(() =>
 function maxDurationSec(edge: 'in' | 'out'): number {
   const other = edge === 'in' ? transitionOut.value : transitionIn.value;
   const otherDurationTicks = Math.max(0, Number(other?.durationTicks ?? 0));
-  return Math.max(MIN_DURATION_SEC, (clipDurationTicks.value - otherDurationTicks) / TICKS_PER_SECOND);
+  return Math.max(
+    MIN_DURATION_SEC,
+    (clipDurationTicks.value - otherDurationTicks) / TICKS_PER_SECOND,
+  );
 }
 
 function selectValue(value: unknown): string | undefined {

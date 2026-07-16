@@ -11,7 +11,10 @@ export function getBoundaryTimesTicks(
     for (const it of track.items) {
       if (it.kind !== 'clip') continue;
       const startTicks = Math.max(0, Math.round(it.timelineRange.startTicks));
-      const endTicks = Math.max(0, Math.round(it.timelineRange.startTicks + it.timelineRange.durationTicks));
+      const endTicks = Math.max(
+        0,
+        Math.round(it.timelineRange.startTicks + it.timelineRange.durationTicks),
+      );
       boundaries.push(startTicks, endTicks);
     }
   }
@@ -58,7 +61,9 @@ export function calculateNextClipBoundary(
 
   if (next === null) {
     const endFromState =
-      Number.isFinite(durationTicks) && durationTicks > 0 ? Math.max(0, Math.round(durationTicks)) : 0;
+      Number.isFinite(durationTicks) && durationTicks > 0
+        ? Math.max(0, Math.round(durationTicks))
+        : 0;
     const end =
       endFromState > 0 ? endFromState : Math.max(0, Math.round(selectTimelineDurationTicks(doc)));
     return end;

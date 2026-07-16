@@ -1,5 +1,5 @@
 import {
-  TICKS_PER_MICROSECOND,
+  TICKS_PER_MILLISECOND,
   TICKS_PER_SECOND,
   formatTimecode,
   normalizeTicks,
@@ -60,7 +60,9 @@ function advanceMonitorPlaybackLoop(params: {
 // where a frame boundary falls.
 export function computeMonitorFrameIndex(params: { timeTicks: number; fps: number }): number {
   const fps = Number.isFinite(params.fps) && params.fps > 0 ? params.fps : 30;
-  const timeS = Number.isFinite(params.timeTicks) ? Math.max(0, params.timeTicks / TICKS_PER_SECOND) : 0;
+  const timeS = Number.isFinite(params.timeTicks)
+    ? Math.max(0, params.timeTicks / TICKS_PER_SECOND)
+    : 0;
   return Math.max(0, Math.floor(timeS * fps + 1e-6));
 }
 
@@ -260,8 +262,8 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
   const STORE_TIME_SYNC_MS = 100;
   const AUDIO_LEVELS_SYNC_MS = 120; // Avoid excessive store churn (can stress DevTools)
   const PLAYBACK_SEEK_EPSILON_TICKS = TICKS_PER_SECOND / 40;
-  const SCRUB_PREVIEW_MIN_DELTA_TICKS = 1_000 * TICKS_PER_MICROSECOND;
-  const SCRUB_PREVIEW_MAX_DELTA_TICKS = 250_000 * TICKS_PER_MICROSECOND;
+  const SCRUB_PREVIEW_MIN_DELTA_TICKS = TICKS_PER_MILLISECOND;
+  const SCRUB_PREVIEW_MAX_DELTA_TICKS = 250 * TICKS_PER_MILLISECOND;
   const SCRUB_PREVIEW_THROTTLE_MS = 35;
   const SCRUB_PREVIEW_DURATION_TICKS = (TICKS_PER_SECOND * 3) / 40;
 
@@ -533,7 +535,11 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
             const requestId = ++scrubPreviewRequestId;
             audioEngine.stopScrubPreview();
             void audioEngine
-              .previewScrubForward(previousTimeTicks, normalizedTimeTicks, SCRUB_PREVIEW_DURATION_TICKS)
+              .previewScrubForward(
+                previousTimeTicks,
+                normalizedTimeTicks,
+                SCRUB_PREVIEW_DURATION_TICKS,
+              )
               .catch((error) => {
                 if (requestId !== scrubPreviewRequestId || isUnmounted) return;
                 log.warn('[Monitor] Failed to preview audio scrub', error);

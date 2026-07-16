@@ -1,5 +1,5 @@
 import { frameToTicks } from '~/timeline/commands/utils';
-import { timeUsToPx } from '~/utils/timeline/geometry';
+import { ticksToPx } from '~/utils/timeline/geometry';
 
 export interface TimelineRulerStepInput {
   pxPerSecond: number;
@@ -44,7 +44,7 @@ export function getTimelineTickCanvasX(params: {
   zoom: number;
   renderStartPx: number;
 }): number {
-  return Math.round(timeUsToPx(params.timeTicks, params.zoom)) - params.renderStartPx + 0.5;
+  return Math.round(ticksToPx(params.timeTicks, params.zoom)) - params.renderStartPx + 0.5;
 }
 
 export function getTimelineFrameTickCanvasX(params: {

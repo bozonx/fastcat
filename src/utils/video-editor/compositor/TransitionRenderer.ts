@@ -1,5 +1,5 @@
 import { createDevLogger } from '~/utils/dev-logger';
-import { TICKS_PER_MICROSECOND, TICKS_PER_SECOND } from '~/utils/time';
+import { TICKS_PER_MILLISECOND, TICKS_PER_SECOND } from '~/utils/time';
 import { compositorPerfStats } from './CompositorPerfStats';
 import { ImageSource, Sprite, Texture, type Application, type RenderTexture } from 'pixi.js';
 import {
@@ -16,7 +16,7 @@ import type { WebGpuComputeRunner } from './WebGpuComputeRunner';
 const log = createDevLogger('TransitionRenderer');
 
 /** Minimum usable handle in canonical timeline ticks (~1 ms). */
-const MIN_SOURCE_HANDLE_TICKS = 1_000 * TICKS_PER_MICROSECOND;
+const MIN_SOURCE_HANDLE_TICKS = TICKS_PER_MILLISECOND;
 
 export interface TransitionRendererParams {
   app: Application;
@@ -350,7 +350,10 @@ export class TransitionRenderer {
     }
 
     const speed = Math.abs(clip.speed || 1);
-    const transitionOffsetTicks = Math.max(0, Math.round((params.transitionOffsetTicks ?? 0) * speed));
+    const transitionOffsetTicks = Math.max(
+      0,
+      Math.round((params.transitionOffsetTicks ?? 0) * speed),
+    );
     let sampleTicks: number;
 
     if (params.isNextClip) {
@@ -358,7 +361,10 @@ export class TransitionRenderer {
       if ((clip.speed || 1) < 0) {
         sampleTicks =
           handleTicks < MIN_SOURCE_HANDLE_TICKS
-            ? Math.max(0, clip.sourceStartTicks + clip.sourceRangeDurationTicks - MIN_SOURCE_HANDLE_TICKS)
+            ? Math.max(
+                0,
+                clip.sourceStartTicks + clip.sourceRangeDurationTicks - MIN_SOURCE_HANDLE_TICKS,
+              )
             : Math.min(
                 clip.sourceStartTicks + clip.sourceRangeDurationTicks + transitionOffsetTicks,
                 clip.sourceDurationTicks - MIN_SOURCE_HANDLE_TICKS,
@@ -384,7 +390,10 @@ export class TransitionRenderer {
       } else {
         sampleTicks =
           handleTicks < MIN_SOURCE_HANDLE_TICKS
-            ? Math.max(0, clip.sourceStartTicks + clip.sourceRangeDurationTicks - MIN_SOURCE_HANDLE_TICKS)
+            ? Math.max(
+                0,
+                clip.sourceStartTicks + clip.sourceRangeDurationTicks - MIN_SOURCE_HANDLE_TICKS,
+              )
             : Math.min(
                 sourceRangeEndTicks + transitionOffsetTicks,
                 // Upper bound is the end of the *source*, not offset by the trim-in

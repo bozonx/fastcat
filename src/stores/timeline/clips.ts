@@ -13,7 +13,7 @@ import {
   frameToTicks,
   nextItemId,
   nextItemIds,
-  quantizeTimeUsToFrames,
+  quantizeTicksToFrames,
 } from '~/timeline/commands/utils';
 import { isClipFrameAligned } from '~/utils/timeline/clip-capabilities';
 import { CLIP_AUDIO_GAIN_MAX } from '~/utils/audio/envelope';
@@ -625,7 +625,10 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
 
     // 2. Determine horizontal and vertical offsets
     const minStartTicks = Math.min(...items.map((item) => item.clip.timelineRange.startTicks));
-    let insertStartTicks = Math.max(0, Math.round(options?.insertStartTicks ?? deps.currentTime.value));
+    let insertStartTicks = Math.max(
+      0,
+      Math.round(options?.insertStartTicks ?? deps.currentTime.value),
+    );
 
     // Placement mode. By default paste overlays (pseudo) and frame-quantizes —
     // this preserves programmatic callers (alt-drag copy, etc.). User-initiated
@@ -636,7 +639,9 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
     let pasteQuantizeToFrames: boolean | undefined;
     if (options?.respectToolbarModes && deps.resolvePastePlacement) {
       const spanEndTicks = Math.max(
-        ...items.map((it) => it.clip.timelineRange.startTicks + it.clip.timelineRange.durationTicks),
+        ...items.map(
+          (it) => it.clip.timelineRange.startTicks + it.clip.timelineRange.durationTicks,
+        ),
       );
       const placement = deps.resolvePastePlacement({
         baseTargetTrackId: baseTargetTrack.id,
@@ -889,7 +894,10 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
       if (!selectedSet.has(item.id)) continue;
       itemIds.push(item.id);
       startTicks = Math.min(startTicks, item.timelineRange.startTicks);
-      endTicks = Math.max(endTicks, item.timelineRange.startTicks + item.timelineRange.durationTicks);
+      endTicks = Math.max(
+        endTicks,
+        item.timelineRange.startTicks + item.timelineRange.durationTicks,
+      );
     }
 
     if (itemIds.length === 0 || startTicks >= endTicks) return;
@@ -1100,7 +1108,7 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
       speed: item.speed,
       frameRate: fps,
     });
-    const sourceTicks = quantizeTimeUsToFrames(sourceUsRaw, fps, 'floor');
+    const sourceTicks = quantizeTicksToFrames(sourceUsRaw, fps, 'floor');
 
     updateClipProperties(input.trackId, input.itemId, { freezeFrameSourceTicks: sourceTicks });
   }
@@ -1198,7 +1206,8 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
     const frameTicks = frameToTicks(1, fps);
     const deltaTicks = deltaFrames * frameTicks;
 
-    const moves: { fromTrackId: string; toTrackId: string; itemId: string; startTicks: number }[] = [];
+    const moves: { fromTrackId: string; toTrackId: string; itemId: string; startTicks: number }[] =
+      [];
 
     const selectedSet = new Set(deps.selectedItemIds.value);
     for (const track of doc.tracks) {
@@ -1210,7 +1219,11 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
           fromTrackId: track.id,
           toTrackId: track.id,
           itemId: item.id,
-          startTicks: quantizeTimeUsToFrames(item.timelineRange.startTicks + deltaTicks, fps, 'round'),
+          startTicks: quantizeTicksToFrames(
+            item.timelineRange.startTicks + deltaTicks,
+            fps,
+            'round',
+          ),
         });
       }
     }

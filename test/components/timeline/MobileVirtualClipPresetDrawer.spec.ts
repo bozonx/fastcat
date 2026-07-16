@@ -85,7 +85,9 @@ describe('MobileVirtualClipPresetDrawer', () => {
     expect(buttons.length).toBeGreaterThan(0);
     await buttons[0]!.trigger('click');
 
-    expect(resolveMobileTargetTrackIdMock).toHaveBeenCalledWith('video', { durationTicks: 5_000_000 });
+    expect(resolveMobileTargetTrackIdMock).toHaveBeenCalledWith('video', {
+      durationTicks: 5_000_000,
+    });
     expect(addTextClipAtPlayheadMock).toHaveBeenCalled();
   });
 

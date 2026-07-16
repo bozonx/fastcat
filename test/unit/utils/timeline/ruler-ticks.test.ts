@@ -6,8 +6,8 @@ import {
   getTimelineRulerSubStepFrames,
   getTimelineTickCanvasX,
 } from '~/utils/timeline/ruler-ticks';
-import { timeUsToPx } from '~/utils/timeline/geometry';
-import { TICKS_PER_MICROSECOND } from '~/utils/time';
+import { ticksToPx } from '~/utils/timeline/geometry';
+import { TICKS_PER_MILLISECOND } from '~/utils/time';
 
 describe('timeline ruler ticks', () => {
   it('keeps the same viewport pixel when canvases use different render windows', () => {
@@ -27,7 +27,7 @@ describe('timeline ruler ticks', () => {
       scrollLeft;
 
     expect(rulerViewportX).toBe(gridViewportX);
-    expect(rulerViewportX).toBe(Math.round(timeUsToPx(timeTicks, zoom)) + 0.5 - scrollLeft);
+    expect(rulerViewportX).toBe(Math.round(ticksToPx(timeTicks, zoom)) + 0.5 - scrollLeft);
   });
 
   it('frame tick X agrees with the timeTicks tick X for the same instant', () => {
@@ -38,7 +38,7 @@ describe('timeline ruler ticks', () => {
 
     const frameX = getTimelineFrameTickCanvasX({ frame, fps, zoom, renderStartPx });
     const timeX = getTimelineTickCanvasX({
-      timeTicks: Math.round((frame * 1_000_000 * TICKS_PER_MICROSECOND) / fps),
+      timeTicks: Math.round((frame * 1_000 * TICKS_PER_MILLISECOND) / fps),
       zoom,
       renderStartPx,
     });

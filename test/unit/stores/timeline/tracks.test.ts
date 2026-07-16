@@ -10,7 +10,9 @@ const mockDoc = {
       id: 'v1',
       kind: 'video',
       name: 'Video 1',
-      items: [{ id: 'c1', kind: 'clip', timelineRange: { startTicks: 0, durationTicks: 1_000_000 } }],
+      items: [
+        { id: 'c1', kind: 'clip', timelineRange: { startTicks: 0, durationTicks: 1_000_000 } },
+      ],
       videoHidden: false,
       audioMuted: false,
       audioSolo: false,
@@ -40,7 +42,9 @@ const mockDoc = {
       id: 'a2',
       kind: 'audio',
       name: 'Audio 2',
-      items: [{ id: 'c2', kind: 'clip', timelineRange: { startTicks: 0, durationTicks: 1_000_000 } }],
+      items: [
+        { id: 'c2', kind: 'clip', timelineRange: { startTicks: 0, durationTicks: 1_000_000 } },
+      ],
       videoHidden: false,
       audioMuted: true,
       audioSolo: false,

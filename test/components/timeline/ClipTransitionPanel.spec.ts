@@ -116,7 +116,12 @@ describe('ClipTransitionPanel', () => {
     edge: 'in' as const,
     trackId: 'track-1',
     itemId: 'clip-1',
-    transition: { type: 'dissolve', durationTicks: 1000000, curve: 'linear', mode: 'adjacent' } as any,
+    transition: {
+      type: 'dissolve',
+      durationTicks: 1000000,
+      curve: 'linear',
+      mode: 'adjacent',
+    } as any,
   };
 
   it('renders correctly', async () => {

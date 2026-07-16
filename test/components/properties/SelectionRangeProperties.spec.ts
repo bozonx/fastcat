@@ -33,7 +33,10 @@ const mockTimelineStore = reactive({
   },
   fps: 30,
   timelineFormat: null as { fps: number } | null,
-  getSelectionRange: vi.fn(() => ({ startTicks: TICKS_PER_SECOND, endTicks: 5 * TICKS_PER_SECOND })),
+  getSelectionRange: vi.fn(() => ({
+    startTicks: TICKS_PER_SECOND,
+    endTicks: 5 * TICKS_PER_SECOND,
+  })),
   updateSelectionRange: vi.fn(),
   convertSelectionRangeToMarker: vi.fn(),
   rippleTrimSelectionRange: vi.fn(),

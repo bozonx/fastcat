@@ -97,7 +97,10 @@ describe('timeline/commands update_clip_transition', () => {
     const otherClip = {
       ...baseClip,
       id: 'c2',
-      timelineRange: { startTicks: timelineTicks(5_000_000), durationTicks: timelineTicks(5_000_000) },
+      timelineRange: {
+        startTicks: timelineTicks(5_000_000),
+        durationTicks: timelineTicks(5_000_000),
+      },
       sourceRange: { startTicks: 0, durationTicks: timelineTicks(5_000_000) },
     };
     const doc = makeDoc({ id: 'v1', kind: 'video', name: 'V1', items: [baseClip, otherClip] });
@@ -141,8 +144,14 @@ describe('timeline/commands update_clip_transition', () => {
       id: 'c2',
       trackId: 'v1',
       sourceDurationTicks: timelineTicks(10_000_000),
-      sourceRange: { startTicks: timelineTicks(2_000_000), durationTicks: timelineTicks(5_000_000) },
-      timelineRange: { startTicks: timelineTicks(5_000_000), durationTicks: timelineTicks(5_000_000) },
+      sourceRange: {
+        startTicks: timelineTicks(2_000_000),
+        durationTicks: timelineTicks(5_000_000),
+      },
+      timelineRange: {
+        startTicks: timelineTicks(5_000_000),
+        durationTicks: timelineTicks(5_000_000),
+      },
     };
 
     const doc = makeDoc({ id: 'v1', kind: 'video', name: 'V1', items: [left, right] as any });
@@ -186,8 +195,14 @@ describe('timeline/commands update_clip_transition', () => {
       id: 'c2',
       trackId: 'v1',
       sourceDurationTicks: timelineTicks(10_000_000),
-      sourceRange: { startTicks: timelineTicks(2_000_000), durationTicks: timelineTicks(5_000_000) },
-      timelineRange: { startTicks: timelineTicks(5_000_000), durationTicks: timelineTicks(5_000_000) },
+      sourceRange: {
+        startTicks: timelineTicks(2_000_000),
+        durationTicks: timelineTicks(5_000_000),
+      },
+      timelineRange: {
+        startTicks: timelineTicks(5_000_000),
+        durationTicks: timelineTicks(5_000_000),
+      },
       transitionIn: { type: 'dissolve', durationTicks: timelineTicks(2_000_000) },
     };
 
@@ -249,8 +264,14 @@ describe('timeline/commands update_clip_transition', () => {
       id: 'c2',
       trackId: 'v1',
       sourceDurationTicks: timelineTicks(10_000_000),
-      sourceRange: { startTicks: timelineTicks(2_000_000), durationTicks: timelineTicks(5_000_000) },
-      timelineRange: { startTicks: timelineTicks(5_000_000), durationTicks: timelineTicks(5_000_000) },
+      sourceRange: {
+        startTicks: timelineTicks(2_000_000),
+        durationTicks: timelineTicks(5_000_000),
+      },
+      timelineRange: {
+        startTicks: timelineTicks(5_000_000),
+        durationTicks: timelineTicks(5_000_000),
+      },
       transitionIn: { type: 'dissolve', durationTicks: timelineTicks(2_000_000) },
     };
 
@@ -358,7 +379,10 @@ describe('timeline/commands update_clip_transition', () => {
       ...baseClip,
       id: 'c2',
       trackId: 'v1',
-      timelineRange: { startTicks: timelineTicks(5_500_000), durationTicks: timelineTicks(5_000_000) },
+      timelineRange: {
+        startTicks: timelineTicks(5_500_000),
+        durationTicks: timelineTicks(5_000_000),
+      },
       sourceRange: { startTicks: 0, durationTicks: timelineTicks(5_000_000) },
     };
 

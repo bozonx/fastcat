@@ -57,13 +57,19 @@ function displayed(api: ReturnType<typeof useTimelineRulerMarkerDrag>, id: strin
 
 describe('useTimelineRulerMarkerDrag', () => {
   it('selects the marker on pointer down', () => {
-    const { api, selectMarker } = setupDrag([{ id: 'a', timeTicks: timelineTicks(1_000_000) }], ['a']);
+    const { api, selectMarker } = setupDrag(
+      [{ id: 'a', timeTicks: timelineTicks(1_000_000) }],
+      ['a'],
+    );
     api.onMarkerPointerDown(pointerEvent('pointerdown', 100), 'a', 'left');
     expect(selectMarker).toHaveBeenCalledWith('a', expect.any(Object));
   });
 
   it('moves a point marker and commits the new time on release', () => {
-    const { api, updateMarker } = setupDrag([{ id: 'a', timeTicks: timelineTicks(1_000_000) }], ['a']);
+    const { api, updateMarker } = setupDrag(
+      [{ id: 'a', timeTicks: timelineTicks(1_000_000) }],
+      ['a'],
+    );
 
     api.onMarkerPointerDown(pointerEvent('pointerdown', 100), 'a', 'left');
     window.dispatchEvent(pointerEvent('pointermove', 400));
@@ -73,7 +79,10 @@ describe('useTimelineRulerMarkerDrag', () => {
     expect(api.hasDragged.value).toBe(true);
 
     window.dispatchEvent(pointerEvent('pointerup', 400));
-    expect(updateMarker).toHaveBeenCalledWith('a', expect.objectContaining({ timeTicks: dm.timeTicks }));
+    expect(updateMarker).toHaveBeenCalledWith(
+      'a',
+      expect.objectContaining({ timeTicks: dm.timeTicks }),
+    );
   });
 
   it('moves a whole zone with part="move", preserving its duration', () => {
@@ -134,8 +143,16 @@ describe('useTimelineRulerMarkerDrag', () => {
   it('moves non-lead markers as a whole even when the lead resizes', () => {
     const { api } = setupDrag(
       [
-        { id: 'lead', timeTicks: timelineTicks(1_000_000), durationTicks: timelineTicks(2_000_000) },
-        { id: 'other', timeTicks: timelineTicks(5_000_000), durationTicks: timelineTicks(1_000_000) },
+        {
+          id: 'lead',
+          timeTicks: timelineTicks(1_000_000),
+          durationTicks: timelineTicks(2_000_000),
+        },
+        {
+          id: 'other',
+          timeTicks: timelineTicks(5_000_000),
+          durationTicks: timelineTicks(1_000_000),
+        },
       ],
       ['lead', 'other'],
     );
@@ -155,7 +172,10 @@ describe('useTimelineRulerMarkerDrag', () => {
   });
 
   it('cancels the drag gesture and resets state on pointercancel', () => {
-    const { api, updateMarker } = setupDrag([{ id: 'a', timeTicks: timelineTicks(1_000_000) }], ['a']);
+    const { api, updateMarker } = setupDrag(
+      [{ id: 'a', timeTicks: timelineTicks(1_000_000) }],
+      ['a'],
+    );
 
     api.onMarkerPointerDown(pointerEvent('pointerdown', 100), 'a', 'left');
     window.dispatchEvent(pointerEvent('pointermove', 400));

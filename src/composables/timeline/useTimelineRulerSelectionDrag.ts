@@ -1,8 +1,12 @@
 import { TICKS_PER_SECOND } from '~/utils/time';
 import { onUnmounted, ref, type Ref, computed } from 'vue';
-import { pxToTimeTicks, pickBestSnapCandidateTicks, zoomToPxPerSecond } from '~/utils/timeline/geometry';
+import {
+  pxToTimeTicks,
+  pickBestSnapCandidateTicks,
+  zoomToPxPerSecond,
+} from '~/utils/timeline/geometry';
 import { TIMELINE_RULER_CONSTANTS } from '~/utils/constants';
-import { quantizeTimeUsToFrames } from '~/timeline/commands/utils';
+import { quantizeTicksToFrames } from '~/timeline/commands/utils';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useEffectiveHotkeys } from '~/composables/editor/hotkeys/useEffectiveHotkeys';
 import { isCommandMatched } from '~/utils/hotkeys/runtime';
@@ -85,7 +89,7 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
   }
 
   function quantize(timeTicks: number) {
-    return quantizeTimeUsToFrames(timeTicks, options.fps.value, 'round');
+    return quantizeTicksToFrames(timeTicks, options.fps.value, 'round');
   }
 
   function getFrameDurationTicks() {
@@ -120,7 +124,10 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
 
     if (selectionDragPart.value === 'move') {
       const durationTicks = selectionDragStartEndTicks.value - selectionDragStartStartTicks.value;
-      let nextStartTicks = Math.max(0, quantize(selectionDragStartStartTicks.value + mouseDeltaTicks));
+      let nextStartTicks = Math.max(
+        0,
+        quantize(selectionDragStartStartTicks.value + mouseDeltaTicks),
+      );
       let nextEndTicks = nextStartTicks + durationTicks;
 
       if (getIsSnappingEnabled() && options.computeSnapTargets && options.snapThresholdPx) {
@@ -201,7 +208,11 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
         (getSnapThresholdPx() / zoomToPxPerSecond(options.zoom.value)) * TICKS_PER_SECOND,
       );
       const targets = options.computeSnapTargets();
-      const snap = pickBestSnapCandidateTicks({ rawTicks: nextEndTicks, thresholdTicks, targetsTicks: targets });
+      const snap = pickBestSnapCandidateTicks({
+        rawTicks: nextEndTicks,
+        thresholdTicks,
+        targetsTicks: targets,
+      });
       if (snap.distTicks < thresholdTicks) {
         nextEndTicks = Math.max(
           selectionDragStartStartTicks.value + minDurationTicks,

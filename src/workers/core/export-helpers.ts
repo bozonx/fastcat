@@ -31,7 +31,8 @@ export function computeMaxAudioDurationTicks(clips: unknown[]): number {
   return clips.reduce<number>((max, clip) => {
     const c = clip as Record<string, unknown>;
     const timelineRange = c.timelineRange as Record<string, unknown> | undefined;
-    const endTicks = Number(timelineRange?.startTicks ?? 0) + Number(timelineRange?.durationTicks ?? 0);
+    const endTicks =
+      Number(timelineRange?.startTicks ?? 0) + Number(timelineRange?.durationTicks ?? 0);
     return Math.max(max, endTicks);
   }, 0);
 }

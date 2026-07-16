@@ -89,7 +89,9 @@ export function createBaseWorkerClip(params: {
     transitionIn: sanitizeMonitorTransition(params.item.transitionIn),
     transitionOut: sanitizeMonitorTransition(params.item.transitionOut),
     sourceDurationTicks:
-      typeof params.item.sourceDurationTicks === 'number' ? params.item.sourceDurationTicks : undefined,
+      typeof params.item.sourceDurationTicks === 'number'
+        ? params.item.sourceDurationTicks
+        : undefined,
     timelineRange: {
       startTicks: params.item.timelineRange.startTicks,
       durationTicks: params.item.timelineRange.durationTicks,

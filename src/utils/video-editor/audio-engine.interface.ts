@@ -36,7 +36,11 @@ export interface IAudioEngine {
   setMasterAudioEffects(effects: import('~/timeline/types').ClipEffect[]): void;
   getCurrentTimeTicks(): number;
   getLevels(trackId?: string): { rmsDb: number; peakDb: number };
-  previewScrubForward(fromTicks: number, toTicks: number, maxPreviewDurationTicks?: number): Promise<void>;
+  previewScrubForward(
+    fromTicks: number,
+    toTicks: number,
+    maxPreviewDurationTicks?: number,
+  ): Promise<void>;
   stopScrubPreview(): void;
   extractPeaks(
     fileHandle: FileSystemFileHandle,

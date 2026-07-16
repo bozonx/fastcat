@@ -570,7 +570,8 @@ export function useTimelineHotkeys(
 
       if (!currentRange) {
         // No range exists, create a new one with default duration
-        const endTicks = currentTicks + workspaceStore.userSettings.timeline.defaultStaticClipDurationTicks;
+        const endTicks =
+          currentTicks + workspaceStore.userSettings.timeline.defaultStaticClipDurationTicks;
         timelineStore.createSelectionRange({
           startTicks: currentTicks,
           endTicks: endTicks,

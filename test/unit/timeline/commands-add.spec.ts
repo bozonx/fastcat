@@ -151,8 +151,14 @@ describe('addClipToTrack', () => {
       startTicks: timelineTicks(4_000_000),
       durationTicks: timelineTicks(2_000_000),
     });
-    expect(dropped?.timelineRange).toEqual({ startTicks: 0, durationTicks: timelineTicks(4_000_000) });
-    expect(dropped?.sourceRange).toEqual({ startTicks: 0, durationTicks: timelineTicks(4_000_000) });
+    expect(dropped?.timelineRange).toEqual({
+      startTicks: 0,
+      durationTicks: timelineTicks(4_000_000),
+    });
+    expect(dropped?.sourceRange).toEqual({
+      startTicks: 0,
+      durationTicks: timelineTicks(4_000_000),
+    });
   });
 
   it('allows a new pseudo clip to start inside an existing clip and cuts the existing clip', () => {
@@ -182,11 +188,17 @@ describe('addClipToTrack', () => {
     const existing = clips.find((it: any) => it.name === 'existing');
     const dropped = clips.find((it: any) => it.name === 'dropped');
 
-    expect(existing?.timelineRange).toEqual({ startTicks: 0, durationTicks: timelineTicks(1_000_000) });
+    expect(existing?.timelineRange).toEqual({
+      startTicks: 0,
+      durationTicks: timelineTicks(1_000_000),
+    });
     expect(dropped?.timelineRange).toEqual({
       startTicks: timelineTicks(1_000_000),
       durationTicks: timelineTicks(4_000_000),
     });
-    expect(dropped?.sourceRange).toEqual({ startTicks: 0, durationTicks: timelineTicks(4_000_000) });
+    expect(dropped?.sourceRange).toEqual({
+      startTicks: 0,
+      durationTicks: timelineTicks(4_000_000),
+    });
   });
 });

@@ -28,7 +28,7 @@ import {
   WAVEFORM_EXTRACTION_PRIORITIES,
   runQueuedPeakExtraction,
 } from '~/utils/audio/waveform-extraction-queue';
-import { timeUsToPx } from '~/utils/timeline/geometry';
+import { ticksToPx } from '~/utils/timeline/geometry';
 import { isTauriRuntime } from '~/utils/runtime';
 import { normalizeProjectPath } from '~/utils/video-editor/worker-clip-utils';
 const log = createDevLogger('TimelineAudioWaveform');
@@ -333,7 +333,9 @@ const extractPeaks = async () => {
   } finally {
     isExtracting.value = false;
     if (hasDeferredExtraction.value && !timelineStore.isPlaying) {
-      const latestMaxLength = waveformMaxLength(effectiveSourceDurationTicks.value / TICKS_PER_SECOND);
+      const latestMaxLength = waveformMaxLength(
+        effectiveSourceDurationTicks.value / TICKS_PER_SECOND,
+      );
       if (!hasSufficientPeaks(audioPeaks.value, latestMaxLength)) {
         requestPeaksExtraction();
       } else {
@@ -435,7 +437,7 @@ const totalWidthPx = computed(() => waveformMetrics.value.totalWidthPx);
 const waveformLeftPx = computed(() => waveformMetrics.value.leftPx);
 
 const clipStartPx = computed(() =>
-  timeUsToPx(props.item.timelineRange.startTicks, timelineStore.timelineZoom),
+  ticksToPx(props.item.timelineRange.startTicks, timelineStore.timelineZoom),
 );
 
 const track = computed(() =>

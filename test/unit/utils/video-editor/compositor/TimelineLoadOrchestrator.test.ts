@@ -40,7 +40,9 @@ function makeCallbacks(overrides: Record<string, unknown> = {}) {
     getTrackRuntimeForClip: vi.fn().mockReturnValue(null),
     applySolidLayout: vi.fn(),
     replaceExistingClip: vi.fn(),
-    resolveFixedClipEnd: vi.fn().mockReturnValue({ endTicks: 1_000_000, sequentialTimeTicks: 1_000_000 }),
+    resolveFixedClipEnd: vi
+      .fn()
+      .mockReturnValue({ endTicks: 1_000_000, sequentialTimeTicks: 1_000_000 }),
     registerLoadedClip: vi.fn(
       ({
         clip,

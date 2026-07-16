@@ -158,7 +158,8 @@ export class CompositorRenderContextBuilder {
               clip,
               params.getPreviewEffectsEnabled(),
             ),
-          drawHudClip: (clip, timeTicks) => params.canvasFallbackRenderer.drawHudClip(clip, timeTicks),
+          drawHudClip: (clip, timeTicks) =>
+            params.canvasFallbackRenderer.drawHudClip(clip, timeTicks),
           drawShapeClip: (clip, size) => {
             params.shapeRenderer.draw({
               graphics: clip.sprite as Graphics,

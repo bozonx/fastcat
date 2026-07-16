@@ -2,7 +2,7 @@
 import { computed, inject } from 'vue';
 import type { TimelineTrack, TimelineTrackItem, TimelineClipItem } from '~/timeline/types';
 import type { TimelineContext } from './context';
-import { timeUsToPx, computeClipCenteredOverlayLeftPx } from '~/utils/timeline/geometry';
+import { ticksToPx, computeClipCenteredOverlayLeftPx } from '~/utils/timeline/geometry';
 
 const props = defineProps<{
   item: TimelineTrackItem;
@@ -27,7 +27,7 @@ const clipItem = computed(() =>
 const centeredOverlayStyle = computed(() => {
   if (!timelineContext || !clipItem.value) return undefined;
   const left = computeClipCenteredOverlayLeftPx({
-    clipStartPx: timeUsToPx(props.item.timelineRange.startTicks, timelineContext.zoom.value),
+    clipStartPx: ticksToPx(props.item.timelineRange.startTicks, timelineContext.zoom.value),
     clipWidthPx: props.clipWidthPx,
     scrollLeft: props.scrollLeft,
     viewportWidth: props.viewportWidth,

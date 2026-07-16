@@ -9,7 +9,7 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { isSvgFilename } from '~/utils/svg';
-import { timeUsToPx } from '~/utils/timeline/geometry';
+import { ticksToPx } from '~/utils/timeline/geometry';
 import { TIMELINE_CLIP_THUMBNAILS } from '~/utils/constants';
 import {
   getClipThumbnailsHash,
@@ -186,11 +186,11 @@ export function useTimelineClipThumbnails(options: UseTimelineClipThumbnailsOpti
   });
 
   const pxPerThumbnail = computed(() => {
-    return timeUsToPx(intervalTicks, timelineStore.timelineZoom);
+    return ticksToPx(intervalTicks, timelineStore.timelineZoom);
   });
 
   const trimOffsetPx = computed(() => {
-    return timeUsToPx(options.item.value.sourceRange.startTicks, timelineStore.timelineZoom);
+    return ticksToPx(options.item.value.sourceRange.startTicks, timelineStore.timelineZoom);
   });
 
   /**
@@ -220,12 +220,12 @@ export function useTimelineClipThumbnails(options: UseTimelineClipThumbnailsOpti
   const clipWidthPx = computed(() => {
     return Math.max(
       1,
-      timeUsToPx(options.item.value.timelineRange.durationTicks, timelineStore.timelineZoom),
+      ticksToPx(options.item.value.timelineRange.durationTicks, timelineStore.timelineZoom),
     );
   });
 
   const pxPerSecond = computed(() => {
-    return timeUsToPx(TICKS_PER_SECOND, timelineStore.timelineZoom);
+    return ticksToPx(TICKS_PER_SECOND, timelineStore.timelineZoom);
   });
 
   const thumbnailGridStepSeconds = computed(() => {

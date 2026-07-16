@@ -260,7 +260,9 @@ export function getClipTailHandleTicks(clip: TimelineClipItem): number {
   const sourceDurationTicks = Math.max(0, Math.round(Number(clip.sourceDurationTicks ?? 0)));
   const sourceEndTicks = Math.max(
     0,
-    Math.round(Number(clip.sourceRange?.startTicks ?? 0) + Number(clip.sourceRange?.durationTicks ?? 0)),
+    Math.round(
+      Number(clip.sourceRange?.startTicks ?? 0) + Number(clip.sourceRange?.durationTicks ?? 0),
+    ),
   );
   return Math.max(0, sourceDurationTicks - sourceEndTicks);
 }
@@ -269,7 +271,8 @@ export function getClipHeadTimelineHandleTicks(clip: TimelineClipItem): number {
   const speed = clip.speed ?? 1;
   if (speed === 0) return Number.POSITIVE_INFINITY;
   const absSpeed = Math.abs(speed);
-  const sourceHandleTicks = speed >= 0 ? getClipHeadHandleTicks(clip) : getClipTailHandleTicks(clip);
+  const sourceHandleTicks =
+    speed >= 0 ? getClipHeadHandleTicks(clip) : getClipTailHandleTicks(clip);
   return sourceHandleTicks / absSpeed;
 }
 
@@ -277,7 +280,8 @@ export function getClipTailTimelineHandleTicks(clip: TimelineClipItem): number {
   const speed = clip.speed ?? 1;
   if (speed === 0) return Number.POSITIVE_INFINITY;
   const absSpeed = Math.abs(speed);
-  const sourceHandleTicks = speed >= 0 ? getClipTailHandleTicks(clip) : getClipHeadHandleTicks(clip);
+  const sourceHandleTicks =
+    speed >= 0 ? getClipTailHandleTicks(clip) : getClipHeadHandleTicks(clip);
   return sourceHandleTicks / absSpeed;
 }
 
@@ -317,7 +321,9 @@ export function getOverlayGuideOffsetPx(
   if (!adjacent) return null;
 
   const timelineHandleTicks =
-    edge === 'in' ? getClipTailTimelineHandleTicks(adjacent) : getClipHeadTimelineHandleTicks(adjacent);
+    edge === 'in'
+      ? getClipTailTimelineHandleTicks(adjacent)
+      : getClipHeadTimelineHandleTicks(adjacent);
   if (!Number.isFinite(timelineHandleTicks) || timelineHandleTicks <= 0) return null;
 
   return Math.max(0, Math.min(clipWidthPx, transitionUsToPxFn(timelineHandleTicks)));

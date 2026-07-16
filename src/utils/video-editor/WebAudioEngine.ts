@@ -841,7 +841,10 @@ export class WebAudioEngine implements IAudioEngine {
     const normalizedFromTicks = Math.max(0, Math.round(fromTicks));
     const normalizedToTicks = Math.max(normalizedFromTicks, Math.round(toTicks));
     const windowTicks = normalizedToTicks - normalizedFromTicks;
-    const previewDurationTicks = Math.min(windowTicks, Math.max(1, Math.round(maxPreviewDurationTicks)));
+    const previewDurationTicks = Math.min(
+      windowTicks,
+      Math.max(1, Math.round(maxPreviewDurationTicks)),
+    );
 
     if (previewDurationTicks <= 0) {
       return;

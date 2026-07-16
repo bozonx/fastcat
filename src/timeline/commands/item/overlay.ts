@@ -7,7 +7,7 @@ import type {
 import {
   getTrackById,
   getDocFps,
-  quantizeTimeUsToFrames,
+  quantizeTicksToFrames,
   assertClipNotLocked,
   sliceTrackItemsForOverlay,
   normalizeGaps,
@@ -102,7 +102,7 @@ export function overlayPlaceItem(
   const shouldQuantizeToFrames = cmd.quantizeToFrames !== false;
   const startCandidate = Math.max(0, Math.round(Number(cmd.startTicks)));
   const startTicks = shouldQuantizeToFrames
-    ? quantizeTimeUsToFrames(startCandidate, fps, 'round')
+    ? quantizeTicksToFrames(startCandidate, fps, 'round')
     : startCandidate;
   const durationTicks = Math.max(0, item.timelineRange.durationTicks);
   const nextFromItemsRaw = fromTrack.items.filter((x) => x.id !== cmd.itemId);

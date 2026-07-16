@@ -59,7 +59,9 @@ test.describe('Web editor smoke workflow', () => {
     await expect.poll(async () => (await clipIds(page)).length).toBe(1);
 
     const reloaded = await waitForTimelineDoc(page, e2eProject, (d) => d.allClips.length === 1);
-    expect(reloaded.allClips[0].timelineDurationTicks).toBe(edited.allClips[0].timelineDurationTicks);
+    expect(reloaded.allClips[0].timelineDurationTicks).toBe(
+      edited.allClips[0].timelineDurationTicks,
+    );
     expect(reloaded.allClips[0].timelineStartTicks).toBe(edited.allClips[0].timelineStartTicks);
   });
 });

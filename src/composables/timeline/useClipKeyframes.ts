@@ -79,7 +79,12 @@ export function useClipKeyframes(options: UseClipKeyframesOptions) {
       }
     } else {
       for (const path of paths) {
-        next = upsertKeyframe(next, path, localPlayheadTicks.value, getStaticParamValue(clip, path));
+        next = upsertKeyframe(
+          next,
+          path,
+          localPlayheadTicks.value,
+          getStaticParamValue(clip, path),
+        );
       }
     }
     options.updateAnimations(next);
@@ -229,7 +234,9 @@ export function useClipKeyframes(options: UseClipKeyframesOptions) {
   }
 
   function moveKeyframeMomentAt(fromTTicks: number, toTTicks: number) {
-    options.updateAnimations(moveKeyframeMoment(options.clip.value.animations, fromTTicks, toTTicks));
+    options.updateAnimations(
+      moveKeyframeMoment(options.clip.value.animations, fromTTicks, toTTicks),
+    );
   }
 
   function deleteKeyframeMomentAt(tTicks: number) {
@@ -237,7 +244,9 @@ export function useClipKeyframes(options: UseClipKeyframesOptions) {
   }
 
   function setKeyframeMomentEasingAt(tTicks: number, easing: KeyframeEasing) {
-    options.updateAnimations(setKeyframeMomentEasing(options.clip.value.animations, tTicks, easing));
+    options.updateAnimations(
+      setKeyframeMomentEasing(options.clip.value.animations, tTicks, easing),
+    );
   }
 
   return {

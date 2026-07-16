@@ -3,8 +3,8 @@ import { describe, it, expect } from 'vitest';
 import {
   zoomToPxPerSecond,
   pxPerSecondToZoom,
-  timeUsToPx,
-  timeUsToViewportPx,
+  ticksToPx,
+  ticksToViewportPx,
   absolutePxToViewportPx,
   timelineRangeToRoundedPx,
   pxToTimeTicks,
@@ -14,8 +14,8 @@ import {
   computeTimelinePlaybackAutoScrollLeft,
   computeTimelineScrollLeftForPlayhead,
   sanitizeFps,
-  quantizeDeltaUsToFrames,
-  quantizeStartUsToFrames,
+  quantizeDeltaTicksToFrames,
+  quantizeStartTicksToFrames,
   subframePhaseTicks,
   sanitizeSnapTargetsTicks,
   pickBestSnapCandidateTicks,
@@ -47,9 +47,9 @@ describe('pxPerSecondToZoom', () => {
   });
 });
 
-describe('timeUsToPx / pxToTimeTicks', () => {
+describe('ticksToPx / pxToTimeTicks', () => {
   it('converts time to pixels and back', () => {
-    const px = timeUsToPx(timelineTicks(1_000_000), 50);
+    const px = ticksToPx(timelineTicks(1_000_000), 50);
     expect(px).toBe(10);
     expect(pxToTimeTicks(px, 50)).toBe(timelineTicks(1_000_000));
   });
@@ -84,25 +84,29 @@ describe('timelineRangeToRoundedPx', () => {
   });
 });
 
-describe('absolutePxToViewportPx / timeUsToViewportPx', () => {
+describe('absolutePxToViewportPx / ticksToViewportPx', () => {
   it('rounds in absolute space, then subtracts the raw scroll offset', () => {
     expect(absolutePxToViewportPx(10.4, 3.2)).toBe(10 - 3.2);
-    expect(timeUsToViewportPx(timelineTicks(1_000_000), 50, 3.2)).toBe(
-      Math.round(timeUsToPx(timelineTicks(1_000_000), 50)) - 3.2,
+    expect(ticksToViewportPx(timelineTicks(1_000_000), 50, 3.2)).toBe(
+      Math.round(ticksToPx(timelineTicks(1_000_000), 50)) - 3.2,
     );
   });
 
   it('keeps a playhead pixel-aligned with a clip edge on the same instant for fractional scrollLeft', () => {
-    // The clip edge screen position = round(timeUsToPx(start)) shifted by the
+    // The clip edge screen position = round(ticksToPx(start)) shifted by the
     // container transform (-scrollLeft). The playhead must resolve to the exact
     // same screen pixel so they never drift apart as scrollLeft varies.
     const zoom = 73;
     const timeTicks = timelineTicks(12_345_678);
 
-    const clipLeftPx = timelineRangeToRoundedPx({ startTicks: timeTicks, durationTicks: 1 }, zoom, 2).leftPx;
+    const clipLeftPx = timelineRangeToRoundedPx(
+      { startTicks: timeTicks, durationTicks: 1 },
+      zoom,
+      2,
+    ).leftPx;
 
     for (const scrollLeft of [0, 1, 2.5, 100.4, 257.35, 999.9]) {
-      const playheadViewportX = timeUsToViewportPx(timeTicks, zoom, scrollLeft);
+      const playheadViewportX = ticksToViewportPx(timeTicks, zoom, scrollLeft);
       const clipViewportX = clipLeftPx - scrollLeft;
       expect(playheadViewportX).toBe(clipViewportX);
     }
@@ -136,7 +140,7 @@ describe('computeAnchoredScrollLeft', () => {
       anchor: { anchorTimeTicks: timelineTicks(500_000), anchorViewportX: 500 },
     });
 
-    const expectedAnchorPx = timeUsToPx(timelineTicks(500_000), 100);
+    const expectedAnchorPx = ticksToPx(timelineTicks(500_000), 100);
     expect(expectedAnchorPx - result).toBeCloseTo(500, 6);
   });
 
@@ -243,15 +247,15 @@ describe('sanitizeFps', () => {
   });
 });
 
-describe('quantizeDeltaUsToFrames', () => {
+describe('quantizeDeltaTicksToFrames', () => {
   it('rounds delta to frame boundary', () => {
-    expect(quantizeDeltaUsToFrames(TICKS_PER_SECOND, 30)).toBe(TICKS_PER_SECOND);
+    expect(quantizeDeltaTicksToFrames(TICKS_PER_SECOND, 30)).toBe(TICKS_PER_SECOND);
   });
 });
 
-describe('quantizeStartUsToFrames', () => {
+describe('quantizeStartTicksToFrames', () => {
   it('rounds start to frame boundary', () => {
-    expect(quantizeStartUsToFrames(TICKS_PER_SECOND, 30)).toBe(TICKS_PER_SECOND);
+    expect(quantizeStartTicksToFrames(TICKS_PER_SECOND, 30)).toBe(TICKS_PER_SECOND);
   });
 });
 
@@ -268,15 +272,15 @@ describe('sanitizeSnapTargetsTicks', () => {
 
 describe('pickBestSnapCandidateTicks', () => {
   it('picks closest target within threshold', () => {
-    expect(pickBestSnapCandidateTicks({ rawTicks: 105, thresholdTicks: 10, targetsTicks: [100, 120] })).toEqual(
-      { snappedTicks: 100, distTicks: 5 },
-    );
+    expect(
+      pickBestSnapCandidateTicks({ rawTicks: 105, thresholdTicks: 10, targetsTicks: [100, 120] }),
+    ).toEqual({ snappedTicks: 100, distTicks: 5 });
   });
 
   it('returns raw value when no target is within threshold', () => {
-    expect(pickBestSnapCandidateTicks({ rawTicks: 150, thresholdTicks: 10, targetsTicks: [100, 200] })).toEqual(
-      { snappedTicks: 150, distTicks: 10 },
-    );
+    expect(
+      pickBestSnapCandidateTicks({ rawTicks: 150, thresholdTicks: 10, targetsTicks: [100, 200] }),
+    ).toEqual({ snappedTicks: 150, distTicks: 10 });
   });
 });
 
@@ -320,7 +324,7 @@ describe('computeSnappedStartTicks', () => {
     const frameTicks = TICKS_PER_SECOND / fps;
     // ~half a frame off the grid — the worst case for a phase-preserving snap.
     const rawStartTicks =
-      quantizeStartUsToFrames(2 * TICKS_PER_SECOND, fps) + Math.round(frameTicks / 2) + 137;
+      quantizeStartTicksToFrames(2 * TICKS_PER_SECOND, fps) + Math.round(frameTicks / 2) + 137;
 
     const previewStartTicks = computeSnappedStartTicks({
       rawStartTicks,
@@ -336,27 +340,27 @@ describe('computeSnappedStartTicks', () => {
 
     // The commit re-quantizes to the absolute grid; with frameOffsetTicks:0 the
     // preview is already grid-aligned, so that re-quantization is a no-op.
-    expect(previewStartTicks).toBe(quantizeStartUsToFrames(previewStartTicks, fps));
+    expect(previewStartTicks).toBe(quantizeStartTicksToFrames(previewStartTicks, fps));
   });
 });
 
 describe('subframePhaseTicks', () => {
   it('returns 0 for a frame-aligned start', () => {
     const fps = 30;
-    const aligned = quantizeStartUsToFrames(2 * TICKS_PER_SECOND, fps);
+    const aligned = quantizeStartTicksToFrames(2 * TICKS_PER_SECOND, fps);
     expect(subframePhaseTicks(aligned, fps)).toBe(0);
   });
 
   it('preserves a one-tick phase', () => {
     const fps = 30;
-    const aligned = quantizeStartUsToFrames(2 * TICKS_PER_SECOND, fps);
+    const aligned = quantizeStartTicksToFrames(2 * TICKS_PER_SECOND, fps);
     expect(subframePhaseTicks(aligned + 1, fps)).toBe(1);
     expect(subframePhaseTicks(aligned - 1, fps)).toBe(-1);
   });
 
   it('captures a genuine sub-frame offset', () => {
     const fps = 30;
-    const aligned = quantizeStartUsToFrames(2_000_000, fps);
+    const aligned = quantizeStartTicksToFrames(2_000_000, fps);
     const phase = 7_000;
     expect(subframePhaseTicks(aligned + phase, fps)).toBe(phase);
   });
@@ -364,7 +368,7 @@ describe('subframePhaseTicks', () => {
   it('round-trips through computeSnappedStartTicks to preserve phase across a whole-frame move', () => {
     const fps = 30;
     const frameTicks = Math.round(TICKS_PER_SECOND / fps);
-    const aligned = quantizeStartUsToFrames(2 * TICKS_PER_SECOND, fps);
+    const aligned = quantizeStartTicksToFrames(2 * TICKS_PER_SECOND, fps);
     const originalStart = aligned + 7_000; // hand-dialed sub-frame sync offset
     const phase = subframePhaseTicks(originalStart, fps);
 

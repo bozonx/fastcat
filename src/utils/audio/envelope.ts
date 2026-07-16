@@ -101,7 +101,10 @@ function resolveEdgeFade(input: {
     };
   }
 
-  if (transitionDurationTicks > 0 && normalizeTransitionMode(input.transition?.mode) === 'adjacent') {
+  if (
+    transitionDurationTicks > 0 &&
+    normalizeTransitionMode(input.transition?.mode) === 'adjacent'
+  ) {
     return {
       durationTicks: transitionDurationTicks,
       curve: normalizeAudioFadeCurve(input.transitionOwnerCurve ?? input.defaultCurve),

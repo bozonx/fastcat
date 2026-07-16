@@ -13,7 +13,10 @@ function createClip(overrides: Partial<TimelineClipItem> = {}): TimelineClipItem
     trackId: 'v1',
     name: 'Clip 1',
     clipType: 'media',
-    timelineRange: { startTicks: timelineTicks(1_000_000), durationTicks: timelineTicks(2_000_000) },
+    timelineRange: {
+      startTicks: timelineTicks(1_000_000),
+      durationTicks: timelineTicks(2_000_000),
+    },
     sourceRange: { startTicks: 0, durationTicks: timelineTicks(2_000_000) },
     sourceDurationTicks: timelineTicks(10_000_000),
     source: { path: 'media/test.mp4' },
@@ -94,7 +97,10 @@ describe('clip properties sections', () => {
 
   it('caps the End field at startTicks + sourceDurationTicks for media clips', async () => {
     const clip = createClip({
-      timelineRange: { startTicks: timelineTicks(1_000_000), durationTicks: timelineTicks(2_000_000) },
+      timelineRange: {
+        startTicks: timelineTicks(1_000_000),
+        durationTicks: timelineTicks(2_000_000),
+      },
       sourceDurationTicks: timelineTicks(10_000_000),
       speed: 1.0,
     });

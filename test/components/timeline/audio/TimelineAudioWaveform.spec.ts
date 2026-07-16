@@ -3,8 +3,8 @@ import { mountSuspended } from '@nuxt/test-utils/runtime';
 import { reactive, ref, nextTick } from 'vue';
 import TimelineAudioWaveform from '~/components/timeline/audio/TimelineAudioWaveform.vue';
 import { __resetWaveformSchedulerForTests } from '~/utils/audio/waveform-render-scheduler';
-import { timeUsToPx } from '~/utils/timeline/geometry';
-import { TICKS_PER_MICROSECOND, TICKS_PER_SECOND } from '~/utils/time';
+import { ticksToPx } from '~/utils/timeline/geometry';
+import { TICKS_PER_MILLISECOND, TICKS_PER_SECOND } from '~/utils/time';
 import type { TimelineClipItem } from '~/timeline/types';
 
 const mockMediaStore = reactive({
@@ -508,9 +508,9 @@ describe('TimelineAudioWaveform.vue', () => {
       };
       mockTimelineStore.timelineViewportWidth = 1180;
       mockTimelineStore.timelineZoom = 69;
-      mockTimelineStore.timelineScrollLeftPx = timeUsToPx(item.timelineRange.startTicks, 69);
+      mockTimelineStore.timelineScrollLeftPx = ticksToPx(item.timelineRange.startTicks, 69);
 
-      const initialScrollLeft = timeUsToPx(item.timelineRange.startTicks, 69);
+      const initialScrollLeft = ticksToPx(item.timelineRange.startTicks, 69);
       const wrapper = await mountComponent({
         item,
         // TimelineTracks v-memo can leave this prop at the pre-zoom value.
@@ -524,7 +524,7 @@ describe('TimelineAudioWaveform.vue', () => {
       expect(vm.totalWidthPx).toBeLessThanOrEqual(8000);
 
       mockTimelineStore.timelineZoom = 70;
-      const anchoredScrollLeft = timeUsToPx(item.timelineRange.startTicks, 70);
+      const anchoredScrollLeft = ticksToPx(item.timelineRange.startTicks, 70);
       mockTimelineStore.timelineScrollLeftPx = anchoredScrollLeft;
       await nextTick();
       await vi.advanceTimersByTimeAsync(121);
@@ -578,7 +578,10 @@ describe('TimelineAudioWaveform.vue', () => {
         const item: TimelineClipItem = {
           ...baseItem,
           speed,
-          timelineRange: { startTicks: 58 * TICKS_PER_SECOND, durationTicks: 16 * TICKS_PER_SECOND },
+          timelineRange: {
+            startTicks: 58 * TICKS_PER_SECOND,
+            durationTicks: 16 * TICKS_PER_SECOND,
+          },
           sourceRange: { startTicks: 4 * TICKS_PER_SECOND, durationTicks: 16 * TICKS_PER_SECOND },
           sourceDurationTicks: 10_800 * TICKS_PER_SECOND,
         };
@@ -588,7 +591,7 @@ describe('TimelineAudioWaveform.vue', () => {
         };
         mockTimelineStore.timelineViewportWidth = 1180;
         mockTimelineStore.timelineZoom = 102;
-        mockTimelineStore.timelineScrollLeftPx = timeUsToPx(item.timelineRange.startTicks, 102);
+        mockTimelineStore.timelineScrollLeftPx = ticksToPx(item.timelineRange.startTicks, 102);
 
         const wrapper = await mountComponent({ item });
         await nextTick();
@@ -629,14 +632,15 @@ describe('TimelineAudioWaveform.vue', () => {
       const item: TimelineClipItem = {
         ...baseItem,
         timelineRange: {
-          startTicks: 440_000 * TICKS_PER_MICROSECOND,
-          durationTicks: 243_680_000 * TICKS_PER_MICROSECOND,
+          startTicks: 440 * TICKS_PER_MILLISECOND,
+          durationTicks: 243_680 * TICKS_PER_MILLISECOND,
         },
         sourceRange: {
-          startTicks: 480_000 * TICKS_PER_MICROSECOND,
-          durationTicks: 243_680_000 * TICKS_PER_MICROSECOND,
+          startTicks: 480 * TICKS_PER_MILLISECOND,
+          durationTicks: 243_680 * TICKS_PER_MILLISECOND,
         },
-        sourceDurationTicks: 1_160_753_167 * TICKS_PER_MICROSECOND,
+        sourceDurationTicks:
+          1_160_753 * TICKS_PER_MILLISECOND + 167 * (TICKS_PER_SECOND / 1_000_000),
       };
       mockMediaStore.mediaMetadata['media.mp4'] = {
         duration: 1160.753167,
@@ -644,8 +648,7 @@ describe('TimelineAudioWaveform.vue', () => {
       };
       mockTimelineStore.timelineViewportWidth = 1180;
       mockTimelineStore.timelineZoom = 102;
-      mockTimelineStore.timelineScrollLeftPx =
-        timeUsToPx(46_480_000 * TICKS_PER_MICROSECOND, 102) - 590;
+      mockTimelineStore.timelineScrollLeftPx = ticksToPx(46_480 * TICKS_PER_MILLISECOND, 102) - 590;
 
       const wrapper = await mountComponent({ item });
       await nextTick();

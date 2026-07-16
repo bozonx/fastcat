@@ -1,4 +1,4 @@
-import { TICKS_PER_MICROSECOND, ticksToSeconds } from '~/utils/time';
+import { TICKS_PER_MILLISECOND, ticksToSeconds } from '~/utils/time';
 import {
   buildVideoWorkerPayloadFromTracks,
   toWorkerTimelineClips,
@@ -45,7 +45,7 @@ import {
 import { isImagePath } from '~/utils/media-types';
 import { clampFinite } from '~/utils/math';
 
-const MIN_ADJACENT_CLIP_SEARCH_TICKS = 1_000 * TICKS_PER_MICROSECOND;
+const MIN_ADJACENT_CLIP_SEARCH_TICKS = TICKS_PER_MILLISECOND;
 
 export { buildNativeAudioEffectSpecs };
 

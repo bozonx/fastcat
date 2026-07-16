@@ -335,7 +335,13 @@ describe('useExportForm', () => {
 
   it('передает цвета маркеров в опции экспорта', async () => {
     markersMock.value = [
-      { id: 'zone-1', timeTicks: 1_000_000, durationTicks: 3_000_000, text: 'Intro', color: '#ff0000' },
+      {
+        id: 'zone-1',
+        timeTicks: 1_000_000,
+        durationTicks: 3_000_000,
+        text: 'Intro',
+        color: '#ff0000',
+      },
       { id: 'zone-2', timeTicks: 5_000_000, durationTicks: 2_000_000, text: 'Outro' },
     ];
 
@@ -402,7 +408,9 @@ describe('useExportForm', () => {
   });
 
   it('передает диапазон выбранного маркера-зоны в экспорт', async () => {
-    markersMock.value = [{ id: 'zone-1', timeTicks: 1_500_000, durationTicks: 2_500_000, text: '' }];
+    markersMock.value = [
+      { id: 'zone-1', timeTicks: 1_500_000, durationTicks: 2_500_000, text: '' },
+    ];
     selectedEntityMock.value = {
       source: 'timeline',
       kind: 'marker',
@@ -424,7 +432,9 @@ describe('useExportForm', () => {
 
   it('синхронизирует radio с выбором зоны и области выделения после открытия формы', async () => {
     selectionRangeMock.value = { startTicks: 2_000_000, endTicks: 6_000_000 };
-    markersMock.value = [{ id: 'zone-1', timeTicks: 1_500_000, durationTicks: 2_500_000, text: '' }];
+    markersMock.value = [
+      { id: 'zone-1', timeTicks: 1_500_000, durationTicks: 2_500_000, text: '' },
+    ];
 
     const form = useExportForm();
     await form.initializeExportForm();

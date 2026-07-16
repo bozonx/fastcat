@@ -52,7 +52,7 @@ export function ticksToFrame(timeTicks: number, fps: number, mode: QuantizeMode)
   );
 }
 
-export function deltaUsToFrames(deltaTicks: number, fps: number, mode: QuantizeMode): number {
+export function deltaTicksToFrames(deltaTicks: number, fps: number, mode: QuantizeMode): number {
   const safeDeltaTicks = Number.isFinite(deltaTicks) ? Math.round(deltaTicks) : 0;
   return ticksToFrames({ ticks: safeDeltaTicks, frameRate: sanitizeFrameRate(fps), mode });
 }
@@ -62,7 +62,7 @@ export function frameToTicks(frameIndex: number, fps: number): number {
   return Math.max(0, framesToTicks({ frames: safeFrameIndex, frameRate: sanitizeFrameRate(fps) }));
 }
 
-export function quantizeTimeUsToFrames(timeTicks: number, fps: number, mode: QuantizeMode): number {
+export function quantizeTicksToFrames(timeTicks: number, fps: number, mode: QuantizeMode): number {
   return Math.max(
     0,
     quantizeTicksToFrame({
@@ -73,7 +73,11 @@ export function quantizeTimeUsToFrames(timeTicks: number, fps: number, mode: Qua
   );
 }
 
-export function quantizeDeltaUsToFrames(deltaTicks: number, fps: number, mode: QuantizeMode): number {
+export function quantizeDeltaTicksToFrames(
+  deltaTicks: number,
+  fps: number,
+  mode: QuantizeMode,
+): number {
   return quantizeTicksToFrame({
     ticks: Number.isFinite(deltaTicks) ? Math.round(deltaTicks) : 0,
     frameRate: sanitizeFrameRate(fps),
@@ -217,7 +221,10 @@ export function getClipSourceRangeForTimelineSegment(
   const clipDurationTicks = Math.max(0, Math.round(clip.timelineRange.durationTicks));
   const clipEndTicks = clipStartTicks + clipDurationTicks;
   const segmentStart = Math.max(clipStartTicks, Math.round(segmentStartTicks));
-  const segmentEnd = Math.min(clipEndTicks, segmentStart + Math.max(0, Math.round(segmentDurationTicks)));
+  const segmentEnd = Math.min(
+    clipEndTicks,
+    segmentStart + Math.max(0, Math.round(segmentDurationTicks)),
+  );
   const safeSegmentDurationTicks = Math.max(0, segmentEnd - segmentStart);
 
   const speed = typeof clip.speed === 'number' && Number.isFinite(clip.speed) ? clip.speed : 1;
@@ -291,7 +298,7 @@ export function sliceTrackItemsForOverlay(
     // Overlaps only on the left side: trim end of existing clip
     if (itStart < startTicks && itEnd > startTicks && itEnd <= endTicks) {
       const newDuration = shouldQuantizeToFrames
-        ? quantizeTimeUsToFrames(startTicks - itStart, fps, 'floor')
+        ? quantizeTicksToFrames(startTicks - itStart, fps, 'floor')
         : Math.max(0, Math.round(startTicks - itStart));
       if (newDuration > 0) {
         nextItems.push({
@@ -306,10 +313,10 @@ export function sliceTrackItemsForOverlay(
     // Overlaps only on the right side: trim start of existing clip
     if (itStart >= startTicks && itStart < endTicks && itEnd > endTicks) {
       const newStart = shouldQuantizeToFrames
-        ? quantizeTimeUsToFrames(endTicks, fps, 'ceil')
+        ? quantizeTicksToFrames(endTicks, fps, 'ceil')
         : Math.max(0, Math.round(endTicks));
       const newDuration = shouldQuantizeToFrames
-        ? quantizeTimeUsToFrames(itEnd - endTicks, fps, 'floor')
+        ? quantizeTicksToFrames(itEnd - endTicks, fps, 'floor')
         : Math.max(0, Math.round(itEnd - endTicks));
       if (newDuration > 0) {
         nextItems.push({
@@ -324,7 +331,7 @@ export function sliceTrackItemsForOverlay(
     // Existing clip fully contains the new item: split into two
     if (itStart < startTicks && itEnd > endTicks) {
       const leftDuration = shouldQuantizeToFrames
-        ? quantizeTimeUsToFrames(startTicks - itStart, fps, 'floor')
+        ? quantizeTicksToFrames(startTicks - itStart, fps, 'floor')
         : Math.max(0, Math.round(startTicks - itStart));
       if (leftDuration > 0) {
         nextItems.push({
@@ -334,10 +341,10 @@ export function sliceTrackItemsForOverlay(
         });
       }
       const rightStart = shouldQuantizeToFrames
-        ? quantizeTimeUsToFrames(endTicks, fps, 'ceil')
+        ? quantizeTicksToFrames(endTicks, fps, 'ceil')
         : Math.max(0, Math.round(endTicks));
       const rightDuration = shouldQuantizeToFrames
-        ? quantizeTimeUsToFrames(itEnd - endTicks, fps, 'floor')
+        ? quantizeTicksToFrames(itEnd - endTicks, fps, 'floor')
         : Math.max(0, Math.round(itEnd - endTicks));
       if (rightDuration > 0) {
         nextItems.push({
@@ -598,7 +605,8 @@ export function autoAdaptClipEdgeDurations(items: TimelineTrackItem[]): Timeline
     // flag becomes meaningless).
     if (transitionIn?.mode === 'adjacent' && !transitionIn.isOverridden) {
       const gap = prev
-        ? it.timelineRange.startTicks - (prev.timelineRange.startTicks + prev.timelineRange.durationTicks)
+        ? it.timelineRange.startTicks -
+          (prev.timelineRange.startTicks + prev.timelineRange.durationTicks)
         : Infinity;
       if (!prev || prev.kind !== 'clip' || gap !== TRANSITION_ADJACENCY_THRESHOLD_TICKS) {
         transitionIn = { ...transitionIn, mode: 'transparent' };
@@ -607,7 +615,8 @@ export function autoAdaptClipEdgeDurations(items: TimelineTrackItem[]): Timeline
 
     if (transitionOut?.mode === 'adjacent' && !transitionOut.isOverridden) {
       const gap = next
-        ? next.timelineRange.startTicks - (it.timelineRange.startTicks + it.timelineRange.durationTicks)
+        ? next.timelineRange.startTicks -
+          (it.timelineRange.startTicks + it.timelineRange.durationTicks)
         : Infinity;
       if (!next || next.kind !== 'clip' || gap !== TRANSITION_ADJACENCY_THRESHOLD_TICKS) {
         transitionOut = { ...transitionOut, mode: 'transparent' };
@@ -688,8 +697,8 @@ export function resolveNonOverlappingStartTicks(
   durationTicks: number,
   fps: number,
 ): number {
-  let nextStartTicks = quantizeTimeUsToFrames(Math.max(0, startTicks), fps, 'round');
-  const dur = quantizeTimeUsToFrames(Math.max(0, durationTicks), fps, 'round');
+  let nextStartTicks = quantizeTicksToFrames(Math.max(0, startTicks), fps, 'round');
+  const dur = quantizeTicksToFrames(Math.max(0, durationTicks), fps, 'round');
 
   for (const item of track.items) {
     if (item.kind !== 'clip') continue;
@@ -702,7 +711,7 @@ export function resolveNonOverlappingStartTicks(
       continue;
     }
 
-    nextStartTicks = quantizeTimeUsToFrames(itemEndTicks, fps, 'ceil');
+    nextStartTicks = quantizeTicksToFrames(itemEndTicks, fps, 'ceil');
   }
 
   return nextStartTicks;

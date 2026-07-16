@@ -22,7 +22,7 @@ import {
   resolveCurveValueRange,
 } from '~/timeline/animation/curve-editor';
 import { useClipKeyframes } from '~/composables/timeline/useClipKeyframes';
-import { pxToDeltaTicks, timeUsToPx } from '~/utils/timeline/geometry';
+import { pxToDeltaTicks, ticksToPx } from '~/utils/timeline/geometry';
 
 const props = defineProps<{
   clip: TimelineClipItem;
@@ -56,7 +56,7 @@ const selectedTrack = computed(() =>
 const valueRange = computed(() => resolveCurveValueRange(selectedTrack.value));
 const durationTicks = computed(() => props.clip.timelineRange.durationTicks);
 const svgWidthPx = computed(() =>
-  Math.max(1, timeUsToPx(Math.max(1, durationTicks.value), props.zoom), widthPx.value),
+  Math.max(1, ticksToPx(Math.max(1, durationTicks.value), props.zoom), widthPx.value),
 );
 const polylinePoints = computed(() =>
   selectedTrack.value
@@ -86,7 +86,7 @@ const keyframePoints = computed(() =>
   })),
 );
 const playheadX = computed(() =>
-  Math.max(0, Math.min(svgWidthPx.value, timeUsToPx(localPlayheadTicks.value, props.zoom))),
+  Math.max(0, Math.min(svgWidthPx.value, ticksToPx(localPlayheadTicks.value, props.zoom))),
 );
 
 const dragState = ref<{
@@ -195,7 +195,9 @@ function easingKeyframeAtX(x: number): Keyframe | null {
   const keyframes = selectedTrack.value?.keyframes ?? [];
   if (!keyframes.length) return null;
   const tTicks = tUsFromX(x);
-  return [...keyframes].reverse().find((keyframe) => keyframe.tTicks <= tTicks) ?? keyframes[0] ?? null;
+  return (
+    [...keyframes].reverse().find((keyframe) => keyframe.tTicks <= tTicks) ?? keyframes[0] ?? null
+  );
 }
 
 function cycleEasingAtKeyframe(keyframe: Keyframe) {

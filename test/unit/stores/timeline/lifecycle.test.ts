@@ -18,7 +18,7 @@ vi.mock('~/timeline/timeline-thumbnail', () => ({
 }));
 
 vi.mock('~/timeline/commands/utils', () => ({
-  quantizeTimeUsToFrames: vi.fn((t: number) => t),
+  quantizeTicksToFrames: vi.fn((t: number) => t),
   sanitizeFps: vi.fn(() => 30),
 }));
 

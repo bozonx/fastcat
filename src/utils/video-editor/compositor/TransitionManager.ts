@@ -25,9 +25,13 @@ export class TransitionManager {
     const outDurTicks = outTransition?.durationTicks ?? 0;
     const outStartTicks = clip.durationTicks - outDurTicks;
 
-    const inActive = !!inTransition && inDurTicks > 0 && localTimeTicks >= 0 && localTimeTicks < inDurTicks;
+    const inActive =
+      !!inTransition && inDurTicks > 0 && localTimeTicks >= 0 && localTimeTicks < inDurTicks;
     const outActive =
-      !!outTransition && outDurTicks > 0 && localTimeTicks >= outStartTicks && localTimeTicks < clip.durationTicks;
+      !!outTransition &&
+      outDurTicks > 0 &&
+      localTimeTicks >= outStartTicks &&
+      localTimeTicks < clip.durationTicks;
 
     // On clips shorter than transitionIn + transitionOut both windows overlap.
     // Pick the nearer edge — the same rule computeTransitionOpacity uses — so the
@@ -155,7 +159,8 @@ export class TransitionManager {
     const outStartTicks = clip.durationTicks - outDurTicks;
 
     const inActive = inDurTicks > 0 && localTimeTicks >= 0 && localTimeTicks < inDurTicks;
-    const outActive = outDurTicks > 0 && localTimeTicks >= outStartTicks && localTimeTicks < clip.durationTicks;
+    const outActive =
+      outDurTicks > 0 && localTimeTicks >= outStartTicks && localTimeTicks < clip.durationTicks;
 
     // If a clip is shorter than transitionIn + transitionOut, both windows
     // overlap. Picking the nearer edge keeps the curve monotonic; multiplying
@@ -181,7 +186,10 @@ export class TransitionManager {
       }
 
       if (applyOut) {
-        const rawProgress = Math.max(0, Math.min(1, (localTimeTicks - outStartTicks) / outDurTicks));
+        const rawProgress = Math.max(
+          0,
+          Math.min(1, (localTimeTicks - outStartTicks) / outDurTicks),
+        );
         opacity = Math.min(opacity, baseOpacity * (1 - rawProgress));
       }
 
@@ -212,7 +220,10 @@ export class TransitionManager {
       const curve = clip.transitionOut.curve ?? DEFAULT_TRANSITION_CURVE;
       const manifest = getTransitionManifest(clip.transitionOut.type);
       if (manifest && manifest.renderMode !== 'shader') {
-        const rawProgress = Math.max(0, Math.min(1, (localTimeTicks - outStartTicks) / outDurTicks));
+        const rawProgress = Math.max(
+          0,
+          Math.min(1, (localTimeTicks - outStartTicks) / outDurTicks),
+        );
         const params = normalizeTransitionParams(
           clip.transitionOut.type,
           clip.transitionOut.params,

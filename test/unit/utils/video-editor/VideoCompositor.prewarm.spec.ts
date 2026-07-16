@@ -117,7 +117,12 @@ describe('VideoCompositor decode-ahead prewarm', () => {
     });
 
     it('does not fire for a freeze-frame clip entering', () => {
-      const freeze = videoClip({ itemId: 'f', startTicks: 0, endTicks: 10 * S, freezeFrameSourceTicks: 0 });
+      const freeze = videoClip({
+        itemId: 'f',
+        startTicks: 0,
+        endTicks: 10 * S,
+        freezeFrameSourceTicks: 0,
+      });
       const compositor = compositorWithActive([freeze]);
 
       compositor.maybeProactivePrewarmOnClipEntry(1 * S);

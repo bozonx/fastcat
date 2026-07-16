@@ -6,7 +6,7 @@ import type {
   TimelineClipItem,
   TimelineTrackItem,
 } from '~/timeline/types';
-import { timeUsToPx, computeClipCenteredOverlayLeftPx } from '~/utils/timeline/geometry';
+import { ticksToPx, computeClipCenteredOverlayLeftPx } from '~/utils/timeline/geometry';
 import { clipGainToYPercent } from '~/utils/audio';
 
 const props = defineProps<{
@@ -73,7 +73,7 @@ function shouldCollapseFades() {
 
 function getFadeHandlePositionPx(edge: 'in' | 'out') {
   const fadeTicks = getFadeDurationTicks(edge);
-  const fadePx = Math.min(Math.max(0, timeUsToPx(fadeTicks, props.zoom)), props.clipWidthPx);
+  const fadePx = Math.min(Math.max(0, ticksToPx(fadeTicks, props.zoom)), props.clipWidthPx);
 
   if (edge === 'in') {
     return Math.max(0, Math.min(props.clipWidthPx, fadePx));
@@ -85,7 +85,9 @@ function getFadeHandlePositionPx(edge: 'in' | 'out') {
 function getFadeDurationTicks(edge: 'in' | 'out') {
   return Math.max(
     0,
-    Math.round(Number(edge === 'in' ? props.clip.audioFadeInTicks : props.clip.audioFadeOutTicks) || 0),
+    Math.round(
+      Number(edge === 'in' ? props.clip.audioFadeInTicks : props.clip.audioFadeOutTicks) || 0,
+    ),
   );
 }
 
@@ -94,7 +96,10 @@ function getOppositeFadeDurationTicks(edge: 'in' | 'out') {
 }
 
 function getDefaultFadeDurationTicks(edge: 'in' | 'out') {
-  const clipDurationTicks = Math.max(0, Math.round(Number(props.item.timelineRange.durationTicks) || 0));
+  const clipDurationTicks = Math.max(
+    0,
+    Math.round(Number(props.item.timelineRange.durationTicks) || 0),
+  );
   const maxTicks = Math.max(0, clipDurationTicks - getOppositeFadeDurationTicks(edge));
   const configuredTicks = Math.max(0, Math.round(Number(props.defaultFadeDurationTicks) || 0));
   return Math.min(maxTicks, configuredTicks);
@@ -247,7 +252,7 @@ const volumeIcon = computed(() => {
 
 const volumeIndicatorPosition = computed(() => {
   const finalX = computeClipCenteredOverlayLeftPx({
-    clipStartPx: timeUsToPx(props.item.timelineRange.startTicks, props.zoom),
+    clipStartPx: ticksToPx(props.item.timelineRange.startTicks, props.zoom),
     clipWidthPx: props.clipWidthPx,
     scrollLeft: props.scrollLeft,
     viewportWidth: props.viewportWidth,
@@ -280,7 +285,10 @@ const volumeIndicatorPosition = computed(() => {
         viewBox="0 0 100 100"
         :style="{
           width: `${Math.min(
-            Math.max(0, timeUsToPx(Math.max(0, Math.round(Number(clip.audioFadeInTicks) || 0)), zoom)),
+            Math.max(
+              0,
+              ticksToPx(Math.max(0, Math.round(Number(clip.audioFadeInTicks) || 0)), zoom),
+            ),
             clipWidthPx,
           )}px`,
         }"
@@ -301,7 +309,7 @@ const volumeIndicatorPosition = computed(() => {
           width: `${Math.min(
             Math.max(
               0,
-              timeUsToPx(Math.max(0, Math.round(Number(clip.audioFadeOutTicks) || 0)), zoom),
+              ticksToPx(Math.max(0, Math.round(Number(clip.audioFadeOutTicks) || 0)), zoom),
             ),
             clipWidthPx,
           )}px`,

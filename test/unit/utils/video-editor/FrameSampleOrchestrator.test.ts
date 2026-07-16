@@ -388,7 +388,8 @@ describe('FrameSampleOrchestrator', () => {
     expect(getVideoSampleForClip).toHaveBeenCalledWith(
       expect.objectContaining({
         sampleTimeS:
-          (timelineTicks(2_000_000) + clampToLastReadableSourceTicks(timelineTicks(1_000_000), 30)) /
+          (timelineTicks(2_000_000) +
+            clampToLastReadableSourceTicks(timelineTicks(1_000_000), 30)) /
           TICKS_PER_SECOND,
       }),
     );

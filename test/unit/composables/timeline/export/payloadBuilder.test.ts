@@ -226,16 +226,27 @@ describe('buildVideoWorkerPayloadFromTracks', () => {
 
 describe('trimWorkerClipToRange', () => {
   it('returns null when the clip is fully outside the range', () => {
-    const clip = workerClip({ timelineRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) } });
+    const clip = workerClip({
+      timelineRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
+    });
     expect(
-      trimWorkerClipToRange(clip, { startTicks: timelineTicks(5_000_000), endTicks: timelineTicks(8_000_000) }),
+      trimWorkerClipToRange(clip, {
+        startTicks: timelineTicks(5_000_000),
+        endTicks: timelineTicks(8_000_000),
+      }),
     ).toBeNull();
   });
 
   it('rebases timelineRange to the range start and trims the source window', () => {
     const clip = workerClip({
-      timelineRange: { startTicks: timelineTicks(2_000_000), durationTicks: timelineTicks(6_000_000) },
-      sourceRange: { startTicks: timelineTicks(1_000_000), durationTicks: timelineTicks(6_000_000) },
+      timelineRange: {
+        startTicks: timelineTicks(2_000_000),
+        durationTicks: timelineTicks(6_000_000),
+      },
+      sourceRange: {
+        startTicks: timelineTicks(1_000_000),
+        durationTicks: timelineTicks(6_000_000),
+      },
     });
 
     const trimmed = trimWorkerClipToRange(clip, {
@@ -244,7 +255,10 @@ describe('trimWorkerClipToRange', () => {
     })!;
 
     // Overlap is [3s, 5s]; relative to range start (3s) the clip starts at 0.
-    expect(trimmed.timelineRange).toEqual({ startTicks: 0, durationTicks: timelineTicks(2_000_000) });
+    expect(trimmed.timelineRange).toEqual({
+      startTicks: 0,
+      durationTicks: timelineTicks(2_000_000),
+    });
     // The clip started 1s before the overlap, so source advances by 1s.
     expect(trimmed.sourceRange).toEqual({
       startTicks: timelineTicks(2_000_000),
@@ -264,7 +278,10 @@ describe('trimWorkerClipToRange', () => {
       endTicks: timelineTicks(3_000_000),
     })!;
 
-    expect(trimmed.timelineRange).toEqual({ startTicks: 0, durationTicks: timelineTicks(2_000_000) });
+    expect(trimmed.timelineRange).toEqual({
+      startTicks: 0,
+      durationTicks: timelineTicks(2_000_000),
+    });
     // 1s of trimmed timeline at 2x consumes 2s of source; 2s visible -> 4s source.
     expect(trimmed.sourceRange).toEqual({
       startTicks: timelineTicks(2_000_000),
@@ -298,8 +315,14 @@ describe('trimWorkerClipToRange', () => {
         source: { path: '/audio.wav' },
         audioFadeInTicks: timelineTicks(300_000),
         audioFadeOutTicks: timelineTicks(400_000),
-        timelineRange: { startTicks: timelineTicks(1_000_000), durationTicks: timelineTicks(1_000_000) },
-        sourceRange: { startTicks: timelineTicks(2_000_000), durationTicks: timelineTicks(1_000_000) },
+        timelineRange: {
+          startTicks: timelineTicks(1_000_000),
+          durationTicks: timelineTicks(1_000_000),
+        },
+        sourceRange: {
+          startTicks: timelineTicks(2_000_000),
+          durationTicks: timelineTicks(1_000_000),
+        },
       }),
       { startTicks: timelineTicks(1_200_000), endTicks: timelineTicks(1_800_000) },
     );
@@ -321,7 +344,10 @@ describe('trimWorkerClipToRange', () => {
         speed: -1,
         source: { path: '/video.mp4' },
         timelineRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
-        sourceRange: { startTicks: timelineTicks(2_000_000), durationTicks: timelineTicks(1_000_000) },
+        sourceRange: {
+          startTicks: timelineTicks(2_000_000),
+          durationTicks: timelineTicks(1_000_000),
+        },
       }),
       { startTicks: timelineTicks(250_000), endTicks: timelineTicks(750_000) },
     );
@@ -1276,7 +1302,10 @@ describe('toWorkerTimelineClips', () => {
         name: 'Nested Fast',
         source: { path: '_timelines/nested.otio' } as any,
         speed: 2,
-        timelineRange: { startTicks: timelineTicks(5_000_000), durationTicks: timelineTicks(1_000_000) },
+        timelineRange: {
+          startTicks: timelineTicks(5_000_000),
+          durationTicks: timelineTicks(1_000_000),
+        },
         sourceRange: { startTicks: 0, durationTicks: timelineTicks(2_000_000) },
       } as any,
     ];
@@ -1299,7 +1328,10 @@ describe('toWorkerTimelineClips', () => {
     expect(clips).toHaveLength(1);
     expect(clips[0]).toMatchObject({
       speed: 2,
-      timelineRange: { startTicks: timelineTicks(5_000_000), durationTicks: timelineTicks(1_000_000) },
+      timelineRange: {
+        startTicks: timelineTicks(5_000_000),
+        durationTicks: timelineTicks(1_000_000),
+      },
       sourceRange: { startTicks: 0, durationTicks: timelineTicks(2_000_000) },
     });
   });

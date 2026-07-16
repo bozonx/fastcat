@@ -385,7 +385,10 @@ describe('TimelineTracks', () => {
               {
                 id: 'clip-hidden-left',
                 kind: 'clip',
-                timelineRange: { startTicks: 10 * TICKS_PER_SECOND, durationTicks: 5 * TICKS_PER_SECOND },
+                timelineRange: {
+                  startTicks: 10 * TICKS_PER_SECOND,
+                  durationTicks: 5 * TICKS_PER_SECOND,
+                },
               },
               {
                 id: 'clip-visible',
@@ -436,7 +439,10 @@ describe('TimelineTracks', () => {
               {
                 id: 'clip-hidden-left',
                 kind: 'clip',
-                timelineRange: { startTicks: 10 * TICKS_PER_SECOND, durationTicks: 5 * TICKS_PER_SECOND },
+                timelineRange: {
+                  startTicks: 10 * TICKS_PER_SECOND,
+                  durationTicks: 5 * TICKS_PER_SECOND,
+                },
               },
             ],
           },
@@ -612,7 +618,10 @@ describe('TimelineTracks', () => {
           items: [
             {
               ...tracks[0]!.items[0],
-              timelineRange: { startTicks: 2 * TICKS_PER_SECOND, durationTicks: 3 * TICKS_PER_SECOND },
+              timelineRange: {
+                startTicks: 2 * TICKS_PER_SECOND,
+                durationTicks: 3 * TICKS_PER_SECOND,
+              },
             },
           ],
         },
@@ -679,7 +688,10 @@ describe('TimelineTracks', () => {
           items: [
             {
               ...tracks[0]!.items[0],
-              timelineRange: { startTicks: 2 * TICKS_PER_SECOND, durationTicks: 4 * TICKS_PER_SECOND },
+              timelineRange: {
+                startTicks: 2 * TICKS_PER_SECOND,
+                durationTicks: 4 * TICKS_PER_SECOND,
+              },
             },
           ],
         },

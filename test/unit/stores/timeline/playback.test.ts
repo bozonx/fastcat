@@ -2,9 +2,9 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ref } from 'vue';
 import { createTimelinePlaybackModule } from '~/stores/timeline/playback';
-import { TICKS_PER_MICROSECOND } from '~/utils/time';
+import { TICKS_PER_SECOND } from '~/utils/time';
 
-const timelineTicks = (value: number) => value * TICKS_PER_MICROSECOND;
+const timelineTicks = (value: number) => value * (TICKS_PER_SECOND / 1_000_000);
 
 vi.mock('~/utils/zoom', () => ({
   MIN_TIMELINE_ZOOM_POSITION: 0,

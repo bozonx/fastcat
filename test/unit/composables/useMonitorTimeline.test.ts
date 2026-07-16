@@ -5,7 +5,7 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import { mount } from '@vue/test-utils';
 import { defineComponent, h } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
-import { TICKS_PER_MICROSECOND } from '~/utils/time';
+import { TICKS_PER_MILLISECOND } from '~/utils/time';
 
 describe('useMonitorTimeline', () => {
   let pinia: any;
@@ -631,10 +631,10 @@ describe('useMonitorTimeline', () => {
                 kind: 'clip',
                 clipType: 'media',
                 source: { path: 'audio1.mp3' },
-                audioFadeInTicks: 100_000 * TICKS_PER_MICROSECOND,
+                audioFadeInTicks: 100_000 * TICKS_PER_MILLISECOND,
                 audioFadeInCurve: 'linear',
-                timelineRange: { startTicks: 0, durationTicks: 1_000_000 * TICKS_PER_MICROSECOND },
-                sourceRange: { startTicks: 0, durationTicks: 1_000_000 * TICKS_PER_MICROSECOND },
+                timelineRange: { startTicks: 0, durationTicks: 1_000_000 * TICKS_PER_MILLISECOND },
+                sourceRange: { startTicks: 0, durationTicks: 1_000_000 * TICKS_PER_MILLISECOND },
               },
             ],
           },
@@ -648,7 +648,7 @@ describe('useMonitorTimeline', () => {
       const afterCurve = res.audioClipLayoutSignature.value;
       timelineStore.timelineDoc.tracks[0].items[0].transitionIn = {
         type: 'dissolve',
-        durationTicks: 100_000 * TICKS_PER_MICROSECOND,
+        durationTicks: 100_000 * TICKS_PER_MILLISECOND,
         mode: 'adjacent',
       };
       expect(res.audioClipLayoutSignature.value).not.toBe(afterCurve);

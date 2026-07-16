@@ -12,7 +12,8 @@ export class TimelineUpdateLifecycle {
   public apply(clips: CompositorClip[]): TimelineUpdateLifecycleResult {
     clips.sort((a, b) => a.startTicks - b.startTicks || a.layer - b.layer);
 
-    const maxDurationTicks = clips.length > 0 ? Math.max(0, ...clips.map((clip) => clip.endTicks)) : 0;
+    const maxDurationTicks =
+      clips.length > 0 ? Math.max(0, ...clips.map((clip) => clip.endTicks)) : 0;
 
     return {
       clips,

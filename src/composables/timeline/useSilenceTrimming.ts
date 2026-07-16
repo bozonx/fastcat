@@ -90,7 +90,8 @@ export function useSilenceTrimming() {
       ) {
         pauses.push({
           startTicks:
-            item.timelineRange.startTicks + (lastWordEndTicks - item.sourceRange.startTicks) / absSpeed,
+            item.timelineRange.startTicks +
+            (lastWordEndTicks - item.sourceRange.startTicks) / absSpeed,
           endTicks: item.timelineRange.startTicks + item.timelineRange.durationTicks,
         });
       }
@@ -105,9 +106,11 @@ export function useSilenceTrimming() {
 
           if (gapEndTicks - gapStartTicks > PAUSE_THRESHOLD_TICKS) {
             const t1 =
-              item.timelineRange.startTicks + (gapStartTicks - item.sourceRange.startTicks) / absSpeed;
+              item.timelineRange.startTicks +
+              (gapStartTicks - item.sourceRange.startTicks) / absSpeed;
             const t2 =
-              item.timelineRange.startTicks + (gapEndTicks - item.sourceRange.startTicks) / absSpeed;
+              item.timelineRange.startTicks +
+              (gapEndTicks - item.sourceRange.startTicks) / absSpeed;
 
             // Only add if it's within current clip's timeline range
             const clipEndTicks = item.timelineRange.startTicks + item.timelineRange.durationTicks;

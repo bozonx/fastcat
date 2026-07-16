@@ -217,8 +217,14 @@ describe('timeline/commands trim_item — source material bounds', () => {
           isImage: false,
           sourceDurationTicks: timelineTicks(10_000_000),
           // 2s of unused material before the in-point.
-          sourceRange: { startTicks: timelineTicks(2_000_000), durationTicks: timelineTicks(3_000_000) },
-          timelineRange: { startTicks: timelineTicks(5_000_000), durationTicks: timelineTicks(3_000_000) },
+          sourceRange: {
+            startTicks: timelineTicks(2_000_000),
+            durationTicks: timelineTicks(3_000_000),
+          },
+          timelineRange: {
+            startTicks: timelineTicks(5_000_000),
+            durationTicks: timelineTicks(3_000_000),
+          },
           speed: 1,
         },
       ],

@@ -2,7 +2,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 import { createAudioEngine, type IAudioEngine } from '~/utils/video-editor/AudioEngine';
-import { TICKS_PER_MICROSECOND } from '~/utils/time';
+import { TICKS_PER_MILLISECOND, TICKS_PER_SECOND } from '~/utils/time';
 
 interface WorkerMessageEvent<T> {
   data: T;
@@ -241,7 +241,7 @@ function createClip(overrides: Partial<Parameters<IAudioEngine['loadClips']>[0][
     'sourceDurationTicks',
     'DurationTicks',
   ] as const) {
-    clip[field] *= TICKS_PER_MICROSECOND;
+    clip[field] *= TICKS_PER_SECOND / 1_000_000;
   }
 
   return clip;
@@ -472,9 +472,9 @@ describe('AudioEngine', () => {
     audioContextInstance.currentTime = 3;
 
     await engine.previewScrubForward(
-      100_000 * TICKS_PER_MICROSECOND,
-      160_000 * TICKS_PER_MICROSECOND,
-      75_000 * TICKS_PER_MICROSECOND,
+      100 * TICKS_PER_MILLISECOND,
+      160 * TICKS_PER_MILLISECOND,
+      75 * TICKS_PER_MILLISECOND,
     );
 
     expect(audioContextInstance.createdSources.length).toBe(1);
@@ -507,11 +507,7 @@ describe('AudioEngine', () => {
     audioContextInstance.currentTime = 3;
 
     // Request a 150ms (timeline) preview window.
-    await engine.previewScrubForward(
-      0,
-      300_000 * TICKS_PER_MICROSECOND,
-      150_000 * TICKS_PER_MICROSECOND,
-    );
+    await engine.previewScrubForward(0, 300 * TICKS_PER_MILLISECOND, 150 * TICKS_PER_MILLISECOND);
 
     expect(audioContextInstance.createdSources.length).toBe(1);
     const source = audioContextInstance.createdSources[0]!;

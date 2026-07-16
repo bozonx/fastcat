@@ -14,7 +14,7 @@ import {
   clipYPercentToGain,
 } from '~/utils/audio';
 import { getGainAtClipTime, resolveEffectiveFadeDurationsSeconds } from '~/utils/audio/envelope';
-import { TICKS_PER_MICROSECOND } from '~/utils/time';
+import { TICKS_PER_SECOND } from '~/utils/time';
 
 describe('utils/audio', () => {
   it('formatAudioChannels formats channel count', () => {
@@ -96,7 +96,7 @@ describe('utils/audio', () => {
       clipDurationS: 4,
       clip: {
         transitionIn: {
-          durationTicks: 1_500_000 * TICKS_PER_MICROSECOND,
+          durationTicks: 1.5 * TICKS_PER_SECOND,
           mode: 'transition',
           curve: 'bezier',
         },
@@ -112,10 +112,10 @@ describe('utils/audio', () => {
     const effective = resolveEffectiveFadeDurationsSeconds({
       clipDurationS: 4,
       clip: {
-        audioFadeOutTicks: 500_000 * TICKS_PER_MICROSECOND,
+        audioFadeOutTicks: 0.5 * TICKS_PER_SECOND,
         audioFadeOutCurve: 'logarithmic',
         transitionOut: {
-          durationTicks: 2_000_000 * TICKS_PER_MICROSECOND,
+          durationTicks: 2 * TICKS_PER_SECOND,
           mode: 'transition',
           curve: 'bezier',
         },

@@ -54,7 +54,10 @@ const timelineStore = reactive({
           {
             id: 'gap1',
             kind: 'gap',
-            timelineRange: { startTicks: timelineTicks(1_000_000), durationTicks: timelineTicks(3_000_000) },
+            timelineRange: {
+              startTicks: timelineTicks(1_000_000),
+              durationTicks: timelineTicks(3_000_000),
+            },
           },
         ],
       },

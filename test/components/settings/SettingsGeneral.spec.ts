@@ -31,9 +31,12 @@ describe('SettingsGeneral', () => {
     mockWorkspaceStore.userSettings.deleteWithoutConfirmation = true;
     mockWorkspaceStore.userSettings.experimentalFeatures = true;
     mockWorkspaceStore.userSettings.stopFrames.qualityPercent = 50;
-    mockWorkspaceStore.userSettings.timeline.defaultAudioFadeDurationTicks = timelineTicks(2_500_000);
-    mockWorkspaceStore.userSettings.timeline.defaultTransitionDurationTicks = timelineTicks(1_000_000);
-    mockWorkspaceStore.userSettings.timeline.defaultStaticClipDurationTicks = timelineTicks(1_000_000);
+    mockWorkspaceStore.userSettings.timeline.defaultAudioFadeDurationTicks =
+      timelineTicks(2_500_000);
+    mockWorkspaceStore.userSettings.timeline.defaultTransitionDurationTicks =
+      timelineTicks(1_000_000);
+    mockWorkspaceStore.userSettings.timeline.defaultStaticClipDurationTicks =
+      timelineTicks(1_000_000);
     mockWorkspaceStore.userSettings.projectDefaults.defaultAudioFadeCurve = 'logarithmic';
     mockWorkspaceStore.userSettings.ui.interfaceScale = 20;
     mockWorkspaceStore.userSettings.history.maxEntries = 999;

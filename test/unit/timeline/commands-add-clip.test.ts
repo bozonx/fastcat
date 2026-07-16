@@ -41,7 +41,10 @@ describe('timeline/commands add clip', () => {
       startTicks: 0,
       durationTicks: timelineTicks(1_000_000),
       sourceDurationTicks: timelineTicks(3_000_000),
-      sourceRange: { startTicks: timelineTicks(2_500_000), durationTicks: timelineTicks(1_000_000) },
+      sourceRange: {
+        startTicks: timelineTicks(2_500_000),
+        durationTicks: timelineTicks(1_000_000),
+      },
     }).next;
 
     const clip = result.tracks[0]?.items[0] as TimelineClipItem;

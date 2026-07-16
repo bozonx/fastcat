@@ -147,7 +147,9 @@ function serializeTrackItems(
   trackId: string,
   timeRate: number,
 ): OtioTrackChild[] {
-  const sortedItems = [...items].sort((a, b) => a.timelineRange.startTicks - b.timelineRange.startTicks);
+  const sortedItems = [...items].sort(
+    (a, b) => a.timelineRange.startTicks - b.timelineRange.startTicks,
+  );
   const overlaps = calculateTransitionOverlaps(sortedItems);
   const children: OtioTrackChild[] = [];
   let cursorTicks = 0;
@@ -161,7 +163,10 @@ function serializeTrackItems(
       children.push({
         OTIO_SCHEMA: 'Gap.1',
         name: 'gap',
-        source_range: toTimeRange({ startTicks: 0, durationTicks: startTicks - cursorTicks }, timeRate),
+        source_range: toTimeRange(
+          { startTicks: 0, durationTicks: startTicks - cursorTicks },
+          timeRate,
+        ),
         metadata: {
           fastcat: {
             id: `gap_${trackId}_${cursorTicks}`,
@@ -288,7 +293,8 @@ function serializeTrackItems(
           },
           playback: {
             speed: item.speed,
-            freezeFrameSourceTicks: item.clipType === 'media' ? item.freezeFrameSourceTicks : undefined,
+            freezeFrameSourceTicks:
+              item.clipType === 'media' ? item.freezeFrameSourceTicks : undefined,
           },
           audio: {
             gain: item.audioGain,
@@ -663,7 +669,9 @@ export function parseTimelineFromOtio(
       );
     }
 
-    const items = [...rawItems].sort((a, b) => a.timelineRange.startTicks - b.timelineRange.startTicks);
+    const items = [...rawItems].sort(
+      (a, b) => a.timelineRange.startTicks - b.timelineRange.startTicks,
+    );
 
     const videoHidden = kind === 'video' ? Boolean(trackFastCatMeta.video?.hidden) : undefined;
     const opacity = trackFastCatMeta.video?.opacity;

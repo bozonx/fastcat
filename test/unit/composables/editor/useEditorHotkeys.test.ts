@@ -354,7 +354,11 @@ describe('useEditorHotkeys', () => {
         {
           id: 'track-1',
           items: [
-            { id: 'clip-1', kind: 'clip', timelineRange: { startTicks: 0, durationTicks: 1_000_000 } },
+            {
+              id: 'clip-1',
+              kind: 'clip',
+              timelineRange: { startTicks: 0, durationTicks: 1_000_000 },
+            },
             {
               id: 'gap-1',
               kind: 'gap',

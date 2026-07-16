@@ -1,5 +1,5 @@
 import type { TimelineMarker } from '~/timeline/types';
-import { quantizeTimeUsToFrames } from '~/timeline/commands/utils';
+import { quantizeTicksToFrames } from '~/timeline/commands/utils';
 
 export interface MarkerNavigationResult {
   timeTicks: number;
@@ -18,7 +18,7 @@ function getUniqueMarkerPoints(markers: TimelineMarker[], fps: number): number[]
     }
   }
   const points = Array.from(rawPoints);
-  const quantized = points.map((p) => quantizeTimeUsToFrames(p, fps, 'round'));
+  const quantized = points.map((p) => quantizeTicksToFrames(p, fps, 'round'));
   const uniqueSet = new Set(quantized);
   return Array.from(uniqueSet).sort((a, b) => a - b);
 }

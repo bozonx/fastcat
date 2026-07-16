@@ -65,7 +65,9 @@ describe('timeline/commands move_items', () => {
     // absolute quantization rounds it back onto frame 30.
     const { next } = applyTimelineCommand(doc, {
       type: 'move_items',
-      moves: [{ fromTrackId: 'v1', toTrackId: 'v1', itemId: 'c1', startTicks: timelineTicks(1_015_000) }],
+      moves: [
+        { fromTrackId: 'v1', toTrackId: 'v1', itemId: 'c1', startTicks: timelineTicks(1_015_000) },
+      ],
       quantizeToFrames: true,
       ignoreLinks: true,
     });
@@ -79,7 +81,9 @@ describe('timeline/commands move_items', () => {
 
     const { next } = applyTimelineCommand(doc, {
       type: 'move_items',
-      moves: [{ fromTrackId: 'v1', toTrackId: 'v1', itemId: 'c1', startTicks: timelineTicks(1_015_000) }],
+      moves: [
+        { fromTrackId: 'v1', toTrackId: 'v1', itemId: 'c1', startTicks: timelineTicks(1_015_000) },
+      ],
       quantizeToFrames: true,
       ignoreLinks: true,
       preserveItemOffsets: true,
@@ -141,7 +145,12 @@ describe('timeline/commands move_items', () => {
       applyTimelineCommand(doc, {
         type: 'move_items',
         moves: [
-          { fromTrackId: 'v1', toTrackId: 'v1', itemId: 'c1', startTicks: timelineTicks(2_000_000) },
+          {
+            fromTrackId: 'v1',
+            toTrackId: 'v1',
+            itemId: 'c1',
+            startTicks: timelineTicks(2_000_000),
+          },
         ],
         quantizeToFrames: false,
         ignoreLinks: true,

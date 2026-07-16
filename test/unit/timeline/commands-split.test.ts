@@ -47,7 +47,9 @@ describe('timeline/commands split_item', () => {
     const clips = items.filter((x: TimelineTrackItem) => x.kind === 'clip') as any[];
     expect(clips.length).toBe(2);
 
-    const ordered = [...clips].sort((a, b) => a.timelineRange.startTicks - b.timelineRange.startTicks);
+    const ordered = [...clips].sort(
+      (a, b) => a.timelineRange.startTicks - b.timelineRange.startTicks,
+    );
     const left = ordered[0];
     const right = ordered[1];
 
@@ -102,7 +104,9 @@ describe('timeline/commands split_item', () => {
     expect(right.timelineRange.durationTicks).toBeGreaterThan(0);
 
     expect(left.sourceRange.startTicks).toBe(0);
-    expect(left.sourceRange.durationTicks + right.sourceRange.durationTicks).toBe(timelineTicks(1_000_000));
+    expect(left.sourceRange.durationTicks + right.sourceRange.durationTicks).toBe(
+      timelineTicks(1_000_000),
+    );
     expect(right.sourceRange.startTicks).toBe(left.sourceRange.durationTicks);
   });
 

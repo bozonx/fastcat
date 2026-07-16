@@ -1,4 +1,4 @@
-import { TICKS_PER_MICROSECOND, ticksToSeconds } from '~/utils/time';
+import { TICKS_PER_MILLISECOND, ticksToSeconds } from '~/utils/time';
 import { createDevLogger } from '~/utils/dev-logger';
 import type { WorkerVideoPayloadItem } from '~/types/worker-payload';
 import { getBunnyVideoCodec } from './utils';
@@ -27,7 +27,7 @@ const log = createDevLogger('ExportVideoPassthrough');
  */
 
 /** Frame-ish tolerance for duration comparisons (~one 24fps frame, in ticks). */
-const DURATION_EPSILON_TICKS = 42_000 * TICKS_PER_MICROSECOND;
+const DURATION_EPSILON_TICKS = 42 * TICKS_PER_MILLISECOND;
 
 /** How far the source bitrate may exceed the requested one before passthrough
  * would violate the user's compression intent and we re-encode instead. */
@@ -59,7 +59,9 @@ type PayloadClip = Extract<WorkerVideoPayloadItem, { kind: 'clip' }>;
  * the passthrough decision can run before (and instead of) the compositor's
  * `loadTimeline`.
  */
-export function computePayloadVideoEndTicks(timelineClips: readonly WorkerVideoPayloadItem[]): number {
+export function computePayloadVideoEndTicks(
+  timelineClips: readonly WorkerVideoPayloadItem[],
+): number {
   let end = 0;
   for (const item of timelineClips) {
     if (!item || typeof item !== 'object' || item.kind !== 'clip') continue;

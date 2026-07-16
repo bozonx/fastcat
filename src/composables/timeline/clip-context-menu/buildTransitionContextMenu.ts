@@ -19,7 +19,10 @@ export function buildTransitionContextMenu(
     0,
     Math.round(Number(options.defaultTransitionDurationTicks.value ?? TICKS_PER_SECOND)),
   );
-  const clipDurationTicks = Math.max(0, Math.round(Number(clipItem.timelineRange?.durationTicks ?? 0)));
+  const clipDurationTicks = Math.max(
+    0,
+    Math.round(Number(clipItem.timelineRange?.durationTicks ?? 0)),
+  );
   const suggestedDurationTicks =
     clipDurationTicks > 0 && clipDurationTicks < defaultTransitionDurationTicks
       ? Math.round(clipDurationTicks * 0.3)

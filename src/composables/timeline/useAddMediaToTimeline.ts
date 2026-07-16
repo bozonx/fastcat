@@ -15,7 +15,11 @@ export function useAddMediaToTimeline() {
   const { t } = useI18n();
   const toast = useToast();
 
-  function resolveInsertStartTicks(params: { trackId: string; startTicks: number; durationTicks: number }) {
+  function resolveInsertStartTicks(params: {
+    trackId: string;
+    startTicks: number;
+    durationTicks: number;
+  }) {
     return params.startTicks;
   }
 
@@ -66,7 +70,11 @@ export function useAddMediaToTimeline() {
       const durationTicks = await getInsertDurationTicks(entry.path, mediaType);
       if (durationTicks === null) continue;
       const trackId = timelineStore.resolveMobileTargetTrackId(targetTrackKind, { durationTicks });
-      const startTicks = resolveInsertStartTicks({ trackId, startTicks: currentStartTicks, durationTicks });
+      const startTicks = resolveInsertStartTicks({
+        trackId,
+        startTicks: currentStartTicks,
+        durationTicks,
+      });
 
       if (mediaType === 'text') {
         const file = await vfs.getFile(entry.path);

@@ -108,7 +108,9 @@ function invariantViolations(doc: TimelineDocument): string[] {
     }
 
     // 4. Clips on the same track never meaningfully overlap.
-    const ordered = [...clips].sort((a, b) => a.timelineRange.startTicks - b.timelineRange.startTicks);
+    const ordered = [...clips].sort(
+      (a, b) => a.timelineRange.startTicks - b.timelineRange.startTicks,
+    );
     for (let i = 1; i < ordered.length; i++) {
       const prev = ordered[i - 1]!;
       const cur = ordered[i]!;
@@ -315,7 +317,8 @@ describe('timeline command invariants (property-based)', () => {
           );
 
           // Timeline coverage is conserved exactly (frame-aligned input).
-          const totalTimeline = left!.timelineRange.durationTicks + right!.timelineRange.durationTicks;
+          const totalTimeline =
+            left!.timelineRange.durationTicks + right!.timelineRange.durationTicks;
           expect(totalTimeline).toBe(original.timelineRange.durationTicks);
 
           // Source range is conserved and contiguous.

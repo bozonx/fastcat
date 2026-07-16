@@ -29,7 +29,9 @@ function clip(overrides: Record<string, unknown> = {}): any {
       durationTicks: timelineTicks(result.sourceRange.durationTicks),
     },
     sourceDurationTicks:
-      result.sourceDurationTicks === undefined ? undefined : timelineTicks(result.sourceDurationTicks),
+      result.sourceDurationTicks === undefined
+        ? undefined
+        : timelineTicks(result.sourceDurationTicks),
     transitionIn: result.transitionIn && {
       ...result.transitionIn,
       durationTicks: timelineTicks(result.transitionIn.durationTicks),
@@ -187,7 +189,10 @@ describe('computeMaxResizableTransitionDurationTicks', () => {
 describe('computeTransitionHandleSnapDurationTicks', () => {
   it('returns null when not in adjacent mode', () => {
     const prev = clip({ id: 'a', timelineRange: { startTicks: 0, durationTicks: 2_000_000 } });
-    const cur = clip({ id: 'b', timelineRange: { startTicks: 2_000_000, durationTicks: 2_000_000 } });
+    const cur = clip({
+      id: 'b',
+      timelineRange: { startTicks: 2_000_000, durationTicks: 2_000_000 },
+    });
     expect(
       computeTransitionHandleSnapDurationTicks({
         tracks: [track([prev, cur])],
@@ -202,7 +207,10 @@ describe('computeTransitionHandleSnapDurationTicks', () => {
 
   it('returns null when the clip and neighbour are not adjacent (gap too large)', () => {
     const prev = clip({ id: 'a', timelineRange: { startTicks: 0, durationTicks: 1_000_000 } });
-    const cur = clip({ id: 'b', timelineRange: { startTicks: 5_000_000, durationTicks: 2_000_000 } });
+    const cur = clip({
+      id: 'b',
+      timelineRange: { startTicks: 5_000_000, durationTicks: 2_000_000 },
+    });
     expect(
       computeTransitionHandleSnapDurationTicks({
         tracks: [track([prev, cur])],
@@ -222,7 +230,10 @@ describe('computeTransitionHandleSnapDurationTicks', () => {
       sourceRange: { startTicks: 0, durationTicks: 2_000_000 },
       sourceDurationTicks: 5_000_000,
     });
-    const cur = clip({ id: 'b', timelineRange: { startTicks: 2_000_000, durationTicks: 2_000_000 } });
+    const cur = clip({
+      id: 'b',
+      timelineRange: { startTicks: 2_000_000, durationTicks: 2_000_000 },
+    });
     expect(
       computeTransitionHandleSnapDurationTicks({
         tracks: [track([prev, cur])],
@@ -237,7 +248,10 @@ describe('computeTransitionHandleSnapDurationTicks', () => {
 
   it('does not snap a handle across a one-tick gap', () => {
     const prev = clip({ id: 'a', timelineRange: { startTicks: 0, durationTicks: 2_000_000 } });
-    const cur = clip({ id: 'b', timelineRange: { startTicks: 2_000_000, durationTicks: 2_000_000 } });
+    const cur = clip({
+      id: 'b',
+      timelineRange: { startTicks: 2_000_000, durationTicks: 2_000_000 },
+    });
     cur.timelineRange.startTicks += 1;
 
     expect(

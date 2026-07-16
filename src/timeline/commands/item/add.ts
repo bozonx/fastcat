@@ -7,7 +7,7 @@ import type {
 import {
   getTrackById,
   getDocFps,
-  quantizeTimeUsToFrames,
+  quantizeTicksToFrames,
   computeTrackEndTicks,
   assertNoOverlap,
   nextItemId,
@@ -15,7 +15,7 @@ import {
   normalizeGaps,
 } from '../utils';
 import { sanitizeTimelineColor } from '~/utils/video-editor/utils';
-import { TICKS_PER_MICROSECOND } from '~/utils/time';
+import { TICKS_PER_SECOND } from '~/utils/time';
 
 export function addClipToTrack(
   doc: TimelineDocument,
@@ -25,7 +25,7 @@ export function addClipToTrack(
   const fps = getDocFps(doc);
   const shouldQuantizeToFrames = cmd.quantizeToFrames !== false;
   const durationTicks = shouldQuantizeToFrames
-    ? quantizeTimeUsToFrames(Number(cmd.durationTicks ?? 0), fps, 'round')
+    ? quantizeTicksToFrames(Number(cmd.durationTicks ?? 0), fps, 'round')
     : Math.max(0, Math.round(Number(cmd.durationTicks ?? 0)));
   const sourceDurationTicks =
     cmd.sourceDurationTicks !== undefined
@@ -42,13 +42,17 @@ export function addClipToTrack(
       : requestedSourceRangeDurationTicks;
   const sourceRange = {
     startTicks:
-      sourceDurationTicks > 0 ? Math.min(sourceRangeStartTicks, sourceDurationTicks) : sourceRangeStartTicks,
+      sourceDurationTicks > 0
+        ? Math.min(sourceRangeStartTicks, sourceDurationTicks)
+        : sourceRangeStartTicks,
     durationTicks: Math.min(requestedSourceRangeDurationTicks, maxSourceRangeDurationTicks),
   };
   const startCandidate =
-    cmd.startTicks === undefined ? computeTrackEndTicks(track) : Math.max(0, Number(cmd.startTicks));
+    cmd.startTicks === undefined
+      ? computeTrackEndTicks(track)
+      : Math.max(0, Number(cmd.startTicks));
   const startTicks = shouldQuantizeToFrames
-    ? quantizeTimeUsToFrames(startCandidate, fps, 'round')
+    ? quantizeTicksToFrames(startCandidate, fps, 'round')
     : Math.max(0, Math.round(startCandidate));
 
   const clipType = cmd.path.toLowerCase().endsWith('.otio') ? 'timeline' : 'media';
@@ -107,16 +111,14 @@ export function addVirtualClipToTrack(
   }
 
   const durationTicks = shouldQuantizeToFrames
-    ? quantizeTimeUsToFrames(
-        Number(cmd.durationTicks ?? 5_000_000 * TICKS_PER_MICROSECOND),
-        fps,
-        'round',
-      )
-    : Math.max(0, Math.round(Number(cmd.durationTicks ?? 5_000_000 * TICKS_PER_MICROSECOND)));
+    ? quantizeTicksToFrames(Number(cmd.durationTicks ?? 5 * TICKS_PER_SECOND), fps, 'round')
+    : Math.max(0, Math.round(Number(cmd.durationTicks ?? 5 * TICKS_PER_SECOND)));
   const startCandidate =
-    cmd.startTicks === undefined ? computeTrackEndTicks(track) : Math.max(0, Number(cmd.startTicks));
+    cmd.startTicks === undefined
+      ? computeTrackEndTicks(track)
+      : Math.max(0, Number(cmd.startTicks));
   const startTicks = shouldQuantizeToFrames
-    ? quantizeTimeUsToFrames(startCandidate, fps, 'round')
+    ? quantizeTicksToFrames(startCandidate, fps, 'round')
     : Math.max(0, Math.round(startCandidate));
 
   const base: Omit<Extract<TimelineClipItem, { kind: 'clip' }>, 'clipType'> & {

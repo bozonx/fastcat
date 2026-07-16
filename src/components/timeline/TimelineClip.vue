@@ -19,7 +19,7 @@ import type { FastCatProjectSettings } from '~/utils/project-settings';
 import type { TimelineContext } from './context';
 import {
   timelineRangeToRoundedPx,
-  timeUsToPx,
+  ticksToPx,
   calculatePointerTimeTicks,
 } from '~/utils/timeline/geometry';
 import { formatStopFrameTimecode } from '~/utils/stop-frames';
@@ -224,7 +224,9 @@ const slipOverlay = computed<SlipOverlayView | null>(() => {
   );
   const hasSourceRange = sourceDurationTicks > 0 && sourceDurationTicks > sourceRangeDurationTicks;
   const startPercent = hasSourceRange ? (sourceRangeStartTicks / sourceDurationTicks) * 100 : 0;
-  const widthPercent = hasSourceRange ? (sourceRangeDurationTicks / sourceDurationTicks) * 100 : 100;
+  const widthPercent = hasSourceRange
+    ? (sourceRangeDurationTicks / sourceDurationTicks) * 100
+    : 100;
 
   return {
     rangeStyle: {
@@ -250,14 +252,21 @@ const trimOverlay = computed<TrimOverlayView | null>(() => {
   // real time (effectiveSourceRange runs the same computeTrimGeometry as commit),
   // instead of the committed clip.sourceRange which only jumps after mouse-up.
   const sourceDurationTicks = Math.max(0, Math.round(Number(clip.sourceDurationTicks ?? 0)));
-  const sourceRangeStartTicks = Math.max(0, Math.round(Number(effectiveSourceRange.value.startTicks)));
+  const sourceRangeStartTicks = Math.max(
+    0,
+    Math.round(Number(effectiveSourceRange.value.startTicks)),
+  );
   const sourceRangeDurationTicks = Math.max(
     0,
-    Math.round(Number(effectiveSourceRange.value.durationTicks || clip.timelineRange.durationTicks || 0)),
+    Math.round(
+      Number(effectiveSourceRange.value.durationTicks || clip.timelineRange.durationTicks || 0),
+    ),
   );
   const hasSourceRange = sourceDurationTicks > 0 && sourceDurationTicks > sourceRangeDurationTicks;
   const startPercent = hasSourceRange ? (sourceRangeStartTicks / sourceDurationTicks) * 100 : 0;
-  const widthPercent = hasSourceRange ? (sourceRangeDurationTicks / sourceDurationTicks) * 100 : 100;
+  const widthPercent = hasSourceRange
+    ? (sourceRangeDurationTicks / sourceDurationTicks) * 100
+    : 100;
 
   const fps = sanitizeFps(timelineContext.timelineDoc.value?.timebase);
   const timecode = `${preview.deltaTicks >= 0 ? '+' : '-'}${formatStopFrameTimecode({
@@ -755,7 +764,7 @@ const transitionInOverlayGuideStyle = computed<Record<string, string> | null>(()
 
   const offsetPx = Math.max(
     0,
-    Math.min(clipWidthPx.value, timeUsToPx(timelineHandleTicks, timelineContext.zoom.value)),
+    Math.min(clipWidthPx.value, ticksToPx(timelineHandleTicks, timelineContext.zoom.value)),
   );
   return {
     left: `${offsetPx}px`,
@@ -783,7 +792,7 @@ const transitionOutOverlayGuideStyle = computed<Record<string, string> | null>((
 
   const offsetPx = Math.max(
     0,
-    Math.min(clipWidthPx.value, timeUsToPx(timelineHandleTicks, timelineContext.zoom.value)),
+    Math.min(clipWidthPx.value, ticksToPx(timelineHandleTicks, timelineContext.zoom.value)),
   );
   return {
     left: `${Math.max(0, clipWidthPx.value - offsetPx)}px`,
@@ -811,7 +820,8 @@ function getDefaultTransitionDurationTicks() {
     0,
     Math.round(
       Number(
-        timelineContext.userSettings.value.timeline.defaultTransitionDurationTicks ?? TICKS_PER_SECOND,
+        timelineContext.userSettings.value.timeline.defaultTransitionDurationTicks ??
+          TICKS_PER_SECOND,
       ),
     ),
   );
@@ -958,7 +968,7 @@ function addTransition(edge: 'in' | 'out') {
           :viewport-width="viewportWidth"
           :top-inset-px="clipContentInset.top"
           :bottom-inset-px="clipContentInset.bottom"
-          :default-fade-duration-us="
+          :default-fade-duration-ticks="
             timelineContext.userSettings.value.timeline.defaultAudioFadeDurationTicks ??
             timelineContext.userSettings.value.timeline.defaultTransitionDurationTicks
           "
@@ -1003,7 +1013,7 @@ function addTransition(edge: 'in' | 'out') {
           :track="track"
           :clip-item="clipItem"
           :effective-clip-item="effectiveClipItem"
-          :effective-timeline-start-us="effectiveTimelineRange.startTicks"
+          :effective-timeline-start-ticks="effectiveTimelineRange.startTicks"
           :clip-width-px="clipWidthPx"
           :zoom="timelineContext.zoom.value"
           :scroll-left="scrollLeft ?? 0"

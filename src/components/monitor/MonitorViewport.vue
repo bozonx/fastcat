@@ -84,7 +84,8 @@ watch(
   ([time, markers]) => {
     activeMarkers.value = markers.filter((m) => {
       if (!m.text.trim()) return false;
-      if (m.durationTicks != null) return time >= m.timeTicks && time < m.timeTicks + m.durationTicks;
+      if (m.durationTicks != null)
+        return time >= m.timeTicks && time < m.timeTicks + m.durationTicks;
       return Math.abs(time - m.timeTicks) < 1000;
     });
   },

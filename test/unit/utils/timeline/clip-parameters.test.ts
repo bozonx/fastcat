@@ -19,7 +19,10 @@ function makeClip(patch: Partial<TimelineClipItem> = {}): TimelineClipItem {
     name: 'Clip',
     source: { path: 'source.mp4' },
     sourceDurationTicks: timelineTicks(10_000_000),
-    timelineRange: { startTicks: timelineTicks(1_000_000), durationTicks: timelineTicks(2_000_000) },
+    timelineRange: {
+      startTicks: timelineTicks(1_000_000),
+      durationTicks: timelineTicks(2_000_000),
+    },
     sourceRange: { startTicks: timelineTicks(100_000), durationTicks: timelineTicks(2_000_000) },
     ...patch,
   } as TimelineClipItem;

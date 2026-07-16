@@ -26,7 +26,7 @@ const DESIGN_BASE_W: f64 = 1920.0;
 const DESIGN_BASE_H: f64 = 1080.0;
 
 /// Canonical timeline timebase in ticks per second. MUST match the web
-/// `TICKS_PER_SECOND` (`src/utils/time/ticks.ts`): keyframe times (`tUs`) and the
+/// `TICKS_PER_SECOND` (`src/utils/time/ticks.ts`): keyframe times (`tTicks`) and the
 /// derived per-frame sample time are expressed in these ticks, not microseconds.
 pub const TIMELINE_TICKS_PER_SECOND: f64 = 254_016_000_000.0;
 
@@ -56,7 +56,7 @@ pub struct KeyframeTrack {
 
 /// Parsed per-clip animation tracks, keyed by param path (e.g. `"opacity"`,
 /// `"transform.rotationDeg"`). Assumes each track's keyframes are already sorted
-/// ascending by `tUs` (the front-end sanitizer guarantees this).
+/// ascending by `tTicks` (the front-end sanitizer guarantees this).
 pub struct ClipAnimations {
     tracks: HashMap<String, KeyframeTrack>,
 }
@@ -507,7 +507,7 @@ mod tests {
 
     /// Regression guard for the time-units migration: the per-frame animation
     /// sample time MUST be in canonical timeline ticks, not microseconds, so it
-    /// matches the tick-valued keyframe `tUs` produced by the web side. A
+    /// matches the tick-valued keyframe `tTicks` produced by the web side. A
     /// microsecond scale (the pre-migration bug) would sample ~254016× too early
     /// and freeze every clip on its first keyframe on the native engine.
     #[test]

@@ -2,8 +2,8 @@ import { TICKS_PER_SECOND, formatTimecode } from '~/utils/time';
 import { computed, type Ref } from 'vue';
 import {
   absolutePxToViewportPx,
-  timeUsToPx,
-  timeUsToViewportPx,
+  ticksToPx,
+  ticksToViewportPx,
   zoomToPxPerSecond,
 } from '~/utils/timeline/geometry';
 
@@ -57,11 +57,11 @@ export function useTimelineRulerPresentation(options: UseTimelineRulerPresentati
         // Round both endpoints in absolute space (clip convention) so the ruler
         // pin/band aligns with the marker's vertical guide line in the tracks
         // overlay for any scrollLeft.
-        const x = absolutePxToViewportPx(timeUsToPx(marker.timeTicks, currentZoom), startPx);
+        const x = absolutePxToViewportPx(ticksToPx(marker.timeTicks, currentZoom), startPx);
         const width =
           marker.durationTicks !== undefined
             ? absolutePxToViewportPx(
-                timeUsToPx(marker.timeTicks + marker.durationTicks, currentZoom),
+                ticksToPx(marker.timeTicks + marker.durationTicks, currentZoom),
                 startPx,
               ) - x
             : 0;
@@ -88,8 +88,8 @@ export function useTimelineRulerPresentation(options: UseTimelineRulerPresentati
 
     const currentZoom = options.zoom.value;
     const startPx = options.scrollLeft.value;
-    const x = absolutePxToViewportPx(timeUsToPx(range.startTicks, currentZoom), startPx);
-    const endX = absolutePxToViewportPx(timeUsToPx(range.endTicks, currentZoom), startPx);
+    const x = absolutePxToViewportPx(ticksToPx(range.startTicks, currentZoom), startPx);
+    const endX = absolutePxToViewportPx(ticksToPx(range.endTicks, currentZoom), startPx);
     const width = Math.max(1, endX - x);
 
     return {
@@ -110,14 +110,16 @@ export function useTimelineRulerPresentation(options: UseTimelineRulerPresentati
       ((options.currentTime.value + 0.5) * currentFps) / TICKS_PER_SECOND,
     );
     const currentFrameStartTicks = Math.round((currentFrameIndex * TICKS_PER_SECOND) / currentFps);
-    const nextFrameStartTicks = Math.round(((currentFrameIndex + 1) * TICKS_PER_SECOND) / currentFps);
+    const nextFrameStartTicks = Math.round(
+      ((currentFrameIndex + 1) * TICKS_PER_SECOND) / currentFps,
+    );
 
-    const currentFrameStartX = timeUsToViewportPx(
+    const currentFrameStartX = ticksToViewportPx(
       currentFrameStartTicks,
       currentZoom,
       options.scrollLeft.value,
     );
-    const nextFrameStartX = timeUsToViewportPx(
+    const nextFrameStartX = ticksToViewportPx(
       nextFrameStartTicks,
       currentZoom,
       options.scrollLeft.value,
@@ -130,7 +132,7 @@ export function useTimelineRulerPresentation(options: UseTimelineRulerPresentati
   });
 
   const playheadStyle = computed(() => {
-    const playheadX = timeUsToViewportPx(
+    const playheadX = ticksToViewportPx(
       options.currentTime.value,
       options.zoom.value,
       options.scrollLeft.value,

@@ -58,7 +58,8 @@ export function createTimelineHydrationModule(
                 : 0;
             const isImageLike = !meta.video && !meta.audio;
 
-            const needsSourceDurationPatch = durationTicks > 0 && it.sourceDurationTicks !== durationTicks;
+            const needsSourceDurationPatch =
+              durationTicks > 0 && it.sourceDurationTicks !== durationTicks;
             const needsIsImagePatch = it.isImage !== isImageLike;
             if (needsSourceDurationPatch || needsIsImagePatch) {
               trackChanged = true;
@@ -122,7 +123,8 @@ export function createTimelineHydrationModule(
     const durationTicks =
       Number.isFinite(durationS) && durationS > 0 ? Math.floor(durationS * TICKS_PER_SECOND) : 0;
 
-    const needsSourceDurationPatch = durationTicks > 0 && item.sourceDurationTicks !== durationTicks;
+    const needsSourceDurationPatch =
+      durationTicks > 0 && item.sourceDurationTicks !== durationTicks;
     const needsIsImagePatch = item.isImage !== isImageLike;
 
     if (!needsSourceDurationPatch && !needsIsImagePatch) return doc;

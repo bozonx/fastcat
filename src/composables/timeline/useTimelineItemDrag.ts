@@ -27,8 +27,8 @@ import { isCommandMatched } from '~/utils/hotkeys/runtime';
 import {
   zoomToPxPerSecond,
   pxToDeltaTicks,
-  quantizeDeltaUsToFrames,
-  quantizeStartUsToFrames,
+  quantizeDeltaTicksToFrames,
+  quantizeStartTicksToFrames,
   subframePhaseTicks,
   pickBestSnapCandidateTicks,
   computeSnappedStartTicks,
@@ -225,7 +225,10 @@ export function useTimelineItemDrag(
     if (item.isImage) return false;
 
     const sourceDurationTicks = Math.max(0, Math.round(Number(item.sourceDurationTicks ?? 0)));
-    const sourceRangeDurationTicks = Math.max(0, Math.round(Number(item.sourceRange.durationTicks ?? 0)));
+    const sourceRangeDurationTicks = Math.max(
+      0,
+      Math.round(Number(item.sourceRange.durationTicks ?? 0)),
+    );
 
     return sourceDurationTicks > sourceRangeDurationTicks;
   }
@@ -309,7 +312,8 @@ export function useTimelineItemDrag(
       tracks.value.find((t) => t.id === trackId)?.items.find((it) => it.id === itemId)
         ?.timelineRange.durationTicks ?? 0;
     dragAnchorSourceStartTicks.value = item?.kind === 'clip' ? item.sourceRange.startTicks : 0;
-    dragAnchorSourceDurationTicks.value = item?.kind === 'clip' ? item.sourceRange.durationTicks : 0;
+    dragAnchorSourceDurationTicks.value =
+      item?.kind === 'clip' ? item.sourceRange.durationTicks : 0;
     dragAnchorItemDurationTicks.value = dragAnchorDurationTicks.value;
     dragLastAppliedQuantizedDeltaTicks.value = 0;
 
@@ -385,7 +389,8 @@ export function useTimelineItemDrag(
     const currentItem = tracks.value
       .find((t) => t.id === targetTrackId)
       ?.items.find((it) => it.id === targetItemId);
-    const durationTicks = currentItem?.kind === 'clip' ? currentItem.timelineRange.durationTicks : 0;
+    const durationTicks =
+      currentItem?.kind === 'clip' ? currentItem.timelineRange.durationTicks : 0;
     dragAnchorItemDurationTicks.value = Math.max(0, Math.round(Number(durationTicks ?? 0)));
 
     const timelineEndTicks = Number.isFinite(timelineStore.duration)
@@ -590,7 +595,9 @@ export function useTimelineItemDrag(
       // so `move_items` applies these starts verbatim instead of re-snapping the
       // off-grid members onto the frame grid. Mirrors the linked-clip move path.
       const rawDeltaTicks = startTicks - dragAnchorStartTicks.value;
-      const deltaTicks = enableFrameSnap ? quantizeDeltaUsToFrames(rawDeltaTicks, fps) : rawDeltaTicks;
+      const deltaTicks = enableFrameSnap
+        ? quantizeDeltaTicksToFrames(rawDeltaTicks, fps)
+        : rawDeltaTicks;
       const moves = buildMultiItemMoves({
         currentTracks: tracks.value,
         dragStartSnapshot: dragStartSnapshot.value,
@@ -693,7 +700,9 @@ export function useTimelineItemDrag(
 
     const rawDeltaTicks = getDragDeltaTicks(clientX, zoom);
 
-    const thresholdTicks = Math.round((snapThresholdPx / zoomToPxPerSecond(zoom)) * TICKS_PER_SECOND);
+    const thresholdTicks = Math.round(
+      (snapThresholdPx / zoomToPxPerSecond(zoom)) * TICKS_PER_SECOND,
+    );
     const anchorStartTicks = Math.max(0, Math.round(dragAnchorStartTicks.value));
     const anchorDurationTicks = Math.max(0, Math.round(dragAnchorItemDurationTicks.value));
     const anchorEndTicks = anchorStartTicks + anchorDurationTicks;
@@ -746,7 +755,9 @@ export function useTimelineItemDrag(
         const prevSourceDurationTicks = Math.max(
           0,
           Math.round(
-            Number(startItem.sourceRange?.durationTicks ?? startItem.timelineRange?.durationTicks ?? 0),
+            Number(
+              startItem.sourceRange?.durationTicks ?? startItem.timelineRange?.durationTicks ?? 0,
+            ),
           ),
         );
         const prevSourceEndTicks = prevSourceStartTicks + prevSourceDurationTicks;
@@ -806,16 +817,18 @@ export function useTimelineItemDrag(
 
     if (enableFrameSnap) {
       const baseTicks = bestDist < thresholdTicks ? snappedEdgeTicks : rawEdgeTicks;
-      snappedEdgeTicks = quantizeStartUsToFrames(baseTicks, fps);
+      snappedEdgeTicks = quantizeStartTicksToFrames(baseTicks, fps);
     }
 
     // Re-clamp after snap/frame snap to enforce media boundaries.
     snappedEdgeTicks = Math.max(minEdgeTicks, Math.min(maxEdgeTicks, snappedEdgeTicks));
 
     const desiredDeltaTicks =
-      mode === 'trim_start' ? snappedEdgeTicks - anchorStartTicks : snappedEdgeTicks - anchorEndTicks;
+      mode === 'trim_start'
+        ? snappedEdgeTicks - anchorStartTicks
+        : snappedEdgeTicks - anchorEndTicks;
     const desiredQuantizedDeltaTicks = enableFrameSnap
-      ? quantizeDeltaUsToFrames(desiredDeltaTicks, fps)
+      ? quantizeDeltaTicksToFrames(desiredDeltaTicks, fps)
       : Math.round(desiredDeltaTicks);
 
     lastDragClientX.value = clientX;

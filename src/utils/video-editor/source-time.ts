@@ -1,4 +1,4 @@
-import { TICKS_PER_MICROSECOND, TICKS_PER_SECOND } from '~/utils/time';
+import { TICKS_PER_MILLISECOND, TICKS_PER_SECOND } from '~/utils/time';
 
 export interface ResolveClipSourceTimeTicksParams {
   localTimeTicks: number;
@@ -9,7 +9,7 @@ export interface ResolveClipSourceTimeTicksParams {
 }
 
 /** 1 ms guard expressed in canonical timeline ticks. */
-export const MIN_SOURCE_TIME_END_GUARD_TICKS = 1_000 * TICKS_PER_MICROSECOND;
+export const MIN_SOURCE_TIME_END_GUARD_TICKS = TICKS_PER_MILLISECOND;
 
 export function normalizeClipSpeed(speed: unknown): number {
   return typeof speed === 'number' && Number.isFinite(speed) && speed !== 0

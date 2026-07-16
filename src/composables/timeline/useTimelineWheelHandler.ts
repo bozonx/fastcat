@@ -5,7 +5,7 @@ import { useEventListener } from '@vueuse/core';
 import type { FastCatUserSettings } from '~/utils/settings/defaults';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
-import { pxPerSecondToZoom, pxToTimeTicks, timeUsToPx } from '~/utils/timeline/geometry';
+import { pxPerSecondToZoom, pxToTimeTicks, ticksToPx } from '~/utils/timeline/geometry';
 import { isLayer1Active } from '~/utils/hotkeys/layerUtils';
 import { getWheelDelta, isSecondaryWheel } from '~/utils/mouse';
 import { useTimelineZoom } from '~/composables/timeline/useTimelineZoom';
@@ -161,7 +161,7 @@ export function useTimelineWheelHandler({
       const scrollLeft = horizontalScrollEl.value?.scrollLeft ?? 0;
       const viewportWidth = horizontalScrollEl.value?.clientWidth ?? 0;
       const durationTicks = timelineStore.duration;
-      const timelineWidthPx = timeUsToPx(durationTicks, timelineStore.timelineZoom);
+      const timelineWidthPx = ticksToPx(durationTicks, timelineStore.timelineZoom);
       let nextZoom = Math.min(110, Math.max(0, prevZoom + zoomStep));
 
       if (zoomStep < 0 && durationTicks > 0 && viewportWidth > 0) {
@@ -176,8 +176,11 @@ export function useTimelineWheelHandler({
       }
 
       let anchorViewportX = rawAnchorViewportX;
-      let anchorTimeTicks = pxToTimeTicks(scrollLeft + rawAnchorViewportX, timelineStore.timelineZoom);
-      const nextTimelineWidthPx = timeUsToPx(durationTicks, nextZoom);
+      let anchorTimeTicks = pxToTimeTicks(
+        scrollLeft + rawAnchorViewportX,
+        timelineStore.timelineZoom,
+      );
+      const nextTimelineWidthPx = ticksToPx(durationTicks, nextZoom);
 
       // Adaptive anchor: zoom out from viewport center when the timeline fits or will fit.
       if (
@@ -203,9 +206,12 @@ export function useTimelineWheelHandler({
     if (action === 'zoom_horizontal_to_playhead') {
       e.preventDefault();
       const scrollLeft = horizontalScrollEl.value?.scrollLeft ?? 0;
-      const playheadPx = timeUsToPx(timelineStore.currentTime, timelineStore.timelineZoom);
+      const playheadPx = ticksToPx(timelineStore.currentTime, timelineStore.timelineZoom);
       const anchorViewportX = playheadPx - scrollLeft;
-      const anchorTimeTicks = Math.max(0, Math.min(timelineStore.duration, timelineStore.currentTime));
+      const anchorTimeTicks = Math.max(
+        0,
+        Math.min(timelineStore.duration, timelineStore.currentTime),
+      );
 
       handleZoomWheel(getZoomStep(delta), { anchorTimeTicks, anchorViewportX });
       return;
@@ -225,7 +231,10 @@ export function useTimelineWheelHandler({
       e.preventDefault();
       const frameDurationTicks = TICKS_PER_SECOND / fps.value;
       timelineStore.setCurrentTimeTicks(
-        Math.max(0, Math.round(timelineStore.currentTime + (delta > 0 ? 1 : -1) * frameDurationTicks)),
+        Math.max(
+          0,
+          Math.round(timelineStore.currentTime + (delta > 0 ? 1 : -1) * frameDurationTicks),
+        ),
       );
       return;
     }

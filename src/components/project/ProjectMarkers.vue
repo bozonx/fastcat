@@ -150,7 +150,7 @@ function isMarkerSelected(markerId: string): boolean {
             @click="handleMarkerClick(marker, $event)"
           >
             <td class="px-3 py-2 w-24 align-middle">
-              <MarkerThumbnail :marker-id="marker.id" :time-us="marker.timeTicks" />
+              <MarkerThumbnail :marker-id="marker.id" :time-ticks="marker.timeTicks" />
             </td>
             <td class="px-3 py-2 w-6 align-middle">
               <div

@@ -5,7 +5,11 @@ import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
 import { TICKS_PER_SECOND } from '~/utils/time';
 import { cloneValue } from '~/utils/clone';
 import { clipGainToYPercent, clipYPercentToGain } from '~/utils/audio';
-import { pxToDeltaTicks, pickBestSnapCandidateTicks, zoomToPxPerSecond } from '~/utils/timeline/geometry';
+import {
+  pxToDeltaTicks,
+  pickBestSnapCandidateTicks,
+  zoomToPxPerSecond,
+} from '~/utils/timeline/geometry';
 import type {
   TimelineTrack,
   TimelineClipItem,
@@ -519,7 +523,10 @@ export function useTimelineClipHandleResize(
       const transitionPatch =
         payload.edge === 'in'
           ? {
-              transitionIn: { ...current, durationTicks: Math.round(newDurationTicks) } as ClipTransition,
+              transitionIn: {
+                ...current,
+                durationTicks: Math.round(newDurationTicks),
+              } as ClipTransition,
             }
           : {
               transitionOut: {

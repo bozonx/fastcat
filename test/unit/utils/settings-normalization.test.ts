@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { timelineTicks } from './timeline-time';
-import { TICKS_PER_MICROSECOND } from '~/utils/time';
+import { TICKS_PER_MILLISECOND } from '~/utils/time';
 import { describe, it, expect } from 'vitest';
 import {
   normalizeAppSettings,
@@ -79,7 +79,7 @@ describe('settings normalization', () => {
       projectDefaults: { audioDeclickDurationTicks: 5_000 },
     });
 
-    expect(normalized.projectDefaults.audioDeclickDurationTicks).toBe(5_000 * TICKS_PER_MICROSECOND);
+    expect(normalized.projectDefaults.audioDeclickDurationTicks).toBe(5 * TICKS_PER_MILLISECOND);
   });
 
   it('normalizes legacy Pixi renderer settings to WebGPU-first', () => {

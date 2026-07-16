@@ -40,7 +40,12 @@ export const createComplexTimelineFixture = (): TimelineDocument => {
   const builder = new TimelineBuilder()
     .withTrack('video', { id: 'v1', name: 'Video 1' }, (track) =>
       track
-        .withClip('media', { id: 'c1', sourcePath: '/vid1.mp4', startTicks: 0, durationTicks: 2_000_000 })
+        .withClip('media', {
+          id: 'c1',
+          sourcePath: '/vid1.mp4',
+          startTicks: 0,
+          durationTicks: 2_000_000,
+        })
         .withClip('media', {
           id: 'c2',
           sourcePath: '/vid2.mp4',

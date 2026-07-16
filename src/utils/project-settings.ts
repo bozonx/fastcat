@@ -2,7 +2,7 @@ import { z } from 'zod';
 import type { FastCatUserSettings } from './settings/defaults';
 import { DEFAULT_USER_SETTINGS } from './settings/defaults';
 import { applyResolutionPreset } from './settings/helpers';
-import { TICKS_PER_MICROSECOND, TICKS_PER_MILLISECOND } from './time';
+import { TICKS_PER_MICROSECOND, TICKS_PER_MILLISECOND, TICKS_PER_SECOND } from './time';
 import type { PreviewEffectQualitySetting } from './preview-effect-quality';
 
 interface ProjectSettingsUserDefaultsInput {
@@ -184,7 +184,7 @@ export const DEFAULT_PROJECT_SETTINGS: FastCatProjectSettings = {
     aspectRatio: '16:9',
     isCustomResolution: false,
     sampleRate: 48000,
-    audioDeclickDurationTicks: 5_000 * TICKS_PER_MICROSECOND,
+    audioDeclickDurationTicks: Math.round((5_000 / 1_000_000) * TICKS_PER_SECOND),
     isAutoSettings: true,
     geometryResolved: false,
     sampleRateResolved: false,
@@ -200,7 +200,7 @@ export const DEFAULT_PROJECT_SETTINGS: FastCatProjectSettings = {
     sessions: {},
   },
   transitions: {
-    defaultDurationTicks: 2_000_000 * TICKS_PER_MICROSECOND,
+    defaultDurationTicks: 2 * TICKS_PER_SECOND,
   },
   ui: {
     activeTabId: null,

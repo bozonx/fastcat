@@ -63,7 +63,8 @@ export function getTransitionAdjacentHandleLimitTicks(input: {
 
   if (input.edge === 'in') {
     const prev = input.adjacent as ClipWithResizeFields;
-    const prevSourceEnd = (prev.sourceRange?.startTicks ?? 0) + (prev.sourceRange?.durationTicks ?? 0);
+    const prevSourceEnd =
+      (prev.sourceRange?.startTicks ?? 0) + (prev.sourceRange?.durationTicks ?? 0);
     const prevMaxEnd =
       (prev.clipType === 'media' || prev.clipType === 'timeline') && !prev.isImage
         ? (prev.sourceDurationTicks ?? prevSourceEnd)

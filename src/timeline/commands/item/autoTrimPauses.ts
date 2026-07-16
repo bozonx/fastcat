@@ -94,7 +94,10 @@ export function autoTrimPauses(
       if (speed >= 0) {
         leftSourceStartTicks = Math.max(0, Math.round(item.sourceRange.startTicks));
         leftSourceDurationTicks = safeLocalCutTicks;
-        rightSourceStartTicks = Math.max(0, Math.round(item.sourceRange.startTicks) + safeLocalCutTicks);
+        rightSourceStartTicks = Math.max(
+          0,
+          Math.round(item.sourceRange.startTicks) + safeLocalCutTicks,
+        );
         rightSourceDurationTicks = Math.max(0, sourceDurationTicks - safeLocalCutTicks);
       } else {
         leftSourceStartTicks = Math.max(

@@ -4,7 +4,7 @@ import type { TimelineDocument, TimelineSelectionRange } from '~/timeline/types'
 import type { MediaPathToTimelinesMap } from '~/utils/timeline-media-usage';
 import { computeMediaUsageByTimelineDocs } from '~/utils/timeline-media-usage';
 import { generateTimelineThumbnail } from '~/timeline/timeline-thumbnail';
-import { quantizeTimeUsToFrames, sanitizeFps } from '~/timeline/commands/utils';
+import { quantizeTicksToFrames, sanitizeFps } from '~/timeline/commands/utils';
 import { TIMELINE_DEFAULTS } from '~/utils/constants';
 
 interface TimelineSelectionModule {
@@ -109,7 +109,7 @@ export function createTimelineLifecycleModule(
 
   function setCurrentTimeTicks(nextTimeTicks: number) {
     const fps = sanitizeFps(deps.timelineDoc.value?.timebase);
-    const quantized = quantizeTimeUsToFrames(nextTimeTicks, fps, 'round');
+    const quantized = quantizeTicksToFrames(nextTimeTicks, fps, 'round');
     const max = Number.isFinite(deps.duration.value)
       ? Math.max(0, Math.round(deps.duration.value))
       : 0;

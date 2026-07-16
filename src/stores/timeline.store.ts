@@ -329,7 +329,9 @@ export const useTimelineStore = defineStore('timeline', () => {
       // clips have phase 0 too, so they are unaffected.
       const baseTrack = doc.tracks.find((t) => t.id === baseTargetTrackId);
       const frameOffsetTicks =
-        baseTrack?.kind === 'audio' ? subframePhaseTicks(insertStartTicks, sanitizeFps(doc.timebase)) : 0;
+        baseTrack?.kind === 'audio'
+          ? subframePhaseTicks(insertStartTicks, sanitizeFps(doc.timebase))
+          : 0;
 
       const snapSettings = workspaceStore.userSettings.timeline.snapping;
       const timelineEndTicks = Number.isFinite(duration.value)
@@ -343,7 +345,9 @@ export const useTimelineStore = defineStore('timeline', () => {
         includeMarkers: snapSettings.markers,
         markers: markerService.getMarkers(),
         includeClips: snapSettings.clips,
-        selectionRangeTicks: snapSettings.selection ? selectionRangeModule.getSelectionRange() : null,
+        selectionRangeTicks: snapSettings.selection
+          ? selectionRangeModule.getSelectionRange()
+          : null,
       });
       const snappedStartTicks = computeSnappedStartTicks({
         rawStartTicks: insertStartTicks,

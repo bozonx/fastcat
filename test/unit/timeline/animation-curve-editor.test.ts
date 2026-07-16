@@ -17,9 +17,9 @@ describe('animation curve editor geometry', () => {
   };
 
   it('resolves a padded range for flat tracks', () => {
-    expect(resolveCurveValueRange({ keyframes: [{ tTicks: 0, value: 5, easing: 'linear' }] })).toEqual(
-      { min: 4, max: 6 },
-    );
+    expect(
+      resolveCurveValueRange({ keyframes: [{ tTicks: 0, value: 5, easing: 'linear' }] }),
+    ).toEqual({ min: 4, max: 6 });
   });
 
   it('maps values to y coordinates and back', () => {

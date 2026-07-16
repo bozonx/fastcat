@@ -128,7 +128,10 @@ export function createTimelineSelectionRangeModule(
     if (!marker) return;
 
     const startTicks = Math.max(0, Math.round(marker.timeTicks));
-    const durationTicks = Math.max(1, Math.round(marker.durationTicks ?? defaultStaticClipDurationTicks));
+    const durationTicks = Math.max(
+      1,
+      Math.round(marker.durationTicks ?? defaultStaticClipDurationTicks),
+    );
 
     createSelectionRange({
       startTicks,
@@ -142,7 +145,10 @@ export function createTimelineSelectionRangeModule(
     if (!marker) return;
 
     const startTicks = Math.max(0, Math.round(marker.timeTicks));
-    const durationTicks = Math.max(1, Math.round(marker.durationTicks ?? defaultStaticClipDurationTicks));
+    const durationTicks = Math.max(
+      1,
+      Math.round(marker.durationTicks ?? defaultStaticClipDurationTicks),
+    );
 
     createSelectionRange({
       startTicks,

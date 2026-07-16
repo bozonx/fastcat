@@ -125,7 +125,9 @@ export function setKeyframeEasing(
   easing: KeyframeEasing,
 ): ClipAnimations | undefined {
   const track = animations?.[path];
-  const kf = track?.keyframes.find((keyframe) => Math.round(keyframe.tTicks) === Math.round(tTicks));
+  const kf = track?.keyframes.find(
+    (keyframe) => Math.round(keyframe.tTicks) === Math.round(tTicks),
+  );
   if (!kf || kf.easing === easing) return animations;
   return upsertKeyframe(animations, path, tTicks, kf.value, easing);
 }
@@ -208,7 +210,10 @@ export function collectKeyframeTimes(animations: ClipAnimations | undefined): nu
 }
 
 /** True when at least one animated param has a keyframe exactly at `tTicks`. */
-export function hasKeyframeMomentAt(animations: ClipAnimations | undefined, tTicks: number): boolean {
+export function hasKeyframeMomentAt(
+  animations: ClipAnimations | undefined,
+  tTicks: number,
+): boolean {
   const rounded = Math.round(tTicks);
   return animatedParamPaths(animations).some((path) =>
     animations?.[path]?.keyframes.some((kf) => Math.round(kf.tTicks) === rounded),
@@ -269,7 +274,9 @@ export function setKeyframeMomentEasing(
   let next = animations;
   for (const path of animatedParamPaths(animations)) {
     const track = next?.[path];
-    const kf = track?.keyframes.find((keyframe) => Math.round(keyframe.tTicks) === Math.round(tTicks));
+    const kf = track?.keyframes.find(
+      (keyframe) => Math.round(keyframe.tTicks) === Math.round(tTicks),
+    );
     if (!kf) continue;
     next = upsertKeyframe(next, path, tTicks, kf.value, easing);
   }

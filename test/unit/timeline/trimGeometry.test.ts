@@ -121,7 +121,9 @@ describe('computeTrimGeometry', () => {
       durationTicks: timelineTicks(540000),
     });
     // Invariant: source duration 540,000 Us / speed 1.5 = timeline duration 360,000 Us.
-    expect(result.sourceRange.durationTicks).toBe(Math.round(result.timelineRange.durationTicks * 1.5));
+    expect(result.sourceRange.durationTicks).toBe(
+      Math.round(result.timelineRange.durationTicks * 1.5),
+    );
   });
 
   it('correctly handles start edge trimming with fractional speed (0.8) and non-aligned frames', () => {
@@ -155,7 +157,9 @@ describe('computeTrimGeometry', () => {
       durationTicks: timelineTicks(256000),
     });
     // Invariant: source duration 256,000 Us / speed 0.8 = timeline duration 320,000 Us.
-    expect(result.sourceRange.durationTicks).toBe(Math.round(result.timelineRange.durationTicks * 0.8));
+    expect(result.sourceRange.durationTicks).toBe(
+      Math.round(result.timelineRange.durationTicks * 0.8),
+    );
   });
 
   it('supports reverse playback speeds (speed < 0) under quantization', () => {

@@ -8,7 +8,7 @@ import {
 } from '~/timeline/domain/editing';
 
 vi.mock('~/timeline/commands/utils', () => ({
-  quantizeTimeUsToFrames: vi.fn((atTicks) => atTicks),
+  quantizeTicksToFrames: vi.fn((atTicks) => atTicks),
   getDocFps: vi.fn(() => 30),
 }));
 
@@ -31,7 +31,11 @@ const mockDoc: any = {
           timelineRange: { startTicks: 1_000_000, durationTicks: 1_000_000 },
           locked: true,
         },
-        { id: 'gap-1', kind: 'gap', timelineRange: { startTicks: 2_000_000, durationTicks: 500_000 } },
+        {
+          id: 'gap-1',
+          kind: 'gap',
+          timelineRange: { startTicks: 2_000_000, durationTicks: 500_000 },
+        },
       ],
     },
     {

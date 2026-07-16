@@ -247,7 +247,8 @@ export class VideoCompositor {
           clip.sprite.visible,
       )
       .sort(
-        (a, b) => a.layer - b.layer || a.startTicks - b.startTicks || a.itemId.localeCompare(b.itemId),
+        (a, b) =>
+          a.layer - b.layer || a.startTicks - b.startTicks || a.itemId.localeCompare(b.itemId),
       );
 
     for (const clip of this.clips) {
@@ -780,36 +781,37 @@ export class VideoCompositor {
     this.stageSortDirty = true;
 
     const { Input, BlobSource, VideoSampleSink, ALL_FORMATS } = await import('mediabunny');
-    const { nextClips, nextClipById, sequentialTimeTicks } = await this.timelineLoadOrchestrator.load({
-      timelineClips,
-      deps,
-      mediabunny: {
-        Input: Input as unknown as new (params: unknown) => {
-          getPrimaryVideoTrack(): Promise<
-            import('./compositor/MediaClipLoader').MediabunnyTrack | null
-          >;
+    const { nextClips, nextClipById, sequentialTimeTicks } =
+      await this.timelineLoadOrchestrator.load({
+        timelineClips,
+        deps,
+        mediabunny: {
+          Input: Input as unknown as new (params: unknown) => {
+            getPrimaryVideoTrack(): Promise<
+              import('./compositor/MediaClipLoader').MediabunnyTrack | null
+            >;
+          },
+          BlobSource,
+          VideoSampleSink: VideoSampleSink as unknown as new (track: unknown) => unknown,
+          ALL_FORMATS,
         },
-        BlobSource,
-        VideoSampleSink: VideoSampleSink as unknown as new (track: unknown) => unknown,
-        ALL_FORMATS,
-      },
-      callbacks: {
-        checkCancel: isCancelled,
-        abortSignal,
-        destroyClip: (clip) => this.destroyClip(clip),
-        getExistingClipById: (itemId) => this.clipById.get(itemId),
-        getFallbackTrackId: (clipData) =>
-          this.getTrackRuntimeForClip({
-            layer: Math.round(Number((clipData as { layer?: number }).layer ?? 0)),
-          })?.id ?? null,
-        getTrackRuntimeForClip: (clip) => this.getTrackRuntimeForClip(clip),
-        applySolidLayout: (clip) => this.layoutApplier.applySolidLayout(clip),
-        replaceExistingClip: (params) => this.replaceExistingClip(params),
-        resolveFixedClipEnd: (params) => this.resolveFixedClipEnd(params),
-        registerLoadedClip: (params) => this.registerLoadedClip(params),
-        toVideoEffects: (value) => this.toVideoEffects(value),
-      },
-    });
+        callbacks: {
+          checkCancel: isCancelled,
+          abortSignal,
+          destroyClip: (clip) => this.destroyClip(clip),
+          getExistingClipById: (itemId) => this.clipById.get(itemId),
+          getFallbackTrackId: (clipData) =>
+            this.getTrackRuntimeForClip({
+              layer: Math.round(Number((clipData as { layer?: number }).layer ?? 0)),
+            })?.id ?? null,
+          getTrackRuntimeForClip: (clip) => this.getTrackRuntimeForClip(clip),
+          applySolidLayout: (clip) => this.layoutApplier.applySolidLayout(clip),
+          replaceExistingClip: (params) => this.replaceExistingClip(params),
+          resolveFixedClipEnd: (params) => this.resolveFixedClipEnd(params),
+          registerLoadedClip: (params) => this.registerLoadedClip(params),
+          toVideoEffects: (value) => this.toVideoEffects(value),
+        },
+      });
     if (isCancelled()) {
       for (const clip of nextClips) {
         if (!this.clipById.has(clip.itemId)) {
@@ -835,7 +837,10 @@ export class VideoCompositor {
     );
   }
 
-  prewarmVideoFrames(timeTicks: number, lookaheadTicks = (TICKS_PER_SECOND * 5) / 2): Promise<void> {
+  prewarmVideoFrames(
+    timeTicks: number,
+    lookaheadTicks = (TICKS_PER_SECOND * 5) / 2,
+  ): Promise<void> {
     if (this.disposed) return Promise.resolve();
     return this.runExclusive(
       () => this.prewarmVideoFramesLocked(timeTicks, lookaheadTicks),
@@ -1170,14 +1175,16 @@ export class VideoCompositor {
   private findPrevClipOnLayer(clip: CompositorClip): CompositorClip | null {
     const best = this.prevClipById.get(clip.itemId) ?? null;
     if (!best) return null;
-    if (clip.startTicks - best.endTicks > VIDEO_CORE_LIMITS.BLEND_SHADOW_GAP_THRESHOLD_TICKS) return null;
+    if (clip.startTicks - best.endTicks > VIDEO_CORE_LIMITS.BLEND_SHADOW_GAP_THRESHOLD_TICKS)
+      return null;
     return best;
   }
 
   private findNextClipOnLayer(clip: CompositorClip): CompositorClip | null {
     const best = this.nextClipById.get(clip.itemId) ?? null;
     if (!best) return null;
-    if (best.startTicks - clip.endTicks > VIDEO_CORE_LIMITS.BLEND_SHADOW_GAP_THRESHOLD_TICKS) return null;
+    if (best.startTicks - clip.endTicks > VIDEO_CORE_LIMITS.BLEND_SHADOW_GAP_THRESHOLD_TICKS)
+      return null;
     return best;
   }
 

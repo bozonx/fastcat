@@ -5,14 +5,14 @@ import { mount } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
 import { useTimelineInteraction } from '~/composables/timeline/useTimelineInteraction';
 import {
-  timeUsToPx,
+  ticksToPx,
   pxToTimeTicks,
   pxToDeltaTicks,
   BASE_PX_PER_SECOND,
   computeAnchoredScrollLeft,
   computeTimelinePlaybackAutoScrollLeft,
   computeSnappedStartTicks,
-  quantizeStartUsToFrames,
+  quantizeStartTicksToFrames,
   pickBestSnapCandidateTicks,
 } from '~/utils/timeline/geometry';
 import { useTimelineStore } from '~/stores/timeline.store';
@@ -24,11 +24,11 @@ describe('useTimelineInteraction', () => {
     setActivePinia(createPinia());
   });
 
-  it('timeUsToPx should convert microseconds to pixels correctly', () => {
+  it('ticksToPx should convert ticks to pixels correctly', () => {
     // 1 second (1000000 us) should be BASE_PX_PER_SECOND at 1x zoom (slider position 50)
-    expect(timeUsToPx(TICKS_PER_SECOND, 50)).toBe(BASE_PX_PER_SECOND);
+    expect(ticksToPx(TICKS_PER_SECOND, 50)).toBe(BASE_PX_PER_SECOND);
     // 0.5 second
-    expect(timeUsToPx(TICKS_PER_SECOND / 2, 50)).toBe(BASE_PX_PER_SECOND / 2);
+    expect(ticksToPx(TICKS_PER_SECOND / 2, 50)).toBe(BASE_PX_PER_SECOND / 2);
   });
 
   it('pxToTimeTicks should convert pixels to microseconds correctly', () => {
@@ -54,7 +54,7 @@ describe('useTimelineInteraction', () => {
     const anchorTimeTicks = 10 * TICKS_PER_SECOND;
     const anchorViewportX = 100;
 
-    const anchorPxAtPrevZoom = timeUsToPx(anchorTimeTicks, prevZoom);
+    const anchorPxAtPrevZoom = ticksToPx(anchorTimeTicks, prevZoom);
     const prevScrollLeft = Math.max(0, anchorPxAtPrevZoom - anchorViewportX);
 
     const nextScrollLeft = computeAnchoredScrollLeft({
@@ -65,7 +65,7 @@ describe('useTimelineInteraction', () => {
       anchor: { anchorTimeTicks, anchorViewportX },
     });
 
-    const anchorPxAtNextZoom = timeUsToPx(anchorTimeTicks, nextZoom);
+    const anchorPxAtNextZoom = ticksToPx(anchorTimeTicks, nextZoom);
     expect(anchorPxAtNextZoom - nextScrollLeft).toBeCloseTo(anchorViewportX, 6);
   });
 
@@ -119,7 +119,7 @@ describe('useTimelineInteraction', () => {
 
     // Pick a target that is not on a frame boundary.
     const targetTicks = TICKS_PER_SECOND + 1;
-    expect(targetTicks).not.toBe(quantizeStartUsToFrames(targetTicks, fps));
+    expect(targetTicks).not.toBe(quantizeStartTicksToFrames(targetTicks, fps));
 
     const snapped = computeSnappedStartTicks({
       rawStartTicks: targetTicks + 100,
@@ -160,7 +160,7 @@ describe('useTimelineInteraction', () => {
 
     // When offset snapping is used, result should keep the same offset relative to frame grid.
     const base = Math.max(0, snapped - frameOffsetTicks);
-    expect(base).toBe(quantizeStartUsToFrames(base, fps));
+    expect(base).toBe(quantizeStartTicksToFrames(base, fps));
     expect(snapped).toBe(base + frameOffsetTicks);
   });
 

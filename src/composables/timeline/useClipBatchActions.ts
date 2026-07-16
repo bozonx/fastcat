@@ -317,7 +317,10 @@ export function useClipBatchActions(
 
     const cmds: TimelineCommand[] = [];
     for (const { track, clip } of editableClipRefs.value) {
-      const currentDurationTicks = Math.max(0, Math.round(Number(clip.timelineRange.durationTicks)));
+      const currentDurationTicks = Math.max(
+        0,
+        Math.round(Number(clip.timelineRange.durationTicks)),
+      );
       const deltaTicks = nextDurationTicks - currentDurationTicks;
       if (deltaTicks === 0) continue;
 

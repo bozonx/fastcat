@@ -4,7 +4,7 @@ import { describe, it, expect } from 'vitest';
 import {
   frameToTicks,
   ticksToFrame,
-  quantizeTimeUsToFrames,
+  quantizeTicksToFrames,
   sanitizeFps,
 } from '~/timeline/commands/utils';
 import { formatTimecode, sanitizeFps as sanitizeMonitorFps, TICKS_PER_SECOND } from '~/utils/time';
@@ -24,8 +24,8 @@ describe('frame quantization is drift-free', () => {
     for (const fps of FPS_CASES) {
       for (let i = 0; i < 500; i++) {
         const t = Math.round((i / 500) * 60 * TICKS_PER_SECOND); // 0 .. 60s, deterministic
-        const once = quantizeTimeUsToFrames(t, fps, 'round');
-        const twice = quantizeTimeUsToFrames(once, fps, 'round');
+        const once = quantizeTicksToFrames(t, fps, 'round');
+        const twice = quantizeTicksToFrames(once, fps, 'round');
         expect(twice).toBe(once);
       }
     }
@@ -53,7 +53,7 @@ describe('frame quantization is drift-free', () => {
       const frameTicks = TICKS_PER_SECOND / sanitizeFps(fps);
       let t = 0;
       for (let k = 1; k <= 30_000 && !firstDrift; k++) {
-        t = quantizeTimeUsToFrames(t + frameTicks, fps, 'round');
+        t = quantizeTicksToFrames(t + frameTicks, fps, 'round');
         const want = frameToTicks(k, fps);
         if (t !== want) firstDrift = { fps, step: k, got: t, want };
       }
@@ -67,7 +67,7 @@ describe('frame quantization is drift-free', () => {
       const frameTicks = TICKS_PER_SECOND / sanitizeFps(fps);
       let t = frameToTicks(30_000, fps);
       for (let k = 29_999; k >= 0 && !firstDrift; k--) {
-        t = quantizeTimeUsToFrames(t - frameTicks, fps, 'round');
+        t = quantizeTicksToFrames(t - frameTicks, fps, 'round');
         const want = frameToTicks(k, fps);
         if (t !== want) firstDrift = { fps, step: k, got: t, want };
       }

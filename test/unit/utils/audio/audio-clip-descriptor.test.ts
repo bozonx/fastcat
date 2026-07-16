@@ -22,7 +22,10 @@ function createClip(overrides: Partial<AudioWorkerClip> = {}): AudioWorkerClip {
     trackId: 'track-1',
     layer: 0,
     source: { path: 'audio/source.mp3' },
-    timelineRange: { startTicks: timelineTicks(1_000_000), durationTicks: timelineTicks(2_500_000) },
+    timelineRange: {
+      startTicks: timelineTicks(1_000_000),
+      durationTicks: timelineTicks(2_500_000),
+    },
     sourceRange: { startTicks: timelineTicks(500_000), durationTicks: timelineTicks(1_750_000) },
     sourceDurationTicks: timelineTicks(8_000_000),
     speed: 2,
@@ -210,12 +213,19 @@ describe('audio clip descriptor adapters', () => {
   it('resolves de-click, adjacent transitions, and neighbor context in native layer', () => {
     const descriptor = buildCanonicalAudioClipDescriptor({
       clip: createClip({
-        timelineRange: { startTicks: timelineTicks(1_000_000), durationTicks: timelineTicks(875_000) },
+        timelineRange: {
+          startTicks: timelineTicks(1_000_000),
+          durationTicks: timelineTicks(875_000),
+        },
         audioFadeInTicks: undefined,
         audioFadeOutTicks: undefined,
         audioDeclickDurationTicks: timelineTicks(5_000), // 5ms auto-declick
         transitionIn: { type: 'dissolve', durationTicks: timelineTicks(100_000), mode: 'adjacent' },
-        transitionOut: { type: 'dissolve', durationTicks: timelineTicks(150_000), mode: 'adjacent' },
+        transitionOut: {
+          type: 'dissolve',
+          durationTicks: timelineTicks(150_000),
+          mode: 'adjacent',
+        },
       }),
       sourcePath: '/project/audio/source.mp3',
     });
@@ -231,7 +241,10 @@ describe('audio clip descriptor adapters', () => {
     const next = buildCanonicalAudioClipDescriptor({
       clip: createClip({
         id: 'next-clip',
-        timelineRange: { startTicks: timelineTicks(3_500_000), durationTicks: timelineTicks(1_000_000) },
+        timelineRange: {
+          startTicks: timelineTicks(3_500_000),
+          durationTicks: timelineTicks(1_000_000),
+        },
       }),
       sourcePath: '/project/audio/next.mp3',
     });
@@ -296,15 +309,25 @@ describe('audio clip descriptor adapters', () => {
         audioFadeOutCurve: 'logarithmic',
         audioDeclickDurationTicks: undefined,
         transitionIn: undefined,
-        transitionOut: { type: 'dissolve', durationTicks: timelineTicks(500_000), mode: 'adjacent' },
+        transitionOut: {
+          type: 'dissolve',
+          durationTicks: timelineTicks(500_000),
+          mode: 'adjacent',
+        },
       }),
       sourcePath: '/project/audio/outgoing.wav',
     });
     const incoming = buildCanonicalAudioClipDescriptor({
       clip: createClip({
         id: 'incoming',
-        timelineRange: { startTicks: timelineTicks(1_000_000), durationTicks: timelineTicks(1_000_000) },
-        sourceRange: { startTicks: timelineTicks(500_000), durationTicks: timelineTicks(1_000_000) },
+        timelineRange: {
+          startTicks: timelineTicks(1_000_000),
+          durationTicks: timelineTicks(1_000_000),
+        },
+        sourceRange: {
+          startTicks: timelineTicks(500_000),
+          durationTicks: timelineTicks(1_000_000),
+        },
         sourceDurationTicks: timelineTicks(3_000_000),
         speed: 1,
         audioFadeInTicks: undefined,

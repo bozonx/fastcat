@@ -48,7 +48,11 @@ describe('dispatchMarkerThumbnailGeneration', () => {
     // The raw blob is handed back (not a shared URL) so the consumer owns URL lifetime.
     expect(onComplete).toHaveBeenCalledWith(expect.any(Blob));
     expect(saveMarkerThumbnailMock).toHaveBeenCalledWith(
-      expect.objectContaining({ markerId: 'marker-1', timeTicks: 2_000_000, blob: expect.any(Blob) }),
+      expect.objectContaining({
+        markerId: 'marker-1',
+        timeTicks: 2_000_000,
+        blob: expect.any(Blob),
+      }),
     );
     expect(extractTimelineFrameBlobMock).toHaveBeenCalledWith(
       expect.objectContaining({

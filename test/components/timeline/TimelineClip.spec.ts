@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mountSuspended, mockComponent } from '@nuxt/test-utils/runtime';
 import { reactive, computed, ref } from 'vue';
 import TimelineClip from '~/components/timeline/TimelineClip.vue';
-import { timeUsToPx } from '~/utils/timeline/geometry';
+import { ticksToPx } from '~/utils/timeline/geometry';
 import { timelineTicks } from '../../unit/utils/timeline-time';
 
 mockComponent('UContextMenu', {
@@ -29,7 +29,7 @@ vi.mock('~/components/timeline/ClipAudioFades.vue', () => ({
       'defaultFadeCurve',
     ],
     template:
-      '<div class="clip-audio-fades" :data-hide-fade-handles="hideFadeHandles ? \'true\' : \'false\'" :data-default-fade-duration-us="defaultFadeDurationTicks" :data-default-fade-curve="defaultFadeCurve" :style="{ top: `${topInsetPx ?? 0}px`, bottom: `${bottomInsetPx ?? 0}px` }"></div>',
+      '<div class="clip-audio-fades" :data-hide-fade-handles="hideFadeHandles ? \'true\' : \'false\'" :data-default-fade-duration-ticks="defaultFadeDurationTicks" :data-default-fade-curve="defaultFadeCurve" :style="{ top: `${topInsetPx ?? 0}px`, bottom: `${bottomInsetPx ?? 0}px` }"></div>',
   },
 }));
 vi.mock('~/components/timeline/ClipMetadata.vue', () => ({
@@ -261,7 +261,7 @@ describe('TimelineClip', () => {
   });
 
   it('calculates position and width correctly based on time and zoom', async () => {
-    // Zoom 1 means timeUsToPx(us, 1) = us / 1000000 * 100
+    // Zoom 1 means ticksToPx(ticks, 1) = ticks / TICKS_PER_SECOND * 100
     mockTimelineStore.timelineZoom = 1;
 
     const component = await mountClip();
@@ -272,8 +272,8 @@ describe('TimelineClip', () => {
     const style = clipDiv.attributes('style');
     // Position/width are pixel-snapped (Math.round) so the browser doesn't smear
     // edges across two physical pixels at non-integer zoom.
-    const expectedLeft = Math.round(timeUsToPx(timelineTicks(1_000_000), 1));
-    const expectedWidth = Math.round(Math.max(2, timeUsToPx(timelineTicks(5_000_000), 1)));
+    const expectedLeft = Math.round(ticksToPx(timelineTicks(1_000_000), 1));
+    const expectedWidth = Math.round(Math.max(2, ticksToPx(timelineTicks(5_000_000), 1)));
 
     expect(style).toContain(`left: ${expectedLeft}px`);
     expect(style).toContain(`width: ${expectedWidth}px`);
@@ -403,7 +403,11 @@ describe('TimelineClip', () => {
       ...defaultProps,
       item: {
         ...baseItem,
-        transitionOut: { type: 'dissolve', durationTicks: timelineTicks(1_000_000), mode: 'adjacent' },
+        transitionOut: {
+          type: 'dissolve',
+          durationTicks: timelineTicks(1_000_000),
+          mode: 'adjacent',
+        },
       },
     });
 
@@ -455,7 +459,11 @@ describe('TimelineClip', () => {
       ...defaultProps,
       item: {
         ...baseItem,
-        transitionIn: { type: 'dissolve', durationTicks: timelineTicks(1_000_000), mode: 'adjacent' },
+        transitionIn: {
+          type: 'dissolve',
+          durationTicks: timelineTicks(1_000_000),
+          mode: 'adjacent',
+        },
       },
     });
 
@@ -472,7 +480,10 @@ describe('TimelineClip', () => {
       ...defaultProps,
       item: {
         ...baseItem,
-        timelineRange: { startTicks: timelineTicks(1_000_000), durationTicks: timelineTicks(10_000_000) },
+        timelineRange: {
+          startTicks: timelineTicks(1_000_000),
+          durationTicks: timelineTicks(10_000_000),
+        },
       },
     });
     const wideTrims = wideComponent.findAll('.cursor-ew-resize');
@@ -483,7 +494,10 @@ describe('TimelineClip', () => {
       ...defaultProps,
       item: {
         ...baseItem,
-        timelineRange: { startTicks: timelineTicks(1_000_000), durationTicks: timelineTicks(4_000_000) },
+        timelineRange: {
+          startTicks: timelineTicks(1_000_000),
+          durationTicks: timelineTicks(4_000_000),
+        },
       },
     });
     const narrowTrims = narrowComponent.findAll('.cursor-ew-resize');
@@ -644,7 +658,10 @@ describe('TimelineClip', () => {
       ...defaultProps,
       item: {
         ...baseItem,
-        timelineRange: { startTicks: timelineTicks(1_012_345), durationTicks: timelineTicks(5_000_000) },
+        timelineRange: {
+          startTicks: timelineTicks(1_012_345),
+          durationTicks: timelineTicks(5_000_000),
+        },
       },
     });
 
@@ -657,7 +674,10 @@ describe('TimelineClip', () => {
       ...defaultProps,
       item: {
         ...baseItem,
-        sourceRange: { startTicks: timelineTicks(2_000_000), durationTicks: timelineTicks(5_000_000) },
+        sourceRange: {
+          startTicks: timelineTicks(2_000_000),
+          durationTicks: timelineTicks(5_000_000),
+        },
         sourceDurationTicks: timelineTicks(10_000_000),
       },
       slipPreview: {
@@ -683,7 +703,10 @@ describe('TimelineClip', () => {
       ...defaultProps,
       item: {
         ...baseItem,
-        sourceRange: { startTicks: timelineTicks(1_000_000), durationTicks: timelineTicks(5_000_000) },
+        sourceRange: {
+          startTicks: timelineTicks(1_000_000),
+          durationTicks: timelineTicks(5_000_000),
+        },
         sourceDurationTicks: timelineTicks(10_000_000),
       },
       trimPreview: {

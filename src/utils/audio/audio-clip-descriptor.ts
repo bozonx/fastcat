@@ -201,7 +201,10 @@ export function toNativeSceneAudioLayer(params: ToNativeSceneAudioLayerParams): 
   // fade-in/out durations, so this is where the worker AudioMixer's edge handling
   // is reproduced for the native (monitor + export) path.
   const fadeClipDurationS = ticksToSeconds(
-    Math.min(sourceRangeDurationTicks / absSpeed, durationTicks || sourceRangeDurationTicks / absSpeed),
+    Math.min(
+      sourceRangeDurationTicks / absSpeed,
+      durationTicks || sourceRangeDurationTicks / absSpeed,
+    ),
   );
   const { fadeInS, fadeOutS, fadeInCurve, fadeOutCurve } = resolveEffectiveFadeDurationsSeconds({
     clipDurationS: fadeClipDurationS,

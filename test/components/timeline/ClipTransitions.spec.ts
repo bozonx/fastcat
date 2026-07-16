@@ -56,7 +56,7 @@ describe('ClipTransitions', () => {
     const transitionIn = component.find('button');
     expect(transitionIn.exists()).toBe(true);
 
-    // Check width based on timeUsToPx(1_000_000, 100)
+    // Check width based on ticksToPx(1_000_000, 100)
     // Factor for 100 is roughly 141, so 1s = 1410px (actually it's calculated in geometry.ts)
     // We can just check if it's defined and has a reasonable value or use the util.
     const widthContainer = transitionIn.element.closest<HTMLElement>('[style*="width"]');

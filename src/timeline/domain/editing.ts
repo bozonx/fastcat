@@ -1,9 +1,9 @@
 import type { TimelineDocument } from '../types';
 import type { TimelineCommand } from '../commands';
-import { quantizeTimeUsToFrames, getDocFps } from '../commands/utils';
+import { quantizeTicksToFrames, getDocFps } from '../commands/utils';
 
 export function computeCutTicks(doc: TimelineDocument, atTicks: number): number {
-  return quantizeTimeUsToFrames(Number(atTicks), getDocFps(doc), 'round');
+  return quantizeTicksToFrames(Number(atTicks), getDocFps(doc), 'round');
 }
 
 export function buildSplitClipCommands(
@@ -13,10 +13,15 @@ export function buildSplitClipCommands(
 ): TimelineCommand[] {
   if (!target) return [];
   const cutTicks = computeCutTicks(doc, atTicks);
-  return [{ type: 'split_item', trackId: target.trackId, itemId: target.itemId, atTicks: cutTicks }];
+  return [
+    { type: 'split_item', trackId: target.trackId, itemId: target.itemId, atTicks: cutTicks },
+  ];
 }
 
-export function buildSplitAllClipsCommands(doc: TimelineDocument, atTicks: number): TimelineCommand[] {
+export function buildSplitAllClipsCommands(
+  doc: TimelineDocument,
+  atTicks: number,
+): TimelineCommand[] {
   const cutTicks = computeCutTicks(doc, atTicks);
   const cmds: TimelineCommand[] = [];
   for (const track of doc.tracks) {

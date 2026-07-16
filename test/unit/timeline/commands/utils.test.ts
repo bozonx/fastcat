@@ -5,7 +5,7 @@ import {
   sanitizeFps,
   ticksToFrame,
   frameToTicks,
-  quantizeTimeUsToFrames,
+  quantizeTicksToFrames,
   findClipById,
   getLinkedClipGroupItemIds,
   rangesOverlap,
@@ -32,7 +32,10 @@ const mockDoc: any = {
         {
           id: 'clip-2',
           kind: 'clip',
-          timelineRange: { startTicks: timelineTicks(1_000_000), durationTicks: timelineTicks(500_000) },
+          timelineRange: {
+            startTicks: timelineTicks(1_000_000),
+            durationTicks: timelineTicks(500_000),
+          },
           linkedGroupId: 'group-1',
         },
       ],
@@ -50,7 +53,10 @@ const mockDoc: any = {
         {
           id: 'clip-4',
           kind: 'clip',
-          timelineRange: { startTicks: timelineTicks(2_000_000), durationTicks: timelineTicks(500_000) },
+          timelineRange: {
+            startTicks: timelineTicks(2_000_000),
+            durationTicks: timelineTicks(500_000),
+          },
         },
       ],
     },
@@ -90,9 +96,11 @@ describe('frameToTicks', () => {
   });
 });
 
-describe('quantizeTimeUsToFrames', () => {
+describe('quantizeTicksToFrames', () => {
   it('round-trips through frame quantization', () => {
-    expect(quantizeTimeUsToFrames(timelineTicks(1_000_001), 30, 'round')).toBe(timelineTicks(1_000_000));
+    expect(quantizeTicksToFrames(timelineTicks(1_000_001), 30, 'round')).toBe(
+      timelineTicks(1_000_000),
+    );
   });
 });
 
@@ -164,11 +172,18 @@ describe('assertNoOverlap', () => {
   it('throws when items overlap', () => {
     const track: any = {
       items: [
-        { id: 'a', kind: 'clip', timelineRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) } },
+        {
+          id: 'a',
+          kind: 'clip',
+          timelineRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
+        },
         {
           id: 'b',
           kind: 'clip',
-          timelineRange: { startTicks: timelineTicks(500_000), durationTicks: timelineTicks(1_000_000) },
+          timelineRange: {
+            startTicks: timelineTicks(500_000),
+            durationTicks: timelineTicks(1_000_000),
+          },
         },
       ],
     };
@@ -178,11 +193,18 @@ describe('assertNoOverlap', () => {
   it('does not throw for non-overlapping items', () => {
     const track: any = {
       items: [
-        { id: 'a', kind: 'clip', timelineRange: { startTicks: 0, durationTicks: timelineTicks(500_000) } },
+        {
+          id: 'a',
+          kind: 'clip',
+          timelineRange: { startTicks: 0, durationTicks: timelineTicks(500_000) },
+        },
         {
           id: 'b',
           kind: 'clip',
-          timelineRange: { startTicks: timelineTicks(500_000), durationTicks: timelineTicks(500_000) },
+          timelineRange: {
+            startTicks: timelineTicks(500_000),
+            durationTicks: timelineTicks(500_000),
+          },
         },
       ],
     };
@@ -196,11 +218,17 @@ describe('mergeAdjacentGaps', () => {
       { kind: 'gap', timelineRange: { startTicks: 0, durationTicks: timelineTicks(500_000) } },
       {
         kind: 'gap',
-        timelineRange: { startTicks: timelineTicks(500_000), durationTicks: timelineTicks(500_000) },
+        timelineRange: {
+          startTicks: timelineTicks(500_000),
+          durationTicks: timelineTicks(500_000),
+        },
       },
       {
         kind: 'clip',
-        timelineRange: { startTicks: timelineTicks(1_000_000), durationTicks: timelineTicks(1_000_000) },
+        timelineRange: {
+          startTicks: timelineTicks(1_000_000),
+          durationTicks: timelineTicks(1_000_000),
+        },
       },
     ];
     const result = mergeAdjacentGaps(items);

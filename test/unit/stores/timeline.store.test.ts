@@ -363,7 +363,10 @@ describe('TimelineStore', () => {
       ],
     });
     const clip = timeline.tracks[0].items.find((it: any) => it.id === 'c1') as any;
-    clip.sourceRange = { startTicks: timelineTicks(1_000_000), durationTicks: timelineTicks(5_000_000) };
+    clip.sourceRange = {
+      startTicks: timelineTicks(1_000_000),
+      durationTicks: timelineTicks(5_000_000),
+    };
     clip.speed = 2;
 
     store.timelineDoc = timeline;
@@ -386,7 +389,10 @@ describe('TimelineStore', () => {
       ],
     });
     const clip = timeline.tracks[0].items.find((it: any) => it.id === 'c1') as any;
-    clip.sourceRange = { startTicks: timelineTicks(1_000_000), durationTicks: timelineTicks(5_000_000) };
+    clip.sourceRange = {
+      startTicks: timelineTicks(1_000_000),
+      durationTicks: timelineTicks(5_000_000),
+    };
     clip.speed = -1;
 
     store.timelineDoc = timeline;
@@ -423,7 +429,12 @@ describe('TimelineStore', () => {
           id: 'v1',
           kind: 'video',
           clips: [
-            { id: 'c1', startTicks: 1_000_000, durationTicks: 5_000_000, freezeFrameSourceTicks: 100 },
+            {
+              id: 'c1',
+              startTicks: 1_000_000,
+              durationTicks: 5_000_000,
+              freezeFrameSourceTicks: 100,
+            },
           ],
         },
       ],
@@ -518,12 +529,18 @@ describe('TimelineStore', () => {
     store.timelineDoc = timeline;
 
     let clip = store.timelineDoc.tracks[0].items.find((it: any) => it.kind === 'clip');
-    await store.trimToTimeLeftNoRipple({ trackId: 'v1', itemId: clip.id }, timelineTicks(3_000_000));
+    await store.trimToTimeLeftNoRipple(
+      { trackId: 'v1', itemId: clip.id },
+      timelineTicks(3_000_000),
+    );
 
     clip = store.timelineDoc.tracks[0].items.find((it: any) => it.kind === 'clip');
     expect(clip.timelineRange.startTicks).toBe(timelineTicks(3_000_000));
 
-    await store.trimToTimeRightNoRipple({ trackId: 'v1', itemId: clip.id }, timelineTicks(7_000_000));
+    await store.trimToTimeRightNoRipple(
+      { trackId: 'v1', itemId: clip.id },
+      timelineTicks(7_000_000),
+    );
 
     clip = store.timelineDoc.tracks[0].items.find((it: any) => it.kind === 'clip');
     expect(clip.timelineRange.durationTicks).toBe(timelineTicks(4_000_000));
@@ -570,7 +587,10 @@ describe('TimelineStore', () => {
       startTicks: timelineTicks(5_000_000),
       durationTicks: timelineTicks(1_000_000),
     });
-    expect(dropped.timelineRange).toEqual({ startTicks: 0, durationTicks: timelineTicks(5_000_000) });
+    expect(dropped.timelineRange).toEqual({
+      startTicks: 0,
+      durationTicks: timelineTicks(5_000_000),
+    });
     expect(dropped.sourceRange).toEqual({ startTicks: 0, durationTicks: timelineTicks(5_000_000) });
   });
 

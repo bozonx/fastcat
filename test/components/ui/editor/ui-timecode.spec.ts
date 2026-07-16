@@ -1,9 +1,9 @@
 import { describe, it, expect, vi } from 'vitest';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
 import UiTimecode from '~/components/ui/editor/UiTimecode.vue';
-import { TICKS_PER_MICROSECOND } from '~/utils/time';
+import { TICKS_PER_SECOND } from '~/utils/time';
 
-const timelineTicks = (value: number) => value * TICKS_PER_MICROSECOND;
+const timelineTicks = (value: number) => value * (TICKS_PER_SECOND / 1_000_000);
 
 vi.mock('~/utils/hotkeys/layerUtils', () => ({
   isLayer1Active: (e: Event) => (e as any).shiftKey,

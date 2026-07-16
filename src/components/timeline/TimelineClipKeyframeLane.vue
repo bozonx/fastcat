@@ -3,7 +3,7 @@ import { TICKS_PER_SECOND } from '~/utils/time';
 import { computed, inject, ref } from 'vue';
 import type { KeyframeEasing, TimelineClipItem } from '~/timeline/types';
 import type { TimelineContext } from './context';
-import { pxToDeltaTicks, timeUsToPx } from '~/utils/timeline/geometry';
+import { pxToDeltaTicks, ticksToPx } from '~/utils/timeline/geometry';
 import { useClipKeyframes } from '~/composables/timeline/useClipKeyframes';
 import { KEYFRAME_EASINGS } from '~/timeline/animation/evaluate';
 import { animatedParamPaths } from '~/timeline/animation/ops';
@@ -69,7 +69,7 @@ const draggingFromTTicks = ref<number | null>(null);
 const dragDeltaPx = ref(0);
 
 function diamondLeftPx(tTicks: number): number {
-  const base = timeUsToPx(tTicks, props.zoom);
+  const base = ticksToPx(tTicks, props.zoom);
   return draggingFromTTicks.value === tTicks ? base + dragDeltaPx.value : base;
 }
 
@@ -111,7 +111,10 @@ function onDiamondPointerDown(tTicks: number, e: PointerEvent) {
     target.removeEventListener('pointercancel', onUp);
     if (draggingFromTTicks.value !== null && dragDeltaPx.value !== 0) {
       const deltaTicks = pxToDeltaTicks(dragDeltaPx.value, props.zoom);
-      const toTTicks = Math.max(0, Math.min(durationTicks.value, draggingFromTTicks.value + deltaTicks));
+      const toTTicks = Math.max(
+        0,
+        Math.min(durationTicks.value, draggingFromTTicks.value + deltaTicks),
+      );
       moveKeyframeMomentAt(draggingFromTTicks.value, toTTicks);
     }
     draggingFromTTicks.value = null;

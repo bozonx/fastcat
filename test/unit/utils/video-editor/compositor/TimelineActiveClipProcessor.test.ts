@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { TICKS_PER_MICROSECOND } from '~/utils/time';
+import { TICKS_PER_MILLISECOND } from '~/utils/time';
 
 import { TimelineActiveClipProcessor } from '~/utils/video-editor/compositor/TimelineActiveClipProcessor';
 import type { CompositorClip } from '~/utils/video-editor/compositor/types';
@@ -29,7 +29,7 @@ function makeClip(overrides: Partial<CompositorClip> = {}): CompositorClip {
     'sourceDurationTicks',
     'freezeFrameSourceTicks',
   ] as const) {
-    if (typeof clip[field] === 'number') clip[field] *= TICKS_PER_MICROSECOND;
+    if (typeof clip[field] === 'number') clip[field] *= TICKS_PER_MILLISECOND;
   }
   return clip as unknown as CompositorClip;
 }
@@ -48,7 +48,7 @@ function makeParams(overrides: Record<string, unknown> = {}) {
     createPrimaryVideoSampleRequest: vi.fn().mockResolvedValue({ clip: null, sample: null }),
     ...overrides,
   };
-  params.timeTicks = Number(params.timeTicks) * TICKS_PER_MICROSECOND;
+  params.timeTicks = Number(params.timeTicks) * TICKS_PER_MILLISECOND;
   return params;
 }
 
@@ -95,7 +95,7 @@ describe('TimelineActiveClipProcessor.process', () => {
     });
     const params = makeParams({
       activeClips: [clip],
-      timeTicks: 500_000,
+      timeTicks: 500,
       createPrimaryVideoSampleRequest,
     });
     const result = processor.process(params);
@@ -132,14 +132,14 @@ describe('TimelineActiveClipProcessor.process', () => {
 
   it('uses freezeFrameSourceTicks when set', () => {
     const processor = new TimelineActiveClipProcessor();
-    const clip = makeClip({ clipKind: 'video', freezeFrameSourceTicks: 200_000 });
+    const clip = makeClip({ clipKind: 'video', freezeFrameSourceTicks: 200 });
     const createPrimaryVideoSampleRequest = vi.fn().mockResolvedValue({
       clip,
       sample: { close: vi.fn() },
     });
     const params = makeParams({
       activeClips: [clip],
-      timeTicks: 500_000,
+      timeTicks: 500,
       createPrimaryVideoSampleRequest,
     });
     processor.process(params);
@@ -212,13 +212,13 @@ describe('TimelineActiveClipProcessor.process', () => {
     const computeTransitionOpacity = vi.fn().mockReturnValue(0.8);
     const params = makeParams({
       activeClips: [clip],
-      timeTicks: 100_000,
+      timeTicks: 100,
       syncTransitionFilter,
       computeTransitionOpacity,
     });
     processor.process(params);
-    expect(syncTransitionFilter).toHaveBeenCalledWith(clip, 100_000 * TICKS_PER_MICROSECOND);
-    expect(computeTransitionOpacity).toHaveBeenCalledWith(clip, 100_000 * TICKS_PER_MICROSECOND);
+    expect(syncTransitionFilter).toHaveBeenCalledWith(clip, 100 * TICKS_PER_MILLISECOND);
+    expect(computeTransitionOpacity).toHaveBeenCalledWith(clip, 100 * TICKS_PER_MILLISECOND);
     expect(clip.sprite!.alpha).toBe(0.8);
   });
 
@@ -241,7 +241,7 @@ describe('TimelineActiveClipProcessor.process', () => {
     });
     const params = makeParams({
       activeClips: [clip],
-      timeTicks: 500_000,
+      timeTicks: 500,
       createPrimaryVideoSampleRequest,
     });
     const result = processor.process(params);

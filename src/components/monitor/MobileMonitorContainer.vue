@@ -460,7 +460,7 @@ function onMonitorButtonPointerUp() {
         :render-width="renderWidth"
         :render-height="renderHeight"
         :effective-fullscreen="isFullscreen"
-        :ui-current-time-us="uiCurrentTimeTicks"
+        :ui-current-time-ticks="uiCurrentTimeTicks"
         :is-mobile="true"
         class="bg-black/80"
         @click="handleViewportClick"

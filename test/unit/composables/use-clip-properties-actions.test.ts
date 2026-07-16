@@ -4,7 +4,7 @@ import { ref } from 'vue';
 import { useClipPropertiesActions } from '~/composables/properties/useClipPropertiesActions';
 import type { TimelineClipItem, TrackKind } from '~/timeline/types';
 import type { FsEntry } from '~/types/fs';
-import { quantizeTimeUsToFrames, sanitizeFps } from '~/timeline/commands/utils';
+import { quantizeTicksToFrames, sanitizeFps } from '~/timeline/commands/utils';
 
 function makeClip(partial: Partial<TimelineClipItem> = {}): TimelineClipItem {
   return {

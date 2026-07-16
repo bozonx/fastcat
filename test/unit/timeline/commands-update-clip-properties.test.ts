@@ -217,7 +217,10 @@ describe('timeline/commands update_clip_properties', () => {
           name: 'C1',
           source: { path: 'a.mp4' },
           sourceDurationTicks: timelineTicks(10_000_000),
-          timelineRange: { startTicks: timelineTicks(1_000_000), durationTicks: timelineTicks(1_000_000) },
+          timelineRange: {
+            startTicks: timelineTicks(1_000_000),
+            durationTicks: timelineTicks(1_000_000),
+          },
           sourceRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
         },
       ],
@@ -469,7 +472,10 @@ describe('timeline/commands update_clip_properties', () => {
           name: 'C2',
           source: { path: 'b.mp4' },
           sourceDurationTicks: timelineTicks(10_000_000),
-          timelineRange: { startTicks: timelineTicks(1_000_000), durationTicks: timelineTicks(1_000_000) },
+          timelineRange: {
+            startTicks: timelineTicks(1_000_000),
+            durationTicks: timelineTicks(1_000_000),
+          },
           sourceRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
         },
       ],
@@ -534,7 +540,9 @@ describe('timeline/commands update_clip_properties', () => {
     const c1 = clips.find((item) => item.id === 'c1');
     const c2 = clips.find((item) => item.id === 'c2');
 
-    expect(c2.timelineRange.startTicks).toBe(c1.timelineRange.startTicks + c1.timelineRange.durationTicks);
+    expect(c2.timelineRange.startTicks).toBe(
+      c1.timelineRange.startTicks + c1.timelineRange.durationTicks,
+    );
     expect(c2.timelineRange.startTicks).toBe(4 * frameTicks + 1);
   });
 

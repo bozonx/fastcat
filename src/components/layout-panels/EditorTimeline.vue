@@ -25,7 +25,7 @@ import {
   computeTimelineCenteredScrollLeftForPlayhead,
   computeTimelineScrollLeftForPlayhead,
   computeTimelinePlaybackAutoScrollLeft,
-  timeUsToPx,
+  ticksToPx,
   pxToTimeTicks,
 } from '~/utils/timeline/geometry';
 import { isLayer1Pressed } from '~/utils/hotkeys/layerUtils';
@@ -160,7 +160,7 @@ const trackResetButtons = computed(() =>
 
 const timelineWidthStyle = computed(() => {
   const maxTicks = timelineStore.duration + 30_000_000;
-  const widthPx = timeUsToPx(maxTicks, timelineStore.timelineZoom);
+  const widthPx = ticksToPx(maxTicks, timelineStore.timelineZoom);
   return { width: `${widthPx}px`, minWidth: '100%' };
 });
 
@@ -752,7 +752,7 @@ function scrollPlayheadIntoView(params: { center?: boolean } = {}) {
   const el = scrollEl.value;
   if (!el) return;
 
-  const playheadPx = timeUsToPx(timelineStore.currentTime, timelineStore.timelineZoom);
+  const playheadPx = ticksToPx(timelineStore.currentTime, timelineStore.timelineZoom);
   const maxScrollLeft = el.scrollWidth - el.clientWidth;
   const nextScrollLeft = params.center
     ? computeTimelineCenteredScrollLeftForPlayhead({
@@ -817,7 +817,7 @@ watch(
     const el = scrollEl.value;
     if (!el) return;
 
-    const playheadPx = timeUsToPx(timelineStore.currentTime, timelineStore.timelineZoom);
+    const playheadPx = ticksToPx(timelineStore.currentTime, timelineStore.timelineZoom);
     const nextScrollLeft = computeTimelinePlaybackAutoScrollLeft({
       playheadPx,
       scrollLeft: el.scrollLeft,

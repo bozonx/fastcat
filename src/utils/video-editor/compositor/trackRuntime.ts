@@ -73,7 +73,8 @@ export function buildPrevClipByIdIndex(
 
   for (const layerClips of byLayer.values()) {
     const sorted = [...layerClips].sort(
-      (a, b) => a.startTicks - b.startTicks || a.endTicks - b.endTicks || a.itemId.localeCompare(b.itemId),
+      (a, b) =>
+        a.startTicks - b.startTicks || a.endTicks - b.endTicks || a.itemId.localeCompare(b.itemId),
     );
 
     for (let index = 0; index < sorted.length; index += 1) {
@@ -104,7 +105,8 @@ export function buildNextClipByIdIndex(
 
   for (const layerClips of byLayer.values()) {
     const sorted = [...layerClips].sort(
-      (a, b) => a.startTicks - b.startTicks || a.endTicks - b.endTicks || a.itemId.localeCompare(b.itemId),
+      (a, b) =>
+        a.startTicks - b.startTicks || a.endTicks - b.endTicks || a.itemId.localeCompare(b.itemId),
     );
 
     for (let index = 0; index < sorted.length; index += 1) {

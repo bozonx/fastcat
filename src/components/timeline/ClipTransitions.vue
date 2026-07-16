@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { TimelineTrack, TimelineClipItem } from '~/timeline/types';
-import { timeUsToPx } from '~/utils/timeline/geometry';
+import { ticksToPx } from '~/utils/timeline/geometry';
 import {
   getFadeLinePattern as getTransitionFadeLinePattern,
   getTransitionSolidPath,
@@ -38,7 +38,7 @@ const emit = defineEmits<{
 }>();
 
 function transitionUsToPx(us: number) {
-  return timeUsToPx(us, props.zoom);
+  return ticksToPx(us, props.zoom);
 }
 
 function getTransitionButtonClass(selected: boolean, hasProblem: boolean, edge: 'in' | 'out') {
@@ -225,7 +225,10 @@ function getTransitionSvgFill(edge: 'in' | 'out', hasProblem: boolean) {
               v-if="!isMobile && canEdit && !clip.locked && !track.locked"
               class="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize bg-white/0 group-hover/trans:bg-white/20 hover:bg-white/40! transition-colors z-40 pointer-events-auto touch-none"
               @pointerdown.stop.prevent="
-                emit('resize', $event, { edge: 'in', durationTicks: clip.transitionIn!.durationTicks })
+                emit('resize', $event, {
+                  edge: 'in',
+                  durationTicks: clip.transitionIn!.durationTicks,
+                })
               "
             />
           </button>
@@ -311,7 +314,10 @@ function getTransitionSvgFill(edge: 'in' | 'out', hasProblem: boolean) {
               v-if="!isMobile && canEdit && !clip.locked && !track.locked"
               class="absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize bg-white/0 group-hover/trans:bg-white/20 hover:bg-white/40! transition-colors z-40 pointer-events-auto touch-none"
               @pointerdown.stop.prevent="
-                emit('resize', $event, { edge: 'out', durationTicks: clip.transitionOut!.durationTicks })
+                emit('resize', $event, {
+                  edge: 'out',
+                  durationTicks: clip.transitionOut!.durationTicks,
+                })
               "
             />
           </button>

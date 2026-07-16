@@ -77,7 +77,11 @@ test.describe('Web timeline trim', () => {
     const before = (await readTimelineDoc(page, e2eProject)).allClips[0].timelineDurationTicks;
     await trimClipEdge(page, clipId, 'end', -400_000);
     const trimmed = (
-      await waitForTimelineDoc(page, e2eProject, (d) => d.allClips[0].timelineDurationTicks < before)
+      await waitForTimelineDoc(
+        page,
+        e2eProject,
+        (d) => d.allClips[0].timelineDurationTicks < before,
+      )
     ).allClips[0].timelineDurationTicks;
 
     await page.goto(`/editor/${e2eProject.encodedName}`);

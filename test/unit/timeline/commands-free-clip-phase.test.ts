@@ -78,7 +78,9 @@ describe('free (sub-frame) audio clip phase preservation', () => {
 
       // Outer boundaries are untouched — the sync survives.
       expect(left!.timelineRange.startTicks).toBe(FREE_START_TICKS);
-      expect(right!.timelineRange.startTicks + right!.timelineRange.durationTicks).toBe(FREE_END_TICKS);
+      expect(right!.timelineRange.startTicks + right!.timelineRange.durationTicks).toBe(
+        FREE_END_TICKS,
+      );
       // The two halves are contiguous around the (frame-aligned) cut.
       expect(right!.timelineRange.startTicks).toBe(
         left!.timelineRange.startTicks + left!.timelineRange.durationTicks,
@@ -105,7 +107,9 @@ describe('free (sub-frame) audio clip phase preservation', () => {
       const [left, right] = clips;
       expect(left!.timelineRange.startTicks).toBe(FREE_START_TICKS);
       expect(right!.timelineRange.startTicks).toBe(cutTicks);
-      expect(right!.timelineRange.startTicks + right!.timelineRange.durationTicks).toBe(FREE_END_TICKS);
+      expect(right!.timelineRange.startTicks + right!.timelineRange.durationTicks).toBe(
+        FREE_END_TICKS,
+      );
     });
 
     it('keeps a video clip frame-aligned through a split', () => {
@@ -173,7 +177,10 @@ describe('free (sub-frame) audio clip phase preservation', () => {
             id: 'v1',
             trackId: 'v1t',
             source: { path: 'clip.mp4' },
-            timelineRange: { startTicks: timelineTicks(2_000_000), durationTicks: timelineTicks(4_000_000) },
+            timelineRange: {
+              startTicks: timelineTicks(2_000_000),
+              durationTicks: timelineTicks(4_000_000),
+            },
             sourceRange: { startTicks: 0, durationTicks: timelineTicks(4_000_000) },
           }),
         ]),
@@ -240,7 +247,10 @@ describe('free (sub-frame) audio clip phase preservation', () => {
             id: 'v1',
             trackId: 'v1t',
             source: { path: 'clip.mp4' },
-            timelineRange: { startTicks: timelineTicks(2_000_000), durationTicks: timelineTicks(4_000_000) },
+            timelineRange: {
+              startTicks: timelineTicks(2_000_000),
+              durationTicks: timelineTicks(4_000_000),
+            },
             sourceRange: { startTicks: 0, durationTicks: timelineTicks(4_000_000) },
           }),
         ]),
