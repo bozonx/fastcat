@@ -23,7 +23,7 @@ interface UseTimelineRulerSelectionDragOptions {
   zoom: Ref<number>;
   fps: Ref<number>;
   scrollLeft: Ref<number>;
-  getTimeUsFromPointerEvent: (event: PointerEvent) => number;
+  getTimeTicksFromPointerEvent: (event: PointerEvent) => number;
   selectSelectionRange: () => void;
   updateSelectionRange: (payload: { startTicks: number; endTicks: number } | null) => void;
   createSelectionRange: (payload: { startTicks: number; endTicks: number }) => void;
@@ -291,7 +291,7 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
     selectionDragPart.value = part;
     selectionDragStartX.value = event.clientX;
     selectionDragStartScrollLeft.value = options.scrollLeft.value;
-    selectionDragStartMouseTimeTicks.value = options.getTimeUsFromPointerEvent(event);
+    selectionDragStartMouseTimeTicks.value = options.getTimeTicksFromPointerEvent(event);
     selectionDragStartStartTicks.value = quantize(options.selectionRange.value.startTicks);
     selectionDragStartEndTicks.value = quantize(options.selectionRange.value.endTicks);
     draggedSelectionPatch.value = null;
@@ -311,7 +311,7 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
     if (!isCreatingSelectionRange.value) return;
 
     suppressNextRulerClick.value = true;
-    let currentTicks = quantize(options.getTimeUsFromPointerEvent(event));
+    let currentTicks = quantize(options.getTimeTicksFromPointerEvent(event));
 
     if (getIsSnappingEnabled() && options.computeSnapTargets && options.snapThresholdPx) {
       const thresholdTicks = Math.round(
@@ -369,7 +369,7 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
       }
     }
 
-    const timeTicks = quantize(options.getTimeUsFromPointerEvent(event));
+    const timeTicks = quantize(options.getTimeTicksFromPointerEvent(event));
     selectionCreateStartTicks.value = timeTicks;
     isCreatingSelectionRange.value = true;
 

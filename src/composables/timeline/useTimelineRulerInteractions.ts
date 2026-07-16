@@ -55,7 +55,7 @@ export function useTimelineRulerInteractions(options: UseTimelineRulerInteractio
 
   const rulerSettings = computed(() => options.workspaceStore.userSettings.mouse.ruler);
 
-  function getTimeUsFromMouseEvent(event: PointerEvent | MouseEvent): number {
+  function getTimeTicksFromMouseEvent(event: PointerEvent | MouseEvent): number {
     const rect = options.containerRef.value?.getBoundingClientRect();
     if (!rect) return 0;
 
@@ -67,7 +67,7 @@ export function useTimelineRulerInteractions(options: UseTimelineRulerInteractio
     if (action === 'none') return;
 
     if (action === 'seek') {
-      const rawTimeTicks = getTimeUsFromMouseEvent(event as MouseEvent);
+      const rawTimeTicks = getTimeTicksFromMouseEvent(event as MouseEvent);
       const timeTicks = options.resolvePlayheadClickTimeTicks?.(rawTimeTicks) ?? rawTimeTicks;
       options.timelineStore.setCurrentTimeTicks(timeTicks);
       return;
@@ -101,7 +101,7 @@ export function useTimelineRulerInteractions(options: UseTimelineRulerInteractio
     }
 
     if (action === 'add_marker') {
-      const rawTimeTicks = getTimeUsFromMouseEvent(event as MouseEvent);
+      const rawTimeTicks = getTimeTicksFromMouseEvent(event as MouseEvent);
       const timeTicks = options.resolvePlayheadClickTimeTicks?.(rawTimeTicks) ?? rawTimeTicks;
       const markerId = createMarkerId();
 
@@ -122,7 +122,7 @@ export function useTimelineRulerInteractions(options: UseTimelineRulerInteractio
   }
 
   function onRulerContextMenu(event: MouseEvent) {
-    lastRightClickTimeTicks.value = getTimeUsFromMouseEvent(event);
+    lastRightClickTimeTicks.value = getTimeTicksFromMouseEvent(event);
   }
 
   function onRulerClick(event: MouseEvent) {
@@ -144,7 +144,7 @@ export function useTimelineRulerInteractions(options: UseTimelineRulerInteractio
   function onRulerDblClick(event: MouseEvent) {
     if (event.button !== 0) return;
 
-    options.emit('dblclick-ruler', getTimeUsFromMouseEvent(event));
+    options.emit('dblclick-ruler', getTimeTicksFromMouseEvent(event));
     executeRulerClickAction(rulerSettings.value.doubleClick, event);
   }
 
@@ -171,7 +171,7 @@ export function useTimelineRulerInteractions(options: UseTimelineRulerInteractio
     }
 
     if (action === 'move_playhead') {
-      const rawTimeTicks = getTimeUsFromMouseEvent(event);
+      const rawTimeTicks = getTimeTicksFromMouseEvent(event);
       const timeTicks = options.resolvePlayheadClickTimeTicks?.(rawTimeTicks) ?? rawTimeTicks;
       options.timelineStore.setCurrentTimeTicks(timeTicks);
       options.emit('start-playhead-drag', event);
@@ -260,7 +260,7 @@ export function useTimelineRulerInteractions(options: UseTimelineRulerInteractio
 
   return {
     executeRulerClickAction,
-    getTimeUsFromMouseEvent,
+    getTimeTicksFromMouseEvent,
     onContextMenuOpenChange,
     onRulerAuxClick,
     onRulerClick,

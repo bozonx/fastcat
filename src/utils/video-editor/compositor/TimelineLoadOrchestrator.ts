@@ -150,7 +150,7 @@ export class TimelineLoadOrchestrator {
       requestedSourceDurationTicks,
       speed,
       startTicks,
-      endUsFallback,
+      endTicksFallback,
     } = descriptor;
 
     const reusable = callbacks.getExistingClipById(itemId);
@@ -232,7 +232,7 @@ export class TimelineLoadOrchestrator {
 
     if (!sourcePath) {
       return {
-        sequentialTimeTicks: Math.max(sequentialTimeTicks, endUsFallback),
+        sequentialTimeTicks: Math.max(sequentialTimeTicks, endTicksFallback),
       };
     }
 
@@ -241,7 +241,7 @@ export class TimelineLoadOrchestrator {
     const fileHandle = await deps.getFileHandleByPath(sourcePath);
     if (!fileHandle) {
       return {
-        sequentialTimeTicks: Math.max(sequentialTimeTicks, endUsFallback),
+        sequentialTimeTicks: Math.max(sequentialTimeTicks, endTicksFallback),
       };
     }
 
@@ -410,7 +410,7 @@ export class TimelineLoadOrchestrator {
         log.error(`[VideoCompositor] Failed to load video clip ${itemId}:`, err);
       }
       return {
-        sequentialTimeTicks: Math.max(sequentialTimeTicks, endUsFallback),
+        sequentialTimeTicks: Math.max(sequentialTimeTicks, endTicksFallback),
       };
     }
   }

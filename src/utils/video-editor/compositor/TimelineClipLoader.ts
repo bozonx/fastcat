@@ -36,7 +36,7 @@ export interface TimelineClipDescriptor {
   requestedSourceDurationTicks: number;
   speed?: number;
   startTicks: number;
-  endUsFallback: number;
+  endTicksFallback: number;
 }
 
 export interface UpdateReusableClipContext {
@@ -178,7 +178,7 @@ export class TimelineClipLoader {
       requestedSourceDurationTicks,
       speed,
       startTicks,
-      endUsFallback: startTicks + Math.max(0, requestedTimelineDurationTicks),
+      endTicksFallback: startTicks + Math.max(0, requestedTimelineDurationTicks),
     };
   }
 
@@ -334,7 +334,7 @@ export class TimelineClipLoader {
 
     return {
       clip: reusable,
-      sequentialTimeTicks: Math.max(descriptor.endUsFallback, reusable.endTicks),
+      sequentialTimeTicks: Math.max(descriptor.endTicksFallback, reusable.endTicks),
     };
   }
 }

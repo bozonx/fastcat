@@ -9,7 +9,7 @@ const projectStoreMock = vi.hoisted(() => ({
 const workspaceStoreMock = vi.hoisted(() => ({ hasPersistentStorage: true }));
 const extractTimelineFrameBlobMock = vi.hoisted(() => vi.fn());
 const saveManualThumbnailMock = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
-const selectTimelineDurationUsMock = vi.hoisted(() => vi.fn(() => 10_000_000));
+const selectTimelineDurationTicksMock = vi.hoisted(() => vi.fn(() => 10_000_000));
 
 vi.mock('~/stores/project.store', () => ({ useProjectStore: () => projectStoreMock }));
 vi.mock('~/stores/workspace.store', () => ({ useWorkspaceStore: () => workspaceStoreMock }));
@@ -20,7 +20,7 @@ vi.mock('~/utils/file-thumbnail-generator', () => ({
   fileThumbnailGenerator: { saveManualThumbnail: saveManualThumbnailMock },
 }));
 vi.mock('~/timeline/selectors', () => ({
-  selectTimelineDurationTicks: selectTimelineDurationUsMock,
+  selectTimelineDurationTicks: selectTimelineDurationTicksMock,
 }));
 
 const timelineDoc = { timebase: { fps: 30 }, tracks: [] } as unknown as TimelineDocument;

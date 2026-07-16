@@ -149,7 +149,7 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
     });
   }
 
-  async function getPreviewDurationUsAsync(params: {
+  async function getPreviewDurationTicksAsync(params: {
     kind: 'file' | 'timeline' | 'adjustment' | 'background' | 'text' | 'shape' | 'hud';
     path?: string;
   }) {
@@ -449,7 +449,7 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
       reportNoDroppableTrack(baseTrack?.kind ?? 'video');
       return { nextStartTicks: context.currentStartTicks, added: false };
     }
-    const durationTicks = await getPreviewDurationUsAsync({ kind: 'timeline', path: item.path });
+    const durationTicks = await getPreviewDurationTicksAsync({ kind: 'timeline', path: item.path });
     const nextStartTicks = resolveDropStartTicks({
       trackId: targetTrackId,
       startTicks: context.currentStartTicks,
@@ -547,7 +547,7 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
       reportNoDroppableTrack(mediaKind);
       return { nextStartTicks: context.currentStartTicks, added: false };
     }
-    const durationTicks = await getPreviewDurationUsAsync({ kind: 'file', path: item.path });
+    const durationTicks = await getPreviewDurationTicksAsync({ kind: 'file', path: item.path });
     const nextStartTicks = resolveDropStartTicks({
       trackId: targetTrackId,
       startTicks: context.currentStartTicks,
@@ -875,7 +875,7 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
           continue;
         }
 
-        const durationTicks = await getPreviewDurationUsAsync({
+        const durationTicks = await getPreviewDurationTicksAsync({
           kind: item.kind ?? 'file',
           path: item.path,
         });
@@ -973,7 +973,7 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
       return null;
     }
 
-    const durationTicks = await getPreviewDurationUsAsync({
+    const durationTicks = await getPreviewDurationTicksAsync({
       kind: firstItem.kind ?? 'file',
       path: firstItem.path,
     });

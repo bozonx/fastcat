@@ -168,12 +168,15 @@ export function parseClipItem(input: {
 
   const timelineStartTicks = fallbackStartTicks;
 
-  const sourceDurationUsFromMeta = Math.max(0, Math.round(fastcatMeta.source?.durationTicks ?? 0));
+  const sourceDurationTicksFromMeta = Math.max(
+    0,
+    Math.round(fastcatMeta.source?.durationTicks ?? 0),
+  );
   const sourceDurationTicks =
     availableRange?.durationTicks && availableRange.durationTicks > 0
       ? availableRange.durationTicks
-      : sourceDurationUsFromMeta > 0
-        ? sourceDurationUsFromMeta
+      : sourceDurationTicksFromMeta > 0
+        ? sourceDurationTicksFromMeta
         : sourceRange.durationTicks;
 
   const id = resolveStableItemId({

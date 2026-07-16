@@ -62,7 +62,7 @@ const subTickWidth = 0.8;
 const fps = computed(() => timelineStore.timelineFormat.fps || 30);
 const zoom = computed(() => timelineStore.timelineZoom);
 
-function getTimeUsFromRulerClientEvent(event: MouseEvent | PointerEvent): number {
+function getTimeTicksFromRulerClientEvent(event: MouseEvent | PointerEvent): number {
   const rect = containerRef.value?.getBoundingClientRect();
   if (!rect) return 0;
   const x = event.clientX - rect.left;
@@ -224,7 +224,7 @@ function selectSelectionRange(e?: MouseEvent) {
   e?.stopPropagation();
   selectionStore.selectTimelineSelectionRange();
   if (e) {
-    timelineStore.setCurrentTimeTicks(getTimeUsFromRulerClientEvent(e));
+    timelineStore.setCurrentTimeTicks(getTimeTicksFromRulerClientEvent(e));
   }
 }
 
@@ -247,7 +247,7 @@ const {
   snapThresholdPx: computed(() => snapThresholdPx.value),
   isSnappingEnabled,
   scrollLeft,
-  getTimeUsFromPointerEvent: (event) => getTimeUsFromMouseEvent(event),
+  getTimeTicksFromPointerEvent: (event) => getTimeTicksFromMouseEvent(event),
 });
 
 const {
@@ -262,7 +262,7 @@ const {
   zoom,
   fps,
   scrollLeft,
-  getTimeUsFromPointerEvent: (event) => getTimeUsFromMouseEvent(event),
+  getTimeTicksFromPointerEvent: (event) => getTimeTicksFromMouseEvent(event),
   selectSelectionRange,
   updateSelectionRange: timelineStore.updateSelectionRange,
   createSelectionRange: timelineStore.createSelectionRange,
@@ -297,7 +297,7 @@ const suppressNextRulerClick = computed({
 
 const {
   executeRulerClickAction,
-  getTimeUsFromMouseEvent,
+  getTimeTicksFromMouseEvent,
   onContextMenuOpenChange,
   onRulerAuxClick,
   onRulerClick,
@@ -401,12 +401,12 @@ function onMobilePointerDown(event: PointerEvent) {
 
   mobileScrubActive.value = true;
   containerRef.value?.setPointerCapture(event.pointerId);
-  timelineStore.setCurrentTimeTicks(getSnappedPlayheadTimeTicks(getTimeUsFromMouseEvent(event)));
+  timelineStore.setCurrentTimeTicks(getSnappedPlayheadTimeTicks(getTimeTicksFromMouseEvent(event)));
 }
 
 function onMobilePointerMove(event: PointerEvent) {
   if (!mobileScrubActive.value) return;
-  timelineStore.setCurrentTimeTicks(getTimeUsFromMouseEvent(event));
+  timelineStore.setCurrentTimeTicks(getTimeTicksFromMouseEvent(event));
 }
 
 function onMobilePointerUp() {

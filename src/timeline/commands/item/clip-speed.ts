@@ -46,8 +46,8 @@ export function applyClipSpeedChange(params: {
   // never reached playback — video kept playing forward and reversed-clip audio was
   // not muted. Unit speed (1×) carries no time-warp, so the flag clears there.
   nextProps.speedActive = speed !== 1;
-  const nextDurationUsRaw = Math.round(item.sourceRange.durationTicks / Math.abs(speed));
-  const nextDurationTicks = Math.max(0, quantizeTicksToFrames(nextDurationUsRaw, fps, 'round'));
+  const nextDurationTicksRaw = Math.round(item.sourceRange.durationTicks / Math.abs(speed));
+  const nextDurationTicks = Math.max(0, quantizeTicksToFrames(nextDurationTicksRaw, fps, 'round'));
   const startTicks = item.timelineRange.startTicks;
   const prevDurationTicks = Math.max(0, item.timelineRange.durationTicks);
 

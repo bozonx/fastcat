@@ -33,7 +33,7 @@ interface UseTimelineRulerMarkerDragOptions {
   snapThresholdPx?: Ref<number>;
   isSnappingEnabled?: Ref<boolean>;
   scrollLeft: Ref<number>;
-  getTimeUsFromPointerEvent: (event: PointerEvent) => number;
+  getTimeTicksFromPointerEvent: (event: PointerEvent) => number;
 }
 
 export function useTimelineRulerMarkerDrag(options: UseTimelineRulerMarkerDragOptions) {
@@ -299,7 +299,7 @@ export function useTimelineRulerMarkerDrag(options: UseTimelineRulerMarkerDragOp
     markerDragStartX.value = event.clientX;
     markerDragStartY.value = event.clientY;
     markerDragStartScrollLeft.value = options.scrollLeft.value;
-    markerDragStartMouseTimeTicks.value = options.getTimeUsFromPointerEvent(event);
+    markerDragStartMouseTimeTicks.value = options.getTimeTicksFromPointerEvent(event);
     markerDragStartStates.value = states;
     draggedMarkerPatches.value = {};
 

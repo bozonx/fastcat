@@ -33,7 +33,7 @@ function setupDrag(markersData: Marker[], selectedIds: string[]) {
         // Keep snapping off so the geometry stays deterministic.
         isSnappingEnabled: ref(false),
         scrollLeft: ref(0),
-        getTimeUsFromPointerEvent: () => 0,
+        getTimeTicksFromPointerEvent: () => 0,
       });
       return () => h('div');
     },

@@ -348,13 +348,13 @@ function getCachedPointerRect(el: HTMLElement): DOMRect {
   return cachedPointerRect;
 }
 
-function getTimeUsFromPointerEvent(el: HTMLElement, event: PointerEvent): number {
+function getTimeTicksFromPointerEvent(el: HTMLElement, event: PointerEvent): number {
   const rect = getCachedPointerRect(el);
   const x = event.clientX - rect.left + (masterScrollEl.value?.scrollLeft ?? 0);
   return pxToTimeTicks(x, timelineStore.timelineZoom);
 }
 
-function getTimeUsFromRulerMiddlePointer(): number {
+function getTimeTicksFromRulerMiddlePointer(): number {
   const rect = rulerContainerRef.value?.getBoundingClientRect();
   const pointer = middleRulerPointerDown.value;
   if (!rect || !pointer) return timelineStore.currentTime;
@@ -368,7 +368,7 @@ function executeRulerMiddleClickFallback() {
   if (action === 'none') return;
 
   if (action === 'seek') {
-    timelineStore.setCurrentTimeTicks(getTimeUsFromRulerMiddlePointer());
+    timelineStore.setCurrentTimeTicks(getTimeTicksFromRulerMiddlePointer());
     return;
   }
 
@@ -399,7 +399,7 @@ function executeRulerMiddleClickFallback() {
     timelineStore.applyTimeline({
       type: 'add_marker',
       id: markerId,
-      timeTicks: getTimeUsFromRulerMiddlePointer(),
+      timeTicks: getTimeTicksFromRulerMiddlePointer(),
       text: '',
     });
     selectionStore.selectTimelineMarker(markerId);
@@ -418,7 +418,7 @@ function onTimelinePointerMove(e: PointerEvent) {
   ) {
     const el = getActiveScrollEl(e) || scrollEl.value;
     if (el) {
-      timelineStore.setCurrentTimeTicks(getTimeUsFromPointerEvent(el, e));
+      timelineStore.setCurrentTimeTicks(getTimeTicksFromPointerEvent(el, e));
     }
   }
 
@@ -452,7 +452,7 @@ function onTrackAreaPointerDownCapture(e: PointerEvent) {
     } else if (timelineMouseSettings.value.middleDrag === 'move_playhead') {
       const el = getActiveScrollEl(e) || scrollEl.value;
       if (!el) return;
-      timelineStore.setCurrentTimeTicks(getTimeUsFromPointerEvent(el, e));
+      timelineStore.setCurrentTimeTicks(getTimeTicksFromPointerEvent(el, e));
       startPlayheadDrag(e);
     }
   }

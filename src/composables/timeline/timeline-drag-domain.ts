@@ -84,7 +84,7 @@ export function computeSnapTargetsTicks(params: {
   return sanitizeSnapTargetsTicks(targets);
 }
 
-export interface ResolvePlayheadClickTimeUsParams {
+export interface ResolvePlayheadClickTimeTicksParams {
   rawTimeTicks: number;
   zoom: number;
   snapThresholdPx: number;
@@ -96,7 +96,7 @@ export interface ResolvePlayheadClickTimeUsParams {
   selectionRangeTicks?: TimelineSelectionRange | null;
 }
 
-export function resolvePlayheadClickTimeTicks(params: ResolvePlayheadClickTimeUsParams): number {
+export function resolvePlayheadClickTimeTicks(params: ResolvePlayheadClickTimeTicksParams): number {
   const rawTimeTicks = Math.max(0, Math.round(params.rawTimeTicks));
 
   if (!params.snapping.playheadClick || params.toolbarSnapMode !== 'snap') {
