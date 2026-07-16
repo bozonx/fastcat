@@ -1,11 +1,10 @@
 // @vitest-environment node
-import { timelineTicks } from './timeline-time';
-import { TICKS_PER_MILLISECOND } from '~/utils/time';
 import { describe, it, expect } from 'vitest';
 import {
   normalizeAppSettings,
   normalizeUserSettings,
   normalizeWorkspaceSettings,
+  DEFAULT_USER_SETTINGS,
 } from '~/utils/settings';
 import { normalizeLocale } from '~/utils/settings/normalizers/shared';
 import { DEFAULT_HOTKEYS } from '~/utils/hotkeys/defaultHotkeys';
@@ -60,26 +59,24 @@ describe('settings normalization', () => {
     ).toBe('balanced');
   });
 
-  it('normalizes default timeline durations to sane bounds', () => {
+  it('clamps default timeline durations to sane bounds', () => {
     const normalized = normalizeUserSettings({
       timeline: {
-        defaultAudioFadeDurationTicks: 20_000,
-        defaultTransitionDurationTicks: 500_000_000,
-        defaultStaticClipDurationTicks: 4_000_000_000,
+        defaultAudioFadeDurationTicks: 1,
+        defaultTransitionDurationTicks: 100_000_000_000_000,
+        defaultStaticClipDurationTicks: 1_000_000_000_000_000,
       },
     });
 
-    expect(normalized.timeline.defaultAudioFadeDurationTicks).toBe(timelineTicks(1_000_000));
-    expect(normalized.timeline.defaultTransitionDurationTicks).toBe(timelineTicks(2_000_000));
-    expect(normalized.timeline.defaultStaticClipDurationTicks).toBe(timelineTicks(5_000_000));
-  });
-
-  it('migrates legacy project declick duration from microseconds', () => {
-    const normalized = normalizeUserSettings({
-      projectDefaults: { audioDeclickDurationTicks: 5_000 },
-    });
-
-    expect(normalized.projectDefaults.audioDeclickDurationTicks).toBe(5 * TICKS_PER_MILLISECOND);
+    expect(normalized.timeline.defaultAudioFadeDurationTicks).toBe(
+      DEFAULT_USER_SETTINGS.timeline.defaultAudioFadeDurationTicks,
+    );
+    expect(normalized.timeline.defaultTransitionDurationTicks).toBe(
+      DEFAULT_USER_SETTINGS.timeline.defaultTransitionDurationTicks,
+    );
+    expect(normalized.timeline.defaultStaticClipDurationTicks).toBe(
+      DEFAULT_USER_SETTINGS.timeline.defaultStaticClipDurationTicks,
+    );
   });
 
   it('normalizes legacy Pixi renderer settings to WebGPU-first', () => {

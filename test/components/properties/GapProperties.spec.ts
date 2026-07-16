@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { reactive, ref } from 'vue';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
 import GapProperties from '~/components/properties/GapProperties.vue';
-import { timelineTicks } from '../../unit/utils/timeline-time';
 
 vi.mock('vue-i18n', () => ({
   useI18n: vi.fn(() => ({
@@ -55,8 +54,8 @@ const timelineStore = reactive({
             id: 'gap1',
             kind: 'gap',
             timelineRange: {
-              startTicks: timelineTicks(1_000_000),
-              durationTicks: timelineTicks(3_000_000),
+              startTicks: 254_016_000_000,
+              durationTicks: 762_048_000_000,
             },
           },
         ],

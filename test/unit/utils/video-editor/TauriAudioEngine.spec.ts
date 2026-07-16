@@ -2,7 +2,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { TauriAudioEngine } from '~/utils/video-editor/TauriAudioEngine';
 import { runAudioEngineContract } from './audio-engine-contract';
-import { timelineTicks } from '../timeline-time';
 
 const listenMock = vi.hoisted(() => vi.fn());
 const unlistenMock = vi.hoisted(() => vi.fn());
@@ -155,20 +154,20 @@ describe('TauriAudioEngine', () => {
 
   it('previewScrubForward delegates to native IPC for forward spans', async () => {
     const engine = await createEngine();
-    await engine.previewScrubForward(timelineTicks(1_000_000), timelineTicks(2_000_000));
+    await engine.previewScrubForward(254_016_000_000, 508_032_000_000);
     // Default maxPreviewDurationTicks = 90_000, so 1_000_000 span is clamped to 0.09 s.
     expect(scrubPreviewMock).toHaveBeenCalledWith(1.0, 0.09);
   });
 
   it('previewScrubForward skips non-forward spans', async () => {
     const engine = await createEngine();
-    await engine.previewScrubForward(timelineTicks(2_000_000), timelineTicks(1_000_000));
+    await engine.previewScrubForward(508_032_000_000, 254_016_000_000);
     expect(scrubPreviewMock).not.toHaveBeenCalled();
   });
 
   it('previewScrubForward clamps duration to maxPreviewDurationTicks', async () => {
     const engine = await createEngine();
-    await engine.previewScrubForward(0, timelineTicks(200_000_000), timelineTicks(90_000));
+    await engine.previewScrubForward(0, 50_803_200_000_000, 22_861_440_000);
     expect(scrubPreviewMock).toHaveBeenCalledWith(0, 0.09);
   });
 
@@ -218,9 +217,7 @@ describe('TauriAudioEngine', () => {
     const handler = listenMock.mock.calls[0]?.[1] as (event: { payload: number }) => void;
     handler({ payload: 12.34 });
     // Allow small wall-clock drift since Tauri uses performance.now()
-    expect(Math.abs(engine.getCurrentTimeTicks() - timelineTicks(12_340_000))).toBeLessThan(
-      timelineTicks(1000),
-    );
+    expect(Math.abs(engine.getCurrentTimeTicks() - 3_134_557_440_000)).toBeLessThan(254_016_000);
   });
 
   it('syncTime event is ignored when not playing', async () => {
@@ -235,7 +232,7 @@ describe('TauriAudioEngine', () => {
 
   it('play delegates to scheduler with correct time and speed', async () => {
     const engine = await createEngine();
-    await engine.play(timelineTicks(5_000_000), 2);
+    await engine.play(1_270_080_000_000, 2);
     expect((engine as any).scheduler.isPlayingActive()).toBe(true);
     expect((engine as any).scheduler.getBaseTimeS()).toBe(5);
     expect((engine as any).scheduler.getGlobalSpeed()).toBe(2);
@@ -251,7 +248,7 @@ describe('TauriAudioEngine', () => {
   it('seek delegates to scheduler', async () => {
     const engine = await createEngine();
     await engine.play(0);
-    engine.seek(timelineTicks(10_000_000));
+    engine.seek(2_540_160_000_000);
     expect((engine as any).scheduler.getBaseTimeS()).toBe(10);
   });
 

@@ -1,22 +1,21 @@
 /** @vitest-environment node */
-import { timelineTicks } from '../../utils/timeline-time';
 import { describe, it, expect } from 'vitest';
 import { ticksToSecondsClamped, secondsToTicksSigned } from '~/workers/core/time';
 
 describe('time utils', () => {
   it('converts ticks to seconds', () => {
-    expect(ticksToSecondsClamped(timelineTicks(1_000_000))).toBe(1);
-    expect(ticksToSecondsClamped(timelineTicks(500_000))).toBe(0.5);
+    expect(ticksToSecondsClamped(254_016_000_000)).toBe(1);
+    expect(ticksToSecondsClamped(127_008_000_000)).toBe(0.5);
     expect(ticksToSecondsClamped(0)).toBe(0);
   });
 
   it('converts seconds to ticks', () => {
-    expect(secondsToTicksSigned(1)).toBe(timelineTicks(1_000_000));
-    expect(secondsToTicksSigned(0.5)).toBe(timelineTicks(500_000));
+    expect(secondsToTicksSigned(1)).toBe(254_016_000_000);
+    expect(secondsToTicksSigned(0.5)).toBe(127_008_000_000);
     expect(secondsToTicksSigned(0)).toBe(0);
   });
 
   it('rounds when converting seconds to ticks', () => {
-    expect(secondsToTicksSigned(0.1234567)).toBe(Math.round(0.1234567 * timelineTicks(1_000_000)));
+    expect(secondsToTicksSigned(0.1234567)).toBe(Math.round(0.1234567 * 254_016_000_000));
   });
 });

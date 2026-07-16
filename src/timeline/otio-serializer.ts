@@ -39,10 +39,8 @@ import { TimelineDocFastCatMetaSchema, TimelineTrackFastCatMetaSchema } from './
 import { getTimelineFormat, normalizeTimelineFormat, type TimelineFormatInput } from './format';
 import { createTimelineTimebaseFromFps, getTimelineFps, getTimelineFrameRate } from './timebase';
 import { frameRateToNumber, sanitizeFrameRate } from '~/utils/time';
-import {
-  migrateLegacyOtioMetadataToTicks,
-  TIMELINE_TICKS_DOCUMENT_VERSION,
-} from './time-migration';
+/** FastCat document version whose canonical timeline numbers are ticks. */
+const TIMELINE_TICKS_DOCUMENT_VERSION = 2;
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -548,8 +546,6 @@ export function parseTimelineFromOtio(
       format: fallback.format,
     });
   }
-
-  migrateLegacyOtioMetadataToTicks(parsed);
 
   const docMeta = parseDocumentMetadata((parsed.metadata as { fastcat?: unknown })?.fastcat ?? {});
   const fallbackFormat = normalizeTimelineFormat(fallback.format);

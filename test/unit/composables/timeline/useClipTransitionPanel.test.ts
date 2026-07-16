@@ -4,7 +4,6 @@ import { ref } from 'vue';
 import { useClipTransitionPanel } from '~/composables/timeline/useClipTransitionPanel';
 import type { ClipTransition } from '~/timeline/types';
 import { initTransitions, registerTransition } from '~/transitions';
-import { timelineTicks } from '../../utils/timeline-time';
 
 describe('useClipTransitionPanel', () => {
   initTransitions();
@@ -17,7 +16,7 @@ describe('useClipTransitionPanel', () => {
       itemId: ref('c1'),
       transition: ref<ClipTransition | undefined>({
         type: 'dissolve',
-        durationTicks: timelineTicks(1_000_000),
+        durationTicks: 254_016_000_000,
         mode: 'fade',
         curve: 'linear',
       }),
@@ -71,7 +70,7 @@ describe('useClipTransitionPanel', () => {
       itemId: ref('c1'),
       transition: ref<ClipTransition | undefined>({
         type: 'wipe',
-        durationTicks: timelineTicks(1_000_000),
+        durationTicks: 254_016_000_000,
         mode: 'transition',
         curve: 'linear',
         params: {
@@ -113,7 +112,7 @@ describe('useClipTransitionPanel', () => {
       icon: 'i-test',
       baseType: 'wipe',
       isCustom: true,
-      defaultDurationTicks: timelineTicks(500_000),
+      defaultDurationTicks: 127_008_000_000,
       defaultParams: {
         direction: 'left',
         edgeMode: 'gap',
@@ -130,7 +129,7 @@ describe('useClipTransitionPanel', () => {
       itemId: ref('c1'),
       transition: ref<ClipTransition | undefined>({
         type: 'dissolve',
-        durationTicks: timelineTicks(1_000_000),
+        durationTicks: 254_016_000_000,
         mode: 'transparent',
         curve: 'linear',
       }),
@@ -165,7 +164,7 @@ describe('useClipTransitionPanel', () => {
       itemId: ref('c1'),
       transition: ref<ClipTransition | undefined>({
         type: 'dissolve',
-        durationTicks: timelineTicks(2_000_000),
+        durationTicks: 508_032_000_000,
         mode: 'adjacent',
         curve: 'linear',
       }),
@@ -184,7 +183,7 @@ describe('useClipTransitionPanel', () => {
     expect(onUpdate).toHaveBeenCalled();
     expect(onUpdate.mock.calls.at(-1)?.[0]).toMatchObject({
       transition: expect.objectContaining({
-        durationTicks: timelineTicks(500_000),
+        durationTicks: 127_008_000_000,
       }),
     });
   });

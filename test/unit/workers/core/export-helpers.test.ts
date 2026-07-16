@@ -1,7 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest';
 import { TICKS_PER_SECOND } from '~/utils/time';
-import { timelineTicks } from '../../utils/timeline-time';
 
 import {
   computeExportTotalFrames,
@@ -15,12 +14,12 @@ describe('export-helpers', () => {
     it('maps timeline/source ranges from ticks to s and computes sourceEndS', () => {
       const clip = {
         timelineRange: {
-          startTicks: timelineTicks(2_000_000),
-          durationTicks: timelineTicks(4_000_000),
+          startTicks: 508_032_000_000,
+          durationTicks: 1_016_064_000_000,
         },
         sourceRange: {
-          startTicks: timelineTicks(1_000_000),
-          durationTicks: timelineTicks(3_000_000),
+          startTicks: 254_016_000_000,
+          durationTicks: 762_048_000_000,
         },
       };
 
@@ -34,12 +33,12 @@ describe('export-helpers', () => {
     it('clamps negative values to 0', () => {
       const clip = {
         timelineRange: {
-          startTicks: -timelineTicks(1_000_000),
-          durationTicks: timelineTicks(2_000_000),
+          startTicks: -254_016_000_000,
+          durationTicks: 508_032_000_000,
         },
         sourceRange: {
-          startTicks: -timelineTicks(3_000_000),
-          durationTicks: timelineTicks(1_000_000),
+          startTicks: -762_048_000_000,
+          durationTicks: 254_016_000_000,
         },
       };
 
@@ -52,7 +51,7 @@ describe('export-helpers', () => {
 
     it('falls back to timeline duration if source duration is missing', () => {
       const clip = {
-        timelineRange: { startTicks: 0, durationTicks: timelineTicks(2_500_000) },
+        timelineRange: { startTicks: 0, durationTicks: 635_040_000_000 },
         sourceRange: { startTicks: 0 },
       };
 
@@ -71,49 +70,41 @@ describe('export-helpers', () => {
 
     it('computes max endTicks across clips', () => {
       const clips = [
-        { timelineRange: { startTicks: 0, durationTicks: timelineTicks(2_000_000) } },
+        { timelineRange: { startTicks: 0, durationTicks: 508_032_000_000 } },
         {
           timelineRange: {
-            startTicks: timelineTicks(1_000_000),
-            durationTicks: timelineTicks(10_000_000),
+            startTicks: 254_016_000_000,
+            durationTicks: 2_540_160_000_000,
           },
         },
         {
           timelineRange: {
-            startTicks: timelineTicks(5_000_000),
-            durationTicks: timelineTicks(1_000_000),
+            startTicks: 1_270_080_000_000,
+            durationTicks: 254_016_000_000,
           },
         },
       ];
 
-      expect(computeMaxAudioDurationTicks(clips)).toBe(timelineTicks(11_000_000));
+      expect(computeMaxAudioDurationTicks(clips)).toBe(2_794_176_000_000);
     });
 
     it('treats missing fields as 0', () => {
-      const clips = [{}, { timelineRange: { startTicks: timelineTicks(1_000_000) } }];
-      expect(computeMaxAudioDurationTicks(clips)).toBe(timelineTicks(1_000_000));
+      const clips = [{}, { timelineRange: { startTicks: 254_016_000_000 } }];
+      expect(computeMaxAudioDurationTicks(clips)).toBe(254_016_000_000);
     });
   });
 
   describe('export frame timing', () => {
     it('computes total frames from exact timeline duration and fps', () => {
-      expect(computeExportTotalFrames({ durationTicks: timelineTicks(1_000_000), fps: 30 })).toBe(
-        30,
-      );
-      expect(
-        computeExportTotalFrames({ durationTicks: timelineTicks(1_000_000), fps: 29.97 }),
-      ).toBe(30);
-      expect(computeExportTotalFrames({ durationTicks: timelineTicks(1_001_000), fps: 30 })).toBe(
-        30,
-      );
-      expect(computeExportTotalFrames({ durationTicks: timelineTicks(1_017_000), fps: 30 })).toBe(
-        31,
-      );
+      expect(computeExportTotalFrames({ durationTicks: 254_016_000_000, fps: 30 })).toBe(30);
+      expect(computeExportTotalFrames({ durationTicks: 254_016_000_000, fps: 29.97 })).toBe(30);
+      expect(computeExportTotalFrames({ durationTicks: 254_270_016_000, fps: 30 })).toBe(30);
+      expect(computeExportTotalFrames({ durationTicks: 258_334_272_000, fps: 30 })).toBe(31);
     });
 
     it('does not accumulate timing drift for non-integer fps', () => {
       const fps = 29.97;
-      const durationTicks = timelineTicks(60 * 60 * 1_000_000);
+      const durationTicks = 60 * 60 * 1_000_000 * 254_016;
       const totalFrames = computeExportTotalFrames({ durationTicks, fps });
       const frame = getExportFrameTiming({
         frameNum: totalFrames - 2,
@@ -131,7 +122,7 @@ describe('export-helpers', () => {
 
     it('clips the final frame duration to the requested timeline duration', () => {
       const fps = 30;
-      const durationTicks = timelineTicks(1_017_000);
+      const durationTicks = 258_334_272_000;
       const totalFrames = computeExportTotalFrames({ durationTicks, fps });
       const lastFrame = getExportFrameTiming({
         frameNum: totalFrames - 1,
@@ -140,7 +131,7 @@ describe('export-helpers', () => {
         fps,
       });
 
-      expect(lastFrame.timeTicks).toBe(timelineTicks(1_000_000));
+      expect(lastFrame.timeTicks).toBe(254_016_000_000);
       expect(lastFrame.durationS).toBeCloseTo(0.017);
       expect(lastFrame.timestampS + lastFrame.durationS).toBeCloseTo(
         durationTicks / TICKS_PER_SECOND,

@@ -1,6 +1,5 @@
 /** @vitest-environment node */
 import { describe, it, expect, beforeEach } from 'vitest';
-import { timelineTicks } from '../utils/timeline-time';
 import { applyTimelineCommand } from '~/timeline/commands';
 import { createTimelineEditService } from '~/timeline/application/timelineEditService';
 import type {
@@ -10,7 +9,7 @@ import type {
   TimelineTrackItem,
 } from '~/timeline/types';
 
-const S = timelineTicks(1_000_000); // 1 second in ticks
+const S = 254_016_000_000; // 1 second in ticks
 
 function mediaClip(
   id: string,

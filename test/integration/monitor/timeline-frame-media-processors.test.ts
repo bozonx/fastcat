@@ -1,7 +1,6 @@
 /** @vitest-environment node */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { TimelineDocument } from '~/timeline/types';
-import { timelineTicks } from '../../unit/utils/timeline-time';
 
 const projectStoreMock = vi.hoisted(() => ({
   projectSettings: {
@@ -125,7 +124,7 @@ describe('timeline frame media processors', () => {
 
     const blob = await processor.extractTimelineFrameBlob({
       timelineDoc,
-      timeTicks: timelineTicks(2_000_000),
+      timeTicks: 508_032_000_000,
       width: 3840,
       height: 2160,
       quality: 0.95,
@@ -135,7 +134,7 @@ describe('timeline frame media processors', () => {
     expect(blob).toBeInstanceOf(Blob);
     expect(runWithThumbnailHostApiMock).toHaveBeenCalledWith({ host: true }, expect.any(Function));
     expect(extractFrameToBlobMock).toHaveBeenCalledWith(
-      timelineTicks(2_000_000),
+      508_032_000_000,
       3840,
       2160,
       [{ id: 'clip-1' }],
@@ -151,7 +150,7 @@ describe('timeline frame media processors', () => {
 
     await processor.extractTimelineFrameBlob({
       timelineDoc,
-      timeTicks: timelineTicks(1_000_000),
+      timeTicks: 254_016_000_000,
       maxWidth: 320,
       maxHeight: 320,
       quality: 0.6,
@@ -159,7 +158,7 @@ describe('timeline frame media processors', () => {
     });
 
     expect(extractFrameToBlobMock).toHaveBeenCalledWith(
-      timelineTicks(1_000_000),
+      254_016_000_000,
       expect.any(Number),
       expect.any(Number),
       [{ id: 'clip-1' }],
@@ -175,7 +174,7 @@ describe('timeline frame media processors', () => {
 
     const blob = await processor.extractTimelineFrameBlob({
       timelineDoc,
-      timeTicks: timelineTicks(2_000_000),
+      timeTicks: 508_032_000_000,
       width: 3840,
       height: 2160,
       quality: 0.95,
@@ -221,7 +220,7 @@ describe('timeline frame media processors', () => {
 
     await processor.extractTimelineFrameBlob({
       timelineDoc,
-      timeTicks: timelineTicks(1_000_000),
+      timeTicks: 254_016_000_000,
       maxWidth: 320,
       maxHeight: 320,
       quality: 0.6,

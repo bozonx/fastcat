@@ -6,7 +6,6 @@ import {
   computeMaxResizableTransitionDurationTicks,
   computeTransitionHandleSnapDurationTicks,
 } from '~/composables/timeline/transitionResizeGeometry';
-import { timelineTicks } from '../../utils/timeline-time';
 
 function clip(overrides: Record<string, unknown> = {}): any {
   const result = {
@@ -21,24 +20,22 @@ function clip(overrides: Record<string, unknown> = {}): any {
   return {
     ...result,
     timelineRange: {
-      startTicks: timelineTicks(result.timelineRange.startTicks),
-      durationTicks: timelineTicks(result.timelineRange.durationTicks),
+      startTicks: result.timelineRange.startTicks * 254_016,
+      durationTicks: result.timelineRange.durationTicks * 254_016,
     },
     sourceRange: {
-      startTicks: timelineTicks(result.sourceRange.startTicks),
-      durationTicks: timelineTicks(result.sourceRange.durationTicks),
+      startTicks: result.sourceRange.startTicks * 254_016,
+      durationTicks: result.sourceRange.durationTicks * 254_016,
     },
     sourceDurationTicks:
-      result.sourceDurationTicks === undefined
-        ? undefined
-        : timelineTicks(result.sourceDurationTicks),
+      result.sourceDurationTicks === undefined ? undefined : result.sourceDurationTicks * 254_016,
     transitionIn: result.transitionIn && {
       ...result.transitionIn,
-      durationTicks: timelineTicks(result.transitionIn.durationTicks),
+      durationTicks: result.transitionIn.durationTicks * 254_016,
     },
     transitionOut: result.transitionOut && {
       ...result.transitionOut,
-      durationTicks: timelineTicks(result.transitionOut.durationTicks),
+      durationTicks: result.transitionOut.durationTicks * 254_016,
     },
   };
 }
@@ -120,14 +117,14 @@ describe('getTransitionAdjacentHandleLimitTicks', () => {
     });
     // headroom = total source (5s) - currently used source end (2s) = 3s
     expect(getTransitionAdjacentHandleLimitTicks({ edge: 'in', adjacent: prev })).toBe(
-      timelineTicks(3_000_000),
+      762_048_000_000,
     );
   });
 
   it('for an out edge, returns the next clip leading source offset', () => {
     const next = clip({ sourceRange: { startTicks: 1_500_000, durationTicks: 2_000_000 } });
     expect(getTransitionAdjacentHandleLimitTicks({ edge: 'out', adjacent: next })).toBe(
-      timelineTicks(1_500_000),
+      381_024_000_000,
     );
   });
 
@@ -149,7 +146,7 @@ describe('computeMaxResizableTransitionDurationTicks', () => {
         edge: 'in',
         currentTransition: {} as any,
       }),
-    ).toBe(timelineTicks(10_000_000));
+    ).toBe(2_540_160_000_000);
   });
 
   it('caps by the clip length minus the opposite-edge transition', () => {
@@ -165,7 +162,7 @@ describe('computeMaxResizableTransitionDurationTicks', () => {
       edge: 'in',
       currentTransition: { mode: 'single' } as any,
     });
-    expect(result).toBe(timelineTicks(3_000_000));
+    expect(result).toBe(762_048_000_000);
   });
 
   it('in adjacent mode, also caps by the neighbour source headroom', () => {
@@ -200,7 +197,7 @@ describe('computeTransitionHandleSnapDurationTicks', () => {
         itemId: 'b',
         edge: 'in',
         currentTransition: { mode: 'single' } as any,
-        rawDurationTicks: timelineTicks(500_000),
+        rawDurationTicks: 127_008_000_000,
       }),
     ).toBeNull();
   });
@@ -243,7 +240,7 @@ describe('computeTransitionHandleSnapDurationTicks', () => {
         currentTransition: { mode: 'adjacent' } as any,
         rawDurationTicks: 500_000,
       }),
-    ).toBe(timelineTicks(3_000_000));
+    ).toBe(762_048_000_000);
   });
 
   it('does not snap a handle across a one-tick gap', () => {
@@ -261,7 +258,7 @@ describe('computeTransitionHandleSnapDurationTicks', () => {
         itemId: 'b',
         edge: 'in',
         currentTransition: { mode: 'adjacent' } as any,
-        rawDurationTicks: timelineTicks(500_000),
+        rawDurationTicks: 127_008_000_000,
       }),
     ).toBeNull();
   });

@@ -1,6 +1,5 @@
 /** @vitest-environment node */
 import { describe, it, expect } from 'vitest';
-import { timelineTicks } from '../utils/timeline-time';
 import { applyTimelineCommand } from '~/timeline/commands';
 import type { TimelineDocument, TimelineTrack } from '~/timeline/types';
 
@@ -29,10 +28,10 @@ describe('timeline/commands group operations', () => {
             trackId: 'v1',
             name: 'Video',
             source: { path: 'v.mp4' },
-            sourceDurationTicks: timelineTicks(10_000_000),
+            sourceDurationTicks: 2_540_160_000_000,
             linkedGroupId: 'group-1',
-            timelineRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
-            sourceRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
+            timelineRange: { startTicks: 0, durationTicks: 254_016_000_000 },
+            sourceRange: { startTicks: 0, durationTicks: 254_016_000_000 },
           },
         ],
       },
@@ -48,10 +47,10 @@ describe('timeline/commands group operations', () => {
             trackId: 'a1',
             name: 'Audio',
             source: { path: 'a.mp4' },
-            sourceDurationTicks: timelineTicks(10_000_000),
+            sourceDurationTicks: 2_540_160_000_000,
             linkedGroupId: 'group-1',
-            timelineRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
-            sourceRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
+            timelineRange: { startTicks: 0, durationTicks: 254_016_000_000 },
+            sourceRange: { startTicks: 0, durationTicks: 254_016_000_000 },
           },
         ],
       },
@@ -84,10 +83,10 @@ describe('timeline/commands group operations', () => {
             trackId: 'v1',
             name: 'Video',
             source: { path: 'v.mp4' },
-            sourceDurationTicks: timelineTicks(10_000_000),
+            sourceDurationTicks: 2_540_160_000_000,
             linkedGroupId: 'group-1',
-            timelineRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
-            sourceRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
+            timelineRange: { startTicks: 0, durationTicks: 254_016_000_000 },
+            sourceRange: { startTicks: 0, durationTicks: 254_016_000_000 },
           },
         ],
       },
@@ -103,10 +102,10 @@ describe('timeline/commands group operations', () => {
             trackId: 'a1',
             name: 'Audio',
             source: { path: 'a.mp4' },
-            sourceDurationTicks: timelineTicks(10_000_000),
+            sourceDurationTicks: 2_540_160_000_000,
             linkedGroupId: 'group-1',
-            timelineRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
-            sourceRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
+            timelineRange: { startTicks: 0, durationTicks: 254_016_000_000 },
+            sourceRange: { startTicks: 0, durationTicks: 254_016_000_000 },
           },
         ],
       },
@@ -117,13 +116,13 @@ describe('timeline/commands group operations', () => {
       trackId: 'v1',
       itemId: 'vclip',
       edge: 'end',
-      deltaTicks: -timelineTicks(100_000),
+      deltaTicks: -25_401_600_000,
     });
 
     const vclip = next.tracks[0]?.items.find((x) => x.id === 'vclip') as any;
     const aclip = next.tracks[1]?.items.find((x) => x.id === 'aclip') as any;
 
-    expect(vclip.timelineRange.durationTicks).toBe(timelineTicks(900_000));
-    expect(aclip.timelineRange.durationTicks).toBe(timelineTicks(900_000));
+    expect(vclip.timelineRange.durationTicks).toBe(228_614_400_000);
+    expect(aclip.timelineRange.durationTicks).toBe(228_614_400_000);
   });
 });

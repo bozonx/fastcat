@@ -7,7 +7,6 @@ import {
   MIN_DEFAULT_DURATION_TICKS,
   type FastCatUserSettings,
 } from '../defaults';
-import { TICKS_PER_MICROSECOND } from '~/utils/time';
 import {
   CLICK_ACTIONS,
   CLIP_DRAG_ACTIONS,
@@ -73,19 +72,8 @@ export function normalizeExperimentalFeatures(raw: unknown): boolean {
 
 export function normalizeTimelineSettings(raw: unknown): FastCatUserSettings['timeline'] {
   const input = (raw as Record<string, unknown>)?.['timeline'];
-  const legacyTimeline = input as Record<string, unknown> | undefined;
-  const timeline = legacyTimeline ? { ...legacyTimeline } : legacyTimeline;
+  const timeline = input ? { ...input } : input;
 
-  for (const key of [
-    'defaultAudioFadeDurationTicks',
-    'defaultTransitionDurationTicks',
-    'defaultStaticClipDurationTicks',
-  ] as const) {
-    const value = Number(legacyTimeline?.[key]);
-    if (Number.isFinite(value) && value >= 100_000 && value <= 3_600_000_000) {
-      timeline![key] = Math.round(value * TICKS_PER_MICROSECOND);
-    }
-  }
   const snapSchema = z
     .object({
       timelineEdges: z.boolean().catch(DEFAULT_USER_SETTINGS.timeline.snapping.timelineEdges),
@@ -306,10 +294,7 @@ export function normalizeProjectDefaults(raw: unknown): FastCatUserSettings['pro
         .catch(DEFAULT_USER_SETTINGS.projectDefaults.audioScrubbingEnabled),
     })
     .transform((val) => {
-      const audioDeclickDurationTicks =
-        val.audioDeclickDurationTicks > 0 && val.audioDeclickDurationTicks <= 1_000_000
-          ? val.audioDeclickDurationTicks * TICKS_PER_MICROSECOND
-          : val.audioDeclickDurationTicks;
+      const audioDeclickDurationTicks = val.audioDeclickDurationTicks;
       // Keep the display fields consistent with the geometry on load (parity with
       // project-settings / preset normalizers), so stale orientation/format can't
       // survive a round-trip. Only re-derive for non-default geometry, so an

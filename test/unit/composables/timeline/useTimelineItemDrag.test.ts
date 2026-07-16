@@ -3,7 +3,6 @@ import { computed, ref } from 'vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useTimelineItemDrag } from '~/composables/timeline/useTimelineItemDrag';
 import { useToast } from '#ui/composables/useToast';
-import { timelineTicks } from '../../utils/timeline-time';
 
 const bindSessionMock = vi.fn();
 const toastAddMock = vi.fn();
@@ -34,7 +33,7 @@ const selectionSelectTimelineItemsMock = vi.fn();
 const timelineStoreMock = {
   selectedItemIds: [] as string[],
   timelineDoc: null as any,
-  duration: timelineTicks(10_000_000),
+  duration: 2_540_160_000_000,
   currentTime: 0,
   timelineZoom: 1,
   getMarkers: vi.fn(() => []),
@@ -163,11 +162,11 @@ describe('useTimelineItemDrag', () => {
               clipType: 'media',
               name: 'Clip 1',
               source: { path: 'clip-1.mp4' },
-              sourceRange: { startTicks: 0, durationTicks: timelineTicks(5_000_000) },
-              sourceDurationTicks: timelineTicks(5_000_000),
+              sourceRange: { startTicks: 0, durationTicks: 1_270_080_000_000 },
+              sourceDurationTicks: 1_270_080_000_000,
               timelineRange: {
-                startTicks: timelineTicks(1_000_000),
-                durationTicks: timelineTicks(5_000_000),
+                startTicks: 254_016_000_000,
+                durationTicks: 1_270_080_000_000,
               },
               speed: 1,
               isImage: false,
@@ -179,11 +178,11 @@ describe('useTimelineItemDrag', () => {
               clipType: 'media',
               name: 'Clip 2',
               source: { path: 'clip-2.mp4' },
-              sourceRange: { startTicks: 0, durationTicks: timelineTicks(2_000_000) },
-              sourceDurationTicks: timelineTicks(2_000_000),
+              sourceRange: { startTicks: 0, durationTicks: 508_032_000_000 },
+              sourceDurationTicks: 508_032_000_000,
               timelineRange: {
-                startTicks: timelineTicks(7_000_000),
-                durationTicks: timelineTicks(2_000_000),
+                startTicks: 1_778_112_000_000,
+                durationTicks: 508_032_000_000,
               },
               speed: 1,
               isImage: false,
@@ -203,11 +202,11 @@ describe('useTimelineItemDrag', () => {
               clipType: 'media',
               name: 'Clip A1',
               source: { path: 'clip-a1.wav' },
-              sourceRange: { startTicks: 0, durationTicks: timelineTicks(5_000_000) },
-              sourceDurationTicks: timelineTicks(5_000_000),
+              sourceRange: { startTicks: 0, durationTicks: 1_270_080_000_000 },
+              sourceDurationTicks: 1_270_080_000_000,
               timelineRange: {
-                startTicks: timelineTicks(1_000_000),
-                durationTicks: timelineTicks(5_000_000),
+                startTicks: 254_016_000_000,
+                durationTicks: 1_270_080_000_000,
               },
               speed: 1,
               isImage: false,
@@ -252,7 +251,7 @@ describe('useTimelineItemDrag', () => {
       {
         trackId: 'track-1',
         itemId: 'clip-1',
-        startTicks: timelineTicks(1_000_000),
+        startTicks: 254_016_000_000,
         mode: 'move',
       },
     );
@@ -287,7 +286,7 @@ describe('useTimelineItemDrag', () => {
           clip: expect.objectContaining({
             id: 'clip-1',
             timelineRange: expect.objectContaining({
-              startTicks: timelineTicks(1_000_000),
+              startTicks: 254_016_000_000,
             }),
           }),
         }),
@@ -329,7 +328,7 @@ describe('useTimelineItemDrag', () => {
       {
         trackId: 'track-1',
         itemId: 'clip-2',
-        startTicks: timelineTicks(7_000_000),
+        startTicks: 1_778_112_000_000,
         mode: 'move',
       },
     );
@@ -349,13 +348,13 @@ describe('useTimelineItemDrag', () => {
       {
         itemId: 'clip-2',
         trackId: 'track-1',
-        startTicks: timelineTicks(9_000_000),
+        startTicks: 2_286_144_000_000,
         isCollision: false,
       },
       {
         itemId: 'clip-a1',
         trackId: 'track-2',
-        startTicks: timelineTicks(3_000_000),
+        startTicks: 762_048_000_000,
         isCollision: false,
       },
     ]);
@@ -380,13 +379,13 @@ describe('useTimelineItemDrag', () => {
             fromTrackId: 'track-1',
             toTrackId: 'track-1',
             itemId: 'clip-2',
-            startTicks: timelineTicks(9_000_000),
+            startTicks: 2_286_144_000_000,
           }),
           expect.objectContaining({
             fromTrackId: 'track-2',
             toTrackId: 'track-2',
             itemId: 'clip-a1',
-            startTicks: timelineTicks(3_000_000),
+            startTicks: 762_048_000_000,
           }),
         ]),
       }),
@@ -434,7 +433,7 @@ describe('useTimelineItemDrag', () => {
       {
         trackId: 'track-1',
         itemId: 'clip-1',
-        startTicks: timelineTicks(1_000_000),
+        startTicks: 254_016_000_000,
         mode: 'move',
       },
     );
@@ -452,7 +451,7 @@ describe('useTimelineItemDrag', () => {
       {
         itemId: 'clip-1',
         trackId: 'track-1',
-        startTicks: timelineTicks(2_000_000),
+        startTicks: 508_032_000_000,
         isCollision: false,
       },
     ]);
@@ -471,7 +470,7 @@ describe('useTimelineItemDrag', () => {
         moves: [
           expect.objectContaining({
             itemId: 'clip-1',
-            startTicks: timelineTicks(2_000_000),
+            startTicks: 508_032_000_000,
           }),
         ],
       }),
@@ -509,7 +508,7 @@ describe('useTimelineItemDrag', () => {
       {
         trackId: 'track-1',
         itemId: 'clip-1',
-        startTicks: timelineTicks(1_000_000),
+        startTicks: 254_016_000_000,
         mode: 'move',
       },
     );
@@ -528,7 +527,7 @@ describe('useTimelineItemDrag', () => {
     expect(movePreview.value[0]).toEqual(
       expect.objectContaining({
         itemId: 'clip-1',
-        startTicks: timelineTicks(2_000_000),
+        startTicks: 508_032_000_000,
       }),
     );
   });
@@ -544,11 +543,11 @@ describe('useTimelineItemDrag', () => {
       clipType: 'media',
       name: 'Clip A2',
       source: { path: 'clip-a2.wav' },
-      sourceRange: { startTicks: 0, durationTicks: timelineTicks(2_000_000) },
-      sourceDurationTicks: timelineTicks(2_000_000),
+      sourceRange: { startTicks: 0, durationTicks: 508_032_000_000 },
+      sourceDurationTicks: 508_032_000_000,
       timelineRange: {
-        startTicks: timelineTicks(7_000_000),
-        durationTicks: timelineTicks(2_000_000),
+        startTicks: 1_778_112_000_000,
+        durationTicks: 508_032_000_000,
       },
       speed: 1,
       isImage: false,
@@ -582,7 +581,7 @@ describe('useTimelineItemDrag', () => {
       {
         trackId: 'track-2',
         itemId: 'clip-a1',
-        startTicks: timelineTicks(1_000_000),
+        startTicks: 254_016_000_000,
         mode: 'move',
       },
     );
@@ -601,7 +600,7 @@ describe('useTimelineItemDrag', () => {
     expect(movePreview.value[0]).toEqual(
       expect.objectContaining({
         itemId: 'clip-a1',
-        startTicks: timelineTicks(2_200_000),
+        startTicks: 558_835_200_000,
       }),
     );
   });
@@ -633,7 +632,7 @@ describe('useTimelineItemDrag', () => {
       {
         trackId: 'track-1',
         itemId: 'clip-1',
-        startTicks: timelineTicks(1_000_000),
+        startTicks: 254_016_000_000,
         mode: 'move',
       },
     );
@@ -651,7 +650,7 @@ describe('useTimelineItemDrag', () => {
     expect(movePreview.value[0]).toEqual(
       expect.objectContaining({
         itemId: 'clip-1',
-        startTicks: timelineTicks(2_500_000),
+        startTicks: 635_040_000_000,
       }),
     );
   });
@@ -684,7 +683,7 @@ describe('useTimelineItemDrag', () => {
         trackId: 'track-1',
         itemId: 'clip-1',
         edge: 'start',
-        startTicks: timelineTicks(1_000_000),
+        startTicks: 254_016_000_000,
       },
     );
 
@@ -702,10 +701,10 @@ describe('useTimelineItemDrag', () => {
       {
         itemId: 'clip-1',
         trackId: 'track-1',
-        startTicks: timelineTicks(1_400_000),
-        durationTicks: timelineTicks(4_600_000),
+        startTicks: 355_622_400_000,
+        durationTicks: 1_168_473_600_000,
         edge: 'start',
-        deltaTicks: timelineTicks(400_000),
+        deltaTicks: 101_606_400_000,
       },
     ]);
 
@@ -724,7 +723,7 @@ describe('useTimelineItemDrag', () => {
         trackId: 'track-1',
         itemId: 'clip-1',
         edge: 'start',
-        deltaTicks: timelineTicks(400_000),
+        deltaTicks: 101_606_400_000,
       }),
       expect.objectContaining({
         saveMode: 'none',
@@ -789,7 +788,7 @@ describe('useTimelineItemDrag', () => {
         {
           trackId: 'track-1',
           itemId: 'clip-1',
-          startTicks: timelineTicks(1_000_000),
+          startTicks: 254_016_000_000,
           mode: 'move',
         },
       );
@@ -833,7 +832,7 @@ describe('useTimelineItemDrag', () => {
           trackId: 'track-1',
           itemId: 'clip-1',
           edge: 'end',
-          startTicks: timelineTicks(1_000_000),
+          startTicks: 254_016_000_000,
         },
       );
 
@@ -876,7 +875,7 @@ describe('useTimelineItemDrag', () => {
           trackId: 'track-1',
           itemId: 'clip-1',
           edge: 'end',
-          startTicks: timelineTicks(1_000_000),
+          startTicks: 254_016_000_000,
         },
       );
 
@@ -922,7 +921,7 @@ describe('useTimelineItemDrag', () => {
         {
           trackId: 'track-1',
           itemId: 'clip-1',
-          startTicks: timelineTicks(1_000_000),
+          startTicks: 254_016_000_000,
           mode: 'move',
         },
       );
@@ -977,7 +976,7 @@ describe('useTimelineItemDrag', () => {
         trackId: 'track-1',
         itemId: 'clip-2',
         edge: 'start',
-        startTicks: timelineTicks(7_000_000),
+        startTicks: 1_778_112_000_000,
       },
     );
 
@@ -1093,7 +1092,7 @@ describe('useTimelineItemDrag', () => {
       {
         trackId: 'track-1',
         itemId: 'clip-1',
-        startTicks: timelineTicks(1_000_000),
+        startTicks: 254_016_000_000,
         mode: 'move',
       },
     );
@@ -1160,7 +1159,7 @@ describe('useTimelineItemDrag', () => {
       {
         trackId: 'track-1',
         itemId: 'clip-1',
-        startTicks: timelineTicks(1_000_000),
+        startTicks: 254_016_000_000,
         mode: 'move',
       },
     );
@@ -1197,7 +1196,7 @@ describe('useTimelineItemDrag', () => {
       ]),
       expect.objectContaining({
         targetTrackId: 'track-1',
-        insertStartTicks: timelineTicks(41_000_000),
+        insertStartTicks: 10_414_656_000_000,
       }),
     );
   });
@@ -1234,7 +1233,7 @@ describe('useTimelineItemDrag', () => {
       {
         trackId: 'track-1',
         itemId: 'clip-1',
-        startTicks: timelineTicks(1_000_000),
+        startTicks: 254_016_000_000,
         mode: 'move',
       },
     );
@@ -1251,7 +1250,7 @@ describe('useTimelineItemDrag', () => {
     expect(movePreview.value[0]).toEqual(
       expect.objectContaining({
         itemId: 'clip-1',
-        startTicks: timelineTicks(2_000_000),
+        startTicks: 508_032_000_000,
       }),
     );
   });

@@ -23,7 +23,6 @@ import {
   calculatePointerTimeTicks,
 } from '~/utils/timeline/geometry';
 import { TICKS_PER_SECOND } from '~/utils/time';
-import { timelineTicks } from '../timeline-time';
 
 describe('zoomToPxPerSecond', () => {
   it('returns base value at zoom 50', () => {
@@ -49,15 +48,15 @@ describe('pxPerSecondToZoom', () => {
 
 describe('ticksToPx / pxToTimeTicks', () => {
   it('converts time to pixels and back', () => {
-    const px = ticksToPx(timelineTicks(1_000_000), 50);
+    const px = ticksToPx(254_016_000_000, 50);
     expect(px).toBe(10);
-    expect(pxToTimeTicks(px, 50)).toBe(timelineTicks(1_000_000));
+    expect(pxToTimeTicks(px, 50)).toBe(254_016_000_000);
   });
 });
 
 describe('timelineRangeToRoundedPx', () => {
   it('derives width from rounded absolute edges', () => {
-    const range = { startTicks: timelineTicks(1_000_000), durationTicks: timelineTicks(1_000_000) };
+    const range = { startTicks: 254_016_000_000, durationTicks: 254_016_000_000 };
     const zoom = pxPerSecondToZoom(10.4);
 
     expect(timelineRangeToRoundedPx(range, zoom, 1)).toEqual({
@@ -70,12 +69,12 @@ describe('timelineRangeToRoundedPx', () => {
   it('keeps adjacent ranges sharing the same rounded boundary', () => {
     const zoom = pxPerSecondToZoom(10.4);
     const left = timelineRangeToRoundedPx(
-      { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
+      { startTicks: 0, durationTicks: 254_016_000_000 },
       zoom,
       1,
     );
     const right = timelineRangeToRoundedPx(
-      { startTicks: timelineTicks(1_000_000), durationTicks: timelineTicks(1_000_000) },
+      { startTicks: 254_016_000_000, durationTicks: 254_016_000_000 },
       zoom,
       1,
     );
@@ -87,8 +86,8 @@ describe('timelineRangeToRoundedPx', () => {
 describe('absolutePxToViewportPx / ticksToViewportPx', () => {
   it('rounds in absolute space, then subtracts the raw scroll offset', () => {
     expect(absolutePxToViewportPx(10.4, 3.2)).toBe(10 - 3.2);
-    expect(ticksToViewportPx(timelineTicks(1_000_000), 50, 3.2)).toBe(
-      Math.round(ticksToPx(timelineTicks(1_000_000), 50)) - 3.2,
+    expect(ticksToViewportPx(254_016_000_000, 50, 3.2)).toBe(
+      Math.round(ticksToPx(254_016_000_000, 50)) - 3.2,
     );
   });
 
@@ -97,7 +96,7 @@ describe('absolutePxToViewportPx / ticksToViewportPx', () => {
     // container transform (-scrollLeft). The playhead must resolve to the exact
     // same screen pixel so they never drift apart as scrollLeft varies.
     const zoom = 73;
-    const timeTicks = timelineTicks(12_345_678);
+    const timeTicks = 3_135_999_742_848;
 
     const clipLeftPx = timelineRangeToRoundedPx(
       { startTicks: timeTicks, durationTicks: 1 },
@@ -115,7 +114,7 @@ describe('absolutePxToViewportPx / ticksToViewportPx', () => {
 
 describe('pxToDeltaTicks', () => {
   it('converts pixel delta to ticks', () => {
-    expect(pxToDeltaTicks(10, 50)).toBe(timelineTicks(1_000_000));
+    expect(pxToDeltaTicks(10, 50)).toBe(254_016_000_000);
   });
 });
 
@@ -126,7 +125,7 @@ describe('computeAnchoredScrollLeft', () => {
       nextZoom: 50,
       prevScrollLeft: 0,
       viewportWidth: 1000,
-      anchor: { anchorTimeTicks: timelineTicks(1_000_000), anchorViewportX: 500 },
+      anchor: { anchorTimeTicks: 254_016_000_000, anchorViewportX: 500 },
     });
     expect(result).toBe(Math.max(0, 10 - 500));
   });
@@ -137,10 +136,10 @@ describe('computeAnchoredScrollLeft', () => {
       nextZoom: 100,
       prevScrollLeft: 0,
       viewportWidth: 1000,
-      anchor: { anchorTimeTicks: timelineTicks(500_000), anchorViewportX: 500 },
+      anchor: { anchorTimeTicks: 127_008_000_000, anchorViewportX: 500 },
     });
 
-    const expectedAnchorPx = ticksToPx(timelineTicks(500_000), 100);
+    const expectedAnchorPx = ticksToPx(127_008_000_000, 100);
     expect(expectedAnchorPx - result).toBeCloseTo(500, 6);
   });
 
@@ -150,7 +149,7 @@ describe('computeAnchoredScrollLeft', () => {
       nextZoom: 60,
       prevScrollLeft: 0,
       viewportWidth: 1000,
-      anchor: { anchorTimeTicks: timelineTicks(500_000), anchorViewportX: 500 },
+      anchor: { anchorTimeTicks: 127_008_000_000, anchorViewportX: 500 },
     });
 
     expect(result).toBe(0);
@@ -328,7 +327,7 @@ describe('computeSnappedStartTicks', () => {
 
     const previewStartTicks = computeSnappedStartTicks({
       rawStartTicks,
-      draggingItemDurationTicks: timelineTicks(500_000),
+      draggingItemDurationTicks: 127_008_000_000,
       fps,
       zoom: 50,
       snapThresholdPx: 0,
@@ -377,7 +376,7 @@ describe('subframePhaseTicks', () => {
     const rawStart = originalStart + Math.round(frameTicks * 3.4);
     const snapped = computeSnappedStartTicks({
       rawStartTicks: rawStart,
-      draggingItemDurationTicks: timelineTicks(500_000),
+      draggingItemDurationTicks: 127_008_000_000,
       fps,
       zoom: 50,
       snapThresholdPx: 0,

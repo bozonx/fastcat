@@ -12,7 +12,6 @@ import {
   type PreparedClip,
 } from '~/workers/core/AudioMixer';
 import { applyAudioEffectsOffline } from '~/utils/audio/apply-audio-effects-offline';
-import { timelineTicks } from '../../utils/timeline-time';
 
 vi.mock('~/utils/audio/apply-audio-effects-offline', () => ({
   applyAudioEffectsOffline: vi
@@ -313,7 +312,7 @@ describe('AudioMixer clip mix parity primitives', () => {
           'audio.volume': {
             keyframes: [
               { tTicks: 0, value: 0, easing: 'linear' },
-              { tTicks: timelineTicks(1_000_000), value: 1, easing: 'linear' },
+              { tTicks: 254_016_000_000, value: 1, easing: 'linear' },
             ],
           },
         },
@@ -410,9 +409,9 @@ describe('AudioMixer.prepareClips', () => {
       {
         sourcePath: 'test.mp3',
         startTicks: 0,
-        durationTicks: timelineTicks(1_000_000),
+        durationTicks: 254_016_000_000,
         sourceStartTicks: 0,
-        sourceDurationTicks: timelineTicks(1_000_000),
+        sourceDurationTicks: 254_016_000_000,
         audioGain: 0.5,
         audioBalance: 0,
         trackId: 'track1',
@@ -441,15 +440,15 @@ describe('AudioMixer.prepareClips', () => {
       {
         sourcePath: 'test1.mp3',
         startTicks: 0,
-        durationTicks: timelineTicks(1_000_000),
-        sourceDurationTicks: timelineTicks(1_000_000),
+        durationTicks: 254_016_000_000,
+        sourceDurationTicks: 254_016_000_000,
         trackId: 'track1',
       },
       {
         sourcePath: 'test2.mp3',
-        startTicks: timelineTicks(1_000_000),
-        durationTicks: timelineTicks(1_000_000),
-        sourceDurationTicks: timelineTicks(1_000_000),
+        startTicks: 254_016_000_000,
+        durationTicks: 254_016_000_000,
+        sourceDurationTicks: 254_016_000_000,
         trackId: 'track1',
       },
     ];
@@ -469,13 +468,13 @@ describe('AudioMixer.prepareClips', () => {
       audioClips: [
         {
           sourcePath: 'test.mp3',
-          startTicks: timelineTicks(1_000_000),
-          durationTicks: timelineTicks(1_000_000),
-          sourceStartTicks: timelineTicks(500_000),
-          sourceDurationTicks: timelineTicks(1_000_000),
+          startTicks: 254_016_000_000,
+          durationTicks: 254_016_000_000,
+          sourceStartTicks: 127_008_000_000,
+          sourceDurationTicks: 254_016_000_000,
           speed: 1,
-          transitionIn: { durationTicks: timelineTicks(100_000), mode: 'adjacent' },
-          transitionOut: { durationTicks: timelineTicks(150_000), mode: 'adjacent' },
+          transitionIn: { durationTicks: 25_401_600_000, mode: 'adjacent' },
+          transitionOut: { durationTicks: 38_102_400_000, mode: 'adjacent' },
         },
       ],
       hostClient: mockHostClient,

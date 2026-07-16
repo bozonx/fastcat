@@ -1,5 +1,4 @@
 /** @vitest-environment node */
-import { timelineTicks } from '../timeline-time';
 import { describe, it, expect } from 'vitest';
 import { DEFAULT_USER_SETTINGS, DEFAULT_APP_SETTINGS } from '~/utils/settings/defaults';
 
@@ -10,12 +9,8 @@ describe('DEFAULT_USER_SETTINGS', () => {
 
   it('has timeline defaults', () => {
     expect(DEFAULT_USER_SETTINGS.timeline.snapThresholdPx).toBe(8);
-    expect(DEFAULT_USER_SETTINGS.timeline.defaultAudioFadeDurationTicks).toBe(
-      timelineTicks(1_000_000),
-    );
-    expect(DEFAULT_USER_SETTINGS.timeline.defaultTransitionDurationTicks).toBe(
-      timelineTicks(2_000_000),
-    );
+    expect(DEFAULT_USER_SETTINGS.timeline.defaultAudioFadeDurationTicks).toBe(254_016_000_000);
+    expect(DEFAULT_USER_SETTINGS.timeline.defaultTransitionDurationTicks).toBe(508_032_000_000);
   });
 
   it('has hotkey defaults', () => {

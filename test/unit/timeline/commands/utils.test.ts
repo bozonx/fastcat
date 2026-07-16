@@ -1,6 +1,5 @@
 /** @vitest-environment node */
 import { describe, it, expect } from 'vitest';
-import { timelineTicks } from '../../utils/timeline-time';
 import {
   sanitizeFps,
   ticksToFrame,
@@ -27,14 +26,14 @@ const mockDoc: any = {
         {
           id: 'clip-1',
           kind: 'clip',
-          timelineRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
+          timelineRange: { startTicks: 0, durationTicks: 254_016_000_000 },
         },
         {
           id: 'clip-2',
           kind: 'clip',
           timelineRange: {
-            startTicks: timelineTicks(1_000_000),
-            durationTicks: timelineTicks(500_000),
+            startTicks: 254_016_000_000,
+            durationTicks: 127_008_000_000,
           },
           linkedGroupId: 'group-1',
         },
@@ -47,15 +46,15 @@ const mockDoc: any = {
         {
           id: 'clip-3',
           kind: 'clip',
-          timelineRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
+          timelineRange: { startTicks: 0, durationTicks: 254_016_000_000 },
           linkedGroupId: 'group-1',
         },
         {
           id: 'clip-4',
           kind: 'clip',
           timelineRange: {
-            startTicks: timelineTicks(2_000_000),
-            durationTicks: timelineTicks(500_000),
+            startTicks: 508_032_000_000,
+            durationTicks: 127_008_000_000,
           },
         },
       ],
@@ -81,26 +80,24 @@ describe('sanitizeFps', () => {
 
 describe('ticksToFrame', () => {
   it('converts ticks to frames', () => {
-    expect(ticksToFrame(timelineTicks(1_000_000), 30, 'round')).toBe(30);
+    expect(ticksToFrame(254_016_000_000, 30, 'round')).toBe(30);
   });
 
   it('respects quantize mode', () => {
-    expect(ticksToFrame(timelineTicks(1_000_001), 30, 'floor')).toBe(30);
-    expect(ticksToFrame(timelineTicks(1_000_001), 30, 'ceil')).toBe(31);
+    expect(ticksToFrame(254_016_254_016, 30, 'floor')).toBe(30);
+    expect(ticksToFrame(254_016_254_016, 30, 'ceil')).toBe(31);
   });
 });
 
 describe('frameToTicks', () => {
   it('converts frames to ticks', () => {
-    expect(frameToTicks(30, 30)).toBe(timelineTicks(1_000_000));
+    expect(frameToTicks(30, 30)).toBe(254_016_000_000);
   });
 });
 
 describe('quantizeTicksToFrames', () => {
   it('round-trips through frame quantization', () => {
-    expect(quantizeTicksToFrames(timelineTicks(1_000_001), 30, 'round')).toBe(
-      timelineTicks(1_000_000),
-    );
+    expect(quantizeTicksToFrames(254_016_254_016, 30, 'round')).toBe(254_016_000_000);
   });
 });
 
@@ -175,19 +172,19 @@ describe('assertNoOverlap', () => {
         {
           id: 'a',
           kind: 'clip',
-          timelineRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
+          timelineRange: { startTicks: 0, durationTicks: 254_016_000_000 },
         },
         {
           id: 'b',
           kind: 'clip',
           timelineRange: {
-            startTicks: timelineTicks(500_000),
-            durationTicks: timelineTicks(1_000_000),
+            startTicks: 127_008_000_000,
+            durationTicks: 254_016_000_000,
           },
         },
       ],
     };
-    expect(() => assertNoOverlap(track, 'a', 0, timelineTicks(1_000_000))).toThrow('Item overlaps');
+    expect(() => assertNoOverlap(track, 'a', 0, 254_016_000_000)).toThrow('Item overlaps');
   });
 
   it('does not throw for non-overlapping items', () => {
@@ -196,44 +193,44 @@ describe('assertNoOverlap', () => {
         {
           id: 'a',
           kind: 'clip',
-          timelineRange: { startTicks: 0, durationTicks: timelineTicks(500_000) },
+          timelineRange: { startTicks: 0, durationTicks: 127_008_000_000 },
         },
         {
           id: 'b',
           kind: 'clip',
           timelineRange: {
-            startTicks: timelineTicks(500_000),
-            durationTicks: timelineTicks(500_000),
+            startTicks: 127_008_000_000,
+            durationTicks: 127_008_000_000,
           },
         },
       ],
     };
-    expect(() => assertNoOverlap(track, 'a', 0, timelineTicks(500_000))).not.toThrow();
+    expect(() => assertNoOverlap(track, 'a', 0, 127_008_000_000)).not.toThrow();
   });
 });
 
 describe('mergeAdjacentGaps', () => {
   it('merges consecutive gaps', () => {
     const items: any = [
-      { kind: 'gap', timelineRange: { startTicks: 0, durationTicks: timelineTicks(500_000) } },
+      { kind: 'gap', timelineRange: { startTicks: 0, durationTicks: 127_008_000_000 } },
       {
         kind: 'gap',
         timelineRange: {
-          startTicks: timelineTicks(500_000),
-          durationTicks: timelineTicks(500_000),
+          startTicks: 127_008_000_000,
+          durationTicks: 127_008_000_000,
         },
       },
       {
         kind: 'clip',
         timelineRange: {
-          startTicks: timelineTicks(1_000_000),
-          durationTicks: timelineTicks(1_000_000),
+          startTicks: 254_016_000_000,
+          durationTicks: 254_016_000_000,
         },
       },
     ];
     const result = mergeAdjacentGaps(items);
     expect(result).toHaveLength(2);
-    expect(result[0].timelineRange.durationTicks).toBe(timelineTicks(1_000_000));
+    expect(result[0].timelineRange.durationTicks).toBe(254_016_000_000);
   });
 });
 
@@ -265,6 +262,6 @@ describe('normalizeTrackOrder', () => {
 
 describe('computeTrackEndTicks', () => {
   it('returns max end time of track items', () => {
-    expect(computeTrackEndTicks(mockDoc.tracks[0])).toBe(timelineTicks(1_500_000));
+    expect(computeTrackEndTicks(mockDoc.tracks[0])).toBe(381_024_000_000);
   });
 });

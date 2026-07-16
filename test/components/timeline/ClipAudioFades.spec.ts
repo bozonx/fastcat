@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
 import { TICKS_PER_SECOND } from '~/utils/time';
 import ClipAudioFades from '~/components/timeline/ClipAudioFades.vue';
-import { timelineTicks } from '../../unit/utils/timeline-time';
 
 describe('ClipAudioFades', () => {
   const baseItem = {
@@ -402,15 +401,15 @@ describe('ClipAudioFades', () => {
           item: {
             ...baseItem,
             timelineRange: {
-              startTicks: timelineTicks(100_000),
-              durationTicks: timelineTicks(4_000_000),
+              startTicks: 25_401_600_000,
+              durationTicks: 1_016_064_000_000,
             },
           },
           clip: {
             ...baseItem,
             timelineRange: {
-              startTicks: timelineTicks(100_000),
-              durationTicks: timelineTicks(4_000_000),
+              startTicks: 25_401_600_000,
+              durationTicks: 1_016_064_000_000,
             },
           },
         },
@@ -432,11 +431,11 @@ describe('ClipAudioFades', () => {
           zoom: 50,
           item: {
             ...baseItem,
-            timelineRange: { startTicks: 0, durationTicks: timelineTicks(4_000_000) },
+            timelineRange: { startTicks: 0, durationTicks: 1_016_064_000_000 },
           },
           clip: {
             ...baseItem,
-            timelineRange: { startTicks: 0, durationTicks: timelineTicks(4_000_000) },
+            timelineRange: { startTicks: 0, durationTicks: 1_016_064_000_000 },
           },
         },
       });

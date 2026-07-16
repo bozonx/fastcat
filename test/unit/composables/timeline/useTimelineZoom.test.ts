@@ -7,7 +7,6 @@ import { mount } from '@vue/test-utils';
 import { useTimelineZoom } from '~/composables/timeline/useTimelineZoom';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { ticksToPx } from '~/utils/timeline/geometry';
-import { timelineTicks } from '../../utils/timeline-time';
 
 vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
   cb(0);
@@ -58,7 +57,7 @@ describe('useTimelineZoom', () => {
         },
       }),
     );
-    const anchorTimeTicks = timelineTicks(100_000_000);
+    const anchorTimeTicks = 25_401_600_000_000;
     const anchorViewportX = 250;
 
     handleZoomWheel?.(20, { anchorTimeTicks, anchorViewportX });
@@ -111,7 +110,7 @@ describe('useTimelineZoom', () => {
       }),
     );
 
-    const playheadTimeTicks = timelineTicks(100_000_000);
+    const playheadTimeTicks = 25_401_600_000_000;
     const anchorViewportX = ticksToPx(playheadTimeTicks, timelineStore.timelineZoom) - scrollLeft;
 
     expect(anchorViewportX).toBeLessThan(0);
@@ -162,7 +161,7 @@ describe('useTimelineZoom', () => {
       }),
     );
 
-    const playheadTimeTicks = timelineTicks(100_000_000);
+    const playheadTimeTicks = 25_401_600_000_000;
     const viewportWidth = 500;
     const anchorViewportX = ticksToPx(playheadTimeTicks, timelineStore.timelineZoom) - scrollLeft;
 

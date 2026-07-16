@@ -1,6 +1,5 @@
 /** @vitest-environment node */
 import { describe, it, expect } from 'vitest';
-import { timelineTicks } from '../utils/timeline-time';
 import { applyTimelineCommand } from '~/timeline/commands';
 import type { TimelineDocument, TimelineTrack, TimelineTrackItem } from '~/timeline/types';
 
@@ -27,14 +26,14 @@ describe('timeline/commands gap behavior', () => {
           trackId: 'v1',
           name: 'C1',
           source: { path: 'a.mp4' },
-          sourceDurationTicks: timelineTicks(10_000_000),
-          timelineRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
-          sourceRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
+          sourceDurationTicks: 2_540_160_000_000,
+          timelineRange: { startTicks: 0, durationTicks: 254_016_000_000 },
+          sourceRange: { startTicks: 0, durationTicks: 254_016_000_000 },
         },
       ],
     });
 
-    const freeStartTicks = timelineTicks(1_000_001);
+    const freeStartTicks = 254_016_254_016;
     const { next } = applyTimelineCommand(doc, {
       type: 'overlay_place_item',
       fromTrackId: 'v1',
@@ -62,9 +61,9 @@ describe('timeline/commands gap behavior', () => {
           trackId: 'v1',
           name: 'C1',
           source: { path: 'a.mp4' },
-          sourceDurationTicks: timelineTicks(10_000_000),
-          timelineRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
-          sourceRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
+          sourceDurationTicks: 2_540_160_000_000,
+          timelineRange: { startTicks: 0, durationTicks: 254_016_000_000 },
+          sourceRange: { startTicks: 0, durationTicks: 254_016_000_000 },
         },
       ],
     });
@@ -74,14 +73,14 @@ describe('timeline/commands gap behavior', () => {
       fromTrackId: 'v1',
       toTrackId: 'v1',
       itemId: 'c1',
-      startTicks: timelineTicks(2_000_000),
+      startTicks: 508_032_000_000,
     });
 
     const track = next.tracks[0] as TimelineTrack;
     const clip = track.items.find((x: TimelineTrackItem) => x.kind === 'clip' && x.id === 'c1');
 
     expect(clip).toBeTruthy();
-    expect(clip.timelineRange.startTicks).toBe(timelineTicks(2_000_000));
+    expect(clip.timelineRange.startTicks).toBe(508_032_000_000);
   });
 
   it('preserves a nonzero gap when clips do not share an exact boundary', () => {
@@ -96,9 +95,9 @@ describe('timeline/commands gap behavior', () => {
           trackId: 'v1',
           name: 'C1',
           source: { path: 'a.mp4' },
-          sourceDurationTicks: timelineTicks(10_000_000),
-          timelineRange: { startTicks: 0, durationTicks: timelineTicks(999_999) },
-          sourceRange: { startTicks: 0, durationTicks: timelineTicks(999_999) },
+          sourceDurationTicks: 2_540_160_000_000,
+          timelineRange: { startTicks: 0, durationTicks: 254_015_745_984 },
+          sourceRange: { startTicks: 0, durationTicks: 254_015_745_984 },
         },
         {
           kind: 'clip',
@@ -106,12 +105,12 @@ describe('timeline/commands gap behavior', () => {
           trackId: 'v1',
           name: 'C2',
           source: { path: 'b.mp4' },
-          sourceDurationTicks: timelineTicks(10_000_000),
+          sourceDurationTicks: 2_540_160_000_000,
           timelineRange: {
-            startTicks: timelineTicks(2_000_000),
-            durationTicks: timelineTicks(1_000_000),
+            startTicks: 508_032_000_000,
+            durationTicks: 254_016_000_000,
           },
-          sourceRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
+          sourceRange: { startTicks: 0, durationTicks: 254_016_000_000 },
         },
       ],
     });
@@ -120,7 +119,7 @@ describe('timeline/commands gap behavior', () => {
       type: 'move_item',
       trackId: 'v1',
       itemId: 'c2',
-      startTicks: timelineTicks(1_000_000) + 1,
+      startTicks: 254_016_000_000 + 1,
     }).next;
 
     const items = moved.tracks[0].items;
@@ -146,9 +145,9 @@ describe('timeline/commands gap behavior', () => {
           trackId: 'v1',
           name: 'C1',
           source: { path: 'a.mp4' },
-          sourceDurationTicks: timelineTicks(10_000_000),
-          timelineRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
-          sourceRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
+          sourceDurationTicks: 2_540_160_000_000,
+          timelineRange: { startTicks: 0, durationTicks: 254_016_000_000 },
+          sourceRange: { startTicks: 0, durationTicks: 254_016_000_000 },
         },
         {
           kind: 'clip',
@@ -156,12 +155,12 @@ describe('timeline/commands gap behavior', () => {
           trackId: 'v1',
           name: 'C2',
           source: { path: 'b.mp4' },
-          sourceDurationTicks: timelineTicks(10_000_000),
+          sourceDurationTicks: 2_540_160_000_000,
           timelineRange: {
-            startTicks: timelineTicks(2_000_000),
-            durationTicks: timelineTicks(1_000_000),
+            startTicks: 508_032_000_000,
+            durationTicks: 254_016_000_000,
           },
-          sourceRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
+          sourceRange: { startTicks: 0, durationTicks: 254_016_000_000 },
         },
       ],
     });
@@ -170,15 +169,15 @@ describe('timeline/commands gap behavior', () => {
       type: 'move_item',
       trackId: 'v1',
       itemId: 'c2',
-      startTicks: timelineTicks(3_000_000),
+      startTicks: 762_048_000_000,
     });
 
     const items = next.tracks[0].items;
     const gaps = items.filter((x: TimelineTrackItem) => x.kind === 'gap');
 
     expect(gaps.length).toBe(1);
-    expect(gaps[0]?.timelineRange.startTicks).toBe(timelineTicks(1_000_000));
-    expect(gaps[0]?.timelineRange.durationTicks).toBe(timelineTicks(2_000_000));
+    expect(gaps[0]?.timelineRange.startTicks).toBe(254_016_000_000);
+    expect(gaps[0]?.timelineRange.durationTicks).toBe(508_032_000_000);
   });
 
   it('deletes gap as ripple delete: shifts items to the left', () => {
@@ -193,9 +192,9 @@ describe('timeline/commands gap behavior', () => {
           trackId: 'v1',
           name: 'C1',
           source: { path: 'a.mp4' },
-          sourceDurationTicks: timelineTicks(10_000_000),
-          timelineRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
-          sourceRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
+          sourceDurationTicks: 2_540_160_000_000,
+          timelineRange: { startTicks: 0, durationTicks: 254_016_000_000 },
+          sourceRange: { startTicks: 0, durationTicks: 254_016_000_000 },
         },
         {
           kind: 'clip',
@@ -203,12 +202,12 @@ describe('timeline/commands gap behavior', () => {
           trackId: 'v1',
           name: 'C2',
           source: { path: 'b.mp4' },
-          sourceDurationTicks: timelineTicks(10_000_000),
+          sourceDurationTicks: 2_540_160_000_000,
           timelineRange: {
-            startTicks: timelineTicks(2_000_000),
-            durationTicks: timelineTicks(1_000_000),
+            startTicks: 508_032_000_000,
+            durationTicks: 254_016_000_000,
           },
-          sourceRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
+          sourceRange: { startTicks: 0, durationTicks: 254_016_000_000 },
         },
       ],
     });
@@ -217,7 +216,7 @@ describe('timeline/commands gap behavior', () => {
       type: 'move_item',
       trackId: 'v1',
       itemId: 'c2',
-      startTicks: timelineTicks(2_000_000),
+      startTicks: 508_032_000_000,
     }).next;
 
     const gap = normalized.tracks[0].items.find((x: TimelineTrackItem) => x.kind === 'gap');
@@ -232,7 +231,7 @@ describe('timeline/commands gap behavior', () => {
     const c2 = next.tracks[0].items.find(
       (x: TimelineTrackItem) => x.kind === 'clip' && x.id === 'c2',
     );
-    expect(c2?.timelineRange.startTicks).toBe(timelineTicks(1_000_000));
+    expect(c2?.timelineRange.startTicks).toBe(254_016_000_000);
 
     const gapsAfter = next.tracks[0].items.filter((x: TimelineTrackItem) => x.kind === 'gap');
     expect(gapsAfter.length).toBe(0);
@@ -250,9 +249,9 @@ describe('timeline/commands gap behavior', () => {
           trackId: 'v1',
           name: 'C1',
           source: { path: 'a.mp4' },
-          sourceDurationTicks: timelineTicks(10_000_000),
-          timelineRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
-          sourceRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
+          sourceDurationTicks: 2_540_160_000_000,
+          timelineRange: { startTicks: 0, durationTicks: 254_016_000_000 },
+          sourceRange: { startTicks: 0, durationTicks: 254_016_000_000 },
         },
         {
           kind: 'clip',
@@ -260,12 +259,12 @@ describe('timeline/commands gap behavior', () => {
           trackId: 'v1',
           name: 'C2',
           source: { path: 'b.mp4' },
-          sourceDurationTicks: timelineTicks(10_000_000),
+          sourceDurationTicks: 2_540_160_000_000,
           timelineRange: {
-            startTicks: timelineTicks(3_000_000),
-            durationTicks: timelineTicks(1_000_000),
+            startTicks: 762_048_000_000,
+            durationTicks: 254_016_000_000,
           },
-          sourceRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
+          sourceRange: { startTicks: 0, durationTicks: 254_016_000_000 },
         },
         {
           kind: 'clip',
@@ -273,12 +272,12 @@ describe('timeline/commands gap behavior', () => {
           trackId: 'v1',
           name: 'C3',
           source: { path: 'c.mp4' },
-          sourceDurationTicks: timelineTicks(10_000_000),
+          sourceDurationTicks: 2_540_160_000_000,
           timelineRange: {
-            startTicks: timelineTicks(5_000_000),
-            durationTicks: timelineTicks(1_000_000),
+            startTicks: 1_270_080_000_000,
+            durationTicks: 254_016_000_000,
           },
-          sourceRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
+          sourceRange: { startTicks: 0, durationTicks: 254_016_000_000 },
         },
       ],
     });
@@ -293,8 +292,8 @@ describe('timeline/commands gap behavior', () => {
     const gaps = items.filter((x: TimelineTrackItem) => x.kind === 'gap');
 
     expect(gaps.length).toBe(1);
-    expect(gaps[0]?.timelineRange.startTicks).toBe(timelineTicks(1_000_000));
-    expect(gaps[0]?.timelineRange.durationTicks).toBe(timelineTicks(4_000_000));
+    expect(gaps[0]?.timelineRange.startTicks).toBe(254_016_000_000);
+    expect(gaps[0]?.timelineRange.durationTicks).toBe(1_016_064_000_000);
   });
 
   it('quantizes to frames and avoids micro-gaps (fps=30)', () => {
@@ -309,9 +308,9 @@ describe('timeline/commands gap behavior', () => {
           trackId: 'v1',
           name: 'C1',
           source: { path: 'a.mp4' },
-          sourceDurationTicks: timelineTicks(10_000_000),
-          timelineRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
-          sourceRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
+          sourceDurationTicks: 2_540_160_000_000,
+          timelineRange: { startTicks: 0, durationTicks: 254_016_000_000 },
+          sourceRange: { startTicks: 0, durationTicks: 254_016_000_000 },
         },
         {
           kind: 'clip',
@@ -319,12 +318,12 @@ describe('timeline/commands gap behavior', () => {
           trackId: 'v1',
           name: 'C2',
           source: { path: 'b.mp4' },
-          sourceDurationTicks: timelineTicks(10_000_000),
+          sourceDurationTicks: 2_540_160_000_000,
           timelineRange: {
-            startTicks: timelineTicks(1_000_001),
-            durationTicks: timelineTicks(1_000_000),
+            startTicks: 254_016_254_016,
+            durationTicks: 254_016_000_000,
           },
-          sourceRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
+          sourceRange: { startTicks: 0, durationTicks: 254_016_000_000 },
         },
       ],
     });
@@ -333,7 +332,7 @@ describe('timeline/commands gap behavior', () => {
       type: 'move_item',
       trackId: 'v1',
       itemId: 'c2',
-      startTicks: timelineTicks(1_000_001),
+      startTicks: 254_016_254_016,
     }).next;
 
     const items = moved.tracks[0].items;
@@ -365,9 +364,9 @@ describe('timeline/commands gap behavior', () => {
           trackId: 'v1',
           name: 'C1',
           source: { path: 'a.mp4' },
-          sourceDurationTicks: timelineTicks(10_000_000),
-          timelineRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
-          sourceRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
+          sourceDurationTicks: 2_540_160_000_000,
+          timelineRange: { startTicks: 0, durationTicks: 254_016_000_000 },
+          sourceRange: { startTicks: 0, durationTicks: 254_016_000_000 },
         },
       ],
     });
@@ -377,7 +376,7 @@ describe('timeline/commands gap behavior', () => {
       trackId: 'v1',
       itemId: 'c1',
       edge: 'end',
-      deltaTicks: -timelineTicks(123_456),
+      deltaTicks: -31_359_799_296,
     }).next;
 
     const c1 = trimmed.tracks[0].items.find(
@@ -385,8 +384,8 @@ describe('timeline/commands gap behavior', () => {
     ) as any;
     expect(c1.timelineRange.durationTicks).toBeGreaterThan(0);
     const fps = 30;
-    const frames = Math.round((c1.timelineRange.durationTicks * fps) / timelineTicks(1_000_000));
-    const reconstructedTicks = Math.round((frames * timelineTicks(1_000_000)) / fps);
+    const frames = Math.round((c1.timelineRange.durationTicks * fps) / 254_016_000_000);
+    const reconstructedTicks = Math.round((frames * 254_016_000_000) / fps);
     expect(c1.timelineRange.durationTicks).toBe(reconstructedTicks);
   });
 
@@ -403,8 +402,8 @@ describe('timeline/commands gap behavior', () => {
           trackId: 'v1',
           name: 'Background',
           backgroundColor: '#000000',
-          timelineRange: { startTicks: 0, durationTicks: timelineTicks(5_000_000) },
-          sourceRange: { startTicks: 0, durationTicks: timelineTicks(5_000_000) },
+          timelineRange: { startTicks: 0, durationTicks: 1_270_080_000_000 },
+          sourceRange: { startTicks: 0, durationTicks: 1_270_080_000_000 },
         },
       ],
     });
@@ -414,7 +413,7 @@ describe('timeline/commands gap behavior', () => {
       trackId: 'v1',
       itemId: 'b1',
       edge: 'end',
-      deltaTicks: timelineTicks(20_000_000),
+      deltaTicks: 5_080_320_000_000,
     });
 
     const b1 = next.tracks[0].items.find(
@@ -422,7 +421,7 @@ describe('timeline/commands gap behavior', () => {
     ) as any;
 
     expect(b1).toBeTruthy();
-    expect(b1.timelineRange.durationTicks).toBeGreaterThan(timelineTicks(5_000_000));
+    expect(b1.timelineRange.durationTicks).toBeGreaterThan(1_270_080_000_000);
   });
 
   it('preserves fade and transition lengths when trim extends a clip', () => {
@@ -438,13 +437,13 @@ describe('timeline/commands gap behavior', () => {
           trackId: 'v1',
           name: 'C1',
           source: { path: 'a.mp4' },
-          sourceDurationTicks: timelineTicks(10_000_000),
-          timelineRange: { startTicks: 0, durationTicks: timelineTicks(4_000_000) },
-          sourceRange: { startTicks: 0, durationTicks: timelineTicks(4_000_000) },
-          audioFadeInTicks: timelineTicks(1_000_000),
-          audioFadeOutTicks: timelineTicks(1_000_000),
-          transitionIn: { type: 'dissolve', durationTicks: timelineTicks(500_000) },
-          transitionOut: { type: 'dissolve', durationTicks: timelineTicks(750_000) },
+          sourceDurationTicks: 2_540_160_000_000,
+          timelineRange: { startTicks: 0, durationTicks: 1_016_064_000_000 },
+          sourceRange: { startTicks: 0, durationTicks: 1_016_064_000_000 },
+          audioFadeInTicks: 254_016_000_000,
+          audioFadeOutTicks: 254_016_000_000,
+          transitionIn: { type: 'dissolve', durationTicks: 127_008_000_000 },
+          transitionOut: { type: 'dissolve', durationTicks: 190_512_000_000 },
         },
       ],
     });
@@ -454,18 +453,18 @@ describe('timeline/commands gap behavior', () => {
       trackId: 'v1',
       itemId: 'c1',
       edge: 'end',
-      deltaTicks: timelineTicks(2_000_000),
+      deltaTicks: 508_032_000_000,
     });
 
     const c1 = next.tracks[0].items.find(
       (x: TimelineTrackItem) => x.kind === 'clip' && x.id === 'c1',
     ) as any;
 
-    expect(c1.timelineRange.durationTicks).toBe(timelineTicks(6_000_000));
-    expect(c1.audioFadeInTicks).toBe(timelineTicks(1_000_000));
-    expect(c1.audioFadeOutTicks).toBe(timelineTicks(1_000_000));
-    expect(c1.transitionIn.durationTicks).toBe(timelineTicks(500_000));
-    expect(c1.transitionOut.durationTicks).toBe(timelineTicks(750_000));
+    expect(c1.timelineRange.durationTicks).toBe(1_524_096_000_000);
+    expect(c1.audioFadeInTicks).toBe(254_016_000_000);
+    expect(c1.audioFadeOutTicks).toBe(254_016_000_000);
+    expect(c1.transitionIn.durationTicks).toBe(127_008_000_000);
+    expect(c1.transitionOut.durationTicks).toBe(190_512_000_000);
   });
 
   it('proportionally shrinks fades and transitions when trim reduces a clip into both edges', () => {
@@ -481,13 +480,13 @@ describe('timeline/commands gap behavior', () => {
           trackId: 'v1',
           name: 'C1',
           source: { path: 'a.mp4' },
-          sourceDurationTicks: timelineTicks(10_000_000),
-          timelineRange: { startTicks: 0, durationTicks: timelineTicks(5_000_000) },
-          sourceRange: { startTicks: 0, durationTicks: timelineTicks(5_000_000) },
-          audioFadeInTicks: timelineTicks(3_000_000),
-          audioFadeOutTicks: timelineTicks(3_000_000),
-          transitionIn: { type: 'dissolve', durationTicks: timelineTicks(3_000_000) },
-          transitionOut: { type: 'dissolve', durationTicks: timelineTicks(3_000_000) },
+          sourceDurationTicks: 2_540_160_000_000,
+          timelineRange: { startTicks: 0, durationTicks: 1_270_080_000_000 },
+          sourceRange: { startTicks: 0, durationTicks: 1_270_080_000_000 },
+          audioFadeInTicks: 762_048_000_000,
+          audioFadeOutTicks: 762_048_000_000,
+          transitionIn: { type: 'dissolve', durationTicks: 762_048_000_000 },
+          transitionOut: { type: 'dissolve', durationTicks: 762_048_000_000 },
         },
       ],
     });
@@ -497,17 +496,17 @@ describe('timeline/commands gap behavior', () => {
       trackId: 'v1',
       itemId: 'c1',
       edge: 'end',
-      deltaTicks: -timelineTicks(2_000_000),
+      deltaTicks: -508_032_000_000,
     });
 
     const c1 = next.tracks[0].items.find(
       (x: TimelineTrackItem) => x.kind === 'clip' && x.id === 'c1',
     ) as any;
 
-    expect(c1.timelineRange.durationTicks).toBe(timelineTicks(3_000_000));
-    expect(c1.audioFadeInTicks).toBe(timelineTicks(1_500_000));
-    expect(c1.audioFadeOutTicks).toBe(timelineTicks(1_500_000));
-    expect(c1.transitionIn.durationTicks).toBe(timelineTicks(1_500_000));
-    expect(c1.transitionOut.durationTicks).toBe(timelineTicks(1_500_000));
+    expect(c1.timelineRange.durationTicks).toBe(762_048_000_000);
+    expect(c1.audioFadeInTicks).toBe(381_024_000_000);
+    expect(c1.audioFadeOutTicks).toBe(381_024_000_000);
+    expect(c1.transitionIn.durationTicks).toBe(381_024_000_000);
+    expect(c1.transitionOut.durationTicks).toBe(381_024_000_000);
   });
 });

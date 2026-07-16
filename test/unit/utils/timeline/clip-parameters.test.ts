@@ -8,7 +8,6 @@ import {
   hasClipParametersPatch,
   resolveClipParametersApplyTargets,
 } from '~/utils/timeline/clip-parameters';
-import { timelineTicks } from '../../utils/timeline-time';
 
 function makeClip(patch: Partial<TimelineClipItem> = {}): TimelineClipItem {
   return {
@@ -18,12 +17,12 @@ function makeClip(patch: Partial<TimelineClipItem> = {}): TimelineClipItem {
     trackId: 'v1',
     name: 'Clip',
     source: { path: 'source.mp4' },
-    sourceDurationTicks: timelineTicks(10_000_000),
+    sourceDurationTicks: 2_540_160_000_000,
     timelineRange: {
-      startTicks: timelineTicks(1_000_000),
-      durationTicks: timelineTicks(2_000_000),
+      startTicks: 254_016_000_000,
+      durationTicks: 508_032_000_000,
     },
-    sourceRange: { startTicks: timelineTicks(100_000), durationTicks: timelineTicks(2_000_000) },
+    sourceRange: { startTicks: 25_401_600_000, durationTicks: 508_032_000_000 },
     ...patch,
   } as TimelineClipItem;
 }
@@ -42,7 +41,7 @@ describe('clip parameters clipboard helpers', () => {
           { id: 'fx-video', manifestId: 'blur', params: {}, target: 'video' },
           { id: 'fx-audio', manifestId: 'echo', params: {}, target: 'audio' },
         ],
-        transitionIn: { type: 'fade', durationTicks: timelineTicks(200_000) },
+        transitionIn: { type: 'fade', durationTicks: 50_803_200_000 },
       }),
     });
 
@@ -53,7 +52,7 @@ describe('clip parameters clipboard helpers', () => {
     expect(snapshot.groups.audioEffects?.effects).toHaveLength(1);
     expect(snapshot.groups.transitions?.transitionIn).toEqual({
       type: 'fade',
-      durationTicks: timelineTicks(200_000),
+      durationTicks: 50_803_200_000,
     });
     expect(JSON.stringify(snapshot)).not.toContain('source-clip');
     expect(JSON.stringify(snapshot)).not.toContain('source.mp4');
@@ -185,7 +184,7 @@ describe('clip parameters clipboard helpers', () => {
         transform: { position: { x: 0, y: 0 } },
         opacity: 0.5,
         mask: { path: 'mask.svg' },
-        transitionIn: { type: 'fade', durationTicks: timelineTicks(100_000) },
+        transitionIn: { type: 'fade', durationTicks: 25_401_600_000 },
         effects: [{ id: 'fx', manifestId: 'blur', params: {}, target: 'video' }],
       }),
     });
@@ -417,7 +416,7 @@ describe('clip parameters clipboard helpers', () => {
       clip: makeClip({
         audioGain: 0.5,
         audioBalance: -1,
-        audioFadeInTicks: timelineTicks(500_000),
+        audioFadeInTicks: 127_008_000_000,
         audioFadesActive: true,
       }),
     });
@@ -437,7 +436,7 @@ describe('clip parameters clipboard helpers', () => {
     });
 
     expect(patch.properties.audioGain).toBe(0.5);
-    expect(patch.properties.audioFadeInTicks).toBe(timelineTicks(500_000));
+    expect(patch.properties.audioFadeInTicks).toBe(127_008_000_000);
     expect(patch.properties.audioFadesActive).toBe(true);
     expect(patch.properties.audioBalance).toBeUndefined(); // Preserved!
   });
@@ -460,8 +459,8 @@ describe('clip parameters clipboard helpers', () => {
         background: { scaleX: 2 },
         content: { offsetX: 10 },
         frame: { scaleY: 3 },
-        transitionIn: { type: 'fade', durationTicks: timelineTicks(200_000) },
-        transitionOut: { type: 'slide', durationTicks: timelineTicks(300_000) },
+        transitionIn: { type: 'fade', durationTicks: 50_803_200_000 },
+        transitionOut: { type: 'slide', durationTicks: 76_204_800_000 },
       }),
     });
 
@@ -509,7 +508,7 @@ describe('clip parameters clipboard helpers', () => {
     expect(transitionPatch.transitionIn).toBeUndefined();
     expect(transitionPatch.transitionOut).toEqual({
       type: 'slide',
-      durationTicks: timelineTicks(300_000),
+      durationTicks: 76_204_800_000,
     });
 
     const textSnapshot = createClipParametersSnapshot({
@@ -530,7 +529,7 @@ describe('clip parameters clipboard helpers', () => {
     const animations = {
       opacity: { keyframes: [{ tTicks: 0, value: 0, easing: 'linear' as const }] },
       'transform.rotationDeg': {
-        keyframes: [{ tTicks: timelineTicks(500_000), value: 90, easing: 'ease' as const }],
+        keyframes: [{ tTicks: 127_008_000_000, value: 90, easing: 'ease' as const }],
       },
     };
     const snapshot = createClipParametersSnapshot({

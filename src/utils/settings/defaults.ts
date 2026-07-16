@@ -26,16 +26,10 @@ export interface FastCatPublicadorIntegrationSettings {
   bearerToken: string;
 }
 
-export const MIN_DEFAULT_DURATION_TICKS = Math.round((100_000 / 1_000_000) * TICKS_PER_SECOND);
-export const MAX_DEFAULT_FADE_DURATION_TICKS = Math.round(
-  (100_000_000 / 1_000_000) * TICKS_PER_SECOND,
-);
-export const MAX_DEFAULT_TRANSITION_DURATION_TICKS = Math.round(
-  (100_000_000 / 1_000_000) * TICKS_PER_SECOND,
-);
-export const MAX_DEFAULT_STATIC_CLIP_DURATION_TICKS = Math.round(
-  (3_600_000_000 / 1_000_000) * TICKS_PER_SECOND,
-);
+export const MIN_DEFAULT_DURATION_TICKS = TICKS_PER_SECOND / 10;
+export const MAX_DEFAULT_FADE_DURATION_TICKS = 100 * TICKS_PER_SECOND;
+export const MAX_DEFAULT_TRANSITION_DURATION_TICKS = 100 * TICKS_PER_SECOND;
+export const MAX_DEFAULT_STATIC_CLIP_DURATION_TICKS = 3600 * TICKS_PER_SECOND;
 
 export interface ManualExternalApiSettings {
   enabled: boolean;
@@ -313,7 +307,7 @@ export const DEFAULT_USER_SETTINGS: FastCatUserSettings = {
     aspectRatio: '16:9',
     isCustomResolution: false,
     sampleRate: 48000,
-    audioDeclickDurationTicks: Math.round((5_000 / 1_000_000) * TICKS_PER_SECOND),
+    audioDeclickDurationTicks: TICKS_PER_SECOND / 200,
     defaultAudioFadeCurve: 'linear',
     audioScrubbingEnabled: true,
   },

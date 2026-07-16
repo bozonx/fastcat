@@ -8,7 +8,6 @@ import {
   toNativeSceneAudioLayer,
 } from '~/utils/audio/audio-clip-descriptor';
 import { buildClipPlaybackWindow } from '~/utils/video-editor/audio-playback-window';
-import { timelineTicks } from '../timeline-time';
 
 interface AudioWorkerClip extends WorkerTimelineClip {
   defaultAudioFadeCurve?: 'linear' | 'logarithmic';
@@ -23,24 +22,24 @@ function createClip(overrides: Partial<AudioWorkerClip> = {}): AudioWorkerClip {
     layer: 0,
     source: { path: 'audio/source.mp3' },
     timelineRange: {
-      startTicks: timelineTicks(1_000_000),
-      durationTicks: timelineTicks(2_500_000),
+      startTicks: 254_016_000_000,
+      durationTicks: 635_040_000_000,
     },
-    sourceRange: { startTicks: timelineTicks(500_000), durationTicks: timelineTicks(1_750_000) },
-    sourceDurationTicks: timelineTicks(8_000_000),
+    sourceRange: { startTicks: 127_008_000_000, durationTicks: 444_528_000_000 },
+    sourceDurationTicks: 2_032_128_000_000,
     speed: 2,
     audioGain: 0.75,
     audioBalance: -0.25,
     originalAudioGain: 0.5,
     originalAudioBalance: 0.2,
-    audioFadeInTicks: timelineTicks(100_000),
-    audioFadeOutTicks: timelineTicks(200_000),
+    audioFadeInTicks: 25_401_600_000,
+    audioFadeOutTicks: 50_803_200_000,
     audioFadeInCurve: 'logarithmic',
     audioFadeOutCurve: 'linear',
-    audioDeclickDurationTicks: timelineTicks(5_000),
+    audioDeclickDurationTicks: 1_270_080_000,
     defaultAudioFadeCurve: 'logarithmic',
-    transitionIn: { type: 'dissolve', durationTicks: timelineTicks(100_000), mode: 'adjacent' },
-    transitionOut: { type: 'dissolve', durationTicks: timelineTicks(150_000), mode: 'adjacent' },
+    transitionIn: { type: 'dissolve', durationTicks: 25_401_600_000, mode: 'adjacent' },
+    transitionOut: { type: 'dissolve', durationTicks: 38_102_400_000, mode: 'adjacent' },
     effects: [
       {
         id: 'audio-enabled',
@@ -89,14 +88,14 @@ describe('audio clip descriptor adapters', () => {
       id: 'clip-1',
       trackId: 'track-1',
       sourcePath: '/project/audio/source.mp3',
-      startTicks: timelineTicks(1_000_000),
-      durationTicks: timelineTicks(2_500_000),
-      sourceStartTicks: timelineTicks(500_000),
-      sourceRangeDurationTicks: timelineTicks(1_750_000),
-      sourceDurationTicks: timelineTicks(8_000_000),
+      startTicks: 254_016_000_000,
+      durationTicks: 635_040_000_000,
+      sourceStartTicks: 127_008_000_000,
+      sourceRangeDurationTicks: 444_528_000_000,
+      sourceDurationTicks: 2_032_128_000_000,
       speed: 2,
-      audioFadeInTicks: timelineTicks(100_000),
-      audioFadeOutTicks: timelineTicks(200_000),
+      audioFadeInTicks: 25_401_600_000,
+      audioFadeOutTicks: 50_803_200_000,
       audioFadeInCurve: 'logarithmic',
       audioFadeOutCurve: 'linear',
     });
@@ -214,16 +213,16 @@ describe('audio clip descriptor adapters', () => {
     const descriptor = buildCanonicalAudioClipDescriptor({
       clip: createClip({
         timelineRange: {
-          startTicks: timelineTicks(1_000_000),
-          durationTicks: timelineTicks(875_000),
+          startTicks: 254_016_000_000,
+          durationTicks: 222_264_000_000,
         },
         audioFadeInTicks: undefined,
         audioFadeOutTicks: undefined,
-        audioDeclickDurationTicks: timelineTicks(5_000), // 5ms auto-declick
-        transitionIn: { type: 'dissolve', durationTicks: timelineTicks(100_000), mode: 'adjacent' },
+        audioDeclickDurationTicks: 1_270_080_000, // 5ms auto-declick
+        transitionIn: { type: 'dissolve', durationTicks: 25_401_600_000, mode: 'adjacent' },
         transitionOut: {
           type: 'dissolve',
-          durationTicks: timelineTicks(150_000),
+          durationTicks: 38_102_400_000,
           mode: 'adjacent',
         },
       }),
@@ -233,7 +232,7 @@ describe('audio clip descriptor adapters', () => {
     const previous = buildCanonicalAudioClipDescriptor({
       clip: createClip({
         id: 'prev-clip',
-        timelineRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
+        timelineRange: { startTicks: 0, durationTicks: 254_016_000_000 },
       }),
       sourcePath: '/project/audio/prev.mp3',
     });
@@ -242,8 +241,8 @@ describe('audio clip descriptor adapters', () => {
       clip: createClip({
         id: 'next-clip',
         timelineRange: {
-          startTicks: timelineTicks(3_500_000),
-          durationTicks: timelineTicks(1_000_000),
+          startTicks: 889_056_000_000,
+          durationTicks: 254_016_000_000,
         },
       }),
       sourcePath: '/project/audio/next.mp3',
@@ -300,9 +299,9 @@ describe('audio clip descriptor adapters', () => {
     const outgoing = buildCanonicalAudioClipDescriptor({
       clip: createClip({
         id: 'outgoing',
-        timelineRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
-        sourceRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
-        sourceDurationTicks: timelineTicks(3_000_000),
+        timelineRange: { startTicks: 0, durationTicks: 254_016_000_000 },
+        sourceRange: { startTicks: 0, durationTicks: 254_016_000_000 },
+        sourceDurationTicks: 762_048_000_000,
         speed: 1,
         audioFadeInTicks: undefined,
         audioFadeOutTicks: undefined,
@@ -311,7 +310,7 @@ describe('audio clip descriptor adapters', () => {
         transitionIn: undefined,
         transitionOut: {
           type: 'dissolve',
-          durationTicks: timelineTicks(500_000),
+          durationTicks: 127_008_000_000,
           mode: 'adjacent',
         },
       }),
@@ -321,14 +320,14 @@ describe('audio clip descriptor adapters', () => {
       clip: createClip({
         id: 'incoming',
         timelineRange: {
-          startTicks: timelineTicks(1_000_000),
-          durationTicks: timelineTicks(1_000_000),
+          startTicks: 254_016_000_000,
+          durationTicks: 254_016_000_000,
         },
         sourceRange: {
-          startTicks: timelineTicks(500_000),
-          durationTicks: timelineTicks(1_000_000),
+          startTicks: 127_008_000_000,
+          durationTicks: 254_016_000_000,
         },
-        sourceDurationTicks: timelineTicks(3_000_000),
+        sourceDurationTicks: 762_048_000_000,
         speed: 1,
         audioFadeInTicks: undefined,
         audioFadeOutTicks: undefined,

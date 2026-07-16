@@ -4,7 +4,6 @@ import { mount, type VueWrapper } from '@vue/test-utils';
 import { defineComponent, h, ref } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { useTimelineRulerMarkerDrag } from '~/composables/timeline/useTimelineRulerMarkerDrag';
-import { timelineTicks } from '../../utils/timeline-time';
 
 type Marker = { id: string; timeTicks: number; durationTicks?: number };
 
@@ -57,25 +56,19 @@ function displayed(api: ReturnType<typeof useTimelineRulerMarkerDrag>, id: strin
 
 describe('useTimelineRulerMarkerDrag', () => {
   it('selects the marker on pointer down', () => {
-    const { api, selectMarker } = setupDrag(
-      [{ id: 'a', timeTicks: timelineTicks(1_000_000) }],
-      ['a'],
-    );
+    const { api, selectMarker } = setupDrag([{ id: 'a', timeTicks: 254_016_000_000 }], ['a']);
     api.onMarkerPointerDown(pointerEvent('pointerdown', 100), 'a', 'left');
     expect(selectMarker).toHaveBeenCalledWith('a', expect.any(Object));
   });
 
   it('moves a point marker and commits the new time on release', () => {
-    const { api, updateMarker } = setupDrag(
-      [{ id: 'a', timeTicks: timelineTicks(1_000_000) }],
-      ['a'],
-    );
+    const { api, updateMarker } = setupDrag([{ id: 'a', timeTicks: 254_016_000_000 }], ['a']);
 
     api.onMarkerPointerDown(pointerEvent('pointerdown', 100), 'a', 'left');
     window.dispatchEvent(pointerEvent('pointermove', 400));
 
     const dm = displayed(api, 'a');
-    expect(dm.timeTicks).toBeGreaterThan(timelineTicks(1_000_000));
+    expect(dm.timeTicks).toBeGreaterThan(254_016_000_000);
     expect(api.hasDragged.value).toBe(true);
 
     window.dispatchEvent(pointerEvent('pointerup', 400));
@@ -87,7 +80,7 @@ describe('useTimelineRulerMarkerDrag', () => {
 
   it('moves a whole zone with part="move", preserving its duration', () => {
     const { api, updateMarker } = setupDrag(
-      [{ id: 'z', timeTicks: timelineTicks(1_000_000), durationTicks: timelineTicks(2_000_000) }],
+      [{ id: 'z', timeTicks: 254_016_000_000, durationTicks: 508_032_000_000 }],
       ['z'],
     );
 
@@ -95,29 +88,29 @@ describe('useTimelineRulerMarkerDrag', () => {
     window.dispatchEvent(pointerEvent('pointermove', 400));
 
     const dm = displayed(api, 'z');
-    expect(dm.timeTicks).toBeGreaterThan(timelineTicks(1_000_000));
-    expect(dm.durationTicks).toBe(timelineTicks(2_000_000));
+    expect(dm.timeTicks).toBeGreaterThan(254_016_000_000);
+    expect(dm.durationTicks).toBe(508_032_000_000);
 
     window.dispatchEvent(pointerEvent('pointerup', 400));
     expect(updateMarker).toHaveBeenCalledWith(
       'z',
-      expect.objectContaining({ durationTicks: timelineTicks(2_000_000) }),
+      expect.objectContaining({ durationTicks: 508_032_000_000 }),
     );
   });
 
   it('resizes the left edge of a zone (part="left") keeping the end fixed', () => {
     const { api } = setupDrag(
-      [{ id: 'z', timeTicks: timelineTicks(1_000_000), durationTicks: timelineTicks(2_000_000) }],
+      [{ id: 'z', timeTicks: 254_016_000_000, durationTicks: 508_032_000_000 }],
       ['z'],
     );
-    const endTicks = timelineTicks(3_000_000);
+    const endTicks = 762_048_000_000;
 
     api.onMarkerPointerDown(pointerEvent('pointerdown', 100), 'z', 'left');
     window.dispatchEvent(pointerEvent('pointermove', 300));
 
     const dm = displayed(api, 'z');
-    expect(dm.timeTicks).toBeGreaterThan(timelineTicks(1_000_000));
-    expect(dm.durationTicks).toBeLessThan(timelineTicks(2_000_000));
+    expect(dm.timeTicks).toBeGreaterThan(254_016_000_000);
+    expect(dm.durationTicks).toBeLessThan(508_032_000_000);
     // The right edge must not move when dragging the left handle.
     expect(dm.timeTicks + (dm.durationTicks ?? 0)).toBe(endTicks);
 
@@ -126,7 +119,7 @@ describe('useTimelineRulerMarkerDrag', () => {
 
   it('resizes the right edge of a zone (part="right") keeping the start fixed', () => {
     const { api } = setupDrag(
-      [{ id: 'z', timeTicks: timelineTicks(1_000_000), durationTicks: timelineTicks(2_000_000) }],
+      [{ id: 'z', timeTicks: 254_016_000_000, durationTicks: 508_032_000_000 }],
       ['z'],
     );
 
@@ -134,8 +127,8 @@ describe('useTimelineRulerMarkerDrag', () => {
     window.dispatchEvent(pointerEvent('pointermove', 400));
 
     const dm = displayed(api, 'z');
-    expect(dm.timeTicks).toBe(timelineTicks(1_000_000));
-    expect(dm.durationTicks).toBeGreaterThan(timelineTicks(2_000_000));
+    expect(dm.timeTicks).toBe(254_016_000_000);
+    expect(dm.durationTicks).toBeGreaterThan(508_032_000_000);
 
     window.dispatchEvent(pointerEvent('pointerup', 400));
   });
@@ -145,13 +138,13 @@ describe('useTimelineRulerMarkerDrag', () => {
       [
         {
           id: 'lead',
-          timeTicks: timelineTicks(1_000_000),
-          durationTicks: timelineTicks(2_000_000),
+          timeTicks: 254_016_000_000,
+          durationTicks: 508_032_000_000,
         },
         {
           id: 'other',
-          timeTicks: timelineTicks(5_000_000),
-          durationTicks: timelineTicks(1_000_000),
+          timeTicks: 1_270_080_000_000,
+          durationTicks: 254_016_000_000,
         },
       ],
       ['lead', 'other'],
@@ -164,18 +157,15 @@ describe('useTimelineRulerMarkerDrag', () => {
     const other = displayed(api, 'other');
 
     // Lead resizes from the left (end fixed); the other zone moves whole.
-    expect(lead.durationTicks).toBeLessThan(timelineTicks(2_000_000));
-    expect(other.durationTicks).toBe(timelineTicks(1_000_000));
-    expect(other.timeTicks).toBeGreaterThan(timelineTicks(5_000_000));
+    expect(lead.durationTicks).toBeLessThan(508_032_000_000);
+    expect(other.durationTicks).toBe(254_016_000_000);
+    expect(other.timeTicks).toBeGreaterThan(1_270_080_000_000);
 
     window.dispatchEvent(pointerEvent('pointerup', 300));
   });
 
   it('cancels the drag gesture and resets state on pointercancel', () => {
-    const { api, updateMarker } = setupDrag(
-      [{ id: 'a', timeTicks: timelineTicks(1_000_000) }],
-      ['a'],
-    );
+    const { api, updateMarker } = setupDrag([{ id: 'a', timeTicks: 254_016_000_000 }], ['a']);
 
     api.onMarkerPointerDown(pointerEvent('pointerdown', 100), 'a', 'left');
     window.dispatchEvent(pointerEvent('pointermove', 400));

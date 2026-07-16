@@ -1,6 +1,5 @@
 /** @vitest-environment node */
 import { describe, it, expect } from 'vitest';
-import { timelineTicks } from '../utils/timeline-time';
 import { applyTimelineCommand } from '~/timeline/commands';
 import type { TimelineDocument, TimelineTrack, TimelineTrackItem } from '~/timeline/types';
 
@@ -29,8 +28,8 @@ describe('timeline/commands split_item', () => {
             trackId: 'v1',
             name: 'Image',
             backgroundColor: '#000000',
-            timelineRange: { startTicks: 0, durationTicks: timelineTicks(999_999) },
-            sourceRange: { startTicks: 0, durationTicks: timelineTicks(999_999) },
+            timelineRange: { startTicks: 0, durationTicks: 254_015_745_984 },
+            sourceRange: { startTicks: 0, durationTicks: 254_015_745_984 },
           },
         ],
       },
@@ -40,7 +39,7 @@ describe('timeline/commands split_item', () => {
       type: 'split_item',
       trackId: 'v1',
       itemId: 'img1',
-      atTicks: timelineTicks(333_333),
+      atTicks: 84_671_915_328,
     });
 
     const items = next.tracks[0]?.items ?? [];
@@ -75,9 +74,9 @@ describe('timeline/commands split_item', () => {
             trackId: 'v1',
             name: 'C1',
             source: { path: 'a.mp4' },
-            sourceDurationTicks: timelineTicks(10_000_000),
-            timelineRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
-            sourceRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
+            sourceDurationTicks: 2_540_160_000_000,
+            timelineRange: { startTicks: 0, durationTicks: 254_016_000_000 },
+            sourceRange: { startTicks: 0, durationTicks: 254_016_000_000 },
           },
         ],
       },
@@ -87,7 +86,7 @@ describe('timeline/commands split_item', () => {
       type: 'split_item',
       trackId: 'v1',
       itemId: 'c1',
-      atTicks: timelineTicks(500_000),
+      atTicks: 127_008_000_000,
     });
 
     const items = next.tracks[0]?.items ?? [];
@@ -104,9 +103,7 @@ describe('timeline/commands split_item', () => {
     expect(right.timelineRange.durationTicks).toBeGreaterThan(0);
 
     expect(left.sourceRange.startTicks).toBe(0);
-    expect(left.sourceRange.durationTicks + right.sourceRange.durationTicks).toBe(
-      timelineTicks(1_000_000),
-    );
+    expect(left.sourceRange.durationTicks + right.sourceRange.durationTicks).toBe(254_016_000_000);
     expect(right.sourceRange.startTicks).toBe(left.sourceRange.durationTicks);
   });
 
@@ -124,9 +121,9 @@ describe('timeline/commands split_item', () => {
             trackId: 'v1',
             name: 'C1',
             source: { path: 'a.mp4' },
-            sourceDurationTicks: timelineTicks(10_000_000),
-            timelineRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
-            sourceRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
+            sourceDurationTicks: 2_540_160_000_000,
+            timelineRange: { startTicks: 0, durationTicks: 254_016_000_000 },
+            sourceRange: { startTicks: 0, durationTicks: 254_016_000_000 },
           },
         ],
       },
@@ -143,7 +140,7 @@ describe('timeline/commands split_item', () => {
       type: 'split_item',
       trackId: 'v1',
       itemId: 'c1',
-      atTicks: timelineTicks(1_000_000),
+      atTicks: 254_016_000_000,
     }).next;
 
     expect(atStart.tracks[0]?.items.filter((x) => x.kind === 'clip').length).toBe(1);
@@ -164,10 +161,10 @@ describe('timeline/commands split_item', () => {
             trackId: 'v1',
             name: 'Video',
             source: { path: 'a.mp4' },
-            sourceDurationTicks: timelineTicks(10_000_000),
+            sourceDurationTicks: 2_540_160_000_000,
             linkedGroupId: 'group-1',
-            timelineRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
-            sourceRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
+            timelineRange: { startTicks: 0, durationTicks: 254_016_000_000 },
+            sourceRange: { startTicks: 0, durationTicks: 254_016_000_000 },
           },
         ],
       },
@@ -183,10 +180,10 @@ describe('timeline/commands split_item', () => {
             trackId: 'a1',
             name: 'Audio',
             source: { path: 'a.mp4' },
-            sourceDurationTicks: timelineTicks(10_000_000),
+            sourceDurationTicks: 2_540_160_000_000,
             linkedGroupId: 'group-1',
-            timelineRange: { startTicks: 0, durationTicks: timelineTicks(500_000) },
-            sourceRange: { startTicks: 0, durationTicks: timelineTicks(500_000) },
+            timelineRange: { startTicks: 0, durationTicks: 127_008_000_000 },
+            sourceRange: { startTicks: 0, durationTicks: 127_008_000_000 },
           },
         ],
       },
@@ -196,7 +193,7 @@ describe('timeline/commands split_item', () => {
       type: 'split_item',
       trackId: 'v1',
       itemId: 'vclip',
-      atTicks: timelineTicks(500_000),
+      atTicks: 127_008_000_000,
     });
 
     const videoClips = next.tracks[0]?.items.filter((x) => x.kind === 'clip') as any[];

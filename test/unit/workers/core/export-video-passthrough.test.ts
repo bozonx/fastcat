@@ -8,9 +8,8 @@ import {
   type PassthroughPacketSink,
 } from '~/workers/core/export-video-passthrough';
 import type { WorkerVideoPayloadItem } from '~/types/worker-payload';
-import { timelineTicks } from '../../utils/timeline-time';
 
-const DURATION_TICKS = timelineTicks(10_000_000);
+const DURATION_TICKS = 2_540_160_000_000;
 
 function baseOptions() {
   return {
@@ -56,16 +55,16 @@ describe('computePayloadVideoEndTicks', () => {
       { kind: 'track', id: 't', layer: 0 } as never,
       baseClip({
         timelineRange: {
-          startTicks: timelineTicks(1_000_000),
-          durationTicks: timelineTicks(3_000_000),
+          startTicks: 254_016_000_000,
+          durationTicks: 762_048_000_000,
         },
       }),
       baseClip({
         id: 'c2',
-        timelineRange: { startTicks: 0, durationTicks: timelineTicks(2_000_000) },
+        timelineRange: { startTicks: 0, durationTicks: 508_032_000_000 },
       }),
     ]);
-    expect(end).toBe(timelineTicks(4_000_000));
+    expect(end).toBe(1_016_064_000_000);
   });
 
   it('returns 0 for an empty payload', () => {
@@ -83,15 +82,15 @@ describe('findVideoPassthroughCandidate', () => {
     const result = candidate(
       [
         baseClip({
-          timelineRange: { startTicks: 0, durationTicks: timelineTicks(8_000_000) },
+          timelineRange: { startTicks: 0, durationTicks: 2_032_128_000_000 },
           sourceRange: {
-            startTicks: timelineTicks(2_000_000),
-            durationTicks: timelineTicks(8_000_000),
+            startTicks: 508_032_000_000,
+            durationTicks: 2_032_128_000_000,
           },
         }),
       ],
       {},
-      timelineTicks(8_000_000),
+      2_032_128_000_000,
     );
     expect(result.ok).toBe(true);
   });
@@ -100,12 +99,12 @@ describe('findVideoPassthroughCandidate', () => {
     const result = candidate(
       [
         baseClip({
-          timelineRange: { startTicks: 0, durationTicks: timelineTicks(6_000_000) },
-          sourceRange: { startTicks: 0, durationTicks: timelineTicks(6_000_000) },
+          timelineRange: { startTicks: 0, durationTicks: 1_524_096_000_000 },
+          sourceRange: { startTicks: 0, durationTicks: 1_524_096_000_000 },
         }),
       ],
       {},
-      timelineTicks(6_000_000),
+      1_524_096_000_000,
     );
     expect(result.ok).toBe(true);
   });
@@ -169,13 +168,13 @@ describe('findVideoPassthroughCandidate', () => {
       () =>
         candidate([
           baseClip({
-            timelineRange: { startTicks: timelineTicks(1_000_000), durationTicks: DURATION_TICKS },
+            timelineRange: { startTicks: 254_016_000_000, durationTicks: DURATION_TICKS },
           }),
         ]),
     ],
     [
       'clip does not cover the whole export',
-      () => candidate([baseClip()], {}, DURATION_TICKS + timelineTicks(2_000_000)),
+      () => candidate([baseClip()], {}, DURATION_TICKS + 508_032_000_000),
     ],
     [
       'timeline and source windows disagree (stretch would be needed)',
@@ -184,7 +183,7 @@ describe('findVideoPassthroughCandidate', () => {
           baseClip({
             sourceRange: {
               startTicks: 0,
-              durationTicks: DURATION_TICKS - timelineTicks(2_000_000),
+              durationTicks: DURATION_TICKS - 508_032_000_000,
             },
           }),
         ]),
@@ -339,13 +338,13 @@ describe('buildPassthroughVideoTrack', () => {
       buildParams(
         bundle,
         {
-          timelineRange: { startTicks: 0, durationTicks: timelineTicks(8_000_000) },
+          timelineRange: { startTicks: 0, durationTicks: 2_032_128_000_000 },
           sourceRange: {
-            startTicks: timelineTicks(2_000_000),
-            durationTicks: timelineTicks(8_000_000),
+            startTicks: 508_032_000_000,
+            durationTicks: 2_032_128_000_000,
           },
         },
-        timelineTicks(8_000_000),
+        2_032_128_000_000,
       ),
     );
     expect(state).not.toBeNull();
@@ -363,13 +362,13 @@ describe('buildPassthroughVideoTrack', () => {
       buildParams(
         bundle,
         {
-          timelineRange: { startTicks: 0, durationTicks: timelineTicks(8_000_000) },
+          timelineRange: { startTicks: 0, durationTicks: 2_032_128_000_000 },
           sourceRange: {
-            startTicks: timelineTicks(2_000_000),
-            durationTicks: timelineTicks(8_000_000),
+            startTicks: 508_032_000_000,
+            durationTicks: 2_032_128_000_000,
           },
         },
-        timelineTicks(8_000_000),
+        2_032_128_000_000,
       ),
     );
     expect(state).toBeNull();
@@ -382,10 +381,10 @@ describe('buildPassthroughVideoTrack', () => {
       buildParams(
         bundle,
         {
-          timelineRange: { startTicks: 0, durationTicks: timelineTicks(6_000_000) },
-          sourceRange: { startTicks: 0, durationTicks: timelineTicks(6_000_000) },
+          timelineRange: { startTicks: 0, durationTicks: 1_524_096_000_000 },
+          sourceRange: { startTicks: 0, durationTicks: 1_524_096_000_000 },
         },
-        timelineTicks(6_000_000),
+        1_524_096_000_000,
       ),
     );
     expect(state).not.toBeNull();
@@ -504,13 +503,13 @@ describe('writeVideoPassthrough', () => {
       buildParams(
         bundle,
         {
-          timelineRange: { startTicks: 0, durationTicks: timelineTicks(8_000_000) },
+          timelineRange: { startTicks: 0, durationTicks: 2_032_128_000_000 },
           sourceRange: {
-            startTicks: timelineTicks(2_000_000),
-            durationTicks: timelineTicks(8_000_000),
+            startTicks: 508_032_000_000,
+            durationTicks: 2_032_128_000_000,
           },
         },
-        timelineTicks(8_000_000),
+        2_032_128_000_000,
       ),
     );
     await writeVideoPassthrough({
@@ -541,10 +540,10 @@ describe('writeVideoPassthrough', () => {
       buildParams(
         bundle,
         {
-          timelineRange: { startTicks: 0, durationTicks: timelineTicks(6_000_000) },
-          sourceRange: { startTicks: 0, durationTicks: timelineTicks(6_000_000) },
+          timelineRange: { startTicks: 0, durationTicks: 1_524_096_000_000 },
+          sourceRange: { startTicks: 0, durationTicks: 1_524_096_000_000 },
         },
-        timelineTicks(6_000_000),
+        1_524_096_000_000,
       ),
     );
     expect(state!.wholeStream).toBe(false);

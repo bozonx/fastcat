@@ -11,7 +11,6 @@ import {
   waitForVideoBackpressure,
 } from '~/workers/core/export';
 import type { OutputFormatConstructors } from '~/workers/core/export';
-import { timelineTicks } from '../../utils/timeline-time';
 
 function makeCtors(): OutputFormatConstructors {
   return {
@@ -212,7 +211,7 @@ describe('isPassthroughCompatibleClip - extended edge cases', () => {
 
   it('rejects clip with audio transition in', () => {
     const clip = {
-      transitionIn: { durationTicks: timelineTicks(500_000) },
+      transitionIn: { durationTicks: 127_008_000_000 },
     };
     const result = isPassthroughCompatibleClip(clip, baseOpts);
     expect(result.ok).toBe(false);
@@ -223,7 +222,7 @@ describe('isPassthroughCompatibleClip - extended edge cases', () => {
 
   it('rejects clip with audio transition out', () => {
     const clip = {
-      transitionOut: { durationTicks: timelineTicks(500_000) },
+      transitionOut: { durationTicks: 127_008_000_000 },
     };
     const result = isPassthroughCompatibleClip(clip, baseOpts);
     expect(result.ok).toBe(false);
@@ -293,7 +292,7 @@ describe('isPassthroughCompatibleClip - extended edge cases', () => {
   });
 
   it('rejects clip with fade in', () => {
-    const clip = { audioFadeInTicks: timelineTicks(100_000) };
+    const clip = { audioFadeInTicks: 25_401_600_000 };
     const result = isPassthroughCompatibleClip(clip, baseOpts);
     expect(result.ok).toBe(false);
     if (!result.ok) {
@@ -302,7 +301,7 @@ describe('isPassthroughCompatibleClip - extended edge cases', () => {
   });
 
   it('rejects clip with fade out', () => {
-    const clip = { audioFadeOutTicks: timelineTicks(100_000) };
+    const clip = { audioFadeOutTicks: 25_401_600_000 };
     const result = isPassthroughCompatibleClip(clip, baseOpts);
     expect(result.ok).toBe(false);
     if (!result.ok) {

@@ -1,6 +1,5 @@
 /** @vitest-environment node */
 import { describe, it, expect } from 'vitest';
-import { timelineTicks } from '../utils/timeline-time';
 import { TICKS_PER_SECOND } from '~/utils/time';
 import { addClipToTrack, addVirtualClipToTrack } from '~/timeline/commands/item/add';
 import type { TimelineDocument } from '~/timeline/types';
@@ -23,8 +22,8 @@ describe('addClipToTrack', () => {
       trackId: 'v1',
       name: 'clip',
       path: 'video/a.mp4',
-      startTicks: timelineTicks(50_000),
-      durationTicks: timelineTicks(50_000),
+      startTicks: 12_700_800_000,
+      durationTicks: 12_700_800_000,
     });
 
     const items = result.next.tracks[0].items;
@@ -42,15 +41,15 @@ describe('addClipToTrack', () => {
       trackId: 'v1',
       name: 'clip',
       path: 'video/a.mp4',
-      startTicks: timelineTicks(50_000),
-      durationTicks: timelineTicks(50_001),
+      startTicks: 12_700_800_000,
+      durationTicks: 12_701_054_016,
       quantizeToFrames: false,
     });
 
     const clip = result.next.tracks[0].items.find((it: any) => it.kind === 'clip');
     expect(clip?.timelineRange).toEqual({
-      startTicks: timelineTicks(50_000),
-      durationTicks: timelineTicks(50_001),
+      startTicks: 12_700_800_000,
+      durationTicks: 12_701_054_016,
     });
   });
 
@@ -61,15 +60,15 @@ describe('addClipToTrack', () => {
       trackId: 'v1',
       clipType: 'text',
       name: 'text',
-      startTicks: timelineTicks(50_000),
-      durationTicks: timelineTicks(50_001),
+      startTicks: 12_700_800_000,
+      durationTicks: 12_701_054_016,
       quantizeToFrames: false,
     });
 
     const clip = result.next.tracks[0].items.find((it: any) => it.kind === 'clip');
     expect(clip?.timelineRange).toEqual({
-      startTicks: timelineTicks(50_000),
-      durationTicks: timelineTicks(50_001),
+      startTicks: 12_700_800_000,
+      durationTicks: 12_701_054_016,
     });
   });
 
@@ -81,7 +80,7 @@ describe('addClipToTrack', () => {
       name: 'first',
       path: 'video/a.mp4',
       startTicks: 0,
-      durationTicks: timelineTicks(1_000_000),
+      durationTicks: 254_016_000_000,
     });
 
     expect(() =>
@@ -90,8 +89,8 @@ describe('addClipToTrack', () => {
         trackId: 'v1',
         name: 'second',
         path: 'video/b.mp4',
-        startTicks: timelineTicks(500_000),
-        durationTicks: timelineTicks(1_000_000),
+        startTicks: 127_008_000_000,
+        durationTicks: 254_016_000_000,
       }),
     ).toThrow('Item overlaps with another item');
   });
@@ -104,7 +103,7 @@ describe('addClipToTrack', () => {
       name: 'first',
       path: 'video/a.mp4',
       startTicks: 0,
-      durationTicks: timelineTicks(1_000_000),
+      durationTicks: 254_016_000_000,
     });
 
     expect(() =>
@@ -113,8 +112,8 @@ describe('addClipToTrack', () => {
         trackId: 'v1',
         name: 'second',
         path: 'video/b.mp4',
-        startTicks: timelineTicks(1_000_000),
-        durationTicks: timelineTicks(1_000_000),
+        startTicks: 254_016_000_000,
+        durationTicks: 254_016_000_000,
       }),
     ).not.toThrow();
   });
@@ -125,8 +124,8 @@ describe('addClipToTrack', () => {
       trackId: 'v1',
       name: 'existing',
       path: 'video/existing.mp4',
-      startTicks: timelineTicks(2_000_000),
-      durationTicks: timelineTicks(4_000_000),
+      startTicks: 508_032_000_000,
+      durationTicks: 1_016_064_000_000,
       quantizeToFrames: false,
     });
 
@@ -136,8 +135,8 @@ describe('addClipToTrack', () => {
       name: 'dropped',
       path: 'image/dropped.png',
       startTicks: 0,
-      durationTicks: timelineTicks(4_000_000),
-      sourceDurationTicks: timelineTicks(4_000_000),
+      durationTicks: 1_016_064_000_000,
+      sourceDurationTicks: 1_016_064_000_000,
       isImage: true,
       pseudo: true,
       quantizeToFrames: false,
@@ -148,16 +147,16 @@ describe('addClipToTrack', () => {
     const dropped = clips.find((it: any) => it.name === 'dropped');
 
     expect(existing?.timelineRange).toEqual({
-      startTicks: timelineTicks(4_000_000),
-      durationTicks: timelineTicks(2_000_000),
+      startTicks: 1_016_064_000_000,
+      durationTicks: 508_032_000_000,
     });
     expect(dropped?.timelineRange).toEqual({
       startTicks: 0,
-      durationTicks: timelineTicks(4_000_000),
+      durationTicks: 1_016_064_000_000,
     });
     expect(dropped?.sourceRange).toEqual({
       startTicks: 0,
-      durationTicks: timelineTicks(4_000_000),
+      durationTicks: 1_016_064_000_000,
     });
   });
 
@@ -168,7 +167,7 @@ describe('addClipToTrack', () => {
       name: 'existing',
       path: 'video/existing.mp4',
       startTicks: 0,
-      durationTicks: timelineTicks(2_000_000),
+      durationTicks: 508_032_000_000,
       quantizeToFrames: false,
     });
 
@@ -177,9 +176,9 @@ describe('addClipToTrack', () => {
       trackId: 'v1',
       name: 'dropped',
       path: 'video/dropped.mp4',
-      startTicks: timelineTicks(1_000_000),
-      durationTicks: timelineTicks(4_000_000),
-      sourceDurationTicks: timelineTicks(4_000_000),
+      startTicks: 254_016_000_000,
+      durationTicks: 1_016_064_000_000,
+      sourceDurationTicks: 1_016_064_000_000,
       pseudo: true,
       quantizeToFrames: false,
     });
@@ -190,15 +189,15 @@ describe('addClipToTrack', () => {
 
     expect(existing?.timelineRange).toEqual({
       startTicks: 0,
-      durationTicks: timelineTicks(1_000_000),
+      durationTicks: 254_016_000_000,
     });
     expect(dropped?.timelineRange).toEqual({
-      startTicks: timelineTicks(1_000_000),
-      durationTicks: timelineTicks(4_000_000),
+      startTicks: 254_016_000_000,
+      durationTicks: 1_016_064_000_000,
     });
     expect(dropped?.sourceRange).toEqual({
       startTicks: 0,
-      durationTicks: timelineTicks(4_000_000),
+      durationTicks: 1_016_064_000_000,
     });
   });
 });

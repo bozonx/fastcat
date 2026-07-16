@@ -2,7 +2,6 @@ import { describe, it, expect, vi } from 'vitest';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
 import type { TimelineClipItem, TimelineTrack } from '~/timeline/types';
 import TransitionProperties from '~/components/properties/TransitionProperties.vue';
-import { timelineTicks } from '../../unit/utils/timeline-time';
 
 const mockUpdateClipTransition = vi.fn();
 
@@ -14,8 +13,8 @@ vi.mock('~/stores/timeline.store', () => ({
 
 const getPrevClipForItemMock = vi.fn(() => null);
 const getNextClipForItemMock = vi.fn(() => null);
-const getClipTailTimelineHandleUsMock = vi.fn(() => timelineTicks(1_000_000));
-const getClipHeadTimelineHandleUsMock = vi.fn(() => timelineTicks(1_000_000));
+const getClipTailTimelineHandleUsMock = vi.fn(() => 254_016_000_000);
+const getClipHeadTimelineHandleUsMock = vi.fn(() => 254_016_000_000);
 
 vi.mock('~/utils/timeline/clip', () => ({
   getPrevClipForItem: (...args: unknown[]) =>
@@ -35,7 +34,7 @@ const ClipTransitionPanelStub = {
     expose({ openSaveModal: vi.fn() });
     return { exposedOpenSaveModal: vi.fn() };
   },
-  template: `<div class="panel-mock" :data-edge="edge" :data-max="maxDuration"><button class="emit-update" @click="$emit('update', { trackId, itemId, edge, transition: { type: 'fade', durationTicks: ${timelineTicks(500_000)} } })" /></div>`,
+  template: `<div class="panel-mock" :data-edge="edge" :data-max="maxDuration"><button class="emit-update" @click="$emit('update', { trackId, itemId, edge, transition: { type: 'fade', durationTicks: ${127_008_000_000} } })" /></div>`,
 };
 
 function createClip(overrides: Partial<TimelineClipItem> = {}): TimelineClipItem {
@@ -53,20 +52,20 @@ function createClip(overrides: Partial<TimelineClipItem> = {}): TimelineClipItem
   return {
     ...clip,
     timelineRange: {
-      startTicks: timelineTicks(clip.timelineRange.startTicks),
-      durationTicks: timelineTicks(clip.timelineRange.durationTicks),
+      startTicks: clip.timelineRange.startTicks * 254_016,
+      durationTicks: clip.timelineRange.durationTicks * 254_016,
     },
     sourceRange: {
-      startTicks: timelineTicks(clip.sourceRange.startTicks),
-      durationTicks: timelineTicks(clip.sourceRange.durationTicks),
+      startTicks: clip.sourceRange.startTicks * 254_016,
+      durationTicks: clip.sourceRange.durationTicks * 254_016,
     },
     transitionIn: clip.transitionIn && {
       ...clip.transitionIn,
-      durationTicks: timelineTicks(clip.transitionIn.durationTicks),
+      durationTicks: clip.transitionIn.durationTicks * 254_016,
     },
     transitionOut: clip.transitionOut && {
       ...clip.transitionOut,
-      durationTicks: timelineTicks(clip.transitionOut.durationTicks),
+      durationTicks: clip.transitionOut.durationTicks * 254_016,
     },
   } as TimelineClipItem;
 }
@@ -144,7 +143,7 @@ describe('TransitionProperties', () => {
       timelineRange: { startTicks: 0, durationTicks: 1_000_000 }, // ends at 1_000_000, touches clip start
     });
     getPrevClipForItemMock.mockReturnValueOnce(adjacent);
-    getClipTailTimelineHandleUsMock.mockReturnValueOnce(timelineTicks(500_000)); // 0.5s handle limit
+    getClipTailTimelineHandleUsMock.mockReturnValueOnce(127_008_000_000); // 0.5s handle limit
 
     const component = await mountSuspended(TransitionProperties, {
       props: {
@@ -174,7 +173,7 @@ describe('TransitionProperties', () => {
     await component.find('.emit-update').trigger('click');
 
     expect(mockUpdateClipTransition).toHaveBeenCalledWith('track-1', 'item-1', {
-      transitionIn: { type: 'fade', durationTicks: timelineTicks(500_000) },
+      transitionIn: { type: 'fade', durationTicks: 127_008_000_000 },
     });
   });
 
@@ -192,7 +191,7 @@ describe('TransitionProperties', () => {
     await component.find('.emit-update').trigger('click');
 
     expect(mockUpdateClipTransition).toHaveBeenCalledWith('track-1', 'item-1', {
-      transitionOut: { type: 'fade', durationTicks: timelineTicks(500_000) },
+      transitionOut: { type: 'fade', durationTicks: 127_008_000_000 },
     });
   });
 

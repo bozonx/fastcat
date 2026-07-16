@@ -7,13 +7,12 @@ import { useDraggedFile } from '~/composables/useDraggedFile';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useMediaStore } from '~/stores/media.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
-import { timelineTicks } from '../../utils/timeline-time';
 
 vi.mock('~/stores/workspace.store', () => ({
   useWorkspaceStore: vi.fn(() => ({
     userSettings: {
       timeline: {
-        defaultStaticClipDurationTicks: timelineTicks(5_000_000),
+        defaultStaticClipDurationTicks: 1_270_080_000_000,
         snapThresholdPx: 8,
         snapping: {
           timelineEdges: true,
@@ -114,7 +113,7 @@ describe('useTimelineDropHandling', () => {
 
     clearDraggedFile();
     timelineStore.timelineZoom = 50;
-    timelineStore.duration = timelineTicks(2_000_000);
+    timelineStore.duration = 508_032_000_000;
     timelineStore.timelineDoc = {
       OTIO_SCHEMA: 'Timeline.1',
       id: 'doc-1',
@@ -132,9 +131,9 @@ describe('useTimelineDropHandling', () => {
               name: 'Existing',
               clipType: 'media',
               source: { path: '_video/existing.mp4' },
-              sourceRange: { startTicks: 0, durationTicks: timelineTicks(2_000_000) },
-              sourceDurationTicks: timelineTicks(2_000_000),
-              timelineRange: { startTicks: 0, durationTicks: timelineTicks(2_000_000) },
+              sourceRange: { startTicks: 0, durationTicks: 508_032_000_000 },
+              sourceDurationTicks: 508_032_000_000,
+              timelineRange: { startTicks: 0, durationTicks: 508_032_000_000 },
             },
           ],
         },
@@ -149,9 +148,9 @@ describe('useTimelineDropHandling', () => {
               name: 'Existing audio',
               clipType: 'media',
               source: { path: '_audio/existing.mp3' },
-              sourceRange: { startTicks: 0, durationTicks: timelineTicks(2_000_000) },
-              sourceDurationTicks: timelineTicks(2_000_000),
-              timelineRange: { startTicks: 0, durationTicks: timelineTicks(2_000_000) },
+              sourceRange: { startTicks: 0, durationTicks: 508_032_000_000 },
+              sourceDurationTicks: 508_032_000_000,
+              timelineRange: { startTicks: 0, durationTicks: 508_032_000_000 },
             },
           ],
         },
@@ -190,7 +189,7 @@ describe('useTimelineDropHandling', () => {
       ...workspaceStore.userSettings,
       timeline: {
         ...workspaceStore.userSettings.timeline,
-        defaultStaticClipDurationTicks: timelineTicks(5_000_000),
+        defaultStaticClipDurationTicks: 1_270_080_000_000,
       },
       hotkeys: {
         ...workspaceStore.userSettings.hotkeys,
@@ -225,8 +224,8 @@ describe('useTimelineDropHandling', () => {
 
     expect(api.dragPreview.value).not.toBeNull();
     expect(api.dragPreview.value?.trackId).toBe('v1');
-    expect(api.dragPreview.value?.startTicks).toBe(timelineTicks(500_000));
-    expect(api.dragPreview.value?.durationTicks).toBe(timelineTicks(1_500_000));
+    expect(api.dragPreview.value?.startTicks).toBe(127_008_000_000);
+    expect(api.dragPreview.value?.durationTicks).toBe(381_024_000_000);
     expect(api.dragPreview.value?.invalid).toBe(true);
   });
 
@@ -255,7 +254,7 @@ describe('useTimelineDropHandling', () => {
     });
 
     expect(api.dragPreview.value).not.toBeNull();
-    expect(api.dragPreview.value?.startTicks).toBe(timelineTicks(500_000));
+    expect(api.dragPreview.value?.startTicks).toBe(127_008_000_000);
     expect(api.dragPreview.value?.invalid).toBe(false);
   });
 
@@ -266,7 +265,7 @@ describe('useTimelineDropHandling', () => {
     } as unknown as HTMLElement);
     const timelineStore = useTimelineStore() as any;
     timelineStore.addClipToTimelineFromPath = vi.fn().mockResolvedValue({
-      durationTicks: timelineTicks(1_500_000),
+      durationTicks: 381_024_000_000,
       itemId: 'clip-2',
     });
     const api = useTimelineDropHandling({ scrollEl });
@@ -278,7 +277,7 @@ describe('useTimelineDropHandling', () => {
         path: '_video/new.mp4',
       }),
       'v1',
-      timelineTicks(200_000),
+      50_803_200_000,
     );
 
     expect(timelineStore.addClipToTimelineFromPath).not.toHaveBeenCalled();
@@ -308,7 +307,7 @@ describe('useTimelineDropHandling', () => {
       },
     });
 
-    expect(api.dragPreview.value?.startTicks).toBe(timelineTicks(2_000_000));
+    expect(api.dragPreview.value?.startTicks).toBe(508_032_000_000);
     expect(api.dragPreview.value?.invalid).toBe(false);
   });
 
@@ -340,7 +339,7 @@ describe('useTimelineDropHandling', () => {
       },
     });
 
-    expect(api.dragPreview.value?.startTicks).toBe(timelineTicks(2_000_000));
+    expect(api.dragPreview.value?.startTicks).toBe(508_032_000_000);
     expect(api.dragPreview.value?.invalid).toBe(false);
   });
 
@@ -351,7 +350,7 @@ describe('useTimelineDropHandling', () => {
     } as unknown as HTMLElement);
     const timelineStore = useTimelineStore() as any;
     timelineStore.addClipToTimelineFromPath = vi.fn().mockResolvedValue({
-      durationTicks: timelineTicks(1_500_000),
+      durationTicks: 381_024_000_000,
       itemId: 'clip-2',
     });
 
@@ -365,7 +364,7 @@ describe('useTimelineDropHandling', () => {
         isExternal: true,
       }),
       'v1',
-      timelineTicks(2_000_000),
+      508_032_000_000,
     );
 
     expect(crossVfsCopyMock).toHaveBeenCalledWith(
@@ -418,7 +417,7 @@ describe('useTimelineDropHandling', () => {
     } as unknown as HTMLElement);
     const timelineStore = useTimelineStore() as any;
     timelineStore.addClipToTimelineFromPath = vi.fn().mockResolvedValue({
-      durationTicks: timelineTicks(5_000_000),
+      durationTicks: 1_270_080_000_000,
       itemId: 'clip-image',
     });
     handleFilesMock.mockResolvedValue([{ targetPath: '_images/image.png', fileName: 'image.png' }]);
@@ -427,7 +426,7 @@ describe('useTimelineDropHandling', () => {
     await api.handleFileDrop(
       [new File(['image'], 'image.png', { type: 'image/png' })],
       'v1',
-      timelineTicks(2_000_000),
+      508_032_000_000,
     );
 
     expect(handleFilesMock).toHaveBeenCalledWith(
@@ -465,7 +464,7 @@ describe('useTimelineDropHandling', () => {
             {
               id: 'nested-clip',
               kind: 'clip',
-              timelineRange: { startTicks: 0, durationTicks: timelineTicks(4_000_000) },
+              timelineRange: { startTicks: 0, durationTicks: 1_016_064_000_000 },
             },
           ],
         },
@@ -493,8 +492,8 @@ describe('useTimelineDropHandling', () => {
       'otio text',
       expect.objectContaining({ name: 'nested.otio' }),
     );
-    expect(api.dragPreview.value?.durationTicks).toBe(timelineTicks(4_000_000));
-    expect(api.dragPreview.value?.startTicks).toBe(timelineTicks(1_000_000));
+    expect(api.dragPreview.value?.durationTicks).toBe(1_016_064_000_000);
+    expect(api.dragPreview.value?.startTicks).toBe(254_016_000_000);
     expect(api.dragPreview.value?.invalid).toBe(true);
   });
 
@@ -505,7 +504,7 @@ describe('useTimelineDropHandling', () => {
     } as unknown as HTMLElement);
     const timelineStore = useTimelineStore() as any;
     timelineStore.addClipToTimelineFromPath = vi.fn().mockResolvedValue({
-      durationTicks: timelineTicks(1_500_000),
+      durationTicks: 381_024_000_000,
       itemId: 'audio-clip-2',
     });
     const api = useTimelineDropHandling({ scrollEl });
@@ -517,14 +516,14 @@ describe('useTimelineDropHandling', () => {
         path: '_audio/new.mp3',
       }),
       'a1',
-      timelineTicks(2_120_000),
+      538_513_920_000,
     );
 
     expect(timelineStore.addClipToTimelineFromPath).toHaveBeenCalledWith(
       expect.objectContaining({
         trackId: 'a1',
         path: '_audio/new.mp3',
-        startTicks: timelineTicks(2_000_000),
+        startTicks: 508_032_000_000,
       }),
     );
   });
@@ -557,8 +556,8 @@ describe('useTimelineDropHandling', () => {
       expect.objectContaining({
         trackId: 'v1',
         label: 'Adjustment',
-        durationTicks: timelineTicks(5_000_000),
-        startTicks: timelineTicks(5_000_000),
+        durationTicks: 1_270_080_000_000,
+        startTicks: 1_270_080_000_000,
       }),
     );
   });

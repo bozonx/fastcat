@@ -8,7 +8,6 @@ import {
 } from '~/utils/video-editor/compositor/ClipResourceManager';
 import type { CompositorClip } from '~/utils/video-editor/compositor/types';
 import type { WebGpuComputeRunner } from '~/utils/video-editor/compositor/WebGpuComputeRunner';
-import { timelineTicks } from '../timeline-time';
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -153,7 +152,7 @@ describe('ClipResourceManager.warmClipFrameWindow', () => {
       firstTimestampS: 0,
       startTicks: 0,
       sourceStartTicks: 0,
-      sourceRangeDurationTicks: timelineTicks(10_000_000),
+      sourceRangeDurationTicks: 2_540_160_000_000,
       sink,
     } as unknown as CompositorClip;
   }

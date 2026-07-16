@@ -13,30 +13,29 @@ import {
   isWaveformCacheEntry,
 } from '~/utils/audio/waveform';
 import { ticksToPx } from '~/utils/timeline/geometry';
-import { timelineTicks } from '../timeline-time';
 
 describe('audio waveform utilities', () => {
   it('aligns a trimmed forward clip to the matching source window', () => {
     const zoom = 50;
     const metrics = computeWaveformWindowMetrics({
-      sourceStartTicks: timelineTicks(2_000_000),
-      sourceDurationTicks: timelineTicks(10_000_000),
-      timelineDurationTicks: timelineTicks(3_000_000),
+      sourceStartTicks: 508_032_000_000,
+      sourceDurationTicks: 2_540_160_000_000,
+      timelineDurationTicks: 762_048_000_000,
       speed: 1,
       zoom,
     });
 
     expect(metrics.reversed).toBe(false);
-    expect(metrics.leftPx).toBe(-Math.round(ticksToPx(timelineTicks(2_000_000), zoom)));
-    expect(metrics.totalWidthPx).toBe(Math.round(ticksToPx(timelineTicks(10_000_000), zoom)));
+    expect(metrics.leftPx).toBe(-Math.round(ticksToPx(508_032_000_000, zoom)));
+    expect(metrics.totalWidthPx).toBe(Math.round(ticksToPx(2_540_160_000_000, zoom)));
   });
 
   it('aligns a reversed clip so the visible window runs from source end to start', () => {
     const zoom = 50;
     const metrics = computeWaveformWindowMetrics({
-      sourceStartTicks: timelineTicks(2_000_000),
-      sourceDurationTicks: timelineTicks(10_000_000),
-      timelineDurationTicks: timelineTicks(3_000_000),
+      sourceStartTicks: 508_032_000_000,
+      sourceDurationTicks: 2_540_160_000_000,
+      timelineDurationTicks: 762_048_000_000,
       speed: -1,
       zoom,
     });
@@ -45,67 +44,67 @@ describe('audio waveform utilities', () => {
     const sourceAtClipRightPx = sourceAtClipLeftPx - metrics.clipWidthPx;
 
     expect(metrics.reversed).toBe(true);
-    expect(sourceAtClipLeftPx).toBe(Math.round(ticksToPx(timelineTicks(5_000_000), zoom)));
-    expect(sourceAtClipRightPx).toBe(Math.round(ticksToPx(timelineTicks(2_000_000), zoom)));
+    expect(sourceAtClipLeftPx).toBe(Math.round(ticksToPx(1_270_080_000_000, zoom)));
+    expect(sourceAtClipRightPx).toBe(Math.round(ticksToPx(508_032_000_000, zoom)));
   });
 
   it('maps nested timeline positive-speed local time with clip speed', () => {
     const sourceTicks = resolveWaveformSourceTicks({
-      absoluteTicks: timelineTicks(11_000_000),
-      clipStartTicks: timelineTicks(10_000_000),
-      clipDurationTicks: timelineTicks(2_000_000),
-      sourceStartTicks: timelineTicks(3_000_000),
-      sourceRangeDurationTicks: timelineTicks(4_000_000),
+      absoluteTicks: 2_794_176_000_000,
+      clipStartTicks: 2_540_160_000_000,
+      clipDurationTicks: 508_032_000_000,
+      sourceStartTicks: 762_048_000_000,
+      sourceRangeDurationTicks: 1_016_064_000_000,
       speed: 2,
     });
 
-    expect(sourceTicks).toBe(timelineTicks(5_000_000));
+    expect(sourceTicks).toBe(1_270_080_000_000);
   });
 
   it('maps nested timeline negative-speed local time from source range end', () => {
     const sourceTicks = resolveWaveformSourceTicks({
-      absoluteTicks: timelineTicks(11_000_000),
-      clipStartTicks: timelineTicks(10_000_000),
-      clipDurationTicks: timelineTicks(2_000_000),
-      sourceStartTicks: timelineTicks(3_000_000),
-      sourceRangeDurationTicks: timelineTicks(4_000_000),
+      absoluteTicks: 2_794_176_000_000,
+      clipStartTicks: 2_540_160_000_000,
+      clipDurationTicks: 508_032_000_000,
+      sourceStartTicks: 762_048_000_000,
+      sourceRangeDurationTicks: 1_016_064_000_000,
       speed: -2,
     });
 
-    expect(sourceTicks).toBe(timelineTicks(5_000_000));
+    expect(sourceTicks).toBe(1_270_080_000_000);
   });
 
   it('reversed speed at clip start maps to source range end', () => {
     const sourceTicks = resolveWaveformSourceTicks({
-      absoluteTicks: timelineTicks(10_000_000),
-      clipStartTicks: timelineTicks(10_000_000),
-      clipDurationTicks: timelineTicks(2_000_000),
-      sourceStartTicks: timelineTicks(3_000_000),
-      sourceRangeDurationTicks: timelineTicks(4_000_000),
+      absoluteTicks: 2_540_160_000_000,
+      clipStartTicks: 2_540_160_000_000,
+      clipDurationTicks: 508_032_000_000,
+      sourceStartTicks: 762_048_000_000,
+      sourceRangeDurationTicks: 1_016_064_000_000,
       speed: -2,
     });
 
-    expect(sourceTicks).toBe(timelineTicks(7_000_000));
+    expect(sourceTicks).toBe(1_778_112_000_000);
   });
 
   it('reversed speed at clip end maps to source range start', () => {
     const sourceTicks = resolveWaveformSourceTicks({
-      absoluteTicks: timelineTicks(12_000_000),
-      clipStartTicks: timelineTicks(10_000_000),
-      clipDurationTicks: timelineTicks(2_000_000),
-      sourceStartTicks: timelineTicks(3_000_000),
-      sourceRangeDurationTicks: timelineTicks(4_000_000),
+      absoluteTicks: 3_048_192_000_000,
+      clipStartTicks: 2_540_160_000_000,
+      clipDurationTicks: 508_032_000_000,
+      sourceStartTicks: 762_048_000_000,
+      sourceRangeDurationTicks: 1_016_064_000_000,
       speed: -2,
     });
 
-    expect(sourceTicks).toBe(timelineTicks(3_000_000));
+    expect(sourceTicks).toBe(762_048_000_000);
   });
 
   it('reversed speed yields positive totalWidthPx', () => {
     const metrics = computeWaveformWindowMetrics({
       sourceStartTicks: 0,
-      sourceDurationTicks: timelineTicks(10_000_000),
-      timelineDurationTicks: timelineTicks(5_000_000),
+      sourceDurationTicks: 2_540_160_000_000,
+      timelineDurationTicks: 1_270_080_000_000,
       speed: -2,
       zoom: 50,
     });

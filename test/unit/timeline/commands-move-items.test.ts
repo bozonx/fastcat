@@ -1,6 +1,5 @@
 /** @vitest-environment node */
 import { describe, expect, it } from 'vitest';
-import { timelineTicks } from '../utils/timeline-time';
 import { applyTimelineCommand } from '~/timeline/commands';
 import type { TimelineDocument, TimelineTrack, TimelineTrackItem } from '~/timeline/types';
 
@@ -22,9 +21,9 @@ function makeClip(id: string, startTicks: number, locked = false): TimelineTrack
     trackId: 'v1',
     name: id,
     source: { path: `${id}.mp4` },
-    sourceDurationTicks: timelineTicks(1_000_000),
-    timelineRange: { startTicks, durationTicks: timelineTicks(1_000_000) },
-    sourceRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
+    sourceDurationTicks: 254_016_000_000,
+    timelineRange: { startTicks, durationTicks: 254_016_000_000 },
+    sourceRange: { startTicks: 0, durationTicks: 254_016_000_000 },
     locked,
   };
 }
@@ -36,7 +35,7 @@ describe('timeline/commands move_items', () => {
         id: 'v1',
         kind: 'video',
         name: 'V1',
-        items: [makeClip('c2', timelineTicks(1_000_000)), makeClip('c3', timelineTicks(2_000_000))],
+        items: [makeClip('c2', 254_016_000_000), makeClip('c3', 508_032_000_000)],
       },
     ]);
 
@@ -44,7 +43,7 @@ describe('timeline/commands move_items', () => {
       type: 'move_items',
       moves: [
         { fromTrackId: 'v1', toTrackId: 'v1', itemId: 'c2', startTicks: 0 },
-        { fromTrackId: 'v1', toTrackId: 'v1', itemId: 'c3', startTicks: timelineTicks(1_000_000) },
+        { fromTrackId: 'v1', toTrackId: 'v1', itemId: 'c3', startTicks: 254_016_000_000 },
       ],
       quantizeToFrames: false,
       ignoreLinks: true,
@@ -54,7 +53,7 @@ describe('timeline/commands move_items', () => {
 
     expect(clips.map((item) => [item.id, item.timelineRange.startTicks])).toEqual([
       ['c2', 0],
-      ['c3', timelineTicks(1_000_000)],
+      ['c3', 254_016_000_000],
     ]);
   });
 
@@ -65,15 +64,13 @@ describe('timeline/commands move_items', () => {
     // absolute quantization rounds it back onto frame 30.
     const { next } = applyTimelineCommand(doc, {
       type: 'move_items',
-      moves: [
-        { fromTrackId: 'v1', toTrackId: 'v1', itemId: 'c1', startTicks: timelineTicks(1_015_000) },
-      ],
+      moves: [{ fromTrackId: 'v1', toTrackId: 'v1', itemId: 'c1', startTicks: 257_826_240_000 }],
       quantizeToFrames: true,
       ignoreLinks: true,
     });
 
     const c1 = next.tracks[0]?.items.find((it) => it.id === 'c1');
-    expect(c1?.timelineRange.startTicks).toBe(timelineTicks(1_000_000));
+    expect(c1?.timelineRange.startTicks).toBe(254_016_000_000);
   });
 
   it('preserveItemOffsets keeps off-grid starts verbatim despite quantizeToFrames', () => {
@@ -81,16 +78,14 @@ describe('timeline/commands move_items', () => {
 
     const { next } = applyTimelineCommand(doc, {
       type: 'move_items',
-      moves: [
-        { fromTrackId: 'v1', toTrackId: 'v1', itemId: 'c1', startTicks: timelineTicks(1_015_000) },
-      ],
+      moves: [{ fromTrackId: 'v1', toTrackId: 'v1', itemId: 'c1', startTicks: 257_826_240_000 }],
       quantizeToFrames: true,
       ignoreLinks: true,
       preserveItemOffsets: true,
     });
 
     const c1 = next.tracks[0]?.items.find((it) => it.id === 'c1');
-    expect(c1?.timelineRange.startTicks).toBe(timelineTicks(1_015_000));
+    expect(c1?.timelineRange.startTicks).toBe(257_826_240_000);
   });
 
   it('preserveItemOffsets moves a mixed on-grid/off-grid group rigidly, keeping each phase', () => {
@@ -100,12 +95,12 @@ describe('timeline/commands move_items', () => {
         id: 'v1',
         kind: 'video',
         name: 'V1',
-        items: [makeClip('c1', 0), makeClip('c2', timelineTicks(2_015_000))],
+        items: [makeClip('c1', 0), makeClip('c2', 511_842_240_000)],
       },
     ]);
 
     // A rigid +2-frame group shift (66_667µs at 30fps), already baked into starts.
-    const deltaTicks = timelineTicks(66_667);
+    const deltaTicks = 16_934_484_672;
     const { next } = applyTimelineCommand(doc, {
       type: 'move_items',
       moves: [
@@ -114,7 +109,7 @@ describe('timeline/commands move_items', () => {
           fromTrackId: 'v1',
           toTrackId: 'v1',
           itemId: 'c2',
-          startTicks: timelineTicks(2_015_000) + deltaTicks,
+          startTicks: 511_842_240_000 + deltaTicks,
         },
       ],
       quantizeToFrames: true,
@@ -127,8 +122,8 @@ describe('timeline/commands move_items', () => {
 
     // On-grid member lands exactly on frame 2; off-grid member keeps its 15_000µs
     // sub-frame phase instead of being pulled onto the grid.
-    expect(byId.c1).toBe(timelineTicks(66_667));
-    expect(byId.c2).toBe(timelineTicks(2_081_667));
+    expect(byId.c1).toBe(16_934_484_672);
+    expect(byId.c2).toBe(528_776_724_672);
   });
 
   it('throws when a same-track batch moves a locked clip without ignoreLocks', () => {
@@ -137,7 +132,7 @@ describe('timeline/commands move_items', () => {
         id: 'v1',
         kind: 'video',
         name: 'V1',
-        items: [makeClip('c1', 0, true), makeClip('c2', timelineTicks(1_000_000))],
+        items: [makeClip('c1', 0, true), makeClip('c2', 254_016_000_000)],
       },
     ]);
 
@@ -149,7 +144,7 @@ describe('timeline/commands move_items', () => {
             fromTrackId: 'v1',
             toTrackId: 'v1',
             itemId: 'c1',
-            startTicks: timelineTicks(2_000_000),
+            startTicks: 508_032_000_000,
           },
         ],
         quantizeToFrames: false,

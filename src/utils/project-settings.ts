@@ -2,7 +2,7 @@ import { z } from 'zod';
 import type { FastCatUserSettings } from './settings/defaults';
 import { DEFAULT_USER_SETTINGS } from './settings/defaults';
 import { applyResolutionPreset } from './settings/helpers';
-import { TICKS_PER_MICROSECOND, TICKS_PER_MILLISECOND, TICKS_PER_SECOND } from './time';
+import { TICKS_PER_MILLISECOND, TICKS_PER_SECOND } from './time';
 import type { PreviewEffectQualitySetting } from './preview-effect-quality';
 
 interface ProjectSettingsUserDefaultsInput {
@@ -184,7 +184,7 @@ export const DEFAULT_PROJECT_SETTINGS: FastCatProjectSettings = {
     aspectRatio: '16:9',
     isCustomResolution: false,
     sampleRate: 48000,
-    audioDeclickDurationTicks: Math.round((5_000 / 1_000_000) * TICKS_PER_SECOND),
+    audioDeclickDurationTicks: TICKS_PER_SECOND / 200,
     isAutoSettings: true,
     geometryResolved: false,
     sampleRateResolved: false,
@@ -403,10 +403,6 @@ function createProjectSettingsSchema(defaults: FastCatProjectSettings) {
             const resolvedFallback = !val.isAutoSettings;
             const normalized = {
               ...val,
-              audioDeclickDurationTicks:
-                val.audioDeclickDurationTicks > 0 && val.audioDeclickDurationTicks <= 1_000_000
-                  ? val.audioDeclickDurationTicks * TICKS_PER_MICROSECOND
-                  : val.audioDeclickDurationTicks,
               geometryResolved: val.geometryResolved ?? resolvedFallback,
               sampleRateResolved: val.sampleRateResolved ?? resolvedFallback,
             };
@@ -529,12 +525,7 @@ export function normalizeProjectSettings(
     transitions: inputTransitions
       ? {
           ...inputTransitions,
-          defaultDurationTicks:
-            typeof inputTransitions.defaultDurationTicks === 'number' &&
-            inputTransitions.defaultDurationTicks > 0 &&
-            inputTransitions.defaultDurationTicks <= 10_000_000
-              ? inputTransitions.defaultDurationTicks * TICKS_PER_MICROSECOND
-              : inputTransitions.defaultDurationTicks,
+          defaultDurationTicks: inputTransitions.defaultDurationTicks,
         }
       : {},
   };

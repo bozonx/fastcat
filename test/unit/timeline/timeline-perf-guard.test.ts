@@ -12,7 +12,6 @@
  * scaled with the TOTAL number of clips on the timeline.
  */
 import { describe, it, expect } from 'vitest';
-import { timelineTicks } from '../utils/timeline-time';
 import { applyTimelineCommand } from '~/timeline/commands';
 import type { TimelineCommand } from '~/timeline/commands';
 import {
@@ -23,7 +22,7 @@ import {
 import type { TimelineDocument, TimelineTrack, TimelineClipItem } from '~/timeline/types';
 
 const FPS = 30;
-const CLIP_DUR = timelineTicks(1_000_000);
+const CLIP_DUR = 254_016_000_000;
 
 /** Build a timeline with `tracks` tracks, each holding `perTrack` back-to-back clips. */
 function makeLargeDoc(tracks: number, perTrack: number): TimelineDocument {
@@ -38,7 +37,7 @@ function makeLargeDoc(tracks: number, perTrack: number): TimelineDocument {
         trackId: `t${t}`,
         name: `clip ${t}-${i}`,
         source: { path: `t${t}-c${i}.mp4` },
-        sourceDurationTicks: timelineTicks(60_000_000),
+        sourceDurationTicks: 15_240_960_000_000,
         timelineRange: { startTicks: i * CLIP_DUR, durationTicks: CLIP_DUR },
         sourceRange: { startTicks: 0, durationTicks: CLIP_DUR },
       } as TimelineClipItem);
@@ -81,7 +80,7 @@ describe('timeline reducer performance guard (large timeline)', () => {
       path: 'appended.mp4',
       startTicks: PER_TRACK * CLIP_DUR,
       durationTicks: CLIP_DUR,
-      sourceDurationTicks: timelineTicks(60_000_000),
+      sourceDurationTicks: 15_240_960_000_000,
     };
     const moveCmd: TimelineCommand = {
       type: 'move_item',
@@ -100,7 +99,7 @@ describe('timeline reducer performance guard (large timeline)', () => {
       trackId: 't0',
       itemId: 't0-c0',
       edge: 'end',
-      deltaTicks: -timelineTicks(100_000),
+      deltaTicks: -25_401_600_000,
     };
 
     const addMs = bestOf(5, () => void applyTimelineCommand(doc, addCmd));

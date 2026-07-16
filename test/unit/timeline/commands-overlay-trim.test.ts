@@ -1,6 +1,5 @@
 /** @vitest-environment node */
 import { describe, it, expect } from 'vitest';
-import { timelineTicks } from '../utils/timeline-time';
 import { applyTimelineCommand } from '~/timeline/commands';
 import type { TimelineDocument, TimelineTrack, TimelineTrackItem } from '~/timeline/types';
 
@@ -33,8 +32,8 @@ describe('timeline/commands overlay_trim_item', () => {
             trackId: 'v1',
             name: 'Mover',
             backgroundColor: '#000',
-            timelineRange: { startTicks: 0, durationTicks: timelineTicks(2_000_000) },
-            sourceRange: { startTicks: 0, durationTicks: timelineTicks(2_000_000) },
+            timelineRange: { startTicks: 0, durationTicks: 508_032_000_000 },
+            sourceRange: { startTicks: 0, durationTicks: 508_032_000_000 },
           },
           {
             kind: 'clip',
@@ -44,10 +43,10 @@ describe('timeline/commands overlay_trim_item', () => {
             name: 'Victim',
             backgroundColor: '#fff',
             timelineRange: {
-              startTicks: timelineTicks(2_500_000),
-              durationTicks: timelineTicks(200_000),
+              startTicks: 635_040_000_000,
+              durationTicks: 50_803_200_000,
             },
-            sourceRange: { startTicks: 0, durationTicks: timelineTicks(200_000) },
+            sourceRange: { startTicks: 0, durationTicks: 50_803_200_000 },
           },
         ],
       },
@@ -59,7 +58,7 @@ describe('timeline/commands overlay_trim_item', () => {
       trackId: 'v1',
       itemId: 'mover',
       edge: 'end',
-      deltaTicks: timelineTicks(1_000_000),
+      deltaTicks: 254_016_000_000,
     });
 
     const track = next.tracks[0]!;
@@ -69,7 +68,7 @@ describe('timeline/commands overlay_trim_item', () => {
 
     const moved = resultClips.find((x) => x.id === 'mover');
     expect(moved).toBeTruthy();
-    expect(moved.timelineRange.durationTicks).toBe(timelineTicks(3_000_000));
+    expect(moved.timelineRange.durationTicks).toBe(762_048_000_000);
   });
 
   it('trims overlapping clip on the left side of trimmed range', () => {
@@ -86,8 +85,8 @@ describe('timeline/commands overlay_trim_item', () => {
             trackId: 'v1',
             name: 'Left',
             backgroundColor: '#000',
-            timelineRange: { startTicks: 0, durationTicks: timelineTicks(2_000_000) },
-            sourceRange: { startTicks: 0, durationTicks: timelineTicks(2_000_000) },
+            timelineRange: { startTicks: 0, durationTicks: 508_032_000_000 },
+            sourceRange: { startTicks: 0, durationTicks: 508_032_000_000 },
           },
           {
             kind: 'clip',
@@ -97,10 +96,10 @@ describe('timeline/commands overlay_trim_item', () => {
             name: 'Mover',
             backgroundColor: '#0f0',
             timelineRange: {
-              startTicks: timelineTicks(3_000_000),
-              durationTicks: timelineTicks(1_000_000),
+              startTicks: 762_048_000_000,
+              durationTicks: 254_016_000_000,
             },
-            sourceRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
+            sourceRange: { startTicks: 0, durationTicks: 254_016_000_000 },
           },
         ],
       },
@@ -112,7 +111,7 @@ describe('timeline/commands overlay_trim_item', () => {
       trackId: 'v1',
       itemId: 'mover',
       edge: 'start',
-      deltaTicks: timelineTicks(500_000),
+      deltaTicks: 127_008_000_000,
     });
 
     const track = next.tracks[0]!;
@@ -121,11 +120,11 @@ describe('timeline/commands overlay_trim_item', () => {
     const left = resultClips.find((x) => x.id === 'left');
     expect(left).toBeTruthy();
     // Left should remain unchanged (no overlap after trimming start to the right)
-    expect(left.timelineRange.durationTicks).toBe(timelineTicks(2_000_000));
+    expect(left.timelineRange.durationTicks).toBe(508_032_000_000);
 
     const mover = resultClips.find((x) => x.id === 'mover');
     expect(mover).toBeTruthy();
-    expect(mover.timelineRange.startTicks).toBe(timelineTicks(3_500_000));
+    expect(mover.timelineRange.startTicks).toBe(889_056_000_000);
   });
 
   it('trims the correct source edge for reversed clips', () => {
@@ -142,15 +141,15 @@ describe('timeline/commands overlay_trim_item', () => {
             trackId: 'v1',
             name: 'Mover',
             source: { path: 'a.mp4' },
-            sourceDurationTicks: timelineTicks(10_000_000),
+            sourceDurationTicks: 2_540_160_000_000,
             speed: -1,
             timelineRange: {
-              startTicks: timelineTicks(2_000_000),
-              durationTicks: timelineTicks(2_000_000),
+              startTicks: 508_032_000_000,
+              durationTicks: 508_032_000_000,
             },
             sourceRange: {
-              startTicks: timelineTicks(4_000_000),
-              durationTicks: timelineTicks(2_000_000),
+              startTicks: 1_016_064_000_000,
+              durationTicks: 508_032_000_000,
             },
           },
         ],
@@ -162,18 +161,18 @@ describe('timeline/commands overlay_trim_item', () => {
       trackId: 'v1',
       itemId: 'mover',
       edge: 'start',
-      deltaTicks: timelineTicks(1_000_000),
+      deltaTicks: 254_016_000_000,
       quantizeToFrames: false,
     });
 
     const mover = clips(next.tracks[0]!).find((x) => x.id === 'mover');
     expect(mover.timelineRange).toEqual({
-      startTicks: timelineTicks(3_000_000),
-      durationTicks: timelineTicks(1_000_000),
+      startTicks: 762_048_000_000,
+      durationTicks: 254_016_000_000,
     });
     expect(mover.sourceRange).toEqual({
-      startTicks: timelineTicks(4_000_000),
-      durationTicks: timelineTicks(1_000_000),
+      startTicks: 1_016_064_000_000,
+      durationTicks: 254_016_000_000,
     });
   });
 });

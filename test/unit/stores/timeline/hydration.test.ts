@@ -4,7 +4,6 @@ import { ref } from 'vue';
 import { createTimelineHydrationModule } from '~/stores/timeline/hydration';
 import type { TimelineDocument } from '~/timeline/types';
 import type { TimelineCommand } from '~/timeline/commands';
-import { timelineTicks } from '../../utils/timeline-time';
 
 function makeDoc(overrides?: Partial<TimelineDocument>): TimelineDocument {
   return {
@@ -48,7 +47,7 @@ describe('createTimelineHydrationModule', () => {
     const result = mod.hydrateAllClips(doc);
     expect(result).not.toBe(doc);
     const clip = result.tracks[0]!.items[0] as { sourceDurationTicks: number };
-    expect(clip.sourceDurationTicks).toBe(timelineTicks(10_000_000));
+    expect(clip.sourceDurationTicks).toBe(2_540_160_000_000);
   });
 
   it('hydrateAllClips sets isImage for image-like media (no video/audio)', () => {
@@ -100,7 +99,7 @@ describe('createTimelineHydrationModule', () => {
     const result = mod.hydrateClipSourceDuration(doc, cmd);
     expect(result).not.toBe(doc);
     const clip = result.tracks[0]!.items[0] as { sourceDurationTicks: number };
-    expect(clip.sourceDurationTicks).toBe(timelineTicks(5_000_000));
+    expect(clip.sourceDurationTicks).toBe(1_270_080_000_000);
   });
 
   it('hydrateClipSourceDuration returns doc when track not found', () => {
@@ -160,6 +159,6 @@ describe('createTimelineHydrationModule', () => {
     const result = mod.hydrateClipSourceDuration(doc, cmd);
     expect(result).not.toBe(doc);
     const clip = result.tracks[0]!.items[0] as { sourceDurationTicks: number };
-    expect(clip.sourceDurationTicks).toBe(timelineTicks(8_000_000));
+    expect(clip.sourceDurationTicks).toBe(2_032_128_000_000);
   });
 });

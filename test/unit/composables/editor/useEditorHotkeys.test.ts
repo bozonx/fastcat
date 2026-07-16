@@ -19,7 +19,6 @@ import { useFileManagerStore } from '~/stores/file-manager.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useClipboardStore } from '~/stores/clipboard.store';
-import { timelineTicks } from '../../utils/timeline-time';
 
 const mockWorkspaceStore = {
   userSettings: reactive({
@@ -1078,7 +1077,7 @@ describe('useEditorHotkeys', () => {
               kind: 'clip',
               trackId: 'track-1',
               name: 'Clip 1',
-              timelineRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
+              timelineRange: { startTicks: 0, durationTicks: 254_016_000_000 },
             },
           ],
         },
@@ -1086,8 +1085,8 @@ describe('useEditorHotkeys', () => {
     };
     timelineStore.selectTimelineItems(['clip-1']);
     timelineStore.updateSelectionRange({
-      startTicks: timelineTicks(2_000_000),
-      endTicks: timelineTicks(3_000_000),
+      startTicks: 508_032_000_000,
+      endTicks: 762_048_000_000,
     });
     expect(timelineStore.selectedItemIds).toEqual(['clip-1']);
     expect(focusStore.canUseTimelineHotkeys).toBe(true);
@@ -1099,8 +1098,8 @@ describe('useEditorHotkeys', () => {
 
     expect(handled).toBe(true);
     expect(timelineStore.getSelectionRange()).toEqual({
-      startTicks: timelineTicks(1_000_000),
-      endTicks: timelineTicks(2_000_000),
+      startTicks: 254_016_000_000,
+      endTicks: 508_032_000_000,
     });
   });
 

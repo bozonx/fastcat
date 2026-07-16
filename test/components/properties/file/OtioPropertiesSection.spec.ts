@@ -1,7 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
 import OtioPropertiesSection from '~/components/properties/file/OtioPropertiesSection.vue';
-import { timelineTicks } from '../../../unit/utils/timeline-time';
 
 vi.mock('~/components/properties/PropertySection.vue', () => ({
   default: {
@@ -24,7 +23,7 @@ describe('OtioPropertiesSection', () => {
     const component = await mountSuspended(OtioPropertiesSection, {
       props: {
         summary: {
-          durationTicks: timelineTicks(5_000_000),
+          durationTicks: 1_270_080_000_000,
           videoTracks: 2,
           audioTracks: 3,
           clips: 12,

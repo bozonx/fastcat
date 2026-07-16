@@ -6,7 +6,6 @@ import { useSelectionStore } from '~/stores/selection.store';
 import { createTestTimeline } from '../utils/timeline-builder';
 import { parseTimelineFromOtio } from '~/timeline/otio-serializer';
 import { TICKS_PER_SECOND } from '~/utils/time';
-import { timelineTicks } from '../utils/timeline-time';
 
 import { ref, nextTick, reactive } from 'vue';
 
@@ -95,7 +94,7 @@ vi.mock('~/stores/media.store', () => ({
 
 const workspaceStoreMock = {
   userSettings: {
-    timeline: { defaultStaticClipDurationTicks: timelineTicks(5_000_000) },
+    timeline: { defaultStaticClipDurationTicks: 1_270_080_000_000 },
     projectDefaults: { defaultAudioFadeCurve: 'linear' },
     backup: { intervalMinutes: 0, count: 5 },
     optimization: { autoCreateProxies: false },
@@ -215,7 +214,7 @@ describe('TimelineStore', () => {
   it('initializes with default state', () => {
     expect(store.timelineDoc).toBeDefined();
     expect(store.selectedItemIds).toHaveLength(0);
-    expect(store.currentTime).toBe(timelineTicks(0));
+    expect(store.currentTime).toBe(0);
   });
 
   it('manages item selection', () => {
@@ -265,11 +264,11 @@ describe('TimelineStore', () => {
   });
 
   it('resets state correctly', () => {
-    store.currentTime = timelineTicks(1_000_000);
+    store.currentTime = 254_016_000_000;
     store.selectTimelineItems(['item-1']);
     store.dirtyPaths['stale.otio'] = true;
     store.resetTimelineState();
-    expect(store.currentTime).toBe(timelineTicks(0));
+    expect(store.currentTime).toBe(0);
     expect(store.selectedItemIds).toHaveLength(0);
     expect(store.dirtyPaths).toEqual({});
   });
@@ -344,12 +343,12 @@ describe('TimelineStore', () => {
       ],
     });
     store.timelineDoc = timeline;
-    store.currentTime = timelineTicks(3_000_000);
+    store.currentTime = 762_048_000_000;
 
     await store.setClipFreezeFrameFromPlayhead({ trackId: 'v1', itemId: 'c1' });
 
     const clip = store.timelineDoc.tracks[0].items.find((it: any) => it.id === 'c1');
-    expect(clip.freezeFrameSourceTicks).toBe(timelineTicks(2_000_000));
+    expect(clip.freezeFrameSourceTicks).toBe(508_032_000_000);
   });
 
   it('sets freeze frame from playhead with clip speed applied', async () => {
@@ -364,18 +363,18 @@ describe('TimelineStore', () => {
     });
     const clip = timeline.tracks[0].items.find((it: any) => it.id === 'c1') as any;
     clip.sourceRange = {
-      startTicks: timelineTicks(1_000_000),
-      durationTicks: timelineTicks(5_000_000),
+      startTicks: 254_016_000_000,
+      durationTicks: 1_270_080_000_000,
     };
     clip.speed = 2;
 
     store.timelineDoc = timeline;
-    store.currentTime = timelineTicks(2_000_000);
+    store.currentTime = 508_032_000_000;
 
     await store.setClipFreezeFrameFromPlayhead({ trackId: 'v1', itemId: 'c1' });
 
     const updated = store.timelineDoc.tracks[0].items.find((it: any) => it.id === 'c1');
-    expect(updated.freezeFrameSourceTicks).toBe(timelineTicks(3_000_000));
+    expect(updated.freezeFrameSourceTicks).toBe(762_048_000_000);
   });
 
   it('sets freeze frame from playhead for reversed clips without passing the source range end', async () => {
@@ -390,13 +389,13 @@ describe('TimelineStore', () => {
     });
     const clip = timeline.tracks[0].items.find((it: any) => it.id === 'c1') as any;
     clip.sourceRange = {
-      startTicks: timelineTicks(1_000_000),
-      durationTicks: timelineTicks(5_000_000),
+      startTicks: 254_016_000_000,
+      durationTicks: 1_270_080_000_000,
     };
     clip.speed = -1;
 
     store.timelineDoc = timeline;
-    store.currentTime = timelineTicks(1_000_000);
+    store.currentTime = 254_016_000_000;
 
     await store.setClipFreezeFrameFromPlayhead({ trackId: 'v1', itemId: 'c1' });
 
@@ -415,7 +414,7 @@ describe('TimelineStore', () => {
       ],
     });
     store.timelineDoc = timeline;
-    store.currentTime = timelineTicks(0);
+    store.currentTime = 0;
     await store.setClipFreezeFrameFromPlayhead({ trackId: 'v1', itemId: 'c1' });
 
     const clip = store.timelineDoc.tracks[0].items.find((it: any) => it.id === 'c1');
@@ -459,16 +458,16 @@ describe('TimelineStore', () => {
       ],
     });
     store.timelineDoc = timeline;
-    store.currentTime = timelineTicks(3_000_000);
+    store.currentTime = 762_048_000_000;
 
     store.jumpToNextClipBoundary();
-    expect(store.currentTime).toBe(timelineTicks(5_000_000));
+    expect(store.currentTime).toBe(1_270_080_000_000);
 
     store.jumpToNextClipBoundary();
-    expect(store.currentTime).toBe(timelineTicks(8_000_000));
+    expect(store.currentTime).toBe(2_032_128_000_000);
 
     store.jumpToPrevClipBoundary();
-    expect(store.currentTime).toBe(timelineTicks(5_000_000));
+    expect(store.currentTime).toBe(1_270_080_000_000);
   });
 
   it('splits selected clips at playhead', async () => {
@@ -482,7 +481,7 @@ describe('TimelineStore', () => {
       ],
     });
     store.timelineDoc = timeline;
-    store.currentTime = timelineTicks(4_000_000);
+    store.currentTime = 1_016_064_000_000;
     store.selectTimelineItems(['c1']);
 
     await store.splitClipsAtPlayhead();
@@ -502,18 +501,18 @@ describe('TimelineStore', () => {
     });
     store.timelineDoc = timeline;
 
-    store.currentTime = timelineTicks(2_000_000);
+    store.currentTime = 508_032_000_000;
     let clip = store.timelineDoc.tracks[0].items.find((it: any) => it.kind === 'clip');
     await store.trimToPlayheadLeftNoRipple({ trackId: 'v1', itemId: clip.id });
 
     clip = store.timelineDoc.tracks[0].items.find((it: any) => it.kind === 'clip');
-    expect(clip.timelineRange.startTicks).toBe(timelineTicks(2_000_000));
+    expect(clip.timelineRange.startTicks).toBe(508_032_000_000);
 
-    store.currentTime = timelineTicks(8_000_000);
+    store.currentTime = 2_032_128_000_000;
     await store.trimToPlayheadRightNoRipple({ trackId: 'v1', itemId: clip.id });
 
     clip = store.timelineDoc.tracks[0].items.find((it: any) => it.kind === 'clip');
-    expect(clip.timelineRange.durationTicks).toBe(timelineTicks(6_000_000));
+    expect(clip.timelineRange.durationTicks).toBe(1_524_096_000_000);
   });
 
   it('trims left/right to a specific time without ripple', async () => {
@@ -529,21 +528,15 @@ describe('TimelineStore', () => {
     store.timelineDoc = timeline;
 
     let clip = store.timelineDoc.tracks[0].items.find((it: any) => it.kind === 'clip');
-    await store.trimToTimeLeftNoRipple(
-      { trackId: 'v1', itemId: clip.id },
-      timelineTicks(3_000_000),
-    );
+    await store.trimToTimeLeftNoRipple({ trackId: 'v1', itemId: clip.id }, 762_048_000_000);
 
     clip = store.timelineDoc.tracks[0].items.find((it: any) => it.kind === 'clip');
-    expect(clip.timelineRange.startTicks).toBe(timelineTicks(3_000_000));
+    expect(clip.timelineRange.startTicks).toBe(762_048_000_000);
 
-    await store.trimToTimeRightNoRipple(
-      { trackId: 'v1', itemId: clip.id },
-      timelineTicks(7_000_000),
-    );
+    await store.trimToTimeRightNoRipple({ trackId: 'v1', itemId: clip.id }, 1_778_112_000_000);
 
     clip = store.timelineDoc.tracks[0].items.find((it: any) => it.kind === 'clip');
-    expect(clip.timelineRange.durationTicks).toBe(timelineTicks(4_000_000));
+    expect(clip.timelineRange.durationTicks).toBe(1_016_064_000_000);
   });
 
   it('adds image source to video track', async () => {
@@ -584,14 +577,14 @@ describe('TimelineStore', () => {
     const dropped = clips.find((it: any) => it.name === 'image.jpg');
 
     expect(existing.timelineRange).toEqual({
-      startTicks: timelineTicks(5_000_000),
-      durationTicks: timelineTicks(1_000_000),
+      startTicks: 1_270_080_000_000,
+      durationTicks: 254_016_000_000,
     });
     expect(dropped.timelineRange).toEqual({
       startTicks: 0,
-      durationTicks: timelineTicks(5_000_000),
+      durationTicks: 1_270_080_000_000,
     });
-    expect(dropped.sourceRange).toEqual({ startTicks: 0, durationTicks: timelineTicks(5_000_000) });
+    expect(dropped.sourceRange).toEqual({ startTicks: 0, durationTicks: 1_270_080_000_000 });
   });
 
   it('falls back to default timeline when otio parse throws', async () => {
@@ -703,15 +696,15 @@ describe('TimelineStore', () => {
   });
 
   it('adds marker at playhead', () => {
-    store.currentTime = timelineTicks(1_000_000);
+    store.currentTime = 254_016_000_000;
     const marker = store.addMarkerAtPlayhead();
     expect(marker).toBeDefined();
     expect(store.markers).toHaveLength(1);
-    expect(store.markers[0].timeTicks).toBe(timelineTicks(1_000_000));
+    expect(store.markers[0].timeTicks).toBe(254_016_000_000);
   });
 
   it('prevents duplicate marker at same time', () => {
-    store.currentTime = timelineTicks(1_000_000);
+    store.currentTime = 254_016_000_000;
     store.addMarkerAtPlayhead();
     expect(store.markers).toHaveLength(1);
 
@@ -860,7 +853,7 @@ describe('TimelineStore', () => {
       projectStoreMock.currentTimelinePath = 'folder/project.otio';
       projectStoreMock.listEntryNames.mockResolvedValue(['project.otio']);
 
-      store.currentTime = timelineTicks(5_000_000);
+      store.currentTime = 1_270_080_000_000;
       store.timelineZoom = 3;
       store.trackHeights = { track1: 80 };
       store.createSelectionRange({ startTicks: 1000, endTicks: 2000 });
@@ -870,7 +863,7 @@ describe('TimelineStore', () => {
       expect(
         projectSettingsStoreMock.projectSettings.timelines.sessions['folder/project_001.otio'],
       ).toEqual({
-        playheadTicks: timelineTicks(5_000_000),
+        playheadTicks: 1_270_080_000_000,
         masterGain: 1,
         masterMuted: false,
         zoom: 3,
@@ -888,7 +881,7 @@ describe('TimelineStore', () => {
       projectStoreMock.currentTimelinePath = 'folder/project.otio';
       vi.mocked(projectStoreMock.readTextByPath).mockResolvedValue('{"schema":"otio"}');
 
-      store.currentTime = timelineTicks(3_000_000);
+      store.currentTime = 762_048_000_000;
       store.timelineZoom = 1;
       store.trackHeights = { track2: 120 };
 
@@ -906,7 +899,7 @@ describe('TimelineStore', () => {
       expect(
         projectSettingsStoreMock.projectSettings.timelines.sessions['folder/project_003.otio'],
       ).toEqual({
-        playheadTicks: timelineTicks(3_000_000),
+        playheadTicks: 762_048_000_000,
         masterGain: 1,
         masterMuted: false,
         zoom: 1,
@@ -918,7 +911,7 @@ describe('TimelineStore', () => {
 
     it('copies current session settings when saving timeline as', async () => {
       projectStoreMock.currentTimelinePath = 'folder/project.otio';
-      store.currentTime = timelineTicks(4_000_000);
+      store.currentTime = 1_016_064_000_000;
       store.timelineZoom = 1;
       store.trackHeights = { track3: 150 };
 
@@ -927,7 +920,7 @@ describe('TimelineStore', () => {
       expect(
         projectSettingsStoreMock.projectSettings.timelines.sessions['folder/project_new.otio'],
       ).toEqual({
-        playheadTicks: timelineTicks(4_000_000),
+        playheadTicks: 1_016_064_000_000,
         masterGain: 1,
         masterMuted: false,
         zoom: 1,

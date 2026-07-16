@@ -3,7 +3,6 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { TICKS_PER_SECOND } from '~/utils/time';
-import { timelineTicks } from '../utils/timeline-time';
 import { TimelineBuilder } from '../utils/timeline-builder';
 
 // Mock dependencies if needed
@@ -92,7 +91,7 @@ describe('TimelineStore Copy/Paste', () => {
 
     expect(pastedClip).toBeDefined();
     // The sub-frame duration survives — the copy is NOT snapped onto the grid.
-    expect(pastedClip.timelineRange.durationTicks).toBe(timelineTicks(freeDurationTicks));
+    expect(pastedClip.timelineRange.durationTicks).toBe(freeDurationTicks * 254_016);
   });
 
   it('cuts clips from timeline', () => {

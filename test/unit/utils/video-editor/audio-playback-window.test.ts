@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 
-import { timelineTicks } from '../../utils/timeline-time';
 import {
   buildClipPlaybackWindow,
   getSourceTimeForClipLocal,
@@ -17,11 +16,11 @@ function createClip(overrides: Partial<AudioEngineClip> = {}): AudioEngineClip {
     id: 'clip-1',
     sourcePath: 'audio.mp3',
     fileHandle: {} as FileSystemFileHandle,
-    startTicks: timelineTicks(1_000_000),
-    durationTicks: timelineTicks(2_000_000),
-    sourceStartTicks: timelineTicks(5_000_000),
-    sourceRangeDurationTicks: timelineTicks(2_000_000),
-    sourceDurationTicks: timelineTicks(10_000_000),
+    startTicks: 254_016_000_000,
+    durationTicks: 508_032_000_000,
+    sourceStartTicks: 1_270_080_000_000,
+    sourceRangeDurationTicks: 508_032_000_000,
+    sourceDurationTicks: 2_540_160_000_000,
     ...overrides,
   };
 }
@@ -50,8 +49,8 @@ describe('audio playback window', () => {
     const window = buildClipPlaybackWindow({
       clip: createClip({
         speed: 2,
-        transitionIn: { durationTicks: timelineTicks(500_000), mode: 'adjacent' },
-        transitionOut: { durationTicks: timelineTicks(250_000), mode: 'adjacent' },
+        transitionIn: { durationTicks: 127_008_000_000, mode: 'adjacent' },
+        transitionOut: { durationTicks: 63_504_000_000, mode: 'adjacent' },
       }),
       currentTimeS: 0.75,
       speed: 1,
@@ -72,8 +71,8 @@ describe('audio playback window', () => {
         animations: {
           'audio.volume': {
             keyframes: [
-              { tTicks: timelineTicks(5_000_000), value: 1, easing: 'linear' },
-              { tTicks: timelineTicks(7_000_000), value: 0, easing: 'linear' },
+              { tTicks: 1_270_080_000_000, value: 1, easing: 'linear' },
+              { tTicks: 1_778_112_000_000, value: 0, easing: 'linear' },
             ],
           },
         },
@@ -126,8 +125,8 @@ describe('resolveAnimatedBaseGain', () => {
       animations: {
         'audio.volume': {
           keyframes: [
-            { tTicks: timelineTicks(5_000_000), value: 1, easing: 'linear' },
-            { tTicks: timelineTicks(7_000_000), value: 0, easing: 'linear' },
+            { tTicks: 1_270_080_000_000, value: 1, easing: 'linear' },
+            { tTicks: 1_778_112_000_000, value: 0, easing: 'linear' },
           ],
         },
       },
@@ -148,8 +147,8 @@ describe('resolveAnimatedPan', () => {
       animations: {
         'audio.pan': {
           keyframes: [
-            { tTicks: timelineTicks(5_000_000), value: -1, easing: 'linear' },
-            { tTicks: timelineTicks(7_000_000), value: 1, easing: 'linear' },
+            { tTicks: 1_270_080_000_000, value: -1, easing: 'linear' },
+            { tTicks: 1_778_112_000_000, value: 1, easing: 'linear' },
           ],
         },
       },

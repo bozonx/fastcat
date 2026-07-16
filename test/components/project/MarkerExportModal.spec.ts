@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mountWithNuxt } from '../../utils/mount';
-import { timelineTicks } from '../../unit/utils/timeline-time';
 import MarkerExportModal from '~/components/project/MarkerExportModal.vue';
 
 const mockListEntryNames = vi.fn().mockResolvedValue([]);
@@ -38,9 +37,9 @@ describe('MarkerExportModal.vue', () => {
     const component = await mountWithNuxt(MarkerExportModal, {
       props: {
         markers: [
-          { id: '1', timeTicks: timelineTicks(1_000_000), text: 'Intro', color: '#d0021b' },
-          { id: '2', timeTicks: timelineTicks(5_000_000), text: 'Main', color: '#4a90e2' },
-          { id: '3', timeTicks: timelineTicks(3661_000_000), text: 'Over Hour', color: '#d0021b' },
+          { id: '1', timeTicks: 254_016_000_000, text: 'Intro', color: '#d0021b' },
+          { id: '2', timeTicks: 1_270_080_000_000, text: 'Main', color: '#4a90e2' },
+          { id: '3', timeTicks: 929_952_576_000_000, text: 'Over Hour', color: '#d0021b' },
         ],
         fps: 30,
         open: true,
@@ -59,8 +58,8 @@ describe('MarkerExportModal.vue', () => {
     const component = await mountWithNuxt(MarkerExportModal, {
       props: {
         markers: [
-          { id: '1', timeTicks: timelineTicks(1_000_000), text: 'Red', color: '#d0021b' },
-          { id: '2', timeTicks: timelineTicks(2_000_000), text: 'Blue', color: '#4a90e2' },
+          { id: '1', timeTicks: 254_016_000_000, text: 'Red', color: '#d0021b' },
+          { id: '2', timeTicks: 508_032_000_000, text: 'Blue', color: '#4a90e2' },
         ],
         fps: 30,
         open: true,
@@ -78,8 +77,8 @@ describe('MarkerExportModal.vue', () => {
     const component = await mountWithNuxt(MarkerExportModal, {
       props: {
         markers: [
-          { id: '1', timeTicks: timelineTicks(1_000_000), text: 'Red', color: '#d0021b' },
-          { id: '2', timeTicks: timelineTicks(2_000_000), text: 'Blue', color: '#4a90e2' },
+          { id: '1', timeTicks: 254_016_000_000, text: 'Red', color: '#d0021b' },
+          { id: '2', timeTicks: 508_032_000_000, text: 'Blue', color: '#4a90e2' },
         ],
         fps: 30,
         open: true,
@@ -103,8 +102,8 @@ describe('MarkerExportModal.vue', () => {
     const component = await mountWithNuxt(MarkerExportModal, {
       props: {
         markers: [
-          { id: '1', timeTicks: timelineTicks(1_000_000), text: 'Red', color: '#d0021b' },
-          { id: '2', timeTicks: timelineTicks(2_000_000), text: 'Blue', color: '#4a90e2' },
+          { id: '1', timeTicks: 254_016_000_000, text: 'Red', color: '#d0021b' },
+          { id: '2', timeTicks: 508_032_000_000, text: 'Blue', color: '#4a90e2' },
         ],
         fps: 30,
         open: true,
@@ -133,9 +132,7 @@ describe('MarkerExportModal.vue', () => {
   it('formats export text according to selected export format', async () => {
     const component = await mountWithNuxt(MarkerExportModal, {
       props: {
-        markers: [
-          { id: '1', timeTicks: timelineTicks(1_000_000), text: 'Intro', color: '#d0021b' },
-        ],
+        markers: [{ id: '1', timeTicks: 254_016_000_000, text: 'Intro', color: '#d0021b' }],
         fps: 30,
         open: true,
       },
@@ -212,8 +209,8 @@ describe('MarkerExportModal.vue', () => {
     const component = await mountWithNuxt(MarkerExportModal, {
       props: {
         markers: [
-          { id: '1', timeTicks: timelineTicks(1_000_000), text: 'Red', color: '#d0021b' },
-          { id: '2', timeTicks: timelineTicks(2_000_000), text: 'Blue', color: '#4a90e2' },
+          { id: '1', timeTicks: 254_016_000_000, text: 'Red', color: '#d0021b' },
+          { id: '2', timeTicks: 508_032_000_000, text: 'Blue', color: '#4a90e2' },
         ],
         fps: 30,
         open: true,
@@ -236,7 +233,7 @@ describe('MarkerExportModal.vue', () => {
   it('uses default color when marker has no color property', async () => {
     const component = await mountWithNuxt(MarkerExportModal, {
       props: {
-        markers: [{ id: '1', timeTicks: timelineTicks(1_000_000), text: 'No Color' }],
+        markers: [{ id: '1', timeTicks: 254_016_000_000, text: 'No Color' }],
         fps: 30,
         open: true,
       },
@@ -255,9 +252,7 @@ describe('MarkerExportModal.vue', () => {
   it('writes export content to _documents/markers.txt via export button', async () => {
     const component = await mountWithNuxt(MarkerExportModal, {
       props: {
-        markers: [
-          { id: '1', timeTicks: timelineTicks(1_000_000), text: 'Intro', color: '#d0021b' },
-        ],
+        markers: [{ id: '1', timeTicks: 254_016_000_000, text: 'Intro', color: '#d0021b' }],
         fps: 30,
         open: true,
       },
@@ -277,9 +272,7 @@ describe('MarkerExportModal.vue', () => {
   it('uses csv extension when csv format is selected', async () => {
     const component = await mountWithNuxt(MarkerExportModal, {
       props: {
-        markers: [
-          { id: '1', timeTicks: timelineTicks(1_000_000), text: 'Intro', color: '#d0021b' },
-        ],
+        markers: [{ id: '1', timeTicks: 254_016_000_000, text: 'Intro', color: '#d0021b' }],
         fps: 30,
         open: true,
       },
@@ -300,9 +293,7 @@ describe('MarkerExportModal.vue', () => {
 
     const component = await mountWithNuxt(MarkerExportModal, {
       props: {
-        markers: [
-          { id: '1', timeTicks: timelineTicks(1_000_000), text: 'Intro', color: '#d0021b' },
-        ],
+        markers: [{ id: '1', timeTicks: 254_016_000_000, text: 'Intro', color: '#d0021b' }],
         fps: 30,
         open: true,
       },

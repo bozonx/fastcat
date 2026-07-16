@@ -3,7 +3,6 @@ import { reactive } from 'vue';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
 import ClipInfoSection from '~/components/properties/clip/ClipInfoSection.vue';
 import type { TimelineClipItem } from '~/timeline/types';
-import { timelineTicks } from '../../../unit/utils/timeline-time';
 
 const FPS = 30;
 
@@ -34,10 +33,10 @@ function makeClip(overrides: Partial<TimelineClipItem> = {}): TimelineClipItem {
     trackId: 'track-1',
     name: 'Clip',
     source: { path: 'sound.wav' },
-    sourceDurationTicks: timelineTicks(60_000_000),
+    sourceDurationTicks: 15_240_960_000_000,
     isImage: false,
-    timelineRange: { startTicks: 0, durationTicks: timelineTicks(3_000_000) },
-    sourceRange: { startTicks: 0, durationTicks: timelineTicks(3_000_000) },
+    timelineRange: { startTicks: 0, durationTicks: 762_048_000_000 },
+    sourceRange: { startTicks: 0, durationTicks: 762_048_000_000 },
     ...overrides,
   } as TimelineClipItem;
 }
@@ -71,8 +70,8 @@ describe('ClipInfoSection snap-to-grid button', () => {
   it('shows an enabled snap button for a free (sub-frame) audio clip', async () => {
     const clip = makeClip({
       timelineRange: {
-        startTicks: timelineTicks(2_007_000),
-        durationTicks: timelineTicks(3_457_000),
+        startTicks: 509_810_112_000,
+        durationTicks: 878_133_312_000,
       },
     });
     setDoc('audio', clip);
@@ -85,7 +84,7 @@ describe('ClipInfoSection snap-to-grid button', () => {
 
   it('disables the snap button for a frame-aligned audio clip', async () => {
     const clip = makeClip({
-      timelineRange: { startTicks: 0, durationTicks: timelineTicks(3_000_000) },
+      timelineRange: { startTicks: 0, durationTicks: 762_048_000_000 },
     });
     setDoc('audio', clip);
 
@@ -99,8 +98,8 @@ describe('ClipInfoSection snap-to-grid button', () => {
     const clip = makeClip({
       trackId: 'v1',
       timelineRange: {
-        startTicks: timelineTicks(2_007_000),
-        durationTicks: timelineTicks(3_457_000),
+        startTicks: 509_810_112_000,
+        durationTicks: 878_133_312_000,
       },
     });
     setDoc('video', clip);
@@ -112,8 +111,8 @@ describe('ClipInfoSection snap-to-grid button', () => {
   it('emits snapToGrid when the button is clicked', async () => {
     const clip = makeClip({
       timelineRange: {
-        startTicks: timelineTicks(2_007_000),
-        durationTicks: timelineTicks(3_457_000),
+        startTicks: 509_810_112_000,
+        durationTicks: 878_133_312_000,
       },
     });
     setDoc('audio', clip);

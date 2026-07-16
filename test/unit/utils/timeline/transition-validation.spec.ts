@@ -4,7 +4,6 @@ import {
   validateTransitionOut,
 } from '~/utils/timeline/transition-validation';
 import type { TimelineTrack, TimelineMediaClipItem } from '~/timeline/types';
-import { timelineTicks } from '../timeline-time';
 
 function createTrack(items: TimelineMediaClipItem[]): TimelineTrack {
   return {
@@ -34,21 +33,21 @@ function createClip(overrides: Partial<TimelineMediaClipItem> = {}): TimelineMed
   return {
     ...clip,
     timelineRange: {
-      startTicks: timelineTicks(clip.timelineRange.startTicks),
-      durationTicks: timelineTicks(clip.timelineRange.durationTicks),
+      startTicks: clip.timelineRange.startTicks * 254_016,
+      durationTicks: clip.timelineRange.durationTicks * 254_016,
     },
     sourceRange: {
-      startTicks: timelineTicks(clip.sourceRange.startTicks),
-      durationTicks: timelineTicks(clip.sourceRange.durationTicks),
+      startTicks: clip.sourceRange.startTicks * 254_016,
+      durationTicks: clip.sourceRange.durationTicks * 254_016,
     },
-    sourceDurationTicks: timelineTicks(clip.sourceDurationTicks ?? 0),
+    sourceDurationTicks: (clip.sourceDurationTicks ?? 0) * 254_016,
     transitionIn: clip.transitionIn && {
       ...clip.transitionIn,
-      durationTicks: timelineTicks(clip.transitionIn.durationTicks),
+      durationTicks: clip.transitionIn.durationTicks * 254_016,
     },
     transitionOut: clip.transitionOut && {
       ...clip.transitionOut,
-      durationTicks: timelineTicks(clip.transitionOut.durationTicks),
+      durationTicks: clip.transitionOut.durationTicks * 254_016,
     },
   } as TimelineMediaClipItem;
 }

@@ -2,7 +2,6 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 import MonitorViewport from '~/components/monitor/MonitorViewport.vue';
 import { ref } from 'vue';
-import { timelineTicks } from '../../unit/utils/timeline-time';
 
 const mockShowTimecode = ref(true);
 const mockShowTransparencyGrid = ref(false);
@@ -206,8 +205,8 @@ describe('MonitorViewport', () => {
 
   it('renders only selection duration in selection color when selectionRange is active', () => {
     mockSelectionRange.value = {
-      startTicks: timelineTicks(1_000_000),
-      endTicks: timelineTicks(4_000_000),
+      startTicks: 254_016_000_000,
+      endTicks: 1_016_064_000_000,
     };
     mockFps.value = 30;
 
