@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { FrameSampleOrchestrator } from '~/utils/video-editor/compositor/FrameSampleOrchestrator';
 import {
-  clampToLastReadableSourceUs,
+  clampToLastReadableSourceTicks,
   TimelineActiveClipProcessor,
 } from '~/utils/video-editor/compositor/TimelineActiveClipProcessor';
 import type { CompositorClip } from '~/utils/video-editor/compositor/types';
@@ -336,7 +336,7 @@ describe('FrameSampleOrchestrator', () => {
     });
 
     const expectedSampleS =
-      (timelineUs(2_000_000) + clampToLastReadableSourceUs(timelineUs(1_000_000))) /
+      (timelineUs(2_000_000) + clampToLastReadableSourceTicks(timelineUs(1_000_000))) /
       TICKS_PER_SECOND;
     expect(getVideoSampleForClip).toHaveBeenCalledWith(
       expect.objectContaining({ sampleTimeS: expectedSampleS }),
@@ -388,7 +388,7 @@ describe('FrameSampleOrchestrator', () => {
     expect(getVideoSampleForClip).toHaveBeenCalledWith(
       expect.objectContaining({
         sampleTimeS:
-          (timelineUs(2_000_000) + clampToLastReadableSourceUs(timelineUs(1_000_000), 30)) /
+          (timelineUs(2_000_000) + clampToLastReadableSourceTicks(timelineUs(1_000_000), 30)) /
           TICKS_PER_SECOND,
       }),
     );
@@ -496,7 +496,7 @@ describe('FrameSampleOrchestrator shadow sampling during adjacent transition', (
       prevFrameRate: frameRate,
     });
 
-    const lastReadableUs = clampToLastReadableSourceUs(timelineUs(5_000_000), frameRate);
+    const lastReadableUs = clampToLastReadableSourceTicks(timelineUs(5_000_000), frameRate);
     // 4× speed × 250ms = 1s past sourceRangeEnd → would land at 2s; the
     // sample must instead be clamped to lastReadableUs (~4.979s).
     const candidate =
@@ -524,7 +524,7 @@ describe('FrameSampleOrchestrator shadow sampling during adjacent transition', (
 
     // Production clamps the shadow to the last readable source frame in the
     // tick domain; compute the expected using the same tick-based inputs.
-    const lastReadableUs = clampToLastReadableSourceUs(timelineUs(5_000_000), frameRate);
+    const lastReadableUs = clampToLastReadableSourceTicks(timelineUs(5_000_000), frameRate);
     // The "small handle" path uses (sourceRangeEnd - 1ms) but clamped to the
     // last readable source position; with frameRate=30 the half-frame guard
     // is larger than 1ms so we use the lastReadableUs path.

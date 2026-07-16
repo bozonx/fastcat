@@ -4,15 +4,15 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { TICKS_PER_SECOND } from '~/utils/time';
 import {
-  resolveClipSourceTimeUs,
-  clampToLastReadableSourceUs,
+  resolveClipSourceTimeTicks,
+  clampToLastReadableSourceTicks,
   normalizeClipSpeed,
 } from '~/utils/video-editor/source-time';
 
 /**
  * Cross-engine parity contract. This test and the Rust test
  * `monitor::scene::tests::clip_source_pts_matches_shared_parity_fixture` read the
- * SAME fixture, so the web `resolveClipSourceTimeUs` and the native
+ * SAME fixture, so the web `resolveClipSourceTimeTicks` and the native
  * `SceneLayer::source_pts_at` can never drift apart on the shared algorithm.
  */
 interface ParityCase {
@@ -33,11 +33,11 @@ const fixture = JSON.parse(
 describe('clip source-PTS parity (shared fixture)', () => {
   for (const c of fixture.cases) {
     it(`matches native for "${c.name}"`, () => {
-      const localTimeUs = (c.timelineSec - c.timelineStartSec) * TICKS_PER_SECOND;
-      const sourceUs = resolveClipSourceTimeUs({
-        localTimeUs,
-        sourceStartUs: c.sourceStartSec * TICKS_PER_SECOND,
-        sourceRangeDurationUs: c.sourceRangeDurationSec * TICKS_PER_SECOND,
+      const localTimeTicks = (c.timelineSec - c.timelineStartSec) * TICKS_PER_SECOND;
+      const sourceUs = resolveClipSourceTimeTicks({
+        localTimeTicks,
+        sourceStartTicks: c.sourceStartSec * TICKS_PER_SECOND,
+        sourceRangeDurationTicks: c.sourceRangeDurationSec * TICKS_PER_SECOND,
         speed: c.speed,
         // No frameRate: this is the frame-rate-independent region where the two
         // engines agree exactly (the guard is the flat fixture.guardSec).
@@ -59,10 +59,10 @@ describe('source-time core', () => {
 
   it('returns source start when the source range is empty', () => {
     expect(
-      resolveClipSourceTimeUs({
-        localTimeUs: 5 * TICKS_PER_SECOND,
-        sourceStartUs: 2 * TICKS_PER_SECOND,
-        sourceRangeDurationUs: 0,
+      resolveClipSourceTimeTicks({
+        localTimeTicks: 5 * TICKS_PER_SECOND,
+        sourceStartTicks: 2 * TICKS_PER_SECOND,
+        sourceRangeDurationTicks: 0,
         speed: 1,
       }),
     ).toBe(2 * TICKS_PER_SECOND);
@@ -74,18 +74,18 @@ describe('source-time core', () => {
   // guard and snaps to the nearest decoded frame. This case is therefore web-only
   // and deliberately excluded from the shared parity fixture.
   it('web-only half-frame guard pulls the readable tail back for 30fps', () => {
-    const flatGuard = clampToLastReadableSourceUs(5 * TICKS_PER_SECOND);
-    const halfFrameGuard = clampToLastReadableSourceUs(5 * TICKS_PER_SECOND, 30);
+    const flatGuard = clampToLastReadableSourceTicks(5 * TICKS_PER_SECOND);
+    const halfFrameGuard = clampToLastReadableSourceTicks(5 * TICKS_PER_SECOND, 30);
     expect(flatGuard).toBe(5 * TICKS_PER_SECOND - TICKS_PER_SECOND / 1_000); // guardSec === 0.001
     expect(halfFrameGuard).toBe(5 * TICKS_PER_SECOND - Math.round(TICKS_PER_SECOND / (2 * 30)));
     expect(halfFrameGuard).toBeLessThan(flatGuard);
   });
 
   it('maps source time from clip speed and source fps, independent of timeline fps', () => {
-    const sourceUs = resolveClipSourceTimeUs({
-      localTimeUs: 1 * TICKS_PER_SECOND,
-      sourceStartUs: 2 * TICKS_PER_SECOND,
-      sourceRangeDurationUs: 5 * TICKS_PER_SECOND,
+    const sourceUs = resolveClipSourceTimeTicks({
+      localTimeTicks: 1 * TICKS_PER_SECOND,
+      sourceStartTicks: 2 * TICKS_PER_SECOND,
+      sourceRangeDurationTicks: 5 * TICKS_PER_SECOND,
       speed: 2,
       frameRate: 24,
     });
@@ -94,10 +94,10 @@ describe('source-time core', () => {
   });
 
   it('maps negative-speed video from the readable tail backwards', () => {
-    const sourceUs = resolveClipSourceTimeUs({
-      localTimeUs: TICKS_PER_SECOND / 2,
-      sourceStartUs: 10 * TICKS_PER_SECOND,
-      sourceRangeDurationUs: 5 * TICKS_PER_SECOND,
+    const sourceUs = resolveClipSourceTimeTicks({
+      localTimeTicks: TICKS_PER_SECOND / 2,
+      sourceStartTicks: 10 * TICKS_PER_SECOND,
+      sourceRangeDurationTicks: 5 * TICKS_PER_SECOND,
       speed: -2,
       frameRate: 25,
     });

@@ -65,15 +65,15 @@ export function computeMonitorFrameIndex(params: { timeUs: number; fps: number }
 }
 
 function canPlayMonitorScrubPreview(params: {
-  fromUs: number;
-  toUs: number;
+  fromTicks: number;
+  toTicks: number;
   state: MonitorScrubPreviewState;
   isUnmounted: boolean;
   isPlaying: boolean;
   isLoading: boolean;
   hasLoadError: boolean;
-  minDeltaUs: number;
-  maxDeltaUs: number;
+  minDeltaTicks: number;
+  maxDeltaTicks: number;
   throttleMs: number;
   nowMs?: number;
 }): boolean {
@@ -81,8 +81,8 @@ function canPlayMonitorScrubPreview(params: {
     return false;
   }
 
-  const deltaUs = params.toUs - params.fromUs;
-  if (deltaUs < params.minDeltaUs || deltaUs > params.maxDeltaUs) {
+  const deltaTicks = params.toTicks - params.fromTicks;
+  if (deltaTicks < params.minDeltaTicks || deltaTicks > params.maxDeltaTicks) {
     return false;
   }
 
@@ -259,11 +259,11 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
 
   const STORE_TIME_SYNC_MS = 100;
   const AUDIO_LEVELS_SYNC_MS = 120; // Avoid excessive store churn (can stress DevTools)
-  const PLAYBACK_SEEK_EPSILON_US = TICKS_PER_SECOND / 40;
-  const SCRUB_PREVIEW_MIN_DELTA_US = 1_000 * TICKS_PER_MICROSECOND;
-  const SCRUB_PREVIEW_MAX_DELTA_US = 250_000 * TICKS_PER_MICROSECOND;
+  const PLAYBACK_SEEK_EPSILON_TICKS = TICKS_PER_SECOND / 40;
+  const SCRUB_PREVIEW_MIN_DELTA_TICKS = 1_000 * TICKS_PER_MICROSECOND;
+  const SCRUB_PREVIEW_MAX_DELTA_TICKS = 250_000 * TICKS_PER_MICROSECOND;
   const SCRUB_PREVIEW_THROTTLE_MS = 35;
-  const SCRUB_PREVIEW_DURATION_US = (TICKS_PER_SECOND * 3) / 40;
+  const SCRUB_PREVIEW_DURATION_TICKS = (TICKS_PER_SECOND * 3) / 40;
 
   let playbackLoopId = 0;
   const playbackLoopState = {
@@ -343,17 +343,17 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
     }, PAUSED_PREWARM_SETTLE_MS);
   }
 
-  function canPlayScrubPreview(fromUs: number, toUs: number) {
+  function canPlayScrubPreview(fromTicks: number, toTicks: number) {
     return canPlayMonitorScrubPreview({
-      fromUs,
-      toUs,
+      fromTicks,
+      toTicks,
       state: scrubPreviewState,
       isUnmounted,
       isPlaying: isPlaying.value,
       isLoading: isLoading.value,
       hasLoadError: Boolean(loadError.value),
-      minDeltaUs: SCRUB_PREVIEW_MIN_DELTA_US,
-      maxDeltaUs: SCRUB_PREVIEW_MAX_DELTA_US,
+      minDeltaTicks: SCRUB_PREVIEW_MIN_DELTA_TICKS,
+      maxDeltaTicks: SCRUB_PREVIEW_MAX_DELTA_TICKS,
       throttleMs: SCRUB_PREVIEW_THROTTLE_MS,
     });
   }
@@ -533,7 +533,7 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
             const requestId = ++scrubPreviewRequestId;
             audioEngine.stopScrubPreview();
             void audioEngine
-              .previewScrubForward(previousTimeUs, normalizedTimeUs, SCRUB_PREVIEW_DURATION_US)
+              .previewScrubForward(previousTimeUs, normalizedTimeUs, SCRUB_PREVIEW_DURATION_TICKS)
               .catch((error) => {
                 if (requestId !== scrubPreviewRequestId || isUnmounted) return;
                 log.warn('[Monitor] Failed to preview audio scrub', error);
@@ -560,7 +560,7 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
       } else {
         // Ignore tiny store updates produced by the local playback loop itself.
         // Only external timeline jumps should trigger an actual seek.
-        if (Math.abs(normalizedTimeUs - localCurrentTimeUs) <= PLAYBACK_SEEK_EPSILON_US) {
+        if (Math.abs(normalizedTimeUs - localCurrentTimeUs) <= PLAYBACK_SEEK_EPSILON_TICKS) {
           return;
         }
         localCurrentTimeUs = normalizedTimeUs;

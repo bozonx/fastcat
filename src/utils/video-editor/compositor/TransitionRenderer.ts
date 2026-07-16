@@ -16,7 +16,7 @@ import type { WebGpuComputeRunner } from './WebGpuComputeRunner';
 const log = createDevLogger('TransitionRenderer');
 
 /** Minimum usable handle in canonical timeline ticks (~1 ms). */
-const MIN_SOURCE_HANDLE_US = 1_000 * TICKS_PER_MICROSECOND;
+const MIN_SOURCE_HANDLE_TICKS = 1_000 * TICKS_PER_MICROSECOND;
 
 export interface TransitionRendererParams {
   app: Application;
@@ -357,16 +357,16 @@ export class TransitionRenderer {
       const handleUs = Math.max(0, clip.sourceStartUs);
       if ((clip.speed || 1) < 0) {
         sampleUs =
-          handleUs < MIN_SOURCE_HANDLE_US
-            ? Math.max(0, clip.sourceStartUs + clip.sourceRangeDurationUs - MIN_SOURCE_HANDLE_US)
+          handleUs < MIN_SOURCE_HANDLE_TICKS
+            ? Math.max(0, clip.sourceStartUs + clip.sourceRangeDurationUs - MIN_SOURCE_HANDLE_TICKS)
             : Math.min(
                 clip.sourceStartUs + clip.sourceRangeDurationUs + transitionOffsetUs,
-                clip.sourceDurationUs - MIN_SOURCE_HANDLE_US,
+                clip.sourceDurationUs - MIN_SOURCE_HANDLE_TICKS,
               );
       } else {
         sampleUs =
-          handleUs < MIN_SOURCE_HANDLE_US
-            ? Math.max(0, clip.sourceStartUs + MIN_SOURCE_HANDLE_US)
+          handleUs < MIN_SOURCE_HANDLE_TICKS
+            ? Math.max(0, clip.sourceStartUs + MIN_SOURCE_HANDLE_TICKS)
             : Math.max(0, clip.sourceStartUs - transitionOffsetUs);
       }
     } else {
@@ -378,19 +378,19 @@ export class TransitionRenderer {
 
       if ((clip.speed || 1) < 0) {
         sampleUs =
-          handleUs < MIN_SOURCE_HANDLE_US
-            ? Math.max(0, clip.sourceStartUs + MIN_SOURCE_HANDLE_US)
+          handleUs < MIN_SOURCE_HANDLE_TICKS
+            ? Math.max(0, clip.sourceStartUs + MIN_SOURCE_HANDLE_TICKS)
             : Math.max(0, clip.sourceStartUs - transitionOffsetUs);
       } else {
         sampleUs =
-          handleUs < MIN_SOURCE_HANDLE_US
-            ? Math.max(0, clip.sourceStartUs + clip.sourceRangeDurationUs - MIN_SOURCE_HANDLE_US)
+          handleUs < MIN_SOURCE_HANDLE_TICKS
+            ? Math.max(0, clip.sourceStartUs + clip.sourceRangeDurationUs - MIN_SOURCE_HANDLE_TICKS)
             : Math.min(
                 sourceRangeEndUs + transitionOffsetUs,
                 // Upper bound is the end of the *source*, not offset by the trim-in
                 // point — mirrors the reversed `isNextClip` branch above. Adding
                 // sourceStartUs let this request a timestamp past EOF for trimmed clips.
-                clip.sourceDurationUs - MIN_SOURCE_HANDLE_US,
+                clip.sourceDurationUs - MIN_SOURCE_HANDLE_TICKS,
               );
       }
     }

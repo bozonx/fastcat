@@ -2,10 +2,10 @@ import { TICKS_PER_SECOND } from '~/utils/time';
 import { createDevLogger } from '~/utils/dev-logger';
 import { toPixiBlendMode, type CompositorClip } from './types';
 import {
-  clampToLastReadableSourceUs,
-  MIN_SOURCE_TIME_END_GUARD_US,
+  clampToLastReadableSourceTicks,
+  MIN_SOURCE_TIME_END_GUARD_TICKS,
   normalizeClipSpeed,
-  resolveClipSourceTimeUs,
+  resolveClipSourceTimeTicks,
 } from '../source-time';
 const log = createDevLogger('TimelineActiveClipProcessor');
 
@@ -34,12 +34,12 @@ export interface TimelineActiveClipProcessorResult {
   sampleRequests: Array<Promise<{ clip: CompositorClip; sample: unknown | null }>>;
 }
 
-export const MIN_VIDEO_SAMPLE_END_GUARD_US = MIN_SOURCE_TIME_END_GUARD_US;
+export const MIN_VIDEO_SAMPLE_END_GUARD_TICKS = MIN_SOURCE_TIME_END_GUARD_TICKS;
 
 // Guard half a source frame off the end so we never request a timestamp past
 // the last decodable frame. At 24 fps a frame is ~41.7 ms — a flat 1 ms guard
 // would still land beyond the last sample boundary on some files.
-export { clampToLastReadableSourceUs };
+export { clampToLastReadableSourceTicks };
 
 export class TimelineActiveClipProcessor {
   public process(params: TimelineActiveClipProcessorParams): TimelineActiveClipProcessorResult {
@@ -75,13 +75,13 @@ export class TimelineActiveClipProcessor {
         ) => {
           if (!state || state.clipKind !== 'video' || !state.sink) return;
 
-          const localTimeUs = timeUs - clip.startUs;
-          if (localTimeUs < 0 || localTimeUs >= clip.durationUs) return;
+          const localTimeTicks = timeUs - clip.startUs;
+          if (localTimeTicks < 0 || localTimeTicks >= clip.durationUs) return;
 
-          const sampleUs = resolveClipSourceTimeUs({
-            localTimeUs,
-            sourceStartUs: 0,
-            sourceRangeDurationUs: state.sourceDurationUs,
+          const sampleUs = resolveClipSourceTimeTicks({
+            localTimeTicks,
+            sourceStartTicks: 0,
+            sourceRangeDurationTicks: state.sourceDurationUs,
             speed: clip.speed,
             frameRate: state.frameRate,
           });
@@ -168,9 +168,9 @@ export class TimelineActiveClipProcessor {
         continue;
       }
 
-      const localTimeUs = timeUs - clip.startUs;
+      const localTimeTicks = timeUs - clip.startUs;
       const speed = normalizeClipSpeed(clip.speed);
-      if (localTimeUs < 0 || localTimeUs >= clip.durationUs) {
+      if (localTimeTicks < 0 || localTimeTicks >= clip.durationUs) {
         if (clip.sprite) clip.sprite.visible = false;
         continue;
       }
@@ -179,10 +179,10 @@ export class TimelineActiveClipProcessor {
       let sampleTimeS =
         typeof freezeUs === 'number'
           ? Math.max(0, freezeUs) / TICKS_PER_SECOND
-          : resolveClipSourceTimeUs({
-              localTimeUs,
-              sourceStartUs: clip.sourceStartUs,
-              sourceRangeDurationUs: clip.sourceRangeDurationUs,
+          : resolveClipSourceTimeTicks({
+              localTimeTicks,
+              sourceStartTicks: clip.sourceStartUs,
+              sourceRangeDurationTicks: clip.sourceRangeDurationUs,
               speed,
               frameRate: clip.frameRate,
             }) / TICKS_PER_SECOND;

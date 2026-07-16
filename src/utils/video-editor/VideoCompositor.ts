@@ -47,7 +47,7 @@ import { CompositorRenderContextBuilder } from './compositor/CompositorRenderCon
 import { PixiCompositorLifecycle } from './compositor/PixiCompositorLifecycle';
 import { WebGpuComputeRunner } from './compositor/WebGpuComputeRunner';
 import { buildEffectSpecs } from '~/effects';
-import { normalizeClipSpeed, resolveClipSourceTimeUs } from './source-time';
+import { normalizeClipSpeed, resolveClipSourceTimeTicks } from './source-time';
 import { TRANSFORM_DESIGN_BASE } from './clip-layout';
 import type { PreviewEffectQuality } from '~/utils/preview-effect-quality';
 const log = createDevLogger('VideoCompositor');
@@ -894,11 +894,11 @@ export class VideoCompositor {
       // first source frame (localTime 0). Clamping unifies both cases; when the
       // playhead later crosses in, `warmClipFrameWindow` sees `nowSourceTime`
       // still ≈ the first frame and continues the same iterator (no reopen).
-      const localTimeUs = Math.max(0, nowUs - clip.startUs);
-      const nowSourceUs = resolveClipSourceTimeUs({
-        localTimeUs,
-        sourceStartUs: clip.sourceStartUs,
-        sourceRangeDurationUs: clip.sourceRangeDurationUs,
+      const localTimeTicks = Math.max(0, nowUs - clip.startUs);
+      const nowSourceUs = resolveClipSourceTimeTicks({
+        localTimeTicks,
+        sourceStartTicks: clip.sourceStartUs,
+        sourceRangeDurationTicks: clip.sourceRangeDurationUs,
         speed,
         frameRate: clip.frameRate,
       });
@@ -997,10 +997,10 @@ export class VideoCompositor {
         const sampleTimeUs =
           typeof clip.freezeFrameSourceUs === 'number'
             ? Math.max(0, clip.freezeFrameSourceUs)
-            : resolveClipSourceTimeUs({
-                localTimeUs: 0,
-                sourceStartUs: clip.sourceStartUs,
-                sourceRangeDurationUs: clip.sourceRangeDurationUs,
+            : resolveClipSourceTimeTicks({
+                localTimeTicks: 0,
+                sourceStartTicks: clip.sourceStartUs,
+                sourceRangeDurationTicks: clip.sourceRangeDurationUs,
                 speed: normalizeClipSpeed(clip.speed),
                 frameRate: clip.frameRate,
               });

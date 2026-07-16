@@ -8,13 +8,13 @@ import {
 } from '~/transitions';
 import type { CompositorClip } from './types';
 import {
-  clampToLastReadableSourceUs,
+  clampToLastReadableSourceTicks,
   type TimelineActiveClipProcessor,
 } from './TimelineActiveClipProcessor';
 const log = createDevLogger('FrameSampleOrchestrator');
 
 /** Minimum usable handle in canonical timeline ticks (~1 ms). */
-const MIN_SOURCE_HANDLE_US = 1_000 * TICKS_PER_MICROSECOND;
+const MIN_SOURCE_HANDLE_TICKS = 1_000 * TICKS_PER_MICROSECOND;
 
 export interface FrameSampleOrchestratorParams {
   activeClips: CompositorClip[];
@@ -167,8 +167,8 @@ export class FrameSampleOrchestrator {
         continue;
       }
 
-      const localTimeUs = params.timeUs - clip.startUs;
-      if (localTimeUs >= transition.durationUs) {
+      const localTimeTicks = params.timeUs - clip.startUs;
+      if (localTimeTicks >= transition.durationUs) {
         continue;
       }
 
@@ -178,7 +178,7 @@ export class FrameSampleOrchestrator {
       }
 
       const manifest = getTransitionManifest(transition.type);
-      const rawProgress = Math.max(0, Math.min(1, localTimeUs / transition.durationUs));
+      const rawProgress = Math.max(0, Math.min(1, localTimeTicks / transition.durationUs));
       const shadowAlpha = manifest
         ? manifest.computeOutOpacity(
             rawProgress,
@@ -216,32 +216,38 @@ export class FrameSampleOrchestrator {
       const speedRaw = Number(prevClip.speed);
       const sourceSpeed = Number.isFinite(speedRaw) && speedRaw !== 0 ? Math.abs(speedRaw) : 1;
       const reversed = Number.isFinite(speedRaw) && speedRaw < 0;
-      const sourceDeltaUs = Math.max(0, Math.round(localTimeUs * sourceSpeed));
+      const sourceDeltaTicks = Math.max(0, Math.round(localTimeTicks * sourceSpeed));
 
       // Handle = unread source material on the side we're about to extend into.
       // Forward playback consumes the trailing handle; reversed consumes leading.
-      const trailingHandleUs = Math.max(
+      const trailingHandleTicks = Math.max(
         0,
         prevClip.sourceDurationUs - prevClip.sourceStartUs - prevClip.sourceRangeDurationUs,
       );
-      const leadingHandleUs = Math.max(0, prevClip.sourceStartUs);
-      const handleUs = reversed ? leadingHandleUs : trailingHandleUs;
+      const leadingHandleTicks = Math.max(0, prevClip.sourceStartUs);
+      const handleTicks = reversed ? leadingHandleTicks : trailingHandleTicks;
 
-      const lastReadableSourceUs = clampToLastReadableSourceUs(
+      const lastReadableSourceTicks = clampToLastReadableSourceTicks(
         prevClip.sourceDurationUs,
         prevClip.frameRate,
       );
 
-      if (handleUs < MIN_SOURCE_HANDLE_US) {
-        const sourceRangeEndUs = prevClip.sourceStartUs + prevClip.sourceRangeDurationUs;
-        const lastUs = reversed
-          ? Math.max(0, Math.min(sourceRangeEndUs, prevClip.sourceStartUs + MIN_SOURCE_HANDLE_US))
-          : Math.max(0, Math.min(lastReadableSourceUs, sourceRangeEndUs - MIN_SOURCE_HANDLE_US));
+      if (handleTicks < MIN_SOURCE_HANDLE_TICKS) {
+        const sourceRangeEndTicks = prevClip.sourceStartUs + prevClip.sourceRangeDurationUs;
+        const lastTicks = reversed
+          ? Math.max(
+              0,
+              Math.min(sourceRangeEndTicks, prevClip.sourceStartUs + MIN_SOURCE_HANDLE_TICKS),
+            )
+          : Math.max(
+              0,
+              Math.min(lastReadableSourceTicks, sourceRangeEndTicks - MIN_SOURCE_HANDLE_TICKS),
+            );
         requests.push(
           this.createSampleRequest({
             clip: prevClip,
             key: prevClip.itemId + '_shadow_end',
-            sampleTimeS: lastUs / TICKS_PER_SECOND,
+            sampleTimeS: lastTicks / TICKS_PER_SECOND,
             timelineTimeUs: params.timeUs,
             monitorSyncMode: params.monitorSyncMode,
             createAbortController: params.createAbortController,
@@ -252,16 +258,16 @@ export class FrameSampleOrchestrator {
         continue;
       }
 
-      const sourceRangeEndUs = prevClip.sourceStartUs + prevClip.sourceRangeDurationUs;
-      const sampleUs = reversed
-        ? Math.max(0, prevClip.sourceStartUs - sourceDeltaUs)
-        : Math.min(sourceRangeEndUs + sourceDeltaUs, lastReadableSourceUs);
+      const sourceRangeEndTicks = prevClip.sourceStartUs + prevClip.sourceRangeDurationUs;
+      const sampleTicks = reversed
+        ? Math.max(0, prevClip.sourceStartUs - sourceDeltaTicks)
+        : Math.min(sourceRangeEndTicks + sourceDeltaTicks, lastReadableSourceTicks);
 
       requests.push(
         this.createSampleRequest({
           clip: prevClip,
           key: prevClip.itemId + '_shadow_overrun',
-          sampleTimeS: Math.max(0, sampleUs / TICKS_PER_SECOND),
+          sampleTimeS: Math.max(0, sampleTicks / TICKS_PER_SECOND),
           timelineTimeUs: params.timeUs,
           monitorSyncMode: params.monitorSyncMode,
           createAbortController: params.createAbortController,

@@ -38,7 +38,7 @@ const NATIVE_TIME_STORE_SYNC_MS = 50;
 // During playback, small currentTime adjustments (within this window) are treated as
 // local-tick noise rather than a real seek — otherwise the native side would jump on every
 // master-clock tick. Large jumps (playhead drag) are treated as a real seek.
-const PLAYING_SEEK_IGNORE_US = 200_000 * TICKS_PER_MICROSECOND;
+const PLAYING_SEEK_IGNORE_TICKS = 200_000 * TICKS_PER_MICROSECOND;
 // After any interactive action while paused (scrubbing, dragging clip parameters —
 // transforms/effects/transitions, the moment playback stops), the frame is first rendered
 // in the user-selected quality (cheap, no lag), and only rebuilt in ultra once activity has
@@ -56,12 +56,12 @@ export function isNativeMonitorSceneReady(params: {
 }
 
 export function shouldSyncNativeMonitorTime(params: {
-  diffUs: number;
+  diffTicks: number;
   nowMs: number;
   lastSyncMs: number;
 }): boolean {
-  if (params.diffUs < 500 * TICKS_PER_MICROSECOND) return false;
-  if (params.diffUs > 100_000 * TICKS_PER_MICROSECOND) return true;
+  if (params.diffTicks < 500 * TICKS_PER_MICROSECOND) return false;
+  if (params.diffTicks > 100_000 * TICKS_PER_MICROSECOND) return true;
   return params.nowMs - params.lastSyncMs >= NATIVE_TIME_STORE_SYNC_MS;
 }
 
@@ -478,7 +478,7 @@ export function useNativeMonitorBridge(): void {
           : 1;
         const expectedUs =
           playbackAnchorUs + (performance.now() - playbackAnchorWallMs) * 1000 * speed;
-        if (Math.abs(t - expectedUs) <= PLAYING_SEEK_IGNORE_US) {
+        if (Math.abs(t - expectedUs) <= PLAYING_SEEK_IGNORE_TICKS) {
           return;
         }
       }
@@ -528,7 +528,7 @@ export function useNativeMonitorBridge(): void {
   void onMonitorTime((timelineSec) => {
     if (disposed) return;
     const timelineUs = secondsToTicks({ seconds: timelineSec });
-    const diffUs = Math.abs(timelineUs - timelineStore.currentTime);
+    const diffTicks = Math.abs(timelineUs - timelineStore.currentTime);
     const nowMs = performance.now();
     // Any native time means playback actually started — clear the deferred-start
     // guard up front, even when the sync itself is throttled below (the first tick
@@ -541,7 +541,7 @@ export function useNativeMonitorBridge(): void {
     }
     if (
       !shouldSyncNativeMonitorTime({
-        diffUs,
+        diffTicks,
         nowMs,
         lastSyncMs: lastNativeTimeStoreSyncMs,
       })

@@ -27,7 +27,7 @@ const log = createDevLogger('ExportVideoPassthrough');
  */
 
 /** Frame-ish tolerance for duration comparisons (~one 24fps frame, in ticks). */
-const DURATION_EPSILON_US = 42_000 * TICKS_PER_MICROSECOND;
+const DURATION_EPSILON_TICKS = 42_000 * TICKS_PER_MICROSECOND;
 
 /** How far the source bitrate may exceed the requested one before passthrough
  * would violate the user's compression intent and we re-encode instead. */
@@ -192,22 +192,22 @@ export function findVideoPassthroughCandidate(params: {
     return { ok: false, reason: 'clip has source orientation rotation' };
   }
 
-  const timelineStartUs = Number(clip.timelineRange?.startUs ?? 0);
-  const timelineDurationUs = Number(clip.timelineRange?.durationUs ?? 0);
-  if (timelineStartUs > DURATION_EPSILON_US) {
+  const timelineStartTicks = Number(clip.timelineRange?.startUs ?? 0);
+  const timelineDurationTicks = Number(clip.timelineRange?.durationUs ?? 0);
+  if (timelineStartTicks > DURATION_EPSILON_TICKS) {
     return { ok: false, reason: 'clip does not start at timeline zero' };
   }
-  if (timelineDurationUs + DURATION_EPSILON_US < maxDurationUs) {
+  if (timelineDurationTicks + DURATION_EPSILON_TICKS < maxDurationUs) {
     return { ok: false, reason: 'clip does not cover the whole export' };
   }
 
   // With speed 1 the timeline and source windows must agree; a mismatch means
   // some engine-side stretching/holding would happen that a copy can't express.
-  const sourceRangeDurationUs = Number(clip.sourceRange?.durationUs ?? 0);
-  if (Math.abs(sourceRangeDurationUs - timelineDurationUs) > DURATION_EPSILON_US) {
+  const sourceRangeDurationTicks = Number(clip.sourceRange?.durationUs ?? 0);
+  if (Math.abs(sourceRangeDurationTicks - timelineDurationTicks) > DURATION_EPSILON_TICKS) {
     return { ok: false, reason: 'timeline and source windows disagree' };
   }
-  if (!(sourceRangeDurationUs > 0)) {
+  if (!(sourceRangeDurationTicks > 0)) {
     return { ok: false, reason: 'empty source range' };
   }
 

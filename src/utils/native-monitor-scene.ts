@@ -45,6 +45,8 @@ import {
 import { isImagePath } from '~/utils/media-types';
 import { clampFinite } from '~/utils/math';
 
+const MIN_ADJACENT_CLIP_SEARCH_TICKS = 1_000 * TICKS_PER_MICROSECOND;
+
 export { buildNativeAudioEffectSpecs };
 
 // Preload Tauri path helper so we don't dynamic-import it per clip.
@@ -179,16 +181,17 @@ function findPreviousAdjacentClip(
       if (candidate.trackId !== clip.trackId || candidate.id === clip.id) {
         return false;
       }
-      const candidateEndUs = candidate.timelineRange.startUs + candidate.timelineRange.durationUs;
+      const candidateEndTicks =
+        candidate.timelineRange.startUs + candidate.timelineRange.durationUs;
       return (
         candidate.timelineRange.startUs < clip.timelineRange.startUs &&
-        candidateEndUs >= clip.timelineRange.startUs - 1_000 * TICKS_PER_MICROSECOND
+        candidateEndTicks >= clip.timelineRange.startUs - MIN_ADJACENT_CLIP_SEARCH_TICKS
       );
     })
     .sort((a, b) => {
-      const aEndUs = a.timelineRange.startUs + a.timelineRange.durationUs;
-      const bEndUs = b.timelineRange.startUs + b.timelineRange.durationUs;
-      return bEndUs - aEndUs;
+      const aEndTicks = a.timelineRange.startUs + a.timelineRange.durationUs;
+      const bEndTicks = b.timelineRange.startUs + b.timelineRange.durationUs;
+      return bEndTicks - aEndTicks;
     })[0];
 }
 
@@ -196,7 +199,7 @@ function findNextAdjacentClip(
   clip: WorkerTimelineClip,
   allClips: WorkerTimelineClip[],
 ): WorkerTimelineClip | undefined {
-  const clipEndUs = clip.timelineRange.startUs + clip.timelineRange.durationUs;
+  const clipEndTicks = clip.timelineRange.startUs + clip.timelineRange.durationUs;
   return allClips
     .filter((candidate) => {
       if (candidate.trackId !== clip.trackId || candidate.id === clip.id) {
@@ -204,7 +207,7 @@ function findNextAdjacentClip(
       }
       return (
         candidate.timelineRange.startUs > clip.timelineRange.startUs &&
-        candidate.timelineRange.startUs <= clipEndUs + 1_000 * TICKS_PER_MICROSECOND
+        candidate.timelineRange.startUs <= clipEndTicks + MIN_ADJACENT_CLIP_SEARCH_TICKS
       );
     })
     .sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs)[0];

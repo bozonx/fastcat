@@ -1,15 +1,15 @@
 import { TICKS_PER_MICROSECOND, TICKS_PER_SECOND } from '~/utils/time';
 
-export interface ResolveClipSourceTimeUsParams {
-  localTimeUs: number;
-  sourceStartUs: number;
-  sourceRangeDurationUs: number;
+export interface ResolveClipSourceTimeTicksParams {
+  localTimeTicks: number;
+  sourceStartTicks: number;
+  sourceRangeDurationTicks: number;
   speed?: number;
   frameRate?: number;
 }
 
 /** 1 ms guard expressed in canonical timeline ticks. */
-export const MIN_SOURCE_TIME_END_GUARD_US = 1_000 * TICKS_PER_MICROSECOND;
+export const MIN_SOURCE_TIME_END_GUARD_TICKS = 1_000 * TICKS_PER_MICROSECOND;
 
 export function normalizeClipSpeed(speed: unknown): number {
   return typeof speed === 'number' && Number.isFinite(speed) && speed !== 0
@@ -17,30 +17,30 @@ export function normalizeClipSpeed(speed: unknown): number {
     : 1;
 }
 
-export function clampToLastReadableSourceUs(durationUs: number, frameRate?: number): number {
-  const halfFrameUs =
+export function clampToLastReadableSourceTicks(durationTicks: number, frameRate?: number): number {
+  const halfFrameTicks =
     typeof frameRate === 'number' && Number.isFinite(frameRate) && frameRate > 0
       ? Math.round(TICKS_PER_SECOND / (2 * frameRate))
       : 0;
-  const guard = Math.max(MIN_SOURCE_TIME_END_GUARD_US, halfFrameUs);
-  return Math.max(0, Math.round(durationUs) - guard);
+  const guard = Math.max(MIN_SOURCE_TIME_END_GUARD_TICKS, halfFrameTicks);
+  return Math.max(0, Math.round(durationTicks) - guard);
 }
 
-export function resolveClipSourceTimeUs(params: ResolveClipSourceTimeUsParams): number {
-  const sourceStartUs = Math.max(0, Math.round(params.sourceStartUs));
-  const sourceRangeDurationUs = Math.max(0, Math.round(params.sourceRangeDurationUs));
-  if (sourceRangeDurationUs <= 0) return sourceStartUs;
+export function resolveClipSourceTimeTicks(params: ResolveClipSourceTimeTicksParams): number {
+  const sourceStartTicks = Math.max(0, Math.round(params.sourceStartTicks));
+  const sourceRangeDurationTicks = Math.max(0, Math.round(params.sourceRangeDurationTicks));
+  if (sourceRangeDurationTicks <= 0) return sourceStartTicks;
 
   const speed = normalizeClipSpeed(params.speed);
   const absSpeed = Math.abs(speed);
-  const localTimeUs = Math.max(0, Math.round(params.localTimeUs));
-  const sourceDeltaUs = Math.round(localTimeUs * absSpeed);
-  const lastRangeUs = clampToLastReadableSourceUs(sourceRangeDurationUs, params.frameRate);
+  const localTimeTicks = Math.max(0, Math.round(params.localTimeTicks));
+  const sourceDeltaTicks = Math.round(localTimeTicks * absSpeed);
+  const lastRangeTicks = clampToLastReadableSourceTicks(sourceRangeDurationTicks, params.frameRate);
 
-  const sourceOffsetUs =
+  const sourceOffsetTicks =
     speed < 0
-      ? Math.max(0, lastRangeUs - sourceDeltaUs)
-      : Math.min(lastRangeUs, Math.max(0, sourceDeltaUs));
+      ? Math.max(0, lastRangeTicks - sourceDeltaTicks)
+      : Math.min(lastRangeTicks, Math.max(0, sourceDeltaTicks));
 
-  return sourceStartUs + sourceOffsetUs;
+  return sourceStartTicks + sourceOffsetTicks;
 }

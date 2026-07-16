@@ -160,17 +160,17 @@ describe('resolveNativeAudioTrackSelection', () => {
 
 describe('shouldSyncNativeMonitorTime', () => {
   it('throttles small native time updates', () => {
-    expect(shouldSyncNativeMonitorTime({ diffUs: 300, nowMs: 100, lastSyncMs: 0 })).toBe(false);
+    expect(shouldSyncNativeMonitorTime({ diffTicks: 300, nowMs: 100, lastSyncMs: 0 })).toBe(false);
     expect(
       shouldSyncNativeMonitorTime({
-        diffUs: 10_000 * TICKS_PER_MICROSECOND,
+        diffTicks: 10_000 * TICKS_PER_MICROSECOND,
         nowMs: 120,
         lastSyncMs: 100,
       }),
     ).toBe(false);
     expect(
       shouldSyncNativeMonitorTime({
-        diffUs: 10_000 * TICKS_PER_MICROSECOND,
+        diffTicks: 10_000 * TICKS_PER_MICROSECOND,
         nowMs: 160,
         lastSyncMs: 100,
       }),
@@ -180,7 +180,7 @@ describe('shouldSyncNativeMonitorTime', () => {
   it('forces large native time jumps through the throttle', () => {
     expect(
       shouldSyncNativeMonitorTime({
-        diffUs: 120_000 * TICKS_PER_MICROSECOND,
+        diffTicks: 120_000 * TICKS_PER_MICROSECOND,
         nowMs: 120,
         lastSyncMs: 100,
       }),

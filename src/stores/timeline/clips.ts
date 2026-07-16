@@ -18,7 +18,7 @@ import {
 import { isClipFrameAligned } from '~/utils/timeline/clip-capabilities';
 import { CLIP_AUDIO_GAIN_MAX } from '~/utils/audio/envelope';
 import { cloneValue } from '~/utils/clone';
-import { resolveClipSourceTimeUs } from '~/utils/video-editor/source-time';
+import { resolveClipSourceTimeTicks } from '~/utils/video-editor/source-time';
 
 export interface TimelineClipClipboardItem {
   sourceTrackId: string;
@@ -1093,10 +1093,10 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
     if (!usePlayhead) return;
 
     const localUs = playheadUs - clipStartUs;
-    const sourceUsRaw = resolveClipSourceTimeUs({
-      localTimeUs: localUs,
-      sourceStartUs: item.sourceRange.startUs,
-      sourceRangeDurationUs: item.sourceRange.durationUs,
+    const sourceUsRaw = resolveClipSourceTimeTicks({
+      localTimeTicks: localUs,
+      sourceStartTicks: item.sourceRange.startUs,
+      sourceRangeDurationTicks: item.sourceRange.durationUs,
       speed: item.speed,
       frameRate: fps,
     });
