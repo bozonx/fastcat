@@ -9,7 +9,7 @@ import {
 
 interface UseClipTransitionsOptions {
   clip: Ref<TimelineClipItem | null>;
-  defaultDurationUs: Ref<number>;
+  defaultDurationTicks: Ref<number>;
   selectTransition: (payload: { trackId: string; itemId: string; edge: 'in' | 'out' }) => void;
   selectTimelineTransition: (trackId: string, itemId: string, edge: 'in' | 'out') => void;
   updateClipTransition: (
@@ -71,19 +71,19 @@ export function useClipTransitions(options: UseClipTransitionsOptions) {
       return;
     }
 
-    const clipDurationUs = Math.max(0, Math.round(Number(clip.timelineRange?.durationUs ?? 0)));
-    const safeDefaultDurationUs = Math.max(
+    const clipDurationTicks = Math.max(0, Math.round(Number(clip.timelineRange?.durationTicks ?? 0)));
+    const safeDefaultDurationTicks = Math.max(
       0,
-      Math.round(Number(options.defaultDurationUs.value ?? 0)),
+      Math.round(Number(options.defaultDurationTicks.value ?? 0)),
     );
-    const suggestedDurationUs =
-      clipDurationUs > 0 && clipDurationUs < safeDefaultDurationUs
-        ? Math.round(clipDurationUs * 0.3)
-        : safeDefaultDurationUs;
+    const suggestedDurationTicks =
+      clipDurationTicks > 0 && clipDurationTicks < safeDefaultDurationTicks
+        ? Math.round(clipDurationTicks * 0.3)
+        : safeDefaultDurationTicks;
 
     const transition = {
       type: 'dissolve',
-      durationUs: suggestedDurationUs,
+      durationTicks: suggestedDurationTicks,
       mode: DEFAULT_TRANSITION_MODE,
       curve: DEFAULT_TRANSITION_CURVE,
     } satisfies import('~/timeline/types').ClipTransition;
@@ -104,7 +104,7 @@ export function useClipTransitions(options: UseClipTransitionsOptions) {
       edge,
       transition: {
         ...current,
-        durationUs: Math.round(durationSec * TICKS_PER_SECOND),
+        durationTicks: Math.round(durationSec * TICKS_PER_SECOND),
       },
     });
   }

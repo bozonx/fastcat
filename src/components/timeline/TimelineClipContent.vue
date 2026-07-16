@@ -51,7 +51,7 @@ const props = defineProps<{
   /** When true the clip is too short for a content band: only the header shows. */
   isHeaderOnly: boolean;
   effectiveClipItem: TimelineClipItem | null;
-  effectiveTimelineStartUs: number;
+  effectiveTimelineStartTicks: number;
   clipWidthPx: number;
   zoom: number;
   scrollLeft: number;
@@ -85,7 +85,7 @@ const toolbarStyle = computed(() => {
   const viewportWidth = props.viewportWidth;
   const clipWidthPx = props.clipWidthPx;
 
-  const clipLeftPx = Math.round(timeUsToPx(props.effectiveTimelineStartUs, zoom));
+  const clipLeftPx = Math.round(timeUsToPx(props.effectiveTimelineStartTicks, zoom));
   const clipRightPx = clipLeftPx + clipWidthPx;
   const viewportRightPx = scrollLeft + viewportWidth;
 
@@ -108,7 +108,7 @@ const titleStyle = computed(() => {
   const viewportWidth = props.viewportWidth;
   const clipWidthPx = props.clipWidthPx;
 
-  const clipLeftPx = Math.round(timeUsToPx(props.effectiveTimelineStartUs, zoom));
+  const clipLeftPx = Math.round(timeUsToPx(props.effectiveTimelineStartTicks, zoom));
   const clipRightPx = clipLeftPx + clipWidthPx;
   const viewportRightPx = scrollLeft + viewportWidth;
 
@@ -235,7 +235,7 @@ const titleStyle = computed(() => {
         :width="clipWidthPx"
         :scroll-left="scrollLeft"
         :viewport-width="viewportWidth"
-        :clip-start-px="timeUsToPx(effectiveTimelineStartUs, zoom)"
+        :clip-start-px="timeUsToPx(effectiveTimelineStartTicks, zoom)"
       />
       <TimelineAudioWaveform
         v-if="

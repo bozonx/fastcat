@@ -81,7 +81,7 @@ async function handleAdd() {
   try {
     let targetTrackId = selectedTrackId.value;
 
-    const startUs = timelineStore.currentTime;
+    const startTicks = timelineStore.currentTime;
 
     // Handle "new" track creation
     if (targetTrackId === 'new') {
@@ -138,14 +138,14 @@ async function handleAdd() {
           trackId: trackIdForThisEntry,
           name: entry.name,
           path: entry.path,
-          startUs,
+          startTicks,
         });
       } else {
         await timelineStore.addClipToTimelineFromPath({
           trackId: trackIdForThisEntry,
           name: entry.name,
           path: entry.path,
-          startUs,
+          startTicks,
         });
       }
     }

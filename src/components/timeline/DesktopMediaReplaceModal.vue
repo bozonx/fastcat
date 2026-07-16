@@ -124,14 +124,14 @@ async function handleSelectFile(entry: FsEntry) {
 
     const clip = track?.items.find((it) => it.id === target.itemId);
     const durationS = Number(metadata?.duration);
-    const newSourceDurationUs =
+    const newSourceDurationTicks =
       metadata && Number.isFinite(durationS) && durationS > 0
         ? Math.floor(durationS * TICKS_PER_SECOND)
         : 0;
 
     const properties =
       clip && clip.kind === 'clip' && clip.clipType === 'media'
-        ? buildReplaceMediaPatch({ clip, newPath: entry.path!, newSourceDurationUs })
+        ? buildReplaceMediaPatch({ clip, newPath: entry.path!, newSourceDurationTicks })
         : { source: { path: entry.path! } };
 
     timelineStore.updateClipProperties(target.trackId, target.itemId, properties);

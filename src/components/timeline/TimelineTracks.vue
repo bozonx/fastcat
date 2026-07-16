@@ -57,14 +57,14 @@ const props = defineProps<{
   viewportWidth?: number;
   dragPreview?: {
     trackId: string;
-    startUs: number;
+    startTicks: number;
     label: string;
-    durationUs: number;
+    durationTicks: number;
     kind: 'timeline-clip' | 'file';
     invalid?: boolean;
   } | null;
-  movePreview?: { itemId: string; trackId: string; startUs: number; isCollision?: boolean }[];
-  slipPreview?: { itemId: string; trackId: string; deltaUs: number; timecode: string } | null;
+  movePreview?: { itemId: string; trackId: string; startTicks: number; isCollision?: boolean }[];
+  slipPreview?: { itemId: string; trackId: string; deltaTicks: number; timecode: string } | null;
   trimPreview?: TimelineTrimPreview[] | null;
   draggingMode?: 'move' | 'slip' | 'trim_start' | 'trim_end' | null;
   draggingItemId?: string | null;
@@ -76,16 +76,16 @@ const props = defineProps<{
   pastePreviews?:
     | {
         trackId: string;
-        startUs: number;
-        durationUs: number;
+        startTicks: number;
+        durationTicks: number;
         label: string;
       }[]
     | null;
   sourcePreviews?:
     | {
         trackId: string;
-        startUs: number;
-        durationUs: number;
+        startTicks: number;
+        durationTicks: number;
         label: string;
       }[]
     | null;
@@ -159,8 +159,8 @@ const { resizeVolume, startResizeVolume, startResizeFade, startResizeTransition 
   );
 
 const timelineWidthPx = computed(() => {
-  const maxUs = timelineStore.duration + 30_000_000;
-  return timeUsToPx(maxUs, timelineStore.timelineZoom);
+  const maxTicks = timelineStore.duration + 30_000_000;
+  return timeUsToPx(maxTicks, timelineStore.timelineZoom);
 });
 
 const timelineContentStyle = computed(() => {
@@ -181,8 +181,8 @@ const selectionRangeStyle = computed(() => {
   const range = timelineStore.getSelectionRange();
   if (!range) return null;
   return {
-    left: `${timeUsToPx(range.startUs, timelineStore.timelineZoom)}px`,
-    width: `${Math.max(1, timeUsToPx(range.endUs - range.startUs, timelineStore.timelineZoom))}px`,
+    left: `${timeUsToPx(range.startTicks, timelineStore.timelineZoom)}px`,
+    width: `${Math.max(1, timeUsToPx(range.endTicks - range.startTicks, timelineStore.timelineZoom))}px`,
   };
 });
 
@@ -213,7 +213,7 @@ const trimPreviewMemoByTrack = computed(() => {
     let parts = '';
     for (const item of track.items) {
       const p = byItemId[item.id];
-      if (p) parts += `${item.id}:${p.startUs}:${p.durationUs},`;
+      if (p) parts += `${item.id}:${p.startTicks}:${p.durationTicks},`;
     }
     if (parts) map[track.id] = parts;
   }
@@ -491,13 +491,13 @@ watch(
         trackViewModel.clipRenderMemo,
         movePreviewMemoByTrack[trackViewModel.track.id] ?? null,
         dragPreview?.trackId === trackViewModel.track.id
-          ? `${dragPreview.startUs}:${dragPreview.invalid ? 'invalid' : 'valid'}`
+          ? `${dragPreview.startTicks}:${dragPreview.invalid ? 'invalid' : 'valid'}`
           : null,
         draggingItemTrackId === trackViewModel.track.id ? draggingItemId : null,
         movePreviewSourceTracks.has(trackViewModel.track.id)
           ? (movePreviewMemoByTrack[trackViewModel.track.id] ?? null)
           : null,
-        slipPreviewTrackId === trackViewModel.track.id ? (slipPreview?.deltaUs ?? null) : null,
+        slipPreviewTrackId === trackViewModel.track.id ? (slipPreview?.deltaTicks ?? null) : null,
         trimPreviewMemoByTrack[trackViewModel.track.id] ?? null,
         selectionRenderMemoByTrack[trackViewModel.track.id] ?? null,
         selectedTransition?.trackId === trackViewModel.track.id
@@ -505,11 +505,11 @@ watch(
           : null,
         props.pastePreviews
           ?.filter((p) => p.trackId === trackViewModel.track.id)
-          .map((p) => `${p.startUs}:${p.durationUs}`)
+          .map((p) => `${p.startTicks}:${p.durationTicks}`)
           .join(',') ?? '',
         props.sourcePreviews
           ?.filter((p) => p.trackId === trackViewModel.track.id)
-          .map((p) => `${p.startUs}:${p.durationUs}`)
+          .map((p) => `${p.startTicks}:${p.durationTicks}`)
           .join(',') ?? '',
       ]"
       :data-track-id="trackViewModel.track.id"
@@ -550,8 +550,8 @@ watch(
               : 'bg-ui-bg-accent border border-ui-border'
         "
         :style="{
-          left: `${timeUsToPx(dragPreview.startUs, timelineStore.timelineZoom)}px`,
-          width: `${Math.max(2, timeUsToPx(dragPreview.durationUs, timelineStore.timelineZoom))}px`,
+          left: `${timeUsToPx(dragPreview.startTicks, timelineStore.timelineZoom)}px`,
+          width: `${Math.max(2, timeUsToPx(dragPreview.durationTicks, timelineStore.timelineZoom))}px`,
         }"
       >
         <span class="truncate" :title="dragPreview.label">{{ dragPreview.label }}</span>
@@ -566,8 +566,8 @@ watch(
           :key="`source-${trackViewModel.track.id}-${index}`"
           class="absolute top-0.5 bottom-0.5 rounded px-2 flex items-center text-xs text-zinc-400/95 z-20 pointer-events-none opacity-50 border-2 border-dashed border-zinc-500/50 bg-zinc-600/10"
           :style="{
-            left: `${timeUsToPx(sourcePreview.startUs, timelineStore.timelineZoom)}px`,
-            width: `${Math.max(2, timeUsToPx(sourcePreview.durationUs, timelineStore.timelineZoom))}px`,
+            left: `${timeUsToPx(sourcePreview.startTicks, timelineStore.timelineZoom)}px`,
+            width: `${Math.max(2, timeUsToPx(sourcePreview.durationTicks, timelineStore.timelineZoom))}px`,
           }"
         >
           <span class="truncate">{{ sourcePreview.label }}</span>
@@ -583,8 +583,8 @@ watch(
           :key="`paste-${trackViewModel.track.id}-${index}`"
           class="absolute top-0.5 bottom-0.5 rounded px-2 flex items-center text-xs text-zinc-100 z-30 pointer-events-none opacity-75 border-2 border-dashed border-primary-500/80 bg-primary-600/20 backdrop-blur-[1px]"
           :style="{
-            left: `${timeUsToPx(pastePreview.startUs, timelineStore.timelineZoom)}px`,
-            width: `${Math.max(2, timeUsToPx(pastePreview.durationUs, timelineStore.timelineZoom))}px`,
+            left: `${timeUsToPx(pastePreview.startTicks, timelineStore.timelineZoom)}px`,
+            width: `${Math.max(2, timeUsToPx(pastePreview.durationTicks, timelineStore.timelineZoom))}px`,
           }"
         >
           <UIcon
@@ -605,7 +605,7 @@ watch(
           {
             ...previewItem,
             id: 'preview-' + previewItem.id,
-            timelineRange: { ...previewItem.timelineRange, startUs: preview.startUs },
+            timelineRange: { ...previewItem.timelineRange, startTicks: preview.startTicks },
           } as TimelineTrackItem
         "
         :track-height="trackViewModel.height"

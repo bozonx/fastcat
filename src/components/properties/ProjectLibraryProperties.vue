@@ -43,8 +43,8 @@ const mockClip = computed(() => {
     name: 'Mock',
     kind: 'clip' as const,
     clipType: props.itemKind as string,
-    timelineRange: { startUs: 0, durationUs: 5 * TICKS_PER_SECOND },
-    sourceRange: { startUs: 0, durationUs: 5 * TICKS_PER_SECOND },
+    timelineRange: { startTicks: 0, durationTicks: 5 * TICKS_PER_SECOND },
+    sourceRange: { startTicks: 0, durationTicks: 5 * TICKS_PER_SECOND },
   };
 
   if (props.itemKind === 'text') {

@@ -243,7 +243,7 @@ export function createTimelineSelectionModule(
     const doc = deps.timelineDoc.value;
     if (!doc) return;
 
-    const playheadUs = deps.currentTime.value;
+    const playheadTicks = deps.currentTime.value;
     const trackIds = params.trackId ? new Set([params.trackId]) : null;
     const items = doc.tracks.flatMap((track) => {
       if (trackIds && !trackIds.has(track.id)) return [];
@@ -252,14 +252,14 @@ export function createTimelineSelectionModule(
         .filter((item) => {
           if (item.kind !== 'clip') return false;
 
-          const startUs = item.timelineRange.startUs;
-          const endUs = startUs + item.timelineRange.durationUs;
+          const startTicks = item.timelineRange.startTicks;
+          const endTicks = startTicks + item.timelineRange.durationTicks;
 
           if (params.direction === 'left') {
-            return endUs <= playheadUs;
+            return endTicks <= playheadTicks;
           }
 
-          return startUs >= playheadUs;
+          return startTicks >= playheadTicks;
         })
         .map((item) => item.id);
     });
@@ -284,12 +284,12 @@ export function createTimelineSelectionModule(
     const track = doc.tracks.find((t) => t.id === trackId) ?? null;
     if (!track) return null;
 
-    const atUs = deps.currentTime.value;
+    const atTicks = deps.currentTime.value;
     for (const it of track.items) {
       if (it.kind !== 'clip') continue;
-      const startUs = it.timelineRange.startUs;
-      const endUs = startUs + it.timelineRange.durationUs;
-      if (atUs >= startUs && atUs < endUs) {
+      const startTicks = it.timelineRange.startTicks;
+      const endTicks = startTicks + it.timelineRange.durationTicks;
+      if (atTicks >= startTicks && atTicks < endTicks) {
         return { trackId: track.id, itemId: it.id };
       }
     }

@@ -67,7 +67,7 @@ export interface TimelinePersistenceDeps {
     parseOptions?: { logWarnings?: boolean },
   ) => TimelineDocument;
   serializeTimelineToOtio: (doc: TimelineDocument) => string;
-  selectTimelineDurationUs: (doc: TimelineDocument) => number;
+  selectTimelineDurationTicks: (doc: TimelineDocument) => number;
 
   shouldRestoreAutosaveSilently?: () => boolean | undefined;
   /**
@@ -412,7 +412,7 @@ export function createTimelinePersistenceModule(
       }
 
       deps.timelineDoc.value = parsed;
-      deps.duration.value = deps.selectTimelineDurationUs(parsed);
+      deps.duration.value = deps.selectTimelineDurationTicks(parsed);
       deps.currentTime.value = Math.min(
         Math.max(0, Math.round(deps.currentTime.value)),
         Math.max(0, Math.round(deps.duration.value)),
@@ -730,7 +730,7 @@ export function createTimelinePersistenceModule(
       > | null;
 
       deps.markProgrammaticSeek();
-      deps.currentTime.value = Number(session?.playheadUs ?? 0);
+      deps.currentTime.value = Number(session?.playheadTicks ?? 0);
       deps.masterGain.value = Number(session?.masterGain ?? 1);
       if (deps.audioMuted) deps.audioMuted.value = Boolean(session?.masterMuted ?? false);
       deps.timelineZoom.value = Number(session?.zoom ?? TIMELINE_DEFAULTS.ZOOM);
@@ -745,8 +745,8 @@ export function createTimelinePersistenceModule(
       if (deps.selectionRange) {
         deps.selectionRange.value = session?.selectionRange
           ? ({ ...(session.selectionRange as Record<string, unknown>) } as {
-              startUs: number;
-              endUs: number;
+              startTicks: number;
+              endTicks: number;
             })
           : null;
       }
@@ -757,7 +757,7 @@ export function createTimelinePersistenceModule(
     } finally {
       if (requestId === loadTimelineRequestId) {
         deps.duration.value = deps.timelineDoc.value
-          ? deps.selectTimelineDurationUs(deps.timelineDoc.value)
+          ? deps.selectTimelineDurationTicks(deps.timelineDoc.value)
           : 0;
         deps.currentTime.value = Math.min(
           Math.max(0, Math.round(deps.currentTime.value)),

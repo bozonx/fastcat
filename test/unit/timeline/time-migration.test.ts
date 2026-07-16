@@ -14,7 +14,7 @@ describe('migrateLegacyOtioMetadataToTicks', () => {
       metadata: {
         fastcat: {
           version: 1,
-          document: { selectionRange: { startUs: 10, endUs: 20 } },
+          document: { selectionRange: { startTicks: 10, endTicks: 20 } },
         },
       },
       tracks: {
@@ -22,8 +22,8 @@ describe('migrateLegacyOtioMetadataToTicks', () => {
           {
             metadata: {
               fastcat: {
-                roundtrip: { timelineRange: { startUs: 30, durationUs: 40 } },
-                animations: { opacity: { keyframes: [{ tUs: 50, value: 1 }] } },
+                roundtrip: { timelineRange: { startTicks: 30, durationTicks: 40 } },
+                animations: { opacity: { keyframes: [{ tTicks: 50, value: 1 }] } },
               },
             },
             source_range: { duration: { value: 60, rate: 1_000_000 } },
@@ -34,14 +34,14 @@ describe('migrateLegacyOtioMetadataToTicks', () => {
 
     expect(migrateLegacyOtioMetadataToTicks(timeline)).toBe(true);
     expect(timeline.metadata.fastcat.document.selectionRange).toEqual({
-      startUs: 10 * TICKS_PER_MICROSECOND,
-      endUs: 20 * TICKS_PER_MICROSECOND,
+      startTicks: 10 * TICKS_PER_MICROSECOND,
+      endTicks: 20 * TICKS_PER_MICROSECOND,
     });
     expect(timeline.tracks.children[0].metadata.fastcat.roundtrip.timelineRange).toEqual({
-      startUs: 30 * TICKS_PER_MICROSECOND,
-      durationUs: 40 * TICKS_PER_MICROSECOND,
+      startTicks: 30 * TICKS_PER_MICROSECOND,
+      durationTicks: 40 * TICKS_PER_MICROSECOND,
     });
-    expect(timeline.tracks.children[0].metadata.fastcat.animations.opacity.keyframes[0].tUs).toBe(
+    expect(timeline.tracks.children[0].metadata.fastcat.animations.opacity.keyframes[0].tTicks).toBe(
       50 * TICKS_PER_MICROSECOND,
     );
     expect(timeline.tracks.children[0].source_range.duration.value).toBe(60);
@@ -52,13 +52,13 @@ describe('migrateLegacyOtioMetadataToTicks', () => {
       metadata: {
         fastcat: {
           version: TIMELINE_TICKS_DOCUMENT_VERSION,
-          document: { selectionRange: { startUs: 254_016 } },
+          document: { selectionRange: { startTicks: 254_016 } },
         },
       },
     };
 
     expect(migrateLegacyOtioMetadataToTicks(timeline)).toBe(false);
-    expect(timeline.metadata.fastcat.document.selectionRange.startUs).toBe(254_016);
+    expect(timeline.metadata.fastcat.document.selectionRange.startTicks).toBe(254_016);
   });
 
   it('migrates legacy metadata and RationalTime values exactly once on import', () => {
@@ -89,10 +89,10 @@ describe('migrateLegacyOtioMetadataToTicks', () => {
                     fastcat: {
                       id: 'c1',
                       clipType: 'media',
-                      source: { durationUs: 2_000_000 },
+                      source: { durationTicks: 2_000_000 },
                       roundtrip: {
-                        timelineRange: { startUs: 1_000_000, durationUs: 2_000_000 },
-                        sourceRange: { startUs: 0, durationUs: 2_000_000 },
+                        timelineRange: { startTicks: 1_000_000, durationTicks: 2_000_000 },
+                        sourceRange: { startTicks: 0, durationTicks: 2_000_000 },
                       },
                     },
                   },
@@ -112,10 +112,10 @@ describe('migrateLegacyOtioMetadataToTicks', () => {
     const clip = doc.tracks[0]!.items[0]!;
     expect(doc.metadata?.fastcat?.version).toBe(TIMELINE_TICKS_DOCUMENT_VERSION);
     expect(clip.timelineRange).toEqual({
-      startUs: TICKS_PER_SECOND,
-      durationUs: 2 * TICKS_PER_SECOND,
+      startTicks: TICKS_PER_SECOND,
+      durationTicks: 2 * TICKS_PER_SECOND,
     });
-    expect(clip.sourceRange).toEqual({ startUs: 0, durationUs: 2 * TICKS_PER_SECOND });
-    expect(clip.sourceDurationUs).toBe(2 * TICKS_PER_SECOND);
+    expect(clip.sourceRange).toEqual({ startTicks: 0, durationTicks: 2 * TICKS_PER_SECOND });
+    expect(clip.sourceDurationTicks).toBe(2 * TICKS_PER_SECOND);
   });
 });

@@ -665,7 +665,7 @@ export class ClipResourceManager {
   public async getVideoSampleForClip(params: {
     clip: CompositorClip;
     sampleTimeS: number;
-    timelineTimeUs?: number;
+    timelineTimeTicks?: number;
     monitorSyncMode?: WebMonitorSyncMode;
     abortSignal?: AbortSignal;
   }): Promise<unknown | null> {
@@ -695,7 +695,7 @@ export class ClipResourceManager {
     const promise = this.fetchVideoSampleForClip(
       clip,
       sampleTimeS,
-      params.timelineTimeUs,
+      params.timelineTimeTicks,
       params.monitorSyncMode,
       frameIndex,
       cacheKey,
@@ -714,7 +714,7 @@ export class ClipResourceManager {
   private async fetchVideoSampleForClip(
     clip: CompositorClip,
     sampleTimeS: number,
-    timelineTimeUs: number | undefined,
+    timelineTimeTicks: number | undefined,
     monitorSyncMode: WebMonitorSyncMode | undefined,
     frameIndex: number,
     cacheKey: string,
@@ -767,7 +767,7 @@ export class ClipResourceManager {
 
     try {
       const frame = sampleObj2.toVideoFrame() as VideoFrame;
-      this.storeDecodedFrame({ clip, frameIndex, cacheKey, timelineTimeUs, frame });
+      this.storeDecodedFrame({ clip, frameIndex, cacheKey, timelineTimeTicks, frame });
 
       return {
         toVideoFrame: () => {
@@ -796,7 +796,7 @@ export class ClipResourceManager {
     clip: CompositorClip;
     frameIndex: number;
     cacheKey: string;
-    timelineTimeUs: number | undefined;
+    timelineTimeTicks: number | undefined;
     frame: VideoFrame;
   }): void {
     const { clip, frame } = params;
@@ -824,9 +824,9 @@ export class ClipResourceManager {
       key: params.cacheKey,
       clipId: clip.itemId,
       frameIndex: params.frameIndex,
-      timelineTimeUs: Math.max(
+      timelineTimeTicks: Math.max(
         0,
-        Math.round(Number(params.timelineTimeUs) || Number(clip.startUs) || 0),
+        Math.round(Number(params.timelineTimeTicks) || Number(clip.startTicks) || 0),
       ),
       frame,
       sizeBytes,
@@ -849,7 +849,7 @@ export class ClipResourceManager {
     clip: CompositorClip;
     nowSourceTimeS: number;
     aheadSourceTimeS: number;
-    timelineNowUs: number;
+    timelineNowTicks: number;
     speed: number;
   }): Promise<void> {
     const { clip } = params;
@@ -887,8 +887,8 @@ export class ClipResourceManager {
 
     if (!stream) {
       const rangeEndS =
-        clip.sourceRangeDurationUs > 0
-          ? (clip.sourceStartUs + clip.sourceRangeDurationUs) / TICKS_PER_SECOND
+        clip.sourceRangeDurationTicks > 0
+          ? (clip.sourceStartTicks + clip.sourceRangeDurationTicks) / TICKS_PER_SECOND
           : undefined;
       stream = {
         iterator: sink.samples(params.nowSourceTimeS, rangeEndS),
@@ -923,8 +923,8 @@ export class ClipResourceManager {
 
         // Timeline slot of this source frame (for scrub-locality eviction).
         const speed = params.speed > 0 ? params.speed : 1;
-        const timelineTimeUs =
-          params.timelineNowUs +
+        const timelineTimeTicks =
+          params.timelineNowTicks +
           Math.max(
             0,
             Math.round(
@@ -936,7 +936,7 @@ export class ClipResourceManager {
           clip,
           frameIndex,
           cacheKey,
-          timelineTimeUs,
+          timelineTimeTicks,
           frame: sample.toVideoFrame() as VideoFrame,
         });
         framesStored += 1;

@@ -32,7 +32,7 @@ function formatMarkerTimecode(us: number): string {
 }
 
 const sortedMarkers = computed(() => {
-  return [...markers.value].sort((a, b) => a.timeUs - b.timeUs);
+  return [...markers.value].sort((a, b) => a.timeTicks - b.timeTicks);
 });
 
 const availableColors = computed(() => {
@@ -83,8 +83,8 @@ function openExportModal() {
   isExportModalOpen.value = true;
 }
 
-function handleMarkerClick(marker: { id: string; timeUs: number }, event: MouseEvent) {
-  timelineStore.setCurrentTimeUs(marker.timeUs);
+function handleMarkerClick(marker: { id: string; timeTicks: number }, event: MouseEvent) {
+  timelineStore.setCurrentTimeTicks(marker.timeTicks);
   timelineStore.requestScrollToPlayhead?.();
 
   if (event.shiftKey) {
@@ -150,7 +150,7 @@ function isMarkerSelected(markerId: string): boolean {
             @click="handleMarkerClick(marker, $event)"
           >
             <td class="px-3 py-2 w-24 align-middle">
-              <MarkerThumbnail :marker-id="marker.id" :time-us="marker.timeUs" />
+              <MarkerThumbnail :marker-id="marker.id" :time-us="marker.timeTicks" />
             </td>
             <td class="px-3 py-2 w-6 align-middle">
               <div
@@ -169,12 +169,12 @@ function isMarkerSelected(markerId: string): boolean {
               class="px-3 py-2 w-28 align-middle font-mono text-[10px] text-ui-text-muted tabular-nums"
             >
               <div class="flex flex-col justify-center">
-                <span>{{ formatMarkerTimecode(marker.timeUs) }}</span>
+                <span>{{ formatMarkerTimecode(marker.timeTicks) }}</span>
                 <span
-                  v-if="marker.durationUs"
+                  v-if="marker.durationTicks"
                   class="text-[9px] opacity-60 mt-0.5 whitespace-nowrap"
                 >
-                  ↳ {{ formatMarkerTimecode(marker.timeUs + marker.durationUs) }}
+                  ↳ {{ formatMarkerTimecode(marker.timeTicks + marker.durationTicks) }}
                 </span>
               </div>
             </td>

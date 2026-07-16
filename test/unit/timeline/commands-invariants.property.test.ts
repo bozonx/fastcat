@@ -10,11 +10,11 @@
  * that a command actually produced.
  */
 import { describe, it, expect } from 'vitest';
-import { timelineUs } from '../utils/timeline-time';
+import { timelineTicks } from '../utils/timeline-time';
 import fc from 'fast-check';
 import { applyTimelineCommand } from '~/timeline/commands';
 import type { TimelineCommand } from '~/timeline/commands';
-import { rangesOverlap, OVERLAP_EPSILON_US, frameToUs } from '~/timeline/commands/utils';
+import { rangesOverlap, OVERLAP_EPSILON_TICKS, frameToTicks } from '~/timeline/commands/utils';
 import type {
   TimelineDocument,
   TimelineTrack,
@@ -26,8 +26,8 @@ const FPS = 30;
 
 interface ClipSpec {
   trackId: string;
-  startUs: number;
-  durationUs: number;
+  startTicks: number;
+  durationTicks: number;
 }
 
 function makeMediaClip(
@@ -42,9 +42,9 @@ function makeMediaClip(
     trackId,
     name: id,
     source: { path: `${id}.mp4` },
-    sourceDurationUs: timelineUs(60_000_000),
-    timelineRange: { startUs: spec.startUs, durationUs: spec.durationUs },
-    sourceRange: { startUs: 0, durationUs: spec.durationUs },
+    sourceDurationTicks: timelineTicks(60_000_000),
+    timelineRange: { startTicks: spec.startTicks, durationTicks: spec.durationTicks },
+    sourceRange: { startTicks: 0, durationTicks: spec.durationTicks },
   } as TimelineClipItem;
 }
 
@@ -68,15 +68,15 @@ function makeDoc(clipsByTrack: Record<string, Omit<ClipSpec, 'trackId'>[]>): Tim
 function seedDoc(): TimelineDocument {
   return makeDoc({
     v1: [
-      { startUs: 0, durationUs: timelineUs(1_000_000) },
-      { startUs: timelineUs(1_000_000), durationUs: timelineUs(2_000_000) },
-      { startUs: timelineUs(4_000_000), durationUs: timelineUs(1_000_000) },
+      { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
+      { startTicks: timelineTicks(1_000_000), durationTicks: timelineTicks(2_000_000) },
+      { startTicks: timelineTicks(4_000_000), durationTicks: timelineTicks(1_000_000) },
     ],
     v2: [
-      { startUs: 0, durationUs: timelineUs(3_000_000) },
-      { startUs: timelineUs(5_000_000), durationUs: timelineUs(1_000_000) },
+      { startTicks: 0, durationTicks: timelineTicks(3_000_000) },
+      { startTicks: timelineTicks(5_000_000), durationTicks: timelineTicks(1_000_000) },
     ],
-    a1: [{ startUs: 0, durationUs: timelineUs(6_000_000) }],
+    a1: [{ startTicks: 0, durationTicks: timelineTicks(6_000_000) }],
   });
 }
 
@@ -94,11 +94,11 @@ function invariantViolations(doc: TimelineDocument): string[] {
       seenIds.add(it.id);
 
       // 2. Non-negative start, strictly positive duration for every item.
-      if (it.timelineRange.startUs < 0) {
-        problems.push(`${it.id} has negative start ${it.timelineRange.startUs}`);
+      if (it.timelineRange.startTicks < 0) {
+        problems.push(`${it.id} has negative start ${it.timelineRange.startTicks}`);
       }
-      if (it.timelineRange.durationUs <= 0) {
-        problems.push(`${it.id} has non-positive duration ${it.timelineRange.durationUs}`);
+      if (it.timelineRange.durationTicks <= 0) {
+        problems.push(`${it.id} has non-positive duration ${it.timelineRange.durationTicks}`);
       }
 
       // 3. Every item's trackId points at its containing track.
@@ -108,17 +108,17 @@ function invariantViolations(doc: TimelineDocument): string[] {
     }
 
     // 4. Clips on the same track never meaningfully overlap.
-    const ordered = [...clips].sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
+    const ordered = [...clips].sort((a, b) => a.timelineRange.startTicks - b.timelineRange.startTicks);
     for (let i = 1; i < ordered.length; i++) {
       const prev = ordered[i - 1]!;
       const cur = ordered[i]!;
-      const prevStart = prev.timelineRange.startUs;
-      const prevEnd = prevStart + prev.timelineRange.durationUs;
-      const curStart = cur.timelineRange.startUs;
-      const curEnd = curStart + cur.timelineRange.durationUs;
+      const prevStart = prev.timelineRange.startTicks;
+      const prevEnd = prevStart + prev.timelineRange.durationTicks;
+      const curStart = cur.timelineRange.startTicks;
+      const curEnd = curStart + cur.timelineRange.durationTicks;
       if (
         rangesOverlap(prevStart, prevEnd, curStart, curEnd) &&
-        Math.min(prevEnd, curEnd) - Math.max(prevStart, curStart) > OVERLAP_EPSILON_US
+        Math.min(prevEnd, curEnd) - Math.max(prevStart, curStart) > OVERLAP_EPSILON_TICKS
       ) {
         problems.push(
           `overlap on ${track.id}: ${prev.id}[${prevStart},${prevEnd}] vs ${cur.id}[${curStart},${curEnd}]`,
@@ -128,9 +128,9 @@ function invariantViolations(doc: TimelineDocument): string[] {
 
     // 5. Source range durations stay positive for media clips.
     for (const clip of clips) {
-      const sr = (clip as { sourceRange?: { durationUs: number } }).sourceRange;
-      if (sr && sr.durationUs <= 0) {
-        problems.push(`${clip.id} has non-positive sourceRange duration ${sr.durationUs}`);
+      const sr = (clip as { sourceRange?: { durationTicks: number } }).sourceRange;
+      if (sr && sr.durationTicks <= 0) {
+        problems.push(`${clip.id} has non-positive sourceRange duration ${sr.durationTicks}`);
       }
     }
   }
@@ -159,9 +159,9 @@ function findClip(doc: TimelineDocument, itemId: string): TimelineClipItem | und
 // --- Randomised action model ------------------------------------------------
 
 type Action =
-  | { kind: 'add'; trackIndex: number; startUs: number; durationUs: number; addId: number }
-  | { kind: 'move'; itemIndex: number; startUs: number }
-  | { kind: 'trim'; itemIndex: number; edge: 'start' | 'end'; deltaUs: number }
+  | { kind: 'add'; trackIndex: number; startTicks: number; durationTicks: number; addId: number }
+  | { kind: 'move'; itemIndex: number; startTicks: number }
+  | { kind: 'trim'; itemIndex: number; edge: 'start' | 'end'; deltaTicks: number }
   | { kind: 'split'; itemIndex: number; atFraction: number }
   | { kind: 'remove'; itemIndex: number };
 
@@ -169,20 +169,20 @@ const actionArb: fc.Arbitrary<Action> = fc.oneof(
   fc.record({
     kind: fc.constant('add' as const),
     trackIndex: fc.nat(),
-    startUs: fc.integer({ min: 0, max: timelineUs(20_000_000) }),
-    durationUs: fc.integer({ min: timelineUs(100_000), max: timelineUs(5_000_000) }),
+    startTicks: fc.integer({ min: 0, max: timelineTicks(20_000_000) }),
+    durationTicks: fc.integer({ min: timelineTicks(100_000), max: timelineTicks(5_000_000) }),
     addId: fc.nat(),
   }),
   fc.record({
     kind: fc.constant('move' as const),
     itemIndex: fc.nat(),
-    startUs: fc.integer({ min: 0, max: timelineUs(20_000_000) }),
+    startTicks: fc.integer({ min: 0, max: timelineTicks(20_000_000) }),
   }),
   fc.record({
     kind: fc.constant('trim' as const),
     itemIndex: fc.nat(),
     edge: fc.constantFrom('start' as const, 'end' as const),
-    deltaUs: fc.integer({ min: -timelineUs(3_000_000), max: timelineUs(3_000_000) }),
+    deltaTicks: fc.integer({ min: -timelineTicks(3_000_000), max: timelineTicks(3_000_000) }),
   }),
   fc.record({
     kind: fc.constant('split' as const),
@@ -205,9 +205,9 @@ function toCommand(doc: TimelineDocument, action: Action): TimelineCommand | nul
       trackId: track.id,
       name: `added-${action.addId}`,
       path: `added-${action.addId}.mp4`,
-      startUs: action.startUs,
-      durationUs: action.durationUs,
-      sourceDurationUs: timelineUs(60_000_000),
+      startTicks: action.startTicks,
+      durationTicks: action.durationTicks,
+      sourceDurationTicks: timelineTicks(60_000_000),
     };
   }
 
@@ -221,7 +221,7 @@ function toCommand(doc: TimelineDocument, action: Action): TimelineCommand | nul
         type: 'move_item',
         trackId: ref.trackId,
         itemId: ref.itemId,
-        startUs: action.startUs,
+        startTicks: action.startTicks,
       };
     case 'trim':
       return {
@@ -229,13 +229,13 @@ function toCommand(doc: TimelineDocument, action: Action): TimelineCommand | nul
         trackId: ref.trackId,
         itemId: ref.itemId,
         edge: action.edge,
-        deltaUs: action.deltaUs,
+        deltaTicks: action.deltaTicks,
       };
     case 'split': {
       const clip = findClip(doc, ref.itemId)!;
-      const { startUs, durationUs } = clip.timelineRange;
-      const atUs = Math.round(startUs + durationUs * action.atFraction);
-      return { type: 'split_item', trackId: ref.trackId, itemId: ref.itemId, atUs };
+      const { startTicks, durationTicks } = clip.timelineRange;
+      const atTicks = Math.round(startTicks + durationTicks * action.atFraction);
+      return { type: 'split_item', trackId: ref.trackId, itemId: ref.itemId, atTicks };
     }
     case 'remove':
       return { type: 'remove_item', trackId: ref.trackId, itemId: ref.itemId };
@@ -278,16 +278,16 @@ describe('timeline command invariants (property-based)', () => {
         fc.integer({ min: 15, max: 300 }),
         fc.double({ min: 0.05, max: 0.95, noNaN: true }), // split fraction
         (frameCount, fraction) => {
-          const durationUs = frameToUs(frameCount, FPS);
-          const doc = makeDoc({ v1: [{ startUs: 0, durationUs }] });
+          const durationTicks = frameToTicks(frameCount, FPS);
+          const doc = makeDoc({ v1: [{ startTicks: 0, durationTicks }] });
           const original = findClip(doc, 'v1-c0-0')!;
-          const atUs = Math.round(original.timelineRange.durationUs * fraction);
+          const atTicks = Math.round(original.timelineRange.durationTicks * fraction);
 
           const { next } = applyTimelineCommand(doc, {
             type: 'split_item',
             trackId: 'v1',
             itemId: 'v1-c0-0',
-            atUs,
+            atTicks,
           });
 
           const clips = next.tracks[0]!.items.filter(
@@ -305,28 +305,28 @@ describe('timeline command invariants (property-based)', () => {
           expect(invariantViolations(next)).toEqual([]);
 
           const ordered = [...clips].sort(
-            (a, b) => a.timelineRange.startUs - b.timelineRange.startUs,
+            (a, b) => a.timelineRange.startTicks - b.timelineRange.startTicks,
           );
           const [left, right] = ordered;
 
           // No gap between the halves.
-          expect(right!.timelineRange.startUs).toBe(
-            left!.timelineRange.startUs + left!.timelineRange.durationUs,
+          expect(right!.timelineRange.startTicks).toBe(
+            left!.timelineRange.startTicks + left!.timelineRange.durationTicks,
           );
 
           // Timeline coverage is conserved exactly (frame-aligned input).
-          const totalTimeline = left!.timelineRange.durationUs + right!.timelineRange.durationUs;
-          expect(totalTimeline).toBe(original.timelineRange.durationUs);
+          const totalTimeline = left!.timelineRange.durationTicks + right!.timelineRange.durationTicks;
+          expect(totalTimeline).toBe(original.timelineRange.durationTicks);
 
           // Source range is conserved and contiguous.
-          const leftSrc = (left as { sourceRange: { startUs: number; durationUs: number } })
+          const leftSrc = (left as { sourceRange: { startTicks: number; durationTicks: number } })
             .sourceRange;
-          const rightSrc = (right as { sourceRange: { startUs: number; durationUs: number } })
+          const rightSrc = (right as { sourceRange: { startTicks: number; durationTicks: number } })
             .sourceRange;
-          expect(rightSrc.startUs).toBe(leftSrc.startUs + leftSrc.durationUs);
-          const totalSrc = leftSrc.durationUs + rightSrc.durationUs;
-          const originalSrc = (original as { sourceRange: { durationUs: number } }).sourceRange
-            .durationUs;
+          expect(rightSrc.startTicks).toBe(leftSrc.startTicks + leftSrc.durationTicks);
+          const totalSrc = leftSrc.durationTicks + rightSrc.durationTicks;
+          const originalSrc = (original as { sourceRange: { durationTicks: number } }).sourceRange
+            .durationTicks;
           expect(Math.abs(totalSrc - originalSrc)).toBeLessThanOrEqual(1);
         },
       ),

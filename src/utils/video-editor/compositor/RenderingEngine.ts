@@ -11,7 +11,7 @@ export interface RenderingEngineContext {
   height: number;
   clips: CompositorClip[];
   tracks: CompositorTrack[];
-  lastRenderedTimeUs: number;
+  lastRenderedTimeTicks: number;
   stageSortDirty: boolean;
   activeSortDirty: boolean;
   contextLost: boolean;
@@ -22,8 +22,8 @@ export interface RenderingEngineContext {
   applyVideoFrameCacheLimit: (limitMb: number | undefined) => void;
   abortInFlightResources: () => void;
   updateActiveClips: (
-    timeUs: number,
-    lastTimeUs: number,
+    timeTicks: number,
+    lastTimeTicks: number,
   ) => {
     activeClips: CompositorClip[];
     activeChanged: boolean;
@@ -32,7 +32,7 @@ export interface RenderingEngineContext {
   applyTrackState: (track: CompositorTrack) => void;
   processFrameSamples: (params: {
     activeClips: CompositorClip[];
-    timeUs: number;
+    timeTicks: number;
     monitorSyncMode: 'smooth' | 'balanced' | 'strict';
   }) => Promise<{ updatedClips: CompositorClip[] }>;
   sortStage: () => void;
@@ -47,7 +47,7 @@ export interface RenderingEngineContext {
    * Visibility is restored by the caller's stage snapshot.
    */
   hideStageBelowAdjustmentClips: (activeClips: CompositorClip[]) => void;
-  applyShaderTransitions: (activeClips: CompositorClip[], timeUs: number) => Promise<void>;
+  applyShaderTransitions: (activeClips: CompositorClip[], timeTicks: number) => Promise<void>;
   applyWebGpuClipEffects?: (clip: CompositorClip) => Promise<void>;
   applyTrackEffects: () => Promise<() => void>;
   /**
@@ -59,12 +59,12 @@ export interface RenderingEngineContext {
   applyMasterEffects: () => Promise<boolean>;
   setStageSortDirty: (value: boolean) => void;
   setActiveSortDirty: (value: boolean) => void;
-  setLastRenderedTimeUs: (value: number) => void;
+  setLastRenderedTimeTicks: (value: number) => void;
 }
 
 export class RenderingEngine {
   public async renderFrame(
-    timeUs: number,
+    timeTicks: number,
     options: PreviewRenderOptions | undefined,
     context: RenderingEngineContext,
   ): Promise<OffscreenCanvas | HTMLCanvasElement | null> {
@@ -74,7 +74,7 @@ export class RenderingEngine {
 
     context.applyVideoFrameCacheLimit(options?.videoFrameCacheMb);
 
-    if (timeUs !== context.lastRenderedTimeUs) {
+    if (timeTicks !== context.lastRenderedTimeTicks) {
       context.abortInFlightResources();
     }
 
@@ -96,7 +96,7 @@ export class RenderingEngine {
     );
 
     if (
-      timeUs === context.lastRenderedTimeUs &&
+      timeTicks === context.lastRenderedTimeTicks &&
       !previewEffectsChanged &&
       !previewEffectQualityChanged &&
       !context.stageSortDirty &&
@@ -111,8 +111,8 @@ export class RenderingEngine {
 
     try {
       const { activeClips, activeChanged } = context.updateActiveClips(
-        timeUs,
-        context.lastRenderedTimeUs,
+        timeTicks,
+        context.lastRenderedTimeTicks,
       );
       processingClips = activeClips;
 
@@ -121,7 +121,7 @@ export class RenderingEngine {
       }
 
       if (context.activeSortDirty) {
-        activeClips.sort((a, b) => a.layer - b.layer || a.startUs - b.startUs);
+        activeClips.sort((a, b) => a.layer - b.layer || a.startTicks - b.startTicks);
         context.setActiveSortDirty(false);
       }
 
@@ -140,7 +140,7 @@ export class RenderingEngine {
 
       const samplesResult = await context.processFrameSamples({
         activeClips,
-        timeUs,
+        timeTicks,
         monitorSyncMode: options?.monitorSyncMode ?? 'balanced',
       });
       updatedClips = samplesResult.updatedClips;
@@ -160,7 +160,7 @@ export class RenderingEngine {
       const previousStageVisibility = stageChildren.map((child) => child.visible);
 
       try {
-        await context.applyShaderTransitions(activeClips, timeUs);
+        await context.applyShaderTransitions(activeClips, timeTicks);
 
         if (!context.app || !context.canvas || !context.app.renderer) {
           return null;
@@ -176,7 +176,7 @@ export class RenderingEngine {
           if (!context.app || !context.canvas || !context.app.renderer) {
             return null;
           }
-          context.setLastRenderedTimeUs(timeUs);
+          context.setLastRenderedTimeTicks(timeTicks);
           // The canvas is displayed directly (transferControlToOffscreen), so
           // every frame must reach it with exactly one final render: drawing
           // the raw stage first and post-processing it in place would commit

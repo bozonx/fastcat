@@ -37,22 +37,22 @@ test.describe('Web timeline move', () => {
     const doc = await waitForTimelineDoc(
       page,
       e2eProject,
-      (d) => (d.allClips[0]?.timelineStartUs ?? 0) > before.timelineStartUs,
+      (d) => (d.allClips[0]?.timelineStartTicks ?? 0) > before.timelineStartTicks,
     );
-    expect(doc.allClips[0].timelineStartUs).toBeGreaterThan(before.timelineStartUs);
+    expect(doc.allClips[0].timelineStartTicks).toBeGreaterThan(before.timelineStartTicks);
   });
 
   test('moved clip persists across reload', async ({ page, e2eProject }) => {
     const clipId = await projectWithOneVideoClip(page, e2eProject);
     await dragClipBy(page, clipId, { x: 1_200_000 });
     const moved = (
-      await waitForTimelineDoc(page, e2eProject, (d) => d.allClips[0].timelineStartUs > 0)
-    ).allClips[0].timelineStartUs;
+      await waitForTimelineDoc(page, e2eProject, (d) => d.allClips[0].timelineStartTicks > 0)
+    ).allClips[0].timelineStartTicks;
 
     await page.goto(`/editor/${e2eProject.encodedName}`);
     await waitForEditorReady(page);
 
-    const reloaded = (await readTimelineDoc(page, e2eProject)).allClips[0].timelineStartUs;
+    const reloaded = (await readTimelineDoc(page, e2eProject)).allClips[0].timelineStartTicks;
     expect(reloaded).toBe(moved);
   });
 

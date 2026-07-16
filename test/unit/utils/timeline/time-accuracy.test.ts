@@ -2,7 +2,7 @@
 import { describe, it, expect } from 'vitest';
 
 import {
-  frameToUs,
+  frameToTicks,
   ticksToFrame,
   quantizeTimeUsToFrames,
   sanitizeFps,
@@ -31,13 +31,13 @@ describe('frame quantization is drift-free', () => {
     }
   });
 
-  it('frameToUs/ticksToFrame round-trip is stable for every frame index', () => {
+  it('frameToTicks/ticksToFrame round-trip is stable for every frame index', () => {
     // Collect the first mismatch instead of asserting per-iteration to keep the
     // sweep fast; the message pinpoints the failing (fps, frame) on regression.
     let firstMismatch: { fps: number; frame: number; got: number } | null = null;
     for (const fps of FPS_CASES) {
       for (let frame = 0; frame <= 20_000 && !firstMismatch; frame++) {
-        const got = ticksToFrame(frameToUs(frame, fps), fps, 'round');
+        const got = ticksToFrame(frameToTicks(frame, fps), fps, 'round');
         if (got !== frame) firstMismatch = { fps, frame, got };
       }
     }
@@ -46,7 +46,7 @@ describe('frame quantization is drift-free', () => {
 
   it('stepping one frame at a time never accumulates error over a long timeline', () => {
     // Mirrors seekFrames(): currentTime advances by a fractional frame interval
-    // and is re-quantized (round) on every step, exactly like setCurrentTimeUs.
+    // and is re-quantized (round) on every step, exactly like setCurrentTimeTicks.
     // After N steps the playhead must sit precisely on frame N — no drift.
     let firstDrift: { fps: number; step: number; got: number; want: number } | null = null;
     for (const fps of FPS_CASES) {
@@ -54,7 +54,7 @@ describe('frame quantization is drift-free', () => {
       let t = 0;
       for (let k = 1; k <= 30_000 && !firstDrift; k++) {
         t = quantizeTimeUsToFrames(t + frameTicks, fps, 'round');
-        const want = frameToUs(k, fps);
+        const want = frameToTicks(k, fps);
         if (t !== want) firstDrift = { fps, step: k, got: t, want };
       }
     }
@@ -65,10 +65,10 @@ describe('frame quantization is drift-free', () => {
     let firstDrift: { fps: number; step: number; got: number; want: number } | null = null;
     for (const fps of FPS_CASES) {
       const frameTicks = TICKS_PER_SECOND / sanitizeFps(fps);
-      let t = frameToUs(30_000, fps);
+      let t = frameToTicks(30_000, fps);
       for (let k = 29_999; k >= 0 && !firstDrift; k--) {
         t = quantizeTimeUsToFrames(t - frameTicks, fps, 'round');
-        const want = frameToUs(k, fps);
+        const want = frameToTicks(k, fps);
         if (t !== want) firstDrift = { fps, step: k, got: t, want };
       }
     }
@@ -88,13 +88,13 @@ describe('monitor and ruler share one fps source of truth', () => {
   it('monitor timecode equals ruler timecode for NTSC across the timeline', () => {
     const rawFps = 29.97;
     const fps = sanitizeMonitorFps(rawFps); // what the monitor passes to formatTimecode
-    const durationUs = 600 * TICKS_PER_SECOND; // 10 min
+    const durationTicks = 600 * TICKS_PER_SECOND; // 10 min
     for (let s = 0; s <= 600; s += 7) {
       const us = s * TICKS_PER_SECOND + 12_345 * (TICKS_PER_SECOND / 1_000_000); // off-grid sample
       const rulerText = formatTimecode(us, fps); // ruler path
       const monitorCurrent = buildMonitorTimecodeText({
-        currentTimeUs: us,
-        durationUs,
+        currentTimeTicks: us,
+        durationTicks,
         fps,
       }).split(' / ')[0];
       expect(monitorCurrent).toBe(rulerText);
@@ -105,7 +105,7 @@ describe('monitor and ruler share one fps source of truth', () => {
 describe('formatTimecode tracks real time for non-integer fps', () => {
   it('formats NTSC rates against the real fps (consistent with frame math)', () => {
     expect(formatTimecode(0, 29.97)).toBe('00:00:00:00');
-    expect(formatTimecode(frameToUs(1, 29.97), 29.97)).toBe('00:00:00:01');
+    expect(formatTimecode(frameToTicks(1, 29.97), 29.97)).toBe('00:00:00:01');
     expect(formatTimecode(TICKS_PER_SECOND, 29.97)).toBe('00:00:01:00');
     expect(formatTimecode(TICKS_PER_SECOND, 23.976)).toBe('00:00:01:00');
   });
@@ -115,7 +115,7 @@ describe('formatTimecode tracks real time for non-integer fps', () => {
     for (const fps of FPS_CASES) {
       const maxFrameField = Math.ceil(fps) - 1;
       for (let frame = 0; frame <= 10_000 && !outOfRange; frame++) {
-        const ff = Number(formatTimecode(frameToUs(frame, fps), fps).split(':')[3]);
+        const ff = Number(formatTimecode(frameToTicks(frame, fps), fps).split(':')[3]);
         if (ff < 0 || ff > maxFrameField) outOfRange = { fps, frame, ff };
       }
     }

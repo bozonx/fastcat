@@ -41,8 +41,8 @@ pub enum Easing {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct Keyframe {
-    #[serde(rename = "tUs")]
-    pub t_us: f64,
+    #[serde(rename = "tTicks")]
+    pub t_ticks: f64,
     pub value: f64,
     #[serde(default)]
     pub easing: Easing,
@@ -88,18 +88,18 @@ pub fn eval_track_at(track: &KeyframeTrack, at_ticks: f64) -> Option<f64> {
 
     let first = &kfs[0];
     let last = &kfs[kfs.len() - 1];
-    if kfs.len() == 1 || t <= first.t_us {
+    if kfs.len() == 1 || t <= first.t_ticks {
         return Some(first.value);
     }
-    if t >= last.t_us {
+    if t >= last.t_ticks {
         return Some(last.value);
     }
 
-    // Segment [left, right] with left.t_us <= t < right.t_us (must exist here).
+    // Segment [left, right] with left.t_ticks <= t < right.t_ticks (must exist here).
     let mut left = first;
     let mut right = last;
     for i in 1..kfs.len() {
-        if kfs[i].t_us > t {
+        if kfs[i].t_ticks > t {
             left = &kfs[i - 1];
             right = &kfs[i];
             break;
@@ -110,12 +110,12 @@ pub fn eval_track_at(track: &KeyframeTrack, at_ticks: f64) -> Option<f64> {
         return Some(left.value);
     }
 
-    let span = right.t_us - left.t_us;
+    let span = right.t_ticks - left.t_ticks;
     if span <= 0.0 {
         return Some(right.value);
     }
 
-    let frac = (t - left.t_us) / span;
+    let frac = (t - left.t_ticks) / span;
     let eased = match left.easing {
         Easing::Ease => frac * frac * (3.0 - 2.0 * frac),
         _ => frac,
@@ -370,8 +370,8 @@ mod tests {
         KeyframeTrack {
             keyframes: kfs
                 .iter()
-                .map(|&(t_us, value, easing)| Keyframe {
-                    t_us,
+                .map(|&(t_ticks, value, easing)| Keyframe {
+                    t_ticks,
                     value,
                     easing,
                 })
@@ -403,8 +403,8 @@ mod tests {
             let name = c["name"].as_str().unwrap_or("<unnamed>");
             let baked: ClipBakedEffects =
                 serde_json::from_value(c["baked"].clone()).expect("valid baked payload");
-            let at_us = c["atUs"].as_f64().unwrap();
-            let got = patch_baked_specs(&baked, at_us);
+            let at_ticks = c["atTicks"].as_f64().unwrap();
+            let got = patch_baked_specs(&baked, at_ticks);
             let want = c["expected"].as_array().expect("expected array");
             assert_eq!(got.len(), want.len(), "{name}: spec count");
             for (g, w) in got.iter().zip(want.iter()) {
@@ -439,8 +439,8 @@ mod tests {
             let keyframes: Vec<Keyframe> =
                 serde_json::from_value(c["keyframes"].clone()).expect("valid keyframes");
             let track = KeyframeTrack { keyframes };
-            let query_t_us = c["queryTUs"].as_f64().unwrap();
-            let got = eval_track_at(&track, query_t_us);
+            let query_t_ticks = c["queryTTicks"].as_f64().unwrap();
+            let got = eval_track_at(&track, query_t_ticks);
             match c["expected"].as_f64() {
                 Some(want) => {
                     let got =
@@ -542,8 +542,8 @@ mod tests {
     fn parses_and_evaluates_from_value() {
         let v = serde_json::json!({
             "opacity": { "keyframes": [
-                { "tUs": 0, "value": 0, "easing": "linear" },
-                { "tUs": 1000, "value": 1, "easing": "linear" },
+                { "tTicks": 0, "value": 0, "easing": "linear" },
+                { "tTicks": 1000, "value": 1, "easing": "linear" },
             ] },
         });
         let anims = ClipAnimations::from_value(&v).unwrap();

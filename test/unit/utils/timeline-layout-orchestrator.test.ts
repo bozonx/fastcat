@@ -8,7 +8,7 @@ describe('TimelineLayoutOrchestrator', () => {
     const orchestrator = new TimelineLayoutOrchestrator();
     const clipA = { itemId: 'clip-a' } as any;
     const clipB = { itemId: 'clip-b' } as any;
-    const lifecycleResult = { clips: [clipA], maxDurationUs: 1_000 };
+    const lifecycleResult = { clips: [clipA], maxDurationTicks: 1_000 };
 
     const clipLayoutUpdater = {
       update: vi.fn(),

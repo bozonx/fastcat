@@ -15,8 +15,8 @@ export function useAddMediaToTimeline() {
   const { t } = useI18n();
   const toast = useToast();
 
-  function resolveInsertStartUs(params: { trackId: string; startUs: number; durationUs: number }) {
-    return params.startUs;
+  function resolveInsertStartTicks(params: { trackId: string; startTicks: number; durationTicks: number }) {
+    return params.startTicks;
   }
 
   /**
@@ -24,9 +24,9 @@ export function useAddMediaToTimeline() {
    * gracefully instead of inserting a clip with an arbitrary fallback duration that
    * would later fail or display as a broken image).
    */
-  async function getInsertDurationUs(path: string, mediaType: string): Promise<number | null> {
+  async function getInsertDurationTicks(path: string, mediaType: string): Promise<number | null> {
     if (mediaType === 'text' || mediaType === 'image') {
-      return workspaceStore.userSettings.timeline.defaultStaticClipDurationUs;
+      return workspaceStore.userSettings.timeline.defaultStaticClipDurationTicks;
     }
 
     const meta = await mediaStore.getOrFetchMetadataByPath(path);
@@ -53,7 +53,7 @@ export function useAddMediaToTimeline() {
       }
     }
 
-    let currentStartUs = timelineStore.currentTime;
+    let currentStartTicks = timelineStore.currentTime;
     let anyAdded = false;
 
     for (const entry of entries) {
@@ -63,10 +63,10 @@ export function useAddMediaToTimeline() {
       if (mediaType === 'unknown') continue;
 
       const targetTrackKind = mediaType === 'audio' ? 'audio' : 'video';
-      const durationUs = await getInsertDurationUs(entry.path, mediaType);
-      if (durationUs === null) continue;
-      const trackId = timelineStore.resolveMobileTargetTrackId(targetTrackKind, { durationUs });
-      const startUs = resolveInsertStartUs({ trackId, startUs: currentStartUs, durationUs });
+      const durationTicks = await getInsertDurationTicks(entry.path, mediaType);
+      if (durationTicks === null) continue;
+      const trackId = timelineStore.resolveMobileTargetTrackId(targetTrackKind, { durationTicks });
+      const startTicks = resolveInsertStartTicks({ trackId, startTicks: currentStartTicks, durationTicks });
 
       if (mediaType === 'text') {
         const file = await vfs.getFile(entry.path);
@@ -75,7 +75,7 @@ export function useAddMediaToTimeline() {
             const text = await withFileIoSlot(() => file.text());
             await timelineStore.addVirtualClipToTrack({
               trackId,
-              startUs,
+              startTicks,
               clipType: 'text',
               name: entry.name,
               text,
@@ -88,7 +88,7 @@ export function useAddMediaToTimeline() {
               });
             }
             anyAdded = true;
-            currentStartUs = startUs + durationUs;
+            currentStartTicks = startTicks + durationTicks;
           } catch (err: unknown) {
             const message = err instanceof Error ? err.message : String(err);
             if (message === 'cannot_insert_on_clip') {
@@ -112,7 +112,7 @@ export function useAddMediaToTimeline() {
             trackId,
             name: entry.name,
             path: entry.path,
-            startUs,
+            startTicks,
           });
           if (result.warnings?.some((w) => w.type === 'clipTrimmed')) {
             toast.add({
@@ -122,7 +122,7 @@ export function useAddMediaToTimeline() {
             });
           }
           anyAdded = true;
-          currentStartUs = startUs + (result.durationUs || durationUs);
+          currentStartTicks = startTicks + (result.durationTicks || durationTicks);
         } catch (err: unknown) {
           const message = err instanceof Error ? err.message : String(err);
           if (message === 'cannot_insert_on_clip') {

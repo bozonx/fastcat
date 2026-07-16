@@ -45,9 +45,9 @@ const activeMarkerLines = computed(() => {
     const marker = markerById.get(id);
     if (!marker) continue;
     const color = marker.color ?? '#eab308';
-    lines.push({ px: viewportX(timeUsToPx(marker.timeUs, zoom)), color });
-    if (marker.durationUs !== undefined) {
-      lines.push({ px: viewportX(timeUsToPx(marker.timeUs + marker.durationUs, zoom)), color });
+    lines.push({ px: viewportX(timeUsToPx(marker.timeTicks, zoom)), color });
+    if (marker.durationTicks !== undefined) {
+      lines.push({ px: viewportX(timeUsToPx(marker.timeTicks + marker.durationTicks, zoom)), color });
     }
   }
   return lines;
@@ -60,13 +60,13 @@ const currentFrameHighlightStyle = computed(() => {
   const currentFrameIndex = Math.floor(
     ((timelineStore.currentTime + 0.5) * fps.value) / TICKS_PER_SECOND,
   );
-  const currentFrameStartUs = Math.round((currentFrameIndex * TICKS_PER_SECOND) / fps.value);
-  const nextFrameStartUs = Math.round(((currentFrameIndex + 1) * TICKS_PER_SECOND) / fps.value);
+  const currentFrameStartTicks = Math.round((currentFrameIndex * TICKS_PER_SECOND) / fps.value);
+  const nextFrameStartTicks = Math.round(((currentFrameIndex + 1) * TICKS_PER_SECOND) / fps.value);
 
   const currentFrameStartPx = viewportX(
-    timeUsToPx(currentFrameStartUs, timelineStore.timelineZoom),
+    timeUsToPx(currentFrameStartTicks, timelineStore.timelineZoom),
   );
-  const nextFrameStartPx = viewportX(timeUsToPx(nextFrameStartUs, timelineStore.timelineZoom));
+  const nextFrameStartPx = viewportX(timeUsToPx(nextFrameStartTicks, timelineStore.timelineZoom));
 
   return {
     transform: `translate3d(${currentFrameStartPx}px, 0, 0)`,

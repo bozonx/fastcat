@@ -182,15 +182,15 @@ function findPreviousAdjacentClip(
         return false;
       }
       const candidateEndTicks =
-        candidate.timelineRange.startUs + candidate.timelineRange.durationUs;
+        candidate.timelineRange.startTicks + candidate.timelineRange.durationTicks;
       return (
-        candidate.timelineRange.startUs < clip.timelineRange.startUs &&
-        candidateEndTicks >= clip.timelineRange.startUs - MIN_ADJACENT_CLIP_SEARCH_TICKS
+        candidate.timelineRange.startTicks < clip.timelineRange.startTicks &&
+        candidateEndTicks >= clip.timelineRange.startTicks - MIN_ADJACENT_CLIP_SEARCH_TICKS
       );
     })
     .sort((a, b) => {
-      const aEndTicks = a.timelineRange.startUs + a.timelineRange.durationUs;
-      const bEndTicks = b.timelineRange.startUs + b.timelineRange.durationUs;
+      const aEndTicks = a.timelineRange.startTicks + a.timelineRange.durationTicks;
+      const bEndTicks = b.timelineRange.startTicks + b.timelineRange.durationTicks;
       return bEndTicks - aEndTicks;
     })[0];
 }
@@ -199,18 +199,18 @@ function findNextAdjacentClip(
   clip: WorkerTimelineClip,
   allClips: WorkerTimelineClip[],
 ): WorkerTimelineClip | undefined {
-  const clipEndTicks = clip.timelineRange.startUs + clip.timelineRange.durationUs;
+  const clipEndTicks = clip.timelineRange.startTicks + clip.timelineRange.durationTicks;
   return allClips
     .filter((candidate) => {
       if (candidate.trackId !== clip.trackId || candidate.id === clip.id) {
         return false;
       }
       return (
-        candidate.timelineRange.startUs > clip.timelineRange.startUs &&
-        candidate.timelineRange.startUs <= clipEndTicks + MIN_ADJACENT_CLIP_SEARCH_TICKS
+        candidate.timelineRange.startTicks > clip.timelineRange.startTicks &&
+        candidate.timelineRange.startTicks <= clipEndTicks + MIN_ADJACENT_CLIP_SEARCH_TICKS
       );
     })
-    .sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs)[0];
+    .sort((a, b) => a.timelineRange.startTicks - b.timelineRange.startTicks)[0];
 }
 
 function getEffectiveTransitionIn(clip: WorkerTimelineClip): WorkerTimelineClip['transitionIn'] {
@@ -411,14 +411,14 @@ function buildBaseLayer(params: {
     idleSettled,
     previewBlurQuality,
   } = params;
-  const startUs = clip.timelineRange.startUs;
-  const durationUs = clip.timelineRange.durationUs;
-  const sourceStartUs = clip.sourceRange.startUs;
-  const sourceDurationUs = clip.sourceRange.durationUs;
+  const startTicks = clip.timelineRange.startTicks;
+  const durationTicks = clip.timelineRange.durationTicks;
+  const sourceStartTicks = clip.sourceRange.startTicks;
+  const sourceDurationTicks = clip.sourceRange.durationTicks;
 
   const transition_in = (() => {
     const effectiveTransitionIn = getEffectiveTransitionIn(clip);
-    if (effectiveTransitionIn && effectiveTransitionIn.durationUs > 0) {
+    if (effectiveTransitionIn && effectiveTransitionIn.durationTicks > 0) {
       const type = effectiveTransitionIn.type;
       const mode = getTransitionMode(effectiveTransitionIn);
       const fromClip = mode === 'adjacent' ? findPreviousAdjacentClip(clip, allClips) : undefined;
@@ -438,14 +438,14 @@ function buildBaseLayer(params: {
       const spec = manifest?.toTransitionSpec
         ? manifest.toTransitionSpec(
             effectiveTransitionIn.params ?? {},
-            ticksToSeconds(effectiveTransitionIn.durationUs),
+            ticksToSeconds(effectiveTransitionIn.durationTicks),
             { isExport, isPlaying, idleSettled, previewBlurQuality },
           )
         : undefined;
 
       return {
         type,
-        duration_sec: ticksToSeconds(effectiveTransitionIn.durationUs),
+        duration_sec: ticksToSeconds(effectiveTransitionIn.durationTicks),
         curve: effectiveTransitionIn.curve,
         from_layer_id: fromClip?.id,
         mode,
@@ -456,7 +456,7 @@ function buildBaseLayer(params: {
   })();
 
   const transition_out = (() => {
-    if (clip.transitionOut && clip.transitionOut.durationUs > 0) {
+    if (clip.transitionOut && clip.transitionOut.durationTicks > 0) {
       const type = clip.transitionOut.type;
       const mode = getTransitionMode(clip.transitionOut);
       const toClip = mode === 'adjacent' ? findNextAdjacentClip(clip, allClips) : undefined;
@@ -476,14 +476,14 @@ function buildBaseLayer(params: {
       const spec = manifest?.toTransitionSpec
         ? manifest.toTransitionSpec(
             clip.transitionOut.params ?? {},
-            ticksToSeconds(clip.transitionOut.durationUs),
+            ticksToSeconds(clip.transitionOut.durationTicks),
             { isExport, isPlaying, idleSettled, previewBlurQuality },
           )
         : undefined;
 
       return {
         type,
-        duration_sec: ticksToSeconds(clip.transitionOut.durationUs),
+        duration_sec: ticksToSeconds(clip.transitionOut.durationTicks),
         curve: clip.transitionOut.curve,
         from_layer_id: toClip?.id,
         mode,
@@ -498,21 +498,21 @@ function buildBaseLayer(params: {
     // `path` is required by the generated SceneLayer; media layers override it
     // below, virtual layers (text/shape/background) leave it empty.
     path: '',
-    timeline_start_sec: ticksToSeconds(startUs),
-    timeline_end_sec: ticksToSeconds(startUs + durationUs),
-    source_start_sec: ticksToSeconds(sourceStartUs),
-    source_range_duration_sec: ticksToSeconds(Math.max(0, sourceDurationUs)),
+    timeline_start_sec: ticksToSeconds(startTicks),
+    timeline_end_sec: ticksToSeconds(startTicks + durationTicks),
+    source_start_sec: ticksToSeconds(sourceStartTicks),
+    source_range_duration_sec: ticksToSeconds(Math.max(0, sourceDurationTicks)),
     // Full media duration (not the trimmed range): lets the native renderer play
     // the outgoing clip's tail/handle during a transition instead of freezing on
     // the trimmed out-point, matching the web compositor. Omitted when unknown.
     source_duration_sec:
-      typeof clip.sourceDurationUs === 'number' && clip.sourceDurationUs > 0
-        ? ticksToSeconds(clip.sourceDurationUs)
+      typeof clip.sourceDurationTicks === 'number' && clip.sourceDurationTicks > 0
+        ? ticksToSeconds(clip.sourceDurationTicks)
         : undefined,
     speed: sanitizeVideoSpeed(clip.speed),
     freeze_frame_source_sec:
-      typeof clip.freezeFrameSourceUs === 'number'
-        ? ticksToSeconds(Math.max(0, clip.freezeFrameSourceUs))
+      typeof clip.freezeFrameSourceTicks === 'number'
+        ? ticksToSeconds(Math.max(0, clip.freezeFrameSourceTicks))
         : undefined,
     source_orientation: String(clip.sourceOrientation ?? 'auto'),
     z,
@@ -588,8 +588,8 @@ async function buildAudioLayers(params: {
     if (clip.clipType !== 'media') continue;
     const path = clip.source?.path;
     if (!path) continue;
-    const durationUs = clip.timelineRange.durationUs;
-    if (durationUs <= 0) continue;
+    const durationTicks = clip.timelineRange.durationTicks;
+    if (durationTicks <= 0) continue;
 
     descriptors.push(
       buildCanonicalAudioClipDescriptor({
@@ -615,7 +615,7 @@ async function buildAudioLayers(params: {
   const prevOf = new Map<CanonicalAudioClipDescriptor, CanonicalAudioClipDescriptor | null>();
   const nextOf = new Map<CanonicalAudioClipDescriptor, CanonicalAudioClipDescriptor | null>();
   for (const list of byTrack.values()) {
-    list.sort((a, b) => a.startUs - b.startUs);
+    list.sort((a, b) => a.startTicks - b.startTicks);
     for (let i = 0; i < list.length; i++) {
       prevOf.set(list[i]!, i > 0 ? list[i - 1]! : null);
       nextOf.set(list[i]!, i < list.length - 1 ? list[i + 1]! : null);

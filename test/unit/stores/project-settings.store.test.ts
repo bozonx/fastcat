@@ -39,7 +39,7 @@ const defaultSettings = {
     export: { ...defaultMonitorView },
   },
   timelines: { openPaths: [], sessions: {} },
-  transitions: { defaultDurationUs: 2_000_000 },
+  transitions: { defaultDurationTicks: 2_000_000 },
   ui: {
     activeTabId: null,
     fileTabs: [],
@@ -75,7 +75,7 @@ vi.mock('~/utils/project-settings', () => {
       monitor: { ...dpm },
       monitors: { cut: { ...dmv }, sound: { ...dmv }, export: { ...dmv } },
       timelines: { openPaths: [], sessions: {} },
-      transitions: { defaultDurationUs: 2_000_000 },
+      transitions: { defaultDurationTicks: 2_000_000 },
       ui: {
         activeTabId: null,
         fileTabs: [],
@@ -540,7 +540,7 @@ describe('applyLoadedTimelineSessionSnapshot', () => {
       openPaths: ['timelines/main.otio'],
       sessions: {
         'timelines/main.otio': {
-          playheadUs: 12_000_000,
+          playheadTicks: 12_000_000,
           masterGain: 0.75,
           masterMuted: false,
           zoom: 80,
@@ -560,7 +560,7 @@ describe('applyLoadedTimelineSessionSnapshot', () => {
       selectionRange: null,
     });
 
-    expect(next.sessions['timelines/main.otio']?.playheadUs).toBe(12_000_000);
+    expect(next.sessions['timelines/main.otio']?.playheadTicks).toBe(12_000_000);
   });
 
   it('updates saved playhead after timeline document is loaded', () => {
@@ -577,17 +577,17 @@ describe('applyLoadedTimelineSessionSnapshot', () => {
       masterMuted: true,
       zoom: 90,
       trackHeights: { a1: 72 },
-      selectionRange: { startUs: 1_000_000, endUs: 2_000_000 },
+      selectionRange: { startTicks: 1_000_000, endTicks: 2_000_000 },
     });
 
     expect(next.sessions['timelines/main.otio']).toEqual({
-      playheadUs: 8_000_000,
+      playheadTicks: 8_000_000,
       masterGain: 0.5,
       masterMuted: true,
       zoom: 90,
       trackHeights: { a1: 72 },
       mobileTrackHeightsEnlarged: {},
-      selectionRange: { startUs: 1_000_000, endUs: 2_000_000 },
+      selectionRange: { startTicks: 1_000_000, endTicks: 2_000_000 },
     });
   });
 });

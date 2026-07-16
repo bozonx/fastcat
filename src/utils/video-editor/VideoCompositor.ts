@@ -62,7 +62,7 @@ export class VideoCompositor {
   public app: Application | null = null;
   public canvas: OffscreenCanvas | HTMLCanvasElement | null = null;
   public clips: CompositorClip[] = [];
-  public maxDurationUs = 0;
+  public maxDurationTicks = 0;
 
   private width = 1920;
   private height = 1080;
@@ -72,7 +72,7 @@ export class VideoCompositor {
   private prevClipById = new Map<string, CompositorClip | null>();
   private nextClipById = new Map<string, CompositorClip | null>();
   private replacedClipIds = new Set<string>();
-  private lastRenderedTimeUs = 0;
+  private lastRenderedTimeTicks = 0;
   private contextLost = false;
   private previewEffectsEnabled = true;
   private previewEffectQuality: PreviewEffectQuality = 'ultra';
@@ -148,8 +148,8 @@ export class VideoCompositor {
 
   private readonly activeTracker = new TimelineActiveTracker<CompositorClip>({
     getId: (clip) => clip.itemId,
-    getStartUs: (clip) => clip.startUs,
-    getEndUs: (clip) => clip.endUs,
+    getStartTicks: (clip) => clip.startTicks,
+    getEndTicks: (clip) => clip.endTicks,
   });
 
   constructor() {
@@ -247,7 +247,7 @@ export class VideoCompositor {
           clip.sprite.visible,
       )
       .sort(
-        (a, b) => a.layer - b.layer || a.startUs - b.startUs || a.itemId.localeCompare(b.itemId),
+        (a, b) => a.layer - b.layer || a.startTicks - b.startTicks || a.itemId.localeCompare(b.itemId),
       );
 
     for (const clip of this.clips) {
@@ -424,7 +424,7 @@ export class VideoCompositor {
   private async getVideoSampleForClip(params: {
     clip: CompositorClip;
     sampleTimeS: number;
-    timelineTimeUs?: number;
+    timelineTimeTicks?: number;
     monitorSyncMode?: 'smooth' | 'balanced' | 'strict';
     abortSignal?: AbortSignal;
   }): Promise<unknown | null> {
@@ -455,12 +455,12 @@ export class VideoCompositor {
     return this.trackRuntimeManager.buildList(timelineItems);
   }
 
-  public async applyShaderTransitions(activeClips: CompositorClip[], currentTimeUs: number) {
+  public async applyShaderTransitions(activeClips: CompositorClip[], currentTimeTicks: number) {
     if (!this.app) return;
 
     const stageTextureRenderer = this.ensureStageTextureRenderer(this.app);
 
-    await this.transitionRenderer.applyShaderTransitions(activeClips, currentTimeUs, {
+    await this.transitionRenderer.applyShaderTransitions(activeClips, currentTimeTicks, {
       app: this.app,
       clips: this.clips,
       width: this.width,
@@ -470,8 +470,8 @@ export class VideoCompositor {
       transitionManager: this.transitionManager,
       stageTextureRenderer,
       getTrackById: (trackId) => this.trackRuntimeManager.getById(trackId),
-      getActiveTransitionState: (clip, timeUs) =>
-        this.getActiveTransitionState(clip, timeUs) as {
+      getActiveTransitionState: (clip, timeTicks) =>
+        this.getActiveTransitionState(clip, timeTicks) as {
           opacity: number;
           progress: number;
           mode?: string;
@@ -529,42 +529,42 @@ export class VideoCompositor {
   }
 
   private resolveFixedClipEnd(params: {
-    startUs: number;
-    requestedTimelineDurationUs: number;
-    sequentialTimeUs: number;
+    startTicks: number;
+    requestedTimelineDurationTicks: number;
+    sequentialTimeTicks: number;
   }) {
-    const endUs = params.startUs + Math.max(0, params.requestedTimelineDurationUs);
+    const endTicks = params.startTicks + Math.max(0, params.requestedTimelineDurationTicks);
     return {
-      endUs,
-      sequentialTimeUs: Math.max(params.sequentialTimeUs, endUs),
+      endTicks,
+      sequentialTimeTicks: Math.max(params.sequentialTimeTicks, endTicks),
     };
   }
 
   private applyLoadedTimeline(params: {
     nextClips: CompositorClip[];
     nextClipById: Map<string, CompositorClip>;
-    sequentialTimeUs: number;
+    sequentialTimeTicks: number;
   }) {
     const applied = this.timelineApplyLifecycle.apply({
       previousClipById: this.clipById,
       replacedClipIds: this.replacedClipIds,
       nextClips: params.nextClips,
       nextClipById: params.nextClipById,
-      sequentialTimeUs: params.sequentialTimeUs,
+      sequentialTimeTicks: params.sequentialTimeTicks,
       destroyClip: (clip) => this.destroyClip(clip),
     });
 
     this.clips = applied.clips;
     this.clipById = applied.clipById;
     this.rebuildPrevClipIndex();
-    this.maxDurationUs = applied.maxDurationUs;
-    this.lastRenderedTimeUs = applied.lastRenderedTimeUs;
+    this.maxDurationTicks = applied.maxDurationTicks;
+    this.lastRenderedTimeTicks = applied.lastRenderedTimeTicks;
     this.activeTracker.reset();
     this.hideAllClipSprites();
     this.stageSortDirty = applied.stageSortDirty;
     this.activeSortDirty = applied.activeSortDirty;
 
-    return this.maxDurationUs;
+    return this.maxDurationTicks;
   }
 
   private hideAllClipSprites() {
@@ -780,7 +780,7 @@ export class VideoCompositor {
     this.stageSortDirty = true;
 
     const { Input, BlobSource, VideoSampleSink, ALL_FORMATS } = await import('mediabunny');
-    const { nextClips, nextClipById, sequentialTimeUs } = await this.timelineLoadOrchestrator.load({
+    const { nextClips, nextClipById, sequentialTimeTicks } = await this.timelineLoadOrchestrator.load({
       timelineClips,
       deps,
       mediabunny: {
@@ -823,22 +823,22 @@ export class VideoCompositor {
     return this.applyLoadedTimeline({
       nextClips,
       nextClipById,
-      sequentialTimeUs,
+      sequentialTimeTicks,
     });
   }
 
   updateTimelineLayout(timelineClips: ReadonlyArray<WorkerVideoPayloadItem>): Promise<number> {
-    if (this.disposed) return Promise.resolve(this.maxDurationUs);
+    if (this.disposed) return Promise.resolve(this.maxDurationTicks);
     return this.runExclusive(
       () => this.updateTimelineLayoutLocked(timelineClips),
       'updateTimelineLayout',
     );
   }
 
-  prewarmVideoFrames(timeUs: number, lookaheadUs = (TICKS_PER_SECOND * 5) / 2): Promise<void> {
+  prewarmVideoFrames(timeTicks: number, lookaheadTicks = (TICKS_PER_SECOND * 5) / 2): Promise<void> {
     if (this.disposed) return Promise.resolve();
     return this.runExclusive(
-      () => this.prewarmVideoFramesLocked(timeUs, lookaheadUs),
+      () => this.prewarmVideoFramesLocked(timeTicks, lookaheadTicks),
       'prewarmVideoFrames',
     );
   }
@@ -848,14 +848,14 @@ export class VideoCompositor {
   // clip's frame rate. Reverse and freeze-frame clips are skipped — the sequential
   // forward decoder does not model them. Runs inside the exclusive prewarm op, so
   // the sequential sink read it feeds can never race the render path's sink reads.
-  private buildActiveClipWarmPlans(timeUs: number): Array<{
+  private buildActiveClipWarmPlans(timeTicks: number): Array<{
     clip: CompositorClip;
     nowSourceTimeS: number;
     aheadSourceTimeS: number;
-    timelineNowUs: number;
+    timelineNowTicks: number;
     speed: number;
   }> {
-    const nowUs = Math.max(0, Math.round(timeUs));
+    const nowTicks = Math.max(0, Math.round(timeTicks));
     const maxFrames = Math.max(0, Math.round(VIDEO_CORE_LIMITS.MAX_ACTIVE_PREWARM_FRAMES));
     if (maxFrames === 0) return [];
 
@@ -863,7 +863,7 @@ export class VideoCompositor {
       clip: CompositorClip;
       nowSourceTimeS: number;
       aheadSourceTimeS: number;
-      timelineNowUs: number;
+      timelineNowTicks: number;
       speed: number;
     }> = [];
 
@@ -873,12 +873,12 @@ export class VideoCompositor {
       if (
         clip.clipKind !== 'video' ||
         !clip.sink ||
-        typeof clip.freezeFrameSourceUs === 'number' ||
+        typeof clip.freezeFrameSourceTicks === 'number' ||
         // Cover clips under the playhead AND imminent upcoming clips (starting
         // within the head horizon) so a cut's head window is decoded BEFORE the
         // crossing; exclude finished clips and ones still beyond the horizon.
-        clip.startUs > nowUs + headHorizonTicks ||
-        clip.endUs <= nowUs
+        clip.startTicks > nowTicks + headHorizonTicks ||
+        clip.endTicks <= nowTicks
       ) {
         continue;
       }
@@ -894,26 +894,26 @@ export class VideoCompositor {
       // first source frame (localTime 0). Clamping unifies both cases; when the
       // playhead later crosses in, `warmClipFrameWindow` sees `nowSourceTime`
       // still ≈ the first frame and continues the same iterator (no reopen).
-      const localTimeTicks = Math.max(0, nowUs - clip.startUs);
-      const nowSourceUs = resolveClipSourceTimeTicks({
+      const localTimeTicks = Math.max(0, nowTicks - clip.startTicks);
+      const nowSourceTicks = resolveClipSourceTimeTicks({
         localTimeTicks,
-        sourceStartTicks: clip.sourceStartUs,
-        sourceRangeDurationTicks: clip.sourceRangeDurationUs,
+        sourceStartTicks: clip.sourceStartTicks,
+        sourceRangeDurationTicks: clip.sourceRangeDurationTicks,
         speed,
         frameRate: clip.frameRate,
       });
       // Source-domain look-ahead; scaled by |speed| so fast playback still covers
       // the same wall-clock horizon.
-      const aheadSourceUs =
-        nowSourceUs + Math.round((maxFrames / frameRate) * TICKS_PER_SECOND * speed);
+      const aheadSourceTicks =
+        nowSourceTicks + Math.round((maxFrames / frameRate) * TICKS_PER_SECOND * speed);
 
       plans.push({
         clip,
-        nowSourceTimeS: nowSourceUs / TICKS_PER_SECOND,
-        aheadSourceTimeS: aheadSourceUs / TICKS_PER_SECOND,
-        // Timeline slot of `nowSourceUs` (for scrub-locality eviction): the
+        nowSourceTimeS: nowSourceTicks / TICKS_PER_SECOND,
+        aheadSourceTimeS: aheadSourceTicks / TICKS_PER_SECOND,
+        // Timeline slot of `nowSourceTicks` (for scrub-locality eviction): the
         // playhead for active clips, the clip start for not-yet-entered ones.
-        timelineNowUs: Math.max(nowUs, clip.startUs),
+        timelineNowTicks: Math.max(nowTicks, clip.startTicks),
         speed,
       });
     }
@@ -921,7 +921,7 @@ export class VideoCompositor {
     // Nearest-first (active clips share the smallest key) then bound concurrent
     // decoders when a dense cut cluster — e.g. a flattened nested timeline — packs
     // many short clips into the head horizon.
-    plans.sort((a, b) => a.timelineNowUs - b.timelineNowUs);
+    plans.sort((a, b) => a.timelineNowTicks - b.timelineNowTicks);
     return plans.slice(0, Math.max(1, Math.round(VIDEO_CORE_LIMITS.MAX_PREWARM_CLIPS)));
   }
 
@@ -929,7 +929,7 @@ export class VideoCompositor {
   // that check — used to detect a cut crossed while moving forward, for proactive
   // prewarm.
   private lastActiveVideoClipIds = new Set<string>();
-  private lastClipEntryCheckTimeUs = -1;
+  private lastClipEntryCheckTimeTicks = -1;
 
   /**
    * The instant a video clip enters the active set while moving forward (a cut
@@ -941,44 +941,44 @@ export class VideoCompositor {
    * {@link buildActiveClipWarmPlans}: that pre-warms while the clip is upcoming;
    * this covers a forward jump that skipped the upcoming phase.
    */
-  private maybeProactivePrewarmOnClipEntry(timeUs: number): void {
-    const movingForward = timeUs >= this.lastClipEntryCheckTimeUs;
-    this.lastClipEntryCheckTimeUs = timeUs;
+  private maybeProactivePrewarmOnClipEntry(timeTicks: number): void {
+    const movingForward = timeTicks >= this.lastClipEntryCheckTimeTicks;
+    this.lastClipEntryCheckTimeTicks = timeTicks;
 
     const activeVideoIds = new Set<string>();
     let entered = false;
     for (const clip of this.activeTracker.getActiveClips()) {
-      if (clip.clipKind !== 'video' || typeof clip.freezeFrameSourceUs === 'number') continue;
+      if (clip.clipKind !== 'video' || typeof clip.freezeFrameSourceTicks === 'number') continue;
       activeVideoIds.add(clip.itemId);
       if (!this.lastActiveVideoClipIds.has(clip.itemId)) entered = true;
     }
     this.lastActiveVideoClipIds = activeVideoIds;
 
     if (!entered || !movingForward || this.disposed) return;
-    void this.prewarmVideoFrames(timeUs).catch(() => undefined);
+    void this.prewarmVideoFrames(timeTicks).catch(() => undefined);
   }
 
-  private async prewarmVideoFramesLocked(timeUs: number, lookaheadUs: number): Promise<void> {
-    const startUs = Math.max(0, Math.round(timeUs));
-    this.videoFrameCache.setPriorityTimeUs(startUs);
-    const endUs = startUs + Math.max(0, Math.round(lookaheadUs));
+  private async prewarmVideoFramesLocked(timeTicks: number, lookaheadTicks: number): Promise<void> {
+    const startTicks = Math.max(0, Math.round(timeTicks));
+    this.videoFrameCache.setPriorityTimeTicks(startTicks);
+    const endTicks = startTicks + Math.max(0, Math.round(lookaheadTicks));
 
     // Clips within the head horizon get a full head-window decode-ahead below
     // (buildActiveClipWarmPlans); the single-frame warm here covers the FARTHER
     // upcoming clips (head-horizon..lookahead) so their first displayed frame is
     // warm at the cut without opening a decoder for every distant clip.
-    const activeWarmPlans = this.buildActiveClipWarmPlans(startUs);
+    const activeWarmPlans = this.buildActiveClipWarmPlans(startTicks);
     const headWarmedIds = new Set(activeWarmPlans.map((plan) => plan.clip.itemId));
     const upcoming = this.clips
       .filter(
         (clip) =>
           clip.clipKind === 'video' &&
           Boolean(clip.sink) &&
-          clip.startUs > startUs &&
-          clip.startUs <= endUs &&
+          clip.startTicks > startTicks &&
+          clip.startTicks <= endTicks &&
           !headWarmedIds.has(clip.itemId),
       )
-      .sort((a, b) => a.startUs - b.startUs)
+      .sort((a, b) => a.startTicks - b.startTicks)
       .slice(0, Math.max(1, Math.round(VIDEO_CORE_LIMITS.MAX_PREWARM_CLIPS)));
 
     // Decode-ahead of the clips under (or imminently ahead of) the playhead via
@@ -994,21 +994,21 @@ export class VideoCompositor {
 
     await Promise.all([
       ...upcoming.map(async (clip) => {
-        const sampleTimeUs =
-          typeof clip.freezeFrameSourceUs === 'number'
-            ? Math.max(0, clip.freezeFrameSourceUs)
+        const sampleTimeTicks =
+          typeof clip.freezeFrameSourceTicks === 'number'
+            ? Math.max(0, clip.freezeFrameSourceTicks)
             : resolveClipSourceTimeTicks({
                 localTimeTicks: 0,
-                sourceStartTicks: clip.sourceStartUs,
-                sourceRangeDurationTicks: clip.sourceRangeDurationUs,
+                sourceStartTicks: clip.sourceStartTicks,
+                sourceRangeDurationTicks: clip.sourceRangeDurationTicks,
                 speed: normalizeClipSpeed(clip.speed),
                 frameRate: clip.frameRate,
               });
 
         await this.getVideoSampleForClip({
           clip,
-          sampleTimeS: sampleTimeUs / TICKS_PER_SECOND,
-          timelineTimeUs: clip.startUs,
+          sampleTimeS: sampleTimeTicks / TICKS_PER_SECOND,
+          timelineTimeTicks: clip.startTicks,
         });
       }),
       ...activeWarmPlans.map((plan) =>
@@ -1045,17 +1045,17 @@ export class VideoCompositor {
 
     this.clips = updated.clips;
     this.rebuildPrevClipIndex();
-    this.maxDurationUs = updated.maxDurationUs;
-    this.lastRenderedTimeUs = updated.lastRenderedTimeUs;
+    this.maxDurationTicks = updated.maxDurationTicks;
+    this.lastRenderedTimeTicks = updated.lastRenderedTimeTicks;
     this.activeTracker.reset();
     this.hideAllClipSprites();
     this.stageSortDirty = updated.stageSortDirty;
     this.activeSortDirty = updated.activeSortDirty;
-    return this.maxDurationUs;
+    return this.maxDurationTicks;
   }
 
   async renderFrame(
-    timeUs: number,
+    timeTicks: number,
     options?: PreviewRenderOptions,
   ): Promise<OffscreenCanvas | HTMLCanvasElement | null> {
     if (this.disposed || !this.app || !this.canvas) return null;
@@ -1084,7 +1084,7 @@ export class VideoCompositor {
     // VideoFrame or sink mid-render — it waits for the in-flight render to settle
     // first (and vice versa).
     return this.runExclusive((signal) => {
-      this.videoFrameCache.setPriorityTimeUs(timeUs);
+      this.videoFrameCache.setPriorityTimeTicks(timeTicks);
       // If the queue watchdog trips, abort in-flight sample reads so a stalled
       // render unwinds and stops blocking queued edits.
       if (signal.aborted) this.resourceManager.abortInFlight();
@@ -1099,7 +1099,7 @@ export class VideoCompositor {
           width: this.width,
           height: this.height,
           clips: this.clips,
-          lastRenderedTimeUs: this.lastRenderedTimeUs,
+          lastRenderedTimeTicks: this.lastRenderedTimeTicks,
           stageSortDirty: this.stageSortDirty,
           activeSortDirty: this.activeSortDirty,
           contextLost: this.contextLost,
@@ -1107,11 +1107,11 @@ export class VideoCompositor {
           previewEffectQuality: this.previewEffectQuality,
           masterEffects: this.masterEffects,
         },
-        activeTrackerUpdate: (currentTimeUs, lastTimeUs) =>
+        activeTrackerUpdate: (currentTimeTicks, lastTimeTicks) =>
           this.activeTracker.update({
             clips: this.clips,
-            timeUs: currentTimeUs,
-            lastTimeUs,
+            timeTicks: currentTimeTicks,
+            lastTimeTicks,
             onDeactivate: (clip) => {
               if (clip.sprite && !clip.sprite.destroyed) {
                 clip.sprite.visible = false;
@@ -1139,8 +1139,8 @@ export class VideoCompositor {
         setActiveSortDirty: (value) => {
           this.activeSortDirty = value;
         },
-        setLastRenderedTimeUs: (value) => {
-          this.lastRenderedTimeUs = value;
+        setLastRenderedTimeTicks: (value) => {
+          this.lastRenderedTimeTicks = value;
         },
         resourceManager: this.resourceManager,
         videoFrameCache: this.videoFrameCache,
@@ -1160,9 +1160,9 @@ export class VideoCompositor {
         masterEffectFilters: this.masterEffectFilters,
       });
       const renderStartMs = performance.now();
-      return this.renderingEngine.renderFrame(timeUs, options, context).finally(() => {
+      return this.renderingEngine.renderFrame(timeTicks, options, context).finally(() => {
         compositorPerfStats.onRender(performance.now() - renderStartMs);
-        this.maybeProactivePrewarmOnClipEntry(timeUs);
+        this.maybeProactivePrewarmOnClipEntry(timeTicks);
       });
     }, 'renderFrame');
   }
@@ -1170,14 +1170,14 @@ export class VideoCompositor {
   private findPrevClipOnLayer(clip: CompositorClip): CompositorClip | null {
     const best = this.prevClipById.get(clip.itemId) ?? null;
     if (!best) return null;
-    if (clip.startUs - best.endUs > VIDEO_CORE_LIMITS.BLEND_SHADOW_GAP_THRESHOLD_TICKS) return null;
+    if (clip.startTicks - best.endTicks > VIDEO_CORE_LIMITS.BLEND_SHADOW_GAP_THRESHOLD_TICKS) return null;
     return best;
   }
 
   private findNextClipOnLayer(clip: CompositorClip): CompositorClip | null {
     const best = this.nextClipById.get(clip.itemId) ?? null;
     if (!best) return null;
-    if (best.startUs - clip.endUs > VIDEO_CORE_LIMITS.BLEND_SHADOW_GAP_THRESHOLD_TICKS) return null;
+    if (best.startTicks - clip.endTicks > VIDEO_CORE_LIMITS.BLEND_SHADOW_GAP_THRESHOLD_TICKS) return null;
     return best;
   }
 
@@ -1185,10 +1185,10 @@ export class VideoCompositor {
     this.stageTextureRenderer?.renderLowerLayersToTexture(layer, texture);
   }
 
-  private getActiveTransitionState(clip: CompositorClip, timeUs: number) {
+  private getActiveTransitionState(clip: CompositorClip, timeTicks: number) {
     return this.transitionManager.getActiveTransitionState(
       clip,
-      timeUs,
+      timeTicks,
       this.previewEffectsEnabled,
     );
   }
@@ -1215,11 +1215,11 @@ export class VideoCompositor {
     this.nextClipById.clear();
     this.replacedClipIds.clear();
     this.clipPreferBitmapFallback.clear();
-    this.lastRenderedTimeUs = 0;
+    this.lastRenderedTimeTicks = 0;
     this.activeTracker.reset();
     this.stageSortDirty = true;
     this.activeSortDirty = true;
-    this.maxDurationUs = 0;
+    this.maxDurationTicks = 0;
   }
 
   async destroy() {

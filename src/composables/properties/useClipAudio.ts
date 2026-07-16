@@ -21,8 +21,8 @@ interface UseClipAudioOptions {
     patch: {
       audioGain?: number;
       audioBalance?: number;
-      audioFadeInUs?: number;
-      audioFadeOutUs?: number;
+      audioFadeInTicks?: number;
+      audioFadeOutTicks?: number;
       audioFadeInCurve?: AudioFadeCurve;
       audioFadeOutCurve?: AudioFadeCurve;
     },
@@ -109,32 +109,32 @@ export function useClipAudio(options: UseClipAudioOptions) {
   }
 
   const audioFadeInSec = computed(() => {
-    const v = options.clip.value.audioFadeInUs;
+    const v = options.clip.value.audioFadeInTicks;
     const safe = typeof v === 'number' && Number.isFinite(v) ? v : 0;
     return Math.max(0, safe / TICKS_PER_SECOND);
   });
 
   const audioFadeOutSec = computed(() => {
-    const v = options.clip.value.audioFadeOutUs;
+    const v = options.clip.value.audioFadeOutTicks;
     const safe = typeof v === 'number' && Number.isFinite(v) ? v : 0;
     return Math.max(0, safe / TICKS_PER_SECOND);
   });
 
   const audioFadeInMaxSec = computed(() => {
-    const oppUs = options.clip.value.audioFadeOutUs;
-    const oppSafe = typeof oppUs === 'number' && Number.isFinite(oppUs) ? oppUs : 0;
+    const oppTicks = options.clip.value.audioFadeOutTicks;
+    const oppSafe = typeof oppTicks === 'number' && Number.isFinite(oppTicks) ? oppTicks : 0;
     return Math.max(
       0,
-      (Number(options.clip.value.timelineRange?.durationUs ?? 0) - oppSafe) / TICKS_PER_SECOND,
+      (Number(options.clip.value.timelineRange?.durationTicks ?? 0) - oppSafe) / TICKS_PER_SECOND,
     );
   });
 
   const audioFadeOutMaxSec = computed(() => {
-    const oppUs = options.clip.value.audioFadeInUs;
-    const oppSafe = typeof oppUs === 'number' && Number.isFinite(oppUs) ? oppUs : 0;
+    const oppTicks = options.clip.value.audioFadeInTicks;
+    const oppSafe = typeof oppTicks === 'number' && Number.isFinite(oppTicks) ? oppTicks : 0;
     return Math.max(
       0,
-      (Number(options.clip.value.timelineRange?.durationUs ?? 0) - oppSafe) / TICKS_PER_SECOND,
+      (Number(options.clip.value.timelineRange?.durationTicks ?? 0) - oppSafe) / TICKS_PER_SECOND,
     );
   });
 
@@ -148,12 +148,12 @@ export function useClipAudio(options: UseClipAudioOptions) {
 
   function updateAudioFadeInSec(val: number) {
     const safeSec = clampNumber(val, 0, audioFadeInMaxSec.value);
-    options.updateAudio({ audioFadeInUs: Math.round(safeSec * TICKS_PER_SECOND) });
+    options.updateAudio({ audioFadeInTicks: Math.round(safeSec * TICKS_PER_SECOND) });
   }
 
   function updateAudioFadeOutSec(val: number) {
     const safeSec = clampNumber(val, 0, audioFadeOutMaxSec.value);
-    options.updateAudio({ audioFadeOutUs: Math.round(safeSec * TICKS_PER_SECOND) });
+    options.updateAudio({ audioFadeOutTicks: Math.round(safeSec * TICKS_PER_SECOND) });
   }
 
   function updateAudioFadeInCurve(val: unknown) {

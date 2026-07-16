@@ -46,7 +46,7 @@ export const ClipTransformSchema = z.object({
 export const ClipSourceOrientationSchema = z.enum(['auto', '0', '90', '180', '270']);
 
 const KeyframeSchema = z.object({
-  tUs: z.number().catch(0),
+  tTicks: z.number().catch(0),
   value: z.number().catch(0),
   easing: z.enum(['linear', 'ease', 'hold']).catch('linear'),
 });
@@ -141,7 +141,7 @@ export const ShapeConfigSchema = z.object({
 
 export const ClipTransitionFastCatSchema = z.object({
   type: z.string().trim().min(1),
-  durationUs: z.number().min(0),
+  durationTicks: z.number().min(0),
   mode: z.enum(['adjacent', 'background', 'transparent']).optional(),
   isOverridden: z.boolean().optional(),
   curve: z.enum(['linear', 'smooth']).optional(),
@@ -291,8 +291,8 @@ export const TypeDataLegacySchema = z.object({
 // ---------------------------------------------------------------------------
 
 export const TimelineClipRoundtripSchema = z.object({
-  timelineRange: z.object({ startUs: z.number(), durationUs: z.number() }).optional(),
-  sourceRange: z.object({ startUs: z.number(), durationUs: z.number() }).optional(),
+  timelineRange: z.object({ startTicks: z.number(), durationTicks: z.number() }).optional(),
+  sourceRange: z.object({ startTicks: z.number(), durationTicks: z.number() }).optional(),
 });
 
 export const TimelineGapFastCatMetaSchema = z
@@ -300,7 +300,7 @@ export const TimelineGapFastCatMetaSchema = z
     id: z.string().trim().min(1).optional(),
     roundtrip: z
       .object({
-        timelineRange: z.object({ startUs: z.number(), durationUs: z.number() }).optional(),
+        timelineRange: z.object({ startTicks: z.number(), durationTicks: z.number() }).optional(),
       })
       .optional(),
   })
@@ -312,21 +312,21 @@ export const TimelineClipFastCatMetaSchema = z
     clipType: TimelineClipTypeSchema.optional(),
     source: z
       .object({
-        durationUs: z.number().min(0).optional(),
+        durationTicks: z.number().min(0).optional(),
       })
       .optional(),
     playback: z
       .object({
         speed: z.number().min(-10).max(10).optional(),
-        freezeFrameSourceUs: z.number().min(0).optional(),
+        freezeFrameSourceTicks: z.number().min(0).optional(),
       })
       .optional(),
     audio: z
       .object({
         gain: z.number().min(0).max(10).optional(),
         balance: z.number().min(-1).max(1).optional(),
-        fadeInUs: z.number().min(0).optional(),
-        fadeOutUs: z.number().min(0).optional(),
+        fadeInTicks: z.number().min(0).optional(),
+        fadeOutTicks: z.number().min(0).optional(),
         fadeInCurve: AudioFadeCurveSchema.optional(),
         fadeOutCurve: AudioFadeCurveSchema.optional(),
         muted: z.boolean().optional(),
@@ -415,8 +415,8 @@ export const TimelineDocFastCatMetaSchema = z
       .optional(),
     selectionRange: z
       .object({
-        startUs: z.number(),
-        endUs: z.number(),
+        startTicks: z.number(),
+        endTicks: z.number(),
       })
       .nullable()
       .optional(),
@@ -439,8 +439,8 @@ export const TimelineDocFastCatMetaSchema = z
           .optional(),
         selectionRange: z
           .object({
-            startUs: z.number(),
-            endUs: z.number(),
+            startTicks: z.number(),
+            endTicks: z.number(),
           })
           .nullable()
           .optional(),

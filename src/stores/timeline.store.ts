@@ -8,14 +8,14 @@ import type { TimelineDocument, TimelineSelectionRange } from '~/timeline/types'
 import type { TimelineCommand } from '~/timeline/commands';
 import { createTimelineEditService } from '~/timeline/application/timelineEditService';
 import { parseTimelineFromOtio, serializeTimelineToOtio } from '~/timeline/otio-serializer';
-import { selectTimelineDurationUs } from '~/timeline/selectors';
+import { selectTimelineDurationTicks } from '~/timeline/selectors';
 import {
   pxPerSecondToZoom,
-  computeSnappedStartUs,
-  subframePhaseUs,
+  computeSnappedStartTicks,
+  subframePhaseTicks,
   sanitizeFps,
 } from '~/utils/timeline/geometry';
-import { computeSnapTargetsUs } from '~/composables/timeline/timeline-drag-domain';
+import { computeSnapTargetsTicks } from '~/composables/timeline/timeline-drag-domain';
 
 import { createTimelinePersistenceModule } from '~/stores/timeline/persistence';
 import { createTimelineMarkerService } from '~/timeline/application/timelineMarkerService';
@@ -243,7 +243,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     duration,
     playbackGestureHandler,
     getDocFps: () => (timelineDoc.value ? getDocFps(timelineDoc.value) : TIMELINE_DEFAULTS.FPS),
-    setCurrentTimeUs: (nextTimeUs) => lifecycle.setCurrentTimeUs(nextTimeUs),
+    setCurrentTimeTicks: (nextTimeTicks) => lifecycle.setCurrentTimeTicks(nextTimeTicks),
     onPlayheadJump: () => {
       scrollToPlayheadRequest.value++;
     },
@@ -315,12 +315,12 @@ export const useTimelineStore = defineStore('timeline', () => {
     getSelectedOrActiveTrackId: () => selection.getSelectedOrActiveTrackId(),
     ensureNoNestedTimelineCycle: (path) =>
       commands.commandService.ensureNoNestedTimelineCycle(path),
-    resolvePastePlacement: ({ baseTargetTrackId, insertStartUs, totalDurationUs }) => {
+    resolvePastePlacement: ({ baseTargetTrackId, insertStartTicks, totalDurationTicks }) => {
       const pseudo = timelineSettingsStore.isPseudoOverlapEnabled;
       // Paste always lands frame-aligned (video can never be placed freely).
       const quantizeToFrames = timelineSettingsStore.frameSnapMode === 'frames';
       const doc = timelineDoc.value;
-      if (!doc) return { pseudo, insertStartUs, quantizeToFrames };
+      if (!doc) return { pseudo, insertStartTicks, quantizeToFrames };
 
       // Preserve a free (sub-frame) audio clip's phase when the drop lands on an
       // audio track. The alt-drag copy hands us a phase-preserved start; snapping
@@ -328,38 +328,38 @@ export const useTimelineStore = defineStore('timeline', () => {
       // targets keep phase 0 (always locked to the grid). Frame-aligned audio
       // clips have phase 0 too, so they are unaffected.
       const baseTrack = doc.tracks.find((t) => t.id === baseTargetTrackId);
-      const frameOffsetUs =
-        baseTrack?.kind === 'audio' ? subframePhaseUs(insertStartUs, sanitizeFps(doc.timebase)) : 0;
+      const frameOffsetTicks =
+        baseTrack?.kind === 'audio' ? subframePhaseTicks(insertStartTicks, sanitizeFps(doc.timebase)) : 0;
 
       const snapSettings = workspaceStore.userSettings.timeline.snapping;
-      const timelineEndUs = Number.isFinite(duration.value)
+      const timelineEndTicks = Number.isFinite(duration.value)
         ? Math.max(0, Math.round(duration.value))
         : null;
-      const snapTargetsUs = computeSnapTargetsUs({
+      const snapTargetsTicks = computeSnapTargetsTicks({
         tracks: doc.tracks,
         includeTimelineStart: snapSettings.timelineEdges,
-        includeTimelineEndUs: snapSettings.timelineEdges ? timelineEndUs : null,
-        includePlayheadUs: snapSettings.playhead ? currentTime.value : null,
+        includeTimelineEndTicks: snapSettings.timelineEdges ? timelineEndTicks : null,
+        includePlayheadTicks: snapSettings.playhead ? currentTime.value : null,
         includeMarkers: snapSettings.markers,
         markers: markerService.getMarkers(),
         includeClips: snapSettings.clips,
-        selectionRangeUs: snapSettings.selection ? selectionRangeModule.getSelectionRange() : null,
+        selectionRangeTicks: snapSettings.selection ? selectionRangeModule.getSelectionRange() : null,
       });
-      const snappedStartUs = computeSnappedStartUs({
-        rawStartUs: insertStartUs,
-        draggingItemDurationUs: totalDurationUs,
+      const snappedStartTicks = computeSnappedStartTicks({
+        rawStartTicks: insertStartTicks,
+        draggingItemDurationTicks: totalDurationTicks,
         fps: sanitizeFps(doc.timebase),
         zoom: timelineZoom.value,
         snapThresholdPx: timelineSettingsStore.snapThresholdPx,
-        snapTargetsUs,
+        snapTargetsTicks,
         enableFrameSnap: timelineSettingsStore.frameSnapMode === 'frames',
         enableClipSnap: timelineSettingsStore.toolbarSnapMode === 'snap',
-        frameOffsetUs,
+        frameOffsetTicks,
       });
-      return { pseudo, insertStartUs: snappedStartUs, quantizeToFrames };
+      return { pseudo, insertStartTicks: snappedStartTicks, quantizeToFrames };
     },
-    get defaultStaticClipDurationUs() {
-      return workspaceStore.userSettings.timeline.defaultStaticClipDurationUs;
+    get defaultStaticClipDurationTicks() {
+      return workspaceStore.userSettings.timeline.defaultStaticClipDurationTicks;
     },
     get defaultAudioFadeCurve() {
       return workspaceStore.userSettings.projectDefaults.defaultAudioFadeCurve;
@@ -371,8 +371,8 @@ export const useTimelineStore = defineStore('timeline', () => {
     getDoc: () => timelineDoc.value,
     getCurrentTime: () => currentTime.value,
     applyTimeline,
-    get defaultZoneDurationUs() {
-      return workspaceStore.userSettings.timeline.defaultStaticClipDurationUs;
+    get defaultZoneDurationTicks() {
+      return workspaceStore.userSettings.timeline.defaultStaticClipDurationTicks;
     },
   });
 
@@ -530,7 +530,7 @@ export const useTimelineStore = defineStore('timeline', () => {
 
     parseTimelineFromOtio,
     serializeTimelineToOtio,
-    selectTimelineDurationUs,
+    selectTimelineDurationTicks,
     getAutosaveIntervalMs: () => {
       const minutes = workspaceStore.userSettings.autosave?.intervalMinutes ?? 2;
       return Math.max(1, minutes) * 60_000;
@@ -783,8 +783,8 @@ export const useTimelineStore = defineStore('timeline', () => {
     markerService,
     trimming,
     applyTimeline,
-    get defaultStaticClipDurationUs() {
-      return workspaceStore.userSettings.timeline.defaultStaticClipDurationUs;
+    get defaultStaticClipDurationTicks() {
+      return workspaceStore.userSettings.timeline.defaultStaticClipDurationTicks;
     },
   });
 
@@ -801,7 +801,7 @@ export const useTimelineStore = defineStore('timeline', () => {
   async function copySessionSettingsToNewTimeline(newPath: string) {
     const projectSettingsStore = useProjectSettingsStore();
     projectSettingsStore.projectSettings.timelines.sessions[newPath] = {
-      playheadUs: currentTime.value,
+      playheadTicks: currentTime.value,
       masterGain: masterGain.value,
       masterMuted: audioMuted.value,
       zoom: timelineZoom.value,
@@ -1141,7 +1141,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     timelineSaveError,
     isPlaying,
     currentTime,
-    setCurrentTimeUs: lifecycle.setCurrentTimeUs,
+    setCurrentTimeTicks: lifecycle.setCurrentTimeTicks,
     markProgrammaticSeek,
     consumeProgrammaticSeek,
     duration,
@@ -1191,7 +1191,7 @@ export const useTimelineStore = defineStore('timeline', () => {
       return createdMarker;
     },
     addMarker: (
-      input: { timeUs: number; durationUs?: number; text?: string; color?: string },
+      input: { timeTicks: number; durationTicks?: number; text?: string; color?: string },
       options?: Record<string, unknown>,
     ) => {
       const markerId = markerService.addMarker(input, options);
@@ -1207,7 +1207,7 @@ export const useTimelineStore = defineStore('timeline', () => {
       const next = findNextMarkerTime(markerService.getMarkers(), currentTime.value, fps.value);
       if (next !== undefined) {
         markProgrammaticSeek();
-        lifecycle.setCurrentTimeUs(next);
+        lifecycle.setCurrentTimeTicks(next);
         scrollToPlayheadRequest.value++;
       }
     },
@@ -1215,7 +1215,7 @@ export const useTimelineStore = defineStore('timeline', () => {
       const prev = findPreviousMarkerTime(markerService.getMarkers(), currentTime.value, fps.value);
       if (prev !== undefined) {
         markProgrammaticSeek();
-        lifecycle.setCurrentTimeUs(prev);
+        lifecycle.setCurrentTimeTicks(prev);
         scrollToPlayheadRequest.value++;
       }
     },
@@ -1317,8 +1317,8 @@ export const useTimelineStore = defineStore('timeline', () => {
     loadBackupVersions: backup.loadBackupVersions,
     clearAllBackups: backup.clearAllBackups,
     isMobileLayout,
-    get defaultZoneDurationUs() {
-      return workspaceStore.userSettings.timeline.defaultStaticClipDurationUs;
+    get defaultZoneDurationTicks() {
+      return workspaceStore.userSettings.timeline.defaultStaticClipDurationTicks;
     },
     // Create a forced backup of the current timeline before leaving the project
     // or switching timelines on mobile.

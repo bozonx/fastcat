@@ -1,7 +1,7 @@
 import type { ClipTransform } from '~/timeline/types';
 import {
   hasAnyAnimation,
-  resolveClipAnimationTimeUs,
+  resolveClipAnimationTimeTicks,
   sampleClipAnimations,
 } from '~/timeline/animation/evaluate';
 import { patchBakedEffectSpecs } from '~/effects/animation-bake';
@@ -105,7 +105,7 @@ function buildAnimatedTransform(
  * for clips without keyframes. Does not touch layout — callers re-apply layout
  * for the kinds that don't already re-layout per frame.
  */
-export function resolveClipAnimationOverlay(clip: CompositorClip, timeUs: number): void {
+export function resolveClipAnimationOverlay(clip: CompositorClip, timeTicks: number): void {
   const hasTransformOpacity = hasAnyAnimation(clip.animations);
   const hasEffects = !!clip.bakedEffects;
   if (!hasTransformOpacity && !hasEffects) {
@@ -115,17 +115,17 @@ export function resolveClipAnimationOverlay(clip: CompositorClip, timeUs: number
     return;
   }
 
-  const animationTimeUs = resolveClipAnimationTimeUs({
-    timelineTimeUs: timeUs,
-    timelineStartUs: clip.startUs,
-    sourceStartUs: clip.sourceStartUs,
-    sourceRangeDurationUs: clip.sourceRangeDurationUs,
+  const animationTimeTicks = resolveClipAnimationTimeTicks({
+    timelineTimeTicks: timeTicks,
+    timelineStartTicks: clip.startTicks,
+    sourceStartTicks: clip.sourceStartTicks,
+    sourceRangeDurationTicks: clip.sourceRangeDurationTicks,
     speed: clip.speed,
   });
 
   // Effect params: patch the baked spec-field tracks onto the base specs.
   clip.animatedEffectSpecs = hasEffects
-    ? patchBakedEffectSpecs(clip.bakedEffects!, animationTimeUs)
+    ? patchBakedEffectSpecs(clip.bakedEffects!, animationTimeTicks)
     : undefined;
 
   if (!hasTransformOpacity) {
@@ -134,7 +134,7 @@ export function resolveClipAnimationOverlay(clip: CompositorClip, timeUs: number
     return;
   }
 
-  const sampled = sampleClipAnimations(clip.animations, animationTimeUs);
+  const sampled = sampleClipAnimations(clip.animations, animationTimeTicks);
 
   clip.animatedOpacity = sampled.opacity;
 

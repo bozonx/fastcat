@@ -34,7 +34,7 @@ describe('project settings normalization', () => {
           lastOpenedPath: null,
         },
         transitions: {
-          defaultDurationUs: 2_000_000,
+          defaultDurationTicks: 2_000_000,
         },
       },
       user,
@@ -65,13 +65,13 @@ describe('project settings normalization', () => {
     const user = createDefaultUserSettings();
     const normalized = normalizeProjectSettings(
       {
-        project: { audioDeclickDurationUs: 5_000 },
-        transitions: { defaultDurationUs: 2_000_000 },
+        project: { audioDeclickDurationTicks: 5_000 },
+        transitions: { defaultDurationTicks: 2_000_000 },
       },
       user,
     );
 
-    expect(normalized.project.audioDeclickDurationUs).toBe(5_000 * TICKS_PER_MICROSECOND);
-    expect(normalized.transitions.defaultDurationUs).toBe(2_000_000 * TICKS_PER_MICROSECOND);
+    expect(normalized.project.audioDeclickDurationTicks).toBe(5_000 * TICKS_PER_MICROSECOND);
+    expect(normalized.transitions.defaultDurationTicks).toBe(2_000_000 * TICKS_PER_MICROSECOND);
   });
 });

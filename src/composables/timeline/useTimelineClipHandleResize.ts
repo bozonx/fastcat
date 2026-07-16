@@ -5,7 +5,7 @@ import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
 import { TICKS_PER_SECOND } from '~/utils/time';
 import { cloneValue } from '~/utils/clone';
 import { clipGainToYPercent, clipYPercentToGain } from '~/utils/audio';
-import { pxToDeltaUs, pickBestSnapCandidateUs, zoomToPxPerSecond } from '~/utils/timeline/geometry';
+import { pxToDeltaTicks, pickBestSnapCandidateTicks, zoomToPxPerSecond } from '~/utils/timeline/geometry';
 import type {
   TimelineTrack,
   TimelineClipItem,
@@ -20,14 +20,14 @@ import { useTimelinePointerSession } from '~/composables/timeline/useTimelinePoi
 import { useEffectiveHotkeys } from '~/composables/editor/hotkeys/useEffectiveHotkeys';
 import { isCommandMatched } from '~/utils/hotkeys/runtime';
 import {
-  computeMaxResizableTransitionDurationUs as computeMaxResizableTransitionDurationUsPure,
-  computeTransitionHandleSnapDurationUs as computeTransitionHandleSnapDurationUsPure,
+  computeMaxResizableTransitionDurationTicks as computeMaxResizableTransitionDurationUsPure,
+  computeTransitionHandleSnapDurationTicks as computeTransitionHandleSnapDurationUsPure,
 } from '~/composables/timeline/transitionResizeGeometry';
 
 interface ClipResizeFields {
-  audioFadeInUs?: number;
-  audioFadeOutUs?: number;
-  sourceDurationUs?: number;
+  audioFadeInTicks?: number;
+  audioFadeOutTicks?: number;
+  sourceDurationTicks?: number;
   transitionIn?: ClipTransition | null;
   transitionOut?: ClipTransition | null;
 }
@@ -69,8 +69,8 @@ export function useTimelineClipHandleResize(
     itemId: string;
     edge: 'in' | 'out';
     startX: number;
-    startDurationUs: number;
-    lastDurationUs: number;
+    startDurationTicks: number;
+    lastDurationTicks: number;
     shouldDelete: boolean;
     hasMoved: boolean;
     isCreating: boolean;
@@ -83,7 +83,7 @@ export function useTimelineClipHandleResize(
     itemId: string;
     edge: 'in' | 'out';
     startX: number;
-    startFadeUs: number;
+    startFadeTicks: number;
     startCurve: 'linear' | 'logarithmic';
     activeCurve: 'linear' | 'logarithmic';
     startScrollLeft: number;
@@ -206,7 +206,7 @@ export function useTimelineClipHandleResize(
       itemId: payload.itemId,
       edge: payload.edge,
       startX: e.clientX,
-      startFadeUs: payload.durationUs,
+      startFadeTicks: payload.durationTicks,
       startCurve,
       activeCurve: startCurve,
       startScrollLeft: getScrollLeft(),
@@ -223,63 +223,63 @@ export function useTimelineClipHandleResize(
         (currentScrollLeft - resizeFade.value.startScrollLeft);
       const sign = payload.edge === 'in' ? 1 : -1;
       const deltaPx = dx * sign;
-      const deltaUs = pxToDeltaUs(deltaPx, timelineStore.timelineZoom);
+      const deltaTicks = pxToDeltaTicks(deltaPx, timelineStore.timelineZoom);
 
       const tracks = tracksRef();
       const track = tracks.find((t) => t.id === payload.trackId);
       const item = track?.items.find((i) => i.id === payload.itemId);
       if (!item || item.kind !== 'clip') return;
 
-      const clipDurationUs = Math.max(0, Math.round(item.timelineRange.durationUs));
+      const clipDurationTicks = Math.max(0, Math.round(item.timelineRange.durationTicks));
       const clipFields = getClipResizeFields(item);
-      const oppFadeUs = Math.max(
+      const oppFadeTicks = Math.max(
         0,
         Math.round(
           payload.edge === 'in'
-            ? (clipFields.audioFadeOutUs ?? 0)
-            : (clipFields.audioFadeInUs ?? 0),
+            ? (clipFields.audioFadeOutTicks ?? 0)
+            : (clipFields.audioFadeInTicks ?? 0),
         ),
       );
-      const maxUs = Math.max(0, clipDurationUs - oppFadeUs);
-      let newFadeUs = resizeFade.value.startFadeUs + deltaUs;
-      newFadeUs = Math.max(0, Math.min(maxUs, newFadeUs));
+      const maxTicks = Math.max(0, clipDurationTicks - oppFadeTicks);
+      let newFadeTicks = resizeFade.value.startFadeTicks + deltaTicks;
+      newFadeTicks = Math.max(0, Math.min(maxTicks, newFadeTicks));
 
       if (timelineSettingsStore.toolbarSnapMode === 'snap') {
-        const thresholdUs = Math.round(
+        const thresholdTicks = Math.round(
           (timelineSettingsStore.snapThresholdPx / zoomToPxPerSecond(timelineStore.timelineZoom)) *
             TICKS_PER_SECOND,
         );
 
-        const edgeUs =
+        const edgeTicks =
           payload.edge === 'in'
-            ? item.timelineRange.startUs + newFadeUs
-            : item.timelineRange.startUs + item.timelineRange.durationUs - newFadeUs;
+            ? item.timelineRange.startTicks + newFadeTicks
+            : item.timelineRange.startTicks + item.timelineRange.durationTicks - newFadeTicks;
 
         const targets = [];
         if (workspaceStore.userSettings.timeline.snapping.playhead) {
           targets.push(timelineStore.currentTime);
         }
 
-        const snap = pickBestSnapCandidateUs({
-          rawUs: edgeUs,
-          thresholdUs,
-          targetsUs: targets,
+        const snap = pickBestSnapCandidateTicks({
+          rawTicks: edgeTicks,
+          thresholdTicks,
+          targetsTicks: targets,
         });
 
-        if (snap.distUs < thresholdUs) {
+        if (snap.distTicks < thresholdTicks) {
           if (payload.edge === 'in') {
-            newFadeUs = Math.max(0, snap.snappedUs - item.timelineRange.startUs);
+            newFadeTicks = Math.max(0, snap.snappedTicks - item.timelineRange.startTicks);
           } else {
-            newFadeUs = Math.max(
+            newFadeTicks = Math.max(
               0,
-              item.timelineRange.startUs + item.timelineRange.durationUs - snap.snappedUs,
+              item.timelineRange.startTicks + item.timelineRange.durationTicks - snap.snappedTicks,
             );
           }
-          newFadeUs = Math.min(maxUs, newFadeUs);
+          newFadeTicks = Math.min(maxTicks, newFadeTicks);
         }
       }
 
-      const propName = payload.edge === 'in' ? 'audioFadeInUs' : 'audioFadeOutUs';
+      const propName = payload.edge === 'in' ? 'audioFadeInTicks' : 'audioFadeOutTicks';
       const nextCurve = isLayer1Active(ev, workspaceStore.userSettings)
         ? resizeFade.value.startCurve === 'logarithmic'
           ? 'linear'
@@ -289,13 +289,13 @@ export function useTimelineClipHandleResize(
       const curveProp = payload.edge === 'in' ? 'audioFadeInCurve' : 'audioFadeOutCurve';
 
       resizeFade.value.activeCurve = nextCurve;
-      const nextFadeUs = Math.round(newFadeUs);
+      const nextFadeTicks = Math.round(newFadeTicks);
       scheduleUpdate(() => {
         timelineStore.updateClipProperties(
           payload.trackId,
           payload.itemId,
           {
-            [propName]: nextFadeUs,
+            [propName]: nextFadeTicks,
             ...(curveChanged ? { [curveProp]: nextCurve } : {}),
           },
           {
@@ -331,13 +331,13 @@ export function useTimelineClipHandleResize(
       });
 
       if (isCancel && resizeFade.value) {
-        const propName = payload.edge === 'in' ? 'audioFadeInUs' : 'audioFadeOutUs';
+        const propName = payload.edge === 'in' ? 'audioFadeInTicks' : 'audioFadeOutTicks';
         const curveProp = payload.edge === 'in' ? 'audioFadeInCurve' : 'audioFadeOutCurve';
         timelineStore.updateClipProperties(
           payload.trackId,
           payload.itemId,
           {
-            [propName]: resizeFade.value.startFadeUs,
+            [propName]: resizeFade.value.startFadeTicks,
             [curveProp]: resizeFade.value.startCurve,
           },
           {
@@ -359,7 +359,7 @@ export function useTimelineClipHandleResize(
 
   // Transition-handle geometry lives in `transitionResizeGeometry.ts` as pure
   // functions; these wrappers just supply the current track list.
-  function computeMaxResizableTransitionDurationUs(input: {
+  function computeMaxResizableTransitionDurationTicks(input: {
     trackId: string;
     itemId: string;
     edge: 'in' | 'out';
@@ -368,12 +368,12 @@ export function useTimelineClipHandleResize(
     return computeMaxResizableTransitionDurationUsPure({ tracks: tracksRef(), ...input });
   }
 
-  function computeTransitionHandleSnapDurationUs(input: {
+  function computeTransitionHandleSnapDurationTicks(input: {
     trackId: string;
     itemId: string;
     edge: 'in' | 'out';
     currentTransition: ClipTransition;
-    rawDurationUs: number;
+    rawDurationTicks: number;
   }): number | null {
     return computeTransitionHandleSnapDurationUsPure({ tracks: tracksRef(), ...input });
   }
@@ -383,13 +383,13 @@ export function useTimelineClipHandleResize(
     e.stopPropagation();
     e.preventDefault();
 
-    const isCreating = payload.durationUs === 0;
+    const isCreating = payload.durationTicks === 0;
     // Clone upfront so the snapshot remains a faithful pre-drag copy even if a
     // future command mutates the doc in place.
     const docBeforeDrag = payload.docBeforeDrag ?? cloneValue(timelineStore.timelineDoc);
-    const deleteThresholdUs = Math.max(
+    const deleteThresholdTicks = Math.max(
       0,
-      pxToDeltaUs(TRANSITION_DELETE_THRESHOLD_PX, timelineStore.timelineZoom),
+      pxToDeltaTicks(TRANSITION_DELETE_THRESHOLD_PX, timelineStore.timelineZoom),
     );
 
     resizeTransition.value = {
@@ -397,9 +397,9 @@ export function useTimelineClipHandleResize(
       itemId: payload.itemId,
       edge: payload.edge,
       startX: payload.pointerStartClientX ?? e.clientX,
-      startDurationUs: payload.durationUs,
-      lastDurationUs: payload.durationUs,
-      shouldDelete: payload.durationUs < deleteThresholdUs,
+      startDurationTicks: payload.durationTicks,
+      lastDurationTicks: payload.durationTicks,
+      shouldDelete: payload.durationTicks < deleteThresholdTicks,
       hasMoved: false,
       isCreating,
       docBeforeDrag,
@@ -417,7 +417,7 @@ export function useTimelineClipHandleResize(
         (currentScrollLeft - resizeTransition.value.startScrollLeft);
       const sign = payload.edge === 'in' ? 1 : -1;
       const deltaPx = resizeTransition.value.isCreating ? Math.abs(dx) : dx * sign;
-      const deltaUs = pxToDeltaUs(deltaPx, timelineStore.timelineZoom);
+      const deltaTicks = pxToDeltaTicks(deltaPx, timelineStore.timelineZoom);
 
       const tracks = tracksRef();
       const track = tracks.find((t) => t.id === payload.trackId);
@@ -427,91 +427,91 @@ export function useTimelineClipHandleResize(
       const current = payload.edge === 'in' ? item.transitionIn : item.transitionOut;
       if (!current) return;
 
-      const maxUsRaw = computeMaxResizableTransitionDurationUs({
+      const maxUsRaw = computeMaxResizableTransitionDurationTicks({
         trackId: payload.trackId,
         itemId: payload.itemId,
         edge: payload.edge,
         currentTransition: current,
       });
 
-      const clipDurationUs = Math.max(0, Math.round(item.timelineRange.durationUs));
-      const oppositeTransitionUs = Math.max(
+      const clipDurationTicks = Math.max(0, Math.round(item.timelineRange.durationTicks));
+      const oppositeTransitionTicks = Math.max(
         0,
         Math.round(
           payload.edge === 'in'
-            ? (item.transitionOut?.durationUs ?? 0)
-            : (item.transitionIn?.durationUs ?? 0),
+            ? (item.transitionOut?.durationTicks ?? 0)
+            : (item.transitionIn?.durationTicks ?? 0),
         ),
       );
-      const hardMaxUs = Math.max(0, clipDurationUs - oppositeTransitionUs);
+      const hardMaxTicks = Math.max(0, clipDurationTicks - oppositeTransitionTicks);
 
-      let newDurationUs = Math.min(
-        Math.max(0, resizeTransition.value.startDurationUs + deltaUs),
-        hardMaxUs,
+      let newDurationTicks = Math.min(
+        Math.max(0, resizeTransition.value.startDurationTicks + deltaTicks),
+        hardMaxTicks,
         maxUsRaw,
       );
 
       if (timelineSettingsStore.toolbarSnapMode === 'snap') {
-        const snapThresholdUs = Math.round(
+        const snapThresholdTicks = Math.round(
           (timelineSettingsStore.snapThresholdPx / zoomToPxPerSecond(timelineStore.timelineZoom)) *
             TICKS_PER_SECOND,
         );
 
-        const edgeUs =
+        const edgeTicks =
           payload.edge === 'in'
-            ? item.timelineRange.startUs + newDurationUs
-            : item.timelineRange.startUs + item.timelineRange.durationUs - newDurationUs;
+            ? item.timelineRange.startTicks + newDurationTicks
+            : item.timelineRange.startTicks + item.timelineRange.durationTicks - newDurationTicks;
 
         const targets = [];
         if (workspaceStore.userSettings.timeline.snapping.playhead) {
           targets.push(timelineStore.currentTime);
         }
 
-        const handleSnapUs = computeTransitionHandleSnapDurationUs({
+        const handleSnapTicks = computeTransitionHandleSnapDurationTicks({
           trackId: payload.trackId,
           itemId: payload.itemId,
           edge: payload.edge,
           currentTransition: current,
-          rawDurationUs: newDurationUs,
+          rawDurationTicks: newDurationTicks,
         });
 
-        if (handleSnapUs !== null) {
+        if (handleSnapTicks !== null) {
           targets.push(
             payload.edge === 'in'
-              ? item.timelineRange.startUs + handleSnapUs
-              : item.timelineRange.startUs + item.timelineRange.durationUs - handleSnapUs,
+              ? item.timelineRange.startTicks + handleSnapTicks
+              : item.timelineRange.startTicks + item.timelineRange.durationTicks - handleSnapTicks,
           );
         }
 
-        const snap = pickBestSnapCandidateUs({
-          rawUs: edgeUs,
-          thresholdUs: snapThresholdUs,
-          targetsUs: targets,
+        const snap = pickBestSnapCandidateTicks({
+          rawTicks: edgeTicks,
+          thresholdTicks: snapThresholdTicks,
+          targetsTicks: targets,
         });
 
-        if (snap.distUs < snapThresholdUs) {
+        if (snap.distTicks < snapThresholdTicks) {
           if (payload.edge === 'in') {
-            newDurationUs = Math.max(0, snap.snappedUs - item.timelineRange.startUs);
+            newDurationTicks = Math.max(0, snap.snappedTicks - item.timelineRange.startTicks);
           } else {
-            newDurationUs = Math.max(
+            newDurationTicks = Math.max(
               0,
-              item.timelineRange.startUs + item.timelineRange.durationUs - snap.snappedUs,
+              item.timelineRange.startTicks + item.timelineRange.durationTicks - snap.snappedTicks,
             );
           }
-          newDurationUs = Math.min(hardMaxUs, maxUsRaw, newDurationUs);
+          newDurationTicks = Math.min(hardMaxTicks, maxUsRaw, newDurationTicks);
         }
       }
 
-      const currentDeleteThresholdUs = Math.max(
+      const currentDeleteThresholdTicks = Math.max(
         0,
-        pxToDeltaUs(TRANSITION_DELETE_THRESHOLD_PX, timelineStore.timelineZoom),
+        pxToDeltaTicks(TRANSITION_DELETE_THRESHOLD_PX, timelineStore.timelineZoom),
       );
 
-      resizeTransition.value.lastDurationUs = newDurationUs;
-      resizeTransition.value.shouldDelete = newDurationUs < currentDeleteThresholdUs;
+      resizeTransition.value.lastDurationTicks = newDurationTicks;
+      resizeTransition.value.shouldDelete = newDurationTicks < currentDeleteThresholdTicks;
       resizeTransition.value.hasMoved = true;
 
-      if (maxUsRaw <= 0 && newDurationUs <= 0) {
+      if (maxUsRaw <= 0 && newDurationTicks <= 0) {
         resizeTransition.value.shouldDelete = true;
         return;
       }
@@ -519,12 +519,12 @@ export function useTimelineClipHandleResize(
       const transitionPatch =
         payload.edge === 'in'
           ? {
-              transitionIn: { ...current, durationUs: Math.round(newDurationUs) } as ClipTransition,
+              transitionIn: { ...current, durationTicks: Math.round(newDurationTicks) } as ClipTransition,
             }
           : {
               transitionOut: {
                 ...current,
-                durationUs: Math.round(newDurationUs),
+                durationTicks: Math.round(newDurationTicks),
               } as ClipTransition,
             };
       scheduleUpdate(() => {
@@ -547,7 +547,7 @@ export function useTimelineClipHandleResize(
         docBeforeDrag: doc,
         isCreating: creating,
         hasMoved,
-        lastDurationUs,
+        lastDurationTicks,
       } = state;
 
       if (!hasMoved && !creating) {
@@ -585,13 +585,13 @@ export function useTimelineClipHandleResize(
                 ? ({
                     transitionIn: {
                       ...current,
-                      durationUs: Math.round(lastDurationUs),
+                      durationTicks: Math.round(lastDurationTicks),
                     },
                   } as { transitionIn: ClipTransition })
                 : ({
                     transitionOut: {
                       ...current,
-                      durationUs: Math.round(lastDurationUs),
+                      durationTicks: Math.round(lastDurationTicks),
                     },
                   } as { transitionOut: ClipTransition });
             timelineStore.updateClipTransition(payload.trackId, payload.itemId, finalPatch, {
@@ -650,13 +650,13 @@ export function useTimelineClipHandleResize(
                   ? ({
                       transitionIn: {
                         ...current,
-                        durationUs: state.startDurationUs,
+                        durationTicks: state.startDurationTicks,
                       },
                     } as { transitionIn: ClipTransition })
                   : ({
                       transitionOut: {
                         ...current,
-                        durationUs: state.startDurationUs,
+                        durationTicks: state.startDurationTicks,
                       },
                     } as { transitionOut: ClipTransition });
               timelineStore.updateClipTransition(payload.trackId, payload.itemId, restorePatch, {

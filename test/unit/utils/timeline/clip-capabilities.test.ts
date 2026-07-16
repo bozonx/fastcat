@@ -12,17 +12,17 @@ import { TICKS_PER_SECOND } from '~/utils/time';
 describe('clip-capabilities', () => {
   describe('isClipFrameAligned', () => {
     it('treats both edges on frame boundaries as aligned', () => {
-      const clip = { timelineRange: { startUs: 0, durationUs: TICKS_PER_SECOND } };
+      const clip = { timelineRange: { startTicks: 0, durationTicks: TICKS_PER_SECOND } };
       expect(isClipFrameAligned(clip, 30)).toBe(true);
     });
 
     it('reports a sub-frame start offset as not aligned', () => {
-      const clip = { timelineRange: { startUs: 1, durationUs: TICKS_PER_SECOND } };
+      const clip = { timelineRange: { startTicks: 1, durationTicks: TICKS_PER_SECOND } };
       expect(isClipFrameAligned(clip, 30)).toBe(false);
     });
 
     it('reports a sub-frame duration as not aligned', () => {
-      const clip = { timelineRange: { startUs: 0, durationUs: TICKS_PER_SECOND + 1 } };
+      const clip = { timelineRange: { startTicks: 0, durationTicks: TICKS_PER_SECOND + 1 } };
       expect(isClipFrameAligned(clip, 30)).toBe(false);
     });
   });

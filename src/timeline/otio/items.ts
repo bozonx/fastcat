@@ -6,7 +6,7 @@ import {
   isOtioPath,
   resolveStableItemId,
   coerceName,
-  fromRationalTimeUs,
+  fromRationalTimeTicks,
   coerceTransform,
   coerceAnimations,
   coerceBlendMode,
@@ -20,12 +20,12 @@ import { TimelineClipFastCatMetaSchema, TimelineGapFastCatMetaSchema } from './s
 // Sequence duration helper
 // ---------------------------------------------------------------------------
 
-export function parseItemSequenceDurationUs(child: unknown): number {
+export function parseItemSequenceDurationTicks(child: unknown): number {
   if (!child || typeof child !== 'object') return 0;
   const obj = child as Record<string, unknown>;
   const schema = obj.OTIO_SCHEMA;
   if (schema === 'Gap.1' || schema === 'Clip.1' || schema === 'Clip.2') {
-    return Math.max(0, fromRationalTimeUs((obj.source_range as Record<string, unknown>)?.duration));
+    return Math.max(0, fromRationalTimeTicks((obj.source_range as Record<string, unknown>)?.duration));
   }
   return 0;
 }
@@ -126,12 +126,12 @@ export function parseClipItem(input: {
   otio: OtioAnyClip;
   index: number;
   occupiedIds: Set<string>;
-  fallbackStartUs: number;
+  fallbackStartTicks: number;
   transitionIn?: ClipTransition;
   transitionOut?: ClipTransition;
   report?: OtioValidationReport;
 }): TimelineClipItem {
-  const { trackId, otio, index, occupiedIds, fallbackStartUs, transitionIn, transitionOut } = input;
+  const { trackId, otio, index, occupiedIds, fallbackStartTicks, transitionIn, transitionOut } = input;
   const sourceRange = fromTimeRange(otio.source_range);
   const name = coerceName(otio.name, `clip_${index + 1}`);
 
@@ -162,24 +162,24 @@ export function parseClipItem(input: {
 
   const clipType = fastcatMeta.clipType ?? (isOtioPath(path) ? 'timeline' : 'media');
 
-  const timelineStartUs = fallbackStartUs;
+  const timelineStartTicks = fallbackStartTicks;
 
-  const sourceDurationUsFromMeta = Math.max(0, Math.round(fastcatMeta.source?.durationUs ?? 0));
-  const sourceDurationUs =
-    availableRange?.durationUs && availableRange.durationUs > 0
-      ? availableRange.durationUs
+  const sourceDurationUsFromMeta = Math.max(0, Math.round(fastcatMeta.source?.durationTicks ?? 0));
+  const sourceDurationTicks =
+    availableRange?.durationTicks && availableRange.durationTicks > 0
+      ? availableRange.durationTicks
       : sourceDurationUsFromMeta > 0
         ? sourceDurationUsFromMeta
-        : sourceRange.durationUs;
+        : sourceRange.durationTicks;
 
   const id = resolveStableItemId({
     prefix: 'clip',
     trackId,
     fallbackFingerprint: JSON.stringify({
       path,
-      sourceStartUs: sourceRange.startUs,
-      sourceDurationUs: sourceRange.durationUs,
-      timelineStartUs,
+      sourceStartTicks: sourceRange.startTicks,
+      sourceDurationTicks: sourceRange.durationTicks,
+      timelineStartTicks,
       name,
     }),
     metadata: fastcatMeta,
@@ -201,15 +201,15 @@ export function parseClipItem(input: {
 
   const finalTimelineRange = roundtripTimelineRange
     ? {
-        startUs: Math.round(roundtripTimelineRange.startUs),
-        durationUs: Math.round(roundtripTimelineRange.durationUs),
+        startTicks: Math.round(roundtripTimelineRange.startTicks),
+        durationTicks: Math.round(roundtripTimelineRange.durationTicks),
       }
-    : { startUs: timelineStartUs, durationUs: sourceRange.durationUs };
+    : { startTicks: timelineStartTicks, durationTicks: sourceRange.durationTicks };
 
   const finalSourceRange = roundtripSourceRange
     ? {
-        startUs: Math.round(roundtripSourceRange.startUs),
-        durationUs: Math.round(roundtripSourceRange.durationUs),
+        startTicks: Math.round(roundtripSourceRange.startTicks),
+        durationTicks: Math.round(roundtripSourceRange.durationTicks),
       }
     : sourceRange;
 
@@ -221,20 +221,20 @@ export function parseClipItem(input: {
     name,
     disabled: isDisabled ? true : undefined,
     locked: fastcatMeta.flags?.locked,
-    sourceDurationUs,
+    sourceDurationTicks,
     timelineRange: finalTimelineRange,
     sourceRange: finalSourceRange,
     speed: timeEffects.speed ?? fastcatMeta.playback?.speed,
     speedActive: timeEffects.speedActive ?? fastcatMeta.flags?.speedActive,
     audioGain: fastcatMeta.audio?.gain,
     audioBalance: fastcatMeta.audio?.balance,
-    audioFadeInUs:
-      fastcatMeta.audio?.fadeInUs !== undefined
-        ? Math.round(fastcatMeta.audio.fadeInUs)
+    audioFadeInTicks:
+      fastcatMeta.audio?.fadeInTicks !== undefined
+        ? Math.round(fastcatMeta.audio.fadeInTicks)
         : undefined,
-    audioFadeOutUs:
-      fastcatMeta.audio?.fadeOutUs !== undefined
-        ? Math.round(fastcatMeta.audio.fadeOutUs)
+    audioFadeOutTicks:
+      fastcatMeta.audio?.fadeOutTicks !== undefined
+        ? Math.round(fastcatMeta.audio.fadeOutTicks)
         : undefined,
     audioFadeInCurve: fastcatMeta.audio?.fadeInCurve,
     audioFadeOutCurve: fastcatMeta.audio?.fadeOutCurve,
@@ -243,11 +243,11 @@ export function parseClipItem(input: {
     audioWaveformMode: fastcatMeta.audio?.waveformMode,
     showWaveform: fastcatMeta.audio?.showWaveform,
 
-    freezeFrameSourceUs:
-      clipType === 'media' && timeEffects.freezeFrameSourceUs !== undefined
-        ? Math.round(timeEffects.freezeFrameSourceUs)
-        : fastcatMeta.playback?.freezeFrameSourceUs !== undefined
-          ? Math.round(fastcatMeta.playback.freezeFrameSourceUs)
+    freezeFrameSourceTicks:
+      clipType === 'media' && timeEffects.freezeFrameSourceTicks !== undefined
+        ? Math.round(timeEffects.freezeFrameSourceTicks)
+        : fastcatMeta.playback?.freezeFrameSourceTicks !== undefined
+          ? Math.round(fastcatMeta.playback.freezeFrameSourceTicks)
           : undefined,
     opacity: fastcatMeta.visual?.opacity,
     opacityActive: fastcatMeta.flags?.opacityActive,
@@ -295,7 +295,7 @@ export function parseClipItem(input: {
     return {
       ...base,
       clipType: 'text',
-      sourceDurationUs,
+      sourceDurationTicks,
       timelineRange: finalTimelineRange,
       sourceRange: finalSourceRange,
       text:
@@ -324,7 +324,7 @@ export function parseClipItem(input: {
     return {
       ...base,
       clipType: 'shape',
-      sourceDurationUs,
+      sourceDurationTicks,
       timelineRange: finalTimelineRange,
       sourceRange: finalSourceRange,
       shapeType: (shapeData?.type ?? 'square') as import('~/timeline/types').ShapeType,
@@ -370,26 +370,26 @@ export function parseGapItem(input: {
   otio: { source_range: unknown; metadata?: unknown };
   index: number;
   occupiedIds: Set<string>;
-  fallbackStartUs: number;
+  fallbackStartTicks: number;
 }): TimelineGapItem {
-  const { trackId, otio, index, occupiedIds, fallbackStartUs } = input;
+  const { trackId, otio, index, occupiedIds, fallbackStartTicks } = input;
   const range = fromTimeRange(otio.source_range);
   const fastcatMeta = TimelineGapFastCatMetaSchema.parse(safeFastCatMetadata(otio.metadata));
   const roundtripRange = fastcatMeta.roundtrip?.timelineRange;
-  const timelineStartUs =
-    roundtripRange?.startUs !== undefined
-      ? Math.max(0, Math.round(roundtripRange.startUs))
-      : fallbackStartUs;
-  const durationUs =
-    roundtripRange?.durationUs !== undefined
-      ? Math.max(0, Math.round(roundtripRange.durationUs))
-      : range.durationUs;
+  const timelineStartTicks =
+    roundtripRange?.startTicks !== undefined
+      ? Math.max(0, Math.round(roundtripRange.startTicks))
+      : fallbackStartTicks;
+  const durationTicks =
+    roundtripRange?.durationTicks !== undefined
+      ? Math.max(0, Math.round(roundtripRange.durationTicks))
+      : range.durationTicks;
   const id = resolveStableItemId({
     prefix: 'gap',
     trackId,
     fallbackFingerprint: JSON.stringify({
-      durationUs,
-      timelineStartUs,
+      durationTicks,
+      timelineStartTicks,
       index,
     }),
     metadata: fastcatMeta,
@@ -400,6 +400,6 @@ export function parseGapItem(input: {
     kind: 'gap',
     id,
     trackId,
-    timelineRange: { startUs: timelineStartUs, durationUs },
+    timelineRange: { startTicks: timelineStartTicks, durationTicks },
   };
 }

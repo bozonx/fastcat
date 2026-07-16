@@ -25,7 +25,7 @@ export interface ExtractVideoFrameBlobsOptions {
 
 export interface ExtractTimelineFrameBlobOptions {
   timelineDoc: TimelineDocument;
-  timeUs: number;
+  timeTicks: number;
   /** Exact output dimensions. If omitted, the frame is fitted into `maxWidth` / `maxHeight`. */
   width?: number;
   height?: number;

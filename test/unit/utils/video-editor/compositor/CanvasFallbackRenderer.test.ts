@@ -173,9 +173,9 @@ describe('CanvasFallbackRenderer.drawHudClip', () => {
     const clip = makeClip({
       clipKind: 'hud',
       hudType: 'media_frame',
-      startUs: 0,
-      endUs: 1_000_000,
-      durationUs: 1_000_000,
+      startTicks: 0,
+      endTicks: 1_000_000,
+      durationTicks: 1_000_000,
       canvas,
       ctx: ctx as any,
       hudMediaStates: {

@@ -1,7 +1,7 @@
 import type { TimelineDocument } from '../types';
-import { selectTimelineDurationUs } from '../selectors';
+import { selectTimelineDurationTicks } from '../selectors';
 
-export function getBoundaryTimesUs(
+export function getBoundaryTimesTicks(
   doc: TimelineDocument,
   trackFilter: ((trackId: string) => boolean) | null,
 ): number[] {
@@ -10,9 +10,9 @@ export function getBoundaryTimesUs(
     if (trackFilter && !trackFilter(track.id)) continue;
     for (const it of track.items) {
       if (it.kind !== 'clip') continue;
-      const startUs = Math.max(0, Math.round(it.timelineRange.startUs));
-      const endUs = Math.max(0, Math.round(it.timelineRange.startUs + it.timelineRange.durationUs));
-      boundaries.push(startUs, endUs);
+      const startTicks = Math.max(0, Math.round(it.timelineRange.startTicks));
+      const endTicks = Math.max(0, Math.round(it.timelineRange.startTicks + it.timelineRange.durationTicks));
+      boundaries.push(startTicks, endTicks);
     }
   }
 
@@ -22,19 +22,19 @@ export function getBoundaryTimesUs(
 
 export function calculatePrevClipBoundary(
   doc: TimelineDocument,
-  currentTimeUs: number,
+  currentTimeTicks: number,
   options?: { currentTrackOnly?: boolean; currentTrackId?: string | null },
 ): number | null {
   const currentTrackOnly = Boolean(options?.currentTrackOnly);
   const trackId = currentTrackOnly ? options?.currentTrackId : null;
   if (currentTrackOnly && !trackId) return null;
 
-  const boundaries = getBoundaryTimesUs(doc, trackId ? (id) => id === trackId : null);
+  const boundaries = getBoundaryTimesTicks(doc, trackId ? (id) => id === trackId : null);
   if (boundaries.length === 0) return null;
 
   let prev: number | null = null;
   for (const b of boundaries) {
-    if (b >= currentTimeUs) break;
+    if (b >= currentTimeTicks) break;
     prev = b;
   }
 
@@ -43,24 +43,24 @@ export function calculatePrevClipBoundary(
 
 export function calculateNextClipBoundary(
   doc: TimelineDocument,
-  currentTimeUs: number,
-  durationUs: number,
+  currentTimeTicks: number,
+  durationTicks: number,
   options?: { currentTrackOnly?: boolean; currentTrackId?: string | null },
 ): number {
   const currentTrackOnly = Boolean(options?.currentTrackOnly);
   const trackId = currentTrackOnly ? options?.currentTrackId : null;
-  if (currentTrackOnly && !trackId) return currentTimeUs; // Do nothing if track missing
+  if (currentTrackOnly && !trackId) return currentTimeTicks; // Do nothing if track missing
 
-  const boundaries = getBoundaryTimesUs(doc, trackId ? (id) => id === trackId : null);
-  if (boundaries.length === 0) return currentTimeUs; // Do nothing if no boundaries
+  const boundaries = getBoundaryTimesTicks(doc, trackId ? (id) => id === trackId : null);
+  if (boundaries.length === 0) return currentTimeTicks; // Do nothing if no boundaries
 
-  const next = boundaries.find((b) => b > currentTimeUs) ?? null;
+  const next = boundaries.find((b) => b > currentTimeTicks) ?? null;
 
   if (next === null) {
     const endFromState =
-      Number.isFinite(durationUs) && durationUs > 0 ? Math.max(0, Math.round(durationUs)) : 0;
+      Number.isFinite(durationTicks) && durationTicks > 0 ? Math.max(0, Math.round(durationTicks)) : 0;
     const end =
-      endFromState > 0 ? endFromState : Math.max(0, Math.round(selectTimelineDurationUs(doc)));
+      endFromState > 0 ? endFromState : Math.max(0, Math.round(selectTimelineDurationTicks(doc)));
     return end;
   }
 

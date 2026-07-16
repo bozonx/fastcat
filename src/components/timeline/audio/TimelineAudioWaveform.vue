@@ -90,14 +90,14 @@ const hasDeferredExtraction = ref(false);
 let isUnmounted = false;
 let extractCallId = 0;
 
-const effectiveSourceDurationUs = computed(() => {
-  const explicit = props.item.sourceDurationUs;
-  const explicitDurationUs = explicit && explicit > 0 ? explicit : 0;
-  const rangeEndUs = props.item.sourceRange.startUs + props.item.sourceRange.durationUs;
-  const sourceRangeEndUs = rangeEndUs > 0 ? rangeEndUs : 0;
+const effectiveSourceDurationTicks = computed(() => {
+  const explicit = props.item.sourceDurationTicks;
+  const explicitDurationTicks = explicit && explicit > 0 ? explicit : 0;
+  const rangeEndTicks = props.item.sourceRange.startTicks + props.item.sourceRange.durationTicks;
+  const sourceRangeEndTicks = rangeEndTicks > 0 ? rangeEndTicks : 0;
 
   // Prefer the real file duration from the metadata cache (ffprobe / symphonia) because
-  // props.item.sourceDurationUs may equal only the trimmed source range duration and
+  // props.item.sourceDurationTicks may equal only the trimmed source range duration and
   // therefore produce a totalWidthPx that is too small, cutting the waveform short.
   if (fileUrl.value && !isNestedTimeline.value) {
     const meta = mediaStore.getCachedMetadata(fileUrl.value);
@@ -105,20 +105,20 @@ const effectiveSourceDurationUs = computed(() => {
     if (metaDurationS && metaDurationS > 0) {
       return Math.max(
         Math.floor(metaDurationS * TICKS_PER_SECOND),
-        explicitDurationUs,
-        sourceRangeEndUs,
+        explicitDurationTicks,
+        sourceRangeEndTicks,
       );
     }
   }
 
-  if (explicitDurationUs > 0 || sourceRangeEndUs > 0) {
-    return Math.max(explicitDurationUs, sourceRangeEndUs);
+  if (explicitDurationTicks > 0 || sourceRangeEndTicks > 0) {
+    return Math.max(explicitDurationTicks, sourceRangeEndTicks);
   }
 
-  return props.item.sourceRange.durationUs || 0;
+  return props.item.sourceRange.durationTicks || 0;
 });
 
-const durationUs = computed(() => effectiveSourceDurationUs.value);
+const durationTicks = computed(() => effectiveSourceDurationTicks.value);
 
 function waveformMaxLength(durationS: number): number {
   return computeWaveformPeakLength(durationS);
@@ -202,7 +202,7 @@ function isMissingAudioTrackError(err: unknown): boolean {
 
 const extractPeaks = async () => {
   if (!fileUrl.value || !projectStore.currentProjectId) return;
-  const maxLength = waveformMaxLength(effectiveSourceDurationUs.value / TICKS_PER_SECOND);
+  const maxLength = waveformMaxLength(effectiveSourceDurationTicks.value / TICKS_PER_SECOND);
   if (hasSufficientPeaks(audioPeaks.value, maxLength)) return;
   if (isExtracting.value) {
     hasDeferredExtraction.value = true;
@@ -261,13 +261,13 @@ const extractPeaks = async () => {
 
       const peaks = await buildTimelinePeaks({
         doc: nestedDoc,
-        durationUs: Math.max(1, Math.round(effectiveSourceDurationUs.value)),
+        durationTicks: Math.max(1, Math.round(effectiveSourceDurationTicks.value)),
         maxLength,
         visiting: new Set<string>([normalizedTimelinePath]),
         timelinePath: normalizedTimelinePath,
         docCache: new Map<string, TimelineDocument>([[normalizedTimelinePath, nestedDoc]]),
         shouldCancel,
-        getMediaDurationUs: (path) => {
+        getMediaDurationTicks: (path) => {
           const meta = mediaStore.getCachedMetadata(path);
           const metaDurationS = meta?.duration;
           return metaDurationS && metaDurationS > 0
@@ -309,7 +309,7 @@ const extractPeaks = async () => {
     const peaks = await ensureMediaPeaks({
       path: fileUrl.value,
       maxLength,
-      durationS: effectiveSourceDurationUs.value / TICKS_PER_SECOND,
+      durationS: effectiveSourceDurationTicks.value / TICKS_PER_SECOND,
       priority: timelineStore.selectedItemIds?.includes(props.item.id)
         ? WAVEFORM_EXTRACTION_PRIORITIES.selectedClip
         : WAVEFORM_EXTRACTION_PRIORITIES.visibleClip,
@@ -333,7 +333,7 @@ const extractPeaks = async () => {
   } finally {
     isExtracting.value = false;
     if (hasDeferredExtraction.value && !timelineStore.isPlaying) {
-      const latestMaxLength = waveformMaxLength(effectiveSourceDurationUs.value / TICKS_PER_SECOND);
+      const latestMaxLength = waveformMaxLength(effectiveSourceDurationTicks.value / TICKS_PER_SECOND);
       if (!hasSufficientPeaks(audioPeaks.value, latestMaxLength)) {
         requestPeaksExtraction();
       } else {
@@ -344,7 +344,7 @@ const extractPeaks = async () => {
 };
 
 function requestPeaksExtraction() {
-  const maxLength = waveformMaxLength(effectiveSourceDurationUs.value / TICKS_PER_SECOND);
+  const maxLength = waveformMaxLength(effectiveSourceDurationTicks.value / TICKS_PER_SECOND);
   if (hasSufficientPeaks(audioPeaks.value, maxLength)) return;
   if (isExtracting.value) {
     hasDeferredExtraction.value = true;
@@ -366,7 +366,7 @@ watch(
   { immediate: true },
 );
 
-watch(effectiveSourceDurationUs, () => {
+watch(effectiveSourceDurationTicks, () => {
   requestPeaksExtraction();
 });
 
@@ -390,7 +390,7 @@ watch(
       return;
     }
 
-    const maxLength = waveformMaxLength(effectiveSourceDurationUs.value / TICKS_PER_SECOND);
+    const maxLength = waveformMaxLength(effectiveSourceDurationTicks.value / TICKS_PER_SECOND);
     if (hasDeferredExtraction.value && !hasSufficientPeaks(audioPeaks.value, maxLength)) {
       requestPeaksExtraction();
     }
@@ -423,9 +423,9 @@ const isReversed = computed(() => (props.item.speed ?? 1) < 0);
 
 const waveformMetrics = computed(() =>
   computeWaveformWindowMetrics({
-    sourceStartUs: props.item.sourceRange.startUs,
-    sourceDurationUs: durationUs.value,
-    timelineDurationUs: props.item.timelineRange.durationUs,
+    sourceStartTicks: props.item.sourceRange.startTicks,
+    sourceDurationTicks: durationTicks.value,
+    timelineDurationTicks: props.item.timelineRange.durationTicks,
     speed: props.item.speed,
     zoom: timelineStore.timelineZoom,
   }),
@@ -435,7 +435,7 @@ const totalWidthPx = computed(() => waveformMetrics.value.totalWidthPx);
 const waveformLeftPx = computed(() => waveformMetrics.value.leftPx);
 
 const clipStartPx = computed(() =>
-  timeUsToPx(props.item.timelineRange.startUs, timelineStore.timelineZoom),
+  timeUsToPx(props.item.timelineRange.startTicks, timelineStore.timelineZoom),
 );
 
 const track = computed(() =>
@@ -798,7 +798,7 @@ watch(
 // External peaks updates (cache refresh / late extraction) must trigger a redraw,
 // otherwise the canvas stays empty until the user pans/zooms.
 watch(audioPeaks, () => {
-  const maxLength = waveformMaxLength(effectiveSourceDurationUs.value / TICKS_PER_SECOND);
+  const maxLength = waveformMaxLength(effectiveSourceDurationTicks.value / TICKS_PER_SECOND);
   if (hasSufficientPeaks(audioPeaks.value, maxLength)) {
     hasDeferredExtraction.value = false;
   } else {

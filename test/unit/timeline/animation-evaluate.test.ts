@@ -7,48 +7,48 @@ import {
   hasAnyAnimation,
   hasKeyframes,
   normalizeKeyframeTrack,
-  resolveClipAnimationTimeUs,
-  resolveKeyframeTimelineTimeUs,
+  resolveClipAnimationTimeTicks,
+  resolveKeyframeTimelineTimeTicks,
   sampleClipAnimations,
 } from '~/timeline/animation/evaluate';
 import type { KeyframeTrack } from '~/timeline/types';
 
 const track = (
-  ...kfs: [tUs: number, value: number, easing?: 'linear' | 'ease' | 'hold'][]
+  ...kfs: [tTicks: number, value: number, easing?: 'linear' | 'ease' | 'hold'][]
 ): KeyframeTrack => ({
-  keyframes: kfs.map(([tUs, value, easing = 'linear']) => ({ tUs, value, easing })),
+  keyframes: kfs.map(([tTicks, value, easing = 'linear']) => ({ tTicks, value, easing })),
 });
 
 describe('normalizeKeyframeTrack', () => {
   it('sorts by time, clamps negative times, and dedups (last write wins)', () => {
     const t = normalizeKeyframeTrack(track([100, 2], [-5, 9], [0, 1], [0, 5]));
-    expect(t.keyframes.map((k) => [k.tUs, k.value])).toEqual([
+    expect(t.keyframes.map((k) => [k.tTicks, k.value])).toEqual([
       [0, 5],
       [100, 2],
     ]);
   });
 
   it('rounds fractional times and defaults easing to linear', () => {
-    const t = normalizeKeyframeTrack({ keyframes: [{ tUs: 10.6, value: 1 } as never] });
-    expect(t.keyframes[0]).toEqual({ tUs: 11, value: 1, easing: 'linear' });
+    const t = normalizeKeyframeTrack({ keyframes: [{ tTicks: 10.6, value: 1 } as never] });
+    expect(t.keyframes[0]).toEqual({ tTicks: 11, value: 1, easing: 'linear' });
   });
 
   it('normalizes invalid easing to linear', () => {
     const t = normalizeKeyframeTrack({
-      keyframes: [{ tUs: 10, value: 1, easing: 'snappy' } as never],
+      keyframes: [{ tTicks: 10, value: 1, easing: 'snappy' } as never],
     });
-    expect(t.keyframes[0]).toEqual({ tUs: 10, value: 1, easing: 'linear' });
+    expect(t.keyframes[0]).toEqual({ tTicks: 10, value: 1, easing: 'linear' });
   });
 });
 
-describe('resolveClipAnimationTimeUs', () => {
+describe('resolveClipAnimationTimeTicks', () => {
   it('maps timeline time through trim and forward speed', () => {
     expect(
-      resolveClipAnimationTimeUs({
-        timelineTimeUs: 1_500,
-        timelineStartUs: 1_000,
-        sourceStartUs: 10_000,
-        sourceRangeDurationUs: 2_000,
+      resolveClipAnimationTimeTicks({
+        timelineTimeTicks: 1_500,
+        timelineStartTicks: 1_000,
+        sourceStartTicks: 10_000,
+        sourceRangeDurationTicks: 2_000,
         speed: 2,
       }),
     ).toBe(11_000);
@@ -56,11 +56,11 @@ describe('resolveClipAnimationTimeUs', () => {
 
   it('maps reverse clips from the end of the source range', () => {
     expect(
-      resolveClipAnimationTimeUs({
-        timelineTimeUs: 1_500,
-        timelineStartUs: 1_000,
-        sourceStartUs: 10_000,
-        sourceRangeDurationUs: 2_000,
+      resolveClipAnimationTimeTicks({
+        timelineTimeTicks: 1_500,
+        timelineStartTicks: 1_000,
+        sourceStartTicks: 10_000,
+        sourceRangeDurationTicks: 2_000,
         speed: -1,
       }),
     ).toBe(11_500);
@@ -106,10 +106,10 @@ describe('evalTrackAt', () => {
     // must resolve to the post-cut value, not divide by a zero span.
     const t: KeyframeTrack = {
       keyframes: [
-        { tUs: 0, value: 0, easing: 'linear' },
-        { tUs: 100, value: 0.1, easing: 'linear' },
-        { tUs: 100, value: 0.7, easing: 'linear' },
-        { tUs: 200, value: 1, easing: 'linear' },
+        { tTicks: 0, value: 0, easing: 'linear' },
+        { tTicks: 100, value: 0.1, easing: 'linear' },
+        { tTicks: 100, value: 0.7, easing: 'linear' },
+        { tTicks: 200, value: 1, easing: 'linear' },
       ],
     };
     expect(evalTrackAt(t, 100)).toBe(0.7);
@@ -171,43 +171,43 @@ describe('helpers', () => {
   });
 });
 
-describe('resolveKeyframeTimelineTimeUs', () => {
-  it('inverts resolveClipAnimationTimeUs for forward playback (round-trip)', () => {
+describe('resolveKeyframeTimelineTimeTicks', () => {
+  it('inverts resolveClipAnimationTimeTicks for forward playback (round-trip)', () => {
     const base = {
-      timelineStartUs: 2_000_000,
-      sourceStartUs: 1_000_000,
-      sourceRangeDurationUs: 5_000_000,
+      timelineStartTicks: 2_000_000,
+      sourceStartTicks: 1_000_000,
+      sourceRangeDurationTicks: 5_000_000,
       speed: 1,
     };
-    for (const timelineTimeUs of [2_000_000, 3_500_000, 6_000_000]) {
-      const sourceTimeUs = resolveClipAnimationTimeUs({ ...base, timelineTimeUs });
-      const back = resolveKeyframeTimelineTimeUs({ ...base, sourceTimeUs });
-      expect(back).toBeCloseTo(timelineTimeUs, -1);
+    for (const timelineTimeTicks of [2_000_000, 3_500_000, 6_000_000]) {
+      const sourceTimeTicks = resolveClipAnimationTimeTicks({ ...base, timelineTimeTicks });
+      const back = resolveKeyframeTimelineTimeTicks({ ...base, sourceTimeTicks });
+      expect(back).toBeCloseTo(timelineTimeTicks, -1);
     }
   });
 
   it('inverts under 2x speed', () => {
     const base = {
-      timelineStartUs: 0,
-      sourceStartUs: 0,
-      sourceRangeDurationUs: 10_000_000,
+      timelineStartTicks: 0,
+      sourceStartTicks: 0,
+      sourceRangeDurationTicks: 10_000_000,
       speed: 2,
     };
-    const sourceTimeUs = resolveClipAnimationTimeUs({ ...base, timelineTimeUs: 1_000_000 });
+    const sourceTimeTicks = resolveClipAnimationTimeTicks({ ...base, timelineTimeTicks: 1_000_000 });
     // 1s of timeline at 2x = 2s of source
-    expect(sourceTimeUs).toBe(2_000_000);
-    expect(resolveKeyframeTimelineTimeUs({ ...base, sourceTimeUs })).toBe(1_000_000);
+    expect(sourceTimeTicks).toBe(2_000_000);
+    expect(resolveKeyframeTimelineTimeTicks({ ...base, sourceTimeTicks })).toBe(1_000_000);
   });
 
   it('maps a source keyframe back to timeline time for reverse playback', () => {
     const base = {
-      timelineStartUs: 0,
-      sourceStartUs: 0,
-      sourceRangeDurationUs: 4_000_000,
+      timelineStartTicks: 0,
+      sourceStartTicks: 0,
+      sourceRangeDurationTicks: 4_000_000,
       speed: -1,
     };
     // At the clip start (timeline 0) reverse samples the source tail.
-    const head = resolveClipAnimationTimeUs({ ...base, timelineTimeUs: 0 });
-    expect(resolveKeyframeTimelineTimeUs({ ...base, sourceTimeUs: head })).toBe(0);
+    const head = resolveClipAnimationTimeTicks({ ...base, timelineTimeTicks: 0 });
+    expect(resolveKeyframeTimelineTimeTicks({ ...base, sourceTimeTicks: head })).toBe(0);
   });
 });

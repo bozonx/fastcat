@@ -13,7 +13,7 @@ vi.mock('~/timeline/domain/editing', () => ({
   buildSplitClipCommands: vi.fn(() => [{ type: 'split_clip' }]),
   buildSplitAllClipsCommands: vi.fn(() => [{ type: 'split_all' }]),
   buildSplitSelectedClipsCommands: vi.fn(() => [{ type: 'split_selected' }]),
-  computeCutUs: vi.fn((doc, time) => time),
+  computeCutTicks: vi.fn((doc, time) => time),
 }));
 
 const mockDoc = {
@@ -25,13 +25,13 @@ const mockDoc = {
         {
           id: 'clip-1',
           kind: 'clip',
-          timelineRange: { startUs: 0, durationUs: 1_000_000 },
+          timelineRange: { startTicks: 0, durationTicks: 1_000_000 },
           locked: false,
         },
         {
           id: 'clip-2',
           kind: 'clip',
-          timelineRange: { startUs: 1_000_000, durationUs: 1_000_000 },
+          timelineRange: { startTicks: 1_000_000, durationTicks: 1_000_000 },
           locked: true,
         },
       ],
@@ -85,7 +85,7 @@ describe('TimelineTrimmingModule', () => {
   it('rippleDeleteRange delegates to editService', () => {
     const deps = createMockDeps();
     const mod = createTimelineTrimmingModule(deps);
-    const input = { trackIds: ['track-1'], startUs: 0, endUs: 500_000 };
+    const input = { trackIds: ['track-1'], startTicks: 0, endTicks: 500_000 };
     mod.rippleDeleteRange(input, { someOption: true });
     expect(deps.editService.rippleDeleteRange).toHaveBeenCalledWith(input, { someOption: true });
   });
@@ -94,7 +94,7 @@ describe('TimelineTrimmingModule', () => {
     const deps = createMockDeps();
     deps.editService.rippleDeleteRange.mockReturnValue(123_456);
     const mod = createTimelineTrimmingModule(deps);
-    mod.rippleDeleteRange({ trackIds: ['track-1'], startUs: 0, endUs: 500_000 });
+    mod.rippleDeleteRange({ trackIds: ['track-1'], startTicks: 0, endTicks: 500_000 });
     expect(deps.currentTime.value).toBe(123_456);
     expect(deps.onPlayheadJump).toHaveBeenCalledOnce();
   });
@@ -154,8 +154,8 @@ describe('TimelineTrimmingModule', () => {
     expect(deps.editService.rippleDeleteRange).toHaveBeenCalledWith(
       {
         trackIds: ['track-1', 'track-2'],
-        startUs: 0,
-        endUs: 1_000_000,
+        startTicks: 0,
+        endTicks: 1_000_000,
       },
       expect.objectContaining({
         labelKey: 'videoEditor.fileManager.history.entries.deleteItems',
@@ -186,7 +186,7 @@ describe('TimelineTrimmingModule', () => {
             {
               id: 'gap-1',
               kind: 'gap',
-              timelineRange: { startUs: 2_000_000, durationUs: 500_000 },
+              timelineRange: { startTicks: 2_000_000, durationTicks: 500_000 },
             },
           ],
           locked: false,
@@ -206,8 +206,8 @@ describe('TimelineTrimmingModule', () => {
     expect(deps.editService.rippleDeleteRange).toHaveBeenCalledWith(
       {
         trackIds: ['track-1', 'track-2'],
-        startUs: 2_000_000,
-        endUs: 2_500_000,
+        startTicks: 2_000_000,
+        endTicks: 2_500_000,
       },
       expect.any(Object),
     );

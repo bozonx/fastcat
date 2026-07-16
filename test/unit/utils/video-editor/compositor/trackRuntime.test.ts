@@ -89,8 +89,8 @@ describe('buildTrackRuntimeList', () => {
 });
 
 describe('buildPrevClipByIdIndex', () => {
-  function makeClip(itemId: string, layer: number, startUs: number, endUs: number): CompositorClip {
-    return { itemId, layer, startUs, endUs } as unknown as CompositorClip;
+  function makeClip(itemId: string, layer: number, startTicks: number, endTicks: number): CompositorClip {
+    return { itemId, layer, startTicks, endTicks } as unknown as CompositorClip;
   }
 
   it('returns null for the first clip on each layer', () => {
@@ -124,7 +124,7 @@ describe('buildPrevClipByIdIndex', () => {
     expect(result.get('b2')).toBe(clips[1]);
   });
 
-  it('sorts by startUs then endUs then itemId', () => {
+  it('sorts by startTicks then endTicks then itemId', () => {
     const clips = [makeClip('z', 0, 0, 100), makeClip('a', 0, 0, 50), makeClip('m', 0, 0, 50)];
     const result = buildPrevClipByIdIndex(clips);
     // Sorted: a (0,50), m (0,50), z (0,100)
@@ -135,8 +135,8 @@ describe('buildPrevClipByIdIndex', () => {
 });
 
 describe('buildNextClipByIdIndex', () => {
-  function makeClip(itemId: string, layer: number, startUs: number, endUs: number): CompositorClip {
-    return { itemId, layer, startUs, endUs } as unknown as CompositorClip;
+  function makeClip(itemId: string, layer: number, startTicks: number, endTicks: number): CompositorClip {
+    return { itemId, layer, startTicks, endTicks } as unknown as CompositorClip;
   }
 
   it('returns null for the last clip on each layer', () => {

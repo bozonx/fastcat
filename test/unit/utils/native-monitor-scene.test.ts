@@ -4,7 +4,7 @@ import {
   buildNativeAudioEffectSpecs,
   mapTimelineBlendModeToNative,
 } from '~/utils/native-monitor-scene';
-import { timelineUs } from './timeline-time';
+import { timelineTicks } from './timeline-time';
 
 vi.mock('@tauri-apps/api/path', () => ({
   join: vi.fn(async (...parts: string[]) => parts.join('/')),
@@ -156,8 +156,8 @@ describe('buildNativeMonitorScene', () => {
         clipType: 'background',
         trackId,
         backgroundColor: '#000000',
-        timelineRange: { startUs: index, durationUs: 1_000_000 },
-        sourceRange: { startUs: 0, durationUs: 1_000_000 },
+        timelineRange: { startTicks: index, durationTicks: 1_000_000 },
+        sourceRange: { startTicks: 0, durationTicks: 1_000_000 },
       }));
     const scene = await buildNativeMonitorScene({
       timelineDoc: {
@@ -184,7 +184,7 @@ describe('buildNativeMonitorScene', () => {
             width: 1920,
             height: 1080,
             fps: 30,
-            audioDeclickDurationUs: 0,
+            audioDeclickDurationTicks: 0,
           },
         },
       } as never,
@@ -230,8 +230,8 @@ describe('buildNativeMonitorScene', () => {
               type: 'media',
               trackId: 'v-track',
               source: { path: '_video/source.mp4' },
-              timelineRange: { startUs: 0, durationUs: 1_000_000 },
-              sourceRange: { startUs: 0, durationUs: 1_000_000 },
+              timelineRange: { startTicks: 0, durationTicks: 1_000_000 },
+              sourceRange: { startTicks: 0, durationTicks: 1_000_000 },
               blendMode: 'soft-light',
               transform: {
                 crop: {
@@ -252,7 +252,7 @@ describe('buildNativeMonitorScene', () => {
           width: 1920,
           height: 1080,
           fps: 30,
-          audioDeclickDurationUs: 0,
+          audioDeclickDurationTicks: 0,
         },
       },
       getProjectDirHandle: vi.fn(async () => ({ path: '/workspace/project' })),
@@ -355,8 +355,8 @@ describe('buildNativeMonitorScene', () => {
               text: 'Styled text',
               style: textStyle,
               snapToPixelGrid: true,
-              timelineRange: { startUs: 0, durationUs: 1_000_000 },
-              sourceRange: { startUs: 0, durationUs: 1_000_000 },
+              timelineRange: { startTicks: 0, durationTicks: 1_000_000 },
+              sourceRange: { startTicks: 0, durationTicks: 1_000_000 },
               transform: {
                 position: { x: 960, y: 540 },
                 scale: { x: 1, y: 1 },
@@ -374,7 +374,7 @@ describe('buildNativeMonitorScene', () => {
           width: 1920,
           height: 1080,
           fps: 30,
-          audioDeclickDurationUs: 0,
+          audioDeclickDurationTicks: 0,
         },
       },
       getProjectDirHandle: vi.fn(async () => ({ path: '/workspace/project' })),
@@ -443,8 +443,8 @@ describe('buildNativeMonitorScene', () => {
               type: 'media',
               trackId: 'v-track',
               source: { path: '_video/source.mp4' },
-              timelineRange: { startUs: 0, durationUs: 1_000_000 },
-              sourceRange: { startUs: 0, durationUs: 1_000_000 },
+              timelineRange: { startTicks: 0, durationTicks: 1_000_000 },
+              sourceRange: { startTicks: 0, durationTicks: 1_000_000 },
             },
           ],
         },
@@ -457,7 +457,7 @@ describe('buildNativeMonitorScene', () => {
           width: 1920,
           height: 1080,
           fps: 30,
-          audioDeclickDurationUs: 0,
+          audioDeclickDurationTicks: 0,
         },
       },
       getProjectDirHandle: vi.fn(async () => ({ path: '/workspace/project' })),
@@ -503,7 +503,7 @@ describe('buildNativeMonitorScene', () => {
           width: 1920,
           height: 1080,
           fps: 30,
-          audioDeclickDurationUs: 0,
+          audioDeclickDurationTicks: 0,
         },
       },
       getProjectDirHandle: vi.fn(async () => ({ path: '/workspace/project' })),
@@ -553,8 +553,8 @@ describe('buildNativeMonitorScene', () => {
               type: 'media',
               trackId: 'v-track',
               source: { path: '/absolute/path/to/unix_video.mp4' },
-              timelineRange: { startUs: 0, durationUs: 1_000_000 },
-              sourceRange: { startUs: 0, durationUs: 1_000_000 },
+              timelineRange: { startTicks: 0, durationTicks: 1_000_000 },
+              sourceRange: { startTicks: 0, durationTicks: 1_000_000 },
             },
             {
               id: 'clip-windows',
@@ -562,8 +562,8 @@ describe('buildNativeMonitorScene', () => {
               type: 'media',
               trackId: 'v-track',
               source: { path: 'D:\\absolute\\path\\to\\win_video.mp4' },
-              timelineRange: { startUs: 1_000_000, durationUs: 1_000_000 },
-              sourceRange: { startUs: 0, durationUs: 1_000_000 },
+              timelineRange: { startTicks: 1_000_000, durationTicks: 1_000_000 },
+              sourceRange: { startTicks: 0, durationTicks: 1_000_000 },
             },
           ],
         },
@@ -576,7 +576,7 @@ describe('buildNativeMonitorScene', () => {
           width: 1920,
           height: 1080,
           fps: 30,
-          audioDeclickDurationUs: 0,
+          audioDeclickDurationTicks: 0,
         },
       },
       getProjectDirHandle: vi.fn(async () => ({ path: '/workspace/project' })),
@@ -625,8 +625,8 @@ describe('buildNativeMonitorScene', () => {
               type: 'media',
               trackId: 'v-track',
               source: { path: '_video/source.mp4' },
-              timelineRange: { startUs: 0, durationUs: 1_000_000 },
-              sourceRange: { startUs: 0, durationUs: 1_000_000 },
+              timelineRange: { startTicks: 0, durationTicks: 1_000_000 },
+              sourceRange: { startTicks: 0, durationTicks: 1_000_000 },
             },
           ],
         },
@@ -640,7 +640,7 @@ describe('buildNativeMonitorScene', () => {
           width: 1920,
           height: 1080,
           fps: 30,
-          audioDeclickDurationUs: 0,
+          audioDeclickDurationTicks: 0,
         },
       },
       getProjectDirHandle: vi.fn(async () => null),
@@ -689,7 +689,7 @@ describe('buildNativeMonitorScene', () => {
     };
     const projectStore = {
       projectSettings: {
-        project: { width: 1920, height: 1080, fps: 30, audioDeclickDurationUs: 0 },
+        project: { width: 1920, height: 1080, fps: 30, audioDeclickDurationTicks: 0 },
       },
       getProjectDirHandle: vi.fn(async () => ({ path: '/workspace/project' })),
       getFileByPath: vi.fn(),
@@ -730,8 +730,8 @@ describe('buildNativeMonitorScene', () => {
               clipType: 'media',
               trackId: 'v-track',
               source: { path: '_video/source.mp4' },
-              timelineRange: { startUs: 0, durationUs: 2_000_000 },
-              sourceRange: { startUs: 0, durationUs: 2_000_000 },
+              timelineRange: { startTicks: 0, durationTicks: 2_000_000 },
+              sourceRange: { startTicks: 0, durationTicks: 2_000_000 },
               layer: 0,
             },
             {
@@ -739,8 +739,8 @@ describe('buildNativeMonitorScene', () => {
               kind: 'clip',
               clipType: 'adjustment',
               trackId: 'v-track',
-              timelineRange: { startUs: timelineUs(500_000), durationUs: timelineUs(1_000_000) },
-              sourceRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
+              timelineRange: { startTicks: timelineTicks(500_000), durationTicks: timelineTicks(1_000_000) },
+              sourceRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
               layer: 1,
               effects: [{ id: 'blur-1', type: 'blur', enabled: true, target: 'video', radius: 3 }],
             },
@@ -750,7 +750,7 @@ describe('buildNativeMonitorScene', () => {
     };
     const projectStore = {
       projectSettings: {
-        project: { width: 1920, height: 1080, fps: 30, audioDeclickDurationUs: 0 },
+        project: { width: 1920, height: 1080, fps: 30, audioDeclickDurationTicks: 0 },
       },
       getProjectDirHandle: vi.fn(async () => ({ path: '/workspace/project' })),
       getFileByPath: vi.fn(),
@@ -796,8 +796,8 @@ describe('buildNativeMonitorScene', () => {
               clipType: 'media',
               trackId: 'image-top',
               source: { path: '_images/overlay.png' },
-              timelineRange: { startUs: 0, durationUs: 2_000_000 },
-              sourceRange: { startUs: 0, durationUs: 2_000_000 },
+              timelineRange: { startTicks: 0, durationTicks: 2_000_000 },
+              sourceRange: { startTicks: 0, durationTicks: 2_000_000 },
             },
           ],
         },
@@ -811,8 +811,8 @@ describe('buildNativeMonitorScene', () => {
               kind: 'clip',
               clipType: 'adjustment',
               trackId: 'adjustment-mid',
-              timelineRange: { startUs: 0, durationUs: 2_000_000 },
-              sourceRange: { startUs: 0, durationUs: 2_000_000 },
+              timelineRange: { startTicks: 0, durationTicks: 2_000_000 },
+              sourceRange: { startTicks: 0, durationTicks: 2_000_000 },
               effects: [{ id: 'blur-1', type: 'blur', enabled: true, target: 'video', radius: 3 }],
             },
           ],
@@ -828,8 +828,8 @@ describe('buildNativeMonitorScene', () => {
               clipType: 'media',
               trackId: 'video-bottom',
               source: { path: '_video/source.mp4' },
-              timelineRange: { startUs: 0, durationUs: 2_000_000 },
-              sourceRange: { startUs: 0, durationUs: 2_000_000 },
+              timelineRange: { startTicks: 0, durationTicks: 2_000_000 },
+              sourceRange: { startTicks: 0, durationTicks: 2_000_000 },
             },
           ],
         },
@@ -837,7 +837,7 @@ describe('buildNativeMonitorScene', () => {
     };
     const projectStore = {
       projectSettings: {
-        project: { width: 1920, height: 1080, fps: 30, audioDeclickDurationUs: 0 },
+        project: { width: 1920, height: 1080, fps: 30, audioDeclickDurationTicks: 0 },
       },
       getProjectDirHandle: vi.fn(async () => ({ path: '/workspace/project' })),
       getFileByPath: vi.fn(),
@@ -883,11 +883,11 @@ describe('buildNativeMonitorScene', () => {
               type: 'media',
               trackId: 'v-track',
               source: { path: '_video/a.mp4' },
-              timelineRange: { startUs: 0, durationUs: 1_000_000 },
-              sourceRange: { startUs: 0, durationUs: 1_000_000 },
+              timelineRange: { startTicks: 0, durationTicks: 1_000_000 },
+              sourceRange: { startTicks: 0, durationTicks: 1_000_000 },
               transitionOut: {
                 type: 'wipe',
-                durationUs: 250_000,
+                durationTicks: 250_000,
                 mode: 'adjacent',
                 params: { angle: 45, softness: 0.1 },
               },
@@ -898,8 +898,8 @@ describe('buildNativeMonitorScene', () => {
               type: 'media',
               trackId: 'v-track',
               source: { path: '_video/b.mp4' },
-              timelineRange: { startUs: 1_000_000, durationUs: 1_000_000 },
-              sourceRange: { startUs: 0, durationUs: 1_000_000 },
+              timelineRange: { startTicks: 1_000_000, durationTicks: 1_000_000 },
+              sourceRange: { startTicks: 0, durationTicks: 1_000_000 },
             },
           ],
         },
@@ -907,7 +907,7 @@ describe('buildNativeMonitorScene', () => {
     };
     const projectStore = {
       projectSettings: {
-        project: { width: 1920, height: 1080, fps: 30, audioDeclickDurationUs: 0 },
+        project: { width: 1920, height: 1080, fps: 30, audioDeclickDurationTicks: 0 },
       },
       getProjectDirHandle: vi.fn(async () => ({ path: '/workspace/project' })),
       getFileByPath: vi.fn(),
@@ -959,11 +959,11 @@ describe('buildNativeMonitorScene', () => {
               type: 'media',
               trackId: 'v-track',
               source: { path: '_video/source.mp4' },
-              timelineRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
-              sourceRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
+              timelineRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
+              sourceRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
               transitionOut: {
                 type: 'wipe',
-                durationUs: timelineUs(250_000),
+                durationTicks: timelineTicks(250_000),
                 mode: 'transparent',
               },
             },
@@ -973,7 +973,7 @@ describe('buildNativeMonitorScene', () => {
     };
     const projectStore = {
       projectSettings: {
-        project: { width: 1920, height: 1080, fps: 30, audioDeclickDurationUs: 0 },
+        project: { width: 1920, height: 1080, fps: 30, audioDeclickDurationTicks: 0 },
       },
       getProjectDirHandle: vi.fn(async () => ({ path: '/workspace/project' })),
       getFileByPath: vi.fn(),
@@ -1019,8 +1019,8 @@ describe('buildNativeMonitorScene', () => {
               type: 'media',
               trackId: 'v-track',
               source: { path: '_video/source.mp4' },
-              timelineRange: { startUs: 0, durationUs: 1_000_000 },
-              sourceRange: { startUs: 0, durationUs: 1_000_000 },
+              timelineRange: { startTicks: 0, durationTicks: 1_000_000 },
+              sourceRange: { startTicks: 0, durationTicks: 1_000_000 },
             },
             {
               id: 'clip-b',
@@ -1028,11 +1028,11 @@ describe('buildNativeMonitorScene', () => {
               type: 'media',
               trackId: 'v-track',
               source: { path: '_video/source.mp4' },
-              timelineRange: { startUs: 1_000_000, durationUs: 1_000_000 },
-              sourceRange: { startUs: 0, durationUs: 1_000_000 },
+              timelineRange: { startTicks: 1_000_000, durationTicks: 1_000_000 },
+              sourceRange: { startTicks: 0, durationTicks: 1_000_000 },
               transitionIn: {
                 type: 'bloom',
-                durationUs: 250_000,
+                durationTicks: 250_000,
                 mode: 'adjacent',
                 params: {
                   brightness: 1.5,
@@ -1047,7 +1047,7 @@ describe('buildNativeMonitorScene', () => {
     };
     const projectStore = {
       projectSettings: {
-        project: { width: 1920, height: 1080, fps: 30, audioDeclickDurationUs: 0 },
+        project: { width: 1920, height: 1080, fps: 30, audioDeclickDurationTicks: 0 },
       },
       getProjectDirHandle: vi.fn(async () => ({ path: '/workspace/project' })),
       getFileByPath: vi.fn(),

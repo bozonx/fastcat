@@ -48,7 +48,7 @@ export function applyLoadedTimelineSessionSnapshot(
     masterMuted: boolean;
     zoom: number;
     trackHeights: Record<string, number>;
-    selectionRange?: { startUs: number; endUs: number } | null;
+    selectionRange?: { startTicks: number; endTicks: number } | null;
     mobileTrackHeightsEnlarged?: Record<string, boolean>;
   },
 ): FastCatProjectSettings['timelines'] {
@@ -64,7 +64,7 @@ export function applyLoadedTimelineSessionSnapshot(
     sessions: {
       ...timelines.sessions,
       [input.activeTimelinePath]: {
-        playheadUs: input.currentTime,
+        playheadTicks: input.currentTime,
         masterGain: input.masterGain,
         masterMuted: input.masterMuted,
         zoom: input.zoom,

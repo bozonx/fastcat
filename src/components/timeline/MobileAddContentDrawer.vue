@@ -44,12 +44,12 @@ const isDev = isInDevelopmentFeaturesEnabled(runtimeConfig);
 
 const hasClipboard = computed(() => clipboardStore.hasTimelinePayload);
 
-async function resolveInsertDurationUs(
+async function resolveInsertDurationTicks(
   path: string,
   mediaType: string,
 ): Promise<number | undefined> {
   if (mediaType === 'image' || mediaType === 'timeline') {
-    return workspaceStore.userSettings.timeline.defaultStaticClipDurationUs;
+    return workspaceStore.userSettings.timeline.defaultStaticClipDurationTicks;
   }
 
   const meta = await mediaStore.getOrFetchMetadataByPath(path);
@@ -61,9 +61,9 @@ async function handlePaste() {
   const payload = clipboardStore.clipboardPayload;
   if (!payload || payload.source !== 'timeline' || payload.items.length === 0) return;
 
-  const playheadUs = timelineStore.currentTime;
+  const playheadTicks = timelineStore.currentTime;
   const pastedItemIds = await timelineStore.pasteClips(payload.items, {
-    insertStartUs: playheadUs,
+    insertStartTicks: playheadTicks,
   });
 
   if (pastedItemIds && pastedItemIds.length > 0) {
@@ -79,7 +79,7 @@ function addAdjustment() {
     const trackId =
       props.targetTrackId ??
       timelineStore.resolveMobileTargetTrackId('video', {
-        durationUs: workspaceStore.userSettings.timeline.defaultStaticClipDurationUs,
+        durationTicks: workspaceStore.userSettings.timeline.defaultStaticClipDurationTicks,
       });
     timelineStore.addAdjustmentClipAtPlayhead({ pseudo: true, trackId });
     if (timelineStore.lastClipTrimmed) {
@@ -113,7 +113,7 @@ function addBackground() {
     const trackId =
       props.targetTrackId ??
       timelineStore.resolveMobileTargetTrackId('video', {
-        durationUs: workspaceStore.userSettings.timeline.defaultStaticClipDurationUs,
+        durationTicks: workspaceStore.userSettings.timeline.defaultStaticClipDurationTicks,
       });
     timelineStore.addBackgroundClipAtPlayhead({ pseudo: true, trackId });
     if (timelineStore.lastClipTrimmed) {
@@ -165,12 +165,12 @@ async function onFilesSelected(e: Event) {
       const mediaType = getMediaTypeFromFilename(r.fileName);
       if (mediaType === 'timeline') {
         try {
-          const durationUs = await resolveInsertDurationUs(r.targetPath, mediaType);
+          const durationTicks = await resolveInsertDurationTicks(r.targetPath, mediaType);
           await timelineStore.addTimelineClipToTimelineFromPath({
-            trackId: timelineStore.resolveMobileTargetTrackId('video', { durationUs }),
+            trackId: timelineStore.resolveMobileTargetTrackId('video', { durationTicks }),
             name: r.fileName,
             path: r.targetPath,
-            startUs: timelineStore.currentTime,
+            startTicks: timelineStore.currentTime,
             pseudo: true,
           });
         } catch (err: unknown) {
@@ -191,16 +191,16 @@ async function onFilesSelected(e: Event) {
         }
       } else if (['video', 'audio', 'image'].includes(mediaType)) {
         const kind = mediaType === 'audio' ? 'audio' : 'video';
-        const durationUs = await resolveInsertDurationUs(r.targetPath, mediaType);
+        const durationTicks = await resolveInsertDurationTicks(r.targetPath, mediaType);
         const trackId =
-          props.targetTrackId ?? timelineStore.resolveMobileTargetTrackId(kind, { durationUs });
+          props.targetTrackId ?? timelineStore.resolveMobileTargetTrackId(kind, { durationTicks });
 
         try {
           const result = await timelineStore.addClipToTimelineFromPath({
             trackId,
             name: r.fileName,
             path: r.targetPath,
-            startUs: timelineStore.currentTime,
+            startTicks: timelineStore.currentTime,
             pseudo: true,
           });
           if (result.warnings?.some((w) => w.type === 'clipTrimmed')) {

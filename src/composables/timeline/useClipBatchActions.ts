@@ -123,9 +123,9 @@ export function useClipBatchActions(
   const hasSourceOrientationControls = computed(() => sourceOrientationClipRefs.value.length > 0);
   const hasAutoMontageControls = computed(() => autoMontageClipRefs.value.length > 0);
 
-  function handleRelativeStartShift(deltaUs: number) {
-    const safeDeltaUs = Math.round(Number(deltaUs));
-    if (!Number.isFinite(safeDeltaUs) || safeDeltaUs === 0) return;
+  function handleRelativeStartShift(deltaTicks: number) {
+    const safeDeltaTicks = Math.round(Number(deltaTicks));
+    if (!Number.isFinite(safeDeltaTicks) || safeDeltaTicks === 0) return;
 
     const cmds: TimelineCommand[] = [];
     for (const { track, clip } of editableClipRefs.value) {
@@ -133,7 +133,7 @@ export function useClipBatchActions(
         type: 'move_item',
         trackId: track.id,
         itemId: clip.id,
-        startUs: Math.max(0, clip.timelineRange.startUs + safeDeltaUs),
+        startTicks: Math.max(0, clip.timelineRange.startTicks + safeDeltaTicks),
       });
     }
 
@@ -144,9 +144,9 @@ export function useClipBatchActions(
     });
   }
 
-  function handleRelativeEndShift(deltaUs: number) {
-    const safeDeltaUs = Math.round(Number(deltaUs));
-    if (!Number.isFinite(safeDeltaUs) || safeDeltaUs === 0) return;
+  function handleRelativeEndShift(deltaTicks: number) {
+    const safeDeltaTicks = Math.round(Number(deltaTicks));
+    if (!Number.isFinite(safeDeltaTicks) || safeDeltaTicks === 0) return;
 
     const cmds: TimelineCommand[] = [];
     for (const { track, clip } of editableClipRefs.value) {
@@ -155,7 +155,7 @@ export function useClipBatchActions(
         trackId: track.id,
         itemId: clip.id,
         edge: 'end',
-        deltaUs: safeDeltaUs,
+        deltaTicks: safeDeltaTicks,
       });
     }
 
@@ -311,22 +311,22 @@ export function useClipBatchActions(
     });
   }
 
-  function handleSetUniformDuration(durationUs: number) {
-    const nextDurationUs = Math.max(1, Math.round(Number(durationUs)));
-    if (!Number.isFinite(nextDurationUs)) return;
+  function handleSetUniformDuration(durationTicks: number) {
+    const nextDurationTicks = Math.max(1, Math.round(Number(durationTicks)));
+    if (!Number.isFinite(nextDurationTicks)) return;
 
     const cmds: TimelineCommand[] = [];
     for (const { track, clip } of editableClipRefs.value) {
-      const currentDurationUs = Math.max(0, Math.round(Number(clip.timelineRange.durationUs)));
-      const deltaUs = nextDurationUs - currentDurationUs;
-      if (deltaUs === 0) continue;
+      const currentDurationTicks = Math.max(0, Math.round(Number(clip.timelineRange.durationTicks)));
+      const deltaTicks = nextDurationTicks - currentDurationTicks;
+      if (deltaTicks === 0) continue;
 
       cmds.push({
         type: 'trim_item',
         trackId: track.id,
         itemId: clip.id,
         edge: 'end',
-        deltaUs,
+        deltaTicks,
       });
     }
 

@@ -4,7 +4,7 @@ import { defineComponent, h, nextTick, ref, type Ref } from 'vue';
 import { mount } from '@vue/test-utils';
 import { useTimelineMarquee } from '~/composables/timeline/useTimelineMarquee';
 import type { TimelineTrack } from '~/timeline/types';
-import { timelineUs } from '../../utils/timeline-time';
+import { timelineTicks } from '../../utils/timeline-time';
 
 const mockTimelineStore = vi.hoisted(() => ({
   timelineZoom: 50,
@@ -55,7 +55,7 @@ describe('useTimelineMarquee', () => {
           {
             id: 'clip-visible',
             kind: 'clip',
-            timelineRange: { startUs: timelineUs(61_000_000), durationUs: timelineUs(2_000_000) },
+            timelineRange: { startTicks: timelineTicks(61_000_000), durationTicks: timelineTicks(2_000_000) },
           },
         ],
       } as TimelineTrack,

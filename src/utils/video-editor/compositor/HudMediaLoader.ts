@@ -30,7 +30,7 @@ export class HudMediaLoader {
     return {
       sourcePath: params.sourcePath,
       fileHandle: loaded.fileHandle,
-      sourceDurationUs: 0,
+      sourceDurationTicks: 0,
       clipKind: 'image',
       sourceKind: 'bitmap',
       imageSource,

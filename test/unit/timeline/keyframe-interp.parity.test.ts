@@ -12,7 +12,7 @@ import type { Keyframe, KeyframeTrack } from '~/timeline/types';
 interface KeyframeInterpCase {
   name: string;
   keyframes: Keyframe[];
-  queryTUs: number;
+  queryTTicks: number;
   expected: number | null;
 }
 
@@ -24,7 +24,7 @@ describe('keyframe-interp parity (shared fixture)', () => {
   for (const c of fixture.cases) {
     it(c.name, () => {
       const track: KeyframeTrack = { keyframes: c.keyframes };
-      const got = evalTrackAt(track, c.queryTUs);
+      const got = evalTrackAt(track, c.queryTTicks);
       if (c.expected === null) {
         expect(got).toBeUndefined();
       } else {

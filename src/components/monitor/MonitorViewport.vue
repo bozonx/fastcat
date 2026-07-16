@@ -21,7 +21,7 @@ const props = withDefaults(
     renderHeight: number;
     isIdle?: boolean;
     effectiveFullscreen?: boolean;
-    uiCurrentTimeUs?: number;
+    uiCurrentTimeTicks?: number;
     timecodeOffsetClass?: string;
     markersOffsetClass?: string;
     isMobile?: boolean;
@@ -29,7 +29,7 @@ const props = withDefaults(
   {
     isIdle: false,
     effectiveFullscreen: false,
-    uiCurrentTimeUs: 0,
+    uiCurrentTimeTicks: 0,
     timecodeOffsetClass: '',
     markersOffsetClass: '',
     isMobile: false,
@@ -80,12 +80,12 @@ const {
 const activeMarkers = ref<TimelineMarker[]>([]);
 
 watch(
-  [() => props.uiCurrentTimeUs, () => timelineStore.markers],
+  [() => props.uiCurrentTimeTicks, () => timelineStore.markers],
   ([time, markers]) => {
     activeMarkers.value = markers.filter((m) => {
       if (!m.text.trim()) return false;
-      if (m.durationUs != null) return time >= m.timeUs && time < m.timeUs + m.durationUs;
-      return Math.abs(time - m.timeUs) < 1000;
+      if (m.durationTicks != null) return time >= m.timeTicks && time < m.timeTicks + m.durationTicks;
+      return Math.abs(time - m.timeTicks) < 1000;
     });
   },
   { immediate: true },
@@ -99,8 +99,8 @@ const selectionRangeDurationText = computed(() => {
   const range = timelineStore.selectionRange;
   if (!range) return '';
   const fps = timelineStore.timelineFormat?.fps ?? timelineStore.fps;
-  const durationUs = range.endUs - range.startUs;
-  return formatTimecode(durationUs, fps);
+  const durationTicks = range.endTicks - range.startTicks;
+  return formatTimecode(durationTicks, fps);
 });
 
 function handleViewportDoubleClick(event: MouseEvent) {

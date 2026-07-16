@@ -113,7 +113,7 @@ export class AudioChunkDecoder {
     const selectedClips: AudioEngineClip[] = [];
     const selectedSources = new Set<string>();
 
-    for (const clip of [...clips].sort((a, b) => a.startUs - b.startUs)) {
+    for (const clip of [...clips].sort((a, b) => a.startTicks - b.startTicks)) {
       const sourceKey = clip.sourcePath;
       if (!sourceKey || selectedSources.has(sourceKey)) continue;
       selectedSources.add(sourceKey);
@@ -127,8 +127,8 @@ export class AudioChunkDecoder {
       if (!sourceKey) return;
       this.invalidateIfSourceHandleChanged(sourceKey, clip.fileHandle);
 
-      const startOffsetS = clip.sourceStartUs / TICKS_PER_SECOND;
-      const sourceEndS = startOffsetS + clip.sourceRangeDurationUs / TICKS_PER_SECOND;
+      const startOffsetS = clip.sourceStartTicks / TICKS_PER_SECOND;
+      const sourceEndS = startOffsetS + clip.sourceRangeDurationTicks / TICKS_PER_SECOND;
       const startChunkIndex = this.getChunkIndex(startOffsetS);
       const lastChunkIndex = this.getChunkIndex(Math.max(startOffsetS, sourceEndS - 1e-6));
 

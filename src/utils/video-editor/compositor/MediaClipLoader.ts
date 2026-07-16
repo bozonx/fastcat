@@ -24,11 +24,11 @@ export interface MediaClipLoaderMediabunny {
 export interface LoadVideoRuntimeParams {
   mediabunny: MediaClipLoaderMediabunny;
   file: File;
-  sourceStartUs: number;
-  requestedTimelineDurationUs: number;
-  requestedSourceDurationUs: number;
-  requestedSourceRangeDurationUs: number;
-  startUs: number;
+  sourceStartTicks: number;
+  requestedTimelineDurationTicks: number;
+  requestedSourceDurationTicks: number;
+  requestedSourceRangeDurationTicks: number;
+  startTicks: number;
   abortSignal?: AbortSignal;
 }
 
@@ -37,10 +37,10 @@ export interface LoadedVideoRuntime {
   sink: unknown;
   firstTimestampS?: number;
   frameRate?: number;
-  sourceDurationUs: number;
-  sourceRangeDurationUs: number;
-  durationUs: number;
-  endUs: number;
+  sourceDurationTicks: number;
+  sourceRangeDurationTicks: number;
+  durationTicks: number;
+  endTicks: number;
   imageSource: ImageSource;
   sourceRotation?: number;
 }
@@ -52,11 +52,11 @@ export class MediaClipLoader {
     const {
       mediabunny,
       file,
-      sourceStartUs,
-      requestedTimelineDurationUs,
-      requestedSourceDurationUs,
-      requestedSourceRangeDurationUs,
-      startUs,
+      sourceStartTicks,
+      requestedTimelineDurationTicks,
+      requestedSourceDurationTicks,
+      requestedSourceRangeDurationTicks,
+      startTicks,
       abortSignal,
     } = params;
     if (abortSignal?.aborted) {
@@ -113,40 +113,40 @@ export class MediaClipLoader {
       }
       const frameRate = Number(frameRateRaw);
       const sourceRotation = Number((track as { rotation?: unknown }).rotation);
-      const mediaDurationUs = Math.max(
+      const mediaDurationTicks = Math.max(
         0,
         Math.round((await track.computeDuration()) * TICKS_PER_SECOND),
       );
-      const maxSourceTailUs = Math.max(0, mediaDurationUs - sourceStartUs);
-      // `sourceDurationUs` is the FULL duration of the source media, in the
+      const maxSourceTailTicks = Math.max(0, mediaDurationTicks - sourceStartTicks);
+      // `sourceDurationTicks` is the FULL duration of the source media, in the
       // absolute source-time domain. Consumers rely on that: transition handle
-      // math computes `sourceDurationUs - sourceStartUs - sourceRangeDurationUs`
+      // math computes `sourceDurationTicks - sourceStartTicks - sourceRangeDurationTicks`
       // (TransitionRenderer / FrameSampleOrchestrator) and uses the value as an
       // absolute PTS cap, and the reuse/layout-update paths store the payload's
       // full-duration value unchanged. Clamping by the tail here subtracted
-      // sourceStartUs a second time, so freshly loaded clips trimmed at their
+      // sourceStartTicks a second time, so freshly loaded clips trimmed at their
       // start lost exactly that much transition handle (frozen/backward-jumping
       // transition frames) until the first layout update overwrote the value.
-      const sourceDurationUs =
-        requestedSourceDurationUs > 0
-          ? Math.min(requestedSourceDurationUs, mediaDurationUs)
-          : mediaDurationUs;
+      const sourceDurationTicks =
+        requestedSourceDurationTicks > 0
+          ? Math.min(requestedSourceDurationTicks, mediaDurationTicks)
+          : mediaDurationTicks;
       // The timeline-duration fallback, by contrast, is the playable remainder
       // from the trim-in point — the tail, not the full duration.
-      const durationUs =
-        requestedTimelineDurationUs > 0 ? requestedTimelineDurationUs : maxSourceTailUs;
-      const endUs = startUs + durationUs;
+      const durationTicks =
+        requestedTimelineDurationTicks > 0 ? requestedTimelineDurationTicks : maxSourceTailTicks;
+      const endTicks = startTicks + durationTicks;
 
       return {
         input,
         sink,
         firstTimestampS,
         frameRate: Number.isFinite(frameRate) && frameRate > 0 ? frameRate : undefined,
-        sourceDurationUs,
-        sourceRangeDurationUs:
-          requestedSourceRangeDurationUs > 0 ? requestedSourceRangeDurationUs : durationUs,
-        durationUs,
-        endUs,
+        sourceDurationTicks,
+        sourceRangeDurationTicks:
+          requestedSourceRangeDurationTicks > 0 ? requestedSourceRangeDurationTicks : durationTicks,
+        durationTicks,
+        endTicks,
         imageSource: createPlaceholderImageSource(),
         sourceRotation: Number.isFinite(sourceRotation) ? sourceRotation : undefined,
       };

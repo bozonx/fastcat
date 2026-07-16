@@ -8,7 +8,7 @@ import type {
   AudioFadeCurve,
 } from '~/timeline/types';
 import type { parseTimelineFromOtio } from '~/timeline/otio-serializer';
-import type { selectTimelineDurationUs } from '~/timeline/selectors';
+import type { selectTimelineDurationTicks } from '~/timeline/selectors';
 import type { ProxyThumbnailService } from '~/media-cache/application/proxyThumbnailService';
 import { ensureProxyCommand } from '~/media-cache/application/proxyThumbnailCommands';
 import { buildEffectiveAudioClipItems } from '~/utils/audio/track-bus';
@@ -87,10 +87,10 @@ export interface TimelineCommandServiceDeps {
     sampleRate?: number;
   }) => void;
   mediaCache: Pick<ProxyThumbnailService, 'hasProxy' | 'ensureProxy'>;
-  defaultImageDurationUs: number;
-  defaultImageSourceDurationUs: number;
+  defaultImageDurationTicks: number;
+  defaultImageSourceDurationTicks: number;
   parseTimelineFromOtio: typeof parseTimelineFromOtio;
-  selectTimelineDurationUs: typeof selectTimelineDurationUs;
+  selectTimelineDurationTicks: typeof selectTimelineDurationTicks;
 }
 
 export interface AddClipWarning {
@@ -103,7 +103,7 @@ export interface AddClipWarning {
 }
 
 export interface AddClipResult {
-  durationUs: number;
+  durationTicks: number;
   itemId?: string;
   warnings?: AddClipWarning[];
 }
@@ -112,7 +112,7 @@ export interface AddClipToTimelineFromPathInput {
   trackId: string;
   name: string;
   path: string;
-  startUs?: number;
+  startTicks?: number;
   pseudo?: boolean;
 }
 
@@ -120,7 +120,7 @@ export interface MoveItemToTrackInput {
   fromTrackId: string;
   toTrackId: string;
   itemId: string;
-  startUs: number;
+  startTicks: number;
 }
 
 export interface ExtractAudioToTrackInput {
@@ -132,7 +132,7 @@ export interface AddTimelineClipFromPathInput {
   trackId: string;
   name: string;
   path: string;
-  startUs?: number;
+  startTicks?: number;
   pseudo?: boolean;
 }
 
@@ -362,44 +362,44 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
     const hasAudio = Boolean(metadata?.audio);
     const isImageLike = isImageExt || (!hasVideo && !hasAudio);
 
-    const durationUs = isImageLike
-      ? deps.defaultImageDurationUs
+    const durationTicks = isImageLike
+      ? deps.defaultImageDurationTicks
       : Math.max(1, secondsToTicksClamped(Number(metadata?.duration)));
-    const sourceDurationUs = isImageLike ? deps.defaultImageSourceDurationUs : durationUs;
+    const sourceDurationTicks = isImageLike ? deps.defaultImageSourceDurationTicks : durationTicks;
 
-    if (!Number.isFinite(durationUs) || durationUs <= 0) {
+    if (!Number.isFinite(durationTicks) || durationTicks <= 0) {
       throw new Error('Failed to resolve media duration');
     }
 
-    const startUs = input.startUs ?? 0;
-    let finalDurationUs = durationUs;
+    const startTicks = input.startTicks ?? 0;
+    let finalDurationTicks = durationTicks;
     const warnings: AddClipWarning[] = [];
 
     if (!input.pseudo) {
-      // Check if startUs falls inside any existing clip on this track
+      // Check if startTicks falls inside any existing clip on this track
       const overlappingClip = targetTrack.items.find((it) => {
         if (it.kind !== 'clip') return false;
-        const clipStart = it.timelineRange.startUs;
-        const clipEnd = clipStart + it.timelineRange.durationUs;
-        return startUs >= clipStart && startUs < clipEnd;
+        const clipStart = it.timelineRange.startTicks;
+        const clipEnd = clipStart + it.timelineRange.durationTicks;
+        return startTicks >= clipStart && startTicks < clipEnd;
       });
 
       if (overlappingClip) {
         throw new Error('cannot_insert_on_clip');
       }
 
-      // Find the next clip that starts after startUs on this track
+      // Find the next clip that starts after startTicks on this track
       const nextClip = targetTrack.items
-        .filter((it) => it.kind === 'clip' && it.timelineRange.startUs > startUs)
-        .sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs)[0];
+        .filter((it) => it.kind === 'clip' && it.timelineRange.startTicks > startTicks)
+        .sort((a, b) => a.timelineRange.startTicks - b.timelineRange.startTicks)[0];
 
       if (nextClip) {
-        const maxAvailableDurationUs = nextClip.timelineRange.startUs - startUs;
-        if (maxAvailableDurationUs <= 0) {
+        const maxAvailableDurationTicks = nextClip.timelineRange.startTicks - startTicks;
+        if (maxAvailableDurationTicks <= 0) {
           throw new Error('cannot_insert_on_clip');
         }
-        if (durationUs > maxAvailableDurationUs) {
-          finalDurationUs = maxAvailableDurationUs;
+        if (durationTicks > maxAvailableDurationTicks) {
+          finalDurationTicks = maxAvailableDurationTicks;
           warnings.push({ type: 'clipTrimmed' });
         }
       }
@@ -518,11 +518,11 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
         trackId: input.trackId,
         name: input.name,
         path: input.path,
-        durationUs: finalDurationUs,
-        sourceDurationUs,
-        sourceRange: { startUs: 0, durationUs: finalDurationUs },
+        durationTicks: finalDurationTicks,
+        sourceDurationTicks,
+        sourceRange: { startTicks: 0, durationTicks: finalDurationTicks },
         isImage: isImageLike,
-        startUs,
+        startTicks,
         pseudo: input.pseudo,
         audioFadeInCurve: userSettings.projectDefaults.defaultAudioFadeCurve,
         audioFadeOutCurve: userSettings.projectDefaults.defaultAudioFadeCurve,
@@ -533,7 +533,7 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
     );
 
     return {
-      durationUs: finalDurationUs,
+      durationTicks: finalDurationTicks,
       itemId: res[0],
       warnings: warnings.length > 0 ? warnings : undefined,
     };
@@ -579,7 +579,7 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
       fromTrackId: input.fromTrackId,
       toTrackId: input.toTrackId,
       itemId: input.itemId,
-      startUs: input.startUs,
+      startTicks: input.startTicks,
     });
   }
 
@@ -628,11 +628,11 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
     const nested = await resolveNestedTimeline(input.path, input.name);
     ensureNestedTimelineTrackCompatibility(track, nested.summary);
 
-    let durationUs = secondsToTicksClamped(2);
+    let durationTicks = secondsToTicksClamped(2);
     try {
-      const nestedDurationUs = deps.selectTimelineDurationUs(nested.doc);
-      if (Number.isFinite(nestedDurationUs) && nestedDurationUs > 0) {
-        durationUs = Math.max(1, Math.round(nestedDurationUs));
+      const nestedDurationTicks = deps.selectTimelineDurationTicks(nested.doc);
+      if (Number.isFinite(nestedDurationTicks) && nestedDurationTicks > 0) {
+        durationTicks = Math.max(1, Math.round(nestedDurationTicks));
       }
     } catch {
       // keep fallback duration
@@ -654,8 +654,8 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
         trackId: targetTrack.id,
         name: input.name,
         path: input.path,
-        startUs: input.startUs ?? 0,
-        durationUs,
+        startTicks: input.startTicks ?? 0,
+        durationTicks,
         pseudo: input.pseudo,
         audioFadeInCurve: userSettings.projectDefaults.defaultAudioFadeCurve,
         audioFadeOutCurve: userSettings.projectDefaults.defaultAudioFadeCurve,
@@ -665,7 +665,7 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
       options,
     );
 
-    return { durationUs, itemId: res[0] };
+    return { durationTicks, itemId: res[0] };
   }
 
   return {

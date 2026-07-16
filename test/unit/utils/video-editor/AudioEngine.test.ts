@@ -224,22 +224,22 @@ function createClip(overrides: Partial<Parameters<IAudioEngine['loadClips']>[0][
     id: 'clip-1',
     sourcePath: 'audio.mp3',
     fileHandle: createFileHandle(),
-    startUs: 0,
-    durationUs: 1_000_000,
-    sourceStartUs: 0,
-    sourceRangeDurationUs: 1_000_000,
-    sourceDurationUs: 1_000_000,
-    DurationUs: 1_000_000,
+    startTicks: 0,
+    durationTicks: 1_000_000,
+    sourceStartTicks: 0,
+    sourceRangeDurationTicks: 1_000_000,
+    sourceDurationTicks: 1_000_000,
+    DurationTicks: 1_000_000,
     ...overrides,
   };
 
   for (const field of [
-    'startUs',
-    'durationUs',
-    'sourceStartUs',
-    'sourceRangeDurationUs',
-    'sourceDurationUs',
-    'DurationUs',
+    'startTicks',
+    'durationTicks',
+    'sourceStartTicks',
+    'sourceRangeDurationTicks',
+    'sourceDurationTicks',
+    'DurationTicks',
   ] as const) {
     clip[field] *= TICKS_PER_MICROSECOND;
   }
@@ -460,9 +460,9 @@ describe('AudioEngine', () => {
     await engine.init();
 
     const clip = createClip({
-      durationUs: 2_000_000,
-      sourceRangeDurationUs: 2_000_000,
-      sourceDurationUs: 2_000_000,
+      durationTicks: 2_000_000,
+      sourceRangeDurationTicks: 2_000_000,
+      sourceDurationTicks: 2_000_000,
     });
     await engine.loadClips([clip]);
 
@@ -483,7 +483,7 @@ describe('AudioEngine', () => {
 
     engine.stopScrubPreview();
     expect(source.stop).toHaveBeenCalledTimes(1);
-    expect(engine.getCurrentTimeUs()).toBe(0);
+    expect(engine.getCurrentTimeTicks()).toBe(0);
   });
 
   it('scales the scrub preview window by clip speed so fast clips are not cut short', async () => {
@@ -493,11 +493,11 @@ describe('AudioEngine', () => {
     // Source runs at 2x: 4s of material occupies 2s of timeline.
     const clip = createClip({
       speed: 2,
-      startUs: 0,
-      durationUs: 2_000_000,
-      sourceStartUs: 0,
-      sourceRangeDurationUs: 4_000_000,
-      sourceDurationUs: 10_000_000,
+      startTicks: 0,
+      durationTicks: 2_000_000,
+      sourceStartTicks: 0,
+      sourceRangeDurationTicks: 4_000_000,
+      sourceDurationTicks: 10_000_000,
     });
     await engine.loadClips([clip]);
 
@@ -570,16 +570,16 @@ describe('AudioEngine', () => {
       createClip({
         id: 'old-1',
         sourcePath: 'old-1.mp3',
-        durationUs: 10_000_000,
-        sourceRangeDurationUs: 10_000_000,
-        sourceDurationUs: 10_000_000,
+        durationTicks: 10_000_000,
+        sourceRangeDurationTicks: 10_000_000,
+        sourceDurationTicks: 10_000_000,
       }),
       createClip({
         id: 'old-2',
         sourcePath: 'old-2.mp3',
-        durationUs: 10_000_000,
-        sourceRangeDurationUs: 10_000_000,
-        sourceDurationUs: 10_000_000,
+        durationTicks: 10_000_000,
+        sourceRangeDurationTicks: 10_000_000,
+        sourceDurationTicks: 10_000_000,
       }),
     ]);
 
@@ -589,9 +589,9 @@ describe('AudioEngine', () => {
       createClip({
         id: 'new-1',
         sourcePath: 'new-1.mp3',
-        durationUs: 10_000_000,
-        sourceRangeDurationUs: 10_000_000,
-        sourceDurationUs: 10_000_000,
+        durationTicks: 10_000_000,
+        sourceRangeDurationTicks: 10_000_000,
+        sourceDurationTicks: 10_000_000,
       }),
     ]);
 
@@ -634,9 +634,9 @@ describe('AudioEngine', () => {
     await engine.init();
 
     const clip = createClip({
-      durationUs: 12_000_000,
-      sourceRangeDurationUs: 12_000_000,
-      sourceDurationUs: 12_000_000,
+      durationTicks: 12_000_000,
+      sourceRangeDurationTicks: 12_000_000,
+      sourceDurationTicks: 12_000_000,
     });
     await engine.loadClips([clip]);
 
@@ -705,14 +705,14 @@ describe('AudioEngine', () => {
     expect(fadeInCall?.[1]).toBeCloseTo(5.07, 5);
   });
 
-  it('keeps getCurrentTimeUs clamped to the requested start until kickoff is reached', async () => {
+  it('keeps getCurrentTimeTicks clamped to the requested start until kickoff is reached', async () => {
     const engine = createAudioEngine();
     await engine.init();
 
     const clip = createClip({
-      durationUs: 5_000_000,
-      sourceRangeDurationUs: 5_000_000,
-      sourceDurationUs: 5_000_000,
+      durationTicks: 5_000_000,
+      sourceRangeDurationTicks: 5_000_000,
+      sourceDurationTicks: 5_000_000,
     });
     await engine.loadClips([clip]);
 
@@ -724,12 +724,12 @@ describe('AudioEngine', () => {
     // Right after play, ctx.currentTime is still < kickoff (which is +150ms).
     // The timeline clock should therefore report exactly the requested time
     // so the renderer paints the right frame instead of overshooting.
-    expect(engine.getCurrentTimeUs()).toBe(2_000_000);
+    expect(engine.getCurrentTimeTicks()).toBe(2_000_000);
 
     // Advance ctx clock past the kickoff window — timeline should now tick.
     audioContextInstance.currentTime = 5.5;
-    const tickedUs = engine.getCurrentTimeUs();
-    expect(tickedUs).toBeGreaterThan(2_000_000);
+    const tickedTicks = engine.getCurrentTimeTicks();
+    expect(tickedTicks).toBeGreaterThan(2_000_000);
   });
 
   it('schedules early chunk sources before later chunks finish decoding', async () => {
@@ -741,9 +741,9 @@ describe('AudioEngine', () => {
     await engine.init();
 
     const clip = createClip({
-      durationUs: 15_000_000,
-      sourceRangeDurationUs: 15_000_000,
-      sourceDurationUs: 15_000_000,
+      durationTicks: 15_000_000,
+      sourceRangeDurationTicks: 15_000_000,
+      sourceDurationTicks: 15_000_000,
     });
     await engine.loadClips([clip]);
 
@@ -773,9 +773,9 @@ describe('AudioEngine', () => {
     await engine.init();
 
     const clip = createClip({
-      durationUs: 200_000_000,
-      sourceRangeDurationUs: 200_000_000,
-      sourceDurationUs: 200_000_000,
+      durationTicks: 200_000_000,
+      sourceRangeDurationTicks: 200_000_000,
+      sourceDurationTicks: 200_000_000,
     });
     await engine.loadClips([clip]);
 
@@ -801,9 +801,9 @@ describe('AudioEngine', () => {
     await engine.init();
 
     const clip = createClip({
-      durationUs: 500_000_000,
-      sourceRangeDurationUs: 500_000_000,
-      sourceDurationUs: 500_000_000,
+      durationTicks: 500_000_000,
+      sourceRangeDurationTicks: 500_000_000,
+      sourceDurationTicks: 500_000_000,
     });
     await engine.loadClips([clip]);
 
@@ -833,10 +833,10 @@ describe('AudioEngine', () => {
     await engine.init();
 
     const clip = createClip({
-      durationUs: 5_000_000,
-      sourceStartUs: 7_000_000,
-      sourceRangeDurationUs: 5_000_000,
-      sourceDurationUs: 20_000_000,
+      durationTicks: 5_000_000,
+      sourceStartTicks: 7_000_000,
+      sourceRangeDurationTicks: 5_000_000,
+      sourceDurationTicks: 20_000_000,
     });
     await engine.loadClips([clip]);
 

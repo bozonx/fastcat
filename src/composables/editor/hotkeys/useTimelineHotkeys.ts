@@ -502,13 +502,13 @@ export function useTimelineHotkeys(
       for (const track of doc.tracks) {
         const item = track.items.find((it) => it.id === itemId && it.kind === 'clip');
         if (item && item.kind === 'clip' && item.clipType === 'media') {
-          if (typeof item.freezeFrameSourceUs === 'number') {
+          if (typeof item.freezeFrameSourceTicks === 'number') {
             timelineStore.resetClipFreezeFrame({ trackId: track.id, itemId: item.id });
           } else {
-            const playheadUs = timelineStore.currentTime;
-            const clipStartUs = item.timelineRange.startUs;
-            const clipEndUs = clipStartUs + item.timelineRange.durationUs;
-            if (playheadUs >= clipStartUs && playheadUs < clipEndUs) {
+            const playheadTicks = timelineStore.currentTime;
+            const clipStartTicks = item.timelineRange.startTicks;
+            const clipEndTicks = clipStartTicks + item.timelineRange.durationTicks;
+            if (playheadTicks >= clipStartTicks && playheadTicks < clipEndTicks) {
               timelineStore.setClipFreezeFrameFromPlayhead({ trackId: track.id, itemId: item.id });
             }
           }
@@ -566,23 +566,23 @@ export function useTimelineHotkeys(
 
     'timeline.setSelectionIn': () => {
       const currentRange = timelineStore.getSelectionRange();
-      const currentUs = timelineStore.currentTime;
+      const currentTicks = timelineStore.currentTime;
 
       if (!currentRange) {
         // No range exists, create a new one with default duration
-        const endUs = currentUs + workspaceStore.userSettings.timeline.defaultStaticClipDurationUs;
+        const endTicks = currentTicks + workspaceStore.userSettings.timeline.defaultStaticClipDurationTicks;
         timelineStore.createSelectionRange({
-          startUs: currentUs,
-          endUs: endUs,
+          startTicks: currentTicks,
+          endTicks: endTicks,
         });
       } else {
-        // Range exists, update the in point (startUs)
-        // If currentUs is greater than endUs, we can't make start > end, so we bring end along or just set it
-        const nextStartUs = currentUs;
-        const nextEndUs = Math.max(currentRange.endUs, currentUs + 1);
+        // Range exists, update the in point (startTicks)
+        // If currentTicks is greater than endTicks, we can't make start > end, so we bring end along or just set it
+        const nextStartTicks = currentTicks;
+        const nextEndTicks = Math.max(currentRange.endTicks, currentTicks + 1);
         timelineStore.updateSelectionRange({
-          startUs: nextStartUs,
-          endUs: nextEndUs,
+          startTicks: nextStartTicks,
+          endTicks: nextEndTicks,
         });
       }
       return true;
@@ -590,25 +590,25 @@ export function useTimelineHotkeys(
 
     'timeline.setSelectionOut': () => {
       const currentRange = timelineStore.getSelectionRange();
-      const currentUs = timelineStore.currentTime;
+      const currentTicks = timelineStore.currentTime;
 
       if (!currentRange) {
         // No range exists, create a new one ending at playhead and starting before it based on default duration
-        const startUs = Math.max(
+        const startTicks = Math.max(
           0,
-          currentUs - workspaceStore.userSettings.timeline.defaultStaticClipDurationUs,
+          currentTicks - workspaceStore.userSettings.timeline.defaultStaticClipDurationTicks,
         );
         timelineStore.createSelectionRange({
-          startUs: startUs,
-          endUs: currentUs,
+          startTicks: startTicks,
+          endTicks: currentTicks,
         });
       } else {
-        // Range exists, update the out point (endUs)
-        const nextEndUs = currentUs;
-        const nextStartUs = Math.min(currentRange.startUs, currentUs - 1);
+        // Range exists, update the out point (endTicks)
+        const nextEndTicks = currentTicks;
+        const nextStartTicks = Math.min(currentRange.startTicks, currentTicks - 1);
         timelineStore.updateSelectionRange({
-          startUs: nextStartUs,
-          endUs: nextEndUs,
+          startTicks: nextStartTicks,
+          endTicks: nextEndTicks,
         });
       }
       return true;
@@ -633,7 +633,7 @@ export function useTimelineHotkeys(
         timelineStore.selectedItemIds.map((itemId) => ({ trackId: '', itemId })),
       ).filter(
         ({ track, clip }) =>
-          clipSupportsSpeedControls(track, clip) && typeof clip.freezeFrameSourceUs !== 'number',
+          clipSupportsSpeedControls(track, clip) && typeof clip.freezeFrameSourceTicks !== 'number',
       );
 
       if (targets.length === 0) return false;
@@ -662,7 +662,7 @@ export function useTimelineHotkeys(
         timelineStore.selectedItemIds.map((itemId) => ({ trackId: '', itemId })),
       ).filter(
         ({ track, clip }) =>
-          clipSupportsSpeedControls(track, clip) && typeof clip.freezeFrameSourceUs !== 'number',
+          clipSupportsSpeedControls(track, clip) && typeof clip.freezeFrameSourceTicks !== 'number',
       );
 
       if (targets.length === 0) return false;

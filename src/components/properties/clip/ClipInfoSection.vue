@@ -7,7 +7,7 @@ import PropertyDuration from '~/components/properties/PropertyDuration.vue';
 import MediaMetadataList from '~/components/properties/MediaMetadataList.vue';
 import { computed } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
-import { getClipMaxTimelineDurationUs } from '~/utils/timeline/clip';
+import { getClipMaxTimelineDurationTicks } from '~/utils/timeline/clip';
 import { isClipFreePosition } from '~/utils/timeline/clip-checks';
 import { getTimelineFps } from '~/timeline/timebase';
 
@@ -38,9 +38,9 @@ const timelineStore = useTimelineStore();
 const timelineFps = computed(() => timelineStore.timelineFormat?.fps ?? timelineStore.fps);
 
 // The end timecode may never exceed the clip's source material. For images and
-// virtual clips getClipMaxTimelineDurationUs returns Infinity (no upper bound).
-const clipMaxDurationUs = computed(() => getClipMaxTimelineDurationUs(props.clip));
-const endMaxUs = computed(() => props.clip.timelineRange.startUs + clipMaxDurationUs.value);
+// virtual clips getClipMaxTimelineDurationTicks returns Infinity (no upper bound).
+const clipMaxDurationTicks = computed(() => getClipMaxTimelineDurationTicks(props.clip));
+const endMaxTicks = computed(() => props.clip.timelineRange.startTicks + clipMaxDurationTicks.value);
 
 // Only audio clips may be freely (sub-frame) positioned, so the "snap to grid"
 // affordance is audio-only. It stays visible but disabled once both edges are
@@ -74,22 +74,22 @@ const isClipOffGrid = computed(() =>
   <PropertySection v-if="props.showInfo">
     <PropertyDuration
       :label="t('common.duration')"
-      :model-value="props.clip.timelineRange.durationUs"
+      :model-value="props.clip.timelineRange.durationTicks"
       :fps="timelineFps"
     />
 
     <PropertyTimecode
       :label="t('common.position')"
-      :model-value="props.clip.timelineRange.startUs"
+      :model-value="props.clip.timelineRange.startTicks"
       :min="0"
       @update:model-value="emit('updateStartTime', $event)"
     />
 
     <PropertyTimecode
       :label="t('common.end')"
-      :model-value="props.clip.timelineRange.startUs + props.clip.timelineRange.durationUs"
+      :model-value="props.clip.timelineRange.startTicks + props.clip.timelineRange.durationTicks"
       :min="0"
-      :max="endMaxUs"
+      :max="endMaxTicks"
       @update:model-value="emit('updateEndTime', $event)"
     />
 

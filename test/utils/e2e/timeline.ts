@@ -93,27 +93,27 @@ export async function clipBox(page: Page, clipId: string): Promise<Box> {
 }
 
 /**
- * Moves a clip horizontally by `deltaUs` microseconds on its own track.
+ * Moves a clip horizontally by `deltaTicks` microseconds on its own track.
  * Uses a direct e2e hook (applyTimeline + saveTimeline) instead of mouse-based
  * dragging, which is unreliable for small clips.
  */
 export async function dragClipBy(
   page: Page,
   clipId: string,
-  deltaUs: { x: number },
+  deltaTicks: { x: number },
 ): Promise<void> {
   await waitForTimelineHook(page, '__fastcatE2eMoveClip');
   await page.evaluate(
     async (params) => {
       const fn = (
         window as Window & {
-          __fastcatE2eMoveClip?: (p: { itemId: string; deltaUs: number }) => Promise<void>;
+          __fastcatE2eMoveClip?: (p: { itemId: string; deltaTicks: number }) => Promise<void>;
         }
       ).__fastcatE2eMoveClip;
       if (!fn) throw new Error('E2E move clip hook is not registered');
       await fn(params);
     },
-    { itemId: clipId, deltaUs: deltaUs.x },
+    { itemId: clipId, deltaTicks: deltaTicks.x },
   );
 }
 
@@ -147,7 +147,7 @@ export async function deleteClip(page: Page, clipId: string): Promise<void> {
 }
 
 /**
- * Trims a clip edge by `deltaUs` microseconds. Uses a direct e2e hook
+ * Trims a clip edge by `deltaTicks` microseconds. Uses a direct e2e hook
  * (applyTimeline + saveTimeline) instead of mouse-based trim handle dragging,
  * which is unreliable for small clips (10px wide at default zoom).
  */
@@ -155,7 +155,7 @@ export async function trimClipEdge(
   page: Page,
   clipId: string,
   edge: 'start' | 'end',
-  deltaUs: number,
+  deltaTicks: number,
 ): Promise<void> {
   await waitForTimelineHook(page, '__fastcatE2eTrimClip');
   await page.evaluate(
@@ -165,14 +165,14 @@ export async function trimClipEdge(
           __fastcatE2eTrimClip?: (p: {
             itemId: string;
             edge: 'start' | 'end';
-            deltaUs: number;
+            deltaTicks: number;
           }) => Promise<void>;
         }
       ).__fastcatE2eTrimClip;
       if (!fn) throw new Error('E2E trim clip hook is not registered');
       await fn(params);
     },
-    { itemId: clipId, edge, deltaUs },
+    { itemId: clipId, edge, deltaTicks },
   );
 }
 
@@ -215,17 +215,17 @@ export async function redoTimeline(page: Page): Promise<void> {
   await page.keyboard.press('Control+y');
 }
 
-export async function setCurrentTimeUs(page: Page, us: number): Promise<void> {
-  await waitForTimelineHook(page, '__fastcatE2eSetCurrentTimeUs');
+export async function setCurrentTimeTicks(page: Page, us: number): Promise<void> {
+  await waitForTimelineHook(page, '__fastcatE2eSetCurrentTimeTicks');
   await page.evaluate(
-    async ({ us: targetUs }) => {
+    async ({ us: targetTicks }) => {
       const setTime = (
         window as Window & {
-          __fastcatE2eSetCurrentTimeUs?: (params: { us: number }) => Promise<void>;
+          __fastcatE2eSetCurrentTimeTicks?: (params: { us: number }) => Promise<void>;
         }
-      ).__fastcatE2eSetCurrentTimeUs;
+      ).__fastcatE2eSetCurrentTimeTicks;
       if (!setTime) throw new Error('E2E timeline set-current-time hook is not registered');
-      await setTime({ us: targetUs });
+      await setTime({ us: targetTicks });
     },
     { us: Math.max(0, Math.round(us)) },
   );
@@ -307,7 +307,7 @@ export async function updateClipTransition(
     edge: 'in' | 'out';
     transition: {
       type: string;
-      durationUs: number;
+      durationTicks: number;
       mode: 'adjacent' | 'transparent' | 'background';
       curve: 'linear' | 'smooth' | 'ease-in' | 'ease-out';
       params?: Record<string, unknown>;
@@ -323,7 +323,7 @@ export async function updateClipTransition(
           edge: 'in' | 'out';
           transition: {
             type: string;
-            durationUs: number;
+            durationTicks: number;
             mode: 'adjacent' | 'transparent' | 'background';
             curve: 'linear' | 'smooth' | 'ease-in' | 'ease-out';
             params?: Record<string, unknown>;
@@ -395,11 +395,11 @@ export async function addTextClipAtPlayhead(
   params: {
     text?: string;
     style?: Record<string, unknown>;
-    durationUs?: number;
+    durationTicks?: number;
     trackId?: string;
   },
 ): Promise<string[]> {
-  await setCurrentTimeUs(page, 0);
+  await setCurrentTimeTicks(page, 0);
   await waitForTimelineHook(page, '__fastcatE2eAddTextClip');
   return page.evaluate(async (input) => {
     const addText = (
@@ -407,7 +407,7 @@ export async function addTextClipAtPlayhead(
         __fastcatE2eAddTextClip?: (params: {
           text?: string;
           style?: Record<string, unknown>;
-          durationUs?: number;
+          durationTicks?: number;
           trackId?: string;
         }) => Promise<string[]>;
       }
@@ -419,17 +419,17 @@ export async function addTextClipAtPlayhead(
 
 export async function addMarker(
   page: Page,
-  params: { timeUs: number; text?: string; color?: string; durationUs?: number },
+  params: { timeTicks: number; text?: string; color?: string; durationTicks?: number },
 ): Promise<string> {
   await waitForTimelineHook(page, '__fastcatE2eAddMarker');
   const markerId = await page.evaluate(async (input) => {
     const add = (
       window as Window & {
         __fastcatE2eAddMarker?: (params: {
-          timeUs: number;
+          timeTicks: number;
           text?: string;
           color?: string;
-          durationUs?: number;
+          durationTicks?: number;
         }) => Promise<string | null>;
       }
     ).__fastcatE2eAddMarker;
@@ -443,7 +443,7 @@ export async function addMarker(
 
 export async function addMarkers(
   page: Page,
-  markers: Array<{ timeUs: number; text?: string; color?: string; durationUs?: number }>,
+  markers: Array<{ timeTicks: number; text?: string; color?: string; durationTicks?: number }>,
 ): Promise<string[]> {
   await waitForTimelineHook(page, '__fastcatE2eAddMarkers');
   return page.evaluate(async (input) => {
@@ -451,10 +451,10 @@ export async function addMarkers(
       window as Window & {
         __fastcatE2eAddMarkers?: (params: {
           markers: Array<{
-            timeUs: number;
+            timeTicks: number;
             text?: string;
             color?: string;
-            durationUs?: number;
+            durationTicks?: number;
           }>;
         }) => Promise<string[]>;
       }
@@ -468,7 +468,7 @@ export async function updateMarker(
   page: Page,
   params: {
     markerId: string;
-    patch: { timeUs?: number; durationUs?: number | null; text?: string; color?: string };
+    patch: { timeTicks?: number; durationTicks?: number | null; text?: string; color?: string };
   },
 ): Promise<void> {
   await waitForTimelineHook(page, '__fastcatE2eUpdateMarker');
@@ -477,7 +477,7 @@ export async function updateMarker(
       window as Window & {
         __fastcatE2eUpdateMarker?: (params: {
           markerId: string;
-          patch: { timeUs?: number; durationUs?: number | null; text?: string; color?: string };
+          patch: { timeTicks?: number; durationTicks?: number | null; text?: string; color?: string };
         }) => Promise<void>;
       }
     ).__fastcatE2eUpdateMarker;

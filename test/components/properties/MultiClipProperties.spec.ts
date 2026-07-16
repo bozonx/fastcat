@@ -52,13 +52,13 @@ const mockTimelineStore = reactive({
             id: 'clip-1',
             kind: 'clip',
             clipType: 'media',
-            timelineRange: { durationUs: 5 * TICKS_PER_SECOND },
+            timelineRange: { durationTicks: 5 * TICKS_PER_SECOND },
           },
           {
             id: 'clip-2',
             kind: 'clip',
             clipType: 'media',
-            timelineRange: { durationUs: 5 * TICKS_PER_SECOND },
+            timelineRange: { durationTicks: 5 * TICKS_PER_SECOND },
           },
         ],
       },
@@ -91,7 +91,7 @@ const mockUiStore = reactive({
 const mockWorkspaceStore = reactive({
   userSettings: {
     timeline: {
-      defaultTransitionDurationUs: TICKS_PER_SECOND,
+      defaultTransitionDurationTicks: TICKS_PER_SECOND,
     },
   },
 });
@@ -285,7 +285,7 @@ describe('MultiClipProperties.vue', () => {
       id: 'clip-1',
       trackId: 'track-1',
       clipType: 'media',
-      timelineRange: { durationUs: 5 * TICKS_PER_SECOND },
+      timelineRange: { durationTicks: 5 * TICKS_PER_SECOND },
     };
     mockClipBatchActions.visualClipRefs.value = [
       { track: { id: 'track-1', kind: 'video' }, clip: mockClipBatchActions.firstVideoClip.value },
@@ -337,22 +337,22 @@ describe('MultiClipProperties.vue', () => {
       id: 'clip-1',
       trackId: 'track-1',
       clipType: 'media',
-      timelineRange: { durationUs: 5 * TICKS_PER_SECOND },
+      timelineRange: { durationTicks: 5 * TICKS_PER_SECOND },
     };
     mockClipBatchActions.selectedClips.value = [
       {
         id: 'clip-1',
         trackId: 'track-1',
         kind: 'clip',
-        timelineRange: { durationUs: 5 * TICKS_PER_SECOND },
-        transitionIn: { type: 'dissolve', durationUs: TICKS_PER_SECOND },
+        timelineRange: { durationTicks: 5 * TICKS_PER_SECOND },
+        transitionIn: { type: 'dissolve', durationTicks: TICKS_PER_SECOND },
       },
       {
         id: 'clip-2',
         trackId: 'track-1',
         kind: 'clip',
-        timelineRange: { durationUs: 5 * TICKS_PER_SECOND },
-        transitionIn: { type: 'dissolve', durationUs: TICKS_PER_SECOND },
+        timelineRange: { durationTicks: 5 * TICKS_PER_SECOND },
+        transitionIn: { type: 'dissolve', durationTicks: TICKS_PER_SECOND },
       },
     ];
     mockTimelineStore.timelineDoc.tracks[0].items = [
@@ -361,16 +361,16 @@ describe('MultiClipProperties.vue', () => {
         kind: 'clip',
         trackId: 'track-1',
         clipType: 'media',
-        timelineRange: { durationUs: 5 * TICKS_PER_SECOND },
-        transitionIn: { type: 'dissolve', durationUs: TICKS_PER_SECOND },
+        timelineRange: { durationTicks: 5 * TICKS_PER_SECOND },
+        transitionIn: { type: 'dissolve', durationTicks: TICKS_PER_SECOND },
       } as any,
       {
         id: 'clip-2',
         kind: 'clip',
         trackId: 'track-1',
         clipType: 'media',
-        timelineRange: { durationUs: 5 * TICKS_PER_SECOND },
-        transitionIn: { type: 'dissolve', durationUs: TICKS_PER_SECOND },
+        timelineRange: { durationTicks: 5 * TICKS_PER_SECOND },
+        transitionIn: { type: 'dissolve', durationTicks: TICKS_PER_SECOND },
       } as any,
     ];
 
@@ -382,13 +382,13 @@ describe('MultiClipProperties.vue', () => {
         type: 'update_clip_transition',
         trackId: 'track-1',
         itemId: 'clip-1',
-        transitionIn: { type: 'dissolve', durationUs: 2 * TICKS_PER_SECOND },
+        transitionIn: { type: 'dissolve', durationTicks: 2 * TICKS_PER_SECOND },
       },
       {
         type: 'update_clip_transition',
         trackId: 'track-1',
         itemId: 'clip-2',
-        transitionIn: { type: 'dissolve', durationUs: 2 * TICKS_PER_SECOND },
+        transitionIn: { type: 'dissolve', durationTicks: 2 * TICKS_PER_SECOND },
       },
     ]);
 
@@ -398,13 +398,13 @@ describe('MultiClipProperties.vue', () => {
         type: 'update_clip_transition',
         trackId: 'track-1',
         itemId: 'clip-1',
-        transitionIn: { type: 'wipe', durationUs: TICKS_PER_SECOND },
+        transitionIn: { type: 'wipe', durationTicks: TICKS_PER_SECOND },
       },
       {
         type: 'update_clip_transition',
         trackId: 'track-1',
         itemId: 'clip-2',
-        transitionIn: { type: 'wipe', durationUs: TICKS_PER_SECOND },
+        transitionIn: { type: 'wipe', durationTicks: TICKS_PER_SECOND },
       },
     ]);
   });
@@ -414,8 +414,8 @@ describe('MultiClipProperties.vue', () => {
       id: 'clip-1',
       trackId: 'track-1',
       clipType: 'media',
-      timelineRange: { durationUs: 5 * TICKS_PER_SECOND },
-      transitionIn: { type: 'dissolve', durationUs: TICKS_PER_SECOND },
+      timelineRange: { durationTicks: 5 * TICKS_PER_SECOND },
+      transitionIn: { type: 'dissolve', durationTicks: TICKS_PER_SECOND },
     };
     mockTimelineStore.timelineDoc.tracks[0].items = [
       {
@@ -423,16 +423,16 @@ describe('MultiClipProperties.vue', () => {
         kind: 'clip',
         trackId: 'track-1',
         clipType: 'media',
-        timelineRange: { durationUs: 5 * TICKS_PER_SECOND },
-        transitionIn: { type: 'dissolve', durationUs: TICKS_PER_SECOND },
+        timelineRange: { durationTicks: 5 * TICKS_PER_SECOND },
+        transitionIn: { type: 'dissolve', durationTicks: TICKS_PER_SECOND },
       } as any,
       {
         id: 'clip-2',
         kind: 'clip',
         trackId: 'track-1',
         clipType: 'media',
-        timelineRange: { durationUs: 5 * TICKS_PER_SECOND },
-        transitionIn: { type: 'dissolve', durationUs: TICKS_PER_SECOND },
+        timelineRange: { durationTicks: 5 * TICKS_PER_SECOND },
+        transitionIn: { type: 'dissolve', durationTicks: TICKS_PER_SECOND },
       } as any,
     ];
 
@@ -457,7 +457,7 @@ describe('MultiClipProperties.vue', () => {
       id: 'clip-1',
       trackId: 'track-1',
       clipType: 'media',
-      timelineRange: { durationUs: 5 * TICKS_PER_SECOND },
+      timelineRange: { durationTicks: 5 * TICKS_PER_SECOND },
       transform: {
         scale: { x: 1, y: 1, linked: true },
         rotationDeg: 0,

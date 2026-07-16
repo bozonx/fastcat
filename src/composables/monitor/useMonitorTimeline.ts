@@ -169,8 +169,8 @@ export function useMonitorTimeline() {
         speed: sanitizeSpeed(getItemSpeed(item)),
         audioGain: item.audioGain,
         audioBalance: item.audioBalance,
-        audioFadeInUs: item.audioFadeInUs,
-        audioFadeOutUs: item.audioFadeOutUs,
+        audioFadeInTicks: item.audioFadeInTicks,
+        audioFadeOutTicks: item.audioFadeOutTicks,
         audioFadeInCurve: item.audioFadeInCurve,
         audioFadeOutCurve: item.audioFadeOutCurve,
         transitionIn: item.transitionIn,
@@ -180,12 +180,12 @@ export function useMonitorTimeline() {
           path: item.source.path,
         },
         timelineRange: {
-          startUs: item.timelineRange.startUs,
-          durationUs: item.timelineRange.durationUs,
+          startTicks: item.timelineRange.startTicks,
+          durationTicks: item.timelineRange.durationTicks,
         },
         sourceRange: {
-          startUs: item.sourceRange.startUs,
-          durationUs: item.sourceRange.durationUs,
+          startTicks: item.sourceRange.startTicks,
+          durationTicks: item.sourceRange.durationTicks,
         },
       });
     }
@@ -197,7 +197,7 @@ export function useMonitorTimeline() {
   const workerAudioClips = ref<WorkerTimelineClip[]>([]);
   const workerTimelinePayload = ref<unknown[]>([]);
 
-  const safeDurationUs = computed(() => normalizeTicks(timelineStore.duration));
+  const safeDurationTicks = computed(() => normalizeTicks(timelineStore.duration));
 
   const clipSourceSignature = computed(() => {
     let hash = mixHash(2166136261, videoItems.value.length);
@@ -282,17 +282,17 @@ export function useMonitorTimeline() {
 
     for (const item of videoItems.value) {
       hash = mixHash(hash, hashString(item.id));
-      hash = mixTime(hash, item.timelineRange.startUs);
-      hash = mixTime(hash, item.timelineRange.durationUs);
+      hash = mixTime(hash, item.timelineRange.startTicks);
+      hash = mixTime(hash, item.timelineRange.durationTicks);
       if (item.kind === 'clip') {
         hash = mixHash(hash, hashString(String(item.clipType ?? '')));
-        hash = mixTime(hash, item.sourceRange.startUs);
-        hash = mixTime(hash, item.sourceRange.durationUs);
+        hash = mixTime(hash, item.sourceRange.startTicks);
+        hash = mixTime(hash, item.sourceRange.durationTicks);
         hash = mixHash(hash, hashString(JSON.stringify(item.transitionIn ?? null)));
         hash = mixHash(hash, hashString(JSON.stringify(item.transitionOut ?? null)));
 
         if (item.clipType === 'media') {
-          hash = mixTime(hash, item.freezeFrameSourceUs ?? 0);
+          hash = mixTime(hash, item.freezeFrameSourceTicks ?? 0);
         }
 
         hash = mixFloat(hash, item.opacity ?? 1, 1000);
@@ -396,7 +396,7 @@ export function useMonitorTimeline() {
   // — so it lets the monitor skip a redraw when the edited clip is not visible at
   // the playhead (off-screen, or on a hidden/disabled track which is excluded).
   const activeLayoutSignature = computed(() => {
-    const timeUs = timelineStore.currentTime;
+    const timeTicks = timelineStore.currentTime;
     let hash = mixHash(2166136261, 0);
 
     const masterVideoEffects = masterEffects.value.filter((effect) => effect?.target !== 'audio');
@@ -410,9 +410,9 @@ export function useMonitorTimeline() {
 
     for (const item of videoItems.value) {
       if (item.disabled) continue;
-      const startUs = item.timelineRange.startUs;
-      const endUs = startUs + item.timelineRange.durationUs;
-      if (timeUs < startUs || timeUs >= endUs) continue;
+      const startTicks = item.timelineRange.startTicks;
+      const endTicks = startTicks + item.timelineRange.durationTicks;
+      if (timeTicks < startTicks || timeTicks >= endTicks) continue;
 
       // Visible at the current frame: any change to this clip (including text
       // content) must trigger a redraw, so hash the whole item plus its track.
@@ -454,18 +454,18 @@ export function useMonitorTimeline() {
 
     for (const item of effectiveAudioClipItems.value) {
       hash = mixHash(hash, hashString(item.id));
-      hash = mixTime(hash, item.timelineRange.startUs);
-      hash = mixTime(hash, item.timelineRange.durationUs);
+      hash = mixTime(hash, item.timelineRange.startTicks);
+      hash = mixTime(hash, item.timelineRange.durationTicks);
       if (item.kind === 'clip') {
-        hash = mixTime(hash, item.sourceRange.startUs);
-        hash = mixTime(hash, item.sourceRange.durationUs);
+        hash = mixTime(hash, item.sourceRange.startTicks);
+        hash = mixTime(hash, item.sourceRange.durationTicks);
 
         hash = mixFloat(hash, getItemSpeed(item) ?? 1, 1000);
 
         hash = mixFloat(hash, item.audioGain ?? 1, 1000);
         hash = mixFloat(hash, item.audioBalance ?? 0, 1000);
-        hash = mixTime(hash, Math.round(Number(item.audioFadeInUs ?? 0)));
-        hash = mixTime(hash, Math.round(Number(item.audioFadeOutUs ?? 0)));
+        hash = mixTime(hash, Math.round(Number(item.audioFadeInTicks ?? 0)));
+        hash = mixTime(hash, Math.round(Number(item.audioFadeOutTicks ?? 0)));
         hash = mixHash(hash, hashString(String(item.audioFadeInCurve ?? '')));
         hash = mixHash(hash, hashString(String(item.audioFadeOutCurve ?? '')));
         hash = mixHash(hash, hashString(JSON.stringify(item.transitionIn ?? null)));
@@ -513,7 +513,7 @@ export function useMonitorTimeline() {
     workerTimelinePayload,
     rawWorkerTimelineClips,
     rawWorkerAudioClips,
-    safeDurationUs,
+    safeDurationTicks,
     clipSourceSignature,
     clipLayoutSignature,
     clipContentSignature,

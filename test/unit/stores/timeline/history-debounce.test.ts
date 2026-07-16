@@ -9,7 +9,7 @@ function makeDoc(): TimelineDocument {
   return {
     tracks: [],
     timebase: { fps: 30 },
-    durationUs: 0,
+    durationTicks: 0,
   } as unknown as TimelineDocument;
 }
 

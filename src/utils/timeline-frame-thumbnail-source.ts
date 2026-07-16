@@ -56,7 +56,7 @@ export async function createTimelineFrameSource(params: {
   // Validate that the timeline has visual content by rendering a test frame at 0.
   const testBlob = await processor.extractTimelineFrameBlob({
     timelineDoc: doc,
-    timeUs: 0,
+    timeTicks: 0,
     maxWidth: params.maxWidth,
     maxHeight: params.maxHeight,
     quality: params.quality,
@@ -124,7 +124,7 @@ export async function createTimelineFrameSource(params: {
           blobs.push(
             await processor.extractTimelineFrameBlob({
               timelineDoc: doc,
-              timeUs: Math.round(timeSec * TICKS_PER_SECOND),
+              timeTicks: Math.round(timeSec * TICKS_PER_SECOND),
               width,
               height,
               quality: params.quality,

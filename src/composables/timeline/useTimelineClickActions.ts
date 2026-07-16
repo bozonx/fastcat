@@ -4,9 +4,9 @@ import { storeToRefs } from 'pinia';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
-import { pxToTimeUs } from '~/utils/timeline/geometry';
+import { pxToTimeTicks } from '~/utils/timeline/geometry';
 import type { TimelineTrack } from '~/timeline/types';
-import { resolvePlayheadClickTimeUs } from './timeline-drag-domain';
+import { resolvePlayheadClickTimeTicks } from './timeline-drag-domain';
 import { createMarkerId } from '~/timeline/id';
 
 export interface UseTimelineClickActionsOptions {
@@ -36,21 +36,21 @@ export function useTimelineClickActions({
   const timelineMouseSettings = computed(() => workspaceStore.userSettings.mouse.timeline);
   const rulerMouseSettings = computed(() => workspaceStore.userSettings.mouse.ruler);
 
-  function getSnappedPlayheadTimeUs(rawTimeUs: number) {
-    const timelineEndUs = Number.isFinite(timelineStore.duration)
+  function getSnappedPlayheadTimeTicks(rawTimeTicks: number) {
+    const timelineEndTicks = Number.isFinite(timelineStore.duration)
       ? Math.max(0, Math.round(timelineStore.duration))
       : null;
 
-    return resolvePlayheadClickTimeUs({
-      rawTimeUs,
+    return resolvePlayheadClickTimeTicks({
+      rawTimeTicks,
       zoom: timelineStore.timelineZoom,
       snapThresholdPx: workspaceStore.userSettings.timeline.snapThresholdPx,
       toolbarSnapMode: timelineSettingsStore.toolbarSnapMode,
       snapping: workspaceStore.userSettings.timeline.snapping,
       tracks: [...videoTracks.value, ...audioTracks.value],
       markers: timelineStore.markers,
-      durationUs: timelineEndUs,
-      selectionRangeUs: timelineStore.selectionRange,
+      durationTicks: timelineEndTicks,
+      selectionRangeTicks: timelineStore.selectionRange,
     });
   }
 
@@ -77,8 +77,8 @@ export function useTimelineClickActions({
       if (!el) return;
       const rect = el.getBoundingClientRect();
       const x = e.clientX - rect.left + (horizontalScrollEl.value?.scrollLeft ?? 0);
-      const rawTimeUs = pxToTimeUs(x, timelineStore.timelineZoom);
-      timelineStore.setCurrentTimeUs(getSnappedPlayheadTimeUs(rawTimeUs));
+      const rawTimeTicks = pxToTimeTicks(x, timelineStore.timelineZoom);
+      timelineStore.setCurrentTimeTicks(getSnappedPlayheadTimeTicks(rawTimeTicks));
       return;
     }
     if (action === 'add_marker') {
@@ -86,11 +86,11 @@ export function useTimelineClickActions({
       if (!el) return;
       const rect = el.getBoundingClientRect();
       const x = e.clientX - rect.left + (horizontalScrollEl.value?.scrollLeft ?? 0);
-      const timeUs = pxToTimeUs(x, timelineStore.timelineZoom);
+      const timeTicks = pxToTimeTicks(x, timelineStore.timelineZoom);
       timelineStore.applyTimeline({
         type: 'add_marker',
         id: createMarkerId(),
-        timeUs,
+        timeTicks,
         text: '',
       });
     }
@@ -139,16 +139,16 @@ export function useTimelineClickActions({
     const rect = (e.currentTarget as HTMLElement | null)?.getBoundingClientRect();
     if (!rect) return;
     const x = e.clientX - rect.left + el.scrollLeft;
-    const rawTimeUs = pxToTimeUs(x, timelineStore.timelineZoom);
-    const timeUs = getSnappedPlayheadTimeUs(rawTimeUs);
+    const rawTimeTicks = pxToTimeTicks(x, timelineStore.timelineZoom);
+    const timeTicks = getSnappedPlayheadTimeTicks(rawTimeTicks);
 
     if (action === 'seek') {
-      timelineStore.setCurrentTimeUs(timeUs);
+      timelineStore.setCurrentTimeTicks(timeTicks);
     } else if (action === 'add_marker') {
       timelineStore.applyTimeline({
         type: 'add_marker',
         id: createMarkerId(),
-        timeUs,
+        timeTicks,
         text: '',
       });
     } else if (action === 'reset_zoom') {

@@ -65,14 +65,14 @@ describe('stop-frame snapshot export quality integration', () => {
     const { renderStopFrameWebp } = await import('~/timeline/timeline-thumbnail');
     const blob = await renderStopFrameWebp({
       timelineDoc,
-      timeUs: 1_500_000,
+      timeTicks: 1_500_000,
       quality: 0.92,
     });
 
     expect(blob).toBe(expectedBlob);
     expect(mediaProcessorMock.extractTimelineFrameBlob).toHaveBeenCalledWith({
       timelineDoc,
-      timeUs: 1_500_000,
+      timeTicks: 1_500_000,
       width: 3840,
       height: 2160,
       quality: 0.92,
@@ -112,7 +112,7 @@ describe('stop-frame snapshot export quality integration', () => {
     const { renderStopFrameWebp } = await import('~/timeline/timeline-thumbnail');
     await renderStopFrameWebp({
       timelineDoc,
-      timeUs: 250_000,
+      timeTicks: 250_000,
       quality: 1,
     });
 

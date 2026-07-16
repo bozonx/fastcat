@@ -246,10 +246,10 @@ test.describe('Web pointer DnD', () => {
       (d) =>
         d.allClips.length === 1 &&
         d.allClips[0].id === clipId &&
-        d.allClips[0].timelineStartUs > (beforeClip?.timelineStartUs ?? 0),
+        d.allClips[0].timelineStartTicks > (beforeClip?.timelineStartTicks ?? 0),
       { timeout: 15_000 },
     );
-    expect(moved.allClips[0].timelineStartUs).toBeGreaterThan(beforeClip!.timelineStartUs);
+    expect(moved.allClips[0].timelineStartTicks).toBeGreaterThan(beforeClip!.timelineStartTicks);
     await expect(page.locator('.fastcat-dnd-ghost')).toBeHidden();
   });
 });

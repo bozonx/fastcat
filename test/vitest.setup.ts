@@ -115,9 +115,9 @@ const mockWorkspaceStore = vi.hoisted(() => {
     isFeatureEnabled: vi.fn(() => false),
     userSettings: {
       timeline: {
-        defaultAudioFadeDurationUs: 1_000_000 * TICKS_PER_MICROSECOND,
-        defaultStaticClipDurationUs: 5_000_000 * TICKS_PER_MICROSECOND,
-        defaultTransitionDurationUs: 2_000_000 * TICKS_PER_MICROSECOND,
+        defaultAudioFadeDurationTicks: 1_000_000 * TICKS_PER_MICROSECOND,
+        defaultStaticClipDurationTicks: 5_000_000 * TICKS_PER_MICROSECOND,
+        defaultTransitionDurationTicks: 2_000_000 * TICKS_PER_MICROSECOND,
         snapThresholdPx: 10,
         snapping: {
           timelineEdges: true,

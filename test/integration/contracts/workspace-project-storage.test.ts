@@ -44,7 +44,7 @@ describe('workspace/project storage contracts', () => {
       {
         id: 'marker-intro',
         name: 'Intro',
-        timeUs: TICKS_PER_SECOND,
+        timeTicks: TICKS_PER_SECOND,
         color: 'blue',
       },
     ];
@@ -109,7 +109,7 @@ describe('workspace/project storage contracts', () => {
       name: 'Main',
       metadata: {
         fastcat: {
-          markers: [expect.objectContaining({ id: 'marker-intro', timeUs: TICKS_PER_SECOND })],
+          markers: [expect.objectContaining({ id: 'marker-intro', timeTicks: TICKS_PER_SECOND })],
         },
       },
     });

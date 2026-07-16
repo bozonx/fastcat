@@ -94,7 +94,7 @@ async function initEmbedded() {
       timelineStore.timelineDoc?.tracks.reduce((acc, t) => acc + t.items.length, 0) || 0;
 
     if (itemsCount === 0) {
-      const trackOffsetsUs: Record<string, number> = {};
+      const trackOffsetsTicks: Record<string, number> = {};
 
       const hasVideos = results.some((res) => res.success && res.asset.type === 'video');
       const hasImages = results.some((res) => res.success && res.asset.type === 'image');
@@ -129,21 +129,21 @@ async function initEmbedded() {
 
         // Fetch metadata to know duration
         const metadata = await mediaStore.getOrFetchMetadataByPath(res.path);
-        const durationUs = metadata?.duration || 3000000; // Default to 3s for images
+        const durationTicks = metadata?.duration || 3000000; // Default to 3s for images
 
-        const startUs = trackOffsetsUs[trackId] || 0;
+        const startTicks = trackOffsetsTicks[trackId] || 0;
 
         // Add to timeline
         await timelineStore.addClipToTimelineFromPath({
           trackId,
           name: res.asset.filename || 'Clip',
           path: res.path,
-          startUs,
+          startTicks,
           pseudo: true,
         });
 
         // Update offset for this track
-        trackOffsetsUs[trackId] = startUs + durationUs;
+        trackOffsetsTicks[trackId] = startTicks + durationTicks;
       }
     }
   }

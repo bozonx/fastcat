@@ -60,8 +60,8 @@ async function resetToDefaults() {
   markProjectSettingsAuto(projectStore.projectSettings.project);
 
   // Reset advanced settings
-  projectStore.projectSettings.project.audioDeclickDurationUs =
-    workspaceStore.userSettings.projectDefaults.audioDeclickDurationUs;
+  projectStore.projectSettings.project.audioDeclickDurationTicks =
+    workspaceStore.userSettings.projectDefaults.audioDeclickDurationTicks;
 
   await projectStore.saveProjectMeta({
     title: '',

@@ -7,8 +7,8 @@ import type {
 } from '~/timeline/types';
 
 import {
-  pickBestSnapCandidateUs,
-  sanitizeSnapTargetsUs,
+  pickBestSnapCandidateTicks,
+  sanitizeSnapTargetsTicks,
   zoomToPxPerSecond,
 } from '~/utils/timeline/geometry';
 import type { FastCatUserSettings } from '~/utils/settings';
@@ -18,52 +18,52 @@ export interface TimelineMoveOperation {
   fromTrackId: string;
   toTrackId: string;
   itemId: string;
-  startUs: number;
+  startTicks: number;
 }
 
-export function computeSnapTargetsUs(params: {
+export function computeSnapTargetsTicks(params: {
   tracks: TimelineTrack[];
   /** Clip ids being dragged — excluded so a moving group never snaps to itself. */
   excludeItemIds?: string[];
   /** Marker id being dragged — excluded so a marker never snaps to its own origin. */
   excludeMarkerId?: string;
   includeTimelineStart: boolean;
-  includeTimelineEndUs: number | null;
-  includePlayheadUs: number | null;
+  includeTimelineEndTicks: number | null;
+  includePlayheadTicks: number | null;
   includeMarkers: boolean;
   markers: TimelineMarker[];
   includeClips: boolean;
-  selectionRangeUs?: TimelineSelectionRange | null;
+  selectionRangeTicks?: TimelineSelectionRange | null;
 }): number[] {
   const targets: number[] = [];
   if (params.includeTimelineStart) targets.push(0);
   if (
-    typeof params.includeTimelineEndUs === 'number' &&
-    Number.isFinite(params.includeTimelineEndUs)
+    typeof params.includeTimelineEndTicks === 'number' &&
+    Number.isFinite(params.includeTimelineEndTicks)
   ) {
-    targets.push(params.includeTimelineEndUs);
+    targets.push(params.includeTimelineEndTicks);
   }
-  if (typeof params.includePlayheadUs === 'number' && Number.isFinite(params.includePlayheadUs)) {
-    targets.push(params.includePlayheadUs);
+  if (typeof params.includePlayheadTicks === 'number' && Number.isFinite(params.includePlayheadTicks)) {
+    targets.push(params.includePlayheadTicks);
   }
 
   if (params.includeMarkers) {
     for (const marker of params.markers) {
       if (params.excludeMarkerId && marker.id === params.excludeMarkerId) continue;
-      if (!Number.isFinite(marker.timeUs)) continue;
-      targets.push(marker.timeUs);
-      if (typeof marker.durationUs === 'number' && Number.isFinite(marker.durationUs)) {
-        targets.push(marker.timeUs + marker.durationUs);
+      if (!Number.isFinite(marker.timeTicks)) continue;
+      targets.push(marker.timeTicks);
+      if (typeof marker.durationTicks === 'number' && Number.isFinite(marker.durationTicks)) {
+        targets.push(marker.timeTicks + marker.durationTicks);
       }
     }
   }
 
-  if (params.selectionRangeUs) {
-    if (Number.isFinite(params.selectionRangeUs.startUs)) {
-      targets.push(params.selectionRangeUs.startUs);
+  if (params.selectionRangeTicks) {
+    if (Number.isFinite(params.selectionRangeTicks.startTicks)) {
+      targets.push(params.selectionRangeTicks.startTicks);
     }
-    if (Number.isFinite(params.selectionRangeUs.endUs)) {
-      targets.push(params.selectionRangeUs.endUs);
+    if (Number.isFinite(params.selectionRangeTicks.endTicks)) {
+      targets.push(params.selectionRangeTicks.endTicks);
     }
   }
 
@@ -72,59 +72,59 @@ export function computeSnapTargetsUs(params: {
       for (const item of track.items) {
         if (item.kind !== 'clip') continue;
         if (params.excludeItemIds && params.excludeItemIds.includes(item.id)) continue;
-        targets.push(item.timelineRange.startUs);
-        targets.push(item.timelineRange.startUs + item.timelineRange.durationUs);
+        targets.push(item.timelineRange.startTicks);
+        targets.push(item.timelineRange.startTicks + item.timelineRange.durationTicks);
       }
     }
   }
 
-  return sanitizeSnapTargetsUs(targets);
+  return sanitizeSnapTargetsTicks(targets);
 }
 
 export interface ResolvePlayheadClickTimeUsParams {
-  rawTimeUs: number;
+  rawTimeTicks: number;
   zoom: number;
   snapThresholdPx: number;
   toolbarSnapMode: 'snap' | 'no_snap';
   snapping: FastCatUserSettings['timeline']['snapping'];
   tracks: TimelineTrack[];
   markers: TimelineMarker[];
-  durationUs: number | null;
-  selectionRangeUs?: TimelineSelectionRange | null;
+  durationTicks: number | null;
+  selectionRangeTicks?: TimelineSelectionRange | null;
 }
 
-export function resolvePlayheadClickTimeUs(params: ResolvePlayheadClickTimeUsParams): number {
-  const rawTimeUs = Math.max(0, Math.round(params.rawTimeUs));
+export function resolvePlayheadClickTimeTicks(params: ResolvePlayheadClickTimeUsParams): number {
+  const rawTimeTicks = Math.max(0, Math.round(params.rawTimeTicks));
 
   if (!params.snapping.playheadClick || params.toolbarSnapMode !== 'snap') {
-    return rawTimeUs;
+    return rawTimeTicks;
   }
 
-  const targetsUs = computeSnapTargetsUs({
+  const targetsTicks = computeSnapTargetsTicks({
     tracks: params.tracks,
     includeTimelineStart: params.snapping.timelineEdges,
-    includeTimelineEndUs: params.snapping.timelineEdges ? params.durationUs : null,
-    includePlayheadUs: null,
+    includeTimelineEndTicks: params.snapping.timelineEdges ? params.durationTicks : null,
+    includePlayheadTicks: null,
     includeMarkers: params.snapping.markers,
     markers: params.markers,
     includeClips: params.snapping.clips,
-    selectionRangeUs: params.snapping.selection ? params.selectionRangeUs : null,
+    selectionRangeTicks: params.snapping.selection ? params.selectionRangeTicks : null,
   });
 
-  if (targetsUs.length === 0) {
-    return rawTimeUs;
+  if (targetsTicks.length === 0) {
+    return rawTimeTicks;
   }
 
-  const thresholdUs = Math.round(
+  const thresholdTicks = Math.round(
     (params.snapThresholdPx / zoomToPxPerSecond(params.zoom)) * TICKS_PER_SECOND,
   );
-  const snap = pickBestSnapCandidateUs({
-    rawUs: rawTimeUs,
-    thresholdUs,
-    targetsUs,
+  const snap = pickBestSnapCandidateTicks({
+    rawTicks: rawTimeTicks,
+    thresholdTicks,
+    targetsTicks,
   });
 
-  return snap.distUs < thresholdUs ? snap.snappedUs : rawTimeUs;
+  return snap.distTicks < thresholdTicks ? snap.snappedTicks : rawTimeTicks;
 }
 
 export function getSelectedMovableItemIds(params: {
@@ -198,7 +198,7 @@ export function buildMultiItemMoves(params: {
   dragOriginTrackId: string | null;
   targetTrackId: string;
   selectedMovableItemIds: string[];
-  deltaUs: number;
+  deltaTicks: number;
 }): TimelineMoveOperation[] {
   const moves: TimelineMoveOperation[] = [];
 
@@ -206,17 +206,17 @@ export function buildMultiItemMoves(params: {
   // never crosses 0. Clamping each start independently (`max(0, start + delta)`)
   // would pile the leftmost members at 0 while the rest keep moving, collapsing
   // the group's relative geometry. This mirrors the linked-clip move path.
-  let minSelectedStartUs = Number.POSITIVE_INFINITY;
+  let minSelectedStartTicks = Number.POSITIVE_INFINITY;
   for (const track of params.dragStartSnapshot.tracks) {
     for (const item of track.items) {
       if (item.kind !== 'clip') continue;
       if (!params.selectedMovableItemIds.includes(item.id)) continue;
-      minSelectedStartUs = Math.min(minSelectedStartUs, item.timelineRange.startUs);
+      minSelectedStartTicks = Math.min(minSelectedStartTicks, item.timelineRange.startTicks);
     }
   }
-  const clampedDeltaUs = Number.isFinite(minSelectedStartUs)
-    ? Math.max(params.deltaUs, -minSelectedStartUs)
-    : params.deltaUs;
+  const clampedDeltaTicks = Number.isFinite(minSelectedStartTicks)
+    ? Math.max(params.deltaTicks, -minSelectedStartTicks)
+    : params.deltaTicks;
 
   let trackOffset = 0;
   if (params.targetTrackId !== params.dragOriginTrackId) {
@@ -234,13 +234,13 @@ export function buildMultiItemMoves(params: {
 
   for (const selectedId of params.selectedMovableItemIds) {
     let originalTrackId = '';
-    let originalStartUs = 0;
+    let originalStartTicks = 0;
 
     for (const track of params.dragStartSnapshot.tracks) {
       const item = track.items.find((value) => value.id === selectedId);
       if (item && item.kind === 'clip') {
         originalTrackId = track.id;
-        originalStartUs = item.timelineRange.startUs;
+        originalStartTicks = item.timelineRange.startTicks;
         break;
       }
     }
@@ -275,12 +275,12 @@ export function buildMultiItemMoves(params: {
       fromTrackId: currentTrackId,
       toTrackId,
       itemId: selectedId,
-      startUs: Math.max(0, originalStartUs + clampedDeltaUs),
+      startTicks: Math.max(0, originalStartTicks + clampedDeltaTicks),
     });
   }
 
   moves.sort((left, right) => {
-    return clampedDeltaUs >= 0 ? right.startUs - left.startUs : left.startUs - right.startUs;
+    return clampedDeltaTicks >= 0 ? right.startTicks - left.startTicks : left.startTicks - right.startTicks;
   });
 
   return moves;

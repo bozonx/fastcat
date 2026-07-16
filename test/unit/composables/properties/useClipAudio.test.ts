@@ -12,15 +12,15 @@ describe('useClipAudio', () => {
       kind: 'clip',
       clipType: 'media',
       name: 'Test Clip',
-      timelineRange: { startUs: 0, durationUs: 5000000 },
+      timelineRange: { startTicks: 0, durationTicks: 5000000 },
       audioGain: gain,
       audioBalance: 0,
-      audioFadeInUs: 0,
-      audioFadeOutUs: 0,
+      audioFadeInTicks: 0,
+      audioFadeOutTicks: 0,
       audioFadeInCurve: 'linear',
       audioFadeOutCurve: 'linear',
-      sourceRange: { startUs: 0, durationUs: 5000000 },
-      sourceDurationUs: 5000000,
+      sourceRange: { startTicks: 0, durationTicks: 5000000 },
+      sourceDurationTicks: 5000000,
     }) as unknown as TimelineClipItem;
 
   const createMockDoc = (): TimelineDocument =>

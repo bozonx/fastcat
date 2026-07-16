@@ -5,8 +5,8 @@ import type { ClipAnimations, ClipEffect } from '~/timeline/types';
 
 const linTrack = (a: [number, number], b: [number, number]) => ({
   keyframes: [
-    { tUs: a[0], value: a[1], easing: 'linear' as const },
-    { tUs: b[0], value: b[1], easing: 'linear' as const },
+    { tTicks: a[0], value: a[1], easing: 'linear' as const },
+    { tTicks: b[0], value: b[1], easing: 'linear' as const },
   ],
 });
 
@@ -89,8 +89,8 @@ describe('bakeClipEffectAnimations', () => {
     const animations: ClipAnimations = {
       'effect.fx1.radius': {
         keyframes: [
-          { tUs: 0, value: 0, easing: 'ease' },
-          { tUs: 1_000_000, value: 100, easing: 'linear' },
+          { tTicks: 0, value: 0, easing: 'ease' },
+          { tTicks: 1_000_000, value: 100, easing: 'linear' },
         ],
       },
     };
@@ -107,8 +107,8 @@ describe('bakeClipEffectAnimations', () => {
     const animations: ClipAnimations = {
       'effect.fx1.blurPastEdges': {
         keyframes: [
-          { tUs: 0, value: 0, easing: 'hold' },
-          { tUs: 1_000_000, value: 1, easing: 'hold' },
+          { tTicks: 0, value: 0, easing: 'hold' },
+          { tTicks: 1_000_000, value: 1, easing: 'hold' },
         ],
       },
     };
@@ -126,7 +126,7 @@ describe('bakeClipEffectAnimations', () => {
     expect(bakeClipEffectAnimations([fx({ type: 'blur', radius: 8 })], undefined)).toBeUndefined();
     expect(
       bakeClipEffectAnimations([fx({ type: 'blur', radius: 8 })], {
-        opacity: { keyframes: [{ tUs: 0, value: 1, easing: 'linear' }] },
+        opacity: { keyframes: [{ tTicks: 0, value: 1, easing: 'linear' }] },
       }),
     ).toBeUndefined();
   });

@@ -40,7 +40,7 @@ function shallowEqualParams(a: Record<string, unknown>, b: Record<string, unknow
 
 export function useClipTransitionPanel(options: UseClipTransitionPanelOptions) {
   const durationSec = ref(
-    options.transition.value ? options.transition.value.durationUs / TICKS_PER_SECOND : 0.5,
+    options.transition.value ? options.transition.value.durationTicks / TICKS_PER_SECOND : 0.5,
   );
   const selectedType = ref(options.transition.value?.type ?? 'dissolve');
   const selectedMode = ref<TransitionMode>(
@@ -63,7 +63,7 @@ export function useClipTransitionPanel(options: UseClipTransitionPanelOptions) {
     const gen = ++syncGeneration;
     if (t) {
       selectedType.value = t.type;
-      durationSec.value = t.durationUs / TICKS_PER_SECOND;
+      durationSec.value = t.durationTicks / TICKS_PER_SECOND;
       selectedMode.value = t.mode ?? DEFAULT_TRANSITION_MODE;
       selectedCurve.value = t.curve ?? DEFAULT_TRANSITION_CURVE;
       isOverridden.value = t.isOverridden ?? false;
@@ -135,7 +135,7 @@ export function useClipTransitionPanel(options: UseClipTransitionPanelOptions) {
       edge: options.edge.value,
       transition: {
         type: transitionType,
-        durationUs: Math.round(durationSec.value * TICKS_PER_SECOND),
+        durationTicks: Math.round(durationSec.value * TICKS_PER_SECOND),
         mode: selectedMode.value,
         curve: selectedCurve.value,
         params: normalizedParams,

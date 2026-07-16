@@ -10,7 +10,7 @@ const props = defineProps<{
   isVideoTrack: boolean;
   transitionIn: import('~/timeline/types').ClipTransition | null;
   transitionOut: import('~/timeline/types').ClipTransition | null;
-  clipDurationUs: number;
+  clipDurationTicks: number;
 }>();
 
 const emit = defineEmits<{
@@ -97,12 +97,12 @@ const transitionOptions = computed(() =>
             {{ t('fastcat.timeline.transition.durationSec') }}
           </label>
           <UiWheelNumberInput
-            :model-value="props.transitionIn.durationUs / TICKS_PER_SECOND"
+            :model-value="props.transitionIn.durationTicks / TICKS_PER_SECOND"
             :min="0.1"
             :max="
               Math.max(
                 0.1,
-                (props.clipDurationUs - (props.transitionOut?.durationUs ?? 0)) / TICKS_PER_SECOND,
+                (props.clipDurationTicks - (props.transitionOut?.durationTicks ?? 0)) / TICKS_PER_SECOND,
               )
             "
             :step="0.1"
@@ -172,12 +172,12 @@ const transitionOptions = computed(() =>
             {{ t('fastcat.timeline.transition.durationSec') }}
           </label>
           <UiWheelNumberInput
-            :model-value="props.transitionOut.durationUs / TICKS_PER_SECOND"
+            :model-value="props.transitionOut.durationTicks / TICKS_PER_SECOND"
             :min="0.1"
             :max="
               Math.max(
                 0.1,
-                (props.clipDurationUs - (props.transitionIn?.durationUs ?? 0)) / TICKS_PER_SECOND,
+                (props.clipDurationTicks - (props.transitionIn?.durationTicks ?? 0)) / TICKS_PER_SECOND,
               )
             "
             :step="0.1"

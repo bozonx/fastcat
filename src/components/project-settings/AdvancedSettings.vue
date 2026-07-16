@@ -13,16 +13,16 @@ const workspaceStore = useWorkspaceStore();
 
 const audioDeclickDurationMs = computed({
   get: () =>
-    (projectStore.projectSettings?.project.audioDeclickDurationUs || 0) / TICKS_PER_MILLISECOND,
+    (projectStore.projectSettings?.project.audioDeclickDurationTicks || 0) / TICKS_PER_MILLISECOND,
   set: (val: number) => {
     if (projectStore.projectSettings) {
-      projectStore.projectSettings.project.audioDeclickDurationUs = val * TICKS_PER_MILLISECOND;
+      projectStore.projectSettings.project.audioDeclickDurationTicks = val * TICKS_PER_MILLISECOND;
     }
   },
 });
 
 const defaultDeclickMs = computed(() => {
-  const us = workspaceStore.userSettings?.projectDefaults?.audioDeclickDurationUs;
+  const us = workspaceStore.userSettings?.projectDefaults?.audioDeclickDurationTicks;
   return (us !== undefined ? us : 5 * TICKS_PER_MILLISECOND) / TICKS_PER_MILLISECOND;
 });
 

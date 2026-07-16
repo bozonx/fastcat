@@ -121,7 +121,7 @@ function buildClipsFromScene(
     const transitionIn = sceneTransitionIn
       ? {
           type: sceneTransitionIn.type as string,
-          durationUs: Math.round((sceneTransitionIn.duration_sec as number) * TICKS_PER_SECOND),
+          durationTicks: Math.round((sceneTransitionIn.duration_sec as number) * TICKS_PER_SECOND),
           mode: (sceneTransitionIn.mode as string) ?? DEFAULT_TRANSITION_MODE,
           curve: (sceneTransitionIn.curve as string) ?? DEFAULT_TRANSITION_CURVE,
           params: (sceneTransitionIn.params as Record<string, unknown>) ?? {},
@@ -130,7 +130,7 @@ function buildClipsFromScene(
     const transitionOut = sceneTransitionOut
       ? {
           type: sceneTransitionOut.type as string,
-          durationUs: Math.round((sceneTransitionOut.duration_sec as number) * TICKS_PER_SECOND),
+          durationTicks: Math.round((sceneTransitionOut.duration_sec as number) * TICKS_PER_SECOND),
           mode: (sceneTransitionOut.mode as string) ?? DEFAULT_TRANSITION_MODE,
           curve: (sceneTransitionOut.curve as string) ?? DEFAULT_TRANSITION_CURVE,
           params: (sceneTransitionOut.params as Record<string, unknown>) ?? {},
@@ -158,14 +158,14 @@ function buildClipsFromScene(
       transitionOut,
       source: sourcePath ? { path: sourcePath } : undefined,
       timelineRange: {
-        startUs: Math.round(timelineStartSec * TICKS_PER_SECOND),
-        durationUs: Math.round((timelineEndSec - timelineStartSec) * TICKS_PER_SECOND),
+        startTicks: Math.round(timelineStartSec * TICKS_PER_SECOND),
+        durationTicks: Math.round((timelineEndSec - timelineStartSec) * TICKS_PER_SECOND),
       },
       sourceRange: {
-        startUs: Math.round(sourceStartSec * TICKS_PER_SECOND),
-        durationUs: Math.round(sourceRangeDurationSec * TICKS_PER_SECOND),
+        startTicks: Math.round(sourceStartSec * TICKS_PER_SECOND),
+        durationTicks: Math.round(sourceRangeDurationSec * TICKS_PER_SECOND),
       },
-      sourceDurationUs: layer.source_duration_sec
+      sourceDurationTicks: layer.source_duration_sec
         ? Math.round((layer.source_duration_sec as number) * TICKS_PER_SECOND)
         : undefined,
       sourceOrientation: (layer.source_orientation as string) ?? undefined,
@@ -193,8 +193,8 @@ async function renderFrames(req: ParityRenderRequest): Promise<ParityFrameResult
   const results: ParityFrameResult[] = [];
 
   for (const timeSec of req.sampleTimesSec) {
-    const timeUs = Math.round(timeSec * TICKS_PER_SECOND);
-    const canvas = await compositor.renderFrame(timeUs);
+    const timeTicks = Math.round(timeSec * TICKS_PER_SECOND);
+    const canvas = await compositor.renderFrame(timeTicks);
 
     if (!canvas) {
       results.push({ hash: '', colorSig: '', width, height, error: 'renderFrame returned null' });

@@ -1,6 +1,6 @@
 /** @vitest-environment node */
 import { describe, it, expect } from 'vitest';
-import { timelineUs } from '../utils/timeline-time';
+import { timelineTicks } from '../utils/timeline-time';
 import { applyTimelineCommand } from '~/timeline/commands';
 import type { TimelineDocument, TimelineTrack } from '~/timeline/types';
 import { TICKS_PER_SECOND } from '~/utils/time';
@@ -28,9 +28,9 @@ describe('timeline/commands update_clip_properties', () => {
           trackId: 'v1',
           name: 'C1',
           source: { path: 'a.mp4' },
-          sourceDurationUs: timelineUs(10_000_000),
-          timelineRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
-          sourceRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
+          sourceDurationTicks: timelineTicks(10_000_000),
+          timelineRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
+          sourceRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
         },
       ],
     });
@@ -59,9 +59,9 @@ describe('timeline/commands update_clip_properties', () => {
           trackId: 'v1',
           name: 'C1',
           source: { path: 'a.mp4' },
-          sourceDurationUs: timelineUs(10_000_000),
-          timelineRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
-          sourceRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
+          sourceDurationTicks: timelineTicks(10_000_000),
+          timelineRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
+          sourceRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
         },
       ],
     });
@@ -90,9 +90,9 @@ describe('timeline/commands update_clip_properties', () => {
           trackId: 'v1',
           name: 'C1',
           source: { path: 'a.mp4' },
-          sourceDurationUs: timelineUs(10_000_000),
-          timelineRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
-          sourceRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
+          sourceDurationTicks: timelineTicks(10_000_000),
+          timelineRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
+          sourceRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
         },
       ],
     });
@@ -121,9 +121,9 @@ describe('timeline/commands update_clip_properties', () => {
           trackId: 'v1',
           name: 'C1',
           source: { path: 'a.mp4' },
-          sourceDurationUs: timelineUs(10_000_000),
-          timelineRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
-          sourceRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
+          sourceDurationTicks: timelineTicks(10_000_000),
+          timelineRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
+          sourceRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
         },
       ],
     });
@@ -167,9 +167,9 @@ describe('timeline/commands update_clip_properties', () => {
           trackId: 'v1',
           name: 'C1',
           source: { path: 'a.mp4' },
-          sourceDurationUs: timelineUs(10_000_000),
-          timelineRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
-          sourceRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
+          sourceDurationTicks: timelineTicks(10_000_000),
+          timelineRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
+          sourceRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
         },
       ],
     });
@@ -206,8 +206,8 @@ describe('timeline/commands update_clip_properties', () => {
           trackId: 'v1',
           name: 'BG',
           backgroundColor: '#000000',
-          timelineRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
-          sourceRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
+          timelineRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
+          sourceRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
         },
         {
           kind: 'clip',
@@ -216,9 +216,9 @@ describe('timeline/commands update_clip_properties', () => {
           trackId: 'v1',
           name: 'C1',
           source: { path: 'a.mp4' },
-          sourceDurationUs: timelineUs(10_000_000),
-          timelineRange: { startUs: timelineUs(1_000_000), durationUs: timelineUs(1_000_000) },
-          sourceRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
+          sourceDurationTicks: timelineTicks(10_000_000),
+          timelineRange: { startTicks: timelineTicks(1_000_000), durationTicks: timelineTicks(1_000_000) },
+          sourceRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
         },
       ],
     });
@@ -259,9 +259,9 @@ describe('timeline/commands update_clip_properties', () => {
           trackId: 'v1',
           name: 'C1',
           source: { path: 'a.mp4' },
-          sourceDurationUs: timelineUs(10_000_000),
-          timelineRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
-          sourceRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
+          sourceDurationTicks: timelineTicks(10_000_000),
+          timelineRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
+          sourceRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
         },
       ],
     });
@@ -301,9 +301,9 @@ describe('timeline/commands update_clip_properties', () => {
           trackId: 'v1',
           name: 'C1',
           source: { path: 'a.mp4' },
-          sourceDurationUs: timelineUs(10_000_000),
-          timelineRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
-          sourceRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
+          sourceDurationTicks: timelineTicks(10_000_000),
+          timelineRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
+          sourceRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
         },
       ],
     });
@@ -320,8 +320,8 @@ describe('timeline/commands update_clip_properties', () => {
     // A non-unit speed must activate the time-warp so it survives OTIO
     // serialization and reaches the playback payload (not just the waveform).
     expect(clip.speedActive).toBe(true);
-    expect(clip.timelineRange.durationUs).toBeGreaterThan(0);
-    expect(clip.timelineRange.durationUs).toBeLessThan(timelineUs(1_000_000));
+    expect(clip.timelineRange.durationTicks).toBeGreaterThan(0);
+    expect(clip.timelineRange.durationTicks).toBeLessThan(timelineTicks(1_000_000));
   });
 
   it('activates the time-warp on reverse and clears it back at unity speed', () => {
@@ -338,9 +338,9 @@ describe('timeline/commands update_clip_properties', () => {
             trackId: 'v1',
             name: 'C1',
             source: { path: 'a.mp4' },
-            sourceDurationUs: timelineUs(10_000_000),
-            timelineRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
-            sourceRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
+            sourceDurationTicks: timelineTicks(10_000_000),
+            timelineRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
+            sourceRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
           },
         ],
       });
@@ -379,9 +379,9 @@ describe('timeline/commands update_clip_properties', () => {
             trackId: 'v1',
             name: 'C1',
             source: { path: 'a.mp4' },
-            sourceDurationUs: timelineUs(10_000_000),
-            timelineRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
-            sourceRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
+            sourceDurationTicks: timelineTicks(10_000_000),
+            timelineRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
+            sourceRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
           },
         ],
       });
@@ -404,10 +404,10 @@ describe('timeline/commands update_clip_properties', () => {
     const clip = (doc.tracks[0] as TimelineTrack).items[0] as any;
 
     // The source window must never change as a side effect of speed edits.
-    expect(clip.sourceRange).toEqual({ startUs: 0, durationUs: timelineUs(1_000_000) });
+    expect(clip.sourceRange).toEqual({ startTicks: 0, durationTicks: timelineTicks(1_000_000) });
     expect(clip.speed).toBe(1);
     // Back at unity speed the timeline duration equals the (unchanged) source.
-    expect(clip.timelineRange.durationUs).toBe(timelineUs(1_000_000));
+    expect(clip.timelineRange.durationTicks).toBe(timelineTicks(1_000_000));
   });
 
   it('proportionally shrinks audio fades when they would overlap on the same clip', () => {
@@ -423,10 +423,10 @@ describe('timeline/commands update_clip_properties', () => {
           trackId: 'v1',
           name: 'C1',
           source: { path: 'a.mp4' },
-          sourceDurationUs: timelineUs(10_000_000),
-          timelineRange: { startUs: 0, durationUs: timelineUs(5_000_000) },
-          sourceRange: { startUs: 0, durationUs: timelineUs(5_000_000) },
-          audioFadeOutUs: timelineUs(3_000_000),
+          sourceDurationTicks: timelineTicks(10_000_000),
+          timelineRange: { startTicks: 0, durationTicks: timelineTicks(5_000_000) },
+          sourceRange: { startTicks: 0, durationTicks: timelineTicks(5_000_000) },
+          audioFadeOutTicks: timelineTicks(3_000_000),
         },
       ],
     });
@@ -435,13 +435,13 @@ describe('timeline/commands update_clip_properties', () => {
       type: 'update_clip_properties',
       trackId: 'v1',
       itemId: 'c1',
-      properties: { audioFadeInUs: timelineUs(4_000_000) },
+      properties: { audioFadeInTicks: timelineTicks(4_000_000) },
     }).next;
 
     const clip = (next.tracks[0] as TimelineTrack).items[0] as any;
-    expect(clip.audioFadeInUs).toBe(timelineUs(2_000_000));
-    expect(clip.audioFadeOutUs).toBe(timelineUs(3_000_000));
-    expect(clip.audioFadeInUs + clip.audioFadeOutUs).toBe(timelineUs(5_000_000));
+    expect(clip.audioFadeInTicks).toBe(timelineTicks(2_000_000));
+    expect(clip.audioFadeOutTicks).toBe(timelineTicks(3_000_000));
+    expect(clip.audioFadeInTicks + clip.audioFadeOutTicks).toBe(timelineTicks(5_000_000));
   });
 
   it('ripples subsequent clips when slowing down would cause overlap', () => {
@@ -457,9 +457,9 @@ describe('timeline/commands update_clip_properties', () => {
           trackId: 'v1',
           name: 'C1',
           source: { path: 'a.mp4' },
-          sourceDurationUs: timelineUs(10_000_000),
-          timelineRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
-          sourceRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
+          sourceDurationTicks: timelineTicks(10_000_000),
+          timelineRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
+          sourceRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
         },
         {
           kind: 'clip',
@@ -468,9 +468,9 @@ describe('timeline/commands update_clip_properties', () => {
           trackId: 'v1',
           name: 'C2',
           source: { path: 'b.mp4' },
-          sourceDurationUs: timelineUs(10_000_000),
-          timelineRange: { startUs: timelineUs(1_000_000), durationUs: timelineUs(1_000_000) },
-          sourceRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
+          sourceDurationTicks: timelineTicks(10_000_000),
+          timelineRange: { startTicks: timelineTicks(1_000_000), durationTicks: timelineTicks(1_000_000) },
+          sourceRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
         },
       ],
     });
@@ -487,8 +487,8 @@ describe('timeline/commands update_clip_properties', () => {
     const c2 = track.items.find((it: any) => it.id === 'c2') as any;
 
     expect(c1.speed).toBe(0.5);
-    expect(c1.timelineRange.durationUs).toBe(timelineUs(2_000_000));
-    expect(c2.timelineRange.startUs).toBe(timelineUs(2_000_000));
+    expect(c1.timelineRange.durationTicks).toBe(timelineTicks(2_000_000));
+    expect(c2.timelineRange.startTicks).toBe(timelineTicks(2_000_000));
   });
 
   it('preserves exact adjacency when a speed ripple starts off the frame grid', () => {
@@ -505,9 +505,9 @@ describe('timeline/commands update_clip_properties', () => {
           trackId: 'v1',
           name: 'C1',
           source: { path: 'a.mp4' },
-          sourceDurationUs: 4 * frameTicks,
-          timelineRange: { startUs: 1, durationUs: frameTicks },
-          sourceRange: { startUs: 0, durationUs: 2 * frameTicks },
+          sourceDurationTicks: 4 * frameTicks,
+          timelineRange: { startTicks: 1, durationTicks: frameTicks },
+          sourceRange: { startTicks: 0, durationTicks: 2 * frameTicks },
         },
         {
           kind: 'clip',
@@ -516,9 +516,9 @@ describe('timeline/commands update_clip_properties', () => {
           trackId: 'v1',
           name: 'C2',
           source: { path: 'b.mp4' },
-          sourceDurationUs: 4 * frameTicks,
-          timelineRange: { startUs: frameTicks + 1, durationUs: frameTicks },
-          sourceRange: { startUs: 0, durationUs: frameTicks },
+          sourceDurationTicks: 4 * frameTicks,
+          timelineRange: { startTicks: frameTicks + 1, durationTicks: frameTicks },
+          sourceRange: { startTicks: 0, durationTicks: frameTicks },
         },
       ],
     });
@@ -534,8 +534,8 @@ describe('timeline/commands update_clip_properties', () => {
     const c1 = clips.find((item) => item.id === 'c1');
     const c2 = clips.find((item) => item.id === 'c2');
 
-    expect(c2.timelineRange.startUs).toBe(c1.timelineRange.startUs + c1.timelineRange.durationUs);
-    expect(c2.timelineRange.startUs).toBe(4 * frameTicks + 1);
+    expect(c2.timelineRange.startTicks).toBe(c1.timelineRange.startTicks + c1.timelineRange.durationTicks);
+    expect(c2.timelineRange.startTicks).toBe(4 * frameTicks + 1);
   });
 
   it('preserves audio fade lengths when clip duration increases', () => {
@@ -551,11 +551,11 @@ describe('timeline/commands update_clip_properties', () => {
           trackId: 'v1',
           name: 'C1',
           source: { path: 'a.mp4' },
-          sourceDurationUs: timelineUs(10_000_000),
-          timelineRange: { startUs: 0, durationUs: timelineUs(4_000_000) },
-          sourceRange: { startUs: 0, durationUs: timelineUs(4_000_000) },
-          audioFadeInUs: timelineUs(1_000_000),
-          audioFadeOutUs: timelineUs(1_500_000),
+          sourceDurationTicks: timelineTicks(10_000_000),
+          timelineRange: { startTicks: 0, durationTicks: timelineTicks(4_000_000) },
+          sourceRange: { startTicks: 0, durationTicks: timelineTicks(4_000_000) },
+          audioFadeInTicks: timelineTicks(1_000_000),
+          audioFadeOutTicks: timelineTicks(1_500_000),
         },
       ],
     });
@@ -565,15 +565,15 @@ describe('timeline/commands update_clip_properties', () => {
       trackId: 'v1',
       itemId: 'c1',
       properties: {
-        timelineRange: { startUs: 0, durationUs: timelineUs(6_000_000) },
-        sourceRange: { startUs: 0, durationUs: timelineUs(6_000_000) },
+        timelineRange: { startTicks: 0, durationTicks: timelineTicks(6_000_000) },
+        sourceRange: { startTicks: 0, durationTicks: timelineTicks(6_000_000) },
       },
     }).next;
 
     const clip = (next.tracks[0] as TimelineTrack).items[0] as any;
-    expect(clip.timelineRange.durationUs).toBe(timelineUs(6_000_000));
-    expect(clip.audioFadeInUs).toBe(timelineUs(1_000_000));
-    expect(clip.audioFadeOutUs).toBe(timelineUs(1_500_000));
+    expect(clip.timelineRange.durationTicks).toBe(timelineTicks(6_000_000));
+    expect(clip.audioFadeInTicks).toBe(timelineTicks(1_000_000));
+    expect(clip.audioFadeOutTicks).toBe(timelineTicks(1_500_000));
   });
 
   it('sanitizes style for a text clip', () => {
@@ -589,8 +589,8 @@ describe('timeline/commands update_clip_properties', () => {
           trackId: 'v1',
           name: 'T1',
           text: 'Hello',
-          timelineRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
-          sourceRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
+          timelineRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
+          sourceRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
         } as any,
       ],
     });
@@ -684,8 +684,8 @@ describe('timeline/commands update_clip_properties', () => {
           trackId: 'v1',
           name: 'T1',
           text: 'Hello',
-          timelineRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
-          sourceRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
+          timelineRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
+          sourceRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
         } as any,
       ],
     });
@@ -724,9 +724,9 @@ describe('timeline/commands update_clip_properties', () => {
           trackId: 'v1',
           name: 'Video Clip',
           source: { path: 'video.mp4' },
-          sourceDurationUs: timelineUs(10_000_000),
-          timelineRange: { startUs: 0, durationUs: timelineUs(5_000_000) },
-          sourceRange: { startUs: 0, durationUs: timelineUs(5_000_000) },
+          sourceDurationTicks: timelineTicks(10_000_000),
+          timelineRange: { startTicks: 0, durationTicks: timelineTicks(5_000_000) },
+          sourceRange: { startTicks: 0, durationTicks: timelineTicks(5_000_000) },
           showWaveform: true,
         } as any,
       ],

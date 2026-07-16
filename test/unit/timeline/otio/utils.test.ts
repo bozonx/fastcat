@@ -2,7 +2,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   toRationalTime,
-  fromRationalTimeUs,
+  fromRationalTimeTicks,
   toTimeRange,
   fromTimeRange,
   trackKindToOtioKind,
@@ -45,20 +45,20 @@ describe('toRationalTime', () => {
   });
 });
 
-describe('fromRationalTimeUs', () => {
+describe('fromRationalTimeTicks', () => {
   it('converts rational time back to ticks', () => {
-    expect(fromRationalTimeUs({ value: 30, rate: 30 })).toBe(TICKS_PER_SECOND);
+    expect(fromRationalTimeTicks({ value: 30, rate: 30 })).toBe(TICKS_PER_SECOND);
   });
 
   it('returns 0 for invalid input', () => {
-    expect(fromRationalTimeUs(null)).toBe(0);
-    expect(fromRationalTimeUs({ value: 10, rate: 0 })).toBe(0);
+    expect(fromRationalTimeTicks(null)).toBe(0);
+    expect(fromRationalTimeTicks({ value: 10, rate: 0 })).toBe(0);
   });
 });
 
 describe('toTimeRange', () => {
   it('converts timeline range to otio time range', () => {
-    const tr = toTimeRange({ startUs: 0, durationUs: TICKS_PER_SECOND }, 30);
+    const tr = toTimeRange({ startTicks: 0, durationTicks: TICKS_PER_SECOND }, 30);
     expect(tr.start_time.value).toBe(0);
     expect(tr.duration.value).toBe(30);
   });
@@ -68,11 +68,11 @@ describe('fromTimeRange', () => {
   it('converts otio time range back to timeline range', () => {
     expect(
       fromTimeRange({ start_time: { value: 0, rate: 30 }, duration: { value: 30, rate: 30 } }),
-    ).toEqual({ startUs: 0, durationUs: TICKS_PER_SECOND });
+    ).toEqual({ startTicks: 0, durationTicks: TICKS_PER_SECOND });
   });
 
   it('returns zero range for invalid input', () => {
-    expect(fromTimeRange(null)).toEqual({ startUs: 0, durationUs: 0 });
+    expect(fromTimeRange(null)).toEqual({ startTicks: 0, durationTicks: 0 });
   });
 });
 

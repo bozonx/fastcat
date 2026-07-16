@@ -27,7 +27,7 @@ test.describe('Web timeline undo / redo', () => {
     await addFileToTrack(page, uiPath, videoTrackId);
 
     const before = await waitForTimelineDoc(page, e2eProject, (d) => d.allClips.length === 1);
-    const originalDuration = before.allClips[0].timelineDurationUs;
+    const originalDuration = before.allClips[0].timelineDurationTicks;
 
     const clipId = (await clipIds(page))[0];
     await deleteClip(page, clipId);
@@ -36,7 +36,7 @@ test.describe('Web timeline undo / redo', () => {
 
     await undoTimeline(page);
     const undone = await waitForTimelineDoc(page, e2eProject, (d) => d.allClips.length === 1);
-    expect(undone.allClips[0].timelineDurationUs).toBe(originalDuration);
+    expect(undone.allClips[0].timelineDurationTicks).toBe(originalDuration);
     await expect.poll(async () => (await clipIds(page)).length).toBe(1);
 
     await redoTimeline(page);

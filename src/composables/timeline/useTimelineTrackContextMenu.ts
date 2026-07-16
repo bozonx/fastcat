@@ -39,7 +39,7 @@ export function useTimelineTrackContextMenu(tracks: () => TimelineTrack[]) {
       if (!payload || payload.source !== 'timeline' || payload.items.length === 0) return;
       void timelineStore.pasteClips(payload.items, {
         targetTrackId: trackId,
-        insertStartUs: timelineStore.currentTime,
+        insertStartTicks: timelineStore.currentTime,
       });
       if (payload.operation === 'cut') clipboardStore.setClipboardPayload(null);
     },

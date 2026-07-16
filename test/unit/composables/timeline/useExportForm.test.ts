@@ -15,9 +15,9 @@ vi.mock('@tauri-apps/plugin-fs', () => ({
   rename: renameMock,
 }));
 
-const selectionRangeMock = ref<{ startUs: number; endUs: number } | null>(null);
+const selectionRangeMock = ref<{ startTicks: number; endTicks: number } | null>(null);
 const markersMock = ref<
-  Array<{ id: string; timeUs: number; durationUs?: number; text: string; color?: string }>
+  Array<{ id: string; timeTicks: number; durationTicks?: number; text: string; color?: string }>
 >([]);
 const selectedEntityMock = ref<any>(null);
 
@@ -313,8 +313,8 @@ describe('useExportForm', () => {
 
   it('выбирает активный маркер-зону по умолчанию', async () => {
     markersMock.value = [
-      { id: 'zone-2', timeUs: 5_000_000, durationUs: 2_000_000, text: 'Outro' },
-      { id: 'zone-1', timeUs: 1_000_000, durationUs: 3_000_000, text: 'Intro' },
+      { id: 'zone-2', timeTicks: 5_000_000, durationTicks: 2_000_000, text: 'Outro' },
+      { id: 'zone-1', timeTicks: 1_000_000, durationTicks: 3_000_000, text: 'Intro' },
     ];
     selectedEntityMock.value = {
       source: 'timeline',
@@ -335,8 +335,8 @@ describe('useExportForm', () => {
 
   it('передает цвета маркеров в опции экспорта', async () => {
     markersMock.value = [
-      { id: 'zone-1', timeUs: 1_000_000, durationUs: 3_000_000, text: 'Intro', color: '#ff0000' },
-      { id: 'zone-2', timeUs: 5_000_000, durationUs: 2_000_000, text: 'Outro' },
+      { id: 'zone-1', timeTicks: 1_000_000, durationTicks: 3_000_000, text: 'Intro', color: '#ff0000' },
+      { id: 'zone-2', timeTicks: 5_000_000, durationTicks: 2_000_000, text: 'Outro' },
     ];
 
     const form = useExportForm();
@@ -351,21 +351,21 @@ describe('useExportForm', () => {
         id: 'marker:zone-1',
         label: 'videoEditor.export.zoneMarker',
         description: 'Intro',
-        range: { startUs: 1_000_000, endUs: 4_000_000 },
+        range: { startTicks: 1_000_000, endTicks: 4_000_000 },
         color: '#ff0000',
       },
       {
         id: 'marker:zone-2',
         label: 'videoEditor.export.zoneMarker',
         description: 'Outro',
-        range: { startUs: 5_000_000, endUs: 7_000_000 },
+        range: { startTicks: 5_000_000, endTicks: 7_000_000 },
         color: undefined,
       },
     ]);
   });
 
   it('не выбирает область выделения по умолчанию, если она не активна', async () => {
-    selectionRangeMock.value = { startUs: 2_000_000, endUs: 6_000_000 };
+    selectionRangeMock.value = { startTicks: 2_000_000, endTicks: 6_000_000 };
 
     const form = useExportForm();
     await form.initializeExportForm();
@@ -374,7 +374,7 @@ describe('useExportForm', () => {
   });
 
   it('не выбирает область выделения по умолчанию, если на таймлайне выбран клип', async () => {
-    selectionRangeMock.value = { startUs: 2_000_000, endUs: 6_000_000 };
+    selectionRangeMock.value = { startTicks: 2_000_000, endTicks: 6_000_000 };
     selectedEntityMock.value = {
       source: 'timeline',
       kind: 'clip',
@@ -389,7 +389,7 @@ describe('useExportForm', () => {
   });
 
   it('выбирает область выделения по умолчанию только когда она активна', async () => {
-    selectionRangeMock.value = { startUs: 2_000_000, endUs: 6_000_000 };
+    selectionRangeMock.value = { startTicks: 2_000_000, endTicks: 6_000_000 };
     selectedEntityMock.value = {
       source: 'timeline',
       kind: 'selection-range',
@@ -402,7 +402,7 @@ describe('useExportForm', () => {
   });
 
   it('передает диапазон выбранного маркера-зоны в экспорт', async () => {
-    markersMock.value = [{ id: 'zone-1', timeUs: 1_500_000, durationUs: 2_500_000, text: '' }];
+    markersMock.value = [{ id: 'zone-1', timeTicks: 1_500_000, durationTicks: 2_500_000, text: '' }];
     selectedEntityMock.value = {
       source: 'timeline',
       kind: 'marker',
@@ -416,15 +416,15 @@ describe('useExportForm', () => {
     expect(exportTimelineToFileMock).toHaveBeenCalledTimes(1);
     expect(exportTimelineToFileMock.mock.calls[0]?.[0]).toMatchObject({
       exportRangeTicks: {
-        startUs: 1_500_000,
-        endUs: 4_000_000,
+        startTicks: 1_500_000,
+        endTicks: 4_000_000,
       },
     });
   });
 
   it('синхронизирует radio с выбором зоны и области выделения после открытия формы', async () => {
-    selectionRangeMock.value = { startUs: 2_000_000, endUs: 6_000_000 };
-    markersMock.value = [{ id: 'zone-1', timeUs: 1_500_000, durationUs: 2_500_000, text: '' }];
+    selectionRangeMock.value = { startTicks: 2_000_000, endTicks: 6_000_000 };
+    markersMock.value = [{ id: 'zone-1', timeTicks: 1_500_000, durationTicks: 2_500_000, text: '' }];
 
     const form = useExportForm();
     await form.initializeExportForm();

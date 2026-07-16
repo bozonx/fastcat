@@ -210,8 +210,8 @@ export function createClipParametersSnapshot(input: {
   const audio = pickDefined(source, [
     'audioGain',
     'audioBalance',
-    'audioFadeInUs',
-    'audioFadeOutUs',
+    'audioFadeInTicks',
+    'audioFadeOutTicks',
     'audioFadeInCurve',
     'audioFadeOutCurve',
     'audioFadesActive',
@@ -328,8 +328,8 @@ function getAvailableSubProperties(input: {
         if (sub.id === 'audio:balance') return 'audioBalance' in groupValue;
         if (sub.id === 'audio:fades') {
           return [
-            'audioFadeInUs',
-            'audioFadeOutUs',
+            'audioFadeInTicks',
+            'audioFadeOutTicks',
             'audioFadeInCurve',
             'audioFadeOutCurve',
             'audioFadesActive',
@@ -545,8 +545,8 @@ export function buildClipParametersPatch(input: {
         }
         if (selected.has('audio:fades')) {
           const fadeKeys = [
-            'audioFadeInUs',
-            'audioFadeOutUs',
+            'audioFadeInTicks',
+            'audioFadeOutTicks',
             'audioFadeInCurve',
             'audioFadeOutCurve',
             'audioFadesActive',

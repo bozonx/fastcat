@@ -3,7 +3,7 @@ import type { TimelineDocument } from '~/timeline/types';
 import type { TimelineCommand } from '~/timeline/commands';
 import { createTimelineCommandService } from '~/timeline/application/timelineCommandService';
 import { parseTimelineFromOtio } from '~/timeline/otio-serializer';
-import { selectTimelineDurationUs } from '~/timeline/selectors';
+import { selectTimelineDurationTicks } from '~/timeline/selectors';
 import type { ProxyThumbnailService } from '~/media-cache/application/proxyThumbnailService';
 import type { TimelineFormatInput } from '~/timeline/format';
 import type { TimelineApplyWithHistoryOptions } from '~/timeline/apply-options';
@@ -45,7 +45,7 @@ export interface TimelineCommandsModule {
     fromTrackId: string;
     toTrackId: string;
     itemId: string;
-    startUs: number;
+    startTicks: number;
   }) => Promise<void>;
   extractAudioToTrack: (input: { videoTrackId: string; videoItemId: string }) => Promise<string[]>;
   addClipToTimelineFromPath: (
@@ -53,7 +53,7 @@ export interface TimelineCommandsModule {
       trackId: string;
       name: string;
       path: string;
-      startUs?: number;
+      startTicks?: number;
       pseudo?: boolean;
     },
     options?: {
@@ -69,7 +69,7 @@ export interface TimelineCommandsModule {
       trackId: string;
       name: string;
       path: string;
-      startUs?: number;
+      startTicks?: number;
       pseudo?: boolean;
     },
     options?: {
@@ -139,23 +139,23 @@ export function createTimelineCommandsModule(params: TimelineCommandsDeps): Time
       hasProxy,
       ensureProxy,
     } satisfies Pick<ProxyThumbnailService, 'hasProxy' | 'ensureProxy'>,
-    get defaultImageDurationUs() {
+    get defaultImageDurationTicks() {
       return (getUserSettings() as import('~/utils/settings/defaults').FastCatUserSettings).timeline
-        .defaultStaticClipDurationUs;
+        .defaultStaticClipDurationTicks;
     },
-    get defaultImageSourceDurationUs() {
+    get defaultImageSourceDurationTicks() {
       return (getUserSettings() as import('~/utils/settings/defaults').FastCatUserSettings).timeline
-        .defaultStaticClipDurationUs;
+        .defaultStaticClipDurationTicks;
     },
     parseTimelineFromOtio,
-    selectTimelineDurationUs,
+    selectTimelineDurationTicks,
   });
 
   async function moveItemToTrack(input: {
     fromTrackId: string;
     toTrackId: string;
     itemId: string;
-    startUs: number;
+    startTicks: number;
   }) {
     await commandService.moveItemToTrack(input);
   }
@@ -172,7 +172,7 @@ export function createTimelineCommandsModule(params: TimelineCommandsDeps): Time
       trackId: string;
       name: string;
       path: string;
-      startUs?: number;
+      startTicks?: number;
       pseudo?: boolean;
     },
     options?: {
@@ -216,7 +216,7 @@ export function createTimelineCommandsModule(params: TimelineCommandsDeps): Time
       trackId: string;
       name: string;
       path: string;
-      startUs?: number;
+      startTicks?: number;
       pseudo?: boolean;
     },
     options?: {

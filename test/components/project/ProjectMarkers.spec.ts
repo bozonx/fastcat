@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { nextTick, reactive } from 'vue';
 import { mountWithNuxt } from '../../utils/mount';
-import { timelineUs } from '../../unit/utils/timeline-time';
+import { timelineTicks } from '../../unit/utils/timeline-time';
 import ProjectMarkers from '~/components/project/ProjectMarkers.vue';
 import MarkerExportModal from '~/components/project/MarkerExportModal.vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
@@ -9,7 +9,7 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 const mockTimelineStore = reactive({
   markers: [] as any[],
   timelineFormat: { fps: 30 },
-  setCurrentTimeUs: vi.fn(),
+  setCurrentTimeTicks: vi.fn(),
   requestScrollToPlayhead: vi.fn(),
 });
 
@@ -58,8 +58,8 @@ describe('ProjectMarkers.vue', () => {
 
   it('renders markers sorted by time', async () => {
     mockTimelineStore.markers = [
-      { id: '2', timeUs: timelineUs(2_000_000), text: 'Second' },
-      { id: '1', timeUs: timelineUs(1_000_000), text: 'First' },
+      { id: '2', timeTicks: timelineTicks(2_000_000), text: 'Second' },
+      { id: '1', timeTicks: timelineTicks(1_000_000), text: 'First' },
     ];
 
     const component = await mountWithNuxt(ProjectMarkers);
@@ -70,7 +70,7 @@ describe('ProjectMarkers.vue', () => {
   });
 
   it('sets playhead and requests scroll to playhead on marker click', async () => {
-    mockTimelineStore.markers = [{ id: '1', timeUs: timelineUs(1_000_000), text: 'First' }];
+    mockTimelineStore.markers = [{ id: '1', timeTicks: timelineTicks(1_000_000), text: 'First' }];
 
     const component = await mountWithNuxt(ProjectMarkers);
     const row = component.find('tbody tr');
@@ -78,15 +78,15 @@ describe('ProjectMarkers.vue', () => {
 
     await row.trigger('click');
 
-    expect(mockTimelineStore.setCurrentTimeUs).toHaveBeenCalledWith(timelineUs(1_000_000));
+    expect(mockTimelineStore.setCurrentTimeTicks).toHaveBeenCalledWith(timelineTicks(1_000_000));
     expect(mockTimelineStore.requestScrollToPlayhead).toHaveBeenCalled();
     expect(mockSelectionStore.selectTimelineMarker).toHaveBeenCalledWith('1');
   });
 
   it('adds a marker to multi-selection with shift click', async () => {
     mockTimelineStore.markers = [
-      { id: '1', timeUs: timelineUs(1_000_000), text: 'First' },
-      { id: '2', timeUs: timelineUs(2_000_000), text: 'Second' },
+      { id: '1', timeTicks: timelineTicks(1_000_000), text: 'First' },
+      { id: '2', timeTicks: timelineTicks(2_000_000), text: 'Second' },
     ];
     mockSelectionStore.selectedEntity = {
       source: 'timeline',
@@ -105,8 +105,8 @@ describe('ProjectMarkers.vue', () => {
 
   it('removes a marker from multi-selection with shift click', async () => {
     mockTimelineStore.markers = [
-      { id: '1', timeUs: timelineUs(1_000_000), text: 'First' },
-      { id: '2', timeUs: timelineUs(2_000_000), text: 'Second' },
+      { id: '1', timeTicks: timelineTicks(1_000_000), text: 'First' },
+      { id: '2', timeTicks: timelineTicks(2_000_000), text: 'Second' },
     ];
     mockSelectionStore.selectedEntity = {
       source: 'timeline',
@@ -124,8 +124,8 @@ describe('ProjectMarkers.vue', () => {
 
   it('filters markers by selected colors', async () => {
     mockTimelineStore.markers = [
-      { id: '1', timeUs: timelineUs(1_000_000), text: 'Red', color: '#d0021b' },
-      { id: '2', timeUs: timelineUs(2_000_000), text: 'Blue', color: '#4a90e2' },
+      { id: '1', timeTicks: timelineTicks(1_000_000), text: 'Red', color: '#d0021b' },
+      { id: '2', timeTicks: timelineTicks(2_000_000), text: 'Blue', color: '#4a90e2' },
     ];
 
     const component = await mountWithNuxt(ProjectMarkers);
@@ -145,8 +145,8 @@ describe('ProjectMarkers.vue', () => {
 
   it('toggles all colors with select all/reset button', async () => {
     mockTimelineStore.markers = [
-      { id: '1', timeUs: timelineUs(1_000_000), text: 'Red', color: '#d0021b' },
-      { id: '2', timeUs: timelineUs(2_000_000), text: 'Blue', color: '#4a90e2' },
+      { id: '1', timeTicks: timelineTicks(1_000_000), text: 'Red', color: '#d0021b' },
+      { id: '2', timeTicks: timelineTicks(2_000_000), text: 'Blue', color: '#4a90e2' },
     ];
 
     const component = await mountWithNuxt(ProjectMarkers);
@@ -166,8 +166,8 @@ describe('ProjectMarkers.vue', () => {
 
   it('treats markers without color as default color', async () => {
     mockTimelineStore.markers = [
-      { id: '1', timeUs: timelineUs(1_000_000), text: 'Default' },
-      { id: '2', timeUs: timelineUs(2_000_000), text: 'Blue', color: '#4a90e2' },
+      { id: '1', timeTicks: timelineTicks(1_000_000), text: 'Default' },
+      { id: '2', timeTicks: timelineTicks(2_000_000), text: 'Blue', color: '#4a90e2' },
     ];
 
     const component = await mountWithNuxt(ProjectMarkers);
@@ -187,22 +187,22 @@ describe('ProjectMarkers.vue', () => {
 
   it('keeps selected colors in sync when marker colors appear and disappear', async () => {
     mockTimelineStore.markers = [
-      { id: '1', timeUs: timelineUs(1_000_000), text: 'Red', color: '#d0021b' },
+      { id: '1', timeTicks: timelineTicks(1_000_000), text: 'Red', color: '#d0021b' },
     ];
 
     const component = await mountWithNuxt(ProjectMarkers);
     expect(component.findAll('tbody tr').length).toBe(1);
 
     mockTimelineStore.markers = [
-      { id: '1', timeUs: timelineUs(1_000_000), text: 'Red', color: '#d0021b' },
-      { id: '2', timeUs: timelineUs(2_000_000), text: 'Blue', color: '#4a90e2' },
+      { id: '1', timeTicks: timelineTicks(1_000_000), text: 'Red', color: '#d0021b' },
+      { id: '2', timeTicks: timelineTicks(2_000_000), text: 'Blue', color: '#4a90e2' },
     ];
     await nextTick();
 
     expect(component.findAll('tbody tr').length).toBe(2);
 
     mockTimelineStore.markers = [
-      { id: '2', timeUs: timelineUs(2_000_000), text: 'Blue', color: '#4a90e2' },
+      { id: '2', timeTicks: timelineTicks(2_000_000), text: 'Blue', color: '#4a90e2' },
     ];
     await nextTick();
 
@@ -212,7 +212,7 @@ describe('ProjectMarkers.vue', () => {
   });
 
   it('opens export modal on export button click', async () => {
-    mockTimelineStore.markers = [{ id: '1', timeUs: timelineUs(1_000_000), text: 'Marker 1' }];
+    mockTimelineStore.markers = [{ id: '1', timeTicks: timelineTicks(1_000_000), text: 'Marker 1' }];
 
     const component = await mountWithNuxt(ProjectMarkers);
     const exportButton = component
@@ -227,7 +227,7 @@ describe('ProjectMarkers.vue', () => {
 
   it('hides export button when premium features are disabled', async () => {
     workspaceStore.premiumFeaturesEnabled = false;
-    mockTimelineStore.markers = [{ id: '1', timeUs: timelineUs(1_000_000), text: 'Marker 1' }];
+    mockTimelineStore.markers = [{ id: '1', timeTicks: timelineTicks(1_000_000), text: 'Marker 1' }];
 
     const component = await mountWithNuxt(ProjectMarkers);
 
@@ -239,7 +239,7 @@ describe('ProjectMarkers.vue', () => {
 
   it('passes vertical orientation to MarkerColorFilter', async () => {
     mockTimelineStore.markers = [
-      { id: '1', timeUs: timelineUs(1_000_000), text: 'Red', color: '#d0021b' },
+      { id: '1', timeTicks: timelineTicks(1_000_000), text: 'Red', color: '#d0021b' },
     ];
 
     const component = await mountWithNuxt(ProjectMarkers, {
@@ -258,11 +258,11 @@ describe('ProjectMarkers.vue', () => {
     mockTimelineStore.markers = [
       {
         id: '1',
-        timeUs: timelineUs(1_000_000),
-        durationUs: timelineUs(5_000_000),
+        timeTicks: timelineTicks(1_000_000),
+        durationTicks: timelineTicks(5_000_000),
         text: 'Zone Marker',
       },
-      { id: '2', timeUs: timelineUs(10_000_000), text: 'Point Marker' },
+      { id: '2', timeTicks: timelineTicks(10_000_000), text: 'Point Marker' },
     ];
 
     const component = await mountWithNuxt(ProjectMarkers);
@@ -280,8 +280,8 @@ describe('ProjectMarkers.vue', () => {
 
   it('passes selectedColors to MarkerExportModal', async () => {
     mockTimelineStore.markers = [
-      { id: '1', timeUs: timelineUs(1_000_000), text: 'Red', color: '#d0021b' },
-      { id: '2', timeUs: timelineUs(2_000_000), text: 'Blue', color: '#4a90e2' },
+      { id: '1', timeTicks: timelineTicks(1_000_000), text: 'Red', color: '#d0021b' },
+      { id: '2', timeTicks: timelineTicks(2_000_000), text: 'Blue', color: '#4a90e2' },
     ];
 
     const component = await mountWithNuxt(ProjectMarkers);

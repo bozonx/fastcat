@@ -9,12 +9,12 @@ function makeClip(overrides: Partial<CompositorClip> = {}): CompositorClip {
     clipKind: 'video',
     sourceKind: 'videoFrame',
     layer: 0,
-    startUs: 0,
-    endUs: 5_000_000,
-    durationUs: 5_000_000,
-    sourceStartUs: 0,
-    sourceRangeDurationUs: 5_000_000,
-    sourceDurationUs: 10_000_000,
+    startTicks: 0,
+    endTicks: 5_000_000,
+    durationTicks: 5_000_000,
+    sourceStartTicks: 0,
+    sourceRangeDurationTicks: 5_000_000,
+    sourceDurationTicks: 10_000_000,
     sprite: null,
     imageSource: null as any,
     lastVideoFrame: null,
@@ -29,9 +29,9 @@ function makePayload(overrides: Record<string, unknown> = {}): any {
   return {
     kind: 'clip',
     id: 'c1',
-    timelineRange: { startUs: 1_000_000, durationUs: 3_000_000 },
-    sourceRange: { startUs: 500_000, durationUs: 3_000_000 },
-    sourceDurationUs: 8_000_000,
+    timelineRange: { startTicks: 1_000_000, durationTicks: 3_000_000 },
+    sourceRange: { startTicks: 500_000, durationTicks: 3_000_000 },
+    sourceDurationTicks: 8_000_000,
     layer: 1,
     trackId: 'v2',
     ...overrides,
@@ -54,16 +54,16 @@ describe('TimelineClipLayoutUpdater', () => {
     updater.update({
       clip,
       next: makePayload({
-        timelineRange: { startUs: -100, durationUs: 3.7 },
+        timelineRange: { startTicks: -100, durationTicks: 3.7 },
       }),
       toVideoEffects,
       applyClipLayoutForCurrentSource: applyLayout,
       clearClipTransitionFilter: clearTransition,
     });
 
-    expect(clip.startUs).toBe(0);
-    expect(clip.durationUs).toBe(4);
-    expect(clip.endUs).toBe(4);
+    expect(clip.startTicks).toBe(0);
+    expect(clip.durationTicks).toBe(4);
+    expect(clip.endTicks).toBe(4);
   });
 
   it('rounds and clamps source range values', () => {
@@ -73,15 +73,15 @@ describe('TimelineClipLayoutUpdater', () => {
     updater.update({
       clip,
       next: makePayload({
-        sourceRange: { startUs: -50, durationUs: 2.9 },
+        sourceRange: { startTicks: -50, durationTicks: 2.9 },
       }),
       toVideoEffects,
       applyClipLayoutForCurrentSource: applyLayout,
       clearClipTransitionFilter: clearTransition,
     });
 
-    expect(clip.sourceStartUs).toBe(0);
-    expect(clip.sourceRangeDurationUs).toBe(3);
+    expect(clip.sourceStartTicks).toBe(0);
+    expect(clip.sourceRangeDurationTicks).toBe(3);
   });
 
   it('clamps speed to [-10, 10] and sets undefined for invalid values', () => {
@@ -125,41 +125,41 @@ describe('TimelineClipLayoutUpdater', () => {
     expect(clip.speed).toBeUndefined();
   });
 
-  it('clamps freezeFrameSourceUs to non-negative', () => {
+  it('clamps freezeFrameSourceTicks to non-negative', () => {
     const clip = makeClip();
     const { updater, applyLayout, clearTransition, toVideoEffects } = makeUpdater();
 
     updater.update({
       clip,
-      next: makePayload({ freezeFrameSourceUs: -500 }),
+      next: makePayload({ freezeFrameSourceTicks: -500 }),
       toVideoEffects,
       applyClipLayoutForCurrentSource: applyLayout,
       clearClipTransitionFilter: clearTransition,
     });
-    expect(clip.freezeFrameSourceUs).toBe(0);
+    expect(clip.freezeFrameSourceTicks).toBe(0);
 
     updater.update({
       clip,
-      next: makePayload({ freezeFrameSourceUs: 2_500_000 }),
+      next: makePayload({ freezeFrameSourceTicks: 2_500_000 }),
       toVideoEffects,
       applyClipLayoutForCurrentSource: applyLayout,
       clearClipTransitionFilter: clearTransition,
     });
-    expect(clip.freezeFrameSourceUs).toBe(2_500_000);
+    expect(clip.freezeFrameSourceTicks).toBe(2_500_000);
   });
 
-  it('sets freezeFrameSourceUs to undefined for non-finite values', () => {
+  it('sets freezeFrameSourceTicks to undefined for non-finite values', () => {
     const clip = makeClip();
     const { updater, applyLayout, clearTransition, toVideoEffects } = makeUpdater();
 
     updater.update({
       clip,
-      next: makePayload({ freezeFrameSourceUs: NaN }),
+      next: makePayload({ freezeFrameSourceTicks: NaN }),
       toVideoEffects,
       applyClipLayoutForCurrentSource: applyLayout,
       clearClipTransitionFilter: clearTransition,
     });
-    expect(clip.freezeFrameSourceUs).toBeUndefined();
+    expect(clip.freezeFrameSourceTicks).toBeUndefined();
   });
 
   it('uses fallback trackId when trackId is empty or missing', () => {
@@ -189,11 +189,11 @@ describe('TimelineClipLayoutUpdater', () => {
 
   it('falls back to clip values when payload fields are missing', () => {
     const clip = makeClip({
-      startUs: 2_000_000,
-      durationUs: 4_000_000,
-      sourceStartUs: 1_000_000,
-      sourceRangeDurationUs: 3_000_000,
-      sourceDurationUs: 6_000_000,
+      startTicks: 2_000_000,
+      durationTicks: 4_000_000,
+      sourceStartTicks: 1_000_000,
+      sourceRangeDurationTicks: 3_000_000,
+      sourceDurationTicks: 6_000_000,
       layer: 3,
     });
     const { updater, applyLayout, clearTransition, toVideoEffects } = makeUpdater();
@@ -206,44 +206,44 @@ describe('TimelineClipLayoutUpdater', () => {
       clearClipTransitionFilter: clearTransition,
     });
 
-    expect(clip.startUs).toBe(2_000_000);
-    expect(clip.durationUs).toBe(4_000_000);
-    expect(clip.sourceStartUs).toBe(1_000_000);
-    expect(clip.sourceRangeDurationUs).toBe(3_000_000);
-    expect(clip.sourceDurationUs).toBe(6_000_000);
+    expect(clip.startTicks).toBe(2_000_000);
+    expect(clip.durationTicks).toBe(4_000_000);
+    expect(clip.sourceStartTicks).toBe(1_000_000);
+    expect(clip.sourceRangeDurationTicks).toBe(3_000_000);
+    expect(clip.sourceDurationTicks).toBe(6_000_000);
     expect(clip.layer).toBe(3);
   });
 
-  it('uses clip sourceDurationUs when payload value is not positive', () => {
-    const clip = makeClip({ sourceDurationUs: 7_000_000 });
+  it('uses clip sourceDurationTicks when payload value is not positive', () => {
+    const clip = makeClip({ sourceDurationTicks: 7_000_000 });
     const { updater, applyLayout, clearTransition, toVideoEffects } = makeUpdater();
 
     updater.update({
       clip,
-      next: makePayload({ sourceDurationUs: 0 }),
+      next: makePayload({ sourceDurationTicks: 0 }),
       toVideoEffects,
       applyClipLayoutForCurrentSource: applyLayout,
       clearClipTransitionFilter: clearTransition,
     });
-    expect(clip.sourceDurationUs).toBe(7_000_000);
+    expect(clip.sourceDurationTicks).toBe(7_000_000);
 
     updater.update({
       clip,
-      next: makePayload({ sourceDurationUs: -100 }),
+      next: makePayload({ sourceDurationTicks: -100 }),
       toVideoEffects,
       applyClipLayoutForCurrentSource: applyLayout,
       clearClipTransitionFilter: clearTransition,
     });
-    expect(clip.sourceDurationUs).toBe(7_000_000);
+    expect(clip.sourceDurationTicks).toBe(7_000_000);
   });
 
   it('calls applyClipLayoutForCurrentSource and clearClipTransitionFilter on transition type change', () => {
-    const clip = makeClip({ transitionIn: { type: 'fade', durationUs: 500_000 } as any });
+    const clip = makeClip({ transitionIn: { type: 'fade', durationTicks: 500_000 } as any });
     const { updater, applyLayout, clearTransition, toVideoEffects } = makeUpdater();
 
     updater.update({
       clip,
-      next: makePayload({ transitionIn: { type: 'wipe', durationUs: 500_000 } }),
+      next: makePayload({ transitionIn: { type: 'wipe', durationTicks: 500_000 } }),
       toVideoEffects,
       applyClipLayoutForCurrentSource: applyLayout,
       clearClipTransitionFilter: clearTransition,
@@ -254,12 +254,12 @@ describe('TimelineClipLayoutUpdater', () => {
   });
 
   it('does not call clearClipTransitionFilter when transition type is unchanged', () => {
-    const clip = makeClip({ transitionIn: { type: 'fade', durationUs: 500_000 } as any });
+    const clip = makeClip({ transitionIn: { type: 'fade', durationTicks: 500_000 } as any });
     const { updater, applyLayout, clearTransition, toVideoEffects } = makeUpdater();
 
     updater.update({
       clip,
-      next: makePayload({ transitionIn: { type: 'fade', durationUs: 1_000_000 } }),
+      next: makePayload({ transitionIn: { type: 'fade', durationTicks: 1_000_000 } }),
       toVideoEffects,
       applyClipLayoutForCurrentSource: applyLayout,
       clearClipTransitionFilter: clearTransition,

@@ -11,7 +11,7 @@ const setCurrentTimeUsMock = vi.fn((us: number) => {
 const timelineStoreMock = {
   currentTime: 0,
   timelineZoom: 50,
-  setCurrentTimeUs: setCurrentTimeUsMock,
+  setCurrentTimeTicks: setCurrentTimeUsMock,
 };
 
 const workspaceStoreMock = {

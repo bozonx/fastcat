@@ -1,13 +1,13 @@
 /** @vitest-environment node */
 import { describe, it, expect, vi } from 'vitest';
 import {
-  getBoundaryTimesUs,
+  getBoundaryTimesTicks,
   calculatePrevClipBoundary,
   calculateNextClipBoundary,
 } from '~/timeline/domain/navigation';
 
 vi.mock('~/timeline/selectors', () => ({
-  selectTimelineDurationUs: vi.fn(() => 5_000_000),
+  selectTimelineDurationTicks: vi.fn(() => 5_000_000),
 }));
 
 const mockDoc: any = {
@@ -16,32 +16,32 @@ const mockDoc: any = {
     {
       id: 'track-1',
       items: [
-        { id: 'clip-1', kind: 'clip', timelineRange: { startUs: 0, durationUs: 1_000_000 } },
+        { id: 'clip-1', kind: 'clip', timelineRange: { startTicks: 0, durationTicks: 1_000_000 } },
         {
           id: 'clip-2',
           kind: 'clip',
-          timelineRange: { startUs: 2_000_000, durationUs: 1_000_000 },
+          timelineRange: { startTicks: 2_000_000, durationTicks: 1_000_000 },
         },
       ],
     },
     {
       id: 'track-2',
       items: [
-        { id: 'clip-3', kind: 'clip', timelineRange: { startUs: 500_000, durationUs: 500_000 } },
+        { id: 'clip-3', kind: 'clip', timelineRange: { startTicks: 500_000, durationTicks: 500_000 } },
       ],
     },
   ],
 };
 
-describe('getBoundaryTimesUs', () => {
+describe('getBoundaryTimesTicks', () => {
   it('collects sorted unique boundaries across all tracks', () => {
-    expect(getBoundaryTimesUs(mockDoc, null)).toEqual([
+    expect(getBoundaryTimesTicks(mockDoc, null)).toEqual([
       0, 500_000, 1_000_000, 2_000_000, 3_000_000,
     ]);
   });
 
   it('filters by trackId', () => {
-    expect(getBoundaryTimesUs(mockDoc, (id) => id === 'track-1')).toEqual([
+    expect(getBoundaryTimesTicks(mockDoc, (id) => id === 'track-1')).toEqual([
       0, 1_000_000, 2_000_000, 3_000_000,
     ]);
   });

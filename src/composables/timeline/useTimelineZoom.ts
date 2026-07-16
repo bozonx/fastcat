@@ -3,7 +3,7 @@ import { nextTick, onBeforeUnmount, watch, type Ref } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import {
   computeAnchoredScrollLeft,
-  pxToTimeUs,
+  pxToTimeTicks,
   pxPerSecondToZoom,
 } from '~/utils/timeline/geometry';
 import { DEFAULT_TIMELINE_ZOOM_POSITION } from '~/utils/zoom';
@@ -52,7 +52,7 @@ export function useTimelineZoom({ scrollEl }: UseTimelineZoomOptions) {
 
   let pendingTimelineZoomDelta = 0;
   let timelineZoomFrameId = 0;
-  let pendingAnchor: { anchorTimeUs: number; anchorViewportX: number } | null = null;
+  let pendingAnchor: { anchorTimeTicks: number; anchorViewportX: number } | null = null;
   let isInternalZoomUpdate = false;
   let scrollApplyTicket = 0;
 
@@ -102,7 +102,7 @@ export function useTimelineZoom({ scrollEl }: UseTimelineZoomOptions) {
       const t0 = performance.now();
       const rect = scrollEl.value.getBoundingClientRect();
       const anchorViewportX = rect.width / 2;
-      const anchorTimeUs = pxToTimeUs(scrollEl.value.scrollLeft + anchorViewportX, prevZoom);
+      const anchorTimeTicks = pxToTimeTicks(scrollEl.value.scrollLeft + anchorViewportX, prevZoom);
 
       const nextScrollLeft = computeAnchoredScrollLeft({
         prevZoom,
@@ -110,7 +110,7 @@ export function useTimelineZoom({ scrollEl }: UseTimelineZoomOptions) {
         prevScrollLeft: scrollEl.value.scrollLeft,
         viewportWidth: rect.width,
         anchor: {
-          anchorTimeUs,
+          anchorTimeTicks,
           anchorViewportX,
         },
       });
@@ -153,11 +153,11 @@ export function useTimelineZoom({ scrollEl }: UseTimelineZoomOptions) {
     const rect = scrollEl.value.getBoundingClientRect();
 
     // Default to viewport center if no other anchor is provided
-    let anchorTimeUs = pxToTimeUs(scrollEl.value.scrollLeft + rect.width / 2, prevZoom);
+    let anchorTimeTicks = pxToTimeTicks(scrollEl.value.scrollLeft + rect.width / 2, prevZoom);
     let anchorViewportX = rect.width / 2;
 
     if (pendingAnchor) {
-      anchorTimeUs = pendingAnchor.anchorTimeUs;
+      anchorTimeTicks = pendingAnchor.anchorTimeTicks;
       anchorViewportX = pendingAnchor.anchorViewportX;
     }
 
@@ -167,7 +167,7 @@ export function useTimelineZoom({ scrollEl }: UseTimelineZoomOptions) {
       prevScrollLeft: scrollEl.value.scrollLeft,
       viewportWidth: rect.width,
       anchor: {
-        anchorTimeUs,
+        anchorTimeTicks,
         anchorViewportX,
       },
     });
@@ -187,7 +187,7 @@ export function useTimelineZoom({ scrollEl }: UseTimelineZoomOptions) {
 
   function handleZoomWheel(
     delta: number,
-    anchor?: { anchorTimeUs: number; anchorViewportX: number },
+    anchor?: { anchorTimeTicks: number; anchorViewportX: number },
   ) {
     pendingTimelineZoomDelta += delta;
     if (anchor) {
@@ -201,8 +201,8 @@ export function useTimelineZoom({ scrollEl }: UseTimelineZoomOptions) {
   function fitTimelineZoom() {
     if (!scrollEl.value) return;
 
-    const durationUs = timelineStore.duration;
-    if (durationUs <= 0) {
+    const durationTicks = timelineStore.duration;
+    if (durationTicks <= 0) {
       timelineStore.resetTimelineZoom();
       commitAnchoredScrollLeft(0);
       return;
@@ -213,7 +213,7 @@ export function useTimelineZoom({ scrollEl }: UseTimelineZoomOptions) {
     if (viewportWidth <= 0) return;
 
     // Add 5% padding on each side (total 10%)
-    const desiredPPS = (viewportWidth * 0.9) / (durationUs / TICKS_PER_SECOND);
+    const desiredPPS = (viewportWidth * 0.9) / (durationTicks / TICKS_PER_SECOND);
 
     const nextZoom = pxPerSecondToZoom(desiredPPS);
 

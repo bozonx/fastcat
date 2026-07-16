@@ -7,8 +7,8 @@ import {
   timeUsToViewportPx,
   absolutePxToViewportPx,
   timelineRangeToRoundedPx,
-  pxToTimeUs,
-  pxToDeltaUs,
+  pxToTimeTicks,
+  pxToDeltaTicks,
   computeAnchoredScrollLeft,
   computeTimelineCenteredScrollLeftForPlayhead,
   computeTimelinePlaybackAutoScrollLeft,
@@ -16,14 +16,14 @@ import {
   sanitizeFps,
   quantizeDeltaUsToFrames,
   quantizeStartUsToFrames,
-  subframePhaseUs,
-  sanitizeSnapTargetsUs,
-  pickBestSnapCandidateUs,
-  computeSnappedStartUs,
-  calculatePointerTimeUs,
+  subframePhaseTicks,
+  sanitizeSnapTargetsTicks,
+  pickBestSnapCandidateTicks,
+  computeSnappedStartTicks,
+  calculatePointerTimeTicks,
 } from '~/utils/timeline/geometry';
 import { TICKS_PER_SECOND } from '~/utils/time';
-import { timelineUs } from '../timeline-time';
+import { timelineTicks } from '../timeline-time';
 
 describe('zoomToPxPerSecond', () => {
   it('returns base value at zoom 50', () => {
@@ -47,17 +47,17 @@ describe('pxPerSecondToZoom', () => {
   });
 });
 
-describe('timeUsToPx / pxToTimeUs', () => {
+describe('timeUsToPx / pxToTimeTicks', () => {
   it('converts time to pixels and back', () => {
-    const px = timeUsToPx(timelineUs(1_000_000), 50);
+    const px = timeUsToPx(timelineTicks(1_000_000), 50);
     expect(px).toBe(10);
-    expect(pxToTimeUs(px, 50)).toBe(timelineUs(1_000_000));
+    expect(pxToTimeTicks(px, 50)).toBe(timelineTicks(1_000_000));
   });
 });
 
 describe('timelineRangeToRoundedPx', () => {
   it('derives width from rounded absolute edges', () => {
-    const range = { startUs: timelineUs(1_000_000), durationUs: timelineUs(1_000_000) };
+    const range = { startTicks: timelineTicks(1_000_000), durationTicks: timelineTicks(1_000_000) };
     const zoom = pxPerSecondToZoom(10.4);
 
     expect(timelineRangeToRoundedPx(range, zoom, 1)).toEqual({
@@ -70,12 +70,12 @@ describe('timelineRangeToRoundedPx', () => {
   it('keeps adjacent ranges sharing the same rounded boundary', () => {
     const zoom = pxPerSecondToZoom(10.4);
     const left = timelineRangeToRoundedPx(
-      { startUs: 0, durationUs: timelineUs(1_000_000) },
+      { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
       zoom,
       1,
     );
     const right = timelineRangeToRoundedPx(
-      { startUs: timelineUs(1_000_000), durationUs: timelineUs(1_000_000) },
+      { startTicks: timelineTicks(1_000_000), durationTicks: timelineTicks(1_000_000) },
       zoom,
       1,
     );
@@ -87,8 +87,8 @@ describe('timelineRangeToRoundedPx', () => {
 describe('absolutePxToViewportPx / timeUsToViewportPx', () => {
   it('rounds in absolute space, then subtracts the raw scroll offset', () => {
     expect(absolutePxToViewportPx(10.4, 3.2)).toBe(10 - 3.2);
-    expect(timeUsToViewportPx(timelineUs(1_000_000), 50, 3.2)).toBe(
-      Math.round(timeUsToPx(timelineUs(1_000_000), 50)) - 3.2,
+    expect(timeUsToViewportPx(timelineTicks(1_000_000), 50, 3.2)).toBe(
+      Math.round(timeUsToPx(timelineTicks(1_000_000), 50)) - 3.2,
     );
   });
 
@@ -97,21 +97,21 @@ describe('absolutePxToViewportPx / timeUsToViewportPx', () => {
     // container transform (-scrollLeft). The playhead must resolve to the exact
     // same screen pixel so they never drift apart as scrollLeft varies.
     const zoom = 73;
-    const timeUs = timelineUs(12_345_678);
+    const timeTicks = timelineTicks(12_345_678);
 
-    const clipLeftPx = timelineRangeToRoundedPx({ startUs: timeUs, durationUs: 1 }, zoom, 2).leftPx;
+    const clipLeftPx = timelineRangeToRoundedPx({ startTicks: timeTicks, durationTicks: 1 }, zoom, 2).leftPx;
 
     for (const scrollLeft of [0, 1, 2.5, 100.4, 257.35, 999.9]) {
-      const playheadViewportX = timeUsToViewportPx(timeUs, zoom, scrollLeft);
+      const playheadViewportX = timeUsToViewportPx(timeTicks, zoom, scrollLeft);
       const clipViewportX = clipLeftPx - scrollLeft;
       expect(playheadViewportX).toBe(clipViewportX);
     }
   });
 });
 
-describe('pxToDeltaUs', () => {
+describe('pxToDeltaTicks', () => {
   it('converts pixel delta to microseconds', () => {
-    expect(pxToDeltaUs(10, 50)).toBe(timelineUs(1_000_000));
+    expect(pxToDeltaTicks(10, 50)).toBe(timelineTicks(1_000_000));
   });
 });
 
@@ -122,7 +122,7 @@ describe('computeAnchoredScrollLeft', () => {
       nextZoom: 50,
       prevScrollLeft: 0,
       viewportWidth: 1000,
-      anchor: { anchorTimeUs: timelineUs(1_000_000), anchorViewportX: 500 },
+      anchor: { anchorTimeTicks: timelineTicks(1_000_000), anchorViewportX: 500 },
     });
     expect(result).toBe(Math.max(0, 10 - 500));
   });
@@ -133,10 +133,10 @@ describe('computeAnchoredScrollLeft', () => {
       nextZoom: 100,
       prevScrollLeft: 0,
       viewportWidth: 1000,
-      anchor: { anchorTimeUs: timelineUs(500_000), anchorViewportX: 500 },
+      anchor: { anchorTimeTicks: timelineTicks(500_000), anchorViewportX: 500 },
     });
 
-    const expectedAnchorPx = timeUsToPx(timelineUs(500_000), 100);
+    const expectedAnchorPx = timeUsToPx(timelineTicks(500_000), 100);
     expect(expectedAnchorPx - result).toBeCloseTo(500, 6);
   });
 
@@ -146,7 +146,7 @@ describe('computeAnchoredScrollLeft', () => {
       nextZoom: 60,
       prevScrollLeft: 0,
       viewportWidth: 1000,
-      anchor: { anchorTimeUs: timelineUs(500_000), anchorViewportX: 500 },
+      anchor: { anchorTimeTicks: timelineTicks(500_000), anchorViewportX: 500 },
     });
 
     expect(result).toBe(0);
@@ -255,151 +255,151 @@ describe('quantizeStartUsToFrames', () => {
   });
 });
 
-describe('sanitizeSnapTargetsUs', () => {
+describe('sanitizeSnapTargetsTicks', () => {
   it('sorts and deduplicates targets', () => {
-    expect(sanitizeSnapTargetsUs([3, 1, 2, 1, NaN])).toEqual([1, 2, 3]);
+    expect(sanitizeSnapTargetsTicks([3, 1, 2, 1, NaN])).toEqual([1, 2, 3]);
   });
 
   it('filters out negative and non-finite values', () => {
-    expect(sanitizeSnapTargetsUs([-5, NaN, Infinity])).toEqual([0]);
-    expect(sanitizeSnapTargetsUs([NaN, Infinity])).toEqual([]);
+    expect(sanitizeSnapTargetsTicks([-5, NaN, Infinity])).toEqual([0]);
+    expect(sanitizeSnapTargetsTicks([NaN, Infinity])).toEqual([]);
   });
 });
 
-describe('pickBestSnapCandidateUs', () => {
+describe('pickBestSnapCandidateTicks', () => {
   it('picks closest target within threshold', () => {
-    expect(pickBestSnapCandidateUs({ rawUs: 105, thresholdUs: 10, targetsUs: [100, 120] })).toEqual(
-      { snappedUs: 100, distUs: 5 },
+    expect(pickBestSnapCandidateTicks({ rawTicks: 105, thresholdTicks: 10, targetsTicks: [100, 120] })).toEqual(
+      { snappedTicks: 100, distTicks: 5 },
     );
   });
 
   it('returns raw value when no target is within threshold', () => {
-    expect(pickBestSnapCandidateUs({ rawUs: 150, thresholdUs: 10, targetsUs: [100, 200] })).toEqual(
-      { snappedUs: 150, distUs: 10 },
+    expect(pickBestSnapCandidateTicks({ rawTicks: 150, thresholdTicks: 10, targetsTicks: [100, 200] })).toEqual(
+      { snappedTicks: 150, distTicks: 10 },
     );
   });
 });
 
-describe('computeSnappedStartUs', () => {
+describe('computeSnappedStartTicks', () => {
   it('snaps to nearest target when enabled', () => {
-    const result = computeSnappedStartUs({
-      rawStartUs: 105,
-      draggingItemDurationUs: 100,
+    const result = computeSnappedStartTicks({
+      rawStartTicks: 105,
+      draggingItemDurationTicks: 100,
       fps: 30,
       zoom: 50,
       snapThresholdPx: 10,
-      snapTargetsUs: [100, 200],
+      snapTargetsTicks: [100, 200],
       enableFrameSnap: false,
       enableClipSnap: true,
-      frameOffsetUs: 0,
+      frameOffsetTicks: 0,
     });
     expect(result).toBe(100);
   });
 
   it('snaps to frame boundary when enabled', () => {
-    const result = computeSnappedStartUs({
-      rawStartUs: TICKS_PER_SECOND + 1,
-      draggingItemDurationUs: 100,
+    const result = computeSnappedStartTicks({
+      rawStartTicks: TICKS_PER_SECOND + 1,
+      draggingItemDurationTicks: 100,
       fps: 30,
       zoom: 50,
       snapThresholdPx: 0,
-      snapTargetsUs: [],
+      snapTargetsTicks: [],
       enableFrameSnap: true,
       enableClipSnap: false,
-      frameOffsetUs: 0,
+      frameOffsetTicks: 0,
     });
     expect(result).toBe(TICKS_PER_SECOND);
   });
 
   // Regression: a clip whose start sits off the frame grid (e.g. placed flush
   // after a clip with a non-frame-aligned duration) must still resolve to an
-  // absolute-grid position with frameOffsetUs:0 — so the live move preview lands
+  // absolute-grid position with frameOffsetTicks:0 — so the live move preview lands
   // exactly where the move command commits it, with no 1-frame jump on release.
   it('frame-snaps off-grid starts to the absolute grid (preview == commit)', () => {
     const fps = 30;
-    const frameUs = TICKS_PER_SECOND / fps;
+    const frameTicks = TICKS_PER_SECOND / fps;
     // ~half a frame off the grid — the worst case for a phase-preserving snap.
-    const rawStartUs =
-      quantizeStartUsToFrames(2 * TICKS_PER_SECOND, fps) + Math.round(frameUs / 2) + 137;
+    const rawStartTicks =
+      quantizeStartUsToFrames(2 * TICKS_PER_SECOND, fps) + Math.round(frameTicks / 2) + 137;
 
-    const previewStartUs = computeSnappedStartUs({
-      rawStartUs,
-      draggingItemDurationUs: timelineUs(500_000),
+    const previewStartTicks = computeSnappedStartTicks({
+      rawStartTicks,
+      draggingItemDurationTicks: timelineTicks(500_000),
       fps,
       zoom: 50,
       snapThresholdPx: 0,
-      snapTargetsUs: [],
+      snapTargetsTicks: [],
       enableFrameSnap: true,
       enableClipSnap: false,
-      frameOffsetUs: 0,
+      frameOffsetTicks: 0,
     });
 
-    // The commit re-quantizes to the absolute grid; with frameOffsetUs:0 the
+    // The commit re-quantizes to the absolute grid; with frameOffsetTicks:0 the
     // preview is already grid-aligned, so that re-quantization is a no-op.
-    expect(previewStartUs).toBe(quantizeStartUsToFrames(previewStartUs, fps));
+    expect(previewStartTicks).toBe(quantizeStartUsToFrames(previewStartTicks, fps));
   });
 });
 
-describe('subframePhaseUs', () => {
+describe('subframePhaseTicks', () => {
   it('returns 0 for a frame-aligned start', () => {
     const fps = 30;
     const aligned = quantizeStartUsToFrames(2 * TICKS_PER_SECOND, fps);
-    expect(subframePhaseUs(aligned, fps)).toBe(0);
+    expect(subframePhaseTicks(aligned, fps)).toBe(0);
   });
 
   it('preserves a one-tick phase', () => {
     const fps = 30;
     const aligned = quantizeStartUsToFrames(2 * TICKS_PER_SECOND, fps);
-    expect(subframePhaseUs(aligned + 1, fps)).toBe(1);
-    expect(subframePhaseUs(aligned - 1, fps)).toBe(-1);
+    expect(subframePhaseTicks(aligned + 1, fps)).toBe(1);
+    expect(subframePhaseTicks(aligned - 1, fps)).toBe(-1);
   });
 
   it('captures a genuine sub-frame offset', () => {
     const fps = 30;
     const aligned = quantizeStartUsToFrames(2_000_000, fps);
     const phase = 7_000;
-    expect(subframePhaseUs(aligned + phase, fps)).toBe(phase);
+    expect(subframePhaseTicks(aligned + phase, fps)).toBe(phase);
   });
 
-  it('round-trips through computeSnappedStartUs to preserve phase across a whole-frame move', () => {
+  it('round-trips through computeSnappedStartTicks to preserve phase across a whole-frame move', () => {
     const fps = 30;
-    const frameUs = Math.round(TICKS_PER_SECOND / fps);
+    const frameTicks = Math.round(TICKS_PER_SECOND / fps);
     const aligned = quantizeStartUsToFrames(2 * TICKS_PER_SECOND, fps);
     const originalStart = aligned + 7_000; // hand-dialed sub-frame sync offset
-    const phase = subframePhaseUs(originalStart, fps);
+    const phase = subframePhaseTicks(originalStart, fps);
 
     // Drag it roughly 3.4 frames to the right; frame-snapping with the phase must
     // land it a whole number of frames away while keeping the same phase.
-    const rawStart = originalStart + Math.round(frameUs * 3.4);
-    const snapped = computeSnappedStartUs({
-      rawStartUs: rawStart,
-      draggingItemDurationUs: timelineUs(500_000),
+    const rawStart = originalStart + Math.round(frameTicks * 3.4);
+    const snapped = computeSnappedStartTicks({
+      rawStartTicks: rawStart,
+      draggingItemDurationTicks: timelineTicks(500_000),
       fps,
       zoom: 50,
       snapThresholdPx: 0,
-      snapTargetsUs: [],
+      snapTargetsTicks: [],
       enableFrameSnap: true,
       enableClipSnap: false,
-      frameOffsetUs: phase,
+      frameOffsetTicks: phase,
     });
 
     // Same phase preserved, and moved by an exact whole number of frames.
-    expect(subframePhaseUs(snapped, fps)).toBe(phase);
+    expect(subframePhaseTicks(snapped, fps)).toBe(phase);
     const movedFrames = ((snapped - originalStart) * fps) / TICKS_PER_SECOND;
     expect(movedFrames).toBe(Math.round(movedFrames));
   });
 });
 
-describe('calculatePointerTimeUs', () => {
+describe('calculatePointerTimeTicks', () => {
   it('calculates pointer time code correctly within element width', () => {
     const params = {
       clientX: 150,
       rectLeft: 100,
       rectWidth: 200,
-      clipStartUs: TICKS_PER_SECOND,
+      clipStartTicks: TICKS_PER_SECOND,
       zoom: 50,
     };
-    expect(calculatePointerTimeUs(params)).toBe(6 * TICKS_PER_SECOND);
+    expect(calculatePointerTimeTicks(params)).toBe(6 * TICKS_PER_SECOND);
   });
 
   it('clamps pointer position within rectWidth', () => {
@@ -407,10 +407,10 @@ describe('calculatePointerTimeUs', () => {
       clientX: 400,
       rectLeft: 100,
       rectWidth: 200,
-      clipStartUs: TICKS_PER_SECOND,
+      clipStartTicks: TICKS_PER_SECOND,
       zoom: 50,
     };
-    expect(calculatePointerTimeUs(params)).toBe(21 * TICKS_PER_SECOND);
+    expect(calculatePointerTimeTicks(params)).toBe(21 * TICKS_PER_SECOND);
   });
 
   it('clamps pointer position to 0 delta when clientX is to the left of rectLeft', () => {
@@ -418,9 +418,9 @@ describe('calculatePointerTimeUs', () => {
       clientX: 50,
       rectLeft: 100,
       rectWidth: 200,
-      clipStartUs: TICKS_PER_SECOND,
+      clipStartTicks: TICKS_PER_SECOND,
       zoom: 50,
     };
-    expect(calculatePointerTimeUs(params)).toBe(TICKS_PER_SECOND);
+    expect(calculatePointerTimeTicks(params)).toBe(TICKS_PER_SECOND);
   });
 });

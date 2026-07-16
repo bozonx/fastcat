@@ -10,7 +10,7 @@ import type { ClipAnimations } from '~/timeline/types';
 // Minimal CompositorClip stub — the overlay helper only touches a handful of
 // fields, so we cast a partial object rather than build a full runtime clip.
 const clip = (over: Partial<CompositorClip>): CompositorClip =>
-  ({ startUs: 0, clipKind: 'image', ...over }) as unknown as CompositorClip;
+  ({ startTicks: 0, clipKind: 'image', ...over }) as unknown as CompositorClip;
 
 const anims = (a: ClipAnimations): ClipAnimations => a;
 
@@ -27,28 +27,28 @@ describe('resolveClipAnimationOverlay', () => {
       animations: anims({
         opacity: {
           keyframes: [
-            { tUs: 0, value: 0, easing: 'linear' },
-            { tUs: 1000, value: 1, easing: 'linear' },
+            { tTicks: 0, value: 0, easing: 'linear' },
+            { tTicks: 1000, value: 1, easing: 'linear' },
           ],
         },
       }),
     });
-    resolveClipAnimationOverlay(c, 500); // clip.startUs = 0 -> local 500
+    resolveClipAnimationOverlay(c, 500); // clip.startTicks = 0 -> local 500
     expect(c.animatedOpacity).toBeCloseTo(0.5, 6);
     expect(c.animatedTransform).toBeUndefined();
   });
 
   it('uses source-relative time from clip trim and speed', () => {
     const c = clip({
-      startUs: 2000,
-      sourceStartUs: 10_000,
-      sourceRangeDurationUs: 2_000,
+      startTicks: 2000,
+      sourceStartTicks: 10_000,
+      sourceRangeDurationTicks: 2_000,
       speed: 2,
       animations: anims({
         opacity: {
           keyframes: [
-            { tUs: 10_000, value: 0, easing: 'linear' },
-            { tUs: 12_000, value: 1, easing: 'linear' },
+            { tTicks: 10_000, value: 0, easing: 'linear' },
+            { tTicks: 12_000, value: 1, easing: 'linear' },
           ],
         },
       }),
@@ -59,15 +59,15 @@ describe('resolveClipAnimationOverlay', () => {
 
   it('samples reverse clips from the end of the source range', () => {
     const c = clip({
-      startUs: 2000,
-      sourceStartUs: 10_000,
-      sourceRangeDurationUs: 2_000,
+      startTicks: 2000,
+      sourceStartTicks: 10_000,
+      sourceRangeDurationTicks: 2_000,
       speed: -1,
       animations: anims({
         opacity: {
           keyframes: [
-            { tUs: 10_000, value: 0, easing: 'linear' },
-            { tUs: 12_000, value: 1, easing: 'linear' },
+            { tTicks: 10_000, value: 0, easing: 'linear' },
+            { tTicks: 12_000, value: 1, easing: 'linear' },
           ],
         },
       }),
@@ -88,14 +88,14 @@ describe('resolveClipAnimationOverlay', () => {
       animations: anims({
         'transform.rotationDeg': {
           keyframes: [
-            { tUs: 0, value: 0, easing: 'linear' },
-            { tUs: 1000, value: 90, easing: 'linear' },
+            { tTicks: 0, value: 0, easing: 'linear' },
+            { tTicks: 1000, value: 90, easing: 'linear' },
           ],
         },
         'transform.position.x': {
           keyframes: [
-            { tUs: 0, value: 0, easing: 'linear' },
-            { tUs: 1000, value: 100, easing: 'linear' },
+            { tTicks: 0, value: 0, easing: 'linear' },
+            { tTicks: 1000, value: 100, easing: 'linear' },
           ],
         },
       }),
@@ -120,20 +120,20 @@ describe('resolveClipAnimationOverlay', () => {
       animations: anims({
         'transform.anchor.x': {
           keyframes: [
-            { tUs: 0, value: 0, easing: 'linear' },
-            { tUs: 1000, value: 1, easing: 'linear' },
+            { tTicks: 0, value: 0, easing: 'linear' },
+            { tTicks: 1000, value: 1, easing: 'linear' },
           ],
         },
         'transform.crop.top': {
           keyframes: [
-            { tUs: 0, value: 0, easing: 'linear' },
-            { tUs: 1000, value: 40, easing: 'linear' },
+            { tTicks: 0, value: 0, easing: 'linear' },
+            { tTicks: 1000, value: 40, easing: 'linear' },
           ],
         },
         'transform.flipHorizontal': {
           keyframes: [
-            { tUs: 0, value: 0, easing: 'hold' },
-            { tUs: 1000, value: 1, easing: 'hold' },
+            { tTicks: 0, value: 0, easing: 'hold' },
+            { tTicks: 1000, value: 1, easing: 'hold' },
           ],
         },
       }),
@@ -184,8 +184,8 @@ describe('effectiveClipTransform', () => {
             field: 'radius',
             kind: 'number',
             keyframes: [
-              { tUs: 0, value: 8, easing: 'linear' },
-              { tUs: 1000, value: 64, easing: 'linear' },
+              { tTicks: 0, value: 8, easing: 'linear' },
+              { tTicks: 1000, value: 64, easing: 'linear' },
             ],
           },
         ],

@@ -6,7 +6,7 @@ describe('MultiClipTimingSection.vue', () => {
   const defaultProps = {
     firstClip: {
       id: 'clip-1',
-      timelineRange: { durationUs: 5_000_000 },
+      timelineRange: { durationTicks: 5_000_000 },
     } as any,
     durationShiftAccumulator: 0,
     startShiftAccumulator: 0,

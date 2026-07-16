@@ -45,7 +45,7 @@ const UPDATE_CLIP_PROPERTIES_LABEL_MAP: Record<string, string> = {
   speed: 'videoEditor.fileManager.history.entries.updateClipSpeed',
   transitionIn: 'videoEditor.fileManager.history.entries.updateTransition',
   transitionOut: 'videoEditor.fileManager.history.entries.updateTransition',
-  freezeFrameSourceUs: 'videoEditor.fileManager.history.entries.updateFreezeFrame',
+  freezeFrameSourceTicks: 'videoEditor.fileManager.history.entries.updateFreezeFrame',
   sourceRange: 'videoEditor.fileManager.history.entries.updateClipSourceRange',
   showWaveform: 'videoEditor.fileManager.history.entries.toggleWaveform',
   audioWaveformMode: 'videoEditor.fileManager.history.entries.toggleWaveformMode',

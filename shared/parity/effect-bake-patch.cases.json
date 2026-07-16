@@ -7,7 +7,7 @@
     "finished VideoEffectSpec list; both engines then interpolate those tracks",
     "with the shared keyframe evaluator and overwrite the named field on the base",
     "spec. Numeric fields take the sampled value; boolean fields take (value>=0.5).",
-    "Each case has a `baked` payload (baseSpecs + fields), a query time `atUs`,",
+    "Each case has a `baked` payload (baseSpecs + fields), a query time `atTicks`,",
     "and the `expected` patched spec objects both engines must produce."
   ],
   "cases": [
@@ -21,13 +21,13 @@
             "field": "radius",
             "kind": "number",
             "keyframes": [
-              { "tUs": 0, "value": 8, "easing": "linear" },
-              { "tUs": 1000, "value": 64, "easing": "linear" }
+              { "tTicks": 0, "value": 8, "easing": "linear" },
+              { "tTicks": 1000, "value": 64, "easing": "linear" }
             ]
           }
         ]
       },
-      "atUs": 500,
+      "atTicks": 500,
       "expected": [{ "type": "gaussian-blur", "radius": 36, "mix": 1 }]
     },
     {
@@ -40,13 +40,13 @@
             "field": "radius",
             "kind": "number",
             "keyframes": [
-              { "tUs": 100, "value": 10, "easing": "linear" },
-              { "tUs": 200, "value": 20, "easing": "linear" }
+              { "tTicks": 100, "value": 10, "easing": "linear" },
+              { "tTicks": 200, "value": 20, "easing": "linear" }
             ]
           }
         ]
       },
-      "atUs": 0,
+      "atTicks": 0,
       "expected": [{ "type": "gaussian-blur", "radius": 10 }]
     },
     {
@@ -59,13 +59,13 @@
             "field": "bleed",
             "kind": "bool",
             "keyframes": [
-              { "tUs": 0, "value": 0, "easing": "hold" },
-              { "tUs": 1000, "value": 1, "easing": "hold" }
+              { "tTicks": 0, "value": 0, "easing": "hold" },
+              { "tTicks": 1000, "value": 1, "easing": "hold" }
             ]
           }
         ]
       },
-      "atUs": 1000,
+      "atTicks": 1000,
       "expected": [{ "type": "gaussian-blur", "radius": 8, "bleed": true }]
     },
     {
@@ -78,13 +78,13 @@
             "field": "bleed",
             "kind": "bool",
             "keyframes": [
-              { "tUs": 0, "value": 0, "easing": "hold" },
-              { "tUs": 1000, "value": 1, "easing": "hold" }
+              { "tTicks": 0, "value": 0, "easing": "hold" },
+              { "tTicks": 1000, "value": 1, "easing": "hold" }
             ]
           }
         ]
       },
-      "atUs": 999,
+      "atTicks": 999,
       "expected": [{ "type": "gaussian-blur", "radius": 8, "bleed": false }]
     },
     {
@@ -100,13 +100,13 @@
             "field": "degrees",
             "kind": "number",
             "keyframes": [
-              { "tUs": 0, "value": 0, "easing": "linear" },
-              { "tUs": 1000, "value": 90, "easing": "linear" }
+              { "tTicks": 0, "value": 0, "easing": "linear" },
+              { "tTicks": 1000, "value": 90, "easing": "linear" }
             ]
           }
         ]
       },
-      "atUs": 500,
+      "atTicks": 500,
       "expected": [
         { "type": "brightness", "value": 1 },
         { "type": "hue", "degrees": 45 }
@@ -122,13 +122,13 @@
             "field": "radius",
             "kind": "number",
             "keyframes": [
-              { "tUs": 0, "value": 0, "easing": "ease" },
-              { "tUs": 1000, "value": 100, "easing": "linear" }
+              { "tTicks": 0, "value": 0, "easing": "ease" },
+              { "tTicks": 1000, "value": 100, "easing": "linear" }
             ]
           }
         ]
       },
-      "atUs": 250,
+      "atTicks": 250,
       "expected": [{ "type": "gaussian-blur", "radius": 15.625 }]
     }
   ]

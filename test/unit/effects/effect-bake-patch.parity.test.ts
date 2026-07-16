@@ -11,7 +11,7 @@ import { patchBakedEffectSpecs, type ClipBakedEffects } from '~/effects/animatio
 interface EffectBakeCase {
   name: string;
   baked: ClipBakedEffects;
-  atUs: number;
+  atTicks: number;
   expected: Record<string, unknown>[];
 }
 
@@ -22,7 +22,7 @@ const fixture = JSON.parse(
 describe('effect-bake-patch parity (shared fixture)', () => {
   for (const c of fixture.cases) {
     it(c.name, () => {
-      const got = patchBakedEffectSpecs(c.baked, c.atUs) as unknown as Record<string, unknown>[];
+      const got = patchBakedEffectSpecs(c.baked, c.atTicks) as unknown as Record<string, unknown>[];
       expect(got).toEqual(c.expected);
     });
   }

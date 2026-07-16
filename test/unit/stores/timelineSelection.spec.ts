@@ -85,7 +85,7 @@ describe('timeline-selection', () => {
           {
             kind: 'clip',
             id: 'clip1',
-            timelineRange: { startUs: 1_000_000, durationUs: 5_000_000 },
+            timelineRange: { startTicks: 1_000_000, durationTicks: 5_000_000 },
           },
         ],
       },
@@ -109,7 +109,7 @@ describe('timeline-selection', () => {
           {
             kind: 'clip',
             id: 'clip1',
-            timelineRange: { startUs: 1_000_000, durationUs: 5_000_000 },
+            timelineRange: { startTicks: 1_000_000, durationTicks: 5_000_000 },
           },
         ],
       },

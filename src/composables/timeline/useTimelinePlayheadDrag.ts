@@ -2,7 +2,7 @@ import type { Ref } from 'vue';
 import { ref, onBeforeUnmount } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
-import { pxToTimeUs } from '~/utils/timeline/geometry';
+import { pxToTimeTicks } from '~/utils/timeline/geometry';
 import { useEffectiveHotkeys } from '~/composables/editor/hotkeys/useEffectiveHotkeys';
 import { isCommandMatched } from '~/utils/hotkeys/runtime';
 import { DRAG_DEADZONE_PX } from '~/utils/mouse';
@@ -10,7 +10,7 @@ import { DRAG_DEADZONE_PX } from '~/utils/mouse';
 export function useTimelinePlayheadDrag(scrollEl: Ref<HTMLElement | null>) {
   const timelineStore = useTimelineStore();
   const isDraggingPlayhead = ref(false);
-  const startDragTimeUs = ref<number | null>(null);
+  const startDragTimeTicks = ref<number | null>(null);
   const startDragPos = ref({ x: 0, y: 0 });
   const dragOriginRect = ref<DOMRect | null>(null);
   const hasPlayheadMoved = ref(false);
@@ -48,7 +48,7 @@ export function useTimelinePlayheadDrag(scrollEl: Ref<HTMLElement | null>) {
 
   function seekByMouseEvent(e: MouseEvent) {
     const x = getLocalX(e);
-    timelineStore.setCurrentTimeUs(pxToTimeUs(x, timelineStore.timelineZoom));
+    timelineStore.setCurrentTimeTicks(pxToTimeTicks(x, timelineStore.timelineZoom));
   }
 
   function onGlobalKeyDown(e: KeyboardEvent) {
@@ -62,9 +62,9 @@ export function useTimelinePlayheadDrag(scrollEl: Ref<HTMLElement | null>) {
 
     if (isCancel && isDraggingPlayhead.value) {
       isDraggingPlayhead.value = false;
-      if (startDragTimeUs.value !== null) {
-        timelineStore.setCurrentTimeUs(startDragTimeUs.value);
-        startDragTimeUs.value = null;
+      if (startDragTimeTicks.value !== null) {
+        timelineStore.setCurrentTimeTicks(startDragTimeTicks.value);
+        startDragTimeTicks.value = null;
       }
       e.preventDefault();
       releaseCapture();
@@ -93,7 +93,7 @@ export function useTimelinePlayheadDrag(scrollEl: Ref<HTMLElement | null>) {
   function onTimeRulerPointerDown(e: PointerEvent) {
     if (e.button !== 0) return;
     e.preventDefault();
-    startDragTimeUs.value = timelineStore.currentTime;
+    startDragTimeTicks.value = timelineStore.currentTime;
     seekByMouseEvent(e);
     startPlayheadDrag(e);
   }
@@ -119,7 +119,7 @@ export function useTimelinePlayheadDrag(scrollEl: Ref<HTMLElement | null>) {
     if (!scrollerRect) return true;
     const scrollX = scrollEl.value?.scrollLeft ?? 0;
     const x = e.clientX - scrollerRect.left + scrollX;
-    timelineStore.setCurrentTimeUs(pxToTimeUs(x, timelineStore.timelineZoom));
+    timelineStore.setCurrentTimeTicks(pxToTimeTicks(x, timelineStore.timelineZoom));
     return true;
   }
 
@@ -128,7 +128,7 @@ export function useTimelinePlayheadDrag(scrollEl: Ref<HTMLElement | null>) {
 
     releaseCapture();
     isDraggingPlayhead.value = false;
-    startDragTimeUs.value = null;
+    startDragTimeTicks.value = null;
     dragOriginRect.value = null;
     window.removeEventListener('keydown', onGlobalKeyDown);
   }

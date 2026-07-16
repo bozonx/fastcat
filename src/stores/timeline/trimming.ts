@@ -7,7 +7,7 @@ import {
   buildSplitClipCommands,
   buildSplitAllClipsCommands,
   buildSplitSelectedClipsCommands,
-  computeCutUs,
+  computeCutTicks,
 } from '~/timeline/domain/editing';
 
 export interface TimelineTrimmingDeps {
@@ -34,7 +34,7 @@ export interface TimelineTrimmingDeps {
   onPlayheadJump?: () => void;
   editService: {
     rippleDeleteRange: (
-      input: { trackIds: string[]; startUs: number; endUs: number },
+      input: { trackIds: string[]; startTicks: number; endTicks: number },
       options?: TimelineApplyOptions,
     ) => number | null;
     rippleTrimRight: () => Promise<number | null>;
@@ -53,14 +53,14 @@ export interface TimelineTrimmingModule {
   ) => Promise<void>;
   trimToTimeLeftNoRipple: (
     target: { trackId: string; itemId: string } | null,
-    atUs: number,
+    atTicks: number,
   ) => Promise<void>;
   trimToTimeRightNoRipple: (
     target: { trackId: string; itemId: string } | null,
-    atUs: number,
+    atTicks: number,
   ) => Promise<void>;
   rippleDeleteRange: (
-    input: { trackIds: string[]; startUs: number; endUs: number },
+    input: { trackIds: string[]; startTicks: number; endTicks: number },
     options?: TimelineApplyOptions,
   ) => void;
   rippleTrimRight: () => Promise<void>;
@@ -73,7 +73,7 @@ export interface TimelineTrimmingModule {
   splitClipAtPlayhead: (
     targetOverride?: { trackId: string; itemId: string } | null,
   ) => Promise<void>;
-  splitClipAtTime: (target: { trackId: string; itemId: string }, atUs: number) => Promise<void>;
+  splitClipAtTime: (target: { trackId: string; itemId: string }, atTicks: number) => Promise<void>;
   splitAllClipsAtPlayhead: () => Promise<void>;
   splitClipsAtPlayhead: () => Promise<void>;
 }
@@ -93,10 +93,10 @@ export function createTimelineTrimmingModule(deps: TimelineTrimmingDeps): Timeli
     if (!track || !item || item.kind !== 'clip') return;
     if (track.locked || item.locked) return;
 
-    const cutUs = computeCutUs(doc, deps.currentTime.value);
-    const startUs = item.timelineRange.startUs;
-    const endUs = startUs + item.timelineRange.durationUs;
-    if (!(cutUs > startUs && cutUs < endUs)) return;
+    const cutTicks = computeCutTicks(doc, deps.currentTime.value);
+    const startTicks = item.timelineRange.startTicks;
+    const endTicks = startTicks + item.timelineRange.durationTicks;
+    if (!(cutTicks > startTicks && cutTicks < endTicks)) return;
 
     const cmds = buildSplitClipCommands(doc, deps.currentTime.value, target);
     for (const cmd of cmds) {
@@ -140,10 +140,10 @@ export function createTimelineTrimmingModule(deps: TimelineTrimmingDeps): Timeli
     if (!track || !item || item.kind !== 'clip') return;
     if (track.locked || item.locked) return;
 
-    const cutUs = computeCutUs(doc, deps.currentTime.value);
-    const startUs = item.timelineRange.startUs;
-    const endUs = startUs + item.timelineRange.durationUs;
-    if (!(cutUs > startUs && cutUs < endUs)) return;
+    const cutTicks = computeCutTicks(doc, deps.currentTime.value);
+    const startTicks = item.timelineRange.startTicks;
+    const endTicks = startTicks + item.timelineRange.durationTicks;
+    if (!(cutTicks > startTicks && cutTicks < endTicks)) return;
 
     const cmds = buildSplitClipCommands(doc, deps.currentTime.value, target);
     for (const cmd of cmds) {
@@ -159,11 +159,11 @@ export function createTimelineTrimmingModule(deps: TimelineTrimmingDeps): Timeli
     const updatedTrack = updatedDoc.tracks.find((t) => t.id === target.trackId) ?? null;
     if (!updatedTrack) return;
 
-    // After split, the new item with startUs === cutUs is the RIGHT part
+    // After split, the new item with startTicks === cutTicks is the RIGHT part
     const right =
       updatedTrack.items
         .filter((it) => it.kind === 'clip')
-        .find((it) => it.timelineRange.startUs === cutUs) ?? null;
+        .find((it) => it.timelineRange.startTicks === cutTicks) ?? null;
     if (!right || right.kind !== 'clip') return;
 
     deps.applyTimeline(
@@ -176,7 +176,7 @@ export function createTimelineTrimmingModule(deps: TimelineTrimmingDeps): Timeli
 
   async function trimToTimeLeftNoRipple(
     target: { trackId: string; itemId: string } | null,
-    atUs: number,
+    atTicks: number,
   ) {
     const doc = deps.timelineDoc.value;
     if (!doc || !target) return;
@@ -186,12 +186,12 @@ export function createTimelineTrimmingModule(deps: TimelineTrimmingDeps): Timeli
     if (!track || !item || item.kind !== 'clip') return;
     if (track.locked || item.locked) return;
 
-    const cutUs = computeCutUs(doc, atUs);
-    const startUs = item.timelineRange.startUs;
-    const endUs = startUs + item.timelineRange.durationUs;
-    if (!(cutUs > startUs && cutUs < endUs)) return;
+    const cutTicks = computeCutTicks(doc, atTicks);
+    const startTicks = item.timelineRange.startTicks;
+    const endTicks = startTicks + item.timelineRange.durationTicks;
+    if (!(cutTicks > startTicks && cutTicks < endTicks)) return;
 
-    const cmds = buildSplitClipCommands(doc, atUs, target);
+    const cmds = buildSplitClipCommands(doc, atTicks, target);
     for (const cmd of cmds) {
       deps.applyTimeline(cmd, {
         saveMode: 'none',
@@ -221,7 +221,7 @@ export function createTimelineTrimmingModule(deps: TimelineTrimmingDeps): Timeli
 
   async function trimToTimeRightNoRipple(
     target: { trackId: string; itemId: string } | null,
-    atUs: number,
+    atTicks: number,
   ) {
     const doc = deps.timelineDoc.value;
     if (!doc || !target) return;
@@ -231,12 +231,12 @@ export function createTimelineTrimmingModule(deps: TimelineTrimmingDeps): Timeli
     if (!track || !item || item.kind !== 'clip') return;
     if (track.locked || item.locked) return;
 
-    const cutUs = computeCutUs(doc, atUs);
-    const startUs = item.timelineRange.startUs;
-    const endUs = startUs + item.timelineRange.durationUs;
-    if (!(cutUs > startUs && cutUs < endUs)) return;
+    const cutTicks = computeCutTicks(doc, atTicks);
+    const startTicks = item.timelineRange.startTicks;
+    const endTicks = startTicks + item.timelineRange.durationTicks;
+    if (!(cutTicks > startTicks && cutTicks < endTicks)) return;
 
-    const cmds = buildSplitClipCommands(doc, atUs, target);
+    const cmds = buildSplitClipCommands(doc, atTicks, target);
     for (const cmd of cmds) {
       deps.applyTimeline(cmd, {
         saveMode: 'none',
@@ -250,11 +250,11 @@ export function createTimelineTrimmingModule(deps: TimelineTrimmingDeps): Timeli
     const updatedTrack = updatedDoc.tracks.find((t) => t.id === target.trackId) ?? null;
     if (!updatedTrack) return;
 
-    // After split, the new item with startUs === cutUs is the RIGHT part
+    // After split, the new item with startTicks === cutTicks is the RIGHT part
     const right =
       updatedTrack.items
         .filter((it) => it.kind === 'clip')
-        .find((it) => it.timelineRange.startUs === cutUs) ?? null;
+        .find((it) => it.timelineRange.startTicks === cutTicks) ?? null;
     if (!right || right.kind !== 'clip') return;
 
     deps.applyTimeline(
@@ -266,7 +266,7 @@ export function createTimelineTrimmingModule(deps: TimelineTrimmingDeps): Timeli
   }
 
   function rippleDeleteRange(
-    input: { trackIds: string[]; startUs: number; endUs: number },
+    input: { trackIds: string[]; startTicks: number; endTicks: number },
     options?: TimelineApplyOptions,
   ) {
     movePlayheadToCollapse(deps.editService.rippleDeleteRange(input, options));
@@ -304,15 +304,15 @@ export function createTimelineTrimmingModule(deps: TimelineTrimmingDeps): Timeli
     if (target.track.locked) return;
     if (target.item.kind === 'clip' && target.item.locked) return;
 
-    const startUs = target.item.timelineRange.startUs;
-    const endUs = startUs + target.item.timelineRange.durationUs;
-    if (!(endUs > startUs)) return;
+    const startTicks = target.item.timelineRange.startTicks;
+    const endTicks = startTicks + target.item.timelineRange.durationTicks;
+    if (!(endTicks > startTicks)) return;
 
     rippleDeleteRange(
       {
         trackIds: doc.tracks.map((item) => item.id),
-        startUs,
-        endUs,
+        startTicks,
+        endTicks,
       },
       {
         historyMode: 'debounced',
@@ -322,9 +322,9 @@ export function createTimelineTrimmingModule(deps: TimelineTrimmingDeps): Timeli
     );
   }
 
-  function movePlayheadToCollapse(collapseUs: number | null) {
-    if (collapseUs === null) return;
-    deps.currentTime.value = collapseUs;
+  function movePlayheadToCollapse(collapseTicks: number | null) {
+    if (collapseTicks === null) return;
+    deps.currentTime.value = collapseTicks;
     deps.onPlayheadJump?.();
   }
 
@@ -339,14 +339,14 @@ export function createTimelineTrimmingModule(deps: TimelineTrimmingDeps): Timeli
   function jumpToPrevClipBoundary(options?: { currentTrackOnly?: boolean }) {
     const doc = deps.timelineDoc.value;
     if (!doc) return;
-    const prevUs = calculatePrevClipBoundary(doc, deps.currentTime.value, {
+    const prevTicks = calculatePrevClipBoundary(doc, deps.currentTime.value, {
       currentTrackOnly: options?.currentTrackOnly,
       currentTrackId: deps.getSelectedOrActiveTrackId(),
     });
-    if (prevUs === null) {
+    if (prevTicks === null) {
       deps.currentTime.value = 0;
     } else {
-      deps.currentTime.value = prevUs;
+      deps.currentTime.value = prevTicks;
     }
     deps.onPlayheadJump?.();
   }
@@ -354,11 +354,11 @@ export function createTimelineTrimmingModule(deps: TimelineTrimmingDeps): Timeli
   function jumpToNextClipBoundary(options?: { currentTrackOnly?: boolean }) {
     const doc = deps.timelineDoc.value;
     if (!doc) return;
-    const nextUs = calculateNextClipBoundary(doc, deps.currentTime.value, deps.duration.value, {
+    const nextTicks = calculateNextClipBoundary(doc, deps.currentTime.value, deps.duration.value, {
       currentTrackOnly: options?.currentTrackOnly,
       currentTrackId: deps.getSelectedOrActiveTrackId(),
     });
-    deps.currentTime.value = nextUs;
+    deps.currentTime.value = nextTicks;
     deps.onPlayheadJump?.();
   }
 
@@ -370,7 +370,7 @@ export function createTimelineTrimmingModule(deps: TimelineTrimmingDeps): Timeli
     }
   }
 
-  async function splitClipAtTime(target: { trackId: string; itemId: string } | null, atUs: number) {
+  async function splitClipAtTime(target: { trackId: string; itemId: string } | null, atTicks: number) {
     const doc = deps.timelineDoc.value;
     if (!doc) return;
 
@@ -381,7 +381,7 @@ export function createTimelineTrimmingModule(deps: TimelineTrimmingDeps): Timeli
     const item = track.items.find((it) => it.id === target.itemId);
     if (!item || (item.kind === 'clip' && item.locked)) return;
 
-    const cmds = buildSplitClipCommands(doc, atUs, target);
+    const cmds = buildSplitClipCommands(doc, atTicks, target);
     if (cmds.length > 0) {
       const createdIds = deps.batchApplyTimeline(cmds, {
         saveMode: 'none',

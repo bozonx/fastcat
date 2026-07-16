@@ -52,7 +52,7 @@ vi.mock('~/stores/workspace.store', () => ({
         layer1: 'Shift',
       },
       timeline: {
-        defaultStaticClipDurationUs: 5_000_000,
+        defaultStaticClipDurationTicks: 5_000_000,
       },
     },
     workspaceState: {

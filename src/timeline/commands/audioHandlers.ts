@@ -43,9 +43,9 @@ export function extractAudioToTrack(
 
   const audioEffectsFromVideo = (item.effects ?? []).filter((e) => e?.target === 'audio');
 
-  const startUs = item.timelineRange.startUs;
-  const durationUs = item.timelineRange.durationUs;
-  const endUs = startUs + durationUs;
+  const startTicks = item.timelineRange.startTicks;
+  const durationTicks = item.timelineRange.durationTicks;
+  const endTicks = startTicks + durationTicks;
 
   let targetAudioTrackId: string | undefined = cmd.audioTrackId;
 
@@ -55,9 +55,9 @@ export function extractAudioToTrack(
         let hasOverlap = false;
         for (const it of t.items) {
           if (it.kind !== 'clip') continue;
-          const itStart = it.timelineRange.startUs;
-          const itEnd = itStart + it.timelineRange.durationUs;
-          if (rangesOverlap(startUs, endUs, itStart, itEnd)) {
+          const itStart = it.timelineRange.startTicks;
+          const itEnd = itStart + it.timelineRange.durationTicks;
+          if (rangesOverlap(startTicks, endTicks, itStart, itEnd)) {
             hasOverlap = true;
             break;
           }
@@ -100,7 +100,7 @@ export function extractAudioToTrack(
   if (targetAudioTrackIndex === -1) throw new Error('Audio track not found');
   const targetAudioTrack = nextTracks[targetAudioTrackIndex];
   if (!targetAudioTrack) throw new Error('Audio track not found');
-  assertNoOverlap(targetAudioTrack, '', startUs, durationUs);
+  assertNoOverlap(targetAudioTrack, '', startTicks, durationTicks);
 
   const audioClip: TimelineClipItem = {
     kind: 'clip',
@@ -109,15 +109,15 @@ export function extractAudioToTrack(
     clipType: item.clipType,
     name: item.name,
     source: { ...item.source },
-    sourceDurationUs: item.sourceDurationUs,
+    sourceDurationTicks: item.sourceDurationTicks,
     timelineRange: { ...item.timelineRange },
     sourceRange: { ...item.sourceRange },
     linkedGroupId: groupId,
     effects: audioEffectsFromVideo.length > 0 ? [...audioEffectsFromVideo] : undefined,
     audioGain: item.audioGain,
     audioBalance: item.audioBalance,
-    audioFadeInUs: item.audioFadeInUs,
-    audioFadeOutUs: item.audioFadeOutUs,
+    audioFadeInTicks: item.audioFadeInTicks,
+    audioFadeOutTicks: item.audioFadeOutTicks,
     audioFadeInCurve: item.audioFadeInCurve,
     audioFadeOutCurve: item.audioFadeOutCurve,
     audioMuted: item.audioMuted,
@@ -143,7 +143,7 @@ export function extractAudioToTrack(
     }
     if (t.id === targetAudioTrackId) {
       const nextItems = [...t.items, audioClip];
-      nextItems.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
+      nextItems.sort((a, b) => a.timelineRange.startTicks - b.timelineRange.startTicks);
       return { ...t, items: normalizeGaps(doc, t.id, nextItems, { quantizeToFrames: false }) };
     }
     return t;

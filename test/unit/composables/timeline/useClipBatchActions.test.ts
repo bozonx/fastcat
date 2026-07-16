@@ -16,9 +16,9 @@ function makeClip(overrides: Partial<TimelineClipItem> = {}): TimelineClipItem {
     clipType: 'media',
     trackId: 'v1',
     name: 'Clip 1',
-    timelineRange: { startUs: 0, durationUs: 5_000_000 },
-    sourceRange: { startUs: 0, durationUs: 5_000_000 },
-    sourceDurationUs: 5_000_000,
+    timelineRange: { startTicks: 0, durationTicks: 5_000_000 },
+    sourceRange: { startTicks: 0, durationTicks: 5_000_000 },
+    sourceDurationTicks: 5_000_000,
     source: { path: '/video.mp4' },
   };
   return { ...base, ...overrides } as TimelineClipItem;
@@ -177,7 +177,7 @@ describe('useClipBatchActions', () => {
           type: 'move_item',
           trackId: 'v1',
           itemId: 'video-2',
-          startUs: 1_000_000,
+          startTicks: 1_000_000,
         },
       ],
       { labelKey: 'videoEditor.fileManager.history.entries.moveItems', historyMode: 'debounced' },

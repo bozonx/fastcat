@@ -50,7 +50,7 @@ vi.mock('~/stores/workspace.store', () => ({
         bindings: {},
       },
       timeline: {
-        defaultStaticClipDurationUs: 5000000,
+        defaultStaticClipDurationTicks: 5000000,
       },
     },
     workspaceState: {

@@ -147,7 +147,7 @@ const activeEntity = computed(() => {
 const isSelectedMarkerZone = computed(() => {
   if (!selectedMarkerId.value) return false;
   const marker = timelineStore.getMarkers().find((m) => m.id === selectedMarkerId.value);
-  return marker ? typeof marker.durationUs === 'number' && marker.durationUs > 0 : false;
+  return marker ? typeof marker.durationTicks === 'number' && marker.durationTicks > 0 : false;
 });
 
 const hasSelectionRange = computed(() => {

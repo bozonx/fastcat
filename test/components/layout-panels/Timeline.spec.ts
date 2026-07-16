@@ -81,7 +81,7 @@ describe('Timeline Component', () => {
     } as any;
     // Mock actions
     timelineStore.unlockAllTracks = vi.fn();
-    timelineStore.setCurrentTimeUs = vi.fn();
+    timelineStore.setCurrentTimeTicks = vi.fn();
   });
 
   it('renders correctly with all sections', async () => {
@@ -167,11 +167,11 @@ describe('Timeline Component', () => {
   it('updates current time via timecode', async () => {
     const component = await mountSuspended(Timeline);
     const timelineStore = useTimelineStore();
-    timelineStore.setCurrentTimeUs = vi.fn();
+    timelineStore.setCurrentTimeTicks = vi.fn();
     const timecode = component.findComponent(UiTimecode);
 
     await timecode.vm.$emit('update:modelValue', 20_000_000);
-    expect(timelineStore.setCurrentTimeUs).toHaveBeenCalledWith(20_000_000);
+    expect(timelineStore.setCurrentTimeTicks).toHaveBeenCalledWith(20_000_000);
   });
 
   it('sets dropEffect to none when dragging OS files over timeline toolbar or ruler', async () => {

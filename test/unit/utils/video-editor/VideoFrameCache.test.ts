@@ -24,13 +24,13 @@ function makeEntry(
   clipId: string,
   frame: VideoFrame,
   sizeBytes: number,
-  timelineTimeUs = 0,
+  timelineTimeTicks = 0,
 ): import('~/utils/video-editor/compositor/VideoFrameCache').CachedVideoFrameEntry {
   return {
     key,
     clipId,
     frameIndex: 0,
-    timelineTimeUs,
+    timelineTimeTicks,
     frame,
     sizeBytes,
     width: 1920,
@@ -122,7 +122,7 @@ describe('VideoFrameCache', () => {
       const current = makeFrame();
       const after = makeFrame();
 
-      cache.setPriorityTimeUs(10_000_000);
+      cache.setPriorityTimeTicks(10_000_000);
       cache.set(makeEntry('clip:before', 'clip', before, 1024 * 1024, 1_000_000));
       cache.set(makeEntry('clip:current', 'clip', current, 1024 * 1024, 10_000_000));
       cache.set(makeEntry('clip:after', 'clip', after, 1024 * 1024, 12_000_000));
@@ -141,13 +141,13 @@ describe('VideoFrameCache', () => {
       const mid = makeFrame();
       const farForward = makeFrame();
 
-      cache.setPriorityTimeUs(20_000_000);
+      cache.setPriorityTimeTicks(20_000_000);
       cache.set(makeEntry('clip:near-back', 'clip', nearBack, 1024 * 1024, 9_500_000));
       cache.set(makeEntry('clip:mid', 'clip', mid, 1024 * 1024, 10_000_000));
       cache.set(makeEntry('clip:far-forward', 'clip', farForward, 1024 * 1024, 20_000_000));
       expect(nearBack.close).toHaveBeenCalled();
 
-      cache.setPriorityTimeUs(9_500_000);
+      cache.setPriorityTimeTicks(9_500_000);
       cache.set(makeEntry('clip:near-back-2', 'clip', makeFrame(), 1024 * 1024, 9_500_000));
 
       expect(farForward.close).toHaveBeenCalled();

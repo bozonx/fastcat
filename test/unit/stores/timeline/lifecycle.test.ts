@@ -108,35 +108,35 @@ describe('createTimelineLifecycleModule', () => {
     expect(deps.timelineZoom.value).toBe(1);
   });
 
-  it('setCurrentTimeUs clamps to duration', () => {
+  it('setCurrentTimeTicks clamps to duration', () => {
     const deps = makeDeps();
     deps.duration.value = 1000;
     const mod = createTimelineLifecycleModule(deps);
-    mod.setCurrentTimeUs(2000);
+    mod.setCurrentTimeTicks(2000);
     expect(deps.currentTime.value).toBe(1000);
   });
 
-  it('setCurrentTimeUs stays at 0 when the timeline is empty', () => {
+  it('setCurrentTimeTicks stays at 0 when the timeline is empty', () => {
     const deps = makeDeps();
     deps.duration.value = 0;
     const mod = createTimelineLifecycleModule(deps);
-    mod.setCurrentTimeUs(2000);
+    mod.setCurrentTimeTicks(2000);
     expect(deps.currentTime.value).toBe(0);
   });
 
-  it('setCurrentTimeUs clamps to 0', () => {
+  it('setCurrentTimeTicks clamps to 0', () => {
     const deps = makeDeps();
     deps.duration.value = 1000;
     const mod = createTimelineLifecycleModule(deps);
-    mod.setCurrentTimeUs(-100);
+    mod.setCurrentTimeTicks(-100);
     expect(deps.currentTime.value).toBe(0);
   });
 
-  it('setCurrentTimeUs allows value within range', () => {
+  it('setCurrentTimeTicks allows value within range', () => {
     const deps = makeDeps();
     deps.duration.value = 1000;
     const mod = createTimelineLifecycleModule(deps);
-    mod.setCurrentTimeUs(500);
+    mod.setCurrentTimeTicks(500);
     expect(deps.currentTime.value).toBe(500);
   });
 

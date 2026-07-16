@@ -11,11 +11,11 @@ interface UseTimelineRulerMenusOptions {
     addMarkerAtPlayhead: () => void;
     addZoneMarkerAtPlayhead: () => void;
     addMarker: (
-      input: { timeUs: number; durationUs?: number; text?: string; color?: string },
+      input: { timeTicks: number; durationTicks?: number; text?: string; color?: string },
       options?: Record<string, unknown>,
     ) => void;
     createSelectionRangeAtPlayhead: () => void;
-    createSelectionRange: (input: { startUs: number; endUs: number }) => void;
+    createSelectionRange: (input: { startTicks: number; endTicks: number }) => void;
     convertZoneToMarker: (markerId: string) => void;
     convertMarkerToSelectionRange: (markerId: string) => void;
     createSelectionRangeFromMarker: (markerId: string) => void;
@@ -24,11 +24,11 @@ interface UseTimelineRulerMenusOptions {
     rippleTrimSelectionRange: () => void;
     removeSelectionRange: () => void;
     getMarkers: () => MarkerLike[];
-    defaultZoneDurationUs: number;
+    defaultZoneDurationTicks: number;
   };
   selectMarker: (markerId: string) => void;
   deleteMarker: (markerId: string) => void;
-  getRightClickTimeUs?: () => number | null;
+  getRightClickTimeTicks?: () => number | null;
 }
 
 export function useTimelineRulerMenus(options: UseTimelineRulerMenusOptions) {
@@ -40,10 +40,10 @@ export function useTimelineRulerMenus(options: UseTimelineRulerMenusOptions) {
         label: getHotkeyTitle(options.t('fastcat.timeline.addMarker'), 'general.addMarker'),
         icon: 'i-heroicons-bookmark',
         onSelect: () => {
-          const timeUs = options.getRightClickTimeUs?.() ?? null;
+          const timeTicks = options.getRightClickTimeTicks?.() ?? null;
           const existingIds = new Set(options.timelineStore.getMarkers().map((m) => m.id));
-          if (timeUs !== null) {
-            options.timelineStore.addMarker({ timeUs });
+          if (timeTicks !== null) {
+            options.timelineStore.addMarker({ timeTicks });
           } else {
             options.timelineStore.addMarkerAtPlayhead();
           }
@@ -55,12 +55,12 @@ export function useTimelineRulerMenus(options: UseTimelineRulerMenusOptions) {
         label: options.t('fastcat.timeline.addZoneMarker'),
         icon: 'i-heroicons-arrows-right-left',
         onSelect: () => {
-          const timeUs = options.getRightClickTimeUs?.() ?? null;
+          const timeTicks = options.getRightClickTimeTicks?.() ?? null;
           const existingIds = new Set(options.timelineStore.getMarkers().map((m) => m.id));
-          if (timeUs !== null) {
+          if (timeTicks !== null) {
             options.timelineStore.addMarker({
-              timeUs,
-              durationUs: options.timelineStore.defaultZoneDurationUs,
+              timeTicks,
+              durationTicks: options.timelineStore.defaultZoneDurationTicks,
             });
           } else {
             options.timelineStore.addZoneMarkerAtPlayhead();
@@ -73,11 +73,11 @@ export function useTimelineRulerMenus(options: UseTimelineRulerMenusOptions) {
         label: options.t('fastcat.timeline.createSelectionArea'),
         icon: 'i-heroicons-rectangle-group',
         onSelect: () => {
-          const timeUs = options.getRightClickTimeUs?.() ?? null;
-          if (timeUs !== null) {
+          const timeTicks = options.getRightClickTimeTicks?.() ?? null;
+          if (timeTicks !== null) {
             options.timelineStore.createSelectionRange({
-              startUs: timeUs,
-              endUs: timeUs + options.timelineStore.defaultZoneDurationUs,
+              startTicks: timeTicks,
+              endTicks: timeTicks + options.timelineStore.defaultZoneDurationTicks,
             });
           } else {
             options.timelineStore.createSelectionRangeAtPlayhead();

@@ -9,7 +9,7 @@ const log = createDevLogger('marker-thumbnail.service');
 export interface MarkerThumbnailParams {
   projectId: string;
   markerId: string;
-  timeUs: number;
+  timeTicks: number;
   timelineDoc: TimelineDocument;
   /**
    * Receives the raw rendered frame. The caller creates and owns the object URL so
@@ -31,7 +31,7 @@ export function dispatchMarkerThumbnailGeneration(params: MarkerThumbnailParams)
         const processor = useMediaProcessor();
         const blob = await processor.extractTimelineFrameBlob({
           timelineDoc: params.timelineDoc,
-          timeUs: params.timeUs,
+          timeTicks: params.timeTicks,
           maxWidth: MARKER_THUMBNAILS.WIDTH,
           maxHeight: MARKER_THUMBNAILS.HEIGHT,
           quality: MARKER_THUMBNAILS.QUALITY,
@@ -48,7 +48,7 @@ export function dispatchMarkerThumbnailGeneration(params: MarkerThumbnailParams)
         await fileThumbnailGenerator.saveMarkerThumbnail({
           projectId: params.projectId,
           markerId: params.markerId,
-          timeUs: params.timeUs,
+          timeTicks: params.timeTicks,
           blob,
         });
 

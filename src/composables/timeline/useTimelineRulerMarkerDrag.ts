@@ -1,6 +1,6 @@
 import { TICKS_PER_SECOND } from '~/utils/time';
 import { onUnmounted, ref, type Ref, computed } from 'vue';
-import { pxToDeltaUs, pickBestSnapCandidateUs, zoomToPxPerSecond } from '~/utils/timeline/geometry';
+import { pxToDeltaTicks, pickBestSnapCandidateTicks, zoomToPxPerSecond } from '~/utils/timeline/geometry';
 import { quantizeTimeUsToFrames } from '~/timeline/commands/utils';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useEffectiveHotkeys } from '~/composables/editor/hotkeys/useEffectiveHotkeys';
@@ -9,13 +9,13 @@ import { isCommandMatched } from '~/utils/hotkeys/runtime';
 
 interface MarkerLike {
   id: string;
-  timeUs: number;
-  durationUs?: number;
+  timeTicks: number;
+  durationTicks?: number;
 }
 
 interface MarkerDragState {
-  timeUs: number;
-  durationUs?: number;
+  timeTicks: number;
+  durationTicks?: number;
 }
 
 interface UseTimelineRulerMarkerDragOptions {
@@ -23,7 +23,7 @@ interface UseTimelineRulerMarkerDragOptions {
   zoom: Ref<number>;
   fps: Ref<number>;
   selectMarker: (markerId: string, e?: MouseEvent) => void;
-  updateMarker: (markerId: string, patch: { timeUs?: number; durationUs?: number }) => void;
+  updateMarker: (markerId: string, patch: { timeTicks?: number; durationTicks?: number }) => void;
   getSelectedMarkerIds: () => string[];
   computeSnapTargets?: (excludeMarkerId?: string) => number[];
   snapThresholdPx?: Ref<number>;
@@ -40,9 +40,9 @@ export function useTimelineRulerMarkerDrag(options: UseTimelineRulerMarkerDragOp
   const markerDragStartX = ref(0);
   const markerDragStartY = ref(0);
   const markerDragStartScrollLeft = ref(0);
-  const markerDragStartMouseTimeUs = ref(0);
+  const markerDragStartMouseTimeTicks = ref(0);
   const markerDragStartStates = ref<Record<string, MarkerDragState>>({});
-  const draggedMarkerPatches = ref<Record<string, { timeUs?: number; durationUs?: number }>>({});
+  const draggedMarkerPatches = ref<Record<string, { timeTicks?: number; durationTicks?: number }>>({});
   const suppressNextRulerClick = ref(false);
   const workspaceStore = useWorkspaceStore();
 
@@ -59,8 +59,8 @@ export function useTimelineRulerMarkerDrag(options: UseTimelineRulerMarkerDragOp
       if (!patch) return m;
       return {
         ...m,
-        timeUs: patch.timeUs ?? m.timeUs,
-        durationUs: patch.durationUs ?? m.durationUs,
+        timeTicks: patch.timeTicks ?? m.timeTicks,
+        durationTicks: patch.durationTicks ?? m.durationTicks,
       };
     });
   });
@@ -87,8 +87,8 @@ export function useTimelineRulerMarkerDrag(options: UseTimelineRulerMarkerDragOp
     }
   }
 
-  function quantize(timeUs: number) {
-    return quantizeTimeUsToFrames(timeUs, options.fps.value, 'round');
+  function quantize(timeTicks: number) {
+    return quantizeTimeUsToFrames(timeTicks, options.fps.value, 'round');
   }
 
   function getIsSnappingEnabled() {
@@ -112,9 +112,9 @@ export function useTimelineRulerMarkerDrag(options: UseTimelineRulerMarkerDragOp
       markerDragStartX.value +
       (options.scrollLeft.value - markerDragStartScrollLeft.value);
     const currentZoom = options.zoom.value;
-    const deltaUs = pxToDeltaUs(dxPx, currentZoom);
+    const deltaTicks = pxToDeltaTicks(dxPx, currentZoom);
 
-    const patches: Record<string, { timeUs?: number; durationUs?: number }> = {};
+    const patches: Record<string, { timeTicks?: number; durationTicks?: number }> = {};
     const leadId = draggedMarkerId.value;
     const leadState = leadId ? markerDragStartStates.value[leadId] : undefined;
 
@@ -128,24 +128,24 @@ export function useTimelineRulerMarkerDrag(options: UseTimelineRulerMarkerDragOp
       const isResizing = part === 'right';
       const isMovingWhole = part === 'move';
 
-      if (isResizing && leadState && leadState.durationUs !== undefined) {
-        let newDurationUs = Math.max(1, quantize(leadState.durationUs + deltaUs));
+      if (isResizing && leadState && leadState.durationTicks !== undefined) {
+        let newDurationTicks = Math.max(1, quantize(leadState.durationTicks + deltaTicks));
 
         if (getIsSnappingEnabled() && options.computeSnapTargets && options.snapThresholdPx) {
-          const endUs = leadState.timeUs + newDurationUs;
-          const thresholdUs = Math.round(
+          const endTicks = leadState.timeTicks + newDurationTicks;
+          const thresholdTicks = Math.round(
             (options.snapThresholdPx.value / zoomToPxPerSecond(currentZoom)) * TICKS_PER_SECOND,
           );
           const targets = options.computeSnapTargets(leadId ?? undefined);
-          const snap = pickBestSnapCandidateUs({ rawUs: endUs, thresholdUs, targetsUs: targets });
-          if (snap.distUs < thresholdUs) {
-            newDurationUs = Math.max(1, quantize(snap.snappedUs) - leadState.timeUs);
+          const snap = pickBestSnapCandidateTicks({ rawTicks: endTicks, thresholdTicks, targetsTicks: targets });
+          if (snap.distTicks < thresholdTicks) {
+            newDurationTicks = Math.max(1, quantize(snap.snappedTicks) - leadState.timeTicks);
           }
         }
 
-        patches[markerId] = { durationUs: newDurationUs };
+        patches[markerId] = { durationTicks: newDurationTicks };
       } else {
-        let newUs = Math.max(0, quantize(startState.timeUs + deltaUs));
+        let newTicks = Math.max(0, quantize(startState.timeTicks + deltaTicks));
 
         if (
           isLead &&
@@ -153,39 +153,39 @@ export function useTimelineRulerMarkerDrag(options: UseTimelineRulerMarkerDragOp
           options.computeSnapTargets &&
           options.snapThresholdPx
         ) {
-          const thresholdUs = Math.round(
+          const thresholdTicks = Math.round(
             (options.snapThresholdPx.value / zoomToPxPerSecond(currentZoom)) * TICKS_PER_SECOND,
           );
           const targets = options.computeSnapTargets(leadId ?? undefined);
-          const snap = pickBestSnapCandidateUs({ rawUs: newUs, thresholdUs, targetsUs: targets });
-          if (snap.distUs < thresholdUs) {
-            newUs = Math.max(0, quantize(snap.snappedUs));
+          const snap = pickBestSnapCandidateTicks({ rawTicks: newTicks, thresholdTicks, targetsTicks: targets });
+          if (snap.distTicks < thresholdTicks) {
+            newTicks = Math.max(0, quantize(snap.snappedTicks));
           }
         }
 
-        if (startState.durationUs !== undefined && isMovingWhole) {
+        if (startState.durationTicks !== undefined && isMovingWhole) {
           // Move the whole zone, preserving its duration.
           patches[markerId] = {
-            timeUs: newUs,
-            durationUs: startState.durationUs,
+            timeTicks: newTicks,
+            durationTicks: startState.durationTicks,
           };
-        } else if (startState.durationUs !== undefined) {
+        } else if (startState.durationTicks !== undefined) {
           // Left-edge resize: move the start while keeping the end fixed.
-          const endUs = startState.timeUs + startState.durationUs;
-          if (newUs < endUs) {
+          const endTicks = startState.timeTicks + startState.durationTicks;
+          if (newTicks < endTicks) {
             patches[markerId] = {
-              timeUs: newUs,
-              durationUs: endUs - newUs,
+              timeTicks: newTicks,
+              durationTicks: endTicks - newTicks,
             };
           } else {
             // Prevent collapsing zone by keeping minimal duration
             patches[markerId] = {
-              timeUs: Math.max(0, endUs - 1),
-              durationUs: 1,
+              timeTicks: Math.max(0, endTicks - 1),
+              durationTicks: 1,
             };
           }
         } else {
-          patches[markerId] = { timeUs: newUs };
+          patches[markerId] = { timeTicks: newTicks };
         }
       }
     }
@@ -208,9 +208,9 @@ export function useTimelineRulerMarkerDrag(options: UseTimelineRulerMarkerDragOp
         if (!patch) continue;
 
         const marker = options.markers.value.find((item) => item.id === markerId);
-        const nextTimeUs = patch.timeUs ?? marker?.timeUs;
-        const nextDurationUs = patch.durationUs ?? marker?.durationUs;
-        const hasChanged = nextTimeUs !== marker?.timeUs || nextDurationUs !== marker?.durationUs;
+        const nextTimeTicks = patch.timeTicks ?? marker?.timeTicks;
+        const nextDurationTicks = patch.durationTicks ?? marker?.durationTicks;
+        const hasChanged = nextTimeTicks !== marker?.timeTicks || nextDurationTicks !== marker?.durationTicks;
 
         if (marker && hasChanged) {
           options.updateMarker(markerId, patch);
@@ -271,8 +271,8 @@ export function useTimelineRulerMarkerDrag(options: UseTimelineRulerMarkerDragOp
       const m = options.markers.value.find((item) => item.id === id);
       if (m) {
         states[id] = {
-          timeUs: quantize(m.timeUs),
-          durationUs: m.durationUs !== undefined ? quantize(m.durationUs) : undefined,
+          timeTicks: quantize(m.timeTicks),
+          durationTicks: m.durationTicks !== undefined ? quantize(m.durationTicks) : undefined,
         };
       }
     }
@@ -284,7 +284,7 @@ export function useTimelineRulerMarkerDrag(options: UseTimelineRulerMarkerDragOp
     markerDragStartX.value = event.clientX;
     markerDragStartY.value = event.clientY;
     markerDragStartScrollLeft.value = options.scrollLeft.value;
-    markerDragStartMouseTimeUs.value = options.getTimeUsFromPointerEvent(event);
+    markerDragStartMouseTimeTicks.value = options.getTimeUsFromPointerEvent(event);
     markerDragStartStates.value = states;
     draggedMarkerPatches.value = {};
 

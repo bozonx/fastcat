@@ -5,10 +5,10 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import UiFormField from '~/components/ui/UiFormField.vue';
 import {
   DEFAULT_USER_SETTINGS,
-  MAX_DEFAULT_FADE_DURATION_US,
-  MAX_DEFAULT_STATIC_CLIP_DURATION_US,
-  MAX_DEFAULT_TRANSITION_DURATION_US,
-  MIN_DEFAULT_DURATION_US,
+  MAX_DEFAULT_FADE_DURATION_TICKS,
+  MAX_DEFAULT_STATIC_CLIP_DURATION_TICKS,
+  MAX_DEFAULT_TRANSITION_DURATION_TICKS,
+  MIN_DEFAULT_DURATION_TICKS,
 } from '~/utils/settings/defaults';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
@@ -20,12 +20,12 @@ const workspaceStore = useWorkspaceStore();
 const isResetConfirmOpen = ref(false);
 
 function resetTimelineDefaults() {
-  workspaceStore.userSettings.timeline.defaultAudioFadeDurationUs =
-    DEFAULT_USER_SETTINGS.timeline.defaultAudioFadeDurationUs;
-  workspaceStore.userSettings.timeline.defaultTransitionDurationUs =
-    DEFAULT_USER_SETTINGS.timeline.defaultTransitionDurationUs;
-  workspaceStore.userSettings.timeline.defaultStaticClipDurationUs =
-    DEFAULT_USER_SETTINGS.timeline.defaultStaticClipDurationUs;
+  workspaceStore.userSettings.timeline.defaultAudioFadeDurationTicks =
+    DEFAULT_USER_SETTINGS.timeline.defaultAudioFadeDurationTicks;
+  workspaceStore.userSettings.timeline.defaultTransitionDurationTicks =
+    DEFAULT_USER_SETTINGS.timeline.defaultTransitionDurationTicks;
+  workspaceStore.userSettings.timeline.defaultStaticClipDurationTicks =
+    DEFAULT_USER_SETTINGS.timeline.defaultStaticClipDurationTicks;
   workspaceStore.userSettings.projectDefaults.defaultAudioFadeCurve =
     DEFAULT_USER_SETTINGS.projectDefaults.defaultAudioFadeCurve;
 
@@ -58,15 +58,15 @@ function resetTimelineDefaults() {
     <UiFormField :label="t('videoEditor.settings.defaultAudioFadeDuration')">
       <UiWheelNumberInput
         :model-value="
-          workspaceStore.userSettings.timeline.defaultAudioFadeDurationUs / TICKS_PER_SECOND
+          workspaceStore.userSettings.timeline.defaultAudioFadeDurationTicks / TICKS_PER_SECOND
         "
-        :min="MIN_DEFAULT_DURATION_US / TICKS_PER_SECOND"
-        :max="MAX_DEFAULT_FADE_DURATION_US / TICKS_PER_SECOND"
+        :min="MIN_DEFAULT_DURATION_TICKS / TICKS_PER_SECOND"
+        :max="MAX_DEFAULT_FADE_DURATION_TICKS / TICKS_PER_SECOND"
         :step="0.1"
         :wheel-step-multiplier="10"
         @update:model-value="
           (v) =>
-            (workspaceStore.userSettings.timeline.defaultAudioFadeDurationUs = Math.round(
+            (workspaceStore.userSettings.timeline.defaultAudioFadeDurationTicks = Math.round(
               v * TICKS_PER_SECOND,
             ))
         "
@@ -92,15 +92,15 @@ function resetTimelineDefaults() {
     <UiFormField :label="t('videoEditor.settings.defaultTransitionDuration')">
       <UiWheelNumberInput
         :model-value="
-          workspaceStore.userSettings.timeline.defaultTransitionDurationUs / TICKS_PER_SECOND
+          workspaceStore.userSettings.timeline.defaultTransitionDurationTicks / TICKS_PER_SECOND
         "
-        :min="MIN_DEFAULT_DURATION_US / TICKS_PER_SECOND"
-        :max="MAX_DEFAULT_TRANSITION_DURATION_US / TICKS_PER_SECOND"
+        :min="MIN_DEFAULT_DURATION_TICKS / TICKS_PER_SECOND"
+        :max="MAX_DEFAULT_TRANSITION_DURATION_TICKS / TICKS_PER_SECOND"
         :step="0.1"
         :wheel-step-multiplier="10"
         @update:model-value="
           (v) =>
-            (workspaceStore.userSettings.timeline.defaultTransitionDurationUs = Math.round(
+            (workspaceStore.userSettings.timeline.defaultTransitionDurationTicks = Math.round(
               v * TICKS_PER_SECOND,
             ))
         "
@@ -110,15 +110,15 @@ function resetTimelineDefaults() {
     <UiFormField :label="t('videoEditor.settings.defaultStaticClipDuration')">
       <UiWheelNumberInput
         :model-value="
-          workspaceStore.userSettings.timeline.defaultStaticClipDurationUs / TICKS_PER_SECOND
+          workspaceStore.userSettings.timeline.defaultStaticClipDurationTicks / TICKS_PER_SECOND
         "
-        :min="MIN_DEFAULT_DURATION_US / TICKS_PER_SECOND"
-        :max="MAX_DEFAULT_STATIC_CLIP_DURATION_US / TICKS_PER_SECOND"
+        :min="MIN_DEFAULT_DURATION_TICKS / TICKS_PER_SECOND"
+        :max="MAX_DEFAULT_STATIC_CLIP_DURATION_TICKS / TICKS_PER_SECOND"
         :step="0.1"
         :wheel-step-multiplier="10"
         @update:model-value="
           (v) =>
-            (workspaceStore.userSettings.timeline.defaultStaticClipDurationUs = Math.round(
+            (workspaceStore.userSettings.timeline.defaultStaticClipDurationTicks = Math.round(
               v * TICKS_PER_SECOND,
             ))
         "

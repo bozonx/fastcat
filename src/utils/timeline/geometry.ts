@@ -19,9 +19,9 @@ export function pxPerSecondToZoom(pps: number): number {
   return 7 * Math.log2(pps / BASE_PX_PER_SECOND) + 50;
 }
 
-export function timeUsToPx(timeUs: number, zoom = 100) {
+export function timeUsToPx(timeTicks: number, zoom = 100) {
   const pxPerSecond = zoomToPxPerSecond(zoom);
-  return ticksToSeconds(timeUs) * pxPerSecond;
+  return ticksToSeconds(timeTicks) * pxPerSecond;
 }
 
 export interface TimelinePixelRange {
@@ -31,12 +31,12 @@ export interface TimelinePixelRange {
 }
 
 export function timelineRangeToRoundedPx(
-  range: { startUs: number; durationUs: number },
+  range: { startTicks: number; durationTicks: number },
   zoom = 100,
   minWidthPx = 1,
 ): TimelinePixelRange {
-  const leftPx = Math.round(timeUsToPx(range.startUs, zoom));
-  const rawEndPx = Math.round(timeUsToPx(range.startUs + range.durationUs, zoom));
+  const leftPx = Math.round(timeUsToPx(range.startTicks, zoom));
+  const rawEndPx = Math.round(timeUsToPx(range.startTicks + range.durationTicks, zoom));
   const endPx = Math.max(leftPx + minWidthPx, rawEndPx);
 
   return {
@@ -46,7 +46,7 @@ export function timelineRangeToRoundedPx(
   };
 }
 
-export function pxToTimeUs(px: number, zoom = 100) {
+export function pxToTimeTicks(px: number, zoom = 100) {
   const pxPerSecond = zoomToPxPerSecond(zoom);
   return Math.max(0, secondsToTicks({ seconds: px / pxPerSecond }));
 }
@@ -58,7 +58,7 @@ export function pxToTimeUs(px: number, zoom = 100) {
  * ruler ticks, playhead, markers, selection range): round in *absolute* space
  * first, then subtract the raw scroll offset. Rounding the absolute coordinate
  * — rather than the post-scroll result — is what keeps a playhead, a marker
- * line and a clip edge that all sit on the same timeUs pixel-aligned with each
+ * line and a clip edge that all sit on the same timeTicks pixel-aligned with each
  * other for *any* `scrollLeft`, including the fractional values HiDPI trackpads
  * produce. Clips already do this via `timelineRangeToRoundedPx`; this helper
  * lets overlays match them exactly instead of computing `round(abs - scroll)`.
@@ -67,13 +67,13 @@ export function absolutePxToViewportPx(absolutePx: number, scrollLeft: number): 
   return Math.round(absolutePx) - scrollLeft;
 }
 
-/** Convenience wrapper: project a timeUs straight into viewport pixels. */
-export function timeUsToViewportPx(timeUs: number, zoom: number, scrollLeft: number): number {
-  return absolutePxToViewportPx(timeUsToPx(timeUs, zoom), scrollLeft);
+/** Convenience wrapper: project a timeTicks straight into viewport pixels. */
+export function timeUsToViewportPx(timeTicks: number, zoom: number, scrollLeft: number): number {
+  return absolutePxToViewportPx(timeUsToPx(timeTicks, zoom), scrollLeft);
 }
 
-export function quantizeTimeUsToPixelGrid(timeUs: number, zoom = 100) {
-  return pxToTimeUs(Math.round(timeUsToPx(timeUs, zoom)), zoom);
+export function quantizeTimeUsToPixelGrid(timeTicks: number, zoom = 100) {
+  return pxToTimeTicks(Math.round(timeUsToPx(timeTicks, zoom)), zoom);
 }
 
 /**
@@ -106,13 +106,13 @@ export function computeClipCenteredOverlayLeftPx(params: {
   return Math.max(paddingPx, Math.min(maxX, localX));
 }
 
-export function pxToDeltaUs(px: number, zoom = 100) {
+export function pxToDeltaTicks(px: number, zoom = 100) {
   const pxPerSecond = zoomToPxPerSecond(zoom);
   return secondsToTicks({ seconds: px / pxPerSecond });
 }
 
 export interface TimelineZoomAnchor {
-  anchorTimeUs: number;
+  anchorTimeTicks: number;
   anchorViewportX: number;
 }
 
@@ -128,15 +128,15 @@ export function computeAnchoredScrollLeft(params: {
   const safeViewportWidth = Number.isFinite(viewportWidth) ? Math.max(0, viewportWidth) : 0;
   const safePrevScrollLeft = Number.isFinite(prevScrollLeft) ? Math.max(0, prevScrollLeft) : 0;
 
-  const anchorTimeUs = Number.isFinite(anchor.anchorTimeUs)
-    ? Math.max(0, Math.round(anchor.anchorTimeUs))
+  const anchorTimeTicks = Number.isFinite(anchor.anchorTimeTicks)
+    ? Math.max(0, Math.round(anchor.anchorTimeTicks))
     : 0;
   const anchorViewportXRaw = Number.isFinite(anchor.anchorViewportX)
     ? anchor.anchorViewportX
     : safeViewportWidth / 2;
   const anchorViewportX = Math.min(safeViewportWidth, Math.max(0, anchorViewportXRaw));
 
-  const anchorPxAtNextZoom = timeUsToPx(anchorTimeUs, nextZoom);
+  const anchorPxAtNextZoom = timeUsToPx(anchorTimeTicks, nextZoom);
   const nextScrollLeft = anchorPxAtNextZoom - anchorViewportX;
 
   if (!Number.isFinite(nextScrollLeft)) return safePrevScrollLeft;
@@ -228,22 +228,22 @@ export function computeTimelineCenteredScrollLeftForPlayhead(
   return Math.min(maxScrollLeft, Math.max(0, rawNextScrollLeft));
 }
 
-export function quantizeDeltaUsToFrames(deltaUs: number, fps: number): number {
-  const safeDeltaUs = Number.isFinite(deltaUs) ? Math.round(deltaUs) : 0;
+export function quantizeDeltaUsToFrames(deltaTicks: number, fps: number): number {
+  const safeDeltaTicks = Number.isFinite(deltaTicks) ? Math.round(deltaTicks) : 0;
   const safeFps = sanitizeFps(fps);
   return quantizeTicksToFrame({
-    ticks: safeDeltaUs,
+    ticks: safeDeltaTicks,
     frameRate: { num: safeFps, den: 1 },
     mode: 'round',
   });
 }
 
-export function quantizeStartUsToFrames(startUs: number, fps: number): number {
+export function quantizeStartUsToFrames(startTicks: number, fps: number): number {
   const safeFps = sanitizeFps(fps);
   return Math.max(
     0,
     quantizeTicksToFrame({
-      ticks: Math.max(0, startUs),
+      ticks: Math.max(0, startTicks),
       frameRate: { num: safeFps, den: 1 },
       mode: 'round',
     }),
@@ -251,19 +251,19 @@ export function quantizeStartUsToFrames(startUs: number, fps: number): number {
 }
 
 /**
- * The signed distance (ticks) from `startUs` to its nearest frame boundary — a
+ * The signed distance (ticks) from `startTicks` to its nearest frame boundary — a
  * clip's sub-frame "phase". Zero for frame-aligned starts. Feeding this back as
- * `computeSnappedStartUs`'s `frameOffsetUs` frame-snaps by whole-frame deltas
+ * `computeSnappedStartTicks`'s `frameOffsetTicks` frame-snaps by whole-frame deltas
  * while preserving the phase (so a hand-dialed audio sync survives a move).
  * Canonical positions are integer ticks, so only an exact boundary has zero
  * phase.
  */
-export function subframePhaseUs(startUs: number, fps: number): number {
-  const phase = Math.round(startUs) - quantizeStartUsToFrames(startUs, fps);
+export function subframePhaseTicks(startTicks: number, fps: number): number {
+  const phase = Math.round(startTicks) - quantizeStartUsToFrames(startTicks, fps);
   return phase === 0 ? 0 : phase;
 }
 
-export function sanitizeSnapTargetsUs(targets: number[]): number[] {
+export function sanitizeSnapTargetsTicks(targets: number[]): number[] {
   const result: number[] = [];
   for (const v of targets) {
     if (!Number.isFinite(v)) continue;
@@ -277,87 +277,87 @@ export function sanitizeSnapTargetsUs(targets: number[]): number[] {
   return uniq;
 }
 
-export function pickBestSnapCandidateUs(params: {
-  rawUs: number;
-  thresholdUs: number;
-  targetsUs: number[];
-}): { snappedUs: number; distUs: number } {
-  const rawUs = Math.round(params.rawUs);
-  let best = rawUs;
-  let bestDist = Math.max(0, Math.round(params.thresholdUs));
-  for (const target of params.targetsUs) {
-    const dist = Math.abs(rawUs - target);
+export function pickBestSnapCandidateTicks(params: {
+  rawTicks: number;
+  thresholdTicks: number;
+  targetsTicks: number[];
+}): { snappedTicks: number; distTicks: number } {
+  const rawTicks = Math.round(params.rawTicks);
+  let best = rawTicks;
+  let bestDist = Math.max(0, Math.round(params.thresholdTicks));
+  for (const target of params.targetsTicks) {
+    const dist = Math.abs(rawTicks - target);
     if (dist < bestDist) {
       bestDist = dist;
       best = target;
     }
   }
-  return { snappedUs: best, distUs: bestDist };
+  return { snappedTicks: best, distTicks: bestDist };
 }
 
-export function computeSnappedStartUs(params: {
-  rawStartUs: number;
-  draggingItemDurationUs: number;
+export function computeSnappedStartTicks(params: {
+  rawStartTicks: number;
+  draggingItemDurationTicks: number;
   fps: number;
   zoom: number;
   snapThresholdPx: number;
-  snapTargetsUs: number[];
+  snapTargetsTicks: number[];
   enableFrameSnap: boolean;
   enableClipSnap: boolean;
-  frameOffsetUs: number;
+  frameOffsetTicks: number;
 }): number {
   const {
-    rawStartUs,
-    draggingItemDurationUs,
+    rawStartTicks,
+    draggingItemDurationTicks,
     fps,
     zoom,
     snapThresholdPx,
-    snapTargetsUs,
+    snapTargetsTicks,
     enableFrameSnap,
     enableClipSnap,
-    frameOffsetUs,
+    frameOffsetTicks,
   } = params;
-  const thresholdUs = secondsToTicks({ seconds: snapThresholdPx / zoomToPxPerSecond(zoom) });
+  const thresholdTicks = secondsToTicks({ seconds: snapThresholdPx / zoomToPxPerSecond(zoom) });
 
-  let best = rawStartUs;
-  let bestDist: number = thresholdUs;
+  let best = rawStartTicks;
+  let bestDist: number = thresholdTicks;
   let snappedToClip = false;
 
   if (enableClipSnap) {
-    const rawEndUs = rawStartUs + Math.max(0, Math.round(draggingItemDurationUs));
+    const rawEndTicks = rawStartTicks + Math.max(0, Math.round(draggingItemDurationTicks));
 
-    for (const target of snapTargetsUs) {
-      const distStart = Math.abs(rawStartUs - target);
+    for (const target of snapTargetsTicks) {
+      const distStart = Math.abs(rawStartTicks - target);
       if (distStart < bestDist) {
         bestDist = distStart;
         best = target;
         snappedToClip = true;
       }
 
-      const distEnd = Math.abs(rawEndUs - target);
+      const distEnd = Math.abs(rawEndTicks - target);
       if (distEnd < bestDist) {
         bestDist = distEnd;
-        best = target - Math.max(0, Math.round(draggingItemDurationUs));
+        best = target - Math.max(0, Math.round(draggingItemDurationTicks));
         snappedToClip = true;
       }
     }
   }
 
   if (enableFrameSnap && !snappedToClip) {
-    const offsetUs = Number.isFinite(frameOffsetUs) ? Math.round(frameOffsetUs) : 0;
-    best = quantizeStartUsToFrames(best - offsetUs, fps) + offsetUs;
+    const offsetTicks = Number.isFinite(frameOffsetTicks) ? Math.round(frameOffsetTicks) : 0;
+    best = quantizeStartUsToFrames(best - offsetTicks, fps) + offsetTicks;
   }
 
   return Math.max(0, best);
 }
 
-export function calculatePointerTimeUs(params: {
+export function calculatePointerTimeTicks(params: {
   clientX: number;
   rectLeft: number;
   rectWidth: number;
-  clipStartUs: number;
+  clipStartTicks: number;
   zoom: number;
 }): number {
   const localX = Math.min(params.rectWidth, Math.max(0, params.clientX - params.rectLeft));
-  return params.clipStartUs + pxToTimeUs(localX, params.zoom);
+  return params.clipStartTicks + pxToTimeTicks(localX, params.zoom);
 }

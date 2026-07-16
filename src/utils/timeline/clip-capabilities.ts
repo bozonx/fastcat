@@ -100,7 +100,7 @@ export function isClipFrameAligned(
   if (!Number.isInteger(frameTicks) || frameTicks <= 0) return false;
 
   return (
-    clip.timelineRange.startUs % frameTicks === 0 &&
-    clip.timelineRange.durationUs % frameTicks === 0
+    clip.timelineRange.startTicks % frameTicks === 0 &&
+    clip.timelineRange.durationTicks % frameTicks === 0
   );
 }

@@ -49,7 +49,7 @@ describe('TimelineGap', () => {
   const item = {
     id: 'gap-1',
     kind: 'gap',
-    timelineRange: { startUs: 1_000_000, durationUs: 2_000_000 },
+    timelineRange: { startTicks: 1_000_000, durationTicks: 2_000_000 },
   } as any;
 
   it('renders with correct position and width', async () => {

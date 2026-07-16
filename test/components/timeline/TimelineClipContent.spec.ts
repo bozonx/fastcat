@@ -37,8 +37,8 @@ const defaultClipItem = {
   trackId: 'track-1',
   clipType: 'media',
   name: 'Sample Clip Video.mp4',
-  timelineRange: { startUs: 0, durationUs: 5000000 },
-  sourceRange: { startUs: 0, durationUs: 5000000 },
+  timelineRange: { startTicks: 0, durationTicks: 5000000 },
+  sourceRange: { startTicks: 0, durationTicks: 5000000 },
 };
 
 const defaultProps = {
@@ -46,7 +46,7 @@ const defaultProps = {
   track: defaultTrack,
   clipItem: defaultClipItem,
   effectiveClipItem: defaultClipItem,
-  effectiveTimelineStartUs: 0,
+  effectiveTimelineStartTicks: 0,
   isHeaderOnly: false,
   clipWidthPx: 200,
   zoom: 1,
@@ -111,7 +111,7 @@ describe('TimelineClipContent', () => {
         clipWidthPx: 200,
         scrollLeft: 0,
         viewportWidth: 1000,
-        effectiveTimelineStartUs: 0,
+        effectiveTimelineStartTicks: 0,
         zoom: 100,
       } as any,
     });
@@ -133,7 +133,7 @@ describe('TimelineClipContent', () => {
         clipWidthPx: 800,
         scrollLeft: 0,
         viewportWidth: 500,
-        effectiveTimelineStartUs: 0,
+        effectiveTimelineStartTicks: 0,
         zoom: 100,
         canAddTransitionIn: true,
         canAddTransitionOut: true,

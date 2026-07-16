@@ -2,19 +2,19 @@ import type { TimelineMarker } from '~/timeline/types';
 import { quantizeTimeUsToFrames } from '~/timeline/commands/utils';
 
 export interface MarkerNavigationResult {
-  timeUs: number;
+  timeTicks: number;
 }
 
 /**
  * Collect unique boundary points from markers, quantizing them to frame
- * boundaries so they align with the playhead after setCurrentTimeUs.
+ * boundaries so they align with the playhead after setCurrentTimeTicks.
  */
 function getUniqueMarkerPoints(markers: TimelineMarker[], fps: number): number[] {
   const rawPoints = new Set<number>();
   for (const m of markers) {
-    rawPoints.add(m.timeUs);
-    if (m.durationUs) {
-      rawPoints.add(m.timeUs + m.durationUs);
+    rawPoints.add(m.timeTicks);
+    if (m.durationTicks) {
+      rawPoints.add(m.timeTicks + m.durationTicks);
     }
   }
   const points = Array.from(rawPoints);

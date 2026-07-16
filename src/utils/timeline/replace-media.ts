@@ -8,7 +8,7 @@ import type { TimelineClipItem, TimelineRange } from '~/timeline/types';
  */
 export interface ReplaceMediaPatch {
   source: { path: string };
-  sourceDurationUs?: number;
+  sourceDurationTicks?: number;
   sourceRange?: TimelineRange;
   timelineRange?: TimelineRange;
 }
@@ -17,14 +17,14 @@ export interface ReplaceMediaPatch {
  * Builds the `updateClipProperties` patch for a media replacement.
  *
  * Range clamping rules (per the chosen "clamp to source" behaviour):
- *  - `sourceRange.startUs` is kept when it still fits inside the new source,
+ *  - `sourceRange.startTicks` is kept when it still fits inside the new source,
  *    otherwise reset to `0` (the replacement is treated as starting fresh).
- *  - `sourceRange.durationUs` is capped at `newSourceDurationUs - startUs`.
- *  - `timelineRange.durationUs` follows via the clip's speed relationship
- *    (`sourceDurationUs / |speed|`). Only `durationUs` changes — the clip's
+ *  - `sourceRange.durationTicks` is capped at `newSourceDurationTicks - startTicks`.
+ *  - `timelineRange.durationTicks` follows via the clip's speed relationship
+ *    (`sourceDurationTicks / |speed|`). Only `durationTicks` changes — the clip's
  *    timeline position is untouched, leaving a gap rather than rippling.
  *  - When the new source is longer (or equal), geometry is unchanged and only
- *    the `source` swap (plus `sourceDurationUs`) is emitted.
+ *    the `source` swap (plus `sourceDurationTicks`) is emitted.
  *
  * Only fields that actually differ from the current clip are included so the
  * history record stays minimal.
@@ -32,27 +32,27 @@ export interface ReplaceMediaPatch {
 export function buildReplaceMediaPatch(args: {
   clip: TimelineClipItem;
   newPath: string;
-  newSourceDurationUs: number;
+  newSourceDurationTicks: number;
 }): ReplaceMediaPatch {
-  const { clip, newPath, newSourceDurationUs } = args;
+  const { clip, newPath, newSourceDurationTicks } = args;
   const patch: ReplaceMediaPatch = { source: { path: newPath } };
 
-  if (!(newSourceDurationUs > 0)) return patch;
-  patch.sourceDurationUs = newSourceDurationUs;
+  if (!(newSourceDurationTicks > 0)) return patch;
+  patch.sourceDurationTicks = newSourceDurationTicks;
 
-  const currentStartUs = Math.max(0, Math.round(clip.sourceRange.startUs));
-  const startUs = currentStartUs < newSourceDurationUs ? currentStartUs : 0;
-  const availableUs = Math.max(0, newSourceDurationUs - startUs);
-  const sourceDurationUs = Math.min(Math.round(clip.sourceRange.durationUs), availableUs);
+  const currentStartTicks = Math.max(0, Math.round(clip.sourceRange.startTicks));
+  const startTicks = currentStartTicks < newSourceDurationTicks ? currentStartTicks : 0;
+  const availableTicks = Math.max(0, newSourceDurationTicks - startTicks);
+  const sourceDurationTicks = Math.min(Math.round(clip.sourceRange.durationTicks), availableTicks);
 
   const speed = Math.abs(clip.speed ?? 1) || 1;
-  const timelineDurationUs = Math.floor(sourceDurationUs / speed);
+  const timelineDurationTicks = Math.floor(sourceDurationTicks / speed);
 
-  if (startUs !== clip.sourceRange.startUs || sourceDurationUs !== clip.sourceRange.durationUs) {
-    patch.sourceRange = { ...clip.sourceRange, startUs, durationUs: sourceDurationUs };
+  if (startTicks !== clip.sourceRange.startTicks || sourceDurationTicks !== clip.sourceRange.durationTicks) {
+    patch.sourceRange = { ...clip.sourceRange, startTicks, durationTicks: sourceDurationTicks };
   }
-  if (timelineDurationUs !== clip.timelineRange.durationUs) {
-    patch.timelineRange = { ...clip.timelineRange, durationUs: timelineDurationUs };
+  if (timelineDurationTicks !== clip.timelineRange.durationTicks) {
+    patch.timelineRange = { ...clip.timelineRange, durationTicks: timelineDurationTicks };
   }
 
   return patch;

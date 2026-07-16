@@ -6,13 +6,13 @@ import { resolveNestedMediaPath } from '~/utils/video-editor/worker-clip-utils';
 
 export interface BuildTimelinePeaksParams {
   doc: TimelineDocument;
-  durationUs: number;
+  durationTicks: number;
   maxLength: number;
   visiting: Set<string>;
   timelinePath?: string;
   docCache?: Map<string, TimelineDocument>;
   shouldCancel?: () => boolean;
-  getMediaDurationUs?: (path: string) => number;
+  getMediaDurationTicks?: (path: string) => number;
   loadTimelineDocument: (path: string, clip: TimelineClipItem) => Promise<TimelineDocument | null>;
   ensureMediaPeaks: (params: {
     path: string;
@@ -94,18 +94,18 @@ export async function buildTimelinePeaks(
 ): Promise<Float32Array[] | null> {
   const {
     doc,
-    durationUs,
+    durationTicks,
     maxLength,
     visiting,
     timelinePath,
     docCache,
     shouldCancel,
-    getMediaDurationUs,
+    getMediaDurationTicks,
     loadTimelineDocument,
     ensureMediaPeaks,
     yieldEverySamples = 4096,
   } = params;
-  if (durationUs <= 0 || maxLength <= 0) return null;
+  if (durationTicks <= 0 || maxLength <= 0) return null;
   if (shouldCancel?.()) return null;
 
   const effectiveAudioResult = buildEffectiveAudioClipItems({
@@ -126,16 +126,16 @@ export async function buildTimelinePeaks(
       : rawPath;
 
     let sourcePeaks: Float32Array[] | null = null;
-    const clipSourceDurationUs =
-      clip.sourceDurationUs && clip.sourceDurationUs > 0
-        ? clip.sourceDurationUs
+    const clipSourceDurationTicks =
+      clip.sourceDurationTicks && clip.sourceDurationTicks > 0
+        ? clip.sourceDurationTicks
         : path
-          ? (getMediaDurationUs?.(path) ?? 0)
+          ? (getMediaDurationTicks?.(path) ?? 0)
           : 0;
 
-    const sourceDurationUs = Math.max(
+    const sourceDurationTicks = Math.max(
       1,
-      Math.round(clipSourceDurationUs || clip.sourceRange.durationUs || 0),
+      Math.round(clipSourceDurationTicks || clip.sourceRange.durationTicks || 0),
     );
 
     if (clip.clipType === 'timeline') {
@@ -149,18 +149,18 @@ export async function buildTimelinePeaks(
       }
 
       visiting.add(path);
-      const nestedDurationS = sourceDurationUs / TICKS_PER_SECOND;
+      const nestedDurationS = sourceDurationTicks / TICKS_PER_SECOND;
       const nestedMaxLength = computeWaveformPeakLength(nestedDurationS);
 
       sourcePeaks = await buildTimelinePeaks({
         doc: nestedDoc,
-        durationUs: sourceDurationUs,
+        durationTicks: sourceDurationTicks,
         maxLength: nestedMaxLength,
         visiting,
         timelinePath: path,
         docCache,
         shouldCancel,
-        getMediaDurationUs,
+        getMediaDurationTicks,
         loadTimelineDocument,
         ensureMediaPeaks,
         yieldEverySamples,
@@ -171,7 +171,7 @@ export async function buildTimelinePeaks(
       sourcePeaks = await ensureMediaPeaks({
         path,
         maxLength,
-        durationS: sourceDurationUs / TICKS_PER_SECOND,
+        durationS: sourceDurationTicks / TICKS_PER_SECOND,
         shouldCancel,
       });
       if (shouldCancel?.()) return null;
@@ -188,19 +188,19 @@ export async function buildTimelinePeaks(
       }
     }
 
-    const itemStartUs = Math.max(0, Math.round(clip.timelineRange.startUs));
-    const itemDurationUs = Math.max(0, Math.round(clip.timelineRange.durationUs));
-    const itemSourceStartUs = Math.max(0, Math.round(clip.sourceRange.startUs));
-    const itemSourceDurationUs = Math.max(1, Math.round(clip.sourceRange.durationUs));
+    const itemStartTicks = Math.max(0, Math.round(clip.timelineRange.startTicks));
+    const itemDurationTicks = Math.max(0, Math.round(clip.timelineRange.durationTicks));
+    const itemSourceStartTicks = Math.max(0, Math.round(clip.sourceRange.startTicks));
+    const itemSourceDurationTicks = Math.max(1, Math.round(clip.sourceRange.durationTicks));
     const gain = Math.max(0, Math.min(10, Number(clip.audioGain ?? 1)));
     const speed = normalizeWaveformSpeed(clip.speed);
     const signedSpeed =
       typeof clip.speed === 'number' && Number.isFinite(clip.speed) ? clip.speed : 1;
 
-    const startIndex = Math.max(0, Math.floor((itemStartUs / durationUs) * maxLength));
+    const startIndex = Math.max(0, Math.floor((itemStartTicks / durationTicks) * maxLength));
     const endIndex = Math.min(
       maxLength,
-      Math.ceil(((itemStartUs + itemDurationUs) / durationUs) * maxLength),
+      Math.ceil(((itemStartTicks + itemDurationTicks) / durationTicks) * maxLength),
     );
 
     for (let sampleIndex = startIndex; sampleIndex < endIndex; sampleIndex++) {
@@ -210,22 +210,22 @@ export async function buildTimelinePeaks(
       }
 
       const parentRatio = sampleIndex / maxLength;
-      const absoluteUs = parentRatio * durationUs;
-      const localUs = Math.round(absoluteUs) - itemStartUs;
-      if (localUs < 0 || localUs > itemDurationUs) continue;
-      const sourceOffsetUs =
+      const absoluteTicks = parentRatio * durationTicks;
+      const localTicks = Math.round(absoluteTicks) - itemStartTicks;
+      if (localTicks < 0 || localTicks > itemDurationTicks) continue;
+      const sourceOffsetTicks =
         signedSpeed < 0
-          ? itemSourceDurationUs + Math.round(localUs * signedSpeed)
-          : Math.round(localUs * speed);
-      const sourceUs =
-        itemSourceStartUs + Math.min(itemSourceDurationUs, Math.max(0, sourceOffsetUs));
+          ? itemSourceDurationTicks + Math.round(localTicks * signedSpeed)
+          : Math.round(localTicks * speed);
+      const sourceTicks =
+        itemSourceStartTicks + Math.min(itemSourceDurationTicks, Math.max(0, sourceOffsetTicks));
 
       for (let channelIndex = 0; channelIndex < mixedPeaks.length; channelIndex++) {
         const sourceChannel = sourcePeaks[channelIndex] ?? sourcePeaks[0];
         if (!sourceChannel || sourceChannel.length === 0) continue;
         const sourceIndex = Math.min(
           sourceChannel.length - 1,
-          Math.max(0, Math.floor((sourceUs / sourceDurationUs) * sourceChannel.length)),
+          Math.max(0, Math.floor((sourceTicks / sourceDurationTicks) * sourceChannel.length)),
         );
         const current = mixedPeaks[channelIndex]?.[sampleIndex] ?? 0;
         const next = (sourceChannel[sourceIndex] ?? 0) * gain;

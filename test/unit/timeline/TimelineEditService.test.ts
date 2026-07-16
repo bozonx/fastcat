@@ -1,6 +1,6 @@
 /** @vitest-environment node */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { timelineUs } from '../utils/timeline-time';
+import { timelineTicks } from '../utils/timeline-time';
 import { createTimelineEditService } from '~/timeline/application/timelineEditService';
 import type { TimelineDocument, TimelineCommand } from '~/timeline/types';
 
@@ -26,7 +26,7 @@ describe('TimelineEditService', () => {
               kind: 'clip',
               trackId: 'v1',
               name: 'C1',
-              timelineRange: { startUs: 0, durationUs: timelineUs(10_000_000) },
+              timelineRange: { startTicks: 0, durationTicks: timelineTicks(10_000_000) },
             },
             {
               id: 'c2',
@@ -34,8 +34,8 @@ describe('TimelineEditService', () => {
               trackId: 'v1',
               name: 'C2',
               timelineRange: {
-                startUs: timelineUs(10_000_000),
-                durationUs: timelineUs(10_000_000),
+                startTicks: timelineTicks(10_000_000),
+                durationTicks: timelineTicks(10_000_000),
               },
             },
           ],
@@ -52,7 +52,7 @@ describe('TimelineEditService', () => {
       batchApplyTimeline: vi.fn((cmds: TimelineCommand[]) => {
         // Reasonably faithful mock: split actually shortens the source clip
         // and inserts a tail. Phase 2 of rippleDeleteRange depends on clips
-        // being fully inside [startUs, endUs], which only holds after splits.
+        // being fully inside [startTicks, endTicks], which only holds after splits.
         for (const cmd of cmds) {
           if (cmd.type === 'delete_items') {
             const track = (mockDoc.tracks as any[]).find((t) => t.id === cmd.trackId);
@@ -66,18 +66,18 @@ describe('TimelineEditService', () => {
             const idx = track.items.findIndex((it: any) => it.id === cmd.itemId);
             if (idx === -1) continue;
             const item = track.items[idx];
-            const start = item.timelineRange.startUs;
-            const end = start + item.timelineRange.durationUs;
-            const atUs = (cmd as any).atUs;
-            if (!(atUs > start && atUs < end)) continue;
+            const start = item.timelineRange.startTicks;
+            const end = start + item.timelineRange.durationTicks;
+            const atTicks = (cmd as any).atTicks;
+            if (!(atTicks > start && atTicks < end)) continue;
             const left = {
               ...item,
-              timelineRange: { startUs: start, durationUs: atUs - start },
+              timelineRange: { startTicks: start, durationTicks: atTicks - start },
             };
             const right = {
               ...item,
-              id: `${item.id}_tail_${atUs}`,
-              timelineRange: { startUs: atUs, durationUs: end - atUs },
+              id: `${item.id}_tail_${atTicks}`,
+              timelineRange: { startTicks: atTicks, durationTicks: end - atTicks },
             };
             track.items.splice(idx, 1, left, right);
           }
@@ -101,8 +101,8 @@ describe('TimelineEditService', () => {
 
       service.rippleDeleteRange({
         trackIds: ['v1'],
-        startUs: timelineUs(5_000_000),
-        endUs: timelineUs(15_000_000),
+        startTicks: timelineTicks(5_000_000),
+        endTicks: timelineTicks(15_000_000),
       });
 
       // Phase 1: Split
@@ -139,8 +139,8 @@ describe('TimelineEditService', () => {
       service.rippleDeleteRange(
         {
           trackIds: ['v1'],
-          startUs: timelineUs(5_000_000),
-          endUs: timelineUs(15_000_000),
+          startTicks: timelineTicks(5_000_000),
+          endTicks: timelineTicks(15_000_000),
         },
         {
           labelKey: 'custom.delete',
@@ -163,7 +163,7 @@ describe('TimelineEditService', () => {
   describe('rippleTrimRight', () => {
     it('trims end and moves subsequent clips in a single batch', async () => {
       deps.getHotkeyTargetClip.mockReturnValue({ trackId: 'v1', itemId: 'c1' });
-      deps.getCurrentTime.mockReturnValue(timelineUs(5_000_000)); // Trim C1 to 5s (current end is 10s)
+      deps.getCurrentTime.mockReturnValue(timelineTicks(5_000_000)); // Trim C1 to 5s (current end is 10s)
 
       await service.rippleTrimRight();
 
@@ -180,18 +180,18 @@ describe('TimelineEditService', () => {
           type: 'trim_item',
           itemId: 'c1',
           edge: 'end',
-          deltaUs: -timelineUs(5_000_000),
+          deltaTicks: -timelineTicks(5_000_000),
         }),
       );
 
       // Subsequent clips collapsed into a single move_items command.
-      // c2 is at 10s, deltaUs is 5s → c2 moves to 5s.
+      // c2 is at 10s, deltaTicks is 5s → c2 moves to 5s.
       const moveItemsCmd = batch.find((cmd: TimelineCommand) => cmd.type === 'move_items') as
         | Extract<TimelineCommand, { type: 'move_items' }>
         | undefined;
       expect(moveItemsCmd).toBeDefined();
       expect(moveItemsCmd!.moves).toEqual([
-        expect.objectContaining({ itemId: 'c2', startUs: timelineUs(5_000_000) }),
+        expect.objectContaining({ itemId: 'c2', startTicks: timelineTicks(5_000_000) }),
       ]);
     });
   });
@@ -199,7 +199,7 @@ describe('TimelineEditService', () => {
   describe('rippleTrimLeft', () => {
     it('trims start, slides the remnant back, and ripples subsequent clips', async () => {
       deps.getHotkeyTargetClip.mockReturnValue({ trackId: 'v1', itemId: 'c1' });
-      deps.getCurrentTime.mockReturnValue(timelineUs(5_000_000)); // Trim C1 start to 5s (current start is 0)
+      deps.getCurrentTime.mockReturnValue(timelineTicks(5_000_000)); // Trim C1 start to 5s (current start is 0)
 
       await service.rippleTrimLeft();
 
@@ -214,7 +214,7 @@ describe('TimelineEditService', () => {
           type: 'trim_item',
           itemId: 'c1',
           edge: 'start',
-          deltaUs: timelineUs(5_000_000),
+          deltaTicks: timelineTicks(5_000_000),
         }),
       );
 
@@ -225,18 +225,18 @@ describe('TimelineEditService', () => {
         expect.objectContaining({
           type: 'move_item',
           itemId: 'c1',
-          startUs: 0,
+          startTicks: 0,
         }),
       );
 
       // Subsequent clips collapse into a single move_items command.
-      // c2 is at 10s, deltaUs is 5s → c2 moves to 5s.
+      // c2 is at 10s, deltaTicks is 5s → c2 moves to 5s.
       const moveItemsCmd = batch.find((cmd: TimelineCommand) => cmd.type === 'move_items') as
         | Extract<TimelineCommand, { type: 'move_items' }>
         | undefined;
       expect(moveItemsCmd).toBeDefined();
       expect(moveItemsCmd!.moves).toEqual([
-        expect.objectContaining({ itemId: 'c2', startUs: timelineUs(5_000_000) }),
+        expect.objectContaining({ itemId: 'c2', startTicks: timelineTicks(5_000_000) }),
       ]);
     });
   });

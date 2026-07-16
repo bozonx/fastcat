@@ -9,10 +9,10 @@ export function cloneWorkerPayload<T>(value: T): T {
   return cloneMonitorValue(value);
 }
 
-export function computeAudioDurationUs(clips: WorkerTimelineClip[]): number {
+export function computeAudioDurationTicks(clips: WorkerTimelineClip[]): number {
   let maxEnd = 0;
   for (const clip of clips) {
-    const end = clip.timelineRange.startUs + clip.timelineRange.durationUs;
+    const end = clip.timelineRange.startTicks + clip.timelineRange.durationTicks;
     if (end > maxEnd) {
       maxEnd = end;
     }

@@ -30,7 +30,7 @@ const mockMediaStore = reactive({
 
 const mockWorkspaceStore = reactive({
   userSettings: {
-    timeline: { defaultStaticClipDurationUs: 5_000_000 },
+    timeline: { defaultStaticClipDurationTicks: 5_000_000 },
   },
 });
 

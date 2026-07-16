@@ -43,7 +43,7 @@ const mockTimelineStore = reactive({
             locked: false,
             disabled: false,
             audioMuted: false,
-            timelineRange: { startUs: 1000000, durationUs: 5000000 },
+            timelineRange: { startTicks: 1000000, durationTicks: 5000000 },
           },
         ],
       },

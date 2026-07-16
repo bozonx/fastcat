@@ -77,7 +77,7 @@ function setupTimelineStore() {
   timelineStore.removeMarker = vi.fn();
   timelineStore.getMarkers = vi.fn().mockReturnValue([]);
   timelineStore.saveTimeline = vi.fn().mockResolvedValue(undefined);
-  timelineStore.setCurrentTimeUs = vi.fn();
+  timelineStore.setCurrentTimeTicks = vi.fn();
   timelineStore.fitTimelineZoom = vi.fn();
   timelineStore.requestCenterPlayhead = vi.fn();
   timelineStore.unlockAllTracks = vi.fn();
@@ -137,13 +137,13 @@ describe('EditorTimeline — E2E bridge', () => {
     expect(timelineStore.setTimelineZoomExact).toHaveBeenCalledWith(25);
   });
 
-  it('setCurrentTimeUs hook clamps to >= 0', async () => {
+  it('setCurrentTimeTicks hook clamps to >= 0', async () => {
     const timelineStore = setupTimelineStore();
     await mountSuspended(EditorTimeline);
 
-    await (window as any).__fastcatE2eSetCurrentTimeUs({ us: -100 });
+    await (window as any).__fastcatE2eSetCurrentTimeTicks({ us: -100 });
 
-    expect(timelineStore.setCurrentTimeUs).toHaveBeenCalledWith(0);
+    expect(timelineStore.setCurrentTimeTicks).toHaveBeenCalledWith(0);
   });
 
   it('getSelectedItemIds hook returns selected ids', async () => {
@@ -163,7 +163,7 @@ describe('EditorTimeline — E2E bridge', () => {
     const result = await (window as any).__fastcatE2eAddTextClip({
       text: 'Hi',
       style: {},
-      durationUs: 1_000_000,
+      durationTicks: 1_000_000,
     });
 
     expect(timelineStore.addTextClipAtPlayhead).toHaveBeenCalled();
@@ -176,7 +176,7 @@ describe('EditorTimeline — E2E bridge', () => {
     await mountSuspended(EditorTimeline);
 
     const id = await (window as any).__fastcatE2eAddMarker({
-      timeUs: 1_000_000,
+      timeTicks: 1_000_000,
       text: 'M',
       color: '#fff',
     });
@@ -185,7 +185,7 @@ describe('EditorTimeline — E2E bridge', () => {
     expect(timelineStore.applyTimeline).toHaveBeenCalledWith(
       expect.objectContaining({
         type: 'add_marker',
-        timeUs: 1_000_000,
+        timeTicks: 1_000_000,
         text: 'M',
         color: '#fff',
         id,
@@ -199,8 +199,8 @@ describe('EditorTimeline — E2E bridge', () => {
 
     const ids = await (window as any).__fastcatE2eAddMarkers({
       markers: [
-        { timeUs: 1_000_000, text: 'M1', color: '#fff' },
-        { timeUs: 2_000_000, text: 'M2', color: '#000' },
+        { timeTicks: 1_000_000, text: 'M1', color: '#fff' },
+        { timeTicks: 2_000_000, text: 'M2', color: '#000' },
       ],
     });
 
@@ -267,7 +267,7 @@ describe('EditorTimeline — E2E bridge', () => {
         path: '/media/clip.mp4',
         trackId: 'v1',
         name: 'clip.mp4',
-        startUs: 0,
+        startTicks: 0,
       }),
     );
   });
@@ -277,7 +277,7 @@ describe('EditorTimeline — E2E bridge', () => {
     await mountSuspended(EditorTimeline);
 
     await expect(
-      (window as any).__fastcatE2eMoveClip({ itemId: 'missing', deltaUs: 1_000_000 }),
+      (window as any).__fastcatE2eMoveClip({ itemId: 'missing', deltaTicks: 1_000_000 }),
     ).rejects.toThrow('Timeline clip track not found: missing');
   });
 

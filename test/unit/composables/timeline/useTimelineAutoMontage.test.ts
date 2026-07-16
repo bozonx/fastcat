@@ -42,8 +42,8 @@ function makeClip(id: string): any {
     kind: 'clip',
     clipType: 'media',
     trackId: 'v1',
-    timelineRange: { startUs: 0, durationUs: 5_000_000 },
-    sourceRange: { startUs: 0, durationUs: 5_000_000 },
+    timelineRange: { startTicks: 0, durationTicks: 5_000_000 },
+    sourceRange: { startTicks: 0, durationTicks: 5_000_000 },
   };
 }
 

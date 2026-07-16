@@ -35,9 +35,9 @@ function makeClip(overrides: Partial<TimelineMediaClipItem> = {}): TimelineMedia
     clipType: 'media',
     trackId: 'v1',
     name: 'Clip 1',
-    timelineRange: { startUs: 0, durationUs: 10 * TICKS_PER_SECOND },
-    sourceRange: { startUs: 0, durationUs: 10 * TICKS_PER_SECOND },
-    sourceDurationUs: 10 * TICKS_PER_SECOND,
+    timelineRange: { startTicks: 0, durationTicks: 10 * TICKS_PER_SECOND },
+    sourceRange: { startTicks: 0, durationTicks: 10 * TICKS_PER_SECOND },
+    sourceDurationTicks: 10 * TICKS_PER_SECOND,
     source: { path: '/video.mp4' },
     ...overrides,
   };
@@ -142,8 +142,8 @@ describe('useSilenceTrimming', () => {
     const { extractTranscriptionWords } = await import('~/utils/transcription/captions');
 
     const clip = makeClip({
-      timelineRange: { startUs: 0, durationUs: 10 * TICKS_PER_SECOND },
-      sourceRange: { startUs: 0, durationUs: 10 * TICKS_PER_SECOND },
+      timelineRange: { startTicks: 0, durationTicks: 10 * TICKS_PER_SECOND },
+      sourceRange: { startTicks: 0, durationTicks: 10 * TICKS_PER_SECOND },
     });
     mockTimelineStore.timelineDoc = makeDoc([makeTrack([clip])]);
 
@@ -163,12 +163,12 @@ describe('useSilenceTrimming', () => {
     const call = vi.mocked(mockTimelineStore.applyTimeline).mock.calls[0]!;
     const command = call[0] as {
       type: string;
-      clips: Array<{ pauses: Array<{ startUs: number; endUs: number }> }>;
+      clips: Array<{ pauses: Array<{ startTicks: number; endTicks: number }> }>;
     };
     expect(command.type).toBe('auto_trim_pauses');
-    // Start pause: firstWordStartMs = 2000ms = 2s, sourceRange.startUs = 0
-    // endUs = 0 + (2s - 0) / 1 = 2s in ticks
-    expect(command.clips[0]!.pauses).toEqual([{ startUs: 0, endUs: 2 * TICKS_PER_SECOND }]);
+    // Start pause: firstWordStartMs = 2000ms = 2s, sourceRange.startTicks = 0
+    // endTicks = 0 + (2s - 0) / 1 = 2s in ticks
+    expect(command.clips[0]!.pauses).toEqual([{ startTicks: 0, endTicks: 2 * TICKS_PER_SECOND }]);
   });
 
   it('detects end pause after last word', async () => {
@@ -176,8 +176,8 @@ describe('useSilenceTrimming', () => {
     const { extractTranscriptionWords } = await import('~/utils/transcription/captions');
 
     const clip = makeClip({
-      timelineRange: { startUs: 0, durationUs: 10 * TICKS_PER_SECOND },
-      sourceRange: { startUs: 0, durationUs: 10 * TICKS_PER_SECOND },
+      timelineRange: { startTicks: 0, durationTicks: 10 * TICKS_PER_SECOND },
+      sourceRange: { startTicks: 0, durationTicks: 10 * TICKS_PER_SECOND },
     });
     mockTimelineStore.timelineDoc = makeDoc([makeTrack([clip])]);
 
@@ -196,12 +196,12 @@ describe('useSilenceTrimming', () => {
     const call = vi.mocked(mockTimelineStore.applyTimeline).mock.calls[0]!;
     const command = call[0] as {
       type: string;
-      clips: Array<{ pauses: Array<{ startUs: number; endUs: number }> }>;
+      clips: Array<{ pauses: Array<{ startTicks: number; endTicks: number }> }>;
     };
     // End pause: lastWordEndMs = 3000ms = 3s
-    // startUs = 0 + (3s - 0) / 1 = 3s, endUs = 0 + 10s = 10s
+    // startTicks = 0 + (3s - 0) / 1 = 3s, endTicks = 0 + 10s = 10s
     expect(command.clips[0]!.pauses).toEqual([
-      { startUs: 3 * TICKS_PER_SECOND, endUs: 10 * TICKS_PER_SECOND },
+      { startTicks: 3 * TICKS_PER_SECOND, endTicks: 10 * TICKS_PER_SECOND },
     ]);
   });
 
@@ -210,8 +210,8 @@ describe('useSilenceTrimming', () => {
     const { extractTranscriptionWords } = await import('~/utils/transcription/captions');
 
     const clip = makeClip({
-      timelineRange: { startUs: 0, durationUs: 10 * TICKS_PER_SECOND },
-      sourceRange: { startUs: 0, durationUs: 10 * TICKS_PER_SECOND },
+      timelineRange: { startTicks: 0, durationTicks: 10 * TICKS_PER_SECOND },
+      sourceRange: { startTicks: 0, durationTicks: 10 * TICKS_PER_SECOND },
     });
     mockTimelineStore.timelineDoc = makeDoc([makeTrack([clip])]);
 
@@ -234,11 +234,11 @@ describe('useSilenceTrimming', () => {
     const call = vi.mocked(mockTimelineStore.applyTimeline).mock.calls[0]!;
     const command = call[0] as {
       type: string;
-      clips: Array<{ pauses: Array<{ startUs: number; endUs: number }> }>;
+      clips: Array<{ pauses: Array<{ startTicks: number; endTicks: number }> }>;
     };
     // Gap: 2000ms to 3000ms => 1s gap in ticks (1s > 500ms threshold)
     expect(command.clips[0]!.pauses).toEqual([
-      { startUs: 2 * TICKS_PER_SECOND, endUs: 3 * TICKS_PER_SECOND },
+      { startTicks: 2 * TICKS_PER_SECOND, endTicks: 3 * TICKS_PER_SECOND },
     ]);
   });
 
@@ -247,8 +247,8 @@ describe('useSilenceTrimming', () => {
     const { extractTranscriptionWords } = await import('~/utils/transcription/captions');
 
     const clip = makeClip({
-      timelineRange: { startUs: 0, durationUs: 10 * TICKS_PER_SECOND },
-      sourceRange: { startUs: 0, durationUs: 10 * TICKS_PER_SECOND },
+      timelineRange: { startTicks: 0, durationTicks: 10 * TICKS_PER_SECOND },
+      sourceRange: { startTicks: 0, durationTicks: 10 * TICKS_PER_SECOND },
     });
     mockTimelineStore.timelineDoc = makeDoc([makeTrack([clip])]);
 
@@ -278,8 +278,8 @@ describe('useSilenceTrimming', () => {
 
     const clip = makeClip({
       speed: 2,
-      timelineRange: { startUs: 0, durationUs: 5 * TICKS_PER_SECOND },
-      sourceRange: { startUs: 0, durationUs: 10 * TICKS_PER_SECOND },
+      timelineRange: { startTicks: 0, durationTicks: 5 * TICKS_PER_SECOND },
+      sourceRange: { startTicks: 0, durationTicks: 10 * TICKS_PER_SECOND },
     });
     mockTimelineStore.timelineDoc = makeDoc([makeTrack([clip])]);
 
@@ -298,11 +298,11 @@ describe('useSilenceTrimming', () => {
     const call = vi.mocked(mockTimelineStore.applyTimeline).mock.calls[0]!;
     const command = call[0] as {
       type: string;
-      clips: Array<{ pauses: Array<{ startUs: number; endUs: number }> }>;
+      clips: Array<{ pauses: Array<{ startTicks: number; endTicks: number }> }>;
     };
-    // firstWordStartMs = 4000ms = 4s, sourceRange.startUs = 0
-    // endUs = 0 + (4s - 0) / 2 = 2s in ticks
-    expect(command.clips[0]!.pauses).toEqual([{ startUs: 0, endUs: 2 * TICKS_PER_SECOND }]);
+    // firstWordStartMs = 4000ms = 4s, sourceRange.startTicks = 0
+    // endTicks = 0 + (4s - 0) / 2 = 2s in ticks
+    expect(command.clips[0]!.pauses).toEqual([{ startTicks: 0, endTicks: 2 * TICKS_PER_SECOND }]);
   });
 
   it('skips clips without source path', async () => {
@@ -324,8 +324,8 @@ describe('useSilenceTrimming', () => {
       clipType: 'text',
       trackId: 'v1',
       name: 'Text',
-      timelineRange: { startUs: 0, durationUs: 5 * TICKS_PER_SECOND },
-      sourceRange: { startUs: 0, durationUs: 5 * TICKS_PER_SECOND },
+      timelineRange: { startTicks: 0, durationTicks: 5 * TICKS_PER_SECOND },
+      sourceRange: { startTicks: 0, durationTicks: 5 * TICKS_PER_SECOND },
       text: 'hello',
     };
     mockTimelineStore.timelineDoc = makeDoc([makeTrack([textClip as any])]);

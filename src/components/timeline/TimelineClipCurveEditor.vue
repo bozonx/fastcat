@@ -22,7 +22,7 @@ import {
   resolveCurveValueRange,
 } from '~/timeline/animation/curve-editor';
 import { useClipKeyframes } from '~/composables/timeline/useClipKeyframes';
-import { pxToDeltaUs, timeUsToPx } from '~/utils/timeline/geometry';
+import { pxToDeltaTicks, timeUsToPx } from '~/utils/timeline/geometry';
 
 const props = defineProps<{
   clip: TimelineClipItem;
@@ -41,10 +41,10 @@ const SVG_PADDING_PX = 7;
 const CLICK_DRAG_THRESHOLD_PX = 3;
 
 const clipRef = computed(() => props.clip);
-const playheadUs = computed(() => timelineContext.currentTime.value);
-const { localPlayheadUs } = useClipKeyframes({
+const playheadTicks = computed(() => timelineContext.currentTime.value);
+const { localPlayheadTicks } = useClipKeyframes({
   clip: clipRef,
-  playheadUs,
+  playheadTicks,
   updateAnimations,
 });
 
@@ -54,15 +54,15 @@ const selectedTrack = computed(() =>
   selectedPath.value ? props.clip.animations?.[selectedPath.value] : undefined,
 );
 const valueRange = computed(() => resolveCurveValueRange(selectedTrack.value));
-const durationUs = computed(() => props.clip.timelineRange.durationUs);
+const durationTicks = computed(() => props.clip.timelineRange.durationTicks);
 const svgWidthPx = computed(() =>
-  Math.max(1, timeUsToPx(Math.max(1, durationUs.value), props.zoom), widthPx.value),
+  Math.max(1, timeUsToPx(Math.max(1, durationTicks.value), props.zoom), widthPx.value),
 );
 const polylinePoints = computed(() =>
   selectedTrack.value
     ? buildCurvePolyline({
         track: selectedTrack.value,
-        durationUs: durationUs.value,
+        durationTicks: durationTicks.value,
         widthPx: svgWidthPx.value,
         heightPx: SVG_HEIGHT_PX,
         paddingPx: SVG_PADDING_PX,
@@ -78,7 +78,7 @@ const keyframePoints = computed(() =>
     point: keyframeToCurvePoint({
       keyframe,
       range: valueRange.value,
-      durationUs: durationUs.value,
+      durationTicks: durationTicks.value,
       widthPx: svgWidthPx.value,
       heightPx: SVG_HEIGHT_PX,
       paddingPx: SVG_PADDING_PX,
@@ -86,11 +86,11 @@ const keyframePoints = computed(() =>
   })),
 );
 const playheadX = computed(() =>
-  Math.max(0, Math.min(svgWidthPx.value, timeUsToPx(localPlayheadUs.value, props.zoom))),
+  Math.max(0, Math.min(svgWidthPx.value, timeUsToPx(localPlayheadTicks.value, props.zoom))),
 );
 
 const dragState = ref<{
-  fromTUs: number;
+  fromTTicks: number;
   clientX: number;
   clientY: number;
   moved: boolean;
@@ -154,7 +154,7 @@ function localPointFromEvent(e: PointerEvent | MouseEvent): { x: number; y: numb
 }
 
 function tUsFromX(x: number): number {
-  return Math.max(0, Math.min(durationUs.value, pxToDeltaUs(x, props.zoom)));
+  return Math.max(0, Math.min(durationTicks.value, pxToDeltaTicks(x, props.zoom)));
 }
 
 function valueFromY(y: number): number {
@@ -169,9 +169,9 @@ function valueFromY(y: number): number {
 }
 
 function pointForKeyframe(keyframe: Keyframe): { x: number; y: number } {
-  if (dragState.value?.fromTUs === keyframe.tUs) return dragState.value.point;
+  if (dragState.value?.fromTTicks === keyframe.tTicks) return dragState.value.point;
   return (
-    keyframePoints.value.find((entry) => entry.keyframe.tUs === keyframe.tUs)?.point ?? {
+    keyframePoints.value.find((entry) => entry.keyframe.tTicks === keyframe.tTicks)?.point ?? {
       x: 0,
       y: SVG_HEIGHT_PX / 2,
     }
@@ -194,8 +194,8 @@ function onBackgroundClick(e: MouseEvent) {
 function easingKeyframeAtX(x: number): Keyframe | null {
   const keyframes = selectedTrack.value?.keyframes ?? [];
   if (!keyframes.length) return null;
-  const tUs = tUsFromX(x);
-  return [...keyframes].reverse().find((keyframe) => keyframe.tUs <= tUs) ?? keyframes[0] ?? null;
+  const tTicks = tUsFromX(x);
+  return [...keyframes].reverse().find((keyframe) => keyframe.tTicks <= tTicks) ?? keyframes[0] ?? null;
 }
 
 function cycleEasingAtKeyframe(keyframe: Keyframe) {
@@ -204,7 +204,7 @@ function cycleEasingAtKeyframe(keyframe: Keyframe) {
     setKeyframeEasing(
       props.clip.animations,
       selectedPath.value,
-      keyframe.tUs,
+      keyframe.tTicks,
       nextEasing(keyframe.easing),
     ),
   );
@@ -223,7 +223,7 @@ function onKeyframePointerDown(keyframe: Keyframe, e: PointerEvent) {
   target.setPointerCapture(e.pointerId);
   const startPoint = pointForKeyframe(keyframe);
   dragState.value = {
-    fromTUs: keyframe.tUs,
+    fromTTicks: keyframe.tTicks,
     clientX: e.clientX,
     clientY: e.clientY,
     moved: false,
@@ -258,8 +258,8 @@ function onKeyframePointerDown(keyframe: Keyframe, e: PointerEvent) {
     updateAnimations(
       updateKeyframe(props.clip.animations, {
         path: selectedPath.value,
-        fromTUs: state.fromTUs,
-        toTUs: tUsFromX(state.point.x),
+        fromTTicks: state.fromTTicks,
+        toTTicks: tUsFromX(state.point.x),
         value: valueFromY(state.point.y),
       }),
     );
@@ -282,7 +282,7 @@ function onKeyframeClick(keyframe: Keyframe, e: MouseEvent) {
 function onKeyframeDblClick(keyframe: Keyframe, e: MouseEvent) {
   e.stopPropagation();
   if (!selectedPath.value) return;
-  updateAnimations(removeKeyframe(props.clip.animations, selectedPath.value, keyframe.tUs));
+  updateAnimations(removeKeyframe(props.clip.animations, selectedPath.value, keyframe.tTicks));
 }
 </script>
 
@@ -345,7 +345,7 @@ function onKeyframeDblClick(keyframe: Keyframe, e: MouseEvent) {
       />
       <circle
         v-for="{ keyframe } in keyframePoints"
-        :key="keyframe.tUs"
+        :key="keyframe.tTicks"
         :cx="pointForKeyframe(keyframe).x"
         :cy="pointForKeyframe(keyframe).y"
         r="4"

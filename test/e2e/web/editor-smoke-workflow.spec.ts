@@ -32,7 +32,7 @@ test.describe('Web editor smoke workflow', () => {
 
     const doc0 = await waitForTimelineDoc(page, e2eProject, (d) => d.allClips.length === 1);
     const clipId = (await clipIds(page))[0];
-    const baseDuration = doc0.allClips[0].timelineDurationUs;
+    const baseDuration = doc0.allClips[0].timelineDurationTicks;
 
     // Play briefly, then it auto-pauses inside the helper.
     await expectPlayheadAdvances(page, { forMs: 500 });
@@ -42,7 +42,7 @@ test.describe('Web editor smoke workflow', () => {
     await waitForTimelineDoc(
       page,
       e2eProject,
-      (d) => d.allClips[0].timelineDurationUs < baseDuration,
+      (d) => d.allClips[0].timelineDurationTicks < baseDuration,
     );
 
     // Move it later on the same track (in microseconds).
@@ -50,7 +50,7 @@ test.describe('Web editor smoke workflow', () => {
     const edited = await waitForTimelineDoc(
       page,
       e2eProject,
-      (d) => d.allClips[0].timelineStartUs > 0,
+      (d) => d.allClips[0].timelineStartTicks > 0,
     );
 
     // Reload and confirm the edited clip persisted with its edited timing.
@@ -59,7 +59,7 @@ test.describe('Web editor smoke workflow', () => {
     await expect.poll(async () => (await clipIds(page)).length).toBe(1);
 
     const reloaded = await waitForTimelineDoc(page, e2eProject, (d) => d.allClips.length === 1);
-    expect(reloaded.allClips[0].timelineDurationUs).toBe(edited.allClips[0].timelineDurationUs);
-    expect(reloaded.allClips[0].timelineStartUs).toBe(edited.allClips[0].timelineStartUs);
+    expect(reloaded.allClips[0].timelineDurationTicks).toBe(edited.allClips[0].timelineDurationTicks);
+    expect(reloaded.allClips[0].timelineStartTicks).toBe(edited.allClips[0].timelineStartTicks);
   });
 });

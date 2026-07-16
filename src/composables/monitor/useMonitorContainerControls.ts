@@ -43,7 +43,7 @@ interface UseMonitorContainerControlsOptions {
   videoItems: Ref<unknown[]>;
   isLoading: Ref<boolean>;
   loadError: Ref<string | null>;
-  safeDurationUs: Ref<number>;
+  safeDurationTicks: Ref<number>;
   previewEffectsEnabled: Ref<boolean>;
   useProxyInMonitor: Ref<boolean>;
   showGrid: Ref<boolean>;
@@ -110,7 +110,7 @@ export function useMonitorContainerControls(options: UseMonitorContainerControls
   const canInteractPlayback = computed(
     () =>
       !options.isLoading.value &&
-      (options.safeDurationUs.value > 0 || options.videoItems.value.length > 0),
+      (options.safeDurationTicks.value > 0 || options.videoItems.value.length > 0),
   );
 
   const selectedPlaybackSpeedOption = computed(() => {
@@ -253,13 +253,13 @@ export function useMonitorContainerControls(options: UseMonitorContainerControls
   }
 
   function rewindToStart() {
-    options.timelineStore.setCurrentTimeUs(0);
+    options.timelineStore.setCurrentTimeTicks(0);
     options.timelineStore.requestScrollToPlayhead?.();
     blurActiveElement();
   }
 
   function rewindToEnd() {
-    options.timelineStore.setCurrentTimeUs(options.safeDurationUs.value);
+    options.timelineStore.setCurrentTimeTicks(options.safeDurationTicks.value);
     options.timelineStore.requestScrollToPlayhead?.();
     blurActiveElement();
   }
@@ -336,7 +336,7 @@ export function useMonitorContainerControls(options: UseMonitorContainerControls
   function createMarkerWithTextAtPlayhead(params: { text: string; color: string }) {
     const existingMarkers = options.timelineStore.markers;
     options.timelineStore.addMarker({
-      timeUs: options.timelineStore.currentTime,
+      timeTicks: options.timelineStore.currentTime,
       text: params.text,
       color: params.color,
     });

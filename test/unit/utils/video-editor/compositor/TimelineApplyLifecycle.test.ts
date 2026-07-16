@@ -6,12 +6,12 @@ function makeClip(overrides: Partial<CompositorClip> = {}): CompositorClip {
   return {
     itemId: 'c1',
     layer: 0,
-    startUs: 0,
-    endUs: 5_000_000,
-    durationUs: 5_000_000,
-    sourceStartUs: 0,
-    sourceRangeDurationUs: 5_000_000,
-    sourceDurationUs: 10_000_000,
+    startTicks: 0,
+    endTicks: 5_000_000,
+    durationTicks: 5_000_000,
+    sourceStartTicks: 0,
+    sourceRangeDurationTicks: 5_000_000,
+    sourceDurationTicks: 10_000_000,
     sprite: null,
     imageSource: null as any,
     lastVideoFrame: null,
@@ -46,7 +46,7 @@ describe('TimelineApplyLifecycle', () => {
       replacedClipIds: new Set(),
       nextClips: [nextC],
       nextClipById,
-      sequentialTimeUs: 0,
+      sequentialTimeTicks: 0,
       destroyClip,
     });
 
@@ -64,7 +64,7 @@ describe('TimelineApplyLifecycle', () => {
       replacedClipIds: new Set(['a']),
       nextClips: [],
       nextClipById: new Map(),
-      sequentialTimeUs: 0,
+      sequentialTimeTicks: 0,
       destroyClip,
     });
 
@@ -81,7 +81,7 @@ describe('TimelineApplyLifecycle', () => {
       replacedClipIds: new Set(),
       nextClips: [nextA],
       nextClipById: new Map([['a', nextA]]),
-      sequentialTimeUs: 0,
+      sequentialTimeTicks: 0,
       destroyClip,
     });
 
@@ -96,17 +96,17 @@ describe('TimelineApplyLifecycle', () => {
       replacedClipIds,
       nextClips: [],
       nextClipById: new Map(),
-      sequentialTimeUs: 0,
+      sequentialTimeTicks: 0,
       destroyClip: vi.fn(),
     });
 
     expect(replacedClipIds.size).toBe(0);
   });
 
-  it('computes maxDurationUs as max(clipEnd, sequentialTimeUs)', () => {
+  it('computes maxDurationTicks as max(clipEnd, sequentialTimeTicks)', () => {
     const clips = [
-      makeClip({ itemId: 'a', endUs: 5_000_000 }),
-      makeClip({ itemId: 'b', endUs: 3_000_000 }),
+      makeClip({ itemId: 'a', endTicks: 5_000_000 }),
+      makeClip({ itemId: 'b', endTicks: 3_000_000 }),
     ];
     const clipById = new Map([
       ['a', clips[0]!],
@@ -118,46 +118,46 @@ describe('TimelineApplyLifecycle', () => {
       replacedClipIds: new Set(),
       nextClips: clips,
       nextClipById: clipById,
-      sequentialTimeUs: 7_000_000,
+      sequentialTimeTicks: 7_000_000,
       destroyClip: vi.fn(),
     });
 
-    expect(result.maxDurationUs).toBe(7_000_000);
+    expect(result.maxDurationTicks).toBe(7_000_000);
   });
 
-  it('uses max clip end when it exceeds sequentialTimeUs', () => {
-    const clips = [makeClip({ itemId: 'a', endUs: 10_000_000 })];
+  it('uses max clip end when it exceeds sequentialTimeTicks', () => {
+    const clips = [makeClip({ itemId: 'a', endTicks: 10_000_000 })];
 
     const result = lifecycle.apply({
       previousClipById: new Map(),
       replacedClipIds: new Set(),
       nextClips: clips,
       nextClipById: new Map([['a', clips[0]!]]),
-      sequentialTimeUs: 3_000_000,
+      sequentialTimeTicks: 3_000_000,
       destroyClip: vi.fn(),
     });
 
-    expect(result.maxDurationUs).toBe(10_000_000);
+    expect(result.maxDurationTicks).toBe(10_000_000);
   });
 
-  it('returns 0 maxDurationUs for empty clips and 0 sequential', () => {
+  it('returns 0 maxDurationTicks for empty clips and 0 sequential', () => {
     const result = lifecycle.apply({
       previousClipById: new Map(),
       replacedClipIds: new Set(),
       nextClips: [],
       nextClipById: new Map(),
-      sequentialTimeUs: 0,
+      sequentialTimeTicks: 0,
       destroyClip: vi.fn(),
     });
 
-    expect(result.maxDurationUs).toBe(0);
+    expect(result.maxDurationTicks).toBe(0);
   });
 
-  it('sorts clips by startUs then layer', () => {
+  it('sorts clips by startTicks then layer', () => {
     const clips = [
-      makeClip({ itemId: 'c', startUs: 5_000_000, layer: 0 }),
-      makeClip({ itemId: 'a', startUs: 1_000_000, layer: 2 }),
-      makeClip({ itemId: 'b', startUs: 1_000_000, layer: 1 }),
+      makeClip({ itemId: 'c', startTicks: 5_000_000, layer: 0 }),
+      makeClip({ itemId: 'a', startTicks: 1_000_000, layer: 2 }),
+      makeClip({ itemId: 'b', startTicks: 1_000_000, layer: 1 }),
     ];
     const clipById = new Map(clips.map((c) => [c.itemId, c]));
 
@@ -166,25 +166,25 @@ describe('TimelineApplyLifecycle', () => {
       replacedClipIds: new Set(),
       nextClips: clips,
       nextClipById: clipById,
-      sequentialTimeUs: 0,
+      sequentialTimeTicks: 0,
       destroyClip: vi.fn(),
     });
 
     expect(result.clips.map((c) => c.itemId)).toEqual(['b', 'a', 'c']);
   });
 
-  it('sets lastRenderedTimeUs to NaN to force a full render of the loaded timeline', () => {
+  it('sets lastRenderedTimeTicks to NaN to force a full render of the loaded timeline', () => {
     const result = lifecycle.apply({
       previousClipById: new Map(),
       replacedClipIds: new Set(),
       nextClips: [makeClip()],
       nextClipById: new Map([['c1', makeClip()]]),
-      sequentialTimeUs: 0,
+      sequentialTimeTicks: 0,
       destroyClip: vi.fn(),
     });
 
-    // NaN never equals the incoming timeUs, so the RenderingEngine early-exit is
-    // defeated and the previous timeline's stale frame cannot linger at timeUs 0.
-    expect(result.lastRenderedTimeUs).toBeNaN();
+    // NaN never equals the incoming timeTicks, so the RenderingEngine early-exit is
+    // defeated and the previous timeline's stale frame cannot linger at timeTicks 0.
+    expect(result.lastRenderedTimeTicks).toBeNaN();
   });
 });

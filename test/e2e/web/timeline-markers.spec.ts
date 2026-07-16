@@ -9,13 +9,13 @@ test.describe('Web timeline markers', () => {
   }) => {
     const [introId, chapterId] = await addMarkers(page, [
       {
-        timeUs: 1_000_000,
+        timeTicks: 1_000_000,
         text: 'Intro marker',
         color: '#d0021b',
       },
       {
-        timeUs: 2_000_000,
-        durationUs: 3_000_000,
+        timeTicks: 2_000_000,
+        durationTicks: 3_000_000,
         text: 'Chapter zone',
         color: '#4a90e2',
       },
@@ -33,7 +33,7 @@ test.describe('Web timeline markers', () => {
           (marker) =>
             marker.id === chapterId! &&
             marker.text === 'Chapter zone' &&
-            marker.durationUs === 3_000_000,
+            marker.durationTicks === 3_000_000,
         ),
     );
 

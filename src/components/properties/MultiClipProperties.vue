@@ -144,14 +144,14 @@ watch(itemsRef, () => {
 });
 
 function onStartShiftChange(newVal: number) {
-  const deltaUs = newVal - startShiftAccumulator.value;
-  handleRelativeStartShift(deltaUs);
+  const deltaTicks = newVal - startShiftAccumulator.value;
+  handleRelativeStartShift(deltaTicks);
   startShiftAccumulator.value = newVal;
 }
 
 function onDurationShiftChange(newVal: number) {
-  const deltaUs = newVal - durationShiftAccumulator.value;
-  handleRelativeEndShift(deltaUs);
+  const deltaTicks = newVal - durationShiftAccumulator.value;
+  handleRelativeEndShift(deltaTicks);
   durationShiftAccumulator.value = newVal;
 }
 
@@ -244,25 +244,25 @@ function handleBatchToggleTransition(edge: 'in' | 'out') {
       });
     }
   } else {
-    const safeDefaultDurationUs = Math.max(
+    const safeDefaultDurationTicks = Math.max(
       0,
       Math.round(
         Number(
-          workspaceStore.userSettings.timeline.defaultTransitionDurationUs ?? TICKS_PER_SECOND,
+          workspaceStore.userSettings.timeline.defaultTransitionDurationTicks ?? TICKS_PER_SECOND,
         ),
       ),
     );
 
     for (const { track, clip } of visualClipRefs.value) {
-      const clipDurationUs = Math.max(0, Math.round(Number(clip.timelineRange?.durationUs ?? 0)));
-      const suggestedDurationUs =
-        clipDurationUs > 0 && clipDurationUs < safeDefaultDurationUs
-          ? Math.round(clipDurationUs * 0.3)
-          : safeDefaultDurationUs;
+      const clipDurationTicks = Math.max(0, Math.round(Number(clip.timelineRange?.durationTicks ?? 0)));
+      const suggestedDurationTicks =
+        clipDurationTicks > 0 && clipDurationTicks < safeDefaultDurationTicks
+          ? Math.round(clipDurationTicks * 0.3)
+          : safeDefaultDurationTicks;
 
       const transition = {
         type: 'dissolve',
-        durationUs: suggestedDurationUs,
+        durationTicks: suggestedDurationTicks,
         mode: DEFAULT_TRANSITION_MODE,
         curve: DEFAULT_TRANSITION_CURVE,
       };
@@ -285,7 +285,7 @@ function handleBatchUpdateTransitionDuration(edge: 'in' | 'out', durationSec: nu
   const doc = timelineStore.timelineDoc;
   if (!doc) return;
   const cmds: import('~/timeline/commands').TimelineCommand[] = [];
-  const durationUs = Math.round(durationSec * TICKS_PER_SECOND);
+  const durationTicks = Math.round(durationSec * TICKS_PER_SECOND);
   for (const { track, clip } of visualClipRefs.value) {
     const current = edge === 'in' ? clip.transitionIn : clip.transitionOut;
     if (!current) continue;
@@ -295,8 +295,8 @@ function handleBatchUpdateTransitionDuration(edge: 'in' | 'out', durationSec: nu
       trackId: track.id,
       itemId: clip.id,
       ...(edge === 'in'
-        ? { transitionIn: { ...current, durationUs } }
-        : { transitionOut: { ...current, durationUs } }),
+        ? { transitionIn: { ...current, durationTicks } }
+        : { transitionOut: { ...current, durationTicks } }),
     });
   }
   if (cmds.length > 0) timelineStore.batchApplyTimeline(cmds);
@@ -606,7 +606,7 @@ const otherActions = computed(() => {
       :is-video-track="true"
       :transition-in="firstVideoClip.transitionIn ?? null"
       :transition-out="firstVideoClip.transitionOut ?? null"
-      :clip-duration-us="firstVideoClip.timelineRange.durationUs"
+      :clip-duration-us="firstVideoClip.timelineRange.durationTicks"
       @select-edge="handleBatchSelectTransitionEdge"
       @toggle="handleBatchToggleTransition"
       @update-duration="

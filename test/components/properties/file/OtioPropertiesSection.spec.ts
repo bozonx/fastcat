@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
 import OtioPropertiesSection from '~/components/properties/file/OtioPropertiesSection.vue';
-import { timelineUs } from '../../../unit/utils/timeline-time';
+import { timelineTicks } from '../../../unit/utils/timeline-time';
 
 vi.mock('~/components/properties/PropertySection.vue', () => ({
   default: {
@@ -24,7 +24,7 @@ describe('OtioPropertiesSection', () => {
     const component = await mountSuspended(OtioPropertiesSection, {
       props: {
         summary: {
-          durationUs: timelineUs(5_000_000),
+          durationTicks: timelineTicks(5_000_000),
           videoTracks: 2,
           audioTracks: 3,
           clips: 12,
@@ -47,7 +47,7 @@ describe('OtioPropertiesSection', () => {
   it('omits version row when version is null', async () => {
     const component = await mountSuspended(OtioPropertiesSection, {
       props: {
-        summary: { durationUs: 0, videoTracks: 0, audioTracks: 0, clips: 0, version: null },
+        summary: { durationTicks: 0, videoTracks: 0, audioTracks: 0, clips: 0, version: null },
         formatDurationSeconds,
       },
     });

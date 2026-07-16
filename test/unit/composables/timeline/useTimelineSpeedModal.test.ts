@@ -25,8 +25,8 @@ function makeClip(overrides: Partial<TimelineClipItem> = {}): TimelineClipItem {
     clipType: 'media',
     trackId: 'v1',
     name: 'Clip 1',
-    timelineRange: { startUs: 0, durationUs: 5_000_000 },
-    sourceRange: { startUs: 0, durationUs: 5_000_000 },
+    timelineRange: { startTicks: 0, durationTicks: 5_000_000 },
+    sourceRange: { startTicks: 0, durationTicks: 5_000_000 },
     source: { path: '/video.mp4' },
     ...overrides,
   } as TimelineClipItem;

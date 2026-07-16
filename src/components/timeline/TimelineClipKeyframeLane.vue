@@ -3,7 +3,7 @@ import { TICKS_PER_SECOND } from '~/utils/time';
 import { computed, inject, ref } from 'vue';
 import type { KeyframeEasing, TimelineClipItem } from '~/timeline/types';
 import type { TimelineContext } from './context';
-import { pxToDeltaUs, timeUsToPx } from '~/utils/timeline/geometry';
+import { pxToDeltaTicks, timeUsToPx } from '~/utils/timeline/geometry';
 import { useClipKeyframes } from '~/composables/timeline/useClipKeyframes';
 import { KEYFRAME_EASINGS } from '~/timeline/animation/evaluate';
 import { animatedParamPaths } from '~/timeline/animation/ops';
@@ -27,7 +27,7 @@ const { t } = useI18n();
 const timelineContext = inject<TimelineContext>('timelineContext')!;
 
 const clipRef = computed(() => props.clip);
-const playheadUs = computed(() => timelineContext.currentTime.value);
+const playheadTicks = computed(() => timelineContext.currentTime.value);
 
 const {
   keyframeTimes,
@@ -37,14 +37,14 @@ const {
   setKeyframeMomentEasingAt,
 } = useClipKeyframes({
   clip: clipRef,
-  playheadUs,
+  playheadTicks,
   updateAnimations: (next) => {
     timelineContext.updateClipProperties(props.trackId, props.clip.id, { animations: next });
   },
-  seek: (timelineUs) => timelineContext.setCurrentTimeUs(timelineUs),
+  seek: (timelineTicks) => timelineContext.setCurrentTimeTicks(timelineTicks),
 });
 
-const durationUs = computed(() => props.clip.timelineRange.durationUs);
+const durationTicks = computed(() => props.clip.timelineRange.durationTicks);
 
 /** The lane only supports click-to-add once at least one param is animated. */
 const hasAnimatedParams = computed(() => animatedParamPaths(props.clip.animations).length > 0);
@@ -56,31 +56,31 @@ function onLaneClick(e: MouseEvent) {
   if (e.target !== e.currentTarget) return;
   if (!hasAnimatedParams.value) return;
   const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-  const localTUs = Math.max(
+  const localTTicks = Math.max(
     0,
-    Math.min(durationUs.value, pxToDeltaUs(e.clientX - rect.left, props.zoom)),
+    Math.min(durationTicks.value, pxToDeltaTicks(e.clientX - rect.left, props.zoom)),
   );
-  addKeyframeAtLocal(localTUs);
+  addKeyframeAtLocal(localTTicks);
 }
 
 // Local drag preview: track the dragged diamond's offset without dispatching a
 // store update per pixel; commit once on pointerup.
-const draggingFromTUs = ref<number | null>(null);
+const draggingFromTTicks = ref<number | null>(null);
 const dragDeltaPx = ref(0);
 
-function diamondLeftPx(tUs: number): number {
-  const base = timeUsToPx(tUs, props.zoom);
-  return draggingFromTUs.value === tUs ? base + dragDeltaPx.value : base;
+function diamondLeftPx(tTicks: number): number {
+  const base = timeUsToPx(tTicks, props.zoom);
+  return draggingFromTTicks.value === tTicks ? base + dragDeltaPx.value : base;
 }
 
-function formatSeconds(tUs: number): string {
-  return `${(tUs / TICKS_PER_SECOND).toFixed(2)}s`;
+function formatSeconds(tTicks: number): string {
+  return `${(tTicks / TICKS_PER_SECOND).toFixed(2)}s`;
 }
 
-function easingAt(tUs: number): KeyframeEasing {
+function easingAt(tTicks: number): KeyframeEasing {
   for (const path of animatedParamPaths(props.clip.animations)) {
     const keyframe = props.clip.animations?.[path]?.keyframes.find(
-      (kf) => Math.round(kf.tUs) === Math.round(tUs),
+      (kf) => Math.round(kf.tTicks) === Math.round(tTicks),
     );
     if (keyframe) return keyframe.easing;
   }
@@ -92,12 +92,12 @@ function nextEasing(easing: KeyframeEasing): KeyframeEasing {
   return KEYFRAME_EASINGS[(index + 1) % KEYFRAME_EASINGS.length] ?? 'linear';
 }
 
-function onDiamondPointerDown(tUs: number, e: PointerEvent) {
+function onDiamondPointerDown(tTicks: number, e: PointerEvent) {
   if (e.button !== 0) return;
   e.stopPropagation();
   const target = e.currentTarget as HTMLElement;
   target.setPointerCapture(e.pointerId);
-  draggingFromTUs.value = tUs;
+  draggingFromTTicks.value = tTicks;
   dragDeltaPx.value = 0;
   const startX = e.clientX;
 
@@ -109,12 +109,12 @@ function onDiamondPointerDown(tUs: number, e: PointerEvent) {
     target.removeEventListener('pointermove', onMove);
     target.removeEventListener('pointerup', onUp);
     target.removeEventListener('pointercancel', onUp);
-    if (draggingFromTUs.value !== null && dragDeltaPx.value !== 0) {
-      const deltaUs = pxToDeltaUs(dragDeltaPx.value, props.zoom);
-      const toTUs = Math.max(0, Math.min(durationUs.value, draggingFromTUs.value + deltaUs));
-      moveKeyframeMomentAt(draggingFromTUs.value, toTUs);
+    if (draggingFromTTicks.value !== null && dragDeltaPx.value !== 0) {
+      const deltaTicks = pxToDeltaTicks(dragDeltaPx.value, props.zoom);
+      const toTTicks = Math.max(0, Math.min(durationTicks.value, draggingFromTTicks.value + deltaTicks));
+      moveKeyframeMomentAt(draggingFromTTicks.value, toTTicks);
     }
-    draggingFromTUs.value = null;
+    draggingFromTTicks.value = null;
     dragDeltaPx.value = 0;
   }
 
@@ -123,15 +123,15 @@ function onDiamondPointerDown(tUs: number, e: PointerEvent) {
   target.addEventListener('pointercancel', onUp);
 }
 
-function onDiamondDblClick(tUs: number, e: MouseEvent) {
+function onDiamondDblClick(tTicks: number, e: MouseEvent) {
   e.stopPropagation();
-  deleteKeyframeMomentAt(tUs);
+  deleteKeyframeMomentAt(tTicks);
 }
 
-function onDiamondContextMenu(tUs: number, e: MouseEvent) {
+function onDiamondContextMenu(tTicks: number, e: MouseEvent) {
   e.preventDefault();
   e.stopPropagation();
-  setKeyframeMomentEasingAt(tUs, nextEasing(easingAt(tUs)));
+  setKeyframeMomentEasingAt(tTicks, nextEasing(easingAt(tTicks)));
 }
 </script>
 
@@ -144,15 +144,15 @@ function onDiamondContextMenu(tUs: number, e: MouseEvent) {
     @click="onLaneClick"
   >
     <button
-      v-for="tUs in keyframeTimes"
-      :key="tUs"
+      v-for="tTicks in keyframeTimes"
+      :key="tTicks"
       type="button"
       class="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-2.5 h-2.5 cursor-grab active:cursor-grabbing touch-none"
-      :style="{ left: `${diamondLeftPx(tUs)}px`, zIndex: 'var(--z-clip-content)' }"
-      :title="`${formatSeconds(tUs)} · ${easingAt(tUs)} — ${t('fastcat.timeline.keyframesDiamondHint')}`"
-      @pointerdown="(e) => onDiamondPointerDown(tUs, e)"
-      @dblclick="(e) => onDiamondDblClick(tUs, e)"
-      @contextmenu="(e) => onDiamondContextMenu(tUs, e)"
+      :style="{ left: `${diamondLeftPx(tTicks)}px`, zIndex: 'var(--z-clip-content)' }"
+      :title="`${formatSeconds(tTicks)} · ${easingAt(tTicks)} — ${t('fastcat.timeline.keyframesDiamondHint')}`"
+      @pointerdown="(e) => onDiamondPointerDown(tTicks, e)"
+      @dblclick="(e) => onDiamondDblClick(tTicks, e)"
+      @contextmenu="(e) => onDiamondContextMenu(tTicks, e)"
     >
       <svg viewBox="0 0 24 24" class="w-full h-full fill-current text-amber-400 drop-shadow-sm">
         <path d="M12 2L2 12l10 10 10-10L12 2z" />

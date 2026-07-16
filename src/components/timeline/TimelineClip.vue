@@ -20,7 +20,7 @@ import type { TimelineContext } from './context';
 import {
   timelineRangeToRoundedPx,
   timeUsToPx,
-  calculatePointerTimeUs,
+  calculatePointerTimeTicks,
 } from '~/utils/timeline/geometry';
 import { formatStopFrameTimecode } from '~/utils/stop-frames';
 import { TICKS_PER_SECOND } from '~/utils/time';
@@ -36,8 +36,8 @@ import {
   clipHasAudio,
   getPrevClipForItem,
   getNextClipForItem,
-  getClipTailTimelineHandleUs,
-  getClipHeadTimelineHandleUs,
+  getClipTailTimelineHandleTicks,
+  getClipHeadTimelineHandleTicks,
 } from '~/utils/timeline/clip';
 import { resolveClipParametersApplyTargets } from '~/utils/timeline/clip-parameters';
 import { useClipDrop } from '~/composables/timeline/useClipDrop';
@@ -71,7 +71,7 @@ interface Props {
   slipPreview?: {
     itemId: string;
     trackId: string;
-    deltaUs: number;
+    deltaTicks: number;
     timecode: string;
   } | null;
   trimPreview?: TimelineTrimPreview | null;
@@ -186,7 +186,7 @@ const myTrimPreview = computed(() => {
 const effectiveTimelineRange = computed(() => {
   const preview = myTrimPreview.value;
   if (preview) {
-    return { startUs: preview.startUs, durationUs: preview.durationUs };
+    return { startTicks: preview.startTicks, durationTicks: preview.durationTicks };
   }
   return props.item.timelineRange;
 });
@@ -216,23 +216,23 @@ const slipOverlay = computed<SlipOverlayView | null>(() => {
   const clip = clipItem.value;
   if (!preview || !clip || !hasTrimmableSource.value) return null;
 
-  const sourceDurationUs = Math.max(0, Math.round(Number(clip.sourceDurationUs ?? 0)));
-  const sourceRangeStartUs = Math.max(0, Math.round(Number(clip.sourceRange?.startUs ?? 0)));
-  const sourceRangeDurationUs = Math.max(
+  const sourceDurationTicks = Math.max(0, Math.round(Number(clip.sourceDurationTicks ?? 0)));
+  const sourceRangeStartTicks = Math.max(0, Math.round(Number(clip.sourceRange?.startTicks ?? 0)));
+  const sourceRangeDurationTicks = Math.max(
     0,
-    Math.round(Number(clip.sourceRange?.durationUs ?? clip.timelineRange.durationUs ?? 0)),
+    Math.round(Number(clip.sourceRange?.durationTicks ?? clip.timelineRange.durationTicks ?? 0)),
   );
-  const hasSourceRange = sourceDurationUs > 0 && sourceDurationUs > sourceRangeDurationUs;
-  const startPercent = hasSourceRange ? (sourceRangeStartUs / sourceDurationUs) * 100 : 0;
-  const widthPercent = hasSourceRange ? (sourceRangeDurationUs / sourceDurationUs) * 100 : 100;
+  const hasSourceRange = sourceDurationTicks > 0 && sourceDurationTicks > sourceRangeDurationTicks;
+  const startPercent = hasSourceRange ? (sourceRangeStartTicks / sourceDurationTicks) * 100 : 0;
+  const widthPercent = hasSourceRange ? (sourceRangeDurationTicks / sourceDurationTicks) * 100 : 100;
 
   return {
     rangeStyle: {
       left: `${Math.min(100, Math.max(0, startPercent))}%`,
       width: `${Math.min(100, Math.max(0, widthPercent))}%`,
     },
-    deltaClass: preview.deltaUs === 0 ? 'text-white' : 'text-cyan-100',
-    direction: preview.deltaUs < 0 ? '<' : preview.deltaUs > 0 ? '>' : '',
+    deltaClass: preview.deltaTicks === 0 ? 'text-white' : 'text-cyan-100',
+    direction: preview.deltaTicks < 0 ? '<' : preview.deltaTicks > 0 ? '>' : '',
     timecode: preview.timecode,
     hasSourceRange,
     showSourceRange: hasTrimmableSource.value,
@@ -249,19 +249,19 @@ const trimOverlay = computed<TrimOverlayView | null>(() => {
   // Use the live, previewed source range so the material line tracks the drag in
   // real time (effectiveSourceRange runs the same computeTrimGeometry as commit),
   // instead of the committed clip.sourceRange which only jumps after mouse-up.
-  const sourceDurationUs = Math.max(0, Math.round(Number(clip.sourceDurationUs ?? 0)));
-  const sourceRangeStartUs = Math.max(0, Math.round(Number(effectiveSourceRange.value.startUs)));
-  const sourceRangeDurationUs = Math.max(
+  const sourceDurationTicks = Math.max(0, Math.round(Number(clip.sourceDurationTicks ?? 0)));
+  const sourceRangeStartTicks = Math.max(0, Math.round(Number(effectiveSourceRange.value.startTicks)));
+  const sourceRangeDurationTicks = Math.max(
     0,
-    Math.round(Number(effectiveSourceRange.value.durationUs || clip.timelineRange.durationUs || 0)),
+    Math.round(Number(effectiveSourceRange.value.durationTicks || clip.timelineRange.durationTicks || 0)),
   );
-  const hasSourceRange = sourceDurationUs > 0 && sourceDurationUs > sourceRangeDurationUs;
-  const startPercent = hasSourceRange ? (sourceRangeStartUs / sourceDurationUs) * 100 : 0;
-  const widthPercent = hasSourceRange ? (sourceRangeDurationUs / sourceDurationUs) * 100 : 100;
+  const hasSourceRange = sourceDurationTicks > 0 && sourceDurationTicks > sourceRangeDurationTicks;
+  const startPercent = hasSourceRange ? (sourceRangeStartTicks / sourceDurationTicks) * 100 : 0;
+  const widthPercent = hasSourceRange ? (sourceRangeDurationTicks / sourceDurationTicks) * 100 : 100;
 
   const fps = sanitizeFps(timelineContext.timelineDoc.value?.timebase);
-  const timecode = `${preview.deltaUs >= 0 ? '+' : '-'}${formatStopFrameTimecode({
-    timeTicks: Math.abs(preview.deltaUs),
+  const timecode = `${preview.deltaTicks >= 0 ? '+' : '-'}${formatStopFrameTimecode({
+    timeTicks: Math.abs(preview.deltaTicks),
     fps,
     frameDigits: 1,
   })}`;
@@ -323,7 +323,7 @@ const {
     emit('startMoveItem', e, {
       trackId: props.track.id,
       itemId: props.item.id,
-      startUs: props.item.timelineRange.startUs,
+      startTicks: props.item.timelineRange.startTicks,
       mode:
         timelineContext.toolbarDragModeEnabled.value &&
         timelineContext.toolbarDragMode.value === 'slip'
@@ -414,7 +414,7 @@ function onTrimHandlePointerDown(e: PointerEvent, edge: 'start' | 'end') {
     trackId: props.item.trackId,
     itemId: props.item.id,
     edge,
-    startUs: props.item.timelineRange.startUs,
+    startTicks: props.item.timelineRange.startTicks,
   });
 }
 
@@ -430,13 +430,13 @@ const { clipItem, onClipClick: onClipClickInteraction } = useClipInteractions({
     ),
   trimToPlayheadLeftNoRipple: (target) => void timelineContext.trimToPlayheadLeftNoRipple(target),
   trimToPlayheadRightNoRipple: (target) => void timelineContext.trimToPlayheadRightNoRipple(target),
-  trimToTimeLeftNoRipple: (target, atUs) =>
-    void timelineContext.trimToTimeLeftNoRipple(target, atUs),
-  trimToTimeRightNoRipple: (target, atUs) =>
-    void timelineContext.trimToTimeRightNoRipple(target, atUs),
+  trimToTimeLeftNoRipple: (target, atTicks) =>
+    void timelineContext.trimToTimeLeftNoRipple(target, atTicks),
+  trimToTimeRightNoRipple: (target, atTicks) =>
+    void timelineContext.trimToTimeRightNoRipple(target, atTicks),
   splitClipAtPlayhead: (target) => void timelineContext.splitClipAtPlayhead(target),
-  splitClipAtTime: (target, atUs) => void timelineContext.splitClipAtTime(target, atUs),
-  getPointerTimeUs: getClipPointerTimeUs,
+  splitClipAtTime: (target, atTicks) => void timelineContext.splitClipAtTime(target, atTicks),
+  getPointerTimeTicks: getClipPointerTimeTicks,
   emitSelectItem: (e, itemId) => emit('selectItem', e, itemId),
   didStartDrag,
   longPressTriggered,
@@ -452,18 +452,18 @@ const effectiveSourceRange = computed(() => {
 
     const { sourceRange } = computeTrimGeometry({
       edge: preview.edge,
-      deltaUs: preview.deltaUs,
+      deltaTicks: preview.deltaTicks,
       speed: clipItem.value.speed,
       fps,
       quantizeToFrames: false,
       timelineRange: clipItem.value.timelineRange,
       sourceRange: clipItem.value.sourceRange,
-      sourceDurationUs: clipItem.value.sourceDurationUs,
+      sourceDurationTicks: clipItem.value.sourceDurationTicks,
       hasFixedSourceDuration,
     });
     return sourceRange;
   }
-  return clipItem.value?.sourceRange ?? { startUs: 0, durationUs: 0 };
+  return clipItem.value?.sourceRange ?? { startTicks: 0, durationTicks: 0 };
 });
 
 const effectiveClipItem = computed(() => {
@@ -526,8 +526,8 @@ const { isDraggingOver, dropZoneAttrs } = useClipDrop({
   selectTimelineTransition: (trackId, itemId, edge) =>
     timelineContext.selectTimelineTransition(trackId, itemId, edge),
   triggerScrollToEffects: () => timelineContext.triggerScrollToEffects(),
-  defaultTransitionDurationUs: computed(
-    () => timelineContext.userSettings.value.timeline.defaultTransitionDurationUs,
+  defaultTransitionDurationTicks: computed(
+    () => timelineContext.userSettings.value.timeline.defaultTransitionDurationTicks,
   ),
 });
 
@@ -557,7 +557,7 @@ const isFreePosition = computed(() => {
 const speedOrFreezeBorderClass = computed(() => {
   if (!clipItem.value || isMediaMissing.value) return '';
 
-  const isFreeze = typeof clipItem.value.freezeFrameSourceUs === 'number';
+  const isFreeze = typeof clipItem.value.freezeFrameSourceTicks === 'number';
   const speed = typeof clipItem.value.speed === 'number' ? clipItem.value.speed : 1;
 
   if (isFreeze || speed === 0) {
@@ -663,8 +663,8 @@ const { contextMenuItems } = useClipContextMenu({
   projectSettings: computed(
     () => timelineContext.projectSettings.value as unknown as FastCatProjectSettings,
   ),
-  defaultTransitionDurationUs: computed(
-    () => timelineContext.userSettings.value.timeline.defaultTransitionDurationUs,
+  defaultTransitionDurationTicks: computed(
+    () => timelineContext.userSettings.value.timeline.defaultTransitionDurationTicks,
   ),
   selectedItemIds: computed(() => timelineContext.selectedItemIds.value),
   currentTime: computed(() => timelineContext.currentTime.value),
@@ -705,10 +705,10 @@ const { contextMenuItems } = useClipContextMenu({
       ),
     });
   },
-  pasteClips: (insertStartUs?: number) => {
+  pasteClips: (insertStartTicks?: number) => {
     const payload = timelineContext.clipboardPayload.value as AppClipboardPayload | null;
     if (!payload || payload.source !== 'timeline' || payload.items.length === 0) return;
-    void timelineContext.pasteClips({ insertStartUs });
+    void timelineContext.pasteClips({ insertStartTicks });
     if (payload.operation === 'cut') timelineContext.setClipboardPayload(null);
   },
   get hasTimelineClipboard() {
@@ -750,12 +750,12 @@ const transitionInOverlayGuideStyle = computed<Record<string, string> | null>(()
     prevClip?.transitionOut?.mode === 'adjacent';
   if (!hasAdjacent || !prevClip) return null;
 
-  const timelineHandleUs = getClipTailTimelineHandleUs(prevClip);
-  if (!Number.isFinite(timelineHandleUs) || timelineHandleUs <= 0) return null;
+  const timelineHandleTicks = getClipTailTimelineHandleTicks(prevClip);
+  if (!Number.isFinite(timelineHandleTicks) || timelineHandleTicks <= 0) return null;
 
   const offsetPx = Math.max(
     0,
-    Math.min(clipWidthPx.value, timeUsToPx(timelineHandleUs, timelineContext.zoom.value)),
+    Math.min(clipWidthPx.value, timeUsToPx(timelineHandleTicks, timelineContext.zoom.value)),
   );
   return {
     left: `${offsetPx}px`,
@@ -778,49 +778,49 @@ const transitionOutOverlayGuideStyle = computed<Record<string, string> | null>((
     nextClip?.transitionIn?.mode === 'adjacent';
   if (!hasAdjacent || !nextClip) return null;
 
-  const timelineHandleUs = getClipHeadTimelineHandleUs(nextClip);
-  if (!Number.isFinite(timelineHandleUs) || timelineHandleUs <= 0) return null;
+  const timelineHandleTicks = getClipHeadTimelineHandleTicks(nextClip);
+  if (!Number.isFinite(timelineHandleTicks) || timelineHandleTicks <= 0) return null;
 
   const offsetPx = Math.max(
     0,
-    Math.min(clipWidthPx.value, timeUsToPx(timelineHandleUs, timelineContext.zoom.value)),
+    Math.min(clipWidthPx.value, timeUsToPx(timelineHandleTicks, timelineContext.zoom.value)),
   );
   return {
     left: `${Math.max(0, clipWidthPx.value - offsetPx)}px`,
   };
 });
 
-function getClipPointerTimeUs(e: MouseEvent): number | null {
+function getClipPointerTimeTicks(e: MouseEvent): number | null {
   const el = e.currentTarget instanceof HTMLElement ? e.currentTarget : null;
   if (!el) return null;
 
   const rect = el.getBoundingClientRect();
-  return calculatePointerTimeUs({
+  return calculatePointerTimeTicks({
     clientX: e.clientX,
     rectLeft: rect.left,
     rectWidth: rect.width,
-    clipStartUs: props.item.timelineRange.startUs,
+    clipStartTicks: props.item.timelineRange.startTicks,
     zoom: timelineContext.zoom.value,
   });
 }
 
-function getDefaultTransitionDurationUs() {
+function getDefaultTransitionDurationTicks() {
   if (!clipItem.value || !props.canEditClipContent) return;
 
-  const defaultUs = Math.max(
+  const defaultTicks = Math.max(
     0,
     Math.round(
       Number(
-        timelineContext.userSettings.value.timeline.defaultTransitionDurationUs ?? TICKS_PER_SECOND,
+        timelineContext.userSettings.value.timeline.defaultTransitionDurationTicks ?? TICKS_PER_SECOND,
       ),
     ),
   );
-  const defaultDurationUs = Math.min(
-    defaultUs,
-    Math.round(clipItem.value.timelineRange.durationUs * 0.3),
+  const defaultDurationTicks = Math.min(
+    defaultTicks,
+    Math.round(clipItem.value.timelineRange.durationTicks * 0.3),
   );
 
-  return defaultDurationUs;
+  return defaultDurationTicks;
 }
 
 function addTransition(edge: 'in' | 'out') {
@@ -828,12 +828,12 @@ function addTransition(edge: 'in' | 'out') {
   if (edge === 'in' && clipItem.value.transitionIn) return;
   if (edge === 'out' && clipItem.value.transitionOut) return;
 
-  const durationUs = getDefaultTransitionDurationUs();
-  if (typeof durationUs !== 'number') return;
+  const durationTicks = getDefaultTransitionDurationTicks();
+  if (typeof durationTicks !== 'number') return;
 
   const transitionPatch = {
     type: 'dissolve' as const,
-    durationUs,
+    durationTicks,
     mode: DEFAULT_TRANSITION_MODE,
     curve: DEFAULT_TRANSITION_CURVE,
   };
@@ -959,8 +959,8 @@ function addTransition(edge: 'in' | 'out') {
           :top-inset-px="clipContentInset.top"
           :bottom-inset-px="clipContentInset.bottom"
           :default-fade-duration-us="
-            timelineContext.userSettings.value.timeline.defaultAudioFadeDurationUs ??
-            timelineContext.userSettings.value.timeline.defaultTransitionDurationUs
+            timelineContext.userSettings.value.timeline.defaultAudioFadeDurationTicks ??
+            timelineContext.userSettings.value.timeline.defaultTransitionDurationTicks
           "
           :default-fade-curve="
             timelineContext.userSettings.value.projectDefaults.defaultAudioFadeCurve
@@ -971,7 +971,7 @@ function addTransition(edge: 'in' | 'out') {
                 trackId: track.id,
                 itemId: item.id,
                 edge: payload.edge,
-                durationUs: payload.durationUs,
+                durationTicks: payload.durationTicks,
               })
           "
           @start-resize-volume="
@@ -984,9 +984,9 @@ function addTransition(edge: 'in' | 'out') {
               })
           "
           @commit-fade="
-            ({ edge, durationUs, curve }) =>
+            ({ edge, durationTicks, curve }) =>
               timelineContext.updateClipProperties(track.id, item.id, {
-                [edge === 'in' ? 'audioFadeInUs' : 'audioFadeOutUs']: durationUs,
+                [edge === 'in' ? 'audioFadeInTicks' : 'audioFadeOutTicks']: durationTicks,
                 ...(curve
                   ? { [edge === 'in' ? 'audioFadeInCurve' : 'audioFadeOutCurve']: curve }
                   : {}),
@@ -1003,7 +1003,7 @@ function addTransition(edge: 'in' | 'out') {
           :track="track"
           :clip-item="clipItem"
           :effective-clip-item="effectiveClipItem"
-          :effective-timeline-start-us="effectiveTimelineRange.startUs"
+          :effective-timeline-start-us="effectiveTimelineRange.startTicks"
           :clip-width-px="clipWidthPx"
           :zoom="timelineContext.zoom.value"
           :scroll-left="scrollLeft ?? 0"
@@ -1040,7 +1040,7 @@ function addTransition(edge: 'in' | 'out') {
                 trackId: track.id,
                 itemId: item.id,
                 edge: payload.edge,
-                durationUs: payload.durationUs,
+                durationTicks: payload.durationTicks,
               })
           "
         />

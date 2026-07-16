@@ -35,16 +35,16 @@ export class StageManager {
         const aClip = getClipById((a as { __clipId?: string }).__clipId ?? '');
         const bClip = getClipById((b as { __clipId?: string }).__clipId ?? '');
 
-        const aStartUs = aClip?.startUs ?? 0;
-        const bStartUs = bClip?.startUs ?? 0;
-        if (aStartUs !== bStartUs) {
-          return aStartUs - bStartUs;
+        const aStartTicks = aClip?.startTicks ?? 0;
+        const bStartTicks = bClip?.startTicks ?? 0;
+        if (aStartTicks !== bStartTicks) {
+          return aStartTicks - bStartTicks;
         }
 
-        const aEndUs = aClip?.endUs ?? 0;
-        const bEndUs = bClip?.endUs ?? 0;
-        if (aEndUs !== bEndUs) {
-          return aEndUs - bEndUs;
+        const aEndTicks = aClip?.endTicks ?? 0;
+        const bEndTicks = bClip?.endTicks ?? 0;
+        if (aEndTicks !== bEndTicks) {
+          return aEndTicks - bEndTicks;
         }
 
         const aOrder =

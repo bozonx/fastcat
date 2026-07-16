@@ -50,7 +50,7 @@ describe('timeline-selection-range', () => {
       markerService,
       trimming,
       applyTimeline,
-      defaultStaticClipDurationUs: 5000000,
+      defaultStaticClipDurationTicks: 5000000,
     });
   });
 
@@ -59,28 +59,28 @@ describe('timeline-selection-range', () => {
   });
 
   it('updates selection range', () => {
-    selectionRange.updateSelectionRange({ startUs: 1000000, endUs: 3000000 });
-    expect(selectionRange.getSelectionRange()).toEqual({ startUs: 1000000, endUs: 3000000 });
+    selectionRange.updateSelectionRange({ startTicks: 1000000, endTicks: 3000000 });
+    expect(selectionRange.getSelectionRange()).toEqual({ startTicks: 1000000, endTicks: 3000000 });
   });
 
   it('keeps the previous committed range available while applying an update', () => {
-    selectionRangeRef.value = { startUs: 1000000, endUs: 3000000 };
+    selectionRangeRef.value = { startTicks: 1000000, endTicks: 3000000 };
     applyTimeline.mockImplementationOnce(() => {
-      expect(selectionRangeRef.value).toEqual({ startUs: 1000000, endUs: 3000000 });
+      expect(selectionRangeRef.value).toEqual({ startTicks: 1000000, endTicks: 3000000 });
     });
 
-    selectionRange.updateSelectionRange({ startUs: 1500000, endUs: 3000000 });
+    selectionRange.updateSelectionRange({ startTicks: 1500000, endTicks: 3000000 });
 
     expect(applyTimeline).toHaveBeenCalledWith(
       {
         type: 'update_timeline_properties',
         properties: {
-          selectionRange: { startUs: 1500000, endUs: 3000000 },
+          selectionRange: { startTicks: 1500000, endTicks: 3000000 },
         },
       },
       undefined,
     );
-    expect(selectionRange.getSelectionRange()).toEqual({ startUs: 1500000, endUs: 3000000 });
+    expect(selectionRange.getSelectionRange()).toEqual({ startTicks: 1500000, endTicks: 3000000 });
   });
 
   it('removes selection range', () => {
@@ -95,24 +95,24 @@ describe('timeline-selection-range', () => {
     currentTime.value = 2000000;
     selectionRange.createSelectionRangeAtPlayhead();
 
-    expect(selectionRange.getSelectionRange()).toEqual({ startUs: 2000000, endUs: 7000000 });
+    expect(selectionRange.getSelectionRange()).toEqual({ startTicks: 2000000, endTicks: 7000000 });
     expect(selectTimelineSelectionRange).toHaveBeenCalled();
   });
 
   it('converts selection to a zone marker created directly at the range, without touching other markers', () => {
     // An existing zone sits later than the playhead — it must not be mutated.
     markerService.getMarkers.mockReturnValue([
-      { id: 'existing', timeUs: 20000000, durationUs: 5000000, text: '' },
+      { id: 'existing', timeTicks: 20000000, durationTicks: 5000000, text: '' },
     ]);
     currentTime.value = 0;
-    selectionRange.updateSelectionRange({ startUs: 4000000, endUs: 8000000 });
+    selectionRange.updateSelectionRange({ startTicks: 4000000, endTicks: 8000000 });
 
     selectionRange.convertSelectionRangeToMarker();
 
     // New marker is created straight at the selection range (no stray playhead marker, no update).
     expect(markerService.addMarker).toHaveBeenCalledWith({
-      timeUs: 4000000,
-      durationUs: 4000000,
+      timeTicks: 4000000,
+      durationTicks: 4000000,
     });
     expect(markerService.addMarkerAtPlayhead).not.toHaveBeenCalled();
     expect(markerService.updateMarker).not.toHaveBeenCalled();
@@ -123,9 +123,9 @@ describe('timeline-selection-range', () => {
     markerService.addMarker.mockReturnValue('created-marker');
     // After the add, the new marker exists in the document.
     markerService.getMarkers.mockReturnValue([
-      { id: 'created-marker', timeUs: 4000000, durationUs: 4000000, text: '' },
+      { id: 'created-marker', timeTicks: 4000000, durationTicks: 4000000, text: '' },
     ]);
-    selectionRange.updateSelectionRange({ startUs: 4000000, endUs: 8000000 });
+    selectionRange.updateSelectionRange({ startTicks: 4000000, endTicks: 8000000 });
 
     selectionRange.convertSelectionRangeToMarker();
 
@@ -136,7 +136,7 @@ describe('timeline-selection-range', () => {
     markerService.addMarker.mockReturnValue('rejected-marker');
     // The add was rejected, so the document does not contain the new marker id.
     markerService.getMarkers.mockReturnValue([]);
-    selectionRange.updateSelectionRange({ startUs: 4000000, endUs: 8000000 });
+    selectionRange.updateSelectionRange({ startTicks: 4000000, endTicks: 8000000 });
 
     selectionRange.convertSelectionRangeToMarker();
 
@@ -145,13 +145,13 @@ describe('timeline-selection-range', () => {
 
   it('converts a zone marker to a selection range, removing the marker itself', () => {
     markerService.getMarkers.mockReturnValue([
-      { id: 'zone-marker', timeUs: 1000000, durationUs: 3000000, text: 'Zone' },
+      { id: 'zone-marker', timeTicks: 1000000, durationTicks: 3000000, text: 'Zone' },
     ]);
 
     selectionRange.convertMarkerToSelectionRange('zone-marker');
 
     // Should create the selection range matching the zone marker's duration and position
-    expect(selectionRange.getSelectionRange()).toEqual({ startUs: 1000000, endUs: 4000000 });
+    expect(selectionRange.getSelectionRange()).toEqual({ startTicks: 1000000, endTicks: 4000000 });
 
     // Should not call updateMarker
     expect(markerService.updateMarker).not.toHaveBeenCalled();

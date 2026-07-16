@@ -30,8 +30,8 @@ describe('buildMixedAudioTrack', () => {
     const audioClips = [
       {
         sourcePath: 'test.mp3',
-        startUs: 0,
-        durationUs: 1000000,
+        startTicks: 0,
+        durationTicks: 1000000,
       },
     ];
 

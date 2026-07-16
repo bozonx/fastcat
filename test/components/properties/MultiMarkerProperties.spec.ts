@@ -47,9 +47,9 @@ vi.mock('~/components/ui/UiColorPicker.vue', () => ({
 
 const timelineStore = reactive({
   markers: [
-    { id: 'm1', timeUs: 1_000_000, text: 'Intro', color: '#eab308' },
-    { id: 'm2', timeUs: 2_000_000, text: 'Beat', color: '#eab308' },
-    { id: 'm3', timeUs: 3_000_000, text: 'Outro', color: '#00ff00' },
+    { id: 'm1', timeTicks: 1_000_000, text: 'Intro', color: '#eab308' },
+    { id: 'm2', timeTicks: 2_000_000, text: 'Beat', color: '#eab308' },
+    { id: 'm3', timeTicks: 3_000_000, text: 'Outro', color: '#00ff00' },
   ],
   batchApplyTimeline: vi.fn(),
 });

@@ -8,7 +8,7 @@ import type { TimelineCommand } from '~/timeline/commands';
 import type { TimelineApplyOptions } from '~/timeline/apply-options';
 
 import { buildRippleMarkerCommands } from '~/timeline/domain/markers';
-import { computeCutUs } from '~/timeline/domain/editing';
+import { computeCutTicks } from '~/timeline/domain/editing';
 import {
   getLinkedClipGroupItemIds,
   getDocFps,
@@ -35,58 +35,58 @@ export interface TimelineEditServiceDeps {
 
 interface RippleDeleteRangeParams {
   trackIds: string[];
-  startUs: number;
-  endUs: number;
+  startTicks: number;
+  endTicks: number;
 }
 
 export function createTimelineEditService(deps: TimelineEditServiceDeps) {
   function rippleSelectionRange(
     selectionRange: TimelineSelectionRange,
-    rangeStartUs: number,
-    rangeEndUs: number,
+    rangeStartTicks: number,
+    rangeEndTicks: number,
   ): TimelineSelectionRange | null {
-    if (!(rangeEndUs > rangeStartUs)) return selectionRange;
+    if (!(rangeEndTicks > rangeStartTicks)) return selectionRange;
 
-    const deltaUs = rangeEndUs - rangeStartUs;
-    const selectionStartUs = selectionRange.startUs;
-    const selectionEndUs = selectionRange.endUs;
+    const deltaTicks = rangeEndTicks - rangeStartTicks;
+    const selectionStartTicks = selectionRange.startTicks;
+    const selectionEndTicks = selectionRange.endTicks;
 
-    if (selectionEndUs <= rangeStartUs) return selectionRange;
-    if (selectionStartUs >= rangeEndUs) {
+    if (selectionEndTicks <= rangeStartTicks) return selectionRange;
+    if (selectionStartTicks >= rangeEndTicks) {
       return {
-        startUs: Math.max(0, selectionStartUs - deltaUs),
-        endUs: Math.max(0, selectionEndUs - deltaUs),
+        startTicks: Math.max(0, selectionStartTicks - deltaTicks),
+        endTicks: Math.max(0, selectionEndTicks - deltaTicks),
       };
     }
-    if (selectionStartUs >= rangeStartUs && selectionEndUs <= rangeEndUs) return null;
-    if (selectionStartUs < rangeStartUs && selectionEndUs > rangeEndUs) {
+    if (selectionStartTicks >= rangeStartTicks && selectionEndTicks <= rangeEndTicks) return null;
+    if (selectionStartTicks < rangeStartTicks && selectionEndTicks > rangeEndTicks) {
       return {
-        startUs: selectionStartUs,
-        endUs: Math.max(selectionStartUs, selectionEndUs - deltaUs),
+        startTicks: selectionStartTicks,
+        endTicks: Math.max(selectionStartTicks, selectionEndTicks - deltaTicks),
       };
     }
-    if (selectionStartUs < rangeStartUs) {
+    if (selectionStartTicks < rangeStartTicks) {
       return {
-        startUs: selectionStartUs,
-        endUs: Math.max(selectionStartUs, rangeStartUs),
+        startTicks: selectionStartTicks,
+        endTicks: Math.max(selectionStartTicks, rangeStartTicks),
       };
     }
 
-    const nextStartUs = Math.max(0, rangeStartUs);
-    const nextEndUs = Math.max(nextStartUs, selectionEndUs - deltaUs);
+    const nextStartTicks = Math.max(0, rangeStartTicks);
+    const nextEndTicks = Math.max(nextStartTicks, selectionEndTicks - deltaTicks);
     return {
-      startUs: nextStartUs,
-      endUs: nextEndUs,
+      startTicks: nextStartTicks,
+      endTicks: nextEndTicks,
     };
   }
 
-  function applyRippleSelectionRange(rangeStartUs: number, rangeEndUs: number) {
+  function applyRippleSelectionRange(rangeStartTicks: number, rangeEndTicks: number) {
     if (!deps.getSelectionRange || !deps.updateSelectionRange) return;
 
     const selectionRange = deps.getSelectionRange();
     if (!selectionRange) return;
 
-    deps.updateSelectionRange(rippleSelectionRange(selectionRange, rangeStartUs, rangeEndUs));
+    deps.updateSelectionRange(rippleSelectionRange(selectionRange, rangeStartTicks, rangeEndTicks));
   }
 
   function getTrackById(doc: TimelineDocument, trackId: string): TimelineTrack | null {
@@ -100,22 +100,22 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
    * those tracks — not just the target track. Shifting only the target track left
    * (the old behaviour) left every linked partner after the cut un-rippled and
    * therefore desynced. Here we ripple the clips after the gap on each track that
-   * holds a group member, by the same `deltaUs`, excluding the members themselves
+   * holds a group member, by the same `deltaTicks`, excluding the members themselves
    * (their own start is handled by the trim / explicit move). The gap boundary on
    * each track is that track's group-member right edge.
    */
   function buildGroupRippleMoves(params: {
     doc: TimelineDocument;
     targetItemId: string;
-    deltaUs: number;
-  }): Array<{ fromTrackId: string; toTrackId: string; itemId: string; startUs: number }> {
+    deltaTicks: number;
+  }): Array<{ fromTrackId: string; toTrackId: string; itemId: string; startTicks: number }> {
     const groupIds = new Set(getLinkedClipGroupItemIds(params.doc, params.targetItemId));
 
     const memberEndByTrack = new Map<string, number>();
     for (const t of params.doc.tracks) {
       for (const it of t.items) {
         if (it.kind === 'clip' && groupIds.has(it.id)) {
-          const end = it.timelineRange.startUs + it.timelineRange.durationUs;
+          const end = it.timelineRange.startTicks + it.timelineRange.durationTicks;
           memberEndByTrack.set(t.id, Math.max(memberEndByTrack.get(t.id) ?? 0, end));
         }
       }
@@ -125,7 +125,7 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
       fromTrackId: string;
       toTrackId: string;
       itemId: string;
-      startUs: number;
+      startTicks: number;
     }> = [];
     for (const t of params.doc.tracks) {
       if (t.locked) continue;
@@ -135,12 +135,12 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
         if (it.kind !== 'clip') continue;
         if (groupIds.has(it.id)) continue;
         if (it.locked) continue;
-        if (it.timelineRange.startUs < memberEnd) continue;
+        if (it.timelineRange.startTicks < memberEnd) continue;
         moves.push({
           fromTrackId: t.id,
           toTrackId: t.id,
           itemId: it.id,
-          startUs: Math.max(0, it.timelineRange.startUs - params.deltaUs),
+          startTicks: Math.max(0, it.timelineRange.startTicks - params.deltaTicks),
         });
       }
     }
@@ -155,11 +155,11 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
     if (!doc) return null;
     const preState = doc;
 
-    const startUs = computeCutUs(doc, input.startUs);
-    const endUs = computeCutUs(doc, input.endUs);
-    if (!(endUs > startUs)) return null;
+    const startTicks = computeCutTicks(doc, input.startTicks);
+    const endTicks = computeCutTicks(doc, input.endTicks);
+    if (!(endTicks > startTicks)) return null;
 
-    const deltaUs = endUs - startUs;
+    const deltaTicks = endTicks - startTicks;
     const trackIdSet = new Set(input.trackIds);
     const batchOptions: TimelineApplyOptions = options ?? {
       saveMode: 'none',
@@ -169,7 +169,7 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
       skipHistory: true,
     };
 
-    const buildSplitCmds = (fromDoc: TimelineDocument, atUs: number): TimelineCommand[] => {
+    const buildSplitCmds = (fromDoc: TimelineDocument, atTicks: number): TimelineCommand[] => {
       const cmds: TimelineCommand[] = [];
       for (const track of fromDoc.tracks) {
         if (!trackIdSet.has(track.id)) continue;
@@ -177,17 +177,17 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
         for (const it of track.items) {
           if (it.kind !== 'clip') continue;
           if (it.locked) continue;
-          const itStart = it.timelineRange.startUs;
-          const itEnd = itStart + it.timelineRange.durationUs;
-          if (!(atUs > itStart && atUs < itEnd)) continue;
-          cmds.push({ type: 'split_item', trackId: track.id, itemId: it.id, atUs });
+          const itStart = it.timelineRange.startTicks;
+          const itEnd = itStart + it.timelineRange.durationTicks;
+          if (!(atTicks > itStart && atTicks < itEnd)) continue;
+          cmds.push({ type: 'split_item', trackId: track.id, itemId: it.id, atTicks });
         }
       }
       return cmds;
     };
 
-    // Phase 1: split at endUs then startUs (sequential — each split changes doc state)
-    const splitCmdsEnd = buildSplitCmds(doc, endUs);
+    // Phase 1: split at endTicks then startTicks (sequential — each split changes doc state)
+    const splitCmdsEnd = buildSplitCmds(doc, endTicks);
     if (splitCmdsEnd.length > 0) {
       deps.batchApplyTimeline(splitCmdsEnd, internalBatchOptions);
     }
@@ -195,7 +195,7 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
     const afterSplitEnd = deps.getDoc();
     if (!afterSplitEnd) return null;
 
-    const splitCmdsStart = buildSplitCmds(afterSplitEnd, startUs);
+    const splitCmdsStart = buildSplitCmds(afterSplitEnd, startTicks);
     if (splitCmdsStart.length > 0) {
       deps.batchApplyTimeline(splitCmdsStart, internalBatchOptions);
     }
@@ -214,12 +214,12 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
       for (const it of track.items) {
         if (it.kind !== 'clip') continue;
         if (it.locked) continue;
-        const itStart = it.timelineRange.startUs;
-        const itEnd = itStart + it.timelineRange.durationUs;
-        // After the splits at startUs and endUs every survivor either lies entirely
-        // inside or entirely outside [startUs, endUs]. Use exact edges instead
+        const itStart = it.timelineRange.startTicks;
+        const itEnd = itStart + it.timelineRange.durationTicks;
+        // After the splits at startTicks and endTicks every survivor either lies entirely
+        // inside or entirely outside [startTicks, endTicks]. Use exact edges instead
         // of the midpoint heuristic, which fails around split boundaries.
-        if (itStart >= startUs && itEnd <= endUs) {
+        if (itStart >= startTicks && itEnd <= endTicks) {
           toDelete.push(it.id);
         }
       }
@@ -250,20 +250,20 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
       const clips = track.items
         .filter((it): it is TimelineClipItem => it.kind === 'clip')
         .slice()
-        .sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
+        .sort((a, b) => a.timelineRange.startTicks - b.timelineRange.startTicks);
 
       for (const clip of clips) {
         if (clip.locked) continue;
-        const clipStart = clip.timelineRange.startUs;
-        if (clipStart >= endUs) {
-          // Clamp to startUs so a clip that starts at the cut boundary cannot
+        const clipStart = clip.timelineRange.startTicks;
+        if (clipStart >= endTicks) {
+          // Clamp to startTicks so a clip that starts at the cut boundary cannot
           // overlap the pre-cut region.
-          const nextStart = Math.max(startUs, clipStart - deltaUs);
+          const nextStart = Math.max(startTicks, clipStart - deltaTicks);
           moves.push({
             fromTrackId: track.id,
             toTrackId: track.id,
             itemId: clip.id,
-            startUs: nextStart,
+            startTicks: nextStart,
           });
         }
       }
@@ -278,12 +278,12 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
     // Phase 4: update markers in the same way the clips were moved.
     const markerDoc = deps.getDoc();
     if (markerDoc) {
-      const markerCmds = buildRippleMarkerCommands(markerDoc, startUs, endUs);
+      const markerCmds = buildRippleMarkerCommands(markerDoc, startTicks, endTicks);
       if (markerCmds.length > 0) {
         deps.batchApplyTimeline(markerCmds, internalBatchOptions);
       }
     }
-    applyRippleSelectionRange(startUs, endUs);
+    applyRippleSelectionRange(startTicks, endTicks);
 
     const finalDoc = deps.getDoc();
     if (finalDoc && finalDoc !== preState && !options?.skipHistory) {
@@ -294,7 +294,7 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
       );
     }
 
-    return startUs;
+    return startTicks;
   }
 
   async function rippleTrimRight(): Promise<number | null> {
@@ -309,18 +309,18 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
     if (!track || !item || item.kind !== 'clip') return null;
     if (track.locked || item.locked) return null;
 
-    const cutUs = computeCutUs(doc, deps.getCurrentTime());
-    const startUs = item.timelineRange.startUs;
-    const endUs = startUs + item.timelineRange.durationUs;
+    const cutTicks = computeCutTicks(doc, deps.getCurrentTime());
+    const startTicks = item.timelineRange.startTicks;
+    const endTicks = startTicks + item.timelineRange.durationTicks;
 
-    if (!(cutUs > startUs && cutUs < endUs)) return null;
+    if (!(cutTicks > startTicks && cutTicks < endTicks)) return null;
 
     // Frame-align the ripple amount up front so the end trim and the subsequent
-    // shift use the EXACT same delta. Otherwise the trim quantizes `endUs - cutUs`
+    // shift use the EXACT same delta. Otherwise the trim quantizes `endTicks - cutTicks`
     // to frames while the moves quantize each clip's start independently, which
     // can leave a sub-frame gap/overlap on legacy non-frame-aligned geometry.
-    const deltaUs = quantizeDeltaUsToFrames(endUs - cutUs, getDocFps(doc), 'round');
-    if (deltaUs <= 0) return null;
+    const deltaTicks = quantizeDeltaUsToFrames(endTicks - cutTicks, getDocFps(doc), 'round');
+    if (deltaTicks <= 0) return null;
 
     const cmds: TimelineCommand[] = [
       {
@@ -328,11 +328,11 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
         trackId: target.trackId,
         itemId: target.itemId,
         edge: 'end',
-        deltaUs: -deltaUs,
+        deltaTicks: -deltaTicks,
       },
     ];
 
-    const moves = buildGroupRippleMoves({ doc, targetItemId: target.itemId, deltaUs });
+    const moves = buildGroupRippleMoves({ doc, targetItemId: target.itemId, deltaTicks });
 
     if (moves.length > 0) {
       cmds.push({
@@ -343,17 +343,17 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
       });
     }
 
-    // rippleTrimRight removes [cutUs, endUs] of timeline space.
-    cmds.push(...buildRippleMarkerCommands(doc, cutUs, cutUs + deltaUs));
+    // rippleTrimRight removes [cutTicks, endTicks] of timeline space.
+    cmds.push(...buildRippleMarkerCommands(doc, cutTicks, cutTicks + deltaTicks));
 
     deps.batchApplyTimeline(cmds, {
       saveMode: 'none',
       labelKey: 'videoEditor.fileManager.history.entries.trimClip',
     });
-    applyRippleSelectionRange(cutUs, cutUs + deltaUs);
+    applyRippleSelectionRange(cutTicks, cutTicks + deltaTicks);
 
     await deps.requestTimelineSave({ immediate: true });
-    return cutUs;
+    return cutTicks;
   }
 
   async function rippleTrimLeft(): Promise<number | null> {
@@ -368,16 +368,16 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
     if (!track || !item || item.kind !== 'clip') return null;
     if (track.locked || item.locked) return null;
 
-    const cutUs = computeCutUs(doc, deps.getCurrentTime());
-    const startUs = item.timelineRange.startUs;
-    const endUs = startUs + item.timelineRange.durationUs;
+    const cutTicks = computeCutTicks(doc, deps.getCurrentTime());
+    const startTicks = item.timelineRange.startTicks;
+    const endTicks = startTicks + item.timelineRange.durationTicks;
 
-    if (!(cutUs > startUs && cutUs < endUs)) return null;
+    if (!(cutTicks > startTicks && cutTicks < endTicks)) return null;
 
     // Frame-align the ripple amount up front so the start trim, the move-back and
     // the subsequent shift all use the EXACT same delta (see rippleTrimRight).
-    const deltaUs = quantizeDeltaUsToFrames(cutUs - startUs, getDocFps(doc), 'round');
-    if (deltaUs <= 0) return null;
+    const deltaTicks = quantizeDeltaUsToFrames(cutTicks - startTicks, getDocFps(doc), 'round');
+    if (deltaTicks <= 0) return null;
 
     const cmds: TimelineCommand[] = [
       {
@@ -385,10 +385,10 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
         trackId: target.trackId,
         itemId: target.itemId,
         edge: 'start',
-        deltaUs,
+        deltaTicks,
       },
       // A start-edge trim parks the clip at the cut (its left edge moves to
-      // cutUs). Slide the surviving portion back to the original left edge so it
+      // cutTicks). Slide the surviving portion back to the original left edge so it
       // fills the removed span instead of leaving a gap — the left counterpart
       // of rippleTrimRight, where trimming the end keeps the start fixed. Links
       // are honored so locked linked audio (already retimed by the trim above)
@@ -397,12 +397,12 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
         type: 'move_item',
         trackId: target.trackId,
         itemId: target.itemId,
-        startUs,
+        startTicks,
         quantizeToFrames: false,
       },
     ];
 
-    const moves = buildGroupRippleMoves({ doc, targetItemId: target.itemId, deltaUs });
+    const moves = buildGroupRippleMoves({ doc, targetItemId: target.itemId, deltaTicks });
 
     if (moves.length > 0) {
       cmds.push({
@@ -413,17 +413,17 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
       });
     }
 
-    // rippleTrimLeft removes [startUs, cutUs] of timeline space.
-    cmds.push(...buildRippleMarkerCommands(doc, startUs, startUs + deltaUs));
+    // rippleTrimLeft removes [startTicks, cutTicks] of timeline space.
+    cmds.push(...buildRippleMarkerCommands(doc, startTicks, startTicks + deltaTicks));
 
     deps.batchApplyTimeline(cmds, {
       saveMode: 'none',
       labelKey: 'videoEditor.fileManager.history.entries.trimClip',
     });
-    applyRippleSelectionRange(startUs, startUs + deltaUs);
+    applyRippleSelectionRange(startTicks, startTicks + deltaTicks);
 
     await deps.requestTimelineSave({ immediate: true });
-    return startUs;
+    return startTicks;
   }
 
   async function advancedRippleTrimRight(): Promise<number | null> {
@@ -439,29 +439,29 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
     if (!track || !item || item.kind !== 'clip') return null;
     if (track.locked || item.locked) return null;
 
-    const cutUs = computeCutUs(doc, deps.getCurrentTime());
-    const startUs = item.timelineRange.startUs;
-    const endUs = startUs + item.timelineRange.durationUs;
+    const cutTicks = computeCutTicks(doc, deps.getCurrentTime());
+    const startTicks = item.timelineRange.startTicks;
+    const endTicks = startTicks + item.timelineRange.durationTicks;
 
-    if (!(cutUs > startUs && cutUs < endUs)) return null;
+    if (!(cutTicks > startTicks && cutTicks < endTicks)) return null;
 
-    const deltaUs = endUs - cutUs;
-    if (deltaUs <= 0) return null;
+    const deltaTicks = endTicks - cutTicks;
+    if (deltaTicks <= 0) return null;
 
-    const collapseUs = rippleDeleteRange(
+    const collapseTicks = rippleDeleteRange(
       {
         trackIds: doc.tracks.map((item) => item.id),
-        startUs: cutUs,
-        endUs,
+        startTicks: cutTicks,
+        endTicks,
       },
       {
         saveMode: 'none',
         labelKey: 'videoEditor.fileManager.history.entries.trimClip',
       },
     );
-    if (collapseUs === null) return null;
+    if (collapseTicks === null) return null;
     await deps.requestTimelineSave({ immediate: true });
-    return collapseUs;
+    return collapseTicks;
   }
 
   async function advancedRippleTrimLeft(): Promise<number | null> {
@@ -477,29 +477,29 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
     if (!track || !item || item.kind !== 'clip') return null;
     if (track.locked || item.locked) return null;
 
-    const cutUs = computeCutUs(doc, deps.getCurrentTime());
-    const startUs = item.timelineRange.startUs;
-    const endUs = startUs + item.timelineRange.durationUs;
+    const cutTicks = computeCutTicks(doc, deps.getCurrentTime());
+    const startTicks = item.timelineRange.startTicks;
+    const endTicks = startTicks + item.timelineRange.durationTicks;
 
-    if (!(cutUs > startUs && cutUs < endUs)) return null;
+    if (!(cutTicks > startTicks && cutTicks < endTicks)) return null;
 
-    const deltaUs = cutUs - startUs;
-    if (deltaUs <= 0) return null;
+    const deltaTicks = cutTicks - startTicks;
+    if (deltaTicks <= 0) return null;
 
-    const collapseUs = rippleDeleteRange(
+    const collapseTicks = rippleDeleteRange(
       {
         trackIds: doc.tracks.map((item) => item.id),
-        startUs,
-        endUs: cutUs,
+        startTicks,
+        endTicks: cutTicks,
       },
       {
         saveMode: 'none',
         labelKey: 'videoEditor.fileManager.history.entries.trimClip',
       },
     );
-    if (collapseUs === null) return null;
+    if (collapseTicks === null) return null;
     await deps.requestTimelineSave({ immediate: true });
-    return collapseUs;
+    return collapseTicks;
   }
 
   return {

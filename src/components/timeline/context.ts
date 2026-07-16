@@ -27,7 +27,7 @@ export interface TimelineContext {
 
   // Actions
   /** Move the timeline playhead to an absolute time (ticks). */
-  setCurrentTimeUs: (timeUs: number) => void;
+  setCurrentTimeTicks: (timeTicks: number) => void;
   updateClipProperties: (
     trackId: string,
     itemId: string,
@@ -40,13 +40,13 @@ export interface TimelineContext {
     options?: Record<string, unknown>,
   ) => string[] | Promise<string[]>;
   requestTimelineSave: (options?: { immediate?: boolean }) => Promise<void>;
-  splitClipAtTime: (target: { trackId: string; itemId: string }, atUs: number) => void;
+  splitClipAtTime: (target: { trackId: string; itemId: string }, atTicks: number) => void;
   splitClipAtPlayhead: (target: { trackId: string; itemId: string }) => void;
   selectTimelineItems: (items: Array<{ trackId: string; itemId: string }>) => void;
   trimToPlayheadLeftNoRipple: (target: { trackId: string; itemId: string }) => void;
   trimToPlayheadRightNoRipple: (target: { trackId: string; itemId: string }) => void;
-  trimToTimeLeftNoRipple: (target: { trackId: string; itemId: string }, atUs: number) => void;
-  trimToTimeRightNoRipple: (target: { trackId: string; itemId: string }, atUs: number) => void;
+  trimToTimeLeftNoRipple: (target: { trackId: string; itemId: string }, atTicks: number) => void;
+  trimToTimeRightNoRipple: (target: { trackId: string; itemId: string }, atTicks: number) => void;
   applyTimeline: (cmd: TimelineCommand) => string[] | Promise<string[]>;
   batchApplyTimeline: (
     cmds: TimelineCommand[],
@@ -66,7 +66,7 @@ export interface TimelineContext {
   triggerScrollToEffects: () => void;
   copySelectedClips: () => unknown[];
   cutSelectedClips: () => unknown[];
-  pasteClips: (options?: { insertStartUs?: number }) => Promise<unknown>;
+  pasteClips: (options?: { insertStartTicks?: number }) => Promise<unknown>;
 
   /** Reveal a media clip's source file in the file manager (delegated double-click). */
   revealClipInFileManager: (clip: unknown, trackKind: string) => Promise<void> | void;

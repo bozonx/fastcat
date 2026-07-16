@@ -35,8 +35,8 @@ export function sanitizeMonitorTransition(raw: unknown): ClipTransition | undefi
 
   const transition = raw as Record<string, unknown>;
   const type = typeof transition.type === 'string' ? transition.type : '';
-  const durationUs = Number(transition.durationUs);
-  if (!type || !Number.isFinite(durationUs)) {
+  const durationTicks = Number(transition.durationTicks);
+  if (!type || !Number.isFinite(durationTicks)) {
     return undefined;
   }
 
@@ -47,7 +47,7 @@ export function sanitizeMonitorTransition(raw: unknown): ClipTransition | undefi
 
   return {
     type,
-    durationUs: Math.max(0, Math.round(durationUs)),
+    durationTicks: Math.max(0, Math.round(durationTicks)),
     mode: normalizeTransitionMode(transition.mode),
     curve: normalizeTransitionCurve(transition.curve),
     params: normalizedParams ? cloneMonitorValue(normalizedParams) : undefined,
@@ -73,7 +73,7 @@ export function createBaseWorkerClip(params: {
     trackId: params.trackId,
     layer: params.layer,
     speed: sanitizeMonitorSpeed(params.item.speed) ?? 1,
-    freezeFrameSourceUs: params.item.freezeFrameSourceUs,
+    freezeFrameSourceTicks: params.item.freezeFrameSourceTicks,
     opacity: params.item.opacityActive !== false ? params.item.opacity : undefined,
     blendMode:
       params.item.blendModeActive !== false
@@ -88,15 +88,15 @@ export function createBaseWorkerClip(params: {
     sourceOrientation: isTransformActive ? params.item.sourceOrientation : undefined,
     transitionIn: sanitizeMonitorTransition(params.item.transitionIn),
     transitionOut: sanitizeMonitorTransition(params.item.transitionOut),
-    sourceDurationUs:
-      typeof params.item.sourceDurationUs === 'number' ? params.item.sourceDurationUs : undefined,
+    sourceDurationTicks:
+      typeof params.item.sourceDurationTicks === 'number' ? params.item.sourceDurationTicks : undefined,
     timelineRange: {
-      startUs: params.item.timelineRange.startUs,
-      durationUs: params.item.timelineRange.durationUs,
+      startTicks: params.item.timelineRange.startTicks,
+      durationTicks: params.item.timelineRange.durationTicks,
     },
     sourceRange: {
-      startUs: params.item.sourceRange.startUs,
-      durationUs: params.item.sourceRange.durationUs,
+      startTicks: params.item.sourceRange.startTicks,
+      durationTicks: params.item.sourceRange.durationTicks,
     },
   };
 }

@@ -23,22 +23,22 @@ import type { ClipAnimations } from '~/timeline/types';
 describe('upsertKeyframe', () => {
   it('creates a new track for a path with none', () => {
     const next = upsertKeyframe(undefined, 'opacity', 100, 0.5);
-    expect(next.opacity?.keyframes).toEqual([{ tUs: 100, value: 0.5, easing: 'linear' }]);
+    expect(next.opacity?.keyframes).toEqual([{ tTicks: 100, value: 0.5, easing: 'linear' }]);
   });
 
   it('replaces an existing keyframe at the same rounded time', () => {
     const first = upsertKeyframe(undefined, 'opacity', 100, 0.5);
     const second = upsertKeyframe(first, 'opacity', 100.4, 0.9, 'hold');
-    expect(second.opacity?.keyframes).toEqual([{ tUs: 100, value: 0.9, easing: 'hold' }]);
+    expect(second.opacity?.keyframes).toEqual([{ tTicks: 100, value: 0.9, easing: 'hold' }]);
   });
 
   it('leaves other paths untouched', () => {
     const withRotation = upsertKeyframe(undefined, 'transform.rotationDeg', 0, 90);
     const next = upsertKeyframe(withRotation, 'opacity', 0, 1);
     expect(next['transform.rotationDeg']?.keyframes).toEqual([
-      { tUs: 0, value: 90, easing: 'linear' },
+      { tTicks: 0, value: 90, easing: 'linear' },
     ]);
-    expect(next.opacity?.keyframes).toEqual([{ tUs: 0, value: 1, easing: 'linear' }]);
+    expect(next.opacity?.keyframes).toEqual([{ tTicks: 0, value: 1, easing: 'linear' }]);
   });
 });
 
@@ -72,10 +72,10 @@ describe('moveKeyframe', () => {
   it('moves a keyframe, preserving its value and easing', () => {
     const withOne = upsertKeyframe(undefined, 'opacity', 100, 0.5, 'ease');
     const moved = moveKeyframe(withOne, 'opacity', 100, 500);
-    expect(moved?.opacity?.keyframes).toEqual([{ tUs: 500, value: 0.5, easing: 'ease' }]);
+    expect(moved?.opacity?.keyframes).toEqual([{ tTicks: 500, value: 0.5, easing: 'ease' }]);
   });
 
-  it('is a no-op when there is no keyframe at fromTUs', () => {
+  it('is a no-op when there is no keyframe at fromTTicks', () => {
     const withOne = upsertKeyframe(undefined, 'opacity', 100, 0.5);
     const moved = moveKeyframe(withOne, 'opacity', 999, 500);
     expect(moved).toBe(withOne);
@@ -93,19 +93,19 @@ describe('updateKeyframe', () => {
     const withOne = upsertKeyframe(undefined, 'opacity', 100, 0.5, 'ease');
     const updated = updateKeyframe(withOne, {
       path: 'opacity',
-      fromTUs: 100,
-      toTUs: 500,
+      fromTTicks: 100,
+      toTTicks: 500,
       value: 0.75,
     });
-    expect(updated?.opacity?.keyframes).toEqual([{ tUs: 500, value: 0.75, easing: 'ease' }]);
+    expect(updated?.opacity?.keyframes).toEqual([{ tTicks: 500, value: 0.75, easing: 'ease' }]);
   });
 
-  it('is a no-op when no keyframe exists at fromTUs', () => {
+  it('is a no-op when no keyframe exists at fromTTicks', () => {
     const withOne = upsertKeyframe(undefined, 'opacity', 100, 0.5);
     const updated = updateKeyframe(withOne, {
       path: 'opacity',
-      fromTUs: 999,
-      toTUs: 500,
+      fromTTicks: 999,
+      toTTicks: 500,
       value: 0.75,
     });
     expect(updated).toBe(withOne);
@@ -118,9 +118,9 @@ describe('setKeyframeEasing', () => {
     anims = upsertKeyframe(anims, 'transform.rotationDeg', 100, 45);
 
     const changed = setKeyframeEasing(anims, 'opacity', 100, 'hold');
-    expect(changed?.opacity?.keyframes).toEqual([{ tUs: 100, value: 0.5, easing: 'hold' }]);
+    expect(changed?.opacity?.keyframes).toEqual([{ tTicks: 100, value: 0.5, easing: 'hold' }]);
     expect(changed?.['transform.rotationDeg']?.keyframes).toEqual([
-      { tUs: 100, value: 45, easing: 'linear' },
+      { tTicks: 100, value: 45, easing: 'linear' },
     ]);
   });
 });
@@ -177,14 +177,14 @@ describe('keyframe "moment" ops (unified lane)', () => {
 
   it('moveKeyframeMoment moves every param that has a keyframe at that time', () => {
     const moved = moveKeyframeMoment(twoParamAnimations(), 100, 300);
-    expect(moved?.opacity?.keyframes.map((k) => k.tUs)).toEqual([300, 500]);
-    expect(moved?.['transform.rotationDeg']?.keyframes.map((k) => k.tUs)).toEqual([300]);
+    expect(moved?.opacity?.keyframes.map((k) => k.tTicks)).toEqual([300, 500]);
+    expect(moved?.['transform.rotationDeg']?.keyframes.map((k) => k.tTicks)).toEqual([300]);
   });
 
   it('removeKeyframeMoment removes every param keyframe at that time only', () => {
     const removed = removeKeyframeMoment(twoParamAnimations(), 100);
     expect(removed?.['transform.rotationDeg']).toBeUndefined();
-    expect(removed?.opacity?.keyframes.map((k) => k.tUs)).toEqual([500]);
+    expect(removed?.opacity?.keyframes.map((k) => k.tTicks)).toEqual([500]);
   });
 
   it('removeKeyframeMoment can clear all animations when it was the last moment', () => {
@@ -196,11 +196,11 @@ describe('keyframe "moment" ops (unified lane)', () => {
   it('setKeyframeMomentEasing updates every param keyframe at that time only', () => {
     const changed = setKeyframeMomentEasing(twoParamAnimations(), 100, 'ease');
     expect(changed?.opacity?.keyframes).toEqual([
-      { tUs: 100, value: 0.5, easing: 'ease' },
-      { tUs: 500, value: 1, easing: 'linear' },
+      { tTicks: 100, value: 0.5, easing: 'ease' },
+      { tTicks: 500, value: 1, easing: 'linear' },
     ]);
     expect(changed?.['transform.rotationDeg']?.keyframes).toEqual([
-      { tUs: 100, value: 45, easing: 'ease' },
+      { tTicks: 100, value: 45, easing: 'ease' },
     ]);
   });
 });
@@ -242,8 +242,8 @@ describe('addKeyframeMoment', () => {
 
     const next = addKeyframeMoment(anims, 500);
     // opacity midpoint = 0.5, position.x midpoint = 200
-    const op = next?.opacity?.keyframes.find((k) => k.tUs === 500);
-    const px = next?.['transform.position.x']?.keyframes.find((k) => k.tUs === 500);
+    const op = next?.opacity?.keyframes.find((k) => k.tTicks === 500);
+    const px = next?.['transform.position.x']?.keyframes.find((k) => k.tTicks === 500);
     expect(op?.value).toBeCloseTo(0.5);
     expect(px?.value).toBeCloseTo(200);
   });
@@ -266,13 +266,13 @@ describe('extractKeyframeMoment / applyKeyframeMoment', () => {
     ]);
 
     const pasted = applyKeyframeMoment(anims, moment!, 700);
-    expect(pasted?.opacity?.keyframes.find((k) => k.tUs === 700)).toEqual({
-      tUs: 700,
+    expect(pasted?.opacity?.keyframes.find((k) => k.tTicks === 700)).toEqual({
+      tTicks: 700,
       value: 0.3,
       easing: 'ease',
     });
-    expect(pasted?.['transform.rotationDeg']?.keyframes.find((k) => k.tUs === 700)).toEqual({
-      tUs: 700,
+    expect(pasted?.['transform.rotationDeg']?.keyframes.find((k) => k.tTicks === 700)).toEqual({
+      tTicks: 700,
       value: 45,
       easing: 'hold',
     });
@@ -289,6 +289,6 @@ describe('extractKeyframeMoment / applyKeyframeMoment', () => {
       entries: [{ path: 'opacity' as const, value: 0.5, easing: 'linear' as const }],
     };
     const pasted = applyKeyframeMoment(undefined, moment, 100);
-    expect(pasted?.opacity?.keyframes).toEqual([{ tUs: 100, value: 0.5, easing: 'linear' }]);
+    expect(pasted?.opacity?.keyframes).toEqual([{ tTicks: 100, value: 0.5, easing: 'linear' }]);
   });
 });

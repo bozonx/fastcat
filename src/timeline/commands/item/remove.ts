@@ -58,16 +58,16 @@ export function removeItems(
       if (item.kind === 'clip') {
         nextItems.splice(idx, 1);
       } else if (item.kind === 'gap') {
-        const gapDuration = item.timelineRange.durationUs;
-        const gapEndUs = item.timelineRange.startUs + gapDuration;
+        const gapDuration = item.timelineRange.durationTicks;
+        const gapEndTicks = item.timelineRange.startTicks + gapDuration;
         nextItems.splice(idx, 1);
         nextItems = nextItems.map((it) => {
-          if (it.timelineRange.startUs >= gapEndUs) {
+          if (it.timelineRange.startTicks >= gapEndTicks) {
             return {
               ...it,
               timelineRange: {
                 ...it.timelineRange,
-                startUs: it.timelineRange.startUs - gapDuration,
+                startTicks: it.timelineRange.startTicks - gapDuration,
               },
             };
           }
@@ -79,7 +79,7 @@ export function removeItems(
     if (!trackItemsRemoved) return track;
     changed = true;
 
-    nextItems.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
+    nextItems.sort((a, b) => a.timelineRange.startTicks - b.timelineRange.startTicks);
     nextItems = normalizeGaps(doc, track.id, nextItems, { quantizeToFrames: false });
 
     return { ...track, items: nextItems };

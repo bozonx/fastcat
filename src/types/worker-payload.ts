@@ -54,10 +54,10 @@ export const ExportOptionsSchema = z.object({
   fps: z.number().finite().min(1).max(240),
   exportRangeTicks: z
     .object({
-      startUs: z.number().finite().min(0).max(MAX_SAFE_TICKS),
-      endUs: z.number().finite().min(0).max(MAX_SAFE_TICKS),
+      startTicks: z.number().finite().min(0).max(MAX_SAFE_TICKS),
+      endTicks: z.number().finite().min(0).max(MAX_SAFE_TICKS),
     })
-    .refine((range) => range.endUs > range.startUs)
+    .refine((range) => range.endTicks > range.startTicks)
     .optional(),
   audioPassthrough: z.boolean().optional(),
 });
@@ -114,8 +114,8 @@ export type WorkerVideoPayloadItem = WorkerTimelineMeta | WorkerTimelineTrack | 
 // ── Runtime validation schemas (worker boundary) ──
 
 const TimelineRangeSchema = z.object({
-  startUs: z.number().finite().min(0).max(MAX_SAFE_TICKS),
-  durationUs: z.number().finite().nonnegative().max(MAX_SAFE_TICKS),
+  startTicks: z.number().finite().min(0).max(MAX_SAFE_TICKS),
+  durationTicks: z.number().finite().nonnegative().max(MAX_SAFE_TICKS),
 });
 
 const WorkerTimelineClipSchema = z.object({
@@ -135,11 +135,11 @@ const WorkerTimelineClipSchema = z.object({
   // used by the web export mixer (which has no separate bus stage).
   originalAudioGain: z.number().optional(),
   originalAudioBalance: z.number().optional(),
-  audioFadeInUs: z.number().finite().min(0).max(MAX_SAFE_TICKS).optional(),
-  audioFadeOutUs: z.number().finite().min(0).max(MAX_SAFE_TICKS).optional(),
+  audioFadeInTicks: z.number().finite().min(0).max(MAX_SAFE_TICKS).optional(),
+  audioFadeOutTicks: z.number().finite().min(0).max(MAX_SAFE_TICKS).optional(),
   audioFadeInCurve: FadeCurveSchema.optional(),
   audioFadeOutCurve: FadeCurveSchema.optional(),
-  audioDeclickDurationUs: z.number().finite().min(0).max(MAX_SAFE_TICKS).optional(),
+  audioDeclickDurationTicks: z.number().finite().min(0).max(MAX_SAFE_TICKS).optional(),
   defaultAudioFadeCurve: FadeCurveSchema.optional(),
 
   source: z.object({ path: z.string() }).optional(),
@@ -156,7 +156,7 @@ const WorkerTimelineClipSchema = z.object({
   content: HudMediaParamsSchema.optional(),
   frame: HudMediaParamsSchema.optional(),
 
-  freezeFrameSourceUs: z.number().finite().min(0).max(MAX_SAFE_TICKS).optional(),
+  freezeFrameSourceTicks: z.number().finite().min(0).max(MAX_SAFE_TICKS).optional(),
   opacity: z.number().optional(),
   blendMode: BlendModeSchema.optional(),
   effects: z.array(ClipEffectSchema).optional(),
@@ -166,7 +166,7 @@ const WorkerTimelineClipSchema = z.object({
   sourceOrientation: ClipSourceOrientationSchema.optional(),
   transitionIn: ClipTransitionSchema.optional(),
   transitionOut: ClipTransitionSchema.optional(),
-  sourceDurationUs: z.number().finite().min(0).max(MAX_SAFE_TICKS).optional(),
+  sourceDurationTicks: z.number().finite().min(0).max(MAX_SAFE_TICKS).optional(),
   snapToPixelGrid: z.boolean().optional(),
 
   timelineRange: TimelineRangeSchema,

@@ -26,17 +26,17 @@ export interface IAudioEngine {
   init(options?: { sampleRate?: number; audioChannels?: 'stereo' | 'mono' }): Promise<void>;
   loadClips(clips: AudioEngineClip[]): Promise<void>;
   updateTimelineLayout(clips: AudioEngineClip[]): Promise<void>;
-  play(timeUs: number, speed?: number): Promise<void>;
+  play(timeTicks: number, speed?: number): Promise<void>;
   stop(): void;
-  seek(timeUs: number): void;
+  seek(timeTicks: number): void;
   setGlobalSpeed(speed: number): void;
   resumeContext(): Promise<void>;
   setMasterVolume(volume: number): void;
   setMonitorVolume(volume: number): void;
   setMasterAudioEffects(effects: import('~/timeline/types').ClipEffect[]): void;
-  getCurrentTimeUs(): number;
+  getCurrentTimeTicks(): number;
   getLevels(trackId?: string): { rmsDb: number; peakDb: number };
-  previewScrubForward(fromUs: number, toUs: number, maxPreviewDurationUs?: number): Promise<void>;
+  previewScrubForward(fromTicks: number, toTicks: number, maxPreviewDurationTicks?: number): Promise<void>;
   stopScrubPreview(): void;
   extractPeaks(
     fileHandle: FileSystemFileHandle,

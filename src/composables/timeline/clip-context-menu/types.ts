@@ -27,7 +27,7 @@ export interface UseClipContextMenuOptions {
   canEditClipContent: Ref<boolean>;
   timelineDoc: Ref<TimelineDocument | null>;
   projectSettings: Ref<FastCatProjectSettings>;
-  defaultTransitionDurationUs: Ref<number>;
+  defaultTransitionDurationTicks: Ref<number>;
   selectedItemIds: Ref<string[]>;
   currentTime: Ref<number>;
   getHotkeyKbds: (commandId: HotkeyCommandId) => string[] | undefined;
@@ -51,7 +51,7 @@ export interface UseClipContextMenuOptions {
   emitClipAction: (payload: import('~/timeline/types').TimelineClipActionPayload) => void;
   copySelectedClips: () => void;
   cutSelectedClips: () => void;
-  pasteClips: (insertStartUs?: number) => void;
+  pasteClips: (insertStartTicks?: number) => void;
   hasTimelineClipboard: boolean;
   requestRenameClip: (payload: { trackId: string; itemId: string; name: string }) => void;
   copyClipParameters: (clip: TimelineClipItem, trackKind: TimelineTrack['kind']) => void;

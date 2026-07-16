@@ -31,7 +31,7 @@ const ProjectMonitorSchema = z.object({
 });
 
 const TimelineSessionSchema = z.object({
-  playheadUs: z.coerce.number().catch(0),
+  playheadTicks: z.coerce.number().catch(0),
   masterGain: z.coerce.number().catch(1),
   masterMuted: z.coerce.boolean().catch(false),
   zoom: z.coerce.number().catch(1),
@@ -39,8 +39,8 @@ const TimelineSessionSchema = z.object({
   mobileTrackHeightsEnlarged: z.record(z.string(), z.coerce.boolean()).catch({}),
   selectionRange: z
     .object({
-      startUs: z.number(),
-      endUs: z.number(),
+      startTicks: z.number(),
+      endTicks: z.number(),
     })
     .optional()
     .catch(undefined),

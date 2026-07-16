@@ -13,7 +13,7 @@ export interface CurvePoint {
 
 export interface BuildCurvePolylineParams {
   track: KeyframeTrack;
-  durationUs: number;
+  durationTicks: number;
   widthPx: number;
   heightPx: number;
   paddingPx: number;
@@ -35,7 +35,7 @@ export interface CurveYToValueParams extends CurveYParams {
 
 export interface KeyframeToCurvePointParams extends CurveYParams {
   keyframe: Keyframe;
-  durationUs: number;
+  durationTicks: number;
   widthPx: number;
 }
 
@@ -71,10 +71,10 @@ export function curveYToValue(params: CurveYToValueParams): number {
 }
 
 export function keyframeToCurvePoint(params: KeyframeToCurvePointParams): CurvePoint {
-  const safeDurationUs = Math.max(1, params.durationUs);
+  const safeDurationTicks = Math.max(1, params.durationTicks);
   return {
     x:
-      (Math.max(0, Math.min(safeDurationUs, params.keyframe.tUs)) / safeDurationUs) *
+      (Math.max(0, Math.min(safeDurationTicks, params.keyframe.tTicks)) / safeDurationTicks) *
       params.widthPx,
     y: valueToCurveY({
       value: params.keyframe.value,
@@ -87,13 +87,13 @@ export function keyframeToCurvePoint(params: KeyframeToCurvePointParams): CurveP
 
 export function buildCurvePolyline(params: BuildCurvePolylineParams): CurvePoint[] {
   const range = resolveCurveValueRange(params.track);
-  const durationUs = Math.max(1, params.durationUs);
+  const durationTicks = Math.max(1, params.durationTicks);
   const widthPx = Math.max(1, Math.round(params.widthPx));
   const points: CurvePoint[] = [];
 
   for (let x = 0; x <= widthPx; x++) {
-    const tUs = (x / widthPx) * durationUs;
-    const value = evalTrackAt(params.track, tUs);
+    const tTicks = (x / widthPx) * durationTicks;
+    const value = evalTrackAt(params.track, tTicks);
     if (value === undefined) continue;
     points.push({
       x,

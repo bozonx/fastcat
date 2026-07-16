@@ -35,8 +35,8 @@ export interface TransitionShaderContext {
     bulge?: number;
     offset?: number;
   };
-  elapsedUs?: number;
-  durationUs?: number;
+  elapsedTicks?: number;
+  durationTicks?: number;
   edge?: 'in' | 'out';
   params?: Record<string, unknown>;
   fromTexture?: Texture;
@@ -55,7 +55,7 @@ export interface TransitionManifest<T = Record<string, unknown>> {
   nameKey?: string;
   descriptionKey?: string;
   icon: string;
-  defaultDurationUs: number;
+  defaultDurationTicks: number;
   defaultParams: T;
   normalizeParams?: (params?: Record<string, unknown>) => T;
   paramFields?: TransitionParamField[];

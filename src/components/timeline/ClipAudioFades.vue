@@ -29,7 +29,7 @@ const props = defineProps<{
   /** Vertical insets (px) so fades/handles stay within the content band, below the header. */
   topInsetPx?: number;
   bottomInsetPx?: number;
-  defaultFadeDurationUs?: number;
+  defaultFadeDurationTicks?: number;
   defaultFadeCurve?: AudioFadeCurve;
 }>();
 
@@ -37,12 +37,12 @@ const emit = defineEmits<{
   (
     e: 'startResizeFade',
     event: PointerEvent,
-    payload: { edge: 'in' | 'out'; durationUs: number },
+    payload: { edge: 'in' | 'out'; durationTicks: number },
   ): void;
   (e: 'toggleFadeCurve', payload: { edge: 'in' | 'out' }): void;
   (
     e: 'commitFade',
-    payload: { edge: 'in' | 'out'; durationUs: number; curve?: AudioFadeCurve },
+    payload: { edge: 'in' | 'out'; durationTicks: number; curve?: AudioFadeCurve },
   ): void;
   (e: 'startResizeVolume', event: PointerEvent, gain: number): void;
   (e: 'resetVolume'): void;
@@ -72,8 +72,8 @@ function shouldCollapseFades() {
 }
 
 function getFadeHandlePositionPx(edge: 'in' | 'out') {
-  const fadeUs = getFadeDurationUs(edge);
-  const fadePx = Math.min(Math.max(0, timeUsToPx(fadeUs, props.zoom)), props.clipWidthPx);
+  const fadeTicks = getFadeDurationTicks(edge);
+  const fadePx = Math.min(Math.max(0, timeUsToPx(fadeTicks, props.zoom)), props.clipWidthPx);
 
   if (edge === 'in') {
     return Math.max(0, Math.min(props.clipWidthPx, fadePx));
@@ -82,22 +82,22 @@ function getFadeHandlePositionPx(edge: 'in' | 'out') {
   return Math.max(0, Math.min(props.clipWidthPx, props.clipWidthPx - fadePx));
 }
 
-function getFadeDurationUs(edge: 'in' | 'out') {
+function getFadeDurationTicks(edge: 'in' | 'out') {
   return Math.max(
     0,
-    Math.round(Number(edge === 'in' ? props.clip.audioFadeInUs : props.clip.audioFadeOutUs) || 0),
+    Math.round(Number(edge === 'in' ? props.clip.audioFadeInTicks : props.clip.audioFadeOutTicks) || 0),
   );
 }
 
-function getOppositeFadeDurationUs(edge: 'in' | 'out') {
-  return getFadeDurationUs(edge === 'in' ? 'out' : 'in');
+function getOppositeFadeDurationTicks(edge: 'in' | 'out') {
+  return getFadeDurationTicks(edge === 'in' ? 'out' : 'in');
 }
 
-function getDefaultFadeDurationUs(edge: 'in' | 'out') {
-  const clipDurationUs = Math.max(0, Math.round(Number(props.item.timelineRange.durationUs) || 0));
-  const maxUs = Math.max(0, clipDurationUs - getOppositeFadeDurationUs(edge));
-  const configuredUs = Math.max(0, Math.round(Number(props.defaultFadeDurationUs) || 0));
-  return Math.min(maxUs, configuredUs);
+function getDefaultFadeDurationTicks(edge: 'in' | 'out') {
+  const clipDurationTicks = Math.max(0, Math.round(Number(props.item.timelineRange.durationTicks) || 0));
+  const maxTicks = Math.max(0, clipDurationTicks - getOppositeFadeDurationTicks(edge));
+  const configuredTicks = Math.max(0, Math.round(Number(props.defaultFadeDurationTicks) || 0));
+  return Math.min(maxTicks, configuredTicks);
 }
 
 // Track the in-progress drag so we can drop window listeners on unmount.
@@ -111,14 +111,14 @@ function cancelPendingFadeClick() {
 }
 
 function commitFadeClick(edge: 'in' | 'out') {
-  const currentDurationUs = getFadeDurationUs(edge);
+  const currentDurationTicks = getFadeDurationTicks(edge);
 
-  if (currentDurationUs <= 0) {
-    const durationUs = getDefaultFadeDurationUs(edge);
-    if (durationUs <= 0) return;
+  if (currentDurationTicks <= 0) {
+    const durationTicks = getDefaultFadeDurationTicks(edge);
+    if (durationTicks <= 0) return;
     emit('commitFade', {
       edge,
-      durationUs,
+      durationTicks,
       curve: props.defaultFadeCurve === 'linear' ? 'linear' : 'logarithmic',
     });
     return;
@@ -140,14 +140,14 @@ function onFadeHandleDblClick(event: MouseEvent, edge: 'in' | 'out') {
   event.preventDefault();
   cancelPendingFadeClick();
 
-  if (getFadeDurationUs(edge) > 0) {
-    emit('commitFade', { edge, durationUs: 0 });
+  if (getFadeDurationTicks(edge) > 0) {
+    emit('commitFade', { edge, durationTicks: 0 });
   }
 }
 
 function onFadeHandlePointerDown(
   event: PointerEvent,
-  payload: { edge: 'in' | 'out'; durationUs: number },
+  payload: { edge: 'in' | 'out'; durationTicks: number },
 ) {
   event.stopPropagation();
   event.preventDefault();
@@ -247,7 +247,7 @@ const volumeIcon = computed(() => {
 
 const volumeIndicatorPosition = computed(() => {
   const finalX = computeClipCenteredOverlayLeftPx({
-    clipStartPx: timeUsToPx(props.item.timelineRange.startUs, props.zoom),
+    clipStartPx: timeUsToPx(props.item.timelineRange.startTicks, props.zoom),
     clipWidthPx: props.clipWidthPx,
     scrollLeft: props.scrollLeft,
     viewportWidth: props.viewportWidth,
@@ -271,8 +271,8 @@ const volumeIndicatorPosition = computed(() => {
     <div class="absolute inset-0 rounded overflow-hidden">
       <svg
         v-if="
-          (clip.audioFadeInUs ?? 0) > 0 &&
-          (clip.audioFadeInUs ?? 0) <= item.timelineRange.durationUs
+          (clip.audioFadeInTicks ?? 0) > 0 &&
+          (clip.audioFadeInTicks ?? 0) <= item.timelineRange.durationTicks
         "
         data-testid="fade-shape-in"
         class="absolute left-0 top-0 h-full"
@@ -280,7 +280,7 @@ const volumeIndicatorPosition = computed(() => {
         viewBox="0 0 100 100"
         :style="{
           width: `${Math.min(
-            Math.max(0, timeUsToPx(Math.max(0, Math.round(Number(clip.audioFadeInUs) || 0)), zoom)),
+            Math.max(0, timeUsToPx(Math.max(0, Math.round(Number(clip.audioFadeInTicks) || 0)), zoom)),
             clipWidthPx,
           )}px`,
         }"
@@ -290,8 +290,8 @@ const volumeIndicatorPosition = computed(() => {
 
       <svg
         v-if="
-          (clip.audioFadeOutUs ?? 0) > 0 &&
-          (clip.audioFadeOutUs ?? 0) <= item.timelineRange.durationUs
+          (clip.audioFadeOutTicks ?? 0) > 0 &&
+          (clip.audioFadeOutTicks ?? 0) <= item.timelineRange.durationTicks
         "
         data-testid="fade-shape-out"
         class="absolute right-0 top-0 h-full"
@@ -301,7 +301,7 @@ const volumeIndicatorPosition = computed(() => {
           width: `${Math.min(
             Math.max(
               0,
-              timeUsToPx(Math.max(0, Math.round(Number(clip.audioFadeOutUs) || 0)), zoom),
+              timeUsToPx(Math.max(0, Math.round(Number(clip.audioFadeOutTicks) || 0)), zoom),
             ),
             clipWidthPx,
           )}px`,
@@ -343,7 +343,7 @@ const volumeIndicatorPosition = computed(() => {
         zIndex: 'var(--z-clip-handles)',
       }"
       @pointerdown.stop="
-        onFadeHandlePointerDown($event, { edge: 'in', durationUs: clip.audioFadeInUs || 0 })
+        onFadeHandlePointerDown($event, { edge: 'in', durationTicks: clip.audioFadeInTicks || 0 })
       "
       @dblclick.stop="onFadeHandleDblClick($event, 'in')"
       @click.stop
@@ -365,7 +365,7 @@ const volumeIndicatorPosition = computed(() => {
         zIndex: 'var(--z-clip-handles)',
       }"
       @pointerdown.stop="
-        onFadeHandlePointerDown($event, { edge: 'out', durationUs: clip.audioFadeOutUs || 0 })
+        onFadeHandlePointerDown($event, { edge: 'out', durationTicks: clip.audioFadeOutTicks || 0 })
       "
       @dblclick.stop="onFadeHandleDblClick($event, 'out')"
       @click.stop

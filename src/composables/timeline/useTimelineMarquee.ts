@@ -104,9 +104,9 @@ export function useTimelineMarquee(
         if (track.locked) continue;
         for (const item of track.items) {
           if (item.kind !== 'clip' || (item as { locked?: boolean }).locked) continue;
-          const startPx = timeUsToPx(item.timelineRange.startUs, zoom);
+          const startPx = timeUsToPx(item.timelineRange.startTicks, zoom);
           const endPx = timeUsToPx(
-            item.timelineRange.startUs + item.timelineRange.durationUs,
+            item.timelineRange.startTicks + item.timelineRange.durationTicks,
             zoom,
           );
           if (startPx <= right && endPx >= left) {

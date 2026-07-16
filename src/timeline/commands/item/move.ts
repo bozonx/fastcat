@@ -16,28 +16,28 @@ import {
   getLinkedClipGroupItemIds,
   autoAdaptChangedTracks,
   rangesOverlap,
-  OVERLAP_EPSILON_US,
+  OVERLAP_EPSILON_TICKS,
 } from '../utils';
 
 function assertTrackItemsDoNotOverlap(items: TimelineTrackItem[]) {
   const clips = items
     .filter((it): it is TimelineClipItem => it.kind === 'clip')
     .slice()
-    .sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
+    .sort((a, b) => a.timelineRange.startTicks - b.timelineRange.startTicks);
 
   for (let i = 1; i < clips.length; i++) {
     const prev = clips[i - 1];
     const current = clips[i];
     if (!prev || !current) continue;
 
-    const prevStartUs = prev.timelineRange.startUs;
-    const prevEndUs = prevStartUs + prev.timelineRange.durationUs;
-    const currentStartUs = current.timelineRange.startUs;
-    const currentEndUs = currentStartUs + current.timelineRange.durationUs;
+    const prevStartTicks = prev.timelineRange.startTicks;
+    const prevEndTicks = prevStartTicks + prev.timelineRange.durationTicks;
+    const currentStartTicks = current.timelineRange.startTicks;
+    const currentEndTicks = currentStartTicks + current.timelineRange.durationTicks;
 
     if (
-      rangesOverlap(prevStartUs, prevEndUs, currentStartUs, currentEndUs) &&
-      Math.min(prevEndUs, currentEndUs) - Math.max(prevStartUs, currentStartUs) > OVERLAP_EPSILON_US
+      rangesOverlap(prevStartTicks, prevEndTicks, currentStartTicks, currentEndTicks) &&
+      Math.min(prevEndTicks, currentEndTicks) - Math.max(prevStartTicks, currentStartTicks) > OVERLAP_EPSILON_TICKS
     ) {
       throw new Error('Item overlaps with another item');
     }
@@ -61,8 +61,8 @@ function moveItemsWithinTracks(
     if (seenMoveKeys.has(moveKey)) return moveItemsSequentially(doc, cmd);
     seenMoveKeys.add(moveKey);
 
-    const startCandidate = Math.max(0, Math.round(Number(move.startUs)));
-    const startUs = shouldQuantizeToFrames
+    const startCandidate = Math.max(0, Math.round(Number(move.startTicks)));
+    const startTicks = shouldQuantizeToFrames
       ? quantizeTimeUsToFrames(startCandidate, fps, 'round')
       : startCandidate;
 
@@ -71,7 +71,7 @@ function moveItemsWithinTracks(
       byItem = new Map<string, number>();
       movesByTrack.set(move.fromTrackId, byItem);
     }
-    byItem.set(move.itemId, startUs);
+    byItem.set(move.itemId, startTicks);
   }
 
   if (movesByTrack.size === 0) return { next: doc };
@@ -83,8 +83,8 @@ function moveItemsWithinTracks(
 
     let trackChanged = false;
     const nextItemsRaw = track.items.map((item) => {
-      const startUs = startsByItem.get(item.id);
-      if (startUs === undefined) return item;
+      const startTicks = startsByItem.get(item.id);
+      if (startTicks === undefined) return item;
 
       if (!cmd.ignoreLocks) {
         assertClipNotLocked(item, 'move');
@@ -93,13 +93,13 @@ function moveItemsWithinTracks(
       trackChanged = true;
       return {
         ...item,
-        timelineRange: { ...item.timelineRange, startUs },
+        timelineRange: { ...item.timelineRange, startTicks },
       };
     });
 
     if (!trackChanged) return track;
 
-    nextItemsRaw.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
+    nextItemsRaw.sort((a, b) => a.timelineRange.startTicks - b.timelineRange.startTicks);
     assertTrackItemsDoNotOverlap(nextItemsRaw);
     changed = true;
 
@@ -129,15 +129,15 @@ function moveItemsSequentially(
   const annotated = cmd.moves.map((move) => {
     const track = doc.tracks.find((t) => t.id === move.fromTrackId);
     const item = track?.items.find((x) => x.id === move.itemId);
-    const currentStartUs = Math.max(0, Math.round(Number(item?.timelineRange?.startUs ?? 0)));
-    const targetStartUs = Math.max(0, Math.round(Number(move.startUs)));
-    return { move, currentStartUs, deltaUs: targetStartUs - currentStartUs };
+    const currentStartTicks = Math.max(0, Math.round(Number(item?.timelineRange?.startTicks ?? 0)));
+    const targetStartTicks = Math.max(0, Math.round(Number(move.startTicks)));
+    return { move, currentStartTicks, deltaTicks: targetStartTicks - currentStartTicks };
   });
 
-  const totalDelta = annotated.reduce((acc, m) => acc + m.deltaUs, 0);
+  const totalDelta = annotated.reduce((acc, m) => acc + m.deltaTicks, 0);
   const movingRight = totalDelta >= 0;
   annotated.sort((a, b) =>
-    movingRight ? b.currentStartUs - a.currentStartUs : a.currentStartUs - b.currentStartUs,
+    movingRight ? b.currentStartTicks - a.currentStartTicks : a.currentStartTicks - b.currentStartTicks,
   );
 
   let currentDoc = doc;
@@ -147,7 +147,7 @@ function moveItemsSequentially(
       fromTrackId: move.fromTrackId,
       toTrackId: move.toTrackId,
       itemId: move.itemId,
-      startUs: move.startUs,
+      startTicks: move.startTicks,
       quantizeToFrames: cmd.quantizeToFrames,
       ignoreLocks: cmd.ignoreLocks,
       ignoreLinks: true,
@@ -177,30 +177,30 @@ export function moveItem(doc: TimelineDocument, cmd: MoveItemCommand): TimelineC
     if (linkedIds.length > 0) {
       const fps = getDocFps(doc);
       const shouldQuantizeToFrames = cmd.quantizeToFrames !== false;
-      const currentStartUs = Math.max(0, Math.round(Number(item.timelineRange.startUs)));
-      const requestedStartUs = Math.max(0, Math.round(Number(cmd.startUs)));
+      const currentStartTicks = Math.max(0, Math.round(Number(item.timelineRange.startTicks)));
+      const requestedStartTicks = Math.max(0, Math.round(Number(cmd.startTicks)));
       // Quantize delta once so every group member shifts by the same number of
       // frames; per-member quantization rounds in different directions for
       // non-integer fps and drifts group geometry.
-      const rawDeltaUs = shouldQuantizeToFrames
-        ? quantizeDeltaUsToFrames(requestedStartUs - currentStartUs, fps, 'round')
-        : requestedStartUs - currentStartUs;
+      const rawDeltaTicks = shouldQuantizeToFrames
+        ? quantizeDeltaUsToFrames(requestedStartTicks - currentStartTicks, fps, 'round')
+        : requestedStartTicks - currentStartTicks;
 
       const memberStarts: number[] = [];
       for (const track of doc.tracks) {
         for (const trackItem of track.items) {
           if (!linkedIds.includes(trackItem.id) && trackItem.id !== item.id) continue;
-          memberStarts.push(Math.max(0, Math.round(Number(trackItem.timelineRange.startUs))));
+          memberStarts.push(Math.max(0, Math.round(Number(trackItem.timelineRange.startTicks))));
         }
       }
-      const minMemberStartUs = memberStarts.length > 0 ? Math.min(...memberStarts) : 0;
-      const deltaUs = rawDeltaUs < 0 ? Math.max(rawDeltaUs, -minMemberStartUs) : rawDeltaUs;
+      const minMemberStartTicks = memberStarts.length > 0 ? Math.min(...memberStarts) : 0;
+      const deltaTicks = rawDeltaTicks < 0 ? Math.max(rawDeltaTicks, -minMemberStartTicks) : rawDeltaTicks;
 
       const moves: Array<{
         fromTrackId: string;
         toTrackId: string;
         itemId: string;
-        startUs: number;
+        startTicks: number;
       }> = [];
 
       for (const track of doc.tracks) {
@@ -210,7 +210,7 @@ export function moveItem(doc: TimelineDocument, cmd: MoveItemCommand): TimelineC
             fromTrackId: track.id,
             toTrackId: track.id,
             itemId: trackItem.id,
-            startUs: Math.max(0, Math.round(Number(trackItem.timelineRange.startUs)) + deltaUs),
+            startTicks: Math.max(0, Math.round(Number(trackItem.timelineRange.startTicks)) + deltaTicks),
           });
         }
       }
@@ -219,7 +219,7 @@ export function moveItem(doc: TimelineDocument, cmd: MoveItemCommand): TimelineC
         // Sort moves so we never collide with an item that hasn't moved yet:
         //   - if moving right (delta > 0): move the rightmost first
         //   - if moving left  (delta <= 0): move the leftmost first
-        moves.sort((a, b) => (deltaUs > 0 ? b.startUs - a.startUs : a.startUs - b.startUs));
+        moves.sort((a, b) => (deltaTicks > 0 ? b.startTicks - a.startTicks : a.startTicks - b.startTicks));
 
         let currentDoc = doc;
         for (const move of moves) {
@@ -228,7 +228,7 @@ export function moveItem(doc: TimelineDocument, cmd: MoveItemCommand): TimelineC
             fromTrackId: move.fromTrackId,
             toTrackId: move.toTrackId,
             itemId: move.itemId,
-            startUs: move.startUs,
+            startTicks: move.startTicks,
             // Delta was already quantized; skip per-member rounding to preserve
             // group geometry exactly.
             quantizeToFrames: false,
@@ -245,24 +245,24 @@ export function moveItem(doc: TimelineDocument, cmd: MoveItemCommand): TimelineC
   const fps = getDocFps(doc);
   const preserveItemOffsets = cmd.preserveItemOffsets === true;
   const shouldQuantizeToFrames = cmd.quantizeToFrames !== false && !preserveItemOffsets;
-  const startCandidate = Math.max(0, Math.round(Number(cmd.startUs)));
-  const startUs = shouldQuantizeToFrames
+  const startCandidate = Math.max(0, Math.round(Number(cmd.startTicks)));
+  const startTicks = shouldQuantizeToFrames
     ? quantizeTimeUsToFrames(startCandidate, fps, 'round')
     : startCandidate;
-  const durationUs = Math.max(0, item.timelineRange.durationUs);
+  const durationTicks = Math.max(0, item.timelineRange.durationTicks);
 
-  assertNoOverlap(track, item.id, startUs, durationUs);
+  assertNoOverlap(track, item.id, startTicks, durationTicks);
 
   const nextItemsRaw: TimelineTrackItem[] = track.items.map((x) =>
     x.id === item.id
       ? {
           ...x,
-          timelineRange: { ...x.timelineRange, startUs },
+          timelineRange: { ...x.timelineRange, startTicks },
         }
       : x,
   );
 
-  nextItemsRaw.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
+  nextItemsRaw.sort((a, b) => a.timelineRange.startTicks - b.timelineRange.startTicks);
   const nextItems = normalizeGaps(doc, track.id, nextItemsRaw, {
     quantizeToFrames: shouldQuantizeToFrames,
   });
@@ -284,7 +284,7 @@ export function moveItemToTrack(
       type: 'move_item',
       trackId: fromTrack.id,
       itemId: cmd.itemId,
-      startUs: cmd.startUs,
+      startTicks: cmd.startTicks,
       quantizeToFrames: cmd.quantizeToFrames,
       ignoreLocks: cmd.ignoreLocks,
       ignoreLinks: cmd.ignoreLinks,
@@ -305,23 +305,23 @@ export function moveItemToTrack(
   const fps = getDocFps(doc);
   const preserveItemOffsets = cmd.preserveItemOffsets === true;
   const shouldQuantizeToFrames = cmd.quantizeToFrames !== false && !preserveItemOffsets;
-  const startCandidate = Math.max(0, Math.round(Number(cmd.startUs)));
-  const startUs = shouldQuantizeToFrames
+  const startCandidate = Math.max(0, Math.round(Number(cmd.startTicks)));
+  const startTicks = shouldQuantizeToFrames
     ? quantizeTimeUsToFrames(startCandidate, fps, 'round')
     : startCandidate;
-  const durationUs = Math.max(0, item.timelineRange.durationUs);
+  const durationTicks = Math.max(0, item.timelineRange.durationTicks);
 
-  assertNoOverlap(toTrack, item.id, startUs, durationUs);
+  assertNoOverlap(toTrack, item.id, startTicks, durationTicks);
 
   const nextFromItemsRaw = [...fromTrack.items];
   nextFromItemsRaw.splice(itemIdx, 1);
   const movedItem: TimelineTrackItem = {
     ...item,
     trackId: toTrack.id,
-    timelineRange: { ...item.timelineRange, startUs },
+    timelineRange: { ...item.timelineRange, startTicks },
   };
   const nextToItemsRaw = [...toTrack.items, movedItem];
-  nextToItemsRaw.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
+  nextToItemsRaw.sort((a, b) => a.timelineRange.startTicks - b.timelineRange.startTicks);
 
   const nextFromItems = normalizeGaps(doc, fromTrack.id, nextFromItemsRaw, {
     quantizeToFrames: shouldQuantizeToFrames,

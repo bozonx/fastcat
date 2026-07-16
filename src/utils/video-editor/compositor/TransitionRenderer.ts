@@ -31,7 +31,7 @@ export interface TransitionRendererParams {
   getTrackById: (trackId: string) => CompositorTrack | undefined;
   getActiveTransitionState: (
     clip: CompositorClip,
-    timeUs: number,
+    timeTicks: number,
   ) => {
     opacity: number;
     progress: number;
@@ -40,7 +40,7 @@ export interface TransitionRendererParams {
     transition?: {
       type: string;
       mode?: string;
-      durationUs?: number;
+      durationTicks?: number;
       params?: Record<string, unknown>;
     };
     edge?: 'in' | 'out';
@@ -54,7 +54,7 @@ export interface TransitionRendererParams {
   getVideoSampleForClip: (params: {
     clip: CompositorClip;
     sampleTimeS: number;
-    timelineTimeUs?: number;
+    timelineTimeTicks?: number;
     abortSignal?: AbortSignal;
   }) => Promise<unknown | null>;
   updateClipTextureFromSample: (sample: unknown, clip: CompositorClip) => Promise<void>;
@@ -78,7 +78,7 @@ export class TransitionRenderer {
 
   public async applyShaderTransitions(
     active: CompositorClip[],
-    timeUs: number,
+    timeTicks: number,
     params: TransitionRendererParams,
   ) {
     for (const clip of params.clips) {
@@ -89,7 +89,7 @@ export class TransitionRenderer {
     }
 
     for (const clip of active) {
-      const state = params.getActiveTransitionState(clip, timeUs);
+      const state = params.getActiveTransitionState(clip, timeTicks);
       if (
         !state ||
         state.manifest?.renderMode !== 'shader' ||
@@ -143,14 +143,14 @@ export class TransitionRenderer {
           // fallback to rendering lower layers so we can fade to/from background.
           params.stageTextureRenderer.renderLowerLayersToTexture(clip.layer, fromTexture);
         } else {
-          const transitionOffsetUs = Math.max(
+          const transitionOffsetTicks = Math.max(
             0,
-            state.edge === 'in' ? timeUs - clip.startUs : clip.endUs - timeUs,
+            state.edge === 'in' ? timeTicks - clip.startTicks : clip.endTicks - timeTicks,
           );
           const rendered = await this.renderTransitionClipToTexture(prevClip, fromTexture, {
-            transitionOffsetUs,
+            transitionOffsetTicks,
             isNextClip: state.edge === 'out',
-            timelineTimeUs: timeUs,
+            timelineTimeTicks: timeTicks,
             stageTextureRenderer: params.stageTextureRenderer,
             createAbortController: params.createAbortController,
             removeAbortController: params.removeAbortController,
@@ -179,7 +179,7 @@ export class TransitionRenderer {
         >) ?? {};
       const spec = manifest.toTransitionSpec(
         normalizedParams,
-        (state.transition.durationUs ?? 0) / TICKS_PER_SECOND,
+        (state.transition.durationTicks ?? 0) / TICKS_PER_SECOND,
         {
           isPlaying: true,
           previewBlurQuality: params.previewEffectQuality,
@@ -315,16 +315,16 @@ export class TransitionRenderer {
     clip: CompositorClip,
     texture: RenderTexture,
     params: {
-      transitionOffsetUs?: number;
+      transitionOffsetTicks?: number;
       isNextClip?: boolean;
-      timelineTimeUs: number;
+      timelineTimeTicks: number;
       stageTextureRenderer: StageTextureRenderer;
       createAbortController: (key: string) => AbortController;
       removeAbortController?: (key: string) => void;
       getVideoSampleForClip: (params: {
         clip: CompositorClip;
         sampleTimeS: number;
-        timelineTimeUs?: number;
+        timelineTimeTicks?: number;
         abortSignal?: AbortSignal;
       }) => Promise<unknown | null>;
       updateClipTextureFromSample: (sample: unknown, clip: CompositorClip) => Promise<void>;
@@ -350,47 +350,47 @@ export class TransitionRenderer {
     }
 
     const speed = Math.abs(clip.speed || 1);
-    const transitionOffsetUs = Math.max(0, Math.round((params.transitionOffsetUs ?? 0) * speed));
-    let sampleUs: number;
+    const transitionOffsetTicks = Math.max(0, Math.round((params.transitionOffsetTicks ?? 0) * speed));
+    let sampleTicks: number;
 
     if (params.isNextClip) {
-      const handleUs = Math.max(0, clip.sourceStartUs);
+      const handleTicks = Math.max(0, clip.sourceStartTicks);
       if ((clip.speed || 1) < 0) {
-        sampleUs =
-          handleUs < MIN_SOURCE_HANDLE_TICKS
-            ? Math.max(0, clip.sourceStartUs + clip.sourceRangeDurationUs - MIN_SOURCE_HANDLE_TICKS)
+        sampleTicks =
+          handleTicks < MIN_SOURCE_HANDLE_TICKS
+            ? Math.max(0, clip.sourceStartTicks + clip.sourceRangeDurationTicks - MIN_SOURCE_HANDLE_TICKS)
             : Math.min(
-                clip.sourceStartUs + clip.sourceRangeDurationUs + transitionOffsetUs,
-                clip.sourceDurationUs - MIN_SOURCE_HANDLE_TICKS,
+                clip.sourceStartTicks + clip.sourceRangeDurationTicks + transitionOffsetTicks,
+                clip.sourceDurationTicks - MIN_SOURCE_HANDLE_TICKS,
               );
       } else {
-        sampleUs =
-          handleUs < MIN_SOURCE_HANDLE_TICKS
-            ? Math.max(0, clip.sourceStartUs + MIN_SOURCE_HANDLE_TICKS)
-            : Math.max(0, clip.sourceStartUs - transitionOffsetUs);
+        sampleTicks =
+          handleTicks < MIN_SOURCE_HANDLE_TICKS
+            ? Math.max(0, clip.sourceStartTicks + MIN_SOURCE_HANDLE_TICKS)
+            : Math.max(0, clip.sourceStartTicks - transitionOffsetTicks);
       }
     } else {
-      const handleUs = Math.max(
+      const handleTicks = Math.max(
         0,
-        clip.sourceDurationUs - clip.sourceStartUs - clip.sourceRangeDurationUs,
+        clip.sourceDurationTicks - clip.sourceStartTicks - clip.sourceRangeDurationTicks,
       );
-      const sourceRangeEndUs = clip.sourceStartUs + clip.sourceRangeDurationUs;
+      const sourceRangeEndTicks = clip.sourceStartTicks + clip.sourceRangeDurationTicks;
 
       if ((clip.speed || 1) < 0) {
-        sampleUs =
-          handleUs < MIN_SOURCE_HANDLE_TICKS
-            ? Math.max(0, clip.sourceStartUs + MIN_SOURCE_HANDLE_TICKS)
-            : Math.max(0, clip.sourceStartUs - transitionOffsetUs);
+        sampleTicks =
+          handleTicks < MIN_SOURCE_HANDLE_TICKS
+            ? Math.max(0, clip.sourceStartTicks + MIN_SOURCE_HANDLE_TICKS)
+            : Math.max(0, clip.sourceStartTicks - transitionOffsetTicks);
       } else {
-        sampleUs =
-          handleUs < MIN_SOURCE_HANDLE_TICKS
-            ? Math.max(0, clip.sourceStartUs + clip.sourceRangeDurationUs - MIN_SOURCE_HANDLE_TICKS)
+        sampleTicks =
+          handleTicks < MIN_SOURCE_HANDLE_TICKS
+            ? Math.max(0, clip.sourceStartTicks + clip.sourceRangeDurationTicks - MIN_SOURCE_HANDLE_TICKS)
             : Math.min(
-                sourceRangeEndUs + transitionOffsetUs,
+                sourceRangeEndTicks + transitionOffsetTicks,
                 // Upper bound is the end of the *source*, not offset by the trim-in
                 // point — mirrors the reversed `isNextClip` branch above. Adding
-                // sourceStartUs let this request a timestamp past EOF for trimmed clips.
-                clip.sourceDurationUs - MIN_SOURCE_HANDLE_TICKS,
+                // sourceStartTicks let this request a timestamp past EOF for trimmed clips.
+                clip.sourceDurationTicks - MIN_SOURCE_HANDLE_TICKS,
               );
       }
     }
@@ -401,8 +401,8 @@ export class TransitionRenderer {
     try {
       sample = await params.getVideoSampleForClip({
         clip,
-        sampleTimeS: sampleUs / TICKS_PER_SECOND,
-        timelineTimeUs: params.timelineTimeUs,
+        sampleTimeS: sampleTicks / TICKS_PER_SECOND,
+        timelineTimeTicks: params.timelineTimeTicks,
         abortSignal: abortController.signal,
       });
     } finally {

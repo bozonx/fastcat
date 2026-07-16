@@ -22,16 +22,16 @@ test.describe('Web timeline trim', () => {
 
   test('trimming the end shortens the clip duration', async ({ page, e2eProject }) => {
     const clipId = await projectWithOneClip(page, e2eProject);
-    const before = (await readTimelineDoc(page, e2eProject)).allClips[0].timelineDurationUs;
+    const before = (await readTimelineDoc(page, e2eProject)).allClips[0].timelineDurationTicks;
 
     await trimClipEdge(page, clipId, 'end', -400_000);
 
     const doc = await waitForTimelineDoc(
       page,
       e2eProject,
-      (d) => d.allClips[0].timelineDurationUs < before,
+      (d) => d.allClips[0].timelineDurationTicks < before,
     );
-    expect(doc.allClips[0].timelineDurationUs).toBeLessThan(before);
+    expect(doc.allClips[0].timelineDurationTicks).toBeLessThan(before);
   });
 
   test('trimming the start updates source offset and duration', async ({ page, e2eProject }) => {
@@ -43,12 +43,12 @@ test.describe('Web timeline trim', () => {
     const doc = await waitForTimelineDoc(
       page,
       e2eProject,
-      (d) => d.allClips[0].timelineDurationUs < c0.timelineDurationUs,
+      (d) => d.allClips[0].timelineDurationTicks < c0.timelineDurationTicks,
     );
     const c1 = doc.allClips[0];
-    expect(c1.timelineDurationUs).toBeLessThan(c0.timelineDurationUs);
+    expect(c1.timelineDurationTicks).toBeLessThan(c0.timelineDurationTicks);
     // Trimming in from the head advances the source in-point.
-    expect(c1.sourceStartUs).toBeGreaterThanOrEqual(c0.sourceStartUs);
+    expect(c1.sourceStartTicks).toBeGreaterThanOrEqual(c0.sourceStartTicks);
   });
 
   test('cannot trim below the minimum duration', async ({ page, e2eProject }) => {
@@ -58,7 +58,7 @@ test.describe('Web timeline trim', () => {
     await trimClipEdge(page, clipId, 'end', -50_000_000);
 
     const doc = await waitForTimelineDoc(page, e2eProject, (d) => d.allClips.length === 1);
-    expect(doc.allClips[0].timelineDurationUs).toBeGreaterThan(0);
+    expect(doc.allClips[0].timelineDurationTicks).toBeGreaterThan(0);
   });
 
   test('cannot trim the start before the source in-point', async ({ page, e2eProject }) => {
@@ -68,22 +68,22 @@ test.describe('Web timeline trim', () => {
     await trimClipEdge(page, clipId, 'start', -50_000_000);
 
     const doc = await waitForTimelineDoc(page, e2eProject, (d) => d.allClips.length === 1);
-    expect(doc.allClips[0].sourceStartUs).toBe(before.sourceStartUs);
-    expect(doc.allClips[0].timelineDurationUs).toBe(before.timelineDurationUs);
+    expect(doc.allClips[0].sourceStartTicks).toBe(before.sourceStartTicks);
+    expect(doc.allClips[0].timelineDurationTicks).toBe(before.timelineDurationTicks);
   });
 
   test('trimmed clip persists across reload', async ({ page, e2eProject }) => {
     const clipId = await projectWithOneClip(page, e2eProject);
-    const before = (await readTimelineDoc(page, e2eProject)).allClips[0].timelineDurationUs;
+    const before = (await readTimelineDoc(page, e2eProject)).allClips[0].timelineDurationTicks;
     await trimClipEdge(page, clipId, 'end', -400_000);
     const trimmed = (
-      await waitForTimelineDoc(page, e2eProject, (d) => d.allClips[0].timelineDurationUs < before)
-    ).allClips[0].timelineDurationUs;
+      await waitForTimelineDoc(page, e2eProject, (d) => d.allClips[0].timelineDurationTicks < before)
+    ).allClips[0].timelineDurationTicks;
 
     await page.goto(`/editor/${e2eProject.encodedName}`);
     await waitForEditorReady(page);
 
-    const reloaded = (await readTimelineDoc(page, e2eProject)).allClips[0].timelineDurationUs;
+    const reloaded = (await readTimelineDoc(page, e2eProject)).allClips[0].timelineDurationTicks;
     expect(reloaded).toBe(trimmed);
   });
 });

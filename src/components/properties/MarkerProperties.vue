@@ -26,12 +26,12 @@ const marker = computed<TimelineMarker | null>(() => {
 });
 
 const isZone = computed(() => {
-  return typeof marker.value?.durationUs === 'number';
+  return typeof marker.value?.durationTicks === 'number';
 });
 
 const timelineFps = computed(() => timelineStore.timelineFormat?.fps ?? timelineStore.fps);
 
-const zoneDurationUs = computed(() => Math.max(0, marker.value?.durationUs ?? 0));
+const zoneDurationTicks = computed(() => Math.max(0, marker.value?.durationTicks ?? 0));
 
 function handleUpdateText(val: string | undefined) {
   if (!marker.value) return;
@@ -49,16 +49,16 @@ function handleUpdateColor(val: string | string[]) {
 
 function handleUpdateStartTime(val: number) {
   if (!marker.value) return;
-  const newStartUs = val;
+  const newStartTicks = val;
 
-  if (isNaN(newStartUs) || newStartUs < 0) return;
-  if (newStartUs === marker.value.timeUs) return;
+  if (isNaN(newStartTicks) || newStartTicks < 0) return;
+  if (newStartTicks === marker.value.timeTicks) return;
 
-  const patch: { timeUs: number; durationUs?: number } = { timeUs: newStartUs };
-  if (isZone.value && marker.value.durationUs) {
-    const endUs = marker.value.timeUs + marker.value.durationUs;
-    const newDurationUs = Math.max(0, endUs - newStartUs);
-    patch.durationUs = newDurationUs;
+  const patch: { timeTicks: number; durationTicks?: number } = { timeTicks: newStartTicks };
+  if (isZone.value && marker.value.durationTicks) {
+    const endTicks = marker.value.timeTicks + marker.value.durationTicks;
+    const newDurationTicks = Math.max(0, endTicks - newStartTicks);
+    patch.durationTicks = newDurationTicks;
   }
 
   timelineStore.updateMarker(marker.value.id, patch);
@@ -66,18 +66,18 @@ function handleUpdateStartTime(val: number) {
 
 function handleUpdateEndTime(val: number) {
   if (!marker.value || !isZone.value) return;
-  const newEndUs = val;
+  const newEndTicks = val;
 
-  if (isNaN(newEndUs) || newEndUs < 0) return;
-  const currentStartUs = marker.value.timeUs;
+  if (isNaN(newEndTicks) || newEndTicks < 0) return;
+  const currentStartTicks = marker.value.timeTicks;
 
-  if (newEndUs <= currentStartUs) return;
+  if (newEndTicks <= currentStartTicks) return;
 
-  const newDurationUs = newEndUs - currentStartUs;
-  if (newDurationUs === marker.value.durationUs) return;
+  const newDurationTicks = newEndTicks - currentStartTicks;
+  if (newDurationTicks === marker.value.durationTicks) return;
 
   timelineStore.updateMarker(marker.value.id, {
-    durationUs: newDurationUs,
+    durationTicks: newDurationTicks,
   });
 }
 
@@ -176,7 +176,7 @@ const mainActions = computed<PropertyAction[]>(() => {
       <PropertyDuration
         v-if="isZone"
         :label="t('common.duration')"
-        :model-value="zoneDurationUs"
+        :model-value="zoneDurationTicks"
         :fps="timelineFps"
       />
 
@@ -200,7 +200,7 @@ const mainActions = computed<PropertyAction[]>(() => {
           </UiTooltip>
         </div>
         <UiTimecode
-          :model-value="marker.timeUs"
+          :model-value="marker.timeTicks"
           :min="0"
           @update:model-value="handleUpdateStartTime"
         />
@@ -209,7 +209,7 @@ const mainActions = computed<PropertyAction[]>(() => {
       <div v-if="isZone" class="flex flex-col gap-0.5 mt-2">
         <span class="text-xs text-ui-text-muted">{{ t('common.end') }}</span>
         <UiTimecode
-          :model-value="marker.timeUs + (marker.durationUs || 0)"
+          :model-value="marker.timeTicks + (marker.durationTicks || 0)"
           :min="0"
           @update:model-value="handleUpdateEndTime"
         />

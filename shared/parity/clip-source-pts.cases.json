@@ -2,7 +2,7 @@
   "_comment": [
     "Cross-engine parity contract for the clip source-PTS algorithm.",
     "Single source of truth shared by BOTH video engines:",
-    "  - web:   resolveClipSourceTimeUs() in src/utils/video-editor/source-time.ts",
+    "  - web:   resolveClipSourceTimeTicks() in src/utils/video-editor/source-time.ts",
     "  - native: SceneLayer::source_pts_at() / compute_source_pts_at() in",
     "            src-tauri/src/monitor/scene/mod.rs",
     "Each engine has a test that reads this file and asserts it reproduces every case,",
@@ -13,7 +13,7 @@
     "specified to agree exactly. The readable-tail guard is a flat guardSec here.",
     "",
     "KNOWN INTENTIONAL DIVERGENCE (NOT covered by this fixture):",
-    "When the web engine is given a clip frameRate, clampToLastReadableSourceUs() pulls",
+    "When the web engine is given a clip frameRate, clampToLastReadableSourceTicks() pulls",
     "the readable tail back by half a frame instead of guardSec, because the web path",
     "seeks an exact PTS via mediabunny, whereas the native path snaps to the nearest",
     "decoded frame. See source-time.parity.test.ts ('web-only half-frame guard')."

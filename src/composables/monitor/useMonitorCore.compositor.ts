@@ -27,7 +27,7 @@ export function createMonitorCompositorRuntime(options: CreateMonitorCompositorR
   let compositorReady = false;
   let compositorWidth = 0;
   let compositorHeight = 0;
-  let latestRenderRequest: { timeUs: number; prewarm: boolean } | null = null;
+  let latestRenderRequest: { timeTicks: number; prewarm: boolean } | null = null;
   // Prewarm cadence is gated by WALL CLOCK, not timeline time. A timeline-time
   // gate ("fire when playhead moved ≥250ms past the last prewarm position") goes
   // permanently silent after a backward seek: the delta turns negative and stays
@@ -163,12 +163,12 @@ export function createMonitorCompositorRuntime(options: CreateMonitorCompositorR
 
     const nextRequest = latestRenderRequest;
     latestRenderRequest = null;
-    const nextTimeUs = nextRequest.timeUs;
+    const nextTimeTicks = nextRequest.timeTicks;
 
     inFlightRenderRpcs += 1;
     const rpcStartMs = performance.now();
     options.client
-      .renderFrame(nextTimeUs, options.getPreviewRenderOptions())
+      .renderFrame(nextTimeTicks, options.getPreviewRenderOptions())
       .catch((err) => {
         log.error('[Monitor] Render failed', err);
       })
@@ -180,18 +180,18 @@ export function createMonitorCompositorRuntime(options: CreateMonitorCompositorR
 
     if (nextRequest.prewarm && performance.now() - lastPrewarmAtMs >= VIDEO_PREWARM_INTERVAL_MS) {
       lastPrewarmAtMs = performance.now();
-      void options.client.prewarmVideoFrames?.(nextTimeUs).catch((err) => {
+      void options.client.prewarmVideoFrames?.(nextTimeTicks).catch((err) => {
         log.warn('[Monitor] Video prewarm failed', err);
       });
     }
   }
 
-  function scheduleRender(timeUs: number, renderOptions?: MonitorRenderScheduleOptions) {
+  function scheduleRender(timeTicks: number, renderOptions?: MonitorRenderScheduleOptions) {
     if (options.isUnmounted()) return;
     if (!options.client) return; // native monitor handles preview
     rpcStats.scheduled += 1;
     latestRenderRequest = {
-      timeUs: normalizeTicks(timeUs),
+      timeTicks: normalizeTicks(timeTicks),
       prewarm: renderOptions?.prewarm === true,
     };
     pumpRenderQueue();

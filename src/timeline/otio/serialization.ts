@@ -11,7 +11,7 @@ import {
   toTimeRange,
   fromTimeRange,
   toRationalTime,
-  fromRationalTimeUs,
+  fromRationalTimeTicks,
   safeFastCatMetadata,
   coerceId,
 } from './utils';
@@ -94,7 +94,7 @@ export function parseEffects(raw: unknown[]): ClipEffect[] {
 export function serializeTimeEffects(input: {
   speed?: number;
   speedActive?: boolean;
-  freezeFrameSourceUs?: number;
+  freezeFrameSourceTicks?: number;
 }): (OtioLinearTimeWarp | OtioFreezeFrame)[] | undefined {
   const result: (OtioLinearTimeWarp | OtioFreezeFrame)[] = [];
 
@@ -117,7 +117,7 @@ export function serializeTimeEffects(input: {
     });
   }
 
-  if (input.freezeFrameSourceUs !== undefined && input.freezeFrameSourceUs >= 0) {
+  if (input.freezeFrameSourceTicks !== undefined && input.freezeFrameSourceTicks >= 0) {
     result.push({
       OTIO_SCHEMA: 'FreezeFrame.1',
       name: 'freeze_frame',
@@ -128,7 +128,7 @@ export function serializeTimeEffects(input: {
             id: 'freezeFrame',
             type: 'FreezeFrame',
             target: 'video' as const,
-            params: { freezeFrameSourceUs: input.freezeFrameSourceUs },
+            params: { freezeFrameSourceTicks: input.freezeFrameSourceTicks },
           },
         },
       },
@@ -141,11 +141,11 @@ export function serializeTimeEffects(input: {
 export function parseTimeEffects(raw: unknown[]): {
   speed?: number;
   speedActive?: boolean;
-  freezeFrameSourceUs?: number;
+  freezeFrameSourceTicks?: number;
 } {
   let speed: number | undefined;
   let speedActive: boolean | undefined;
-  let freezeFrameSourceUs: number | undefined;
+  let freezeFrameSourceTicks: number | undefined;
 
   for (const item of raw) {
     if (!item || typeof item !== 'object') continue;
@@ -171,15 +171,15 @@ export function parseTimeEffects(raw: unknown[]): {
         effectMeta.params && typeof effectMeta.params === 'object'
           ? (effectMeta.params as Record<string, unknown>)
           : {};
-      const us = Number(params.freezeFrameSourceUs);
+      const us = Number(params.freezeFrameSourceTicks);
       if (Number.isFinite(us) && us >= 0) {
-        freezeFrameSourceUs = Math.round(us);
+        freezeFrameSourceTicks = Math.round(us);
       }
       continue;
     }
   }
 
-  return { speed, speedActive, freezeFrameSourceUs };
+  return { speed, speedActive, freezeFrameSourceTicks };
 }
 
 // ---------------------------------------------------------------------------
@@ -218,7 +218,7 @@ export function serializeMarker(marker: TimelineMarker, rate?: number): OtioMark
     name: marker.text,
     color: colorToOtioColor(marker.color),
     comment: marker.text,
-    marked_range: toTimeRange({ startUs: marker.timeUs, durationUs: marker.durationUs ?? 0 }, rate),
+    marked_range: toTimeRange({ startTicks: marker.timeTicks, durationTicks: marker.durationTicks ?? 0 }, rate),
     metadata: {
       fastcat: {
         marker: {
@@ -252,10 +252,10 @@ export function parseOtioMarkers(raw: unknown): TimelineMarker[] {
           ? m.name
           : '';
     const color = typeof markerMeta.color === 'string' ? markerMeta.color : undefined;
-    const durationUs = range.durationUs > 0 ? range.durationUs : undefined;
-    result.push({ id, timeUs: Math.max(0, range.startUs), durationUs, text, color });
+    const durationTicks = range.durationTicks > 0 ? range.durationTicks : undefined;
+    result.push({ id, timeTicks: Math.max(0, range.startTicks), durationTicks, text, color });
   }
-  result.sort((a, b) => a.timeUs - b.timeUs);
+  result.sort((a, b) => a.timeTicks - b.timeTicks);
   return result;
 }
 
@@ -283,25 +283,25 @@ export function buildOtioTransition(
     edge: 'in' | 'out';
   },
   offsets?: {
-    inOffsetUs: number;
-    outOffsetUs: number;
+    inOffsetTicks: number;
+    outOffsetTicks: number;
   },
 ): OtioTransition | null {
-  if (!transition.type || !transition.durationUs) return null;
-  const inUs = offsets?.inOffsetUs ?? Math.round(transition.durationUs / 2);
-  const outUs = offsets?.outOffsetUs ?? Math.round(transition.durationUs - inUs);
+  if (!transition.type || !transition.durationTicks) return null;
+  const inTicks = offsets?.inOffsetTicks ?? Math.round(transition.durationTicks / 2);
+  const outTicks = offsets?.outOffsetTicks ?? Math.round(transition.durationTicks - inTicks);
   return {
     OTIO_SCHEMA: 'Transition.1',
     name,
     transition_type: transitionTypeToOtio(transition.type),
-    in_offset: toRationalTime(inUs, rate),
-    out_offset: toRationalTime(outUs, rate),
+    in_offset: toRationalTime(inTicks, rate),
+    out_offset: toRationalTime(outTicks, rate),
     parameters: transition.params ?? {},
     metadata: {
       fastcat: {
         transition: {
           type: transition.type,
-          durationUs: transition.durationUs,
+          durationTicks: transition.durationTicks,
           mode: transition.mode,
           curve: transition.curve,
           params: transition.params,
@@ -320,10 +320,10 @@ export function parseOtioTransition(tRaw: unknown): ClipTransition | null {
   if (!tRaw || typeof tRaw !== 'object') return null;
   const t = tRaw as Record<string, unknown>;
   if (t.OTIO_SCHEMA !== 'Transition.1') return null;
-  const inUs = fromRationalTimeUs(t.in_offset);
-  const outUs = fromRationalTimeUs(t.out_offset);
-  const durationUs = inUs + outUs;
-  if (durationUs <= 0) return null;
+  const inTicks = fromRationalTimeTicks(t.in_offset);
+  const outTicks = fromRationalTimeTicks(t.out_offset);
+  const durationTicks = inTicks + outTicks;
+  if (durationTicks <= 0) return null;
   const fastcatMeta = safeFastCatMetadata(t.metadata);
   const transitionMeta =
     fastcatMeta.transition && typeof fastcatMeta.transition === 'object'
@@ -335,8 +335,8 @@ export function parseOtioTransition(tRaw: unknown): ClipTransition | null {
   if (!type) return null;
   return {
     type,
-    durationUs:
-      typeof transitionMeta.durationUs === 'number' ? transitionMeta.durationUs : durationUs,
+    durationTicks:
+      typeof transitionMeta.durationTicks === 'number' ? transitionMeta.durationTicks : durationTicks,
     mode: normalizeTransitionMode(transitionMeta.mode),
     curve: normalizeTransitionCurve(transitionMeta.curve),
     params:
@@ -353,10 +353,10 @@ export function parseOtioTransition(tRaw: unknown): ClipTransition | null {
 export function parseFastCatTransition(rawRaw: unknown): ClipTransition | undefined {
   if (!rawRaw || typeof rawRaw !== 'object') return undefined;
   const raw = rawRaw as Record<string, unknown>;
-  if (typeof raw.type !== 'string' || typeof raw.durationUs !== 'number') return undefined;
+  if (typeof raw.type !== 'string' || typeof raw.durationTicks !== 'number') return undefined;
   return {
     type: raw.type,
-    durationUs: Math.max(0, Math.round(raw.durationUs)),
+    durationTicks: Math.max(0, Math.round(raw.durationTicks)),
     mode: normalizeTransitionMode(raw.mode),
     curve: normalizeTransitionCurve(raw.curve),
     params:

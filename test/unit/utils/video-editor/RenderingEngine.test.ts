@@ -29,7 +29,7 @@ function makeContext(overrides: Partial<RenderingEngineContext> = {}): {
     height: 100,
     clips: [makeClip('active'), makeClip('inactive')],
     tracks: [],
-    lastRenderedTimeUs: 0,
+    lastRenderedTimeTicks: 0,
     stageSortDirty: false,
     activeSortDirty: false,
     contextLost: false,
@@ -56,7 +56,7 @@ function makeContext(overrides: Partial<RenderingEngineContext> = {}): {
     hideStageBelowAdjustmentClips: vi.fn(),
     setStageSortDirty: vi.fn(),
     setActiveSortDirty: vi.fn(),
-    setLastRenderedTimeUs: vi.fn(),
+    setLastRenderedTimeTicks: vi.fn(),
     ...overrides,
   };
 
@@ -140,7 +140,7 @@ describe('RenderingEngine', () => {
   it('re-renders the same frame when preview effect quality changes', async () => {
     const engine = new RenderingEngine();
     const { context } = makeContext({
-      lastRenderedTimeUs: 100,
+      lastRenderedTimeTicks: 100,
       previewEffectQuality: 'low',
     });
 

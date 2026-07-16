@@ -31,9 +31,9 @@ const baseClip = {
   trackId: 'track-1',
   name: 'Text Clip',
   clipType: 'text',
-  timelineRange: { startUs: 0, durationUs: 5_000_000 },
-  sourceRange: { startUs: 0, durationUs: 5_000_000 },
-  sourceDurationUs: 5_000_000,
+  timelineRange: { startTicks: 0, durationTicks: 5_000_000 },
+  sourceRange: { startTicks: 0, durationTicks: 5_000_000 },
+  sourceDurationTicks: 5_000_000,
   text: 'Hello world',
   style: {
     fontSize: 64,

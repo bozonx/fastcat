@@ -5,7 +5,7 @@ import PropertySection from '~/components/properties/PropertySection.vue';
 
 const props = defineProps<{
   summary: {
-    durationUs: number;
+    durationTicks: number;
     videoTracks: number;
     audioTracks: number;
     clips: number;
@@ -22,7 +22,7 @@ const { t } = useI18n();
     <template v-if="props.summary">
       <PropertyRow
         :label="t('common.duration')"
-        :value="props.formatDurationSeconds(props.summary.durationUs / TICKS_PER_SECOND)"
+        :value="props.formatDurationSeconds(props.summary.durationTicks / TICKS_PER_SECOND)"
       />
       <PropertyRow :label="t('fastcat.timeline.videoTracks')" :value="props.summary.videoTracks" />
       <PropertyRow :label="t('fastcat.timeline.audioTracks')" :value="props.summary.audioTracks" />

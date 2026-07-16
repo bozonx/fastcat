@@ -32,38 +32,38 @@ function isEmptyAnimations(animations: ClipAnimations): boolean {
   return animatedParamPaths(animations).length === 0;
 }
 
-/** Insert or replace the keyframe at `tUs` on `path` (rounds to the nearest tick). */
+/** Insert or replace the keyframe at `tTicks` on `path` (rounds to the nearest tick). */
 export function upsertKeyframe(
   animations: ClipAnimations | undefined,
   path: AnimatableParamPath,
-  tUs: number,
+  tTicks: number,
   value: number,
   easing: KeyframeEasing = 'linear',
 ): ClipAnimations {
-  const roundedTUs = Math.max(0, Math.round(tUs));
+  const roundedTTicks = Math.max(0, Math.round(tTicks));
   const existing = animations?.[path]?.keyframes ?? [];
-  const withoutSameTime = existing.filter((kf) => Math.round(kf.tUs) !== roundedTUs);
+  const withoutSameTime = existing.filter((kf) => Math.round(kf.tTicks) !== roundedTTicks);
   const nextTrack = normalizeKeyframeTrack({
-    keyframes: [...withoutSameTime, { tUs: roundedTUs, value, easing }],
+    keyframes: [...withoutSameTime, { tTicks: roundedTTicks, value, easing }],
   });
   return { ...animations, [path]: nextTrack };
 }
 
 /**
- * Remove the keyframe at `tUs` on `path`. Drops the path entirely when its
+ * Remove the keyframe at `tTicks` on `path`. Drops the path entirely when its
  * track becomes empty, and returns `undefined` when no path has any keyframes
  * left (so the caller can clear `animations` on the clip altogether).
  */
 export function removeKeyframe(
   animations: ClipAnimations | undefined,
   path: AnimatableParamPath,
-  tUs: number,
+  tTicks: number,
 ): ClipAnimations | undefined {
   const track = animations?.[path];
   if (!track) return animations;
 
-  const roundedTUs = Math.round(tUs);
-  const filtered = track.keyframes.filter((kf) => Math.round(kf.tUs) !== roundedTUs);
+  const roundedTTicks = Math.round(tTicks);
+  const filtered = track.keyframes.filter((kf) => Math.round(kf.tTicks) !== roundedTTicks);
   if (filtered.length === track.keyframes.length) return animations;
 
   const next: ClipAnimations = { ...animations };
@@ -75,26 +75,26 @@ export function removeKeyframe(
   return isEmptyAnimations(next) ? undefined : next;
 }
 
-/** Move the keyframe at `fromTUs` on `path` to `toTUs`, preserving its value/easing. */
+/** Move the keyframe at `fromTTicks` on `path` to `toTTicks`, preserving its value/easing. */
 export function moveKeyframe(
   animations: ClipAnimations | undefined,
   path: AnimatableParamPath,
-  fromTUs: number,
-  toTUs: number,
+  fromTTicks: number,
+  toTTicks: number,
 ): ClipAnimations | undefined {
   const track = animations?.[path];
-  const kf = track?.keyframes.find((k) => Math.round(k.tUs) === Math.round(fromTUs));
+  const kf = track?.keyframes.find((k) => Math.round(k.tTicks) === Math.round(fromTTicks));
   if (!kf) return animations;
-  if (Math.round(fromTUs) === Math.round(toTUs)) return animations;
+  if (Math.round(fromTTicks) === Math.round(toTTicks)) return animations;
 
-  const withoutOld = removeKeyframe(animations, path, fromTUs);
-  return upsertKeyframe(withoutOld, path, toTUs, kf.value, kf.easing);
+  const withoutOld = removeKeyframe(animations, path, fromTTicks);
+  return upsertKeyframe(withoutOld, path, toTTicks, kf.value, kf.easing);
 }
 
 export interface UpdateKeyframeParams {
   path: AnimatableParamPath;
-  fromTUs: number;
-  toTUs: number;
+  fromTTicks: number;
+  toTTicks: number;
   value: number;
 }
 
@@ -105,29 +105,29 @@ export function updateKeyframe(
 ): ClipAnimations | undefined {
   const track = animations?.[params.path];
   const kf = track?.keyframes.find(
-    (keyframe) => Math.round(keyframe.tUs) === Math.round(params.fromTUs),
+    (keyframe) => Math.round(keyframe.tTicks) === Math.round(params.fromTTicks),
   );
   if (!kf) return animations;
 
-  const roundedFromTUs = Math.round(params.fromTUs);
-  const roundedToTUs = Math.max(0, Math.round(params.toTUs));
-  if (roundedFromTUs === roundedToTUs && kf.value === params.value) return animations;
+  const roundedFromTTicks = Math.round(params.fromTTicks);
+  const roundedToTTicks = Math.max(0, Math.round(params.toTTicks));
+  if (roundedFromTTicks === roundedToTTicks && kf.value === params.value) return animations;
 
-  const withoutOld = removeKeyframe(animations, params.path, params.fromTUs);
-  return upsertKeyframe(withoutOld, params.path, params.toTUs, params.value, kf.easing);
+  const withoutOld = removeKeyframe(animations, params.path, params.fromTTicks);
+  return upsertKeyframe(withoutOld, params.path, params.toTTicks, params.value, kf.easing);
 }
 
-/** Update easing on one path's keyframe at `tUs` without changing its value. */
+/** Update easing on one path's keyframe at `tTicks` without changing its value. */
 export function setKeyframeEasing(
   animations: ClipAnimations | undefined,
   path: AnimatableParamPath,
-  tUs: number,
+  tTicks: number,
   easing: KeyframeEasing,
 ): ClipAnimations | undefined {
   const track = animations?.[path];
-  const kf = track?.keyframes.find((keyframe) => Math.round(keyframe.tUs) === Math.round(tUs));
+  const kf = track?.keyframes.find((keyframe) => Math.round(keyframe.tTicks) === Math.round(tTicks));
   if (!kf || kf.easing === easing) return animations;
-  return upsertKeyframe(animations, path, tUs, kf.value, easing);
+  return upsertKeyframe(animations, path, tTicks, kf.value, easing);
 }
 
 /** Clear every keyframe on `path`, dropping `animations` if nothing else animates. */
@@ -201,77 +201,77 @@ export function collectKeyframeTimes(animations: ClipAnimations | undefined): nu
   const times = new Set<number>();
   for (const path of animatedParamPaths(animations)) {
     for (const kf of animations[path]?.keyframes ?? []) {
-      times.add(Math.round(kf.tUs));
+      times.add(Math.round(kf.tTicks));
     }
   }
   return Array.from(times).sort((a, b) => a - b);
 }
 
-/** True when at least one animated param has a keyframe exactly at `tUs`. */
-export function hasKeyframeMomentAt(animations: ClipAnimations | undefined, tUs: number): boolean {
-  const rounded = Math.round(tUs);
+/** True when at least one animated param has a keyframe exactly at `tTicks`. */
+export function hasKeyframeMomentAt(animations: ClipAnimations | undefined, tTicks: number): boolean {
+  const rounded = Math.round(tTicks);
   return animatedParamPaths(animations).some((path) =>
-    animations?.[path]?.keyframes.some((kf) => Math.round(kf.tUs) === rounded),
+    animations?.[path]?.keyframes.some((kf) => Math.round(kf.tTicks) === rounded),
   );
 }
 
 /**
- * Insert a keyframe at `tUs` on every currently-animated param, each taking the
- * param's interpolated value at `tUs` so adding a keyframe never changes the
+ * Insert a keyframe at `tTicks` on every currently-animated param, each taking the
+ * param's interpolated value at `tTicks` so adding a keyframe never changes the
  * motion. This is the lane's "click to add" and the navigator's add action — it
  * only touches params that already animate (turning a brand-new param on is the
  * stopwatch's job). No-op when nothing is animated.
  */
 export function addKeyframeMoment(
   animations: ClipAnimations | undefined,
-  tUs: number,
+  tTicks: number,
 ): ClipAnimations | undefined {
   let next = animations;
   for (const path of animatedParamPaths(animations)) {
-    const value = evalTrackAt(animations?.[path], tUs);
+    const value = evalTrackAt(animations?.[path], tTicks);
     if (value === undefined) continue;
-    next = upsertKeyframe(next, path, tUs, value);
+    next = upsertKeyframe(next, path, tTicks, value);
   }
   return next;
 }
 
-/** Move every param's keyframe at `fromTUs` (if any) to `toTUs`. */
+/** Move every param's keyframe at `fromTTicks` (if any) to `toTTicks`. */
 export function moveKeyframeMoment(
   animations: ClipAnimations | undefined,
-  fromTUs: number,
-  toTUs: number,
+  fromTTicks: number,
+  toTTicks: number,
 ): ClipAnimations | undefined {
   let next = animations;
   for (const path of animatedParamPaths(animations)) {
-    next = moveKeyframe(next, path, fromTUs, toTUs);
+    next = moveKeyframe(next, path, fromTTicks, toTTicks);
   }
   return next;
 }
 
-/** Remove every param's keyframe at `tUs` (if any). */
+/** Remove every param's keyframe at `tTicks` (if any). */
 export function removeKeyframeMoment(
   animations: ClipAnimations | undefined,
-  tUs: number,
+  tTicks: number,
 ): ClipAnimations | undefined {
   let next = animations;
   for (const path of animatedParamPaths(animations)) {
-    next = removeKeyframe(next, path, tUs);
+    next = removeKeyframe(next, path, tTicks);
   }
   return next;
 }
 
-/** Update easing on every param's keyframe at `tUs` without changing values. */
+/** Update easing on every param's keyframe at `tTicks` without changing values. */
 export function setKeyframeMomentEasing(
   animations: ClipAnimations | undefined,
-  tUs: number,
+  tTicks: number,
   easing: KeyframeEasing,
 ): ClipAnimations | undefined {
   let next = animations;
   for (const path of animatedParamPaths(animations)) {
     const track = next?.[path];
-    const kf = track?.keyframes.find((keyframe) => Math.round(keyframe.tUs) === Math.round(tUs));
+    const kf = track?.keyframes.find((keyframe) => Math.round(keyframe.tTicks) === Math.round(tTicks));
     if (!kf) continue;
-    next = upsertKeyframe(next, path, tUs, kf.value, easing);
+    next = upsertKeyframe(next, path, tTicks, kf.value, easing);
   }
   return next;
 }
@@ -294,36 +294,36 @@ export interface KeyframeMomentClipboard {
 }
 
 /**
- * Capture the keyframe moment at `tUs`: every animated param that has a
+ * Capture the keyframe moment at `tTicks`: every animated param that has a
  * keyframe exactly there, as `{ path, value, easing }`. Returns `null` when no
  * param has a keyframe at that time (nothing to copy).
  */
 export function extractKeyframeMoment(
   animations: ClipAnimations | undefined,
-  tUs: number,
+  tTicks: number,
 ): KeyframeMomentClipboard | null {
-  const rounded = Math.round(tUs);
+  const rounded = Math.round(tTicks);
   const entries: KeyframeMomentEntry[] = [];
   for (const path of animatedParamPaths(animations)) {
-    const kf = animations?.[path]?.keyframes.find((k) => Math.round(k.tUs) === rounded);
+    const kf = animations?.[path]?.keyframes.find((k) => Math.round(k.tTicks) === rounded);
     if (kf) entries.push({ path, value: kf.value, easing: kf.easing });
   }
   return entries.length > 0 ? { entries } : null;
 }
 
 /**
- * Paste a copied moment at `tUs`, upserting each entry's keyframe. Params that
+ * Paste a copied moment at `tTicks`, upserting each entry's keyframe. Params that
  * weren't animated on the target start animating (a track is created) — the
  * expected behaviour when pasting a keyframe onto a fresh clip.
  */
 export function applyKeyframeMoment(
   animations: ClipAnimations | undefined,
   moment: KeyframeMomentClipboard,
-  tUs: number,
+  tTicks: number,
 ): ClipAnimations | undefined {
   let next = animations;
   for (const entry of moment.entries) {
-    next = upsertKeyframe(next, entry.path, tUs, entry.value, entry.easing);
+    next = upsertKeyframe(next, entry.path, tTicks, entry.value, entry.easing);
   }
   return next;
 }

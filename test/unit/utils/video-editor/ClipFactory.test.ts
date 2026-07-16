@@ -82,12 +82,12 @@ describe('ClipFactory', () => {
   const baseParams = {
     itemId: 'item-1',
     layer: 1,
-    startUs: 0,
-    endUs: 1_000_000,
-    durationUs: 1_000_000,
-    sourceStartUs: 0,
-    sourceRangeDurationUs: 1_000_000,
-    sourceDurationUs: 1_000_000,
+    startTicks: 0,
+    endTicks: 1_000_000,
+    durationTicks: 1_000_000,
+    sourceStartTicks: 0,
+    sourceRangeDurationTicks: 1_000_000,
+    sourceDurationTicks: 1_000_000,
   };
 
   beforeEach(() => {

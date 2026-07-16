@@ -13,7 +13,7 @@ test.describe('Web text clip render/export', () => {
     const [videoTrackId] = await trackIds(page);
     const [clipId] = await addTextClipAtPlayhead(page, {
       trackId: videoTrackId,
-      durationUs: 1_000_000,
+      durationTicks: 1_000_000,
       text: 'Styled\nText',
       style: {
         width: 720,
@@ -71,7 +71,7 @@ test.describe('Web text clip render/export', () => {
 
     const [clipId] = await addTextClipAtPlayhead(page, {
       trackId: textTrackId,
-      durationUs: 1_000_000,
+      durationTicks: 1_000_000,
       text: 'Overlay',
       style: {
         width: 720,

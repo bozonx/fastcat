@@ -6,7 +6,7 @@ import { reactive } from 'vue';
 const mockProjectStore = reactive({
   projectSettings: {
     project: {
-      audioDeclickDurationUs: 5000,
+      audioDeclickDurationTicks: 5000,
     },
   },
 });
@@ -14,7 +14,7 @@ const mockProjectStore = reactive({
 const mockWorkspaceStore = reactive({
   userSettings: {
     projectDefaults: {
-      audioDeclickDurationUs: 5000,
+      audioDeclickDurationTicks: 5000,
     },
   },
 });
@@ -30,8 +30,8 @@ vi.mock('~/stores/workspace.store', () => ({
 describe('AdvancedSettings.vue', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockProjectStore.projectSettings.project.audioDeclickDurationUs = 5000;
-    mockWorkspaceStore.userSettings.projectDefaults.audioDeclickDurationUs = 5000;
+    mockProjectStore.projectSettings.project.audioDeclickDurationTicks = 5000;
+    mockWorkspaceStore.userSettings.projectDefaults.audioDeclickDurationTicks = 5000;
   });
 
   it('does not render reset button when project setting equals app default', async () => {
@@ -42,14 +42,14 @@ describe('AdvancedSettings.vue', () => {
   });
 
   it('renders reset button when project setting differs from app default', async () => {
-    mockProjectStore.projectSettings.project.audioDeclickDurationUs = 10000;
+    mockProjectStore.projectSettings.project.audioDeclickDurationTicks = 10000;
     const component = await mountWithNuxt(AdvancedSettings);
 
     expect(component.find('[data-testid="form-field-reset"]').exists()).toBe(true);
   });
 
-  it('resets audioDeclickDurationUs to app default when reset button is clicked', async () => {
-    mockProjectStore.projectSettings.project.audioDeclickDurationUs = 10000;
+  it('resets audioDeclickDurationTicks to app default when reset button is clicked', async () => {
+    mockProjectStore.projectSettings.project.audioDeclickDurationTicks = 10000;
     const component = await mountWithNuxt(AdvancedSettings);
 
     const btn = component.find('[data-testid="form-field-reset"]');
@@ -57,7 +57,7 @@ describe('AdvancedSettings.vue', () => {
 
     await btn.trigger('click');
 
-    expect(mockProjectStore.projectSettings.project.audioDeclickDurationUs).toBe(5000);
+    expect(mockProjectStore.projectSettings.project.audioDeclickDurationTicks).toBe(5000);
     expect(component.find('[data-testid="form-field-reset"]').exists()).toBe(false);
   });
 });

@@ -96,7 +96,7 @@ describe('utils/audio', () => {
       clipDurationS: 4,
       clip: {
         transitionIn: {
-          durationUs: 1_500_000 * TICKS_PER_MICROSECOND,
+          durationTicks: 1_500_000 * TICKS_PER_MICROSECOND,
           mode: 'transition',
           curve: 'bezier',
         },
@@ -112,10 +112,10 @@ describe('utils/audio', () => {
     const effective = resolveEffectiveFadeDurationsSeconds({
       clipDurationS: 4,
       clip: {
-        audioFadeOutUs: 500_000 * TICKS_PER_MICROSECOND,
+        audioFadeOutTicks: 500_000 * TICKS_PER_MICROSECOND,
         audioFadeOutCurve: 'logarithmic',
         transitionOut: {
-          durationUs: 2_000_000 * TICKS_PER_MICROSECOND,
+          durationTicks: 2_000_000 * TICKS_PER_MICROSECOND,
           mode: 'transition',
           curve: 'bezier',
         },
@@ -130,7 +130,7 @@ describe('utils/audio', () => {
     const fromClip = {
       audioFadeOutCurve: 'logarithmic' as const,
       transitionOut: {
-        durationUs: 800_000,
+        durationTicks: 800_000,
         mode: 'transition',
         curve: 'linear',
       },
@@ -160,7 +160,7 @@ describe('utils/audio', () => {
     const toClip = {
       audioFadeInCurve: 'logarithmic' as const,
       transitionIn: {
-        durationUs: 900_000,
+        durationTicks: 900_000,
         mode: 'transition',
         curve: 'linear',
       },

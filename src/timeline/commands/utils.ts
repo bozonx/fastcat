@@ -52,47 +52,47 @@ export function ticksToFrame(timeTicks: number, fps: number, mode: QuantizeMode)
   );
 }
 
-export function deltaUsToFrames(deltaUs: number, fps: number, mode: QuantizeMode): number {
-  const safeDeltaUs = Number.isFinite(deltaUs) ? Math.round(deltaUs) : 0;
-  return ticksToFrames({ ticks: safeDeltaUs, frameRate: sanitizeFrameRate(fps), mode });
+export function deltaUsToFrames(deltaTicks: number, fps: number, mode: QuantizeMode): number {
+  const safeDeltaTicks = Number.isFinite(deltaTicks) ? Math.round(deltaTicks) : 0;
+  return ticksToFrames({ ticks: safeDeltaTicks, frameRate: sanitizeFrameRate(fps), mode });
 }
 
-export function frameToUs(frameIndex: number, fps: number): number {
+export function frameToTicks(frameIndex: number, fps: number): number {
   const safeFrameIndex = Number.isFinite(frameIndex) ? Math.max(0, Math.round(frameIndex)) : 0;
   return Math.max(0, framesToTicks({ frames: safeFrameIndex, frameRate: sanitizeFrameRate(fps) }));
 }
 
-export function quantizeTimeUsToFrames(timeUs: number, fps: number, mode: QuantizeMode): number {
+export function quantizeTimeUsToFrames(timeTicks: number, fps: number, mode: QuantizeMode): number {
   return Math.max(
     0,
     quantizeTicksToFrame({
-      ticks: Number.isFinite(timeUs) ? Math.max(0, Math.round(timeUs)) : 0,
+      ticks: Number.isFinite(timeTicks) ? Math.max(0, Math.round(timeTicks)) : 0,
       frameRate: sanitizeFrameRate(fps),
       mode,
     }),
   );
 }
 
-export function quantizeDeltaUsToFrames(deltaUs: number, fps: number, mode: QuantizeMode): number {
+export function quantizeDeltaUsToFrames(deltaTicks: number, fps: number, mode: QuantizeMode): number {
   return quantizeTicksToFrame({
-    ticks: Number.isFinite(deltaUs) ? Math.round(deltaUs) : 0,
+    ticks: Number.isFinite(deltaTicks) ? Math.round(deltaTicks) : 0,
     frameRate: sanitizeFrameRate(fps),
     mode,
   });
 }
 
 export function quantizeRangeToFrames(
-  range: { startUs: number; durationUs: number },
+  range: { startTicks: number; durationTicks: number },
   fps: number,
-): { startUs: number; durationUs: number } {
-  const startFrame = ticksToFrame(range.startUs, fps, 'round');
-  const startUs = frameToUs(startFrame, fps);
+): { startTicks: number; durationTicks: number } {
+  const startFrame = ticksToFrame(range.startTicks, fps, 'round');
+  const startTicks = frameToTicks(startFrame, fps);
 
-  const rawEndUs = Math.max(0, Math.round(range.startUs) + Math.round(range.durationUs));
-  const endFrame = ticksToFrame(rawEndUs, fps, 'round');
-  const endUs = frameToUs(Math.max(startFrame, endFrame), fps);
+  const rawEndTicks = Math.max(0, Math.round(range.startTicks) + Math.round(range.durationTicks));
+  const endFrame = ticksToFrame(rawEndTicks, fps, 'round');
+  const endTicks = frameToTicks(Math.max(startFrame, endFrame), fps);
 
-  return { startUs, durationUs: Math.max(0, endUs - startUs) };
+  return { startTicks, durationTicks: Math.max(0, endTicks - startTicks) };
 }
 
 export function findClipById(
@@ -157,24 +157,24 @@ export function rangesOverlap(aStart: number, aEnd: number, bStart: number, bEnd
 }
 
 /** Exact tick boundaries make any positive overlap a real overlap. */
-export const OVERLAP_EPSILON_US = 0;
+export const OVERLAP_EPSILON_TICKS = 0;
 
 export function assertNoOverlap(
   track: TimelineTrack,
   movedItemId: string,
-  startUs: number,
-  durationUs: number,
+  startTicks: number,
+  durationTicks: number,
 ) {
-  const endUs = startUs + durationUs;
+  const endTicks = startTicks + durationTicks;
 
   for (const it of track.items) {
     if (it.id === movedItemId) continue;
     if (it.kind !== 'clip') continue;
-    const itStart = it.timelineRange.startUs;
-    const itEnd = itStart + it.timelineRange.durationUs;
+    const itStart = it.timelineRange.startTicks;
+    const itEnd = itStart + it.timelineRange.durationTicks;
     if (
-      rangesOverlap(startUs, endUs, itStart, itEnd) &&
-      Math.min(endUs, itEnd) - Math.max(startUs, itStart) > OVERLAP_EPSILON_US
+      rangesOverlap(startTicks, endTicks, itStart, itEnd) &&
+      Math.min(endTicks, itEnd) - Math.max(startTicks, itStart) > OVERLAP_EPSILON_TICKS
     ) {
       throw new Error('Item overlaps with another item');
     }
@@ -193,10 +193,10 @@ export function mergeAdjacentGaps(items: TimelineTrackItem[]): TimelineTrackItem
         ...current,
         timelineRange: {
           ...current.timelineRange,
-          durationUs:
-            next.timelineRange.startUs +
-            next.timelineRange.durationUs -
-            current.timelineRange.startUs,
+          durationTicks:
+            next.timelineRange.startTicks +
+            next.timelineRange.durationTicks -
+            current.timelineRange.startTicks,
         },
       };
     } else {
@@ -210,49 +210,49 @@ export function mergeAdjacentGaps(items: TimelineTrackItem[]): TimelineTrackItem
 
 export function getClipSourceRangeForTimelineSegment(
   clip: TimelineClipItem,
-  segmentStartUs: number,
-  segmentDurationUs: number,
-): { startUs: number; durationUs: number } {
-  const clipStartUs = Math.max(0, Math.round(clip.timelineRange.startUs));
-  const clipDurationUs = Math.max(0, Math.round(clip.timelineRange.durationUs));
-  const clipEndUs = clipStartUs + clipDurationUs;
-  const segmentStart = Math.max(clipStartUs, Math.round(segmentStartUs));
-  const segmentEnd = Math.min(clipEndUs, segmentStart + Math.max(0, Math.round(segmentDurationUs)));
-  const safeSegmentDurationUs = Math.max(0, segmentEnd - segmentStart);
+  segmentStartTicks: number,
+  segmentDurationTicks: number,
+): { startTicks: number; durationTicks: number } {
+  const clipStartTicks = Math.max(0, Math.round(clip.timelineRange.startTicks));
+  const clipDurationTicks = Math.max(0, Math.round(clip.timelineRange.durationTicks));
+  const clipEndTicks = clipStartTicks + clipDurationTicks;
+  const segmentStart = Math.max(clipStartTicks, Math.round(segmentStartTicks));
+  const segmentEnd = Math.min(clipEndTicks, segmentStart + Math.max(0, Math.round(segmentDurationTicks)));
+  const safeSegmentDurationTicks = Math.max(0, segmentEnd - segmentStart);
 
   const speed = typeof clip.speed === 'number' && Number.isFinite(clip.speed) ? clip.speed : 1;
   const absSpeed = Math.abs(speed) || 1;
-  const sourceStartUs = Math.round(clip.sourceRange.startUs);
-  const sourceDurationUs = Math.max(0, Math.round(clip.sourceRange.durationUs));
-  const sourceEndUs = sourceStartUs + sourceDurationUs;
-  const localStartUs = Math.max(0, Math.round((segmentStart - clipStartUs) * absSpeed));
-  const localDurationUs = Math.max(0, Math.round(safeSegmentDurationUs * absSpeed));
+  const sourceStartTicks = Math.round(clip.sourceRange.startTicks);
+  const sourceDurationTicks = Math.max(0, Math.round(clip.sourceRange.durationTicks));
+  const sourceEndTicks = sourceStartTicks + sourceDurationTicks;
+  const localStartTicks = Math.max(0, Math.round((segmentStart - clipStartTicks) * absSpeed));
+  const localDurationTicks = Math.max(0, Math.round(safeSegmentDurationTicks * absSpeed));
 
   if (speed >= 0) {
-    const nextStartUs = Math.min(sourceEndUs, sourceStartUs + localStartUs);
+    const nextStartTicks = Math.min(sourceEndTicks, sourceStartTicks + localStartTicks);
     return {
-      startUs: nextStartUs,
-      durationUs: Math.max(0, Math.min(localDurationUs, sourceEndUs - nextStartUs)),
+      startTicks: nextStartTicks,
+      durationTicks: Math.max(0, Math.min(localDurationTicks, sourceEndTicks - nextStartTicks)),
     };
   }
 
-  const nextEndUs = Math.max(sourceStartUs, sourceEndUs - localStartUs);
-  const nextStartUs = Math.max(sourceStartUs, nextEndUs - localDurationUs);
+  const nextEndTicks = Math.max(sourceStartTicks, sourceEndTicks - localStartTicks);
+  const nextStartTicks = Math.max(sourceStartTicks, nextEndTicks - localDurationTicks);
   return {
-    startUs: nextStartUs,
-    durationUs: Math.max(0, nextEndUs - nextStartUs),
+    startTicks: nextStartTicks,
+    durationTicks: Math.max(0, nextEndTicks - nextStartTicks),
   };
 }
 
 export function sliceTrackItemsForOverlay(
   items: TimelineTrackItem[],
-  startUs: number,
-  durationUs: number,
+  startTicks: number,
+  durationTicks: number,
   fps: number,
   shouldQuantizeToFrames: boolean,
   excludeItemId?: string,
 ): TimelineTrackItem[] {
-  const endUs = startUs + durationUs;
+  const endTicks = startTicks + durationTicks;
   const nextItems: TimelineTrackItem[] = [];
 
   for (const it of items) {
@@ -265,9 +265,9 @@ export function sliceTrackItemsForOverlay(
     }
 
     if (it.locked) {
-      const itStartLocked = it.timelineRange.startUs;
-      const itEndLocked = itStartLocked + it.timelineRange.durationUs;
-      const overlapsLocked = itEndLocked > startUs && itStartLocked < endUs;
+      const itStartLocked = it.timelineRange.startTicks;
+      const itEndLocked = itStartLocked + it.timelineRange.durationTicks;
+      const overlapsLocked = itEndLocked > startTicks && itStartLocked < endTicks;
       if (overlapsLocked) {
         throw new Error('Locked clip');
       }
@@ -275,28 +275,28 @@ export function sliceTrackItemsForOverlay(
       continue;
     }
 
-    const itStart = it.timelineRange.startUs;
-    const itEnd = itStart + it.timelineRange.durationUs;
+    const itStart = it.timelineRange.startTicks;
+    const itEnd = itStart + it.timelineRange.durationTicks;
 
-    if (itEnd <= startUs || itStart >= endUs) {
+    if (itEnd <= startTicks || itStart >= endTicks) {
       nextItems.push(it);
       continue;
     }
 
     // Fully covered: delete
-    if (itStart >= startUs && itEnd <= endUs) {
+    if (itStart >= startTicks && itEnd <= endTicks) {
       continue;
     }
 
     // Overlaps only on the left side: trim end of existing clip
-    if (itStart < startUs && itEnd > startUs && itEnd <= endUs) {
+    if (itStart < startTicks && itEnd > startTicks && itEnd <= endTicks) {
       const newDuration = shouldQuantizeToFrames
-        ? quantizeTimeUsToFrames(startUs - itStart, fps, 'floor')
-        : Math.max(0, Math.round(startUs - itStart));
+        ? quantizeTimeUsToFrames(startTicks - itStart, fps, 'floor')
+        : Math.max(0, Math.round(startTicks - itStart));
       if (newDuration > 0) {
         nextItems.push({
           ...it,
-          timelineRange: { startUs: itStart, durationUs: newDuration },
+          timelineRange: { startTicks: itStart, durationTicks: newDuration },
           sourceRange: getClipSourceRangeForTimelineSegment(it, itStart, newDuration),
         });
       }
@@ -304,17 +304,17 @@ export function sliceTrackItemsForOverlay(
     }
 
     // Overlaps only on the right side: trim start of existing clip
-    if (itStart >= startUs && itStart < endUs && itEnd > endUs) {
+    if (itStart >= startTicks && itStart < endTicks && itEnd > endTicks) {
       const newStart = shouldQuantizeToFrames
-        ? quantizeTimeUsToFrames(endUs, fps, 'ceil')
-        : Math.max(0, Math.round(endUs));
+        ? quantizeTimeUsToFrames(endTicks, fps, 'ceil')
+        : Math.max(0, Math.round(endTicks));
       const newDuration = shouldQuantizeToFrames
-        ? quantizeTimeUsToFrames(itEnd - endUs, fps, 'floor')
-        : Math.max(0, Math.round(itEnd - endUs));
+        ? quantizeTimeUsToFrames(itEnd - endTicks, fps, 'floor')
+        : Math.max(0, Math.round(itEnd - endTicks));
       if (newDuration > 0) {
         nextItems.push({
           ...it,
-          timelineRange: { startUs: newStart, durationUs: newDuration },
+          timelineRange: { startTicks: newStart, durationTicks: newDuration },
           sourceRange: getClipSourceRangeForTimelineSegment(it, newStart, newDuration),
         });
       }
@@ -322,28 +322,28 @@ export function sliceTrackItemsForOverlay(
     }
 
     // Existing clip fully contains the new item: split into two
-    if (itStart < startUs && itEnd > endUs) {
+    if (itStart < startTicks && itEnd > endTicks) {
       const leftDuration = shouldQuantizeToFrames
-        ? quantizeTimeUsToFrames(startUs - itStart, fps, 'floor')
-        : Math.max(0, Math.round(startUs - itStart));
+        ? quantizeTimeUsToFrames(startTicks - itStart, fps, 'floor')
+        : Math.max(0, Math.round(startTicks - itStart));
       if (leftDuration > 0) {
         nextItems.push({
           ...it,
-          timelineRange: { startUs: itStart, durationUs: leftDuration },
+          timelineRange: { startTicks: itStart, durationTicks: leftDuration },
           sourceRange: getClipSourceRangeForTimelineSegment(it, itStart, leftDuration),
         });
       }
       const rightStart = shouldQuantizeToFrames
-        ? quantizeTimeUsToFrames(endUs, fps, 'ceil')
-        : Math.max(0, Math.round(endUs));
+        ? quantizeTimeUsToFrames(endTicks, fps, 'ceil')
+        : Math.max(0, Math.round(endTicks));
       const rightDuration = shouldQuantizeToFrames
-        ? quantizeTimeUsToFrames(itEnd - endUs, fps, 'floor')
-        : Math.max(0, Math.round(itEnd - endUs));
+        ? quantizeTimeUsToFrames(itEnd - endTicks, fps, 'floor')
+        : Math.max(0, Math.round(itEnd - endTicks));
       if (rightDuration > 0) {
         nextItems.push({
           ...it,
           id: nextItemId(it.trackId, 'clip'),
-          timelineRange: { startUs: rightStart, durationUs: rightDuration },
+          timelineRange: { startTicks: rightStart, durationTicks: rightDuration },
           sourceRange: getClipSourceRangeForTimelineSegment(it, rightStart, rightDuration),
         });
       }
@@ -372,16 +372,16 @@ function applyTransitionAdjacencyModes(clips: TimelineClipItem[]) {
 
     let isAdjacentLeft = false;
     if (prev) {
-      const prevEnd = prev.timelineRange.startUs + prev.timelineRange.durationUs;
-      if (prevEnd === current.timelineRange.startUs) {
+      const prevEnd = prev.timelineRange.startTicks + prev.timelineRange.durationTicks;
+      if (prevEnd === current.timelineRange.startTicks) {
         isAdjacentLeft = true;
       }
     }
 
     let isAdjacentRight = false;
     if (next) {
-      const currentEnd = current.timelineRange.startUs + current.timelineRange.durationUs;
-      if (currentEnd === next.timelineRange.startUs) {
+      const currentEnd = current.timelineRange.startTicks + current.timelineRange.durationTicks;
+      if (currentEnd === next.timelineRange.startTicks) {
         isAdjacentRight = true;
       }
     }
@@ -414,11 +414,11 @@ export function normalizeGaps(
     .filter((it): it is TimelineClipItem => it.kind === 'clip')
     .map((it) => ({ ...it, timelineRange: { ...it.timelineRange } }));
 
-  clips.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
+  clips.sort((a, b) => a.timelineRange.startTicks - b.timelineRange.startTicks);
   applyTransitionAdjacencyModes(clips);
 
   const result: TimelineTrackItem[] = [];
-  let cursorUs = 0;
+  let cursorTicks = 0;
 
   for (const clip of clips) {
     // A free (sub-frame) audio clip must keep its phase even during a quantized
@@ -430,31 +430,31 @@ export function normalizeGaps(
       shouldQuantizeToFrames && isClipFrameAligned(clip, fps)
         ? quantizeRangeToFrames(clip.timelineRange, fps)
         : null;
-    const startUs = qTimeline
-      ? qTimeline.startUs
-      : Math.max(0, Math.round(clip.timelineRange.startUs));
-    const durationUs = qTimeline
-      ? qTimeline.durationUs
-      : Math.max(0, Math.round(clip.timelineRange.durationUs));
-    const endUs = startUs + durationUs;
+    const startTicks = qTimeline
+      ? qTimeline.startTicks
+      : Math.max(0, Math.round(clip.timelineRange.startTicks));
+    const durationTicks = qTimeline
+      ? qTimeline.durationTicks
+      : Math.max(0, Math.round(clip.timelineRange.durationTicks));
+    const endTicks = startTicks + durationTicks;
 
-    if (startUs > cursorUs) {
-      const gapStartUs = cursorUs;
-      const gapDurationUs = startUs - cursorUs;
+    if (startTicks > cursorTicks) {
+      const gapStartTicks = cursorTicks;
+      const gapDurationTicks = startTicks - cursorTicks;
       const gap: TimelineGapItem = {
         kind: 'gap',
-        id: `gap_${trackId}_${gapStartUs}`,
+        id: `gap_${trackId}_${gapStartTicks}`,
         trackId,
-        timelineRange: { startUs: gapStartUs, durationUs: gapDurationUs },
+        timelineRange: { startTicks: gapStartTicks, durationTicks: gapDurationTicks },
       };
       result.push(gap);
     }
 
     result.push({
       ...clip,
-      timelineRange: { startUs, durationUs },
+      timelineRange: { startTicks, durationTicks },
     });
-    cursorUs = Math.max(cursorUs, endUs);
+    cursorTicks = Math.max(cursorTicks, endTicks);
   }
 
   return mergeAdjacentGaps(result);
@@ -508,10 +508,10 @@ export function nextItemIds(trackId: string, prefix: string, count: number): str
   return genPrefixedIdBatch(`${prefix}_${trackId}_`, count);
 }
 
-export function computeTrackEndUs(track: TimelineTrack): number {
+export function computeTrackEndTicks(track: TimelineTrack): number {
   let end = 0;
   for (const it of track.items) {
-    end = Math.max(end, it.timelineRange.startUs + it.timelineRange.durationUs);
+    end = Math.max(end, it.timelineRange.startTicks + it.timelineRange.durationTicks);
   }
   return end;
 }
@@ -522,38 +522,38 @@ export { clampInt } from '~/utils/math';
  * Minimum clip duration below which transitions are removed entirely.
  * Used consistently across move/trim/split commands.
  */
-export const TRANSITION_MIN_CLIP_DURATION_US = TICKS_PER_SECOND / 10;
+export const TRANSITION_MIN_CLIP_DURATION_TICKS = TICKS_PER_SECOND / 10;
 
 /** Transition adjacency is exact in the canonical tick base. */
-export const TRANSITION_ADJACENCY_THRESHOLD_US = 0;
+export const TRANSITION_ADJACENCY_THRESHOLD_TICKS = 0;
 
 function normalizeOpposingEdgeDurations(input: {
-  clipDurationUs: number;
-  startDurationUs?: number;
-  endDurationUs?: number;
-}): { startDurationUs: number; endDurationUs: number } {
-  const clipDurationUs = Math.max(0, Math.round(input.clipDurationUs));
-  let startDurationUs = Math.max(0, Math.round(input.startDurationUs ?? 0));
-  let endDurationUs = Math.max(0, Math.round(input.endDurationUs ?? 0));
+  clipDurationTicks: number;
+  startDurationTicks?: number;
+  endDurationTicks?: number;
+}): { startDurationTicks: number; endDurationTicks: number } {
+  const clipDurationTicks = Math.max(0, Math.round(input.clipDurationTicks));
+  let startDurationTicks = Math.max(0, Math.round(input.startDurationTicks ?? 0));
+  let endDurationTicks = Math.max(0, Math.round(input.endDurationTicks ?? 0));
 
-  startDurationUs = Math.min(startDurationUs, clipDurationUs);
-  endDurationUs = Math.min(endDurationUs, clipDurationUs);
+  startDurationTicks = Math.min(startDurationTicks, clipDurationTicks);
+  endDurationTicks = Math.min(endDurationTicks, clipDurationTicks);
 
-  const totalDurationUs = startDurationUs + endDurationUs;
-  if (totalDurationUs <= clipDurationUs || totalDurationUs <= 0) {
-    return { startDurationUs, endDurationUs };
+  const totalDurationTicks = startDurationTicks + endDurationTicks;
+  if (totalDurationTicks <= clipDurationTicks || totalDurationTicks <= 0) {
+    return { startDurationTicks, endDurationTicks };
   }
 
-  const ratio = clipDurationUs / totalDurationUs;
-  const nextStartDurationUs = Math.max(
+  const ratio = clipDurationTicks / totalDurationTicks;
+  const nextStartDurationTicks = Math.max(
     0,
-    Math.min(clipDurationUs, Math.round(startDurationUs * ratio)),
+    Math.min(clipDurationTicks, Math.round(startDurationTicks * ratio)),
   );
-  const nextEndDurationUs = Math.max(0, clipDurationUs - nextStartDurationUs);
+  const nextEndDurationTicks = Math.max(0, clipDurationTicks - nextStartDurationTicks);
 
   return {
-    startDurationUs: nextStartDurationUs,
-    endDurationUs: nextEndDurationUs,
+    startDurationTicks: nextStartDurationTicks,
+    endDurationTicks: nextEndDurationTicks,
   };
 }
 
@@ -561,34 +561,34 @@ export function autoAdaptClipEdgeDurations(items: TimelineTrackItem[]): Timeline
   return items.map((it, idx, arr) => {
     if (it.kind !== 'clip') return it;
 
-    const clipDurationUs = Math.max(0, Math.round(it.timelineRange.durationUs));
+    const clipDurationTicks = Math.max(0, Math.round(it.timelineRange.durationTicks));
     const prev = idx > 0 ? arr[idx - 1] : null;
     const next = idx < arr.length - 1 ? arr[idx + 1] : null;
 
     let transitionIn = it.transitionIn;
     let transitionOut = it.transitionOut;
 
-    if (clipDurationUs < TRANSITION_MIN_CLIP_DURATION_US) {
+    if (clipDurationTicks < TRANSITION_MIN_CLIP_DURATION_TICKS) {
       transitionIn = undefined;
       transitionOut = undefined;
     } else {
       const normalizedTransitions = normalizeOpposingEdgeDurations({
-        clipDurationUs,
-        startDurationUs: transitionIn?.durationUs,
-        endDurationUs: transitionOut?.durationUs,
+        clipDurationTicks,
+        startDurationTicks: transitionIn?.durationTicks,
+        endDurationTicks: transitionOut?.durationTicks,
       });
 
-      if (transitionIn && transitionIn.durationUs !== normalizedTransitions.startDurationUs) {
+      if (transitionIn && transitionIn.durationTicks !== normalizedTransitions.startDurationTicks) {
         transitionIn = {
           ...transitionIn,
-          durationUs: normalizedTransitions.startDurationUs,
+          durationTicks: normalizedTransitions.startDurationTicks,
         };
       }
 
-      if (transitionOut && transitionOut.durationUs !== normalizedTransitions.endDurationUs) {
+      if (transitionOut && transitionOut.durationTicks !== normalizedTransitions.endDurationTicks) {
         transitionOut = {
           ...transitionOut,
-          durationUs: normalizedTransitions.endDurationUs,
+          durationTicks: normalizedTransitions.endDurationTicks,
         };
       }
     }
@@ -598,45 +598,45 @@ export function autoAdaptClipEdgeDurations(items: TimelineTrackItem[]): Timeline
     // flag becomes meaningless).
     if (transitionIn?.mode === 'adjacent' && !transitionIn.isOverridden) {
       const gap = prev
-        ? it.timelineRange.startUs - (prev.timelineRange.startUs + prev.timelineRange.durationUs)
+        ? it.timelineRange.startTicks - (prev.timelineRange.startTicks + prev.timelineRange.durationTicks)
         : Infinity;
-      if (!prev || prev.kind !== 'clip' || gap !== TRANSITION_ADJACENCY_THRESHOLD_US) {
+      if (!prev || prev.kind !== 'clip' || gap !== TRANSITION_ADJACENCY_THRESHOLD_TICKS) {
         transitionIn = { ...transitionIn, mode: 'transparent' };
       }
     }
 
     if (transitionOut?.mode === 'adjacent' && !transitionOut.isOverridden) {
       const gap = next
-        ? next.timelineRange.startUs - (it.timelineRange.startUs + it.timelineRange.durationUs)
+        ? next.timelineRange.startTicks - (it.timelineRange.startTicks + it.timelineRange.durationTicks)
         : Infinity;
-      if (!next || next.kind !== 'clip' || gap !== TRANSITION_ADJACENCY_THRESHOLD_US) {
+      if (!next || next.kind !== 'clip' || gap !== TRANSITION_ADJACENCY_THRESHOLD_TICKS) {
         transitionOut = { ...transitionOut, mode: 'transparent' };
       }
     }
 
     const normalizedFades = normalizeOpposingEdgeDurations({
-      clipDurationUs,
-      startDurationUs: (it as TimelineClipItem).audioFadeInUs,
-      endDurationUs: (it as TimelineClipItem).audioFadeOutUs,
+      clipDurationTicks,
+      startDurationTicks: (it as TimelineClipItem).audioFadeInTicks,
+      endDurationTicks: (it as TimelineClipItem).audioFadeOutTicks,
     });
 
-    const audioFadeInUs = normalizedFades.startDurationUs;
-    const audioFadeOutUs = normalizedFades.endDurationUs;
-    const hadAudioFadeInUs = typeof (it as TimelineClipItem).audioFadeInUs === 'number';
-    const hadAudioFadeOutUs = typeof (it as TimelineClipItem).audioFadeOutUs === 'number';
+    const audioFadeInTicks = normalizedFades.startDurationTicks;
+    const audioFadeOutTicks = normalizedFades.endDurationTicks;
+    const hadAudioFadeInTicks = typeof (it as TimelineClipItem).audioFadeInTicks === 'number';
+    const hadAudioFadeOutTicks = typeof (it as TimelineClipItem).audioFadeOutTicks === 'number';
 
     if (
       transitionIn !== it.transitionIn ||
       transitionOut !== it.transitionOut ||
-      (hadAudioFadeInUs && audioFadeInUs !== (it as TimelineClipItem).audioFadeInUs) ||
-      (hadAudioFadeOutUs && audioFadeOutUs !== (it as TimelineClipItem).audioFadeOutUs)
+      (hadAudioFadeInTicks && audioFadeInTicks !== (it as TimelineClipItem).audioFadeInTicks) ||
+      (hadAudioFadeOutTicks && audioFadeOutTicks !== (it as TimelineClipItem).audioFadeOutTicks)
     ) {
       return {
         ...it,
         transitionIn,
         transitionOut,
-        ...(hadAudioFadeInUs ? { audioFadeInUs } : {}),
-        ...(hadAudioFadeOutUs ? { audioFadeOutUs } : {}),
+        ...(hadAudioFadeInTicks ? { audioFadeInTicks } : {}),
+        ...(hadAudioFadeOutTicks ? { audioFadeOutTicks } : {}),
       };
     }
 
@@ -647,7 +647,7 @@ export function autoAdaptClipEdgeDurations(items: TimelineTrackItem[]): Timeline
 /**
  * After a geometry change (move/trim) auto-adjusts clip transitions in a track:
  * - Shrinks transition duration if it exceeds the clip duration.
- * - Removes transition entirely if clip is shorter than TRANSITION_MIN_CLIP_DURATION_US.
+ * - Removes transition entirely if clip is shorter than TRANSITION_MIN_CLIP_DURATION_TICKS.
  * - Downgrades 'adjacent' mode to 'transparent' if the neighbor clip is no longer adjacent.
  *
  * Returns a new items array (immutable). Does not modify the input.
@@ -682,28 +682,28 @@ export function autoAdaptChangedTracks(
  *
  * Shared by add-media and drop-handling so both stay in lockstep.
  */
-export function resolveNonOverlappingStartUs(
+export function resolveNonOverlappingStartTicks(
   track: { items: ReadonlyArray<TimelineTrackItem> },
-  startUs: number,
-  durationUs: number,
+  startTicks: number,
+  durationTicks: number,
   fps: number,
 ): number {
-  let nextStartUs = quantizeTimeUsToFrames(Math.max(0, startUs), fps, 'round');
-  const dur = quantizeTimeUsToFrames(Math.max(0, durationUs), fps, 'round');
+  let nextStartTicks = quantizeTimeUsToFrames(Math.max(0, startTicks), fps, 'round');
+  const dur = quantizeTimeUsToFrames(Math.max(0, durationTicks), fps, 'round');
 
   for (const item of track.items) {
     if (item.kind !== 'clip') continue;
 
-    const itemStartUs = item.timelineRange.startUs;
-    const itemEndUs = itemStartUs + item.timelineRange.durationUs;
-    const nextEndUs = nextStartUs + dur;
+    const itemStartTicks = item.timelineRange.startTicks;
+    const itemEndTicks = itemStartTicks + item.timelineRange.durationTicks;
+    const nextEndTicks = nextStartTicks + dur;
 
-    if (nextEndUs <= itemStartUs || nextStartUs >= itemEndUs) {
+    if (nextEndTicks <= itemStartTicks || nextStartTicks >= itemEndTicks) {
       continue;
     }
 
-    nextStartUs = quantizeTimeUsToFrames(itemEndUs, fps, 'ceil');
+    nextStartTicks = quantizeTimeUsToFrames(itemEndTicks, fps, 'ceil');
   }
 
-  return nextStartUs;
+  return nextStartTicks;
 }

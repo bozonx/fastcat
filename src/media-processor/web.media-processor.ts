@@ -102,7 +102,7 @@ export function createWebMediaProcessor(): IMediaProcessor {
       return await runWithThumbnailHostApi(createProjectHostApi(), async () => {
         const { client } = getThumbnailWorkerClient();
         return await client.extractFrameToBlob(
-          options.timeUs,
+          options.timeTicks,
           width,
           height,
           clipsPayload,

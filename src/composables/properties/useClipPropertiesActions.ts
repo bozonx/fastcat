@@ -50,7 +50,7 @@ interface TimelineStoreActions {
   rippleDeleteFirstSelectedItem: () => void;
   pasteClips: (
     items: TimelineClipClipboardItem[],
-    options?: { insertStartUs?: number },
+    options?: { insertStartTicks?: number },
   ) => Promise<{ trackId: string; itemId: string }[]>;
 }
 
@@ -58,7 +58,7 @@ interface ProjectStoreActions {
   currentView: string;
   projectSettings?: {
     transitions?: {
-      defaultDurationUs?: number;
+      defaultDurationTicks?: number;
     };
   };
   openTimelineFile: (path: string) => Promise<void>;
@@ -191,7 +191,7 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
   });
 
   const hasFreezeFrame = computed(() => {
-    return typeof options.clip.value.freezeFrameSourceUs === 'number';
+    return typeof options.clip.value.freezeFrameSourceTicks === 'number';
   });
 
   const canExtractAudio = computed(() => {
@@ -350,24 +350,24 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
   }
 
   function handleFreezeFrame() {
-    const playheadUs = timelineStore.currentTime;
-    const clipStartUs = options.clip.value.timelineRange.startUs;
-    const clipEndUs = clipStartUs + options.clip.value.timelineRange.durationUs;
-    if (playheadUs < clipStartUs || playheadUs >= clipEndUs) return;
+    const playheadTicks = timelineStore.currentTime;
+    const clipStartTicks = options.clip.value.timelineRange.startTicks;
+    const clipEndTicks = clipStartTicks + options.clip.value.timelineRange.durationTicks;
+    if (playheadTicks < clipStartTicks || playheadTicks >= clipEndTicks) return;
 
-    const relativeUs = playheadUs - clipStartUs;
-    const clampedUs = Math.max(
+    const relativeTicks = playheadTicks - clipStartTicks;
+    const clampedTicks = Math.max(
       0,
-      Math.min(relativeUs, options.clip.value.timelineRange.durationUs),
+      Math.min(relativeTicks, options.clip.value.timelineRange.durationTicks),
     );
     timelineStore.updateClipProperties(options.clip.value.trackId, options.clip.value.id, {
-      freezeFrameSourceUs: Math.round(clampedUs),
+      freezeFrameSourceTicks: Math.round(clampedTicks),
     });
   }
 
   function handleResetFreezeFrame() {
     timelineStore.updateClipProperties(options.clip.value.trackId, options.clip.value.id, {
-      freezeFrameSourceUs: undefined,
+      freezeFrameSourceTicks: undefined,
     });
   }
 
@@ -385,8 +385,8 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
   function handlePaste() {
     const payload = clipboardStore.clipboardPayload;
     if (!payload || payload.source !== 'timeline' || payload.items.length === 0) return;
-    const playheadUs = timelineStore.currentTime;
-    void timelineStore.pasteClips(payload.items, { insertStartUs: playheadUs });
+    const playheadTicks = timelineStore.currentTime;
+    void timelineStore.pasteClips(payload.items, { insertStartTicks: playheadTicks });
     if (payload.operation === 'cut') clipboardStore.setClipboardPayload(null);
   }
 
@@ -472,10 +472,10 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
 
     // 5. Freeze clip / Reset freeze
     if (isMediaVideoClip.value && !hasFreezeFrame.value) {
-      const playheadUs = timelineStore.currentTime;
-      const clipStartUs = clip.timelineRange.startUs;
-      const clipEndUs = clipStartUs + clip.timelineRange.durationUs;
-      const playheadOnClip = playheadUs >= clipStartUs && playheadUs < clipEndUs;
+      const playheadTicks = timelineStore.currentTime;
+      const clipStartTicks = clip.timelineRange.startTicks;
+      const clipEndTicks = clipStartTicks + clip.timelineRange.durationTicks;
+      const playheadOnClip = playheadTicks >= clipStartTicks && playheadTicks < clipEndTicks;
 
       list.push({
         id: 'freezeFrame',

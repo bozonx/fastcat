@@ -25,18 +25,18 @@ export interface TimelineItemView {
   type: OtioItemType;
   name: string;
   /** In/out point into the source media (canonical timeline ticks). */
-  sourceStartUs: number;
-  sourceDurationUs: number;
+  sourceStartTicks: number;
+  sourceDurationTicks: number;
   /** Position on the timeline, derived positionally (canonical timeline ticks). */
-  timelineStartUs: number;
-  timelineDurationUs: number;
+  timelineStartTicks: number;
+  timelineDurationTicks: number;
   /** Media URL for clips (undefined for gaps / missing references). */
   targetUrl?: string;
   /** Audio properties persisted on the clip, when present. */
   audioGain?: number;
   audioBalance?: number;
-  audioFadeInUs?: number;
-  audioFadeOutUs?: number;
+  audioFadeInTicks?: number;
+  audioFadeOutTicks?: number;
   audioFadeInCurve?: string;
   audioFadeOutCurve?: string;
   audioMuted?: boolean;
@@ -49,7 +49,7 @@ export interface TimelineItemView {
 
 export interface TimelineTransitionView {
   type: string;
-  durationUs: number;
+  durationTicks: number;
   mode?: string;
   curve?: string;
   params?: Record<string, unknown>;
@@ -84,8 +84,8 @@ export interface TimelineDocView {
 
 export interface TimelineMarkerView {
   id: string;
-  timeUs: number;
-  durationUs?: number;
+  timeTicks: number;
+  durationTicks?: number;
   text: string;
   color?: string;
 }
@@ -100,7 +100,7 @@ interface RawRange {
 }
 interface RawTransition {
   type?: string;
-  durationUs?: number;
+  durationTicks?: number;
   mode?: string;
   curve?: string;
   params?: Record<string, unknown>;
@@ -114,8 +114,8 @@ interface RawChild {
       audio?: {
         gain?: number;
         balance?: number;
-        fadeInUs?: number;
-        fadeOutUs?: number;
+        fadeInTicks?: number;
+        fadeOutTicks?: number;
         fadeInCurve?: string;
         fadeOutCurve?: string;
         muted?: boolean;
@@ -174,7 +174,7 @@ interface RawMarker {
   };
 }
 
-function rationalToUs(r: RawRational | undefined): number {
+function rationalToTicks(r: RawRational | undefined): number {
   if (!r || typeof r.value !== 'number' || typeof r.rate !== 'number' || r.rate === 0) return 0;
   return Math.round((r.value / r.rate) * TICKS_PER_SECOND);
 }
@@ -211,7 +211,7 @@ function parseTransition(raw: RawTransition | undefined): TimelineTransitionView
   if (!raw || typeof raw.type !== 'string' || raw.type.length === 0) return undefined;
   return {
     type: raw.type,
-    durationUs: typeof raw.durationUs === 'number' ? raw.durationUs : 0,
+    durationTicks: typeof raw.durationTicks === 'number' ? raw.durationTicks : 0,
     mode: raw.mode,
     curve: raw.curve,
     params: raw.params,
@@ -220,34 +220,34 @@ function parseTransition(raw: RawTransition | undefined): TimelineTransitionView
 
 function parseTrack(raw: RawTrack): TimelineTrackView {
   const items: TimelineItemView[] = [];
-  let cursorUs = 0;
+  let cursorTicks = 0;
 
   for (const child of raw.children ?? []) {
     const type = classify(child.OTIO_SCHEMA);
-    const sourceStartUs = rationalToUs(child.source_range?.start_time);
-    const durationUs = rationalToUs(child.source_range?.duration);
+    const sourceStartTicks = rationalToTicks(child.source_range?.start_time);
+    const durationTicks = rationalToTicks(child.source_range?.duration);
 
     // Transitions overlap their neighbours and do not advance the cursor; base
     // specs don't create them, but we stay correct if one slips in.
-    const timelineDurationUs = type === 'transition' ? 0 : durationUs;
+    const timelineDurationTicks = type === 'transition' ? 0 : durationTicks;
 
     const fastcatAudio = child.metadata?.fastcat?.audio;
     items.push({
       id: child.metadata?.fastcat?.id ?? '',
       type,
       name: child.name ?? '',
-      sourceStartUs,
-      sourceDurationUs: durationUs,
-      timelineStartUs: cursorUs,
-      timelineDurationUs,
+      sourceStartTicks,
+      sourceDurationTicks: durationTicks,
+      timelineStartTicks: cursorTicks,
+      timelineDurationTicks,
       targetUrl:
         child.media_reference?.OTIO_SCHEMA?.startsWith('ExternalReference') === true
           ? child.media_reference?.target_url
           : undefined,
       audioGain: fastcatAudio?.gain,
       audioBalance: fastcatAudio?.balance,
-      audioFadeInUs: fastcatAudio?.fadeInUs,
-      audioFadeOutUs: fastcatAudio?.fadeOutUs,
+      audioFadeInTicks: fastcatAudio?.fadeInTicks,
+      audioFadeOutTicks: fastcatAudio?.fadeOutTicks,
       audioFadeInCurve: fastcatAudio?.fadeInCurve,
       audioFadeOutCurve: fastcatAudio?.fadeOutCurve,
       audioMuted: fastcatAudio?.muted,
@@ -256,7 +256,7 @@ function parseTrack(raw: RawTrack): TimelineTrackView {
       effects: parseEffects(child.effects),
     });
 
-    cursorUs += timelineDurationUs;
+    cursorTicks += timelineDurationTicks;
   }
 
   const kind = raw.kind === 'Audio' ? 'Audio' : 'Video';
@@ -274,17 +274,17 @@ function parseMarkers(raw: RawMarker[] | undefined): TimelineMarkerView[] {
     .filter((marker) => marker.OTIO_SCHEMA === 'Marker.2' || marker.OTIO_SCHEMA === 'Marker.1')
     .map((marker) => {
       const range = marker.marked_range;
-      const durationUs = rationalToUs(range?.duration);
+      const durationTicks = rationalToTicks(range?.duration);
       return {
         id: marker.metadata?.fastcat?.marker?.id ?? '',
-        timeUs: rationalToUs(range?.start_time),
-        ...(durationUs > 0 ? { durationUs } : {}),
+        timeTicks: rationalToTicks(range?.start_time),
+        ...(durationTicks > 0 ? { durationTicks } : {}),
         text: marker.comment || marker.name || '',
         color: marker.metadata?.fastcat?.marker?.color,
       };
     })
     .filter((marker) => marker.id.length > 0)
-    .sort((a, b) => a.timeUs - b.timeUs);
+    .sort((a, b) => a.timeTicks - b.timeTicks);
 }
 
 export function parseTimelineDoc(json: string): TimelineDocView {

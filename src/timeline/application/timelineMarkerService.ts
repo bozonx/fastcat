@@ -6,20 +6,20 @@ export interface TimelineMarkerServiceDeps {
   getDoc: () => TimelineDocument | null;
   getCurrentTime: () => number;
   applyTimeline: (cmd: TimelineCommand, options?: Record<string, unknown>) => void;
-  defaultZoneDurationUs: number;
+  defaultZoneDurationTicks: number;
 }
 
 export interface TimelineMarkerService {
   getMarkers: () => TimelineMarker[];
   addMarker: (
-    input: { timeUs: number; durationUs?: number; text?: string; color?: string },
+    input: { timeTicks: number; durationTicks?: number; text?: string; color?: string },
     options?: Record<string, unknown>,
   ) => string;
   addMarkerAtPlayhead: (options?: Record<string, unknown>) => void;
   addZoneMarkerAtPlayhead: (options?: Record<string, unknown>) => void;
   updateMarker: (
     markerId: string,
-    patch: { timeUs?: number; durationUs?: number | null; text?: string; color?: string },
+    patch: { timeTicks?: number; durationTicks?: number | null; text?: string; color?: string },
     options?: Record<string, unknown>,
   ) => void;
   removeMarker: (markerId: string, options?: Record<string, unknown>) => void;
@@ -40,7 +40,7 @@ export function createTimelineMarkerService(
   }
 
   function addMarker(
-    input: { timeUs: number; durationUs?: number; text?: string; color?: string },
+    input: { timeTicks: number; durationTicks?: number; text?: string; color?: string },
     options?: Record<string, unknown>,
   ): string {
     const id = generateMarkerId();
@@ -48,8 +48,8 @@ export function createTimelineMarkerService(
       {
         type: 'add_marker',
         id,
-        timeUs: input.timeUs,
-        ...(input.durationUs !== undefined ? { durationUs: input.durationUs } : {}),
+        timeTicks: input.timeTicks,
+        ...(input.durationTicks !== undefined ? { durationTicks: input.durationTicks } : {}),
         text: input.text ?? '',
         ...(input.color !== undefined ? { color: input.color } : {}),
       },
@@ -59,27 +59,27 @@ export function createTimelineMarkerService(
   }
 
   function addMarkerAtPlayhead(options?: Record<string, unknown>) {
-    addMarker({ timeUs: deps.getCurrentTime(), text: '' }, options);
+    addMarker({ timeTicks: deps.getCurrentTime(), text: '' }, options);
   }
 
   function addZoneMarkerAtPlayhead(options?: Record<string, unknown>) {
     addMarker(
-      { timeUs: deps.getCurrentTime(), durationUs: deps.defaultZoneDurationUs, text: '' },
+      { timeTicks: deps.getCurrentTime(), durationTicks: deps.defaultZoneDurationTicks, text: '' },
       options,
     );
   }
 
   function updateMarker(
     markerId: string,
-    patch: { timeUs?: number; durationUs?: number | null; text?: string; color?: string },
+    patch: { timeTicks?: number; durationTicks?: number | null; text?: string; color?: string },
     options?: Record<string, unknown>,
   ) {
     deps.applyTimeline(
       {
         type: 'update_marker',
         id: markerId,
-        timeUs: patch.timeUs,
-        durationUs: patch.durationUs,
+        timeTicks: patch.timeTicks,
+        durationTicks: patch.durationTicks,
         text: patch.text,
         color: patch.color,
       } as const,
@@ -96,7 +96,7 @@ export function createTimelineMarkerService(
       {
         type: 'update_marker',
         id: markerId,
-        durationUs: deps.defaultZoneDurationUs,
+        durationTicks: deps.defaultZoneDurationTicks,
       },
       options,
     );
@@ -107,7 +107,7 @@ export function createTimelineMarkerService(
       {
         type: 'update_marker',
         id: markerId,
-        durationUs: null,
+        durationTicks: null,
       },
       options,
     );

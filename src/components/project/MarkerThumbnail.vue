@@ -11,7 +11,7 @@ const log = createDevLogger('MarkerThumbnail');
 
 const props = defineProps<{
   markerId: string;
-  timeUs: number;
+  timeTicks: number;
 }>();
 
 const workspaceStore = useWorkspaceStore();
@@ -36,7 +36,7 @@ function clearThumbnail() {
 }
 
 // Monotonic token guarding against stale async results: when the marker moves
-// (`timeUs` changes) a fresh load starts while an earlier generation may still be
+// (`timeTicks` changes) a fresh load starts while an earlier generation may still be
 // in flight. `addLatestMediaTask` only rejects tasks that haven't started yet, so
 // with queue concurrency > 1 an older in-flight render can resolve last and paint a
 // stale frame. Each load captures the current token and drops results once it moves.
@@ -52,7 +52,7 @@ async function loadThumbnail() {
     const cachedBlob = await fileThumbnailGenerator.getMarkerThumbnail({
       projectId: projectStore.currentProjectId,
       markerId: props.markerId,
-      timeUs: props.timeUs,
+      timeTicks: props.timeTicks,
     });
 
     if (token !== loadToken) return;
@@ -72,7 +72,7 @@ async function loadThumbnail() {
     dispatchMarkerThumbnailGeneration({
       projectId: projectStore.currentProjectId,
       markerId: props.markerId,
-      timeUs: props.timeUs,
+      timeTicks: props.timeTicks,
       timelineDoc: timelineStore.timelineDoc,
       onComplete: (blob) => {
         if (token !== loadToken) return;
@@ -98,7 +98,7 @@ onMounted(() => {
 
 // Reload if time changes (marker moved)
 watch(
-  () => props.timeUs,
+  () => props.timeTicks,
   () => {
     void loadThumbnail();
   },

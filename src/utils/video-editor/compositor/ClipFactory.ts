@@ -7,12 +7,12 @@ export interface CreateClipBaseParams {
   itemId: string;
   trackId?: string;
   layer: number;
-  startUs: number;
-  endUs: number;
-  durationUs: number;
-  sourceStartUs: number;
-  sourceRangeDurationUs: number;
-  sourceDurationUs: number;
+  startTicks: number;
+  endTicks: number;
+  durationTicks: number;
+  sourceStartTicks: number;
+  sourceRangeDurationTicks: number;
+  sourceDurationTicks: number;
   speed?: number;
   opacity?: number;
   blendMode?: CompositorClip['blendMode'];
@@ -50,12 +50,12 @@ export class ClipFactory {
       itemId: params.itemId,
       trackId: params.trackId,
       layer: params.layer,
-      startUs: params.startUs,
-      endUs: params.endUs,
-      durationUs: params.durationUs,
-      sourceStartUs: params.sourceStartUs,
-      sourceRangeDurationUs: params.sourceRangeDurationUs,
-      sourceDurationUs: params.sourceDurationUs,
+      startTicks: params.startTicks,
+      endTicks: params.endTicks,
+      durationTicks: params.durationTicks,
+      sourceStartTicks: params.sourceStartTicks,
+      sourceRangeDurationTicks: params.sourceRangeDurationTicks,
+      sourceDurationTicks: params.sourceDurationTicks,
       speed: params.speed,
       sprite,
       clipType: params.clipType,
@@ -94,12 +94,12 @@ export class ClipFactory {
       itemId: params.itemId,
       trackId: params.trackId,
       layer: params.layer,
-      startUs: params.startUs,
-      endUs: params.endUs,
-      durationUs: params.durationUs,
-      sourceStartUs: params.sourceStartUs,
-      sourceRangeDurationUs: params.sourceRangeDurationUs,
-      sourceDurationUs: params.sourceDurationUs,
+      startTicks: params.startTicks,
+      endTicks: params.endTicks,
+      durationTicks: params.durationTicks,
+      sourceStartTicks: params.sourceStartTicks,
+      sourceRangeDurationTicks: params.sourceRangeDurationTicks,
+      sourceDurationTicks: params.sourceDurationTicks,
       speed: params.speed,
       sprite,
       clipType: 'text',
@@ -143,12 +143,12 @@ export class ClipFactory {
       itemId: params.itemId,
       trackId: params.trackId,
       layer: params.layer,
-      startUs: params.startUs,
-      endUs: params.endUs,
-      durationUs: params.durationUs,
-      sourceStartUs: params.sourceStartUs,
-      sourceRangeDurationUs: params.sourceRangeDurationUs,
-      sourceDurationUs: params.sourceDurationUs,
+      startTicks: params.startTicks,
+      endTicks: params.endTicks,
+      durationTicks: params.durationTicks,
+      sourceStartTicks: params.sourceStartTicks,
+      sourceRangeDurationTicks: params.sourceRangeDurationTicks,
+      sourceDurationTicks: params.sourceDurationTicks,
       speed: params.speed,
       sprite,
       clipType: 'shape',
@@ -193,12 +193,12 @@ export class ClipFactory {
       itemId: params.itemId,
       trackId: params.trackId,
       layer: params.layer,
-      startUs: params.startUs,
-      endUs: params.endUs,
-      durationUs: params.durationUs,
-      sourceStartUs: params.sourceStartUs,
-      sourceRangeDurationUs: params.sourceRangeDurationUs,
-      sourceDurationUs: params.sourceDurationUs,
+      startTicks: params.startTicks,
+      endTicks: params.endTicks,
+      durationTicks: params.durationTicks,
+      sourceStartTicks: params.sourceStartTicks,
+      sourceRangeDurationTicks: params.sourceRangeDurationTicks,
+      sourceDurationTicks: params.sourceDurationTicks,
       speed: params.speed,
       sprite,
       clipType: 'adjustment',
@@ -237,12 +237,12 @@ export class ClipFactory {
       itemId: params.itemId,
       trackId: params.trackId,
       layer: params.layer,
-      startUs: params.startUs,
-      endUs: params.endUs,
-      durationUs: params.durationUs,
-      sourceStartUs: params.sourceStartUs,
-      sourceRangeDurationUs: params.sourceRangeDurationUs,
-      sourceDurationUs: params.sourceDurationUs,
+      startTicks: params.startTicks,
+      endTicks: params.endTicks,
+      durationTicks: params.durationTicks,
+      sourceStartTicks: params.sourceStartTicks,
+      sourceRangeDurationTicks: params.sourceRangeDurationTicks,
+      sourceDurationTicks: params.sourceDurationTicks,
       speed: params.speed,
       sprite,
       clipType: 'hud',
@@ -310,12 +310,12 @@ export class ClipFactory {
       layer: params.layer,
       sourcePath: params.sourcePath,
       fileHandle: params.fileHandle,
-      startUs: params.startUs,
-      endUs: params.endUs,
-      durationUs: params.durationUs,
-      sourceStartUs: params.sourceStartUs,
-      sourceRangeDurationUs: params.sourceRangeDurationUs,
-      sourceDurationUs: params.sourceDurationUs,
+      startTicks: params.startTicks,
+      endTicks: params.endTicks,
+      durationTicks: params.durationTicks,
+      sourceStartTicks: params.sourceStartTicks,
+      sourceRangeDurationTicks: params.sourceRangeDurationTicks,
+      sourceDurationTicks: params.sourceDurationTicks,
       speed: params.speed,
       sprite,
       clipType: 'media',
@@ -346,7 +346,7 @@ export class ClipFactory {
       sink: CompositorClip['sink'];
       firstTimestampS?: number;
       frameRate?: number;
-      freezeFrameSourceUs?: number;
+      freezeFrameSourceTicks?: number;
       imageSource: ImageSource;
       sourceRotation?: number;
     },
@@ -370,14 +370,14 @@ export class ClipFactory {
       sink: params.sink,
       firstTimestampS: params.firstTimestampS,
       frameRate: params.frameRate,
-      startUs: params.startUs,
-      endUs: params.endUs,
-      durationUs: params.durationUs,
-      sourceStartUs: params.sourceStartUs,
-      sourceRangeDurationUs: params.sourceRangeDurationUs,
-      sourceDurationUs: params.sourceDurationUs,
+      startTicks: params.startTicks,
+      endTicks: params.endTicks,
+      durationTicks: params.durationTicks,
+      sourceStartTicks: params.sourceStartTicks,
+      sourceRangeDurationTicks: params.sourceRangeDurationTicks,
+      sourceDurationTicks: params.sourceDurationTicks,
       speed: params.speed,
-      freezeFrameSourceUs: params.freezeFrameSourceUs,
+      freezeFrameSourceTicks: params.freezeFrameSourceTicks,
       sprite,
       clipType: 'media',
       clipKind: 'video',

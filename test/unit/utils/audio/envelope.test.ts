@@ -82,8 +82,8 @@ describe('audio/envelope', () => {
     it('computes basic fades', () => {
       const res = computeFadeDurationsSeconds({
         clipDurationS: 10,
-        fadeInUs: 2_000_000 * TICKS_PER_MICROSECOND,
-        fadeOutUs: 3_000_000 * TICKS_PER_MICROSECOND,
+        fadeInTicks: 2_000_000 * TICKS_PER_MICROSECOND,
+        fadeOutTicks: 3_000_000 * TICKS_PER_MICROSECOND,
       });
       expect(res).toEqual({ fadeInS: 2, fadeOutS: 3 });
     });
@@ -91,8 +91,8 @@ describe('audio/envelope', () => {
     it('clamps fades to clip duration proportionally when sum exceeds duration', () => {
       const res = computeFadeDurationsSeconds({
         clipDurationS: 4,
-        fadeInUs: 5_000_000 * TICKS_PER_MICROSECOND,
-        fadeOutUs: 5_000_000 * TICKS_PER_MICROSECOND,
+        fadeInTicks: 5_000_000 * TICKS_PER_MICROSECOND,
+        fadeOutTicks: 5_000_000 * TICKS_PER_MICROSECOND,
       });
       // ratio = 4 / (5 + 5) = 0.4 → each fade = 5 * 0.4 = 2
       expect(res).toEqual({ fadeInS: 2, fadeOutS: 2 });
@@ -101,7 +101,7 @@ describe('audio/envelope', () => {
     it('handles missing or invalid inputs gracefully', () => {
       const res = computeFadeDurationsSeconds({
         clipDurationS: -5,
-        fadeInUs: null,
+        fadeInTicks: null,
       });
       expect(res).toEqual({ fadeInS: 0, fadeOutS: 0 });
     });

@@ -48,8 +48,8 @@ export function hasPanAnimation(window: ClipPlaybackWindow): boolean {
 export function resolveAnimatedBaseGain(window: ClipPlaybackWindow, clipLocalS: number): number {
   const track = window.animations?.['audio.volume'];
   if (!track?.keyframes.length) return window.audioGain;
-  const sourceUs = Math.round(getSourceTimeForClipLocal(window, clipLocalS) * TICKS_PER_SECOND);
-  const value = evalTrackAt(track, sourceUs);
+  const sourceTicks = Math.round(getSourceTimeForClipLocal(window, clipLocalS) * TICKS_PER_SECOND);
+  const value = evalTrackAt(track, sourceTicks);
   return value === undefined ? window.audioGain : Math.max(0, Math.min(10, value));
 }
 
@@ -60,8 +60,8 @@ export function resolveAnimatedBaseGain(window: ClipPlaybackWindow, clipLocalS: 
 export function resolveAnimatedPan(window: ClipPlaybackWindow, clipLocalS: number): number {
   const track = window.animations?.['audio.pan'];
   if (!track?.keyframes.length) return window.audioBalance;
-  const sourceUs = Math.round(getSourceTimeForClipLocal(window, clipLocalS) * TICKS_PER_SECOND);
-  const value = evalTrackAt(track, sourceUs);
+  const sourceTicks = Math.round(getSourceTimeForClipLocal(window, clipLocalS) * TICKS_PER_SECOND);
+  const value = evalTrackAt(track, sourceTicks);
   return value === undefined ? window.audioBalance : Math.max(-1, Math.min(1, value));
 }
 
@@ -69,7 +69,7 @@ export function buildClipPlaybackWindow(
   params: BuildClipPlaybackWindowParams,
 ): ClipPlaybackWindow | null {
   const { clip, currentTimeS, speed, startAtS, adjacentClips } = params;
-  const clipDurationS = clip.durationUs / TICKS_PER_SECOND;
+  const clipDurationS = clip.durationTicks / TICKS_PER_SECOND;
   const speedRaw = clip.speed;
 
   const clipSpeed =
@@ -95,32 +95,32 @@ export function buildClipPlaybackWindow(
   const audioBalance = normalizeBalance(clip.audioBalance, 0);
 
   let effectivePlayDurationS = clipDurationS;
-  let effectiveStartUs = clip.startUs;
-  let effectiveSourceStartUs = clip.sourceStartUs;
+  let effectiveStartTicks = clip.startTicks;
+  let effectiveSourceStartTicks = clip.sourceStartTicks;
 
   if (
-    clip.transitionOut?.durationUs &&
-    Number(clip.transitionOut.durationUs) > 0 &&
+    clip.transitionOut?.durationTicks &&
+    Number(clip.transitionOut.durationTicks) > 0 &&
     clip.transitionOut.mode === 'adjacent'
   ) {
-    effectivePlayDurationS += Number(clip.transitionOut.durationUs) / TICKS_PER_SECOND;
+    effectivePlayDurationS += Number(clip.transitionOut.durationTicks) / TICKS_PER_SECOND;
   }
 
   if (
-    clip.transitionIn?.durationUs &&
-    Number(clip.transitionIn.durationUs) > 0 &&
+    clip.transitionIn?.durationTicks &&
+    Number(clip.transitionIn.durationTicks) > 0 &&
     clip.transitionIn.mode === 'adjacent'
   ) {
-    effectivePlayDurationS += Number(clip.transitionIn.durationUs) / TICKS_PER_SECOND;
-    effectiveStartUs = Math.max(0, clip.startUs - Number(clip.transitionIn.durationUs));
-    effectiveSourceStartUs = Math.max(
+    effectivePlayDurationS += Number(clip.transitionIn.durationTicks) / TICKS_PER_SECOND;
+    effectiveStartTicks = Math.max(0, clip.startTicks - Number(clip.transitionIn.durationTicks));
+    effectiveSourceStartTicks = Math.max(
       0,
-      clip.sourceStartUs - Number(clip.transitionIn.durationUs) * clipSpeed,
+      clip.sourceStartTicks - Number(clip.transitionIn.durationTicks) * clipSpeed,
     );
   }
 
-  const effectiveStartS = effectiveStartUs / TICKS_PER_SECOND;
-  const effectiveSourceStartS = effectiveSourceStartUs / TICKS_PER_SECOND;
+  const effectiveStartS = effectiveStartTicks / TICKS_PER_SECOND;
+  const effectiveSourceStartS = effectiveSourceStartTicks / TICKS_PER_SECOND;
   const effectiveSourceEndS = effectiveSourceStartS + effectivePlayDurationS * clipSpeed;
   const currentClipLocalS = Math.max(0, currentTimeS - effectiveStartS);
   const remainingInClipS = Math.max(0, effectivePlayDurationS - currentClipLocalS);

@@ -4,7 +4,7 @@ import { useSafeObjectUrl, safeRevokeObjectURL } from '~/composables/useSafeObje
 import yaml from 'js-yaml';
 import { getMediaTypeFromFilename, getMimeTypeFromFilename } from '~/utils/media-types';
 import { parseTimelineFromOtio } from '~/timeline/otio-serializer';
-import { selectTimelineDurationUs } from '~/timeline/selectors';
+import { selectTimelineDurationTicks } from '~/timeline/selectors';
 import type { DirectoryStats } from '~/utils/fs';
 import type { TimelineDocument } from '~/timeline/types';
 import type { FsEntry } from '~/types/fs';
@@ -49,7 +49,7 @@ export type EntryPreviewInfo = {
 };
 
 function computeTimelineSummary(doc: TimelineDocument) {
-  const durationUs = selectTimelineDurationUs(doc);
+  const durationTicks = selectTimelineDurationTicks(doc);
   const videoTracks = doc.tracks.filter((t) => t.kind === 'video').length;
   const audioTracks = doc.tracks.filter((t) => t.kind === 'audio').length;
   const clips = doc.tracks.reduce(
@@ -58,7 +58,7 @@ function computeTimelineSummary(doc: TimelineDocument) {
   );
   const version =
     typeof doc.metadata?.fastcat?.version === 'number' ? doc.metadata.fastcat.version : null;
-  return { durationUs, videoTracks, audioTracks, clips, version };
+  return { durationTicks, videoTracks, audioTracks, clips, version };
 }
 
 export function useEntryPreview(params: {
@@ -90,7 +90,7 @@ export function useEntryPreview(params: {
   const imageDimensions = ref<{ width: number; height: number } | null>(null);
   const lineCount = ref<number | null>(null);
   const timelineDocSummary = ref<{
-    durationUs: number;
+    durationTicks: number;
     videoTracks: number;
     audioTracks: number;
     clips: number;
@@ -178,7 +178,7 @@ export function useEntryPreview(params: {
     imageDimensions: { width: number; height: number } | null;
     lineCount: number | null;
     timelineDocSummary: {
-      durationUs: number;
+      durationTicks: number;
       videoTracks: number;
       audioTracks: number;
       clips: number;
@@ -463,7 +463,7 @@ export function useEntryPreview(params: {
         let nextTextContent = '';
         let nextLineCount: number | null = null;
         let nextTimelineDocSummary: {
-          durationUs: number;
+          durationTicks: number;
           videoTracks: number;
           audioTracks: number;
           clips: number;

@@ -12,7 +12,7 @@ const rawWorkerTimelineClips = ref([
     clipType: 'media',
     trackId: 'track-1',
     source: { path: 'test.mp4' },
-    timelineRange: { startUs: 0, durationUs: 5_000_000 },
+    timelineRange: { startTicks: 0, durationTicks: 5_000_000 },
     transform: {
       position: { x: 0, y: 0 },
       scale: { x: 1, y: 1, linked: true },
@@ -25,7 +25,7 @@ const rawWorkerTimelineClips = ref([
     clipType: 'text',
     trackId: 'track-1',
     text: 'Hello',
-    timelineRange: { startUs: 10_000_000, durationUs: 5_000_000 },
+    timelineRange: { startTicks: 10_000_000, durationTicks: 5_000_000 },
     transform: {
       position: { x: 0, y: 0 },
       scale: { x: 1, y: 1, linked: true },
@@ -98,7 +98,7 @@ describe('MonitorInteractiveOverlay', () => {
         clipType: 'media',
         trackId: 'track-1',
         source: { path: 'test.mp4' },
-        timelineRange: { startUs: 0, durationUs: 5_000_000 },
+        timelineRange: { startTicks: 0, durationTicks: 5_000_000 },
         transform: {
           position: { x: 0, y: 0 },
           scale: { x: 1, y: 1, linked: true },
@@ -111,7 +111,7 @@ describe('MonitorInteractiveOverlay', () => {
         clipType: 'text',
         trackId: 'track-1',
         text: 'Hello',
-        timelineRange: { startUs: 10_000_000, durationUs: 5_000_000 },
+        timelineRange: { startTicks: 10_000_000, durationTicks: 5_000_000 },
         transform: {
           position: { x: 0, y: 0 },
           scale: { x: 1, y: 1, linked: true },
@@ -159,7 +159,7 @@ describe('MonitorInteractiveOverlay', () => {
         id: 'adjustment-1',
         clipType: 'adjustment',
         trackId: 'track-2',
-        timelineRange: { startUs: 0, durationUs: 5_000_000 },
+        timelineRange: { startTicks: 0, durationTicks: 5_000_000 },
       },
     ] as any;
 

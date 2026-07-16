@@ -30,14 +30,14 @@ function getEffectiveClipAudioBalance(item: TimelineClipItem): number {
 function getEffectiveClipAudioFadeProps(item: TimelineClipItem) {
   return item.audioFadesActive === false
     ? {
-        audioFadeInUs: undefined,
-        audioFadeOutUs: undefined,
+        audioFadeInTicks: undefined,
+        audioFadeOutTicks: undefined,
         audioFadeInCurve: undefined,
         audioFadeOutCurve: undefined,
       }
     : {
-        audioFadeInUs: item.audioFadeInUs,
-        audioFadeOutUs: item.audioFadeOutUs,
+        audioFadeInTicks: item.audioFadeInTicks,
+        audioFadeOutTicks: item.audioFadeOutTicks,
         audioFadeInCurve: item.audioFadeInCurve,
         audioFadeOutCurve: item.audioFadeOutCurve,
       };

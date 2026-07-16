@@ -2,9 +2,9 @@
 import { describe, it, expect } from 'vitest';
 import {
   clampHandlePx,
-  getClipHeadTimelineHandleUs,
-  getClipTailTimelineHandleUs,
-  getClipMaxTimelineDurationUs,
+  getClipHeadTimelineHandleTicks,
+  getClipTailTimelineHandleTicks,
+  getClipMaxTimelineDurationTicks,
 } from '~/utils/timeline/clip';
 import type { TimelineClipItem } from '~/timeline/types';
 
@@ -18,8 +18,8 @@ describe('utils/timeline/clip', () => {
   const baseClip: Partial<TimelineClipItem> = {
     kind: 'clip',
     clipType: 'media',
-    sourceRange: { startUs: 2000, durationUs: 3000 },
-    sourceDurationUs: 10000,
+    sourceRange: { startTicks: 2000, durationTicks: 3000 },
+    sourceDurationTicks: 10000,
   };
 
   describe('handle timeline durations', () => {
@@ -27,24 +27,24 @@ describe('utils/timeline/clip', () => {
       const clip = { ...baseClip, speed: 1.0 } as TimelineClipItem;
       // head: source (2000) / 1.0 = 2000
       // tail: (10000 - (2000 + 3000)) = 5000 / 1.0 = 5000
-      expect(getClipHeadTimelineHandleUs(clip)).toBe(2000);
-      expect(getClipTailTimelineHandleUs(clip)).toBe(5000);
+      expect(getClipHeadTimelineHandleTicks(clip)).toBe(2000);
+      expect(getClipTailTimelineHandleTicks(clip)).toBe(5000);
     });
 
     it('double speed (2.0)', () => {
       const clip = { ...baseClip, speed: 2.0 } as TimelineClipItem;
       // head: source (2000) / 2.0 = 1000
       // tail: source (5000) / 2.0 = 2500
-      expect(getClipHeadTimelineHandleUs(clip)).toBe(1000);
-      expect(getClipTailTimelineHandleUs(clip)).toBe(2500);
+      expect(getClipHeadTimelineHandleTicks(clip)).toBe(1000);
+      expect(getClipTailTimelineHandleTicks(clip)).toBe(2500);
     });
 
     it('half speed (0.5)', () => {
       const clip = { ...baseClip, speed: 0.5 } as TimelineClipItem;
       // head: 2000 / 0.5 = 4000
       // tail: 5000 / 0.5 = 10000
-      expect(getClipHeadTimelineHandleUs(clip)).toBe(4000);
-      expect(getClipTailTimelineHandleUs(clip)).toBe(10000);
+      expect(getClipHeadTimelineHandleTicks(clip)).toBe(4000);
+      expect(getClipTailTimelineHandleTicks(clip)).toBe(10000);
     });
 
     it('reverse speed (-1.0)', () => {
@@ -52,60 +52,60 @@ describe('utils/timeline/clip', () => {
       // head on timeline corresponds to physical tail in source
       // head: sourceTail (5000) / 1.0 = 5000
       // tail: sourceHead (2000) / 1.0 = 2000
-      expect(getClipHeadTimelineHandleUs(clip)).toBe(5000);
-      expect(getClipTailTimelineHandleUs(clip)).toBe(2000);
+      expect(getClipHeadTimelineHandleTicks(clip)).toBe(5000);
+      expect(getClipTailTimelineHandleTicks(clip)).toBe(2000);
     });
 
     it('reverse speed (-2.0)', () => {
       const clip = { ...baseClip, speed: -2.0 } as TimelineClipItem;
       // head: sourceTail (5000) / 2.0 = 2500
       // tail: sourceHead (2000) / 2.0 = 1000
-      expect(getClipHeadTimelineHandleUs(clip)).toBe(2500);
-      expect(getClipTailTimelineHandleUs(clip)).toBe(1000);
+      expect(getClipHeadTimelineHandleTicks(clip)).toBe(2500);
+      expect(getClipTailTimelineHandleTicks(clip)).toBe(1000);
     });
 
     it('handles image clip (infinite handles)', () => {
       const clip = { ...baseClip, speed: 1.0, isImage: true } as TimelineClipItem;
-      expect(getClipHeadTimelineHandleUs(clip)).toBe(Number.POSITIVE_INFINITY);
-      expect(getClipTailTimelineHandleUs(clip)).toBe(Number.POSITIVE_INFINITY);
+      expect(getClipHeadTimelineHandleTicks(clip)).toBe(Number.POSITIVE_INFINITY);
+      expect(getClipTailTimelineHandleTicks(clip)).toBe(Number.POSITIVE_INFINITY);
     });
 
     it('handles speed 0 (safe fallback)', () => {
       const clip = { ...baseClip, speed: 0 } as TimelineClipItem;
-      expect(getClipHeadTimelineHandleUs(clip)).toBe(Number.POSITIVE_INFINITY);
-      expect(getClipTailTimelineHandleUs(clip)).toBe(Number.POSITIVE_INFINITY);
+      expect(getClipHeadTimelineHandleTicks(clip)).toBe(Number.POSITIVE_INFINITY);
+      expect(getClipTailTimelineHandleTicks(clip)).toBe(Number.POSITIVE_INFINITY);
     });
   });
 
-  describe('getClipMaxTimelineDurationUs', () => {
-    it('returns sourceDurationUs / absSpeed for media clips', () => {
-      const clip = { ...baseClip, speed: 1.0, sourceDurationUs: 10_000 } as TimelineClipItem;
-      expect(getClipMaxTimelineDurationUs(clip)).toBe(10_000);
+  describe('getClipMaxTimelineDurationTicks', () => {
+    it('returns sourceDurationTicks / absSpeed for media clips', () => {
+      const clip = { ...baseClip, speed: 1.0, sourceDurationTicks: 10_000 } as TimelineClipItem;
+      expect(getClipMaxTimelineDurationTicks(clip)).toBe(10_000);
     });
 
     it('scales by speed (2.0 -> half duration)', () => {
-      const clip = { ...baseClip, speed: 2.0, sourceDurationUs: 10_000 } as TimelineClipItem;
-      expect(getClipMaxTimelineDurationUs(clip)).toBe(5_000);
+      const clip = { ...baseClip, speed: 2.0, sourceDurationTicks: 10_000 } as TimelineClipItem;
+      expect(getClipMaxTimelineDurationTicks(clip)).toBe(5_000);
     });
 
     it('scales by abs speed for reverse (-2.0)', () => {
-      const clip = { ...baseClip, speed: -2.0, sourceDurationUs: 10_000 } as TimelineClipItem;
-      expect(getClipMaxTimelineDurationUs(clip)).toBe(5_000);
+      const clip = { ...baseClip, speed: -2.0, sourceDurationTicks: 10_000 } as TimelineClipItem;
+      expect(getClipMaxTimelineDurationTicks(clip)).toBe(5_000);
     });
 
-    it('returns Infinity for image clips even with sourceDurationUs', () => {
+    it('returns Infinity for image clips even with sourceDurationTicks', () => {
       const clip = {
         ...baseClip,
         speed: 1.0,
-        sourceDurationUs: 10_000,
+        sourceDurationTicks: 10_000,
         isImage: true,
       } as TimelineClipItem;
-      expect(getClipMaxTimelineDurationUs(clip)).toBe(Number.POSITIVE_INFINITY);
+      expect(getClipMaxTimelineDurationTicks(clip)).toBe(Number.POSITIVE_INFINITY);
     });
 
     it('returns Infinity for virtual clips (text/shape/background)', () => {
       const textClip = { ...baseClip, clipType: 'text', speed: 1.0 } as TimelineClipItem;
-      expect(getClipMaxTimelineDurationUs(textClip)).toBe(Number.POSITIVE_INFINITY);
+      expect(getClipMaxTimelineDurationTicks(textClip)).toBe(Number.POSITIVE_INFINITY);
     });
 
     it('returns Infinity for timeline clip type', () => {
@@ -113,21 +113,21 @@ describe('utils/timeline/clip', () => {
         ...baseClip,
         clipType: 'timeline',
         speed: 1.0,
-        sourceDurationUs: 8_000,
+        sourceDurationTicks: 8_000,
       } as TimelineClipItem;
-      expect(getClipMaxTimelineDurationUs(timelineClip)).toBe(8_000);
+      expect(getClipMaxTimelineDurationTicks(timelineClip)).toBe(8_000);
     });
 
-    it('returns Infinity when sourceDurationUs is missing/invalid', () => {
+    it('returns Infinity when sourceDurationTicks is missing/invalid', () => {
       const noDuration = {
         ...baseClip,
         speed: 1.0,
-        sourceDurationUs: undefined,
+        sourceDurationTicks: undefined,
       } as TimelineClipItem;
-      expect(getClipMaxTimelineDurationUs(noDuration)).toBe(Number.POSITIVE_INFINITY);
+      expect(getClipMaxTimelineDurationTicks(noDuration)).toBe(Number.POSITIVE_INFINITY);
 
-      const zeroDuration = { ...baseClip, speed: 1.0, sourceDurationUs: 0 } as TimelineClipItem;
-      expect(getClipMaxTimelineDurationUs(zeroDuration)).toBe(Number.POSITIVE_INFINITY);
+      const zeroDuration = { ...baseClip, speed: 1.0, sourceDurationTicks: 0 } as TimelineClipItem;
+      expect(getClipMaxTimelineDurationTicks(zeroDuration)).toBe(Number.POSITIVE_INFINITY);
     });
   });
 });

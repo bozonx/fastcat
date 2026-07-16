@@ -2,7 +2,7 @@ import { ref } from 'vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useClipPropertiesActions } from '~/composables/properties/useClipPropertiesActions';
-import { timelineUs } from '../../utils/timeline-time';
+import { timelineTicks } from '../../utils/timeline-time';
 
 // useAppClipboard wraps a pinia store; stub it so the composable is exercised in
 // isolation without standing up the real clipboard store.
@@ -24,7 +24,7 @@ function makeClip(overrides: AnyClip = {}): any {
     kind: 'clip',
     clipType: 'media',
     name: 'Clip 1',
-    timelineRange: { startUs: 0, durationUs: timelineUs(5_000_000) },
+    timelineRange: { startTicks: 0, durationTicks: timelineTicks(5_000_000) },
     source: { path: '/media/video.mp4' },
     ...overrides,
   };
@@ -112,7 +112,7 @@ describe('useClipPropertiesActions', () => {
 
     it('is true when start/duration are not frame-aligned', () => {
       const clip = makeClip({
-        timelineRange: { startUs: timelineUs(1234), durationUs: timelineUs(5_000_001) },
+        timelineRange: { startTicks: timelineTicks(1234), durationTicks: timelineTicks(5_000_001) },
       });
       const { actions } = build({ clip });
       expect(actions.isFreePosition.value).toBe(true);
@@ -154,19 +154,19 @@ describe('useClipPropertiesActions', () => {
 
   describe('handleFreezeFrame', () => {
     it('stores the clamped playhead offset relative to the clip start', () => {
-      const clip = makeClip({ timelineRange: { startUs: 1_000_000, durationUs: 4_000_000 } });
+      const clip = makeClip({ timelineRange: { startTicks: 1_000_000, durationTicks: 4_000_000 } });
       const timelineStore = makeTimelineStore({ currentTime: 2_500_000 });
       const { actions } = build({ clip, timelineStore });
 
       actions.handleFreezeFrame();
 
       expect(timelineStore.updateClipProperties).toHaveBeenCalledWith('v1', 'clip1', {
-        freezeFrameSourceUs: 1_500_000,
+        freezeFrameSourceTicks: 1_500_000,
       });
     });
 
     it('does not store freeze frame if playhead is outside the clip range', () => {
-      const clip = makeClip({ timelineRange: { startUs: 0, durationUs: 1_000_000 } });
+      const clip = makeClip({ timelineRange: { startTicks: 0, durationTicks: 1_000_000 } });
       const timelineStore = makeTimelineStore({ currentTime: 9_000_000 });
       const { actions } = build({ clip, timelineStore });
 
@@ -208,7 +208,7 @@ describe('useClipPropertiesActions', () => {
       actions.handlePaste();
 
       expect(timelineStore.pasteClips).toHaveBeenCalledWith([{ id: 'x' }], {
-        insertStartUs: 7_000_000,
+        insertStartTicks: 7_000_000,
       });
       expect(clipboardState.setClipboardPayload).toHaveBeenCalledWith(null);
     });
@@ -300,7 +300,7 @@ describe('useClipPropertiesActions', () => {
   });
 
   it('disables speed and reverse actions when freeze frame is active', () => {
-    const clip = makeClip({ freezeFrameSourceUs: 500_000 });
+    const clip = makeClip({ freezeFrameSourceTicks: 500_000 });
     const { actions } = build({ clip });
     const speedAction = actions.otherActionsList.value.find((a) => a.id === 'speed');
     const reverseAction = actions.otherActionsList.value.find((a) => a.id === 'reverse-speed');
@@ -310,7 +310,7 @@ describe('useClipPropertiesActions', () => {
   });
 
   it('disables freezeFrame action when playhead is outside the clip', () => {
-    const clip = makeClip({ timelineRange: { startUs: 1_000_000, durationUs: 2_000_000 } });
+    const clip = makeClip({ timelineRange: { startTicks: 1_000_000, durationTicks: 2_000_000 } });
     const timelineStore = makeTimelineStore({ currentTime: 500_000 });
     const { actions } = build({ clip, timelineStore });
 

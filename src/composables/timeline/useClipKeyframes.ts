@@ -10,8 +10,8 @@ import {
   effectParamPath,
   evalTrackAt,
   hasKeyframes,
-  resolveClipAnimationTimeUs,
-  resolveKeyframeTimelineTimeUs,
+  resolveClipAnimationTimeTicks,
+  resolveKeyframeTimelineTimeTicks,
 } from '~/timeline/animation/evaluate';
 import {
   addKeyframeMoment,
@@ -31,14 +31,14 @@ import {
 export interface UseClipKeyframesOptions {
   clip: Ref<TimelineClipItem>;
   /** Timeline-absolute playhead time (ticks); converted to clip-local internally. */
-  playheadUs: Ref<number>;
+  playheadTicks: Ref<number>;
   updateAnimations: (next: ClipAnimations | undefined) => void;
   /**
    * Move the timeline playhead (absolute ticks). Wired by the caller to the
    * timeline store; enables keyframe navigation (jump to prev/next keyframe).
    * Optional — navigation is a no-op when absent.
    */
-  seek?: (timelineUs: number) => void;
+  seek?: (timelineTicks: number) => void;
 }
 
 /**
@@ -48,13 +48,13 @@ export interface UseClipKeyframesOptions {
  * `updateAnimations` (the caller wires this to `updateClipProperties`).
  */
 export function useClipKeyframes(options: UseClipKeyframesOptions) {
-  const localPlayheadUs = computed(() => {
+  const localPlayheadTicks = computed(() => {
     const clip = options.clip.value;
-    return resolveClipAnimationTimeUs({
-      timelineTimeUs: options.playheadUs.value,
-      timelineStartUs: clip.timelineRange.startUs,
-      sourceStartUs: clip.sourceRange.startUs,
-      sourceRangeDurationUs: clip.sourceRange.durationUs,
+    return resolveClipAnimationTimeTicks({
+      timelineTimeTicks: options.playheadTicks.value,
+      timelineStartTicks: clip.timelineRange.startTicks,
+      sourceStartTicks: clip.sourceRange.startTicks,
+      sourceRangeDurationTicks: clip.sourceRange.durationTicks,
       speed: clip.speed,
     });
   });
@@ -79,7 +79,7 @@ export function useClipKeyframes(options: UseClipKeyframesOptions) {
       }
     } else {
       for (const path of paths) {
-        next = upsertKeyframe(next, path, localPlayheadUs.value, getStaticParamValue(clip, path));
+        next = upsertKeyframe(next, path, localPlayheadTicks.value, getStaticParamValue(clip, path));
       }
     }
     options.updateAnimations(next);
@@ -94,7 +94,7 @@ export function useClipKeyframes(options: UseClipKeyframesOptions) {
   function recordValue(path: AnimatableParamPath, value: number): boolean {
     if (!isAnimated(path)) return false;
     options.updateAnimations(
-      upsertKeyframe(options.clip.value.animations, path, localPlayheadUs.value, value),
+      upsertKeyframe(options.clip.value.animations, path, localPlayheadTicks.value, value),
     );
     return true;
   }
@@ -108,7 +108,7 @@ export function useClipKeyframes(options: UseClipKeyframesOptions) {
   function currentValue(path: AnimatableParamPath, staticValue: number): number {
     const track = options.clip.value.animations?.[path];
     if (!hasKeyframes(track)) return staticValue;
-    return evalTrackAt(track, localPlayheadUs.value) ?? staticValue;
+    return evalTrackAt(track, localPlayheadTicks.value) ?? staticValue;
   }
 
   const keyframeTimes = computed(() => collectKeyframeTimes(options.clip.value.animations));
@@ -117,13 +117,13 @@ export function useClipKeyframes(options: UseClipKeyframesOptions) {
   const keyframeTimelineTimes = computed(() => {
     const clip = options.clip.value;
     return keyframeTimes.value
-      .map((sourceTimeUs) =>
-        resolveKeyframeTimelineTimeUs({
-          timelineStartUs: clip.timelineRange.startUs,
-          sourceStartUs: clip.sourceRange.startUs,
-          sourceRangeDurationUs: clip.sourceRange.durationUs,
+      .map((sourceTimeTicks) =>
+        resolveKeyframeTimelineTimeTicks({
+          timelineStartTicks: clip.timelineRange.startTicks,
+          sourceStartTicks: clip.sourceRange.startTicks,
+          sourceRangeDurationTicks: clip.sourceRange.durationTicks,
           speed: clip.speed,
-          sourceTimeUs,
+          sourceTimeTicks,
         }),
       )
       .sort((a, b) => a - b);
@@ -131,19 +131,19 @@ export function useClipKeyframes(options: UseClipKeyframesOptions) {
 
   /** True when the playhead sits exactly on a keyframe of some animated param. */
   const isOnKeyframe = computed(() =>
-    hasKeyframeMomentAt(options.clip.value.animations, localPlayheadUs.value),
+    hasKeyframeMomentAt(options.clip.value.animations, localPlayheadTicks.value),
   );
 
   /** Add a keyframe on every animated param at the current playhead. */
   function addKeyframeAtPlayhead() {
     options.updateAnimations(
-      addKeyframeMoment(options.clip.value.animations, localPlayheadUs.value),
+      addKeyframeMoment(options.clip.value.animations, localPlayheadTicks.value),
     );
   }
 
   /** Add a keyframe moment at an explicit clip-local (source-relative) time. */
-  function addKeyframeAtLocal(localTUs: number) {
-    options.updateAnimations(addKeyframeMoment(options.clip.value.animations, localTUs));
+  function addKeyframeAtLocal(localTTicks: number) {
+    options.updateAnimations(addKeyframeMoment(options.clip.value.animations, localTTicks));
   }
 
   /**
@@ -152,29 +152,29 @@ export function useClipKeyframes(options: UseClipKeyframesOptions) {
    */
   function toggleKeyframeAtPlayhead() {
     if (isOnKeyframe.value) {
-      deleteKeyframeMomentAt(localPlayheadUs.value);
+      deleteKeyframeMomentAt(localPlayheadTicks.value);
     } else {
       addKeyframeAtPlayhead();
     }
   }
 
-  function seekToTimeline(timelineUs: number) {
+  function seekToTimeline(timelineTicks: number) {
     const clip = options.clip.value;
-    const start = clip.timelineRange.startUs;
-    const end = start + clip.timelineRange.durationUs;
-    options.seek?.(Math.max(start, Math.min(end, Math.round(timelineUs))));
+    const start = clip.timelineRange.startTicks;
+    const end = start + clip.timelineRange.durationTicks;
+    options.seek?.(Math.max(start, Math.min(end, Math.round(timelineTicks))));
   }
 
   /** Seek the playhead to the nearest keyframe strictly before it. */
   function seekPrevKeyframe() {
-    const now = options.playheadUs.value;
+    const now = options.playheadTicks.value;
     const prev = keyframeTimelineTimes.value.filter((t) => t < now - 1).pop();
     if (prev !== undefined) seekToTimeline(prev);
   }
 
   /** Seek the playhead to the nearest keyframe strictly after it. */
   function seekNextKeyframe() {
-    const now = options.playheadUs.value;
+    const now = options.playheadTicks.value;
     const next = keyframeTimelineTimes.value.find((t) => t > now + 1);
     if (next !== undefined) seekToTimeline(next);
   }
@@ -192,7 +192,7 @@ export function useClipKeyframes(options: UseClipKeyframesOptions) {
       options.updateAnimations(clearParamAnimation(clip.animations, path));
     } else {
       options.updateAnimations(
-        upsertKeyframe(clip.animations, path, localPlayheadUs.value, seedValue),
+        upsertKeyframe(clip.animations, path, localPlayheadTicks.value, seedValue),
       );
     }
   }
@@ -218,30 +218,30 @@ export function useClipKeyframes(options: UseClipKeyframesOptions) {
 
   /** Capture the keyframe moment at the playhead for the clipboard (or null). */
   function copyMomentAtPlayhead(): KeyframeMomentClipboard | null {
-    return extractKeyframeMoment(options.clip.value.animations, localPlayheadUs.value);
+    return extractKeyframeMoment(options.clip.value.animations, localPlayheadTicks.value);
   }
 
   /** Paste a copied keyframe moment at the current playhead. */
   function pasteMomentAtPlayhead(moment: KeyframeMomentClipboard) {
     options.updateAnimations(
-      applyKeyframeMoment(options.clip.value.animations, moment, localPlayheadUs.value),
+      applyKeyframeMoment(options.clip.value.animations, moment, localPlayheadTicks.value),
     );
   }
 
-  function moveKeyframeMomentAt(fromTUs: number, toTUs: number) {
-    options.updateAnimations(moveKeyframeMoment(options.clip.value.animations, fromTUs, toTUs));
+  function moveKeyframeMomentAt(fromTTicks: number, toTTicks: number) {
+    options.updateAnimations(moveKeyframeMoment(options.clip.value.animations, fromTTicks, toTTicks));
   }
 
-  function deleteKeyframeMomentAt(tUs: number) {
-    options.updateAnimations(removeKeyframeMoment(options.clip.value.animations, tUs));
+  function deleteKeyframeMomentAt(tTicks: number) {
+    options.updateAnimations(removeKeyframeMoment(options.clip.value.animations, tTicks));
   }
 
-  function setKeyframeMomentEasingAt(tUs: number, easing: KeyframeEasing) {
-    options.updateAnimations(setKeyframeMomentEasing(options.clip.value.animations, tUs, easing));
+  function setKeyframeMomentEasingAt(tTicks: number, easing: KeyframeEasing) {
+    options.updateAnimations(setKeyframeMomentEasing(options.clip.value.animations, tTicks, easing));
   }
 
   return {
-    localPlayheadUs,
+    localPlayheadTicks,
     isAnimated,
     toggleAnimated,
     recordValue,

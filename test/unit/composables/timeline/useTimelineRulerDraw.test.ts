@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { defineComponent, h, ref } from 'vue';
 import { mount } from '@vue/test-utils';
 import { useTimelineRulerDraw } from '~/composables/timeline/useTimelineRulerDraw';
-import { frameToUs } from '~/timeline/commands/utils';
+import { frameToTicks } from '~/timeline/commands/utils';
 import { timeUsToPx } from '~/utils/timeline/geometry';
 
 vi.mock('@vueuse/core', () => ({
@@ -133,8 +133,8 @@ describe('useTimelineRulerDraw', () => {
     const fps = 29.97;
     const zoom = 50;
     const frameAtTenMinutesTimecode = 18_000;
-    const tickUs = frameToUs(frameAtTenMinutesTimecode, fps);
-    const tickAbsPx = timeUsToPx(tickUs, zoom);
+    const tickTicks = frameToTicks(frameAtTenMinutesTimecode, fps);
+    const tickAbsPx = timeUsToPx(tickTicks, zoom);
     const scrollLeft = tickAbsPx - 100;
 
     const TestComponent = defineComponent({

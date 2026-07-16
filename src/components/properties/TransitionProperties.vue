@@ -8,8 +8,8 @@ import type { TimelineClipItem, TimelineTrack } from '~/timeline/types';
 import {
   getPrevClipForItem,
   getNextClipForItem,
-  getClipTailTimelineHandleUs,
-  getClipHeadTimelineHandleUs,
+  getClipTailTimelineHandleTicks,
+  getClipHeadTimelineHandleTicks,
 } from '~/utils/timeline/clip';
 
 const props = defineProps<{
@@ -34,13 +34,13 @@ const transitionValue = computed(() => {
 
 const maxDurationSec = computed(() => {
   if (!props.clip) return 3;
-  const clipDurationUs = props.clip.timelineRange?.durationUs ?? 0;
-  const oppositeTransitionUs =
+  const clipDurationTicks = props.clip.timelineRange?.durationTicks ?? 0;
+  const oppositeTransitionTicks =
     props.transitionSelection.edge === 'in'
-      ? (props.clip.transitionOut?.durationUs ?? 0)
-      : (props.clip.transitionIn?.durationUs ?? 0);
+      ? (props.clip.transitionOut?.durationTicks ?? 0)
+      : (props.clip.transitionIn?.durationTicks ?? 0);
 
-  let maxUs = clipDurationUs - oppositeTransitionUs;
+  let maxTicks = clipDurationTicks - oppositeTransitionTicks;
 
   const edge = props.transitionSelection.edge;
   const transition = edge === 'in' ? props.clip.transitionIn : props.clip.transitionOut;
@@ -53,29 +53,29 @@ const maxDurationSec = computed(() => {
         : getNextClipForItem(props.track, props.clip);
 
     if (adjacent) {
-      const clipEdgeUs =
+      const clipEdgeTicks =
         edge === 'in'
-          ? props.clip.timelineRange.startUs
-          : props.clip.timelineRange.startUs + props.clip.timelineRange.durationUs;
-      const adjacentEdgeUs =
+          ? props.clip.timelineRange.startTicks
+          : props.clip.timelineRange.startTicks + props.clip.timelineRange.durationTicks;
+      const adjacentEdgeTicks =
         edge === 'in'
-          ? adjacent.timelineRange.startUs + adjacent.timelineRange.durationUs
-          : adjacent.timelineRange.startUs;
+          ? adjacent.timelineRange.startTicks + adjacent.timelineRange.durationTicks
+          : adjacent.timelineRange.startTicks;
 
-      if (Math.abs(clipEdgeUs - adjacentEdgeUs) <= 1_000) {
-        const handleUs =
+      if (Math.abs(clipEdgeTicks - adjacentEdgeTicks) <= 1_000) {
+        const handleTicks =
           edge === 'in'
-            ? getClipTailTimelineHandleUs(adjacent)
-            : getClipHeadTimelineHandleUs(adjacent);
+            ? getClipTailTimelineHandleTicks(adjacent)
+            : getClipHeadTimelineHandleTicks(adjacent);
 
-        if (Number.isFinite(handleUs)) {
-          maxUs = Math.min(maxUs, handleUs);
+        if (Number.isFinite(handleTicks)) {
+          maxTicks = Math.min(maxTicks, handleTicks);
         }
       }
     }
   }
 
-  return Math.max(0.1, maxUs / TICKS_PER_SECOND);
+  return Math.max(0.1, maxTicks / TICKS_PER_SECOND);
 });
 
 function handleTransitionUpdate(payload: {

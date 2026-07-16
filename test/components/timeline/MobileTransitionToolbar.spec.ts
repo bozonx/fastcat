@@ -12,7 +12,7 @@ const updateClipTransitionMock = vi.fn();
 const clipItem = {
   id: 'clip-1',
   kind: 'clip',
-  timelineRange: { durationUs: 2_000_000 },
+  timelineRange: { durationTicks: 2_000_000 },
   transitionIn: null,
   transitionOut: null,
 } as any;
@@ -41,7 +41,7 @@ const mockSelectionStore = reactive({
 
 const mockWorkspaceStore = reactive({
   userSettings: {
-    timeline: { defaultTransitionDurationUs: 1_000_000 },
+    timeline: { defaultTransitionDurationTicks: 1_000_000 },
   },
 });
 

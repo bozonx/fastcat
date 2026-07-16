@@ -32,12 +32,12 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
 
   const isMediaVideoClip =
     track.kind === 'video' && clipItem.clipType === 'media' && !clipItem.isImage;
-  const hasFreezeFrame = typeof clipItem.freezeFrameSourceUs === 'number';
+  const hasFreezeFrame = typeof clipItem.freezeFrameSourceTicks === 'number';
 
-  const playheadUs = options.currentTime.value;
-  const clipStartUs = clipItem.timelineRange.startUs;
-  const clipEndUs = clipStartUs + clipItem.timelineRange.durationUs;
-  const playheadOnClip = playheadUs >= clipStartUs && playheadUs < clipEndUs;
+  const playheadTicks = options.currentTime.value;
+  const clipStartTicks = clipItem.timelineRange.startTicks;
+  const clipEndTicks = clipStartTicks + clipItem.timelineRange.durationTicks;
+  const playheadOnClip = playheadTicks >= clipStartTicks && playheadTicks < clipEndTicks;
 
   // 1. speedGroup (Speed, Reverse, Freeze clip)
   const currentSpeed = clipItem.speed ?? 1;

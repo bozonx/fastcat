@@ -11,7 +11,7 @@ const mockTimelineStore = {
   markers: [],
   selectionRange: null,
   timelineDoc: { tracks: [] },
-  setCurrentTimeUs: vi.fn(),
+  setCurrentTimeTicks: vi.fn(),
   selectTimelineProperties: vi.fn(),
 };
 

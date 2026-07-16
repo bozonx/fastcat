@@ -28,7 +28,7 @@ interface UseClipDropOptions {
   selectTimelineItem: (trackId: string, itemId: string, kind: 'clip') => void;
   selectTimelineTransition: (trackId: string, itemId: string, edge: 'in' | 'out') => void;
   triggerScrollToEffects: () => void;
-  defaultTransitionDurationUs: Ref<number>;
+  defaultTransitionDurationTicks: Ref<number>;
 }
 
 export function useClipDrop(options: UseClipDropOptions) {
@@ -147,16 +147,16 @@ export function useClipDrop(options: UseClipDropOptions) {
     const edge: 'in' | 'out' =
       rect && ctx.pointer.clientX - rect.left <= rect.width / 2 ? 'in' : 'out';
 
-    const defaultUs = Math.max(
+    const defaultTicks = Math.max(
       0,
-      Math.round(Number(options.defaultTransitionDurationUs.value ?? TICKS_PER_SECOND)),
+      Math.round(Number(options.defaultTransitionDurationTicks.value ?? TICKS_PER_SECOND)),
     );
-    const durationUs = Math.min(defaultUs, Math.round(clip.timelineRange.durationUs * 0.3));
+    const durationTicks = Math.min(defaultTicks, Math.round(clip.timelineRange.durationTicks * 0.3));
 
     const appliedTransition = resolveAppliedTransitionPreset(transitionType);
     const transition = {
       type: appliedTransition.type,
-      durationUs,
+      durationTicks,
       mode: DEFAULT_TRANSITION_MODE,
       curve: DEFAULT_TRANSITION_CURVE,
       params: (appliedTransition.params ?? normalizeTransitionParams(appliedTransition.type)) as

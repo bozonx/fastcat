@@ -1,6 +1,6 @@
 /** @vitest-environment node */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { timelineUs } from '../utils/timeline-time';
+import { timelineTicks } from '../utils/timeline-time';
 import { createTimelineCommandService } from '~/timeline/application/timelineCommandService';
 
 describe('TimelineCommandService', () => {
@@ -57,10 +57,10 @@ describe('TimelineCommandService', () => {
       updateProjectFormat: vi.fn(),
       showAutoSettingsApplied: vi.fn(),
       mediaCache: { hasProxy: vi.fn(() => false), ensureProxy: vi.fn() },
-      defaultImageDurationUs: timelineUs(5_000_000),
-      defaultImageSourceDurationUs: timelineUs(5_000_000),
+      defaultImageDurationTicks: timelineTicks(5_000_000),
+      defaultImageSourceDurationTicks: timelineTicks(5_000_000),
       parseTimelineFromOtio: vi.fn(),
-      selectTimelineDurationUs: vi.fn(() => timelineUs(10_000_000)),
+      selectTimelineDurationTicks: vi.fn(() => timelineTicks(10_000_000)),
     };
 
     service = createTimelineCommandService(deps);
@@ -85,7 +85,7 @@ describe('TimelineCommandService', () => {
         expect.objectContaining({
           type: 'add_clip_to_track',
           path: 'video/test.mp4',
-          durationUs: timelineUs(10_000_000),
+          durationTicks: timelineTicks(10_000_000),
         }),
         undefined,
       );
@@ -493,8 +493,8 @@ describe('TimelineCommandService', () => {
                 trackId: 'v1',
                 name: 'Root',
                 source: { path: './root.otio' },
-                timelineRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
-                sourceRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
+                timelineRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
+                sourceRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
               },
             ],
           },

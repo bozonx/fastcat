@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ref } from 'vue';
 import { createTimelineDispatcherModule } from '~/stores/timeline/dispatcher';
 import { applyTimelineCommand } from '~/timeline/commands';
-import { selectTimelineDurationUs } from '~/timeline/selectors';
+import { selectTimelineDurationTicks } from '~/timeline/selectors';
 
 vi.mock('~/timeline/commands', () => ({
   applyTimelineCommand: vi.fn((doc, cmd) => ({
@@ -13,7 +13,7 @@ vi.mock('~/timeline/commands', () => ({
 }));
 
 vi.mock('~/timeline/selectors', () => ({
-  selectTimelineDurationUs: vi.fn(() => 5_000_000),
+  selectTimelineDurationTicks: vi.fn(() => 5_000_000),
 }));
 
 const fallbackDoc = { id: 'doc-1', tracks: [{ id: 't1', items: [] }] };
@@ -137,7 +137,7 @@ describe('TimelineDispatcherModule', () => {
     const snap = {
       id: 'snap',
       tracks: [],
-      metadata: { fastcat: { selectionRange: { startUs: 1000, endUs: 2000 } } },
+      metadata: { fastcat: { selectionRange: { startTicks: 1000, endTicks: 2000 } } },
     };
     const mod = createTimelineDispatcherModule({
       ...deps,

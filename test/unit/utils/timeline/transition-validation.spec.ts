@@ -4,7 +4,7 @@ import {
   validateTransitionOut,
 } from '~/utils/timeline/transition-validation';
 import type { TimelineTrack, TimelineMediaClipItem } from '~/timeline/types';
-import { timelineUs } from '../timeline-time';
+import { timelineTicks } from '../timeline-time';
 
 function createTrack(items: TimelineMediaClipItem[]): TimelineTrack {
   return {
@@ -22,9 +22,9 @@ function createClip(overrides: Partial<TimelineMediaClipItem> = {}): TimelineMed
     id: 'clip-1',
     trackId: 'track-1',
     name: 'Clip',
-    timelineRange: { startUs: 0, durationUs: 10_000_000 },
-    sourceRange: { startUs: 0, durationUs: 5_000_000 },
-    sourceDurationUs: 10_000_000,
+    timelineRange: { startTicks: 0, durationTicks: 10_000_000 },
+    sourceRange: { startTicks: 0, durationTicks: 5_000_000 },
+    sourceDurationTicks: 10_000_000,
     source: { path: 'test.mp4' },
     speed: 1,
     isImage: false,
@@ -34,21 +34,21 @@ function createClip(overrides: Partial<TimelineMediaClipItem> = {}): TimelineMed
   return {
     ...clip,
     timelineRange: {
-      startUs: timelineUs(clip.timelineRange.startUs),
-      durationUs: timelineUs(clip.timelineRange.durationUs),
+      startTicks: timelineTicks(clip.timelineRange.startTicks),
+      durationTicks: timelineTicks(clip.timelineRange.durationTicks),
     },
     sourceRange: {
-      startUs: timelineUs(clip.sourceRange.startUs),
-      durationUs: timelineUs(clip.sourceRange.durationUs),
+      startTicks: timelineTicks(clip.sourceRange.startTicks),
+      durationTicks: timelineTicks(clip.sourceRange.durationTicks),
     },
-    sourceDurationUs: timelineUs(clip.sourceDurationUs ?? 0),
+    sourceDurationTicks: timelineTicks(clip.sourceDurationTicks ?? 0),
     transitionIn: clip.transitionIn && {
       ...clip.transitionIn,
-      durationUs: timelineUs(clip.transitionIn.durationUs),
+      durationTicks: timelineTicks(clip.transitionIn.durationTicks),
     },
     transitionOut: clip.transitionOut && {
       ...clip.transitionOut,
-      durationUs: timelineUs(clip.transitionOut.durationUs),
+      durationTicks: timelineTicks(clip.transitionOut.durationTicks),
     },
   } as TimelineMediaClipItem;
 }
@@ -61,21 +61,21 @@ describe('transition-validation', () => {
     });
 
     it('returns null for background mode', () => {
-      const clip = createClip({ transitionIn: { durationUs: 2_000_000, mode: 'background' } });
+      const clip = createClip({ transitionIn: { durationTicks: 2_000_000, mode: 'background' } });
       const track = createTrack([clip]);
       expect(validateTransitionIn(track, track.items[0] as TimelineMediaClipItem)).toBeNull();
     });
 
     it('returns null for transparent mode', () => {
-      const clip = createClip({ transitionIn: { durationUs: 2_000_000, mode: 'transparent' } });
+      const clip = createClip({ transitionIn: { durationTicks: 2_000_000, mode: 'transparent' } });
       const track = createTrack([clip]);
       expect(validateTransitionIn(track, track.items[0] as TimelineMediaClipItem)).toBeNull();
     });
 
     it('returns error when clip is shorter than transition duration', () => {
       const clip = createClip({
-        timelineRange: { startUs: 0, durationUs: 1_000_000 },
-        transitionIn: { durationUs: 2_000_000, mode: 'adjacent' },
+        timelineRange: { startTicks: 0, durationTicks: 1_000_000 },
+        transitionIn: { durationTicks: 2_000_000, mode: 'adjacent' },
       });
       const track = createTrack([clip]);
       const result = validateTransitionIn(track, track.items[0] as TimelineMediaClipItem);
@@ -88,7 +88,7 @@ describe('transition-validation', () => {
     });
 
     it('returns error when there is no previous clip in adjacent mode', () => {
-      const clip = createClip({ transitionIn: { durationUs: 1_000_000, mode: 'adjacent' } });
+      const clip = createClip({ transitionIn: { durationTicks: 1_000_000, mode: 'adjacent' } });
       const track = createTrack([clip]);
       const result = validateTransitionIn(track, track.items[0] as TimelineMediaClipItem);
       expect(result).not.toBeNull();
@@ -98,12 +98,12 @@ describe('transition-validation', () => {
     it('returns error when gap between clips is too large', () => {
       const prev = createClip({
         id: 'prev',
-        timelineRange: { startUs: 0, durationUs: 1_000_000 },
+        timelineRange: { startTicks: 0, durationTicks: 1_000_000 },
       });
       const curr = createClip({
         id: 'curr',
-        timelineRange: { startUs: 3_000_000, durationUs: 10_000_000 },
-        transitionIn: { durationUs: 1_000_000, mode: 'adjacent' },
+        timelineRange: { startTicks: 3_000_000, durationTicks: 10_000_000 },
+        transitionIn: { durationTicks: 1_000_000, mode: 'adjacent' },
       });
       const track = createTrack([prev, curr]);
       const result = validateTransitionIn(track, track.items[1] as TimelineMediaClipItem);
@@ -113,13 +113,13 @@ describe('transition-validation', () => {
     });
 
     it('rejects an adjacent transition when clips are separated by one tick', () => {
-      const prev = createClip({ id: 'prev', timelineRange: { startUs: 0, durationUs: 1_000_000 } });
+      const prev = createClip({ id: 'prev', timelineRange: { startTicks: 0, durationTicks: 1_000_000 } });
       const curr = createClip({
         id: 'curr',
-        timelineRange: { startUs: 1_000_000, durationUs: 10_000_000 },
-        transitionIn: { durationUs: 1_000_000, mode: 'adjacent' },
+        timelineRange: { startTicks: 1_000_000, durationTicks: 10_000_000 },
+        transitionIn: { durationTicks: 1_000_000, mode: 'adjacent' },
       });
-      curr.timelineRange.startUs += 1;
+      curr.timelineRange.startTicks += 1;
 
       const result = validateTransitionIn(createTrack([prev, curr]), curr);
       expect(result?.key).toBe('fastcat.timeline.transition.errorGapBetweenClips');
@@ -128,14 +128,14 @@ describe('transition-validation', () => {
     it('returns error when previous clip handle is too short', () => {
       const prev = createClip({
         id: 'prev',
-        timelineRange: { startUs: 0, durationUs: 5_000_000 },
-        sourceDurationUs: 6_000_000,
-        sourceRange: { startUs: 0, durationUs: 5_000_000 },
+        timelineRange: { startTicks: 0, durationTicks: 5_000_000 },
+        sourceDurationTicks: 6_000_000,
+        sourceRange: { startTicks: 0, durationTicks: 5_000_000 },
       });
       const curr = createClip({
         id: 'curr',
-        timelineRange: { startUs: 5_000_000, durationUs: 10_000_000 },
-        transitionIn: { durationUs: 2_000_000, mode: 'adjacent' },
+        timelineRange: { startTicks: 5_000_000, durationTicks: 10_000_000 },
+        transitionIn: { durationTicks: 2_000_000, mode: 'adjacent' },
       });
       const track = createTrack([prev, curr]);
       const result = validateTransitionIn(track, track.items[1] as TimelineMediaClipItem);
@@ -146,14 +146,14 @@ describe('transition-validation', () => {
     it('returns null for valid adjacent transition', () => {
       const prev = createClip({
         id: 'prev',
-        timelineRange: { startUs: 0, durationUs: 5_000_000 },
-        sourceDurationUs: 10_000_000,
-        sourceRange: { startUs: 0, durationUs: 5_000_000 },
+        timelineRange: { startTicks: 0, durationTicks: 5_000_000 },
+        sourceDurationTicks: 10_000_000,
+        sourceRange: { startTicks: 0, durationTicks: 5_000_000 },
       });
       const curr = createClip({
         id: 'curr',
-        timelineRange: { startUs: 5_000_000, durationUs: 10_000_000 },
-        transitionIn: { durationUs: 1_000_000, mode: 'adjacent' },
+        timelineRange: { startTicks: 5_000_000, durationTicks: 10_000_000 },
+        transitionIn: { durationTicks: 1_000_000, mode: 'adjacent' },
       });
       const track = createTrack([prev, curr]);
       expect(validateTransitionIn(track, track.items[1] as TimelineMediaClipItem)).toBeNull();
@@ -167,21 +167,21 @@ describe('transition-validation', () => {
     });
 
     it('returns null for background mode', () => {
-      const clip = createClip({ transitionOut: { durationUs: 2_000_000, mode: 'background' } });
+      const clip = createClip({ transitionOut: { durationTicks: 2_000_000, mode: 'background' } });
       const track = createTrack([clip]);
       expect(validateTransitionOut(track, track.items[0] as TimelineMediaClipItem)).toBeNull();
     });
 
     it('returns null for transparent mode', () => {
-      const clip = createClip({ transitionOut: { durationUs: 2_000_000, mode: 'transparent' } });
+      const clip = createClip({ transitionOut: { durationTicks: 2_000_000, mode: 'transparent' } });
       const track = createTrack([clip]);
       expect(validateTransitionOut(track, track.items[0] as TimelineMediaClipItem)).toBeNull();
     });
 
     it('returns error when clip is shorter than transition duration', () => {
       const clip = createClip({
-        timelineRange: { startUs: 0, durationUs: 1_000_000 },
-        transitionOut: { durationUs: 2_000_000, mode: 'adjacent' },
+        timelineRange: { startTicks: 0, durationTicks: 1_000_000 },
+        transitionOut: { durationTicks: 2_000_000, mode: 'adjacent' },
       });
       const track = createTrack([clip]);
       const result = validateTransitionOut(track, track.items[0] as TimelineMediaClipItem);
@@ -194,7 +194,7 @@ describe('transition-validation', () => {
     });
 
     it('returns error when there is no next clip in adjacent mode', () => {
-      const clip = createClip({ transitionOut: { durationUs: 1_000_000, mode: 'adjacent' } });
+      const clip = createClip({ transitionOut: { durationTicks: 1_000_000, mode: 'adjacent' } });
       const track = createTrack([clip]);
       const result = validateTransitionOut(track, track.items[0] as TimelineMediaClipItem);
       expect(result).not.toBeNull();
@@ -204,12 +204,12 @@ describe('transition-validation', () => {
     it('returns error when gap between clips is too large', () => {
       const curr = createClip({
         id: 'curr',
-        timelineRange: { startUs: 0, durationUs: 10_000_000 },
-        transitionOut: { durationUs: 1_000_000, mode: 'adjacent' },
+        timelineRange: { startTicks: 0, durationTicks: 10_000_000 },
+        transitionOut: { durationTicks: 1_000_000, mode: 'adjacent' },
       });
       const next = createClip({
         id: 'next',
-        timelineRange: { startUs: 13_000_000, durationUs: 5_000_000 },
+        timelineRange: { startTicks: 13_000_000, durationTicks: 5_000_000 },
       });
       const track = createTrack([curr, next]);
       const result = validateTransitionOut(track, track.items[0] as TimelineMediaClipItem);
@@ -221,14 +221,14 @@ describe('transition-validation', () => {
     it('returns error when next clip handle is too short', () => {
       const curr = createClip({
         id: 'curr',
-        timelineRange: { startUs: 0, durationUs: 10_000_000 },
-        transitionOut: { durationUs: 2_000_000, mode: 'adjacent' },
+        timelineRange: { startTicks: 0, durationTicks: 10_000_000 },
+        transitionOut: { durationTicks: 2_000_000, mode: 'adjacent' },
       });
       const next = createClip({
         id: 'next',
-        timelineRange: { startUs: 10_000_000, durationUs: 5_000_000 },
-        sourceDurationUs: 6_000_000,
-        sourceRange: { startUs: 0, durationUs: 5_000_000 },
+        timelineRange: { startTicks: 10_000_000, durationTicks: 5_000_000 },
+        sourceDurationTicks: 6_000_000,
+        sourceRange: { startTicks: 0, durationTicks: 5_000_000 },
       });
       const track = createTrack([curr, next]);
       const result = validateTransitionOut(track, track.items[0] as TimelineMediaClipItem);
@@ -239,14 +239,14 @@ describe('transition-validation', () => {
     it('returns null for valid adjacent transition', () => {
       const curr = createClip({
         id: 'curr',
-        timelineRange: { startUs: 0, durationUs: 10_000_000 },
-        transitionOut: { durationUs: 1_000_000, mode: 'adjacent' },
+        timelineRange: { startTicks: 0, durationTicks: 10_000_000 },
+        transitionOut: { durationTicks: 1_000_000, mode: 'adjacent' },
       });
       const next = createClip({
         id: 'next',
-        timelineRange: { startUs: 10_000_000, durationUs: 5_000_000 },
-        sourceDurationUs: 10_000_000,
-        sourceRange: { startUs: 2_000_000, durationUs: 5_000_000 },
+        timelineRange: { startTicks: 10_000_000, durationTicks: 5_000_000 },
+        sourceDurationTicks: 10_000_000,
+        sourceRange: { startTicks: 2_000_000, durationTicks: 5_000_000 },
       });
       const track = createTrack([curr, next]);
       expect(validateTransitionOut(track, track.items[0] as TimelineMediaClipItem)).toBeNull();

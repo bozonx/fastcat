@@ -111,7 +111,7 @@ export const RENDER_RETRY_LIMITS = {
 
 /**
  * Abstracts the worker's `renderFrame` retry loop over a "single queued request"
- * mailbox — the loop pops the currently queued (timeUs, options) pair, renders
+ * mailbox — the loop pops the currently queued (timeTicks, options) pair, renders
  * it, and only schedules a retry if nothing newer landed in the mailbox while it
  * was awaiting (either the render itself or the retry backoff). A driver backed
  * by real module-level `latest*` variables lets a concurrent `renderFrame` RPC
@@ -120,18 +120,18 @@ export const RENDER_RETRY_LIMITS = {
  */
 export interface RenderRetryLoopDriver {
   /** Pop the currently queued request, clearing it. Null when nothing is queued. */
-  takeQueued: () => { timeUs: number; options: unknown } | null;
+  takeQueued: () => { timeTicks: number; options: unknown } | null;
   /** Peek whether a request is queued, without clearing it. */
   hasQueued: () => boolean;
-  /** Queue `timeUs` for a retry attempt (only called when nothing is queued). */
-  queueRetry: (timeUs: number) => void;
-  /** Render `timeUs`; a non-null/undefined result means the frame presented. */
-  render: (timeUs: number, options: unknown) => Promise<unknown>;
+  /** Queue `timeTicks` for a retry attempt (only called when nothing is queued). */
+  queueRetry: (timeTicks: number) => void;
+  /** Render `timeTicks`; a non-null/undefined result means the frame presented. */
+  render: (timeTicks: number, options: unknown) => Promise<unknown>;
   /** Sleep helper — injectable so tests don't wait on real timers. */
   delay: (ms: number) => Promise<void>;
   /** Whether the render target is still alive; false stops scheduling retries. */
   isActive?: () => boolean;
-  onError?: (timeUs: number, err: unknown) => void;
+  onError?: (timeTicks: number, err: unknown) => void;
 }
 
 /**
@@ -154,7 +154,7 @@ export async function runRenderRetryLoop(
 
   let queued = driver.takeQueued();
   while (queued !== null) {
-    const { timeUs: next, options } = queued;
+    const { timeTicks: next, options } = queued;
     let presented = false;
     try {
       // A non-null result means the frame reached the canvas (a fresh render or

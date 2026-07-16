@@ -149,12 +149,12 @@ function collectSampleTimes(byEffect: Map<string, Map<string, KeyframeTrack>>): 
       const kfs = track.keyframes;
       for (let i = 0; i < kfs.length; i++) {
         const kf = kfs[i]!;
-        times.add(Math.round(kf.tUs));
+        times.add(Math.round(kf.tTicks));
         const next = kfs[i + 1];
         if (next) {
-          const span = next.tUs - kf.tUs;
+          const span = next.tTicks - kf.tTicks;
           for (let s = 1; s < SEGMENT_SUBDIVISIONS; s++) {
-            times.add(Math.round(kf.tUs + (span * s) / SEGMENT_SUBDIVISIONS));
+            times.add(Math.round(kf.tTicks + (span * s) / SEGMENT_SUBDIVISIONS));
           }
         }
       }
@@ -215,9 +215,9 @@ function simplifyCollinear(keyframes: Keyframe[]): Keyframe[] {
     const a = out[out.length - 1]!;
     const b = keyframes[i]!;
     const c = keyframes[i + 1]!;
-    const span = c.tUs - a.tUs;
+    const span = c.tTicks - a.tTicks;
     const expected =
-      span === 0 ? a.value : a.value + ((c.value - a.value) * (b.tUs - a.tUs)) / span;
+      span === 0 ? a.value : a.value + ((c.value - a.value) * (b.tTicks - a.tTicks)) / span;
     const scale = Math.max(1, Math.abs(a.value), Math.abs(c.value));
     if (Math.abs(b.value - expected) > SIMPLIFY_EPSILON * scale) out.push(b);
   }
@@ -266,7 +266,7 @@ function diffFields(
 
       const keyframes = simplifyCollinear(
         filled.map((value, i) => ({
-          tUs: times[i]!,
+          tTicks: times[i]!,
           // Booleans step: snap to 0/1 so intermediate lerps don't blur the flip.
           value: kind === 'bool' ? (value >= 0.5 ? 1 : 0) : value,
           easing: 'linear' as const,
@@ -331,19 +331,19 @@ export function bakeClipEffectAnimations(
 }
 
 /**
- * Resolve a clip's baked effect specs at `localTimeUs` (source-relative ticks):
+ * Resolve a clip's baked effect specs at `localTimeTicks` (source-relative ticks):
  * the base specs with every baked field overwritten by its sampled value.
  * Shared shape with the native patcher; pinned by a parity fixture.
  */
 export function patchBakedEffectSpecs(
   baked: ClipBakedEffects,
-  localTimeUs: number,
+  localTimeTicks: number,
 ): VideoEffectSpec[] {
   const specs = baked.baseSpecs.map((spec) => ({ ...spec }));
   for (const f of baked.fields) {
     const spec = specs[f.specIndex] as Record<string, unknown> | undefined;
     if (!spec) continue;
-    const value = evalTrackAt({ keyframes: f.keyframes }, localTimeUs);
+    const value = evalTrackAt({ keyframes: f.keyframes }, localTimeTicks);
     if (value === undefined) continue;
     setSpecField(spec, f.field, f.kind === 'bool' ? value >= 0.5 : value);
   }

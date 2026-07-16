@@ -59,7 +59,7 @@ const {
 const {
   selectionStore,
   videoItems,
-  safeDurationUs,
+  safeDurationTicks,
   isTextClipSelected,
   isAdjustmentClipSelected,
   containerEl,
@@ -74,7 +74,7 @@ const {
   isSavingStopFrame,
   createStopFrameSnapshot,
   timecodeEl,
-  uiCurrentTimeUs,
+  uiCurrentTimeTicks,
 } = useMonitorRuntime();
 
 const seekbarRef = ref<HTMLElement | null>(null);
@@ -84,7 +84,7 @@ const hoverPercent = ref(0);
 const hoverTimecode = ref('');
 
 const showTooltip = computed(
-  () => (isHoveringSeekbar.value || isDraggingSeekbar.value) && safeDurationUs.value > 0,
+  () => (isHoveringSeekbar.value || isDraggingSeekbar.value) && safeDurationTicks.value > 0,
 );
 
 const throttledScrollToPlayhead = useThrottleFn(() => {
@@ -92,31 +92,31 @@ const throttledScrollToPlayhead = useThrottleFn(() => {
 }, 100);
 
 const progressPercent = computed(() => {
-  if (safeDurationUs.value <= 0) return 0;
-  return (uiCurrentTimeUs.value / safeDurationUs.value) * 100;
+  if (safeDurationTicks.value <= 0) return 0;
+  return (uiCurrentTimeTicks.value / safeDurationTicks.value) * 100;
 });
 
 function updateHoverState(event: PointerEvent) {
-  if (!seekbarRef.value || safeDurationUs.value <= 0) return;
+  if (!seekbarRef.value || safeDurationTicks.value <= 0) return;
   const rect = seekbarRef.value.getBoundingClientRect();
   const x = event.clientX - rect.left;
   const width = rect.width;
   const pct = Math.max(0, Math.min(1, x / width));
   hoverPercent.value = pct * 100;
 
-  const targetTimeUs = Math.round(pct * safeDurationUs.value);
+  const targetTimeTicks = Math.round(pct * safeDurationTicks.value);
   const fps = timelineStore.timelineFormat?.fps ?? timelineStore.fps;
-  hoverTimecode.value = formatTimecode(targetTimeUs, fps);
+  hoverTimecode.value = formatTimecode(targetTimeTicks, fps);
 }
 
 function handleSeekEvent(event: PointerEvent) {
-  if (!seekbarRef.value || safeDurationUs.value <= 0) return;
+  if (!seekbarRef.value || safeDurationTicks.value <= 0) return;
   const rect = seekbarRef.value.getBoundingClientRect();
   const x = event.clientX - rect.left;
   const width = rect.width;
   const pct = Math.max(0, Math.min(1, x / width));
-  const targetTimeUs = Math.round(pct * safeDurationUs.value);
-  timelineStore.setCurrentTimeUs(targetTimeUs);
+  const targetTimeTicks = Math.round(pct * safeDurationTicks.value);
+  timelineStore.setCurrentTimeTicks(targetTimeTicks);
   throttledScrollToPlayhead();
 }
 
@@ -261,7 +261,7 @@ const {
   videoItems,
   isLoading,
   loadError,
-  safeDurationUs,
+  safeDurationTicks,
   previewEffectsEnabled,
   useProxyInMonitor,
   showGrid,
@@ -511,7 +511,7 @@ watch(viewportRef, (vp) => {
               :render-height="renderHeight"
               :is-idle="isIdle"
               :effective-fullscreen="effectiveFullscreen"
-              :ui-current-time-us="uiCurrentTimeUs"
+              :ui-current-time-us="uiCurrentTimeTicks"
               :timecode-offset-class="bottomOverlayOffsetClass"
               :markers-offset-class="bottomOverlayOffsetClass"
               @pointerdown.capture="closeMonitorMenus"
@@ -546,7 +546,7 @@ watch(viewportRef, (vp) => {
 
             <!-- Monitor Seekbar / Progress line -->
             <div
-              v-if="safeDurationUs > 0"
+              v-if="safeDurationTicks > 0"
               class="absolute left-0 right-0 z-30 transition-all duration-300 pointer-events-auto select-none"
               :class="[
                 effectiveFullscreen && isIdle ? 'opacity-0 pointer-events-none' : 'opacity-100',

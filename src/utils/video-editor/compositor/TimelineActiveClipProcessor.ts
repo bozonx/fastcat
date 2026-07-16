@@ -16,12 +16,12 @@ export interface ActiveClipSampleRequest {
 
 export interface TimelineActiveClipProcessorParams {
   activeClips: CompositorClip[];
-  timeUs: number;
+  timeTicks: number;
   width: number;
   height: number;
-  syncTransitionFilter: (clip: CompositorClip, timeUs: number) => void;
-  computeTransitionOpacity: (clip: CompositorClip, timeUs: number) => number;
-  drawHudClip: (clip: CompositorClip, timeUs: number) => void;
+  syncTransitionFilter: (clip: CompositorClip, timeTicks: number) => void;
+  computeTransitionOpacity: (clip: CompositorClip, timeTicks: number) => number;
+  drawHudClip: (clip: CompositorClip, timeTicks: number) => void;
   drawShapeClip: (clip: CompositorClip, size: { width: number; height: number }) => void;
   drawTextClip: (clip: CompositorClip, size: { width: number; height: number }) => void;
   createPrimaryVideoSampleRequest: (
@@ -43,12 +43,12 @@ export { clampToLastReadableSourceTicks };
 
 export class TimelineActiveClipProcessor {
   public process(params: TimelineActiveClipProcessorParams): TimelineActiveClipProcessorResult {
-    const { activeClips, timeUs, width, height } = params;
+    const { activeClips, timeTicks, width, height } = params;
     const sampleRequests: Array<Promise<{ clip: CompositorClip; sample: unknown | null }>> = [];
 
     for (const clip of activeClips) {
-      params.syncTransitionFilter(clip, timeUs);
-      const effectiveOpacity = params.computeTransitionOpacity(clip, timeUs);
+      params.syncTransitionFilter(clip, timeTicks);
+      const effectiveOpacity = params.computeTransitionOpacity(clip, timeTicks);
       if (clip.sprite) {
         clip.sprite.alpha = effectiveOpacity;
         clip.sprite.blendMode = toPixiBlendMode(
@@ -75,18 +75,18 @@ export class TimelineActiveClipProcessor {
         ) => {
           if (!state || state.clipKind !== 'video' || !state.sink) return;
 
-          const localTimeTicks = timeUs - clip.startUs;
-          if (localTimeTicks < 0 || localTimeTicks >= clip.durationUs) return;
+          const localTimeTicks = timeTicks - clip.startTicks;
+          if (localTimeTicks < 0 || localTimeTicks >= clip.durationTicks) return;
 
-          const sampleUs = resolveClipSourceTimeTicks({
+          const sampleTicks = resolveClipSourceTimeTicks({
             localTimeTicks,
             sourceStartTicks: 0,
-            sourceRangeDurationTicks: state.sourceDurationUs,
+            sourceRangeDurationTicks: state.sourceDurationTicks,
             speed: clip.speed,
             frameRate: state.frameRate,
           });
 
-          let sampleTimeS = sampleUs / TICKS_PER_SECOND;
+          let sampleTimeS = sampleTicks / TICKS_PER_SECOND;
           if (!Number.isFinite(sampleTimeS) || Number.isNaN(sampleTimeS)) sampleTimeS = 0;
 
           const mockClip = {
@@ -135,13 +135,13 @@ export class TimelineActiveClipProcessor {
         if (statePromises.length > 0) {
           sampleRequests.push(
             Promise.all(statePromises).then(() => {
-              params.drawHudClip(clip, timeUs);
+              params.drawHudClip(clip, timeTicks);
               // Return a special object that tells applySampleResults not to hide the clip
               return { clip, sample: { isHud: true, close: () => {} } as unknown };
             }),
           );
         } else if (dirty) {
-          params.drawHudClip(clip, timeUs);
+          params.drawHudClip(clip, timeTicks);
         }
 
         clip.hudDirty = false;
@@ -168,21 +168,21 @@ export class TimelineActiveClipProcessor {
         continue;
       }
 
-      const localTimeTicks = timeUs - clip.startUs;
+      const localTimeTicks = timeTicks - clip.startTicks;
       const speed = normalizeClipSpeed(clip.speed);
-      if (localTimeTicks < 0 || localTimeTicks >= clip.durationUs) {
+      if (localTimeTicks < 0 || localTimeTicks >= clip.durationTicks) {
         if (clip.sprite) clip.sprite.visible = false;
         continue;
       }
 
-      const freezeUs = clip.freezeFrameSourceUs;
+      const freezeTicks = clip.freezeFrameSourceTicks;
       let sampleTimeS =
-        typeof freezeUs === 'number'
-          ? Math.max(0, freezeUs) / TICKS_PER_SECOND
+        typeof freezeTicks === 'number'
+          ? Math.max(0, freezeTicks) / TICKS_PER_SECOND
           : resolveClipSourceTimeTicks({
               localTimeTicks,
-              sourceStartTicks: clip.sourceStartUs,
-              sourceRangeDurationTicks: clip.sourceRangeDurationUs,
+              sourceStartTicks: clip.sourceStartTicks,
+              sourceRangeDurationTicks: clip.sourceRangeDurationTicks,
               speed,
               frameRate: clip.frameRate,
             }) / TICKS_PER_SECOND;

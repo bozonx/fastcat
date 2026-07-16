@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { timelineUs } from '../utils/timeline-time';
+import { timelineTicks } from '../utils/timeline-time';
 import { addMarker, updateMarker, removeMarker } from '~/timeline/commands/markerHandlers';
 import type { TimelineDocument, TimelineMarker } from '~/timeline/types';
 
@@ -26,22 +26,22 @@ describe('markerHandlers', () => {
         type: 'add_marker',
         id: 'm1',
         // Frame-aligned at 30fps (markers always snap to the frame grid).
-        timeUs: timelineUs(1_000_000),
+        timeTicks: timelineTicks(1_000_000),
         text: 'hello',
       });
       const markers =
         (result.next.metadata?.fastcat as { markers?: TimelineMarker[] })?.markers ?? [];
       expect(markers).toHaveLength(1);
       expect(markers[0]!.id).toBe('m1');
-      expect(markers[0]!.timeUs).toBe(timelineUs(1_000_000));
+      expect(markers[0]!.timeTicks).toBe(timelineTicks(1_000_000));
     });
 
-    it('sorts markers by timeUs', () => {
-      const doc = createDoc([{ id: 'm2', timeUs: 2000, text: '' }] as TimelineMarker[]);
+    it('sorts markers by timeTicks', () => {
+      const doc = createDoc([{ id: 'm2', timeTicks: 2000, text: '' }] as TimelineMarker[]);
       const result = addMarker(doc, {
         type: 'add_marker',
         id: 'm1',
-        timeUs: 1000,
+        timeTicks: 1000,
         text: '',
       });
       const markers =
@@ -51,12 +51,12 @@ describe('markerHandlers', () => {
     });
 
     it('throws if marker already exists', () => {
-      const doc = createDoc([{ id: 'm1', timeUs: 1000, text: '' }] as TimelineMarker[]);
+      const doc = createDoc([{ id: 'm1', timeTicks: 1000, text: '' }] as TimelineMarker[]);
       expect(() =>
         addMarker(doc, {
           type: 'add_marker',
           id: 'm1',
-          timeUs: 2000,
+          timeTicks: 2000,
           text: '',
         }),
       ).toThrow('Marker already exists');
@@ -64,13 +64,13 @@ describe('markerHandlers', () => {
 
     it('throws if another marker already exists at the same time', () => {
       const doc = createDoc([
-        { id: 'm1', timeUs: timelineUs(1_000_000), text: '' },
+        { id: 'm1', timeTicks: timelineTicks(1_000_000), text: '' },
       ] as TimelineMarker[]);
       expect(() =>
         addMarker(doc, {
           type: 'add_marker',
           id: 'm2',
-          timeUs: timelineUs(1_000_000),
+          timeTicks: timelineTicks(1_000_000),
           text: '',
         }),
       ).toThrow('Marker already exists at this time');
@@ -78,32 +78,32 @@ describe('markerHandlers', () => {
   });
 
   describe('updateMarker', () => {
-    it('updates marker timeUs', () => {
-      const doc = createDoc([{ id: 'm1', timeUs: 1000, text: '' }] as TimelineMarker[]);
+    it('updates marker timeTicks', () => {
+      const doc = createDoc([{ id: 'm1', timeTicks: 1000, text: '' }] as TimelineMarker[]);
       const result = updateMarker(doc, {
         type: 'update_marker',
         id: 'm1',
-        timeUs: timelineUs(3_000_000),
+        timeTicks: timelineTicks(3_000_000),
       });
       const markers =
         (result.next.metadata?.fastcat as { markers?: TimelineMarker[] })?.markers ?? [];
-      expect(markers[0]!.timeUs).toBe(timelineUs(3_000_000));
+      expect(markers[0]!.timeTicks).toBe(timelineTicks(3_000_000));
     });
 
-    it('updates marker durationUs', () => {
-      const doc = createDoc([{ id: 'm1', timeUs: 1000, text: '' }] as TimelineMarker[]);
+    it('updates marker durationTicks', () => {
+      const doc = createDoc([{ id: 'm1', timeTicks: 1000, text: '' }] as TimelineMarker[]);
       const result = updateMarker(doc, {
         type: 'update_marker',
         id: 'm1',
-        durationUs: timelineUs(500_000),
+        durationTicks: timelineTicks(500_000),
       });
       const markers =
         (result.next.metadata?.fastcat as { markers?: TimelineMarker[] })?.markers ?? [];
-      expect(markers[0]!.durationUs).toBe(timelineUs(500_000));
+      expect(markers[0]!.durationTicks).toBe(timelineTicks(500_000));
     });
 
     it('updates marker text', () => {
-      const doc = createDoc([{ id: 'm1', timeUs: 1000, text: '' }] as TimelineMarker[]);
+      const doc = createDoc([{ id: 'm1', timeTicks: 1000, text: '' }] as TimelineMarker[]);
       const result = updateMarker(doc, {
         type: 'update_marker',
         id: 'm1',
@@ -116,40 +116,40 @@ describe('markerHandlers', () => {
 
     it('throws if moving a marker onto another marker time', () => {
       const doc = createDoc([
-        { id: 'm1', timeUs: timelineUs(1_000_000), text: '' },
-        { id: 'm2', timeUs: timelineUs(2_000_000), text: '' },
+        { id: 'm1', timeTicks: timelineTicks(1_000_000), text: '' },
+        { id: 'm2', timeTicks: timelineTicks(2_000_000), text: '' },
       ] as TimelineMarker[]);
 
       expect(() =>
         updateMarker(doc, {
           type: 'update_marker',
           id: 'm2',
-          timeUs: timelineUs(1_000_000),
+          timeTicks: timelineTicks(1_000_000),
         }),
       ).toThrow('Marker already exists at this time');
     });
 
     it('throws if quantized update lands on another marker time', () => {
       const doc = createDoc([
-        { id: 'm1', timeUs: timelineUs(1_000_000), text: '' },
-        { id: 'm2', timeUs: timelineUs(2_000_000), text: '' },
+        { id: 'm1', timeTicks: timelineTicks(1_000_000), text: '' },
+        { id: 'm2', timeTicks: timelineTicks(2_000_000), text: '' },
       ] as TimelineMarker[]);
 
       expect(() =>
         updateMarker(doc, {
           type: 'update_marker',
           id: 'm2',
-          timeUs: timelineUs(999_999),
+          timeTicks: timelineTicks(999_999),
         }),
       ).toThrow('Marker already exists at this time');
     });
 
     it('returns doc unchanged when marker is not found (defensive)', () => {
-      const doc = createDoc([{ id: 'm1', timeUs: 1000, text: '' }] as TimelineMarker[]);
+      const doc = createDoc([{ id: 'm1', timeTicks: 1000, text: '' }] as TimelineMarker[]);
       const result = updateMarker(doc, {
         type: 'update_marker',
         id: 'missing',
-        timeUs: 2000,
+        timeTicks: 2000,
       });
       expect(result.next).toBe(doc);
     });
@@ -158,8 +158,8 @@ describe('markerHandlers', () => {
   describe('removeMarker', () => {
     it('removes an existing marker', () => {
       const doc = createDoc([
-        { id: 'm1', timeUs: 1000, text: '' },
-        { id: 'm2', timeUs: 2000, text: '' },
+        { id: 'm1', timeTicks: 1000, text: '' },
+        { id: 'm2', timeTicks: 2000, text: '' },
       ] as TimelineMarker[]);
       const result = removeMarker(doc, {
         type: 'remove_marker',
@@ -172,7 +172,7 @@ describe('markerHandlers', () => {
     });
 
     it('returns doc unchanged when marker is not found', () => {
-      const doc = createDoc([{ id: 'm1', timeUs: 1000, text: '' }] as TimelineMarker[]);
+      const doc = createDoc([{ id: 'm1', timeTicks: 1000, text: '' }] as TimelineMarker[]);
       const result = removeMarker(doc, {
         type: 'remove_marker',
         id: 'missing',

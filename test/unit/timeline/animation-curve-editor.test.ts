@@ -11,13 +11,13 @@ import type { KeyframeTrack } from '~/timeline/types';
 describe('animation curve editor geometry', () => {
   const track: KeyframeTrack = {
     keyframes: [
-      { tUs: 0, value: 0, easing: 'linear' },
-      { tUs: 100, value: 1, easing: 'linear' },
+      { tTicks: 0, value: 0, easing: 'linear' },
+      { tTicks: 100, value: 1, easing: 'linear' },
     ],
   };
 
   it('resolves a padded range for flat tracks', () => {
-    expect(resolveCurveValueRange({ keyframes: [{ tUs: 0, value: 5, easing: 'linear' }] })).toEqual(
+    expect(resolveCurveValueRange({ keyframes: [{ tTicks: 0, value: 5, easing: 'linear' }] })).toEqual(
       { min: 4, max: 6 },
     );
   });
@@ -31,7 +31,7 @@ describe('animation curve editor geometry', () => {
   it('samples one point per pixel across the curve width', () => {
     const points = buildCurvePolyline({
       track,
-      durationUs: 100,
+      durationTicks: 100,
       widthPx: 4,
       heightPx: 100,
       paddingPx: 10,

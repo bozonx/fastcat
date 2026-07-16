@@ -43,12 +43,12 @@ describe('clip-schemas', () => {
   });
 
   it('validates transition shape', () => {
-    expect(() => ClipTransitionSchema.parse({ type: 'dissolve', durationUs: -1 })).toThrow();
+    expect(() => ClipTransitionSchema.parse({ type: 'dissolve', durationTicks: -1 })).toThrow();
     expect(() =>
-      ClipTransitionSchema.parse({ type: 'dissolve', durationUs: MAX_SAFE_TICKS + 1 }),
+      ClipTransitionSchema.parse({ type: 'dissolve', durationTicks: MAX_SAFE_TICKS + 1 }),
     ).toThrow();
-    expect(ClipTransitionSchema.parse({ type: 'dissolve', durationUs: 100_000 })).toMatchObject({
-      durationUs: 100_000,
+    expect(ClipTransitionSchema.parse({ type: 'dissolve', durationTicks: 100_000 })).toMatchObject({
+      durationTicks: 100_000,
     });
   });
 
@@ -59,8 +59,8 @@ describe('clip-schemas', () => {
       id: 'c1',
       layer: 0,
       blendMode: 'totally-invalid',
-      timelineRange: { startUs: 0, durationUs: 1000 },
-      sourceRange: { startUs: 0, durationUs: 1000 },
+      timelineRange: { startTicks: 0, durationTicks: 1000 },
+      sourceRange: { startTicks: 0, durationTicks: 1000 },
     };
     expect(() => parseWorkerVideoPayload([badClip])).toThrow();
   });
@@ -71,8 +71,8 @@ describe('clip-schemas', () => {
       clipType: 'media',
       id: 'c1',
       layer: 0,
-      timelineRange: { startUs: 0, durationUs: MAX_SAFE_TICKS + 1 },
-      sourceRange: { startUs: 0, durationUs: 1000 },
+      timelineRange: { startTicks: 0, durationTicks: MAX_SAFE_TICKS + 1 },
+      sourceRange: { startTicks: 0, durationTicks: 1000 },
     };
     expect(() => parseWorkerVideoPayload([clip])).toThrow();
   });
@@ -88,9 +88,9 @@ describe('clip-schemas', () => {
       source: { path: 'a.mp4' },
       effects: [{ id: 'e1', type: 'blur', enabled: true } as never],
       transform: { rotationDeg: 0, scale: { x: 1, y: 1 } },
-      transitionIn: { type: 'dissolve', durationUs: 100_000, mode: 'adjacent' },
-      timelineRange: { startUs: 0, durationUs: 1000 },
-      sourceRange: { startUs: 0, durationUs: 1000 },
+      transitionIn: { type: 'dissolve', durationTicks: 100_000, mode: 'adjacent' },
+      timelineRange: { startTicks: 0, durationTicks: 1000 },
+      sourceRange: { startTicks: 0, durationTicks: 1000 },
     };
     const parsed = parseWorkerVideoPayload([clip]);
     expect(parsed).toHaveLength(1);

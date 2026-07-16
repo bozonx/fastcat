@@ -111,8 +111,8 @@ export async function executeMediaConversion(params: {
                 window.clearTimeout(metadataTimeoutId);
               }
             });
-            const durationUs = Math.round((meta.duration || 0) * TICKS_PER_SECOND);
-            if (!durationUs && params.request.type === 'video') {
+            const durationTicks = Math.round((meta.duration || 0) * TICKS_PER_SECOND);
+            if (!durationTicks && params.request.type === 'video') {
               throw new Error('Invalid media duration');
             }
 

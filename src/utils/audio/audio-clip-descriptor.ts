@@ -18,22 +18,22 @@ export interface CanonicalAudioClipDescriptor {
   id: string;
   trackId?: string;
   sourcePath: string;
-  startUs: number;
-  durationUs: number;
-  sourceStartUs: number;
-  sourceRangeDurationUs: number;
-  sourceDurationUs: number;
+  startTicks: number;
+  durationTicks: number;
+  sourceStartTicks: number;
+  sourceRangeDurationTicks: number;
+  sourceDurationTicks: number;
   speed?: number;
   audioGain?: number;
   audioBalance?: number;
   animations?: ClipAnimations;
   originalAudioGain?: unknown;
   originalAudioBalance?: unknown;
-  audioFadeInUs?: number;
-  audioFadeOutUs?: number;
+  audioFadeInTicks?: number;
+  audioFadeOutTicks?: number;
   audioFadeInCurve?: 'linear' | 'logarithmic';
   audioFadeOutCurve?: 'linear' | 'logarithmic';
-  audioDeclickDurationUs?: number;
+  audioDeclickDurationTicks?: number;
   defaultAudioFadeCurve?: 'linear' | 'logarithmic';
   transitionIn?: WorkerTimelineClip['transitionIn'];
   transitionOut?: WorkerTimelineClip['transitionOut'];
@@ -100,22 +100,22 @@ export function buildCanonicalAudioClipDescriptor(
     id: clip.id,
     trackId: clip.trackId,
     sourcePath: params.sourcePath,
-    startUs: clip.timelineRange.startUs,
-    durationUs: clip.timelineRange.durationUs,
-    sourceStartUs: clip.sourceRange.startUs,
-    sourceRangeDurationUs: clip.sourceRange.durationUs,
-    sourceDurationUs: clip.sourceDurationUs ?? clip.sourceRange.durationUs,
+    startTicks: clip.timelineRange.startTicks,
+    durationTicks: clip.timelineRange.durationTicks,
+    sourceStartTicks: clip.sourceRange.startTicks,
+    sourceRangeDurationTicks: clip.sourceRange.durationTicks,
+    sourceDurationTicks: clip.sourceDurationTicks ?? clip.sourceRange.durationTicks,
     speed: clip.speed,
     audioGain: clip.audioGain,
     audioBalance: clip.audioBalance,
     animations: clip.animations,
     originalAudioGain: clip.originalAudioGain,
     originalAudioBalance: clip.originalAudioBalance,
-    audioFadeInUs: clip.audioFadeInUs,
-    audioFadeOutUs: clip.audioFadeOutUs,
+    audioFadeInTicks: clip.audioFadeInTicks,
+    audioFadeOutTicks: clip.audioFadeOutTicks,
     audioFadeInCurve: clip.audioFadeInCurve,
     audioFadeOutCurve: clip.audioFadeOutCurve,
-    audioDeclickDurationUs: clip.audioDeclickDurationUs,
+    audioDeclickDurationTicks: clip.audioDeclickDurationTicks,
     defaultAudioFadeCurve: clip.defaultAudioFadeCurve,
     transitionIn: clip.transitionIn,
     transitionOut: clip.transitionOut,
@@ -130,20 +130,20 @@ export function toAudioEngineClip(params: ToAudioEngineClipParams): AudioEngineC
     trackId: descriptor.trackId,
     sourcePath: descriptor.sourcePath,
     fileHandle: params.fileHandle,
-    startUs: descriptor.startUs,
-    durationUs: descriptor.durationUs,
-    sourceStartUs: descriptor.sourceStartUs,
-    sourceRangeDurationUs: descriptor.sourceRangeDurationUs,
-    sourceDurationUs: descriptor.sourceDurationUs,
+    startTicks: descriptor.startTicks,
+    durationTicks: descriptor.durationTicks,
+    sourceStartTicks: descriptor.sourceStartTicks,
+    sourceRangeDurationTicks: descriptor.sourceRangeDurationTicks,
+    sourceDurationTicks: descriptor.sourceDurationTicks,
     speed: descriptor.speed,
     audioGain: descriptor.audioGain,
     audioBalance: descriptor.audioBalance,
     animations: descriptor.animations,
-    audioFadeInUs: descriptor.audioFadeInUs,
-    audioFadeOutUs: descriptor.audioFadeOutUs,
+    audioFadeInTicks: descriptor.audioFadeInTicks,
+    audioFadeOutTicks: descriptor.audioFadeOutTicks,
     audioFadeInCurve: descriptor.audioFadeInCurve,
     audioFadeOutCurve: descriptor.audioFadeOutCurve,
-    audioDeclickDurationUs: descriptor.audioDeclickDurationUs,
+    audioDeclickDurationTicks: descriptor.audioDeclickDurationTicks,
     defaultAudioFadeCurve: descriptor.defaultAudioFadeCurve,
     transitionIn: descriptor.transitionIn,
     transitionOut: descriptor.transitionOut,
@@ -153,12 +153,12 @@ export function toAudioEngineClip(params: ToAudioEngineClipParams): AudioEngineC
 
 function descriptorToEnvelopeClip(d: CanonicalAudioClipDescriptor): AudioEnvelopeClipLike {
   return {
-    timelineRange: { durationUs: d.durationUs },
-    audioFadeInUs: d.audioFadeInUs,
-    audioFadeOutUs: d.audioFadeOutUs,
+    timelineRange: { durationTicks: d.durationTicks },
+    audioFadeInTicks: d.audioFadeInTicks,
+    audioFadeOutTicks: d.audioFadeOutTicks,
     audioFadeInCurve: d.audioFadeInCurve,
     audioFadeOutCurve: d.audioFadeOutCurve,
-    audioDeclickDurationUs: d.audioDeclickDurationUs,
+    audioDeclickDurationTicks: d.audioDeclickDurationTicks,
     transitionIn: d.transitionIn,
     transitionOut: d.transitionOut,
   };
@@ -169,13 +169,13 @@ function descriptorToEnvelopeClip(d: CanonicalAudioClipDescriptor): AudioEnvelop
  * transition (a true crossfade). Non-adjacent transitions (background/dip,
  * transparent) do not overlap, so they contribute no extension.
  */
-function adjacentTransitionDurationUs(
+function adjacentTransitionDurationTicks(
   transition: CanonicalAudioClipDescriptor['transitionIn'],
 ): number {
   if (!transition) return 0;
   const dur =
-    typeof transition.durationUs === 'number' && Number.isFinite(transition.durationUs)
-      ? transition.durationUs
+    typeof transition.durationTicks === 'number' && Number.isFinite(transition.durationTicks)
+      ? transition.durationTicks
       : 0;
   if (dur <= 0) return 0;
   return transition.mode === 'adjacent' ? dur : 0;
@@ -186,13 +186,13 @@ export function toNativeSceneAudioLayer(params: ToNativeSceneAudioLayerParams): 
   const signedSpeed = clampFinite(descriptor.speed, 1) || 1;
   const absSpeed = Math.max(0.01, Math.min(100, Math.abs(signedSpeed)));
 
-  const startUs = Math.max(0, descriptor.startUs);
-  const durationUs = Math.max(0, descriptor.durationUs);
-  const sourceStartUs = Math.max(0, descriptor.sourceStartUs);
-  const sourceRangeDurationUs = Math.max(0, descriptor.sourceRangeDurationUs);
-  const materialDurationUs = Math.max(
+  const startTicks = Math.max(0, descriptor.startTicks);
+  const durationTicks = Math.max(0, descriptor.durationTicks);
+  const sourceStartTicks = Math.max(0, descriptor.sourceStartTicks);
+  const sourceRangeDurationTicks = Math.max(0, descriptor.sourceRangeDurationTicks);
+  const materialDurationTicks = Math.max(
     0,
-    clampFinite(descriptor.sourceDurationUs, sourceRangeDurationUs),
+    clampFinite(descriptor.sourceDurationTicks, sourceRangeDurationTicks),
   );
 
   // Effective fades fold in: manual fades, the auto de-click (removes the click at
@@ -201,7 +201,7 @@ export function toNativeSceneAudioLayer(params: ToNativeSceneAudioLayerParams): 
   // fade-in/out durations, so this is where the worker AudioMixer's edge handling
   // is reproduced for the native (monitor + export) path.
   const fadeClipDurationS = ticksToSeconds(
-    Math.min(sourceRangeDurationUs / absSpeed, durationUs || sourceRangeDurationUs / absSpeed),
+    Math.min(sourceRangeDurationTicks / absSpeed, durationTicks || sourceRangeDurationTicks / absSpeed),
   );
   const { fadeInS, fadeOutS, fadeInCurve, fadeOutCurve } = resolveEffectiveFadeDurationsSeconds({
     clipDurationS: fadeClipDurationS,
@@ -226,57 +226,57 @@ export function toNativeSceneAudioLayer(params: ToNativeSceneAudioLayerParams): 
   // Earlier this only extended the outgoing tail and left the incoming clip
   // un-shifted, which desynced the native monitor/export from the web engine on
   // a transition stored as `transitionIn`.
-  const inDurUs = adjacentTransitionDurationUs(descriptor.transitionIn);
-  const outDurUs = adjacentTransitionDurationUs(descriptor.transitionOut);
+  const inDurTicks = adjacentTransitionDurationTicks(descriptor.transitionIn);
+  const outDurTicks = adjacentTransitionDurationTicks(descriptor.transitionOut);
 
   // Default (no crossfade): keep the clip's exact ranges and only override the
   // fades. The common case stays byte-for-byte identical to before plus de-click.
-  let timelineStartUs = startUs;
-  let timelineDurationUs = durationUs;
-  let layerSourceStartUs = sourceStartUs;
-  let layerSourceRangeUs = sourceRangeDurationUs;
+  let timelineStartTicks = startTicks;
+  let timelineDurationTicks = durationTicks;
+  let layerSourceStartTicks = sourceStartTicks;
+  let layerSourceRangeTicks = sourceRangeDurationTicks;
 
-  if (inDurUs > 0 || outDurUs > 0) {
+  if (inDurTicks > 0 || outDurTicks > 0) {
     // Mirrors the worker AudioMixer handle extension (incl. material clamping)
     // so the native monitor + export agree with the web paths. Reversed clips
     // are muted before reaching the mixer (see `mix_layer_into` in mix.rs), so
     // this only needs to handle forward playback.
-    let playDurationUs = Math.min(
-      sourceRangeDurationUs / absSpeed,
-      durationUs || sourceRangeDurationUs / absSpeed,
+    let playDurationTicks = Math.min(
+      sourceRangeDurationTicks / absSpeed,
+      durationTicks || sourceRangeDurationTicks / absSpeed,
     );
-    let effectiveStartUs = startUs;
-    let effectiveOffsetUs = sourceStartUs;
+    let effectiveStartTicks = startTicks;
+    let effectiveOffsetTicks = sourceStartTicks;
 
-    if (outDurUs > 0) {
-      playDurationUs += outDurUs;
+    if (outDurTicks > 0) {
+      playDurationTicks += outDurTicks;
     }
 
-    if (inDurUs > 0) {
-      playDurationUs += inDurUs;
-      effectiveStartUs = Math.max(0, startUs - inDurUs);
-      effectiveOffsetUs = Math.max(0, effectiveOffsetUs - inDurUs * absSpeed);
+    if (inDurTicks > 0) {
+      playDurationTicks += inDurTicks;
+      effectiveStartTicks = Math.max(0, startTicks - inDurTicks);
+      effectiveOffsetTicks = Math.max(0, effectiveOffsetTicks - inDurTicks * absSpeed);
     }
 
-    const offsetUs = Math.max(0, effectiveOffsetUs);
-    const sourceWindowBaseUs = playDurationUs * absSpeed;
-    const maxPlayableUs = Math.max(0, materialDurationUs - offsetUs);
-    const finalSourceWindowUs = Math.min(sourceWindowBaseUs, maxPlayableUs);
+    const offsetTicks = Math.max(0, effectiveOffsetTicks);
+    const sourceWindowBaseTicks = playDurationTicks * absSpeed;
+    const maxPlayableTicks = Math.max(0, materialDurationTicks - offsetTicks);
+    const finalSourceWindowTicks = Math.min(sourceWindowBaseTicks, maxPlayableTicks);
 
-    timelineStartUs = effectiveStartUs;
-    timelineDurationUs = finalSourceWindowUs / absSpeed;
-    layerSourceStartUs = offsetUs;
-    layerSourceRangeUs = finalSourceWindowUs;
+    timelineStartTicks = effectiveStartTicks;
+    timelineDurationTicks = finalSourceWindowTicks / absSpeed;
+    layerSourceStartTicks = offsetTicks;
+    layerSourceRangeTicks = finalSourceWindowTicks;
   }
 
   return {
     id: descriptor.id,
     track_id: descriptor.trackId,
     path: descriptor.sourcePath,
-    timeline_start_sec: ticksToSeconds(timelineStartUs),
-    timeline_end_sec: ticksToSeconds(timelineStartUs + timelineDurationUs),
-    source_start_sec: ticksToSeconds(layerSourceStartUs),
-    source_range_duration_sec: ticksToSeconds(Math.max(0, layerSourceRangeUs)),
+    timeline_start_sec: ticksToSeconds(timelineStartTicks),
+    timeline_end_sec: ticksToSeconds(timelineStartTicks + timelineDurationTicks),
+    source_start_sec: ticksToSeconds(layerSourceStartTicks),
+    source_range_duration_sec: ticksToSeconds(Math.max(0, layerSourceRangeTicks)),
     speed: sanitizeNativeAudioSpeed(descriptor.speed),
     // Gain stays split: the layer carries the clip-only gain and the native bus
     // re-applies the track gain (a scalar — multiplying layer×bus reproduces the

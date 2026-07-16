@@ -8,7 +8,7 @@ import {
   getTrackById,
   getDocFps,
   quantizeTimeUsToFrames,
-  computeTrackEndUs,
+  computeTrackEndTicks,
   assertNoOverlap,
   nextItemId,
   sliceTrackItemsForOverlay,
@@ -24,30 +24,30 @@ export function addClipToTrack(
   const track = getTrackById(doc, cmd.trackId);
   const fps = getDocFps(doc);
   const shouldQuantizeToFrames = cmd.quantizeToFrames !== false;
-  const durationUs = shouldQuantizeToFrames
-    ? quantizeTimeUsToFrames(Number(cmd.durationUs ?? 0), fps, 'round')
-    : Math.max(0, Math.round(Number(cmd.durationUs ?? 0)));
-  const sourceDurationUs =
-    cmd.sourceDurationUs !== undefined
-      ? Math.max(0, Math.round(Number(cmd.sourceDurationUs)))
-      : Math.max(0, Math.round(Number(cmd.durationUs ?? 0)));
-  const sourceRangeStartUs = Math.max(0, Math.round(Number(cmd.sourceRange?.startUs ?? 0)));
-  const requestedSourceRangeDurationUs = Math.max(
+  const durationTicks = shouldQuantizeToFrames
+    ? quantizeTimeUsToFrames(Number(cmd.durationTicks ?? 0), fps, 'round')
+    : Math.max(0, Math.round(Number(cmd.durationTicks ?? 0)));
+  const sourceDurationTicks =
+    cmd.sourceDurationTicks !== undefined
+      ? Math.max(0, Math.round(Number(cmd.sourceDurationTicks)))
+      : Math.max(0, Math.round(Number(cmd.durationTicks ?? 0)));
+  const sourceRangeStartTicks = Math.max(0, Math.round(Number(cmd.sourceRange?.startTicks ?? 0)));
+  const requestedSourceRangeDurationTicks = Math.max(
     0,
-    Math.round(Number(cmd.sourceRange?.durationUs ?? durationUs)),
+    Math.round(Number(cmd.sourceRange?.durationTicks ?? durationTicks)),
   );
-  const maxSourceRangeDurationUs =
-    sourceDurationUs > 0
-      ? Math.max(0, sourceDurationUs - Math.min(sourceRangeStartUs, sourceDurationUs))
-      : requestedSourceRangeDurationUs;
+  const maxSourceRangeDurationTicks =
+    sourceDurationTicks > 0
+      ? Math.max(0, sourceDurationTicks - Math.min(sourceRangeStartTicks, sourceDurationTicks))
+      : requestedSourceRangeDurationTicks;
   const sourceRange = {
-    startUs:
-      sourceDurationUs > 0 ? Math.min(sourceRangeStartUs, sourceDurationUs) : sourceRangeStartUs,
-    durationUs: Math.min(requestedSourceRangeDurationUs, maxSourceRangeDurationUs),
+    startTicks:
+      sourceDurationTicks > 0 ? Math.min(sourceRangeStartTicks, sourceDurationTicks) : sourceRangeStartTicks,
+    durationTicks: Math.min(requestedSourceRangeDurationTicks, maxSourceRangeDurationTicks),
   };
   const startCandidate =
-    cmd.startUs === undefined ? computeTrackEndUs(track) : Math.max(0, Number(cmd.startUs));
-  const startUs = shouldQuantizeToFrames
+    cmd.startTicks === undefined ? computeTrackEndTicks(track) : Math.max(0, Number(cmd.startTicks));
+  const startTicks = shouldQuantizeToFrames
     ? quantizeTimeUsToFrames(startCandidate, fps, 'round')
     : Math.max(0, Math.round(startCandidate));
 
@@ -60,9 +60,9 @@ export function addClipToTrack(
     name: cmd.name,
     trackId: cmd.trackId,
     source: { path: cmd.path },
-    sourceDurationUs,
+    sourceDurationTicks,
     isImage: cmd.isImage,
-    timelineRange: { startUs, durationUs },
+    timelineRange: { startTicks, durationTicks },
     sourceRange,
     audioFadeInCurve: cmd.audioFadeInCurve,
     audioFadeOutCurve: cmd.audioFadeOutCurve,
@@ -72,15 +72,15 @@ export function addClipToTrack(
 
   let nextTracks = doc.tracks;
   if (cmd.pseudo) {
-    const sliced = sliceTrackItemsForOverlay(track.items, startUs, durationUs, fps, false);
+    const sliced = sliceTrackItemsForOverlay(track.items, startTicks, durationTicks, fps, false);
     const nextItemsRaw = [...sliced, clip];
-    nextItemsRaw.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
+    nextItemsRaw.sort((a, b) => a.timelineRange.startTicks - b.timelineRange.startTicks);
     const nextItems = normalizeGaps(doc, track.id, nextItemsRaw, { quantizeToFrames: false });
     nextTracks = doc.tracks.map((t) => (t.id === track.id ? { ...t, items: nextItems } : t));
   } else {
-    assertNoOverlap(track, '', startUs, durationUs);
+    assertNoOverlap(track, '', startTicks, durationTicks);
     const nextItemsRaw: TimelineTrackItem[] = [...track.items, clip];
-    nextItemsRaw.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
+    nextItemsRaw.sort((a, b) => a.timelineRange.startTicks - b.timelineRange.startTicks);
     const nextItems = normalizeGaps(doc, track.id, nextItemsRaw, { quantizeToFrames: false });
     nextTracks = doc.tracks.map((t) => (t.id === track.id ? { ...t, items: nextItems } : t));
   }
@@ -106,16 +106,16 @@ export function addVirtualClipToTrack(
     throw new Error('Virtual clips can only be added to video tracks');
   }
 
-  const durationUs = shouldQuantizeToFrames
+  const durationTicks = shouldQuantizeToFrames
     ? quantizeTimeUsToFrames(
-        Number(cmd.durationUs ?? 5_000_000 * TICKS_PER_MICROSECOND),
+        Number(cmd.durationTicks ?? 5_000_000 * TICKS_PER_MICROSECOND),
         fps,
         'round',
       )
-    : Math.max(0, Math.round(Number(cmd.durationUs ?? 5_000_000 * TICKS_PER_MICROSECOND)));
+    : Math.max(0, Math.round(Number(cmd.durationTicks ?? 5_000_000 * TICKS_PER_MICROSECOND)));
   const startCandidate =
-    cmd.startUs === undefined ? computeTrackEndUs(track) : Math.max(0, Number(cmd.startUs));
-  const startUs = shouldQuantizeToFrames
+    cmd.startTicks === undefined ? computeTrackEndTicks(track) : Math.max(0, Number(cmd.startTicks));
+  const startTicks = shouldQuantizeToFrames
     ? quantizeTimeUsToFrames(startCandidate, fps, 'round')
     : Math.max(0, Math.round(startCandidate));
 
@@ -127,8 +127,8 @@ export function addVirtualClipToTrack(
     id: cmd.clipId || nextItemId(track.id, 'clip'),
     trackId: track.id,
     name: cmd.name,
-    timelineRange: { startUs, durationUs },
-    sourceRange: { startUs: 0, durationUs },
+    timelineRange: { startTicks, durationTicks },
+    sourceRange: { startTicks: 0, durationTicks },
     audioFadeInCurve: cmd.audioFadeInCurve,
     audioFadeOutCurve: cmd.audioFadeOutCurve,
   };
@@ -182,15 +182,15 @@ export function addVirtualClipToTrack(
 
   let nextTracks = doc.tracks;
   if (cmd.pseudo) {
-    const sliced = sliceTrackItemsForOverlay(track.items, startUs, durationUs, fps, false);
+    const sliced = sliceTrackItemsForOverlay(track.items, startTicks, durationTicks, fps, false);
     const nextItemsRaw = [...sliced, clip];
-    nextItemsRaw.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
+    nextItemsRaw.sort((a, b) => a.timelineRange.startTicks - b.timelineRange.startTicks);
     const nextItems = normalizeGaps(doc, track.id, nextItemsRaw, { quantizeToFrames: false });
     nextTracks = doc.tracks.map((t) => (t.id === track.id ? { ...t, items: nextItems } : t));
   } else {
-    assertNoOverlap(track, '', startUs, durationUs);
+    assertNoOverlap(track, '', startTicks, durationTicks);
     const nextItemsRaw: TimelineTrackItem[] = [...track.items, clip];
-    nextItemsRaw.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
+    nextItemsRaw.sort((a, b) => a.timelineRange.startTicks - b.timelineRange.startTicks);
     const nextItems = normalizeGaps(doc, track.id, nextItemsRaw, { quantizeToFrames: false });
     nextTracks = doc.tracks.map((t) => (t.id === track.id ? { ...t, items: nextItems } : t));
   }

@@ -7,7 +7,7 @@ describe('ClipTransitions', () => {
     id: 'clip-1',
     kind: 'clip',
     trackId: 'track-1',
-    timelineRange: { startUs: 0, durationUs: 10_000_000 },
+    timelineRange: { startTicks: 0, durationTicks: 10_000_000 },
     transitionIn: null,
     transitionOut: null,
     locked: false,
@@ -48,7 +48,7 @@ describe('ClipTransitions', () => {
         ...defaultProps,
         clip: {
           ...baseItem,
-          transitionIn: { durationUs: 1_000_000, type: 'dissolve', mode: 'adjacent' },
+          transitionIn: { durationTicks: 1_000_000, type: 'dissolve', mode: 'adjacent' },
         },
       },
     });
@@ -71,7 +71,7 @@ describe('ClipTransitions', () => {
         bottomInsetPx: 10,
         clip: {
           ...baseItem,
-          transitionOut: { durationUs: 1_000_000, type: 'dissolve', mode: 'transparent' },
+          transitionOut: { durationTicks: 1_000_000, type: 'dissolve', mode: 'transparent' },
         },
       },
     });
@@ -93,7 +93,7 @@ describe('ClipTransitions', () => {
         ...defaultProps,
         clip: {
           ...baseItem,
-          transitionIn: { durationUs: 1_000_000, type: 'dissolve', mode: 'adjacent' },
+          transitionIn: { durationTicks: 1_000_000, type: 'dissolve', mode: 'adjacent' },
         },
       },
     });
@@ -116,7 +116,7 @@ describe('ClipTransitions', () => {
         ...defaultProps,
         clip: {
           ...baseItem,
-          transitionIn: { durationUs: 1_000_000, type: 'dissolve', mode: 'adjacent' },
+          transitionIn: { durationTicks: 1_000_000, type: 'dissolve', mode: 'adjacent' },
         },
         selectedTransition: { trackId: 'track-1', itemId: 'clip-1', edge: 'in' },
       },

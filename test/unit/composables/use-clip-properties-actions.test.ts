@@ -13,10 +13,10 @@ function makeClip(partial: Partial<TimelineClipItem> = {}): TimelineClipItem {
     id: 'c1',
     trackId: 'v1',
     name: 'Clip 1',
-    timelineRange: { startUs: 101_000, durationUs: 1_033_000 },
-    sourceRange: { startUs: 0, durationUs: 1_033_000 },
+    timelineRange: { startTicks: 101_000, durationTicks: 1_033_000 },
+    sourceRange: { startTicks: 0, durationTicks: 1_033_000 },
     source: { path: 'a.mp4' },
-    sourceDurationUs: 10_000_000,
+    sourceDurationTicks: 10_000_000,
     ...partial,
   } as TimelineClipItem;
 }

@@ -3,14 +3,14 @@ import type { useProjectStore } from '~/stores/project.store';
 import type { useWorkspaceStore } from '~/stores/workspace.store';
 import type { ClipEffect, TimelineTrack } from '~/timeline/types';
 import type { TimelineFormatInput } from '~/timeline/format';
-import { computeAudioDurationUs } from './useMonitorCore.helpers';
+import { computeAudioDurationTicks } from './useMonitorCore.helpers';
 import {
   prepareMonitorTimelineData,
   type PreparedMonitorTimelineData,
 } from './useMonitorCore.payload';
 
 export interface PreparedMonitorTimelineState extends PreparedMonitorTimelineData {
-  audioDurationUs: number;
+  audioDurationTicks: number;
 }
 
 export async function prepareMonitorTimelineState(params: {
@@ -30,17 +30,17 @@ export async function prepareMonitorTimelineState(params: {
 
   return {
     ...preparedTimeline,
-    audioDurationUs: computeAudioDurationUs(preparedTimeline.flattenedAudio),
+    audioDurationTicks: computeAudioDurationTicks(preparedTimeline.flattenedAudio),
   };
 }
 
 export function computeMonitorTimelineDuration(params: {
-  currentDurationUs: number;
-  maxDurationUs: number;
-  audioDurationUs: number;
+  currentDurationTicks: number;
+  maxDurationTicks: number;
+  audioDurationTicks: number;
   normalize?: boolean;
 }): number {
-  const nextDurationUs = Math.max(params.maxDurationUs, params.audioDurationUs);
+  const nextDurationTicks = Math.max(params.maxDurationTicks, params.audioDurationTicks);
 
-  return params.normalize ? normalizeTicks(nextDurationUs) : nextDurationUs;
+  return params.normalize ? normalizeTicks(nextDurationTicks) : nextDurationTicks;
 }

@@ -15,7 +15,7 @@ export type TimelineClipType = 'background' | 'adjustment' | 'media' | 'text' | 
 export interface TimelineClipLoaderInput {
   index: number;
   clipData: Record<string, unknown>;
-  sequentialTimeUs: number;
+  sequentialTimeTicks: number;
   fallbackTrackId?: string | null;
 }
 
@@ -27,15 +27,15 @@ export interface TimelineClipDescriptor {
   hudContentPath?: string;
   hudFramePath?: string;
   maskPath?: string;
-  sourceStartUs: number;
-  freezeFrameSourceUs?: number;
+  sourceStartTicks: number;
+  freezeFrameSourceTicks?: number;
   layer: number;
   trackId?: string;
-  requestedTimelineDurationUs: number;
-  requestedSourceRangeDurationUs: number;
-  requestedSourceDurationUs: number;
+  requestedTimelineDurationTicks: number;
+  requestedSourceRangeDurationTicks: number;
+  requestedSourceDurationTicks: number;
   speed?: number;
-  startUs: number;
+  startTicks: number;
   endUsFallback: number;
 }
 
@@ -52,12 +52,12 @@ export interface UpdateReusableClipContext {
 
 export interface UpdateReusableClipResult {
   clip: CompositorClip;
-  sequentialTimeUs: number;
+  sequentialTimeTicks: number;
 }
 
 export class TimelineClipLoader {
   public describe(input: TimelineClipLoaderInput): TimelineClipDescriptor | null {
-    const { clipData, index, sequentialTimeUs, fallbackTrackId } = input;
+    const { clipData, index, sequentialTimeTicks, fallbackTrackId } = input;
     if (clipData?.kind !== 'clip') {
       return null;
     }
@@ -108,12 +108,12 @@ export class TimelineClipLoader {
       )?.path ?? '',
     );
 
-    const sourceStartUs = Math.max(
+    const sourceStartTicks = Math.max(
       0,
-      Math.round(Number((clipData.sourceRange as Record<string, unknown>)?.startUs ?? 0)),
+      Math.round(Number((clipData.sourceRange as Record<string, unknown>)?.startTicks ?? 0)),
     );
-    const freezeFrameSourceUsRaw = clipData.freezeFrameSourceUs;
-    const freezeFrameSourceUs =
+    const freezeFrameSourceUsRaw = clipData.freezeFrameSourceTicks;
+    const freezeFrameSourceTicks =
       typeof freezeFrameSourceUsRaw === 'number' && Number.isFinite(freezeFrameSourceUsRaw)
         ? Math.max(0, Math.round(freezeFrameSourceUsRaw))
         : undefined;
@@ -122,21 +122,21 @@ export class TimelineClipLoader {
       typeof clipData.trackId === 'string' && clipData.trackId.length > 0
         ? clipData.trackId
         : (fallbackTrackId ?? undefined);
-    const requestedTimelineDurationUs = Math.max(
+    const requestedTimelineDurationTicks = Math.max(
       0,
-      Math.round(Number((clipData.timelineRange as Record<string, unknown>)?.durationUs ?? 0)),
+      Math.round(Number((clipData.timelineRange as Record<string, unknown>)?.durationTicks ?? 0)),
     );
-    const requestedSourceRangeDurationUs = Math.max(
+    const requestedSourceRangeDurationTicks = Math.max(
       0,
       Math.round(
         Number(
-          (clipData.sourceRange as Record<string, unknown>)?.durationUs ??
-            requestedTimelineDurationUs,
+          (clipData.sourceRange as Record<string, unknown>)?.durationTicks ??
+            requestedTimelineDurationTicks,
         ),
       ),
     );
-    const clipSourceDurationRaw = clipData.sourceDurationUs;
-    const requestedSourceDurationUs = Math.max(
+    const clipSourceDurationRaw = clipData.sourceDurationTicks;
+    const requestedSourceDurationTicks = Math.max(
       0,
       Math.round(
         Number(
@@ -153,13 +153,13 @@ export class TimelineClipLoader {
         ? Math.max(-10, Math.min(10, speedRaw))
         : undefined;
 
-    const startUs =
-      typeof (clipData.timelineRange as Record<string, unknown>)?.startUs === 'number'
+    const startTicks =
+      typeof (clipData.timelineRange as Record<string, unknown>)?.startTicks === 'number'
         ? Math.max(
             0,
-            Math.round(Number((clipData.timelineRange as Record<string, unknown>).startUs)),
+            Math.round(Number((clipData.timelineRange as Record<string, unknown>).startTicks)),
           )
-        : sequentialTimeUs;
+        : sequentialTimeTicks;
 
     return {
       clipType,
@@ -169,16 +169,16 @@ export class TimelineClipLoader {
       hudContentPath,
       hudFramePath,
       maskPath,
-      sourceStartUs,
-      freezeFrameSourceUs,
+      sourceStartTicks,
+      freezeFrameSourceTicks,
       layer,
       trackId,
-      requestedTimelineDurationUs,
-      requestedSourceRangeDurationUs,
-      requestedSourceDurationUs,
+      requestedTimelineDurationTicks,
+      requestedSourceRangeDurationTicks,
+      requestedSourceDurationTicks,
       speed,
-      startUs,
-      endUsFallback: startUs + Math.max(0, requestedTimelineDurationUs),
+      startTicks,
+      endUsFallback: startTicks + Math.max(0, requestedTimelineDurationTicks),
     };
   }
 
@@ -224,14 +224,14 @@ export class TimelineClipLoader {
       applySolidLayout,
     } = context;
 
-    const safeSourceDurationUs =
-      descriptor.requestedSourceDurationUs > 0
-        ? descriptor.requestedSourceDurationUs
-        : reusable.sourceDurationUs;
-    const safeTimelineDurationUs =
-      descriptor.requestedTimelineDurationUs > 0
-        ? descriptor.requestedTimelineDurationUs
-        : safeSourceDurationUs;
+    const safeSourceDurationTicks =
+      descriptor.requestedSourceDurationTicks > 0
+        ? descriptor.requestedSourceDurationTicks
+        : reusable.sourceDurationTicks;
+    const safeTimelineDurationTicks =
+      descriptor.requestedTimelineDurationTicks > 0
+        ? descriptor.requestedTimelineDurationTicks
+        : safeSourceDurationTicks;
 
     if (reusable.clipKind === 'video') {
       const hasFirstTimestamp =
@@ -248,17 +248,17 @@ export class TimelineClipLoader {
       }
     }
 
-    reusable.startUs = descriptor.startUs;
-    reusable.durationUs = safeTimelineDurationUs;
-    reusable.endUs = descriptor.startUs + safeTimelineDurationUs;
-    reusable.sourceStartUs = descriptor.sourceStartUs;
-    reusable.sourceRangeDurationUs =
-      descriptor.requestedSourceRangeDurationUs > 0
-        ? descriptor.requestedSourceRangeDurationUs
-        : reusable.sourceRangeDurationUs;
-    reusable.sourceDurationUs = safeSourceDurationUs;
+    reusable.startTicks = descriptor.startTicks;
+    reusable.durationTicks = safeTimelineDurationTicks;
+    reusable.endTicks = descriptor.startTicks + safeTimelineDurationTicks;
+    reusable.sourceStartTicks = descriptor.sourceStartTicks;
+    reusable.sourceRangeDurationTicks =
+      descriptor.requestedSourceRangeDurationTicks > 0
+        ? descriptor.requestedSourceRangeDurationTicks
+        : reusable.sourceRangeDurationTicks;
+    reusable.sourceDurationTicks = safeSourceDurationTicks;
     reusable.speed = descriptor.speed;
-    reusable.freezeFrameSourceUs = descriptor.freezeFrameSourceUs;
+    reusable.freezeFrameSourceTicks = descriptor.freezeFrameSourceTicks;
     reusable.layer = descriptor.layer;
     reusable.trackId = descriptor.trackId;
     reusable.opacity = clipData.opacity as number | undefined;
@@ -334,7 +334,7 @@ export class TimelineClipLoader {
 
     return {
       clip: reusable,
-      sequentialTimeUs: Math.max(descriptor.endUsFallback, reusable.endUs),
+      sequentialTimeTicks: Math.max(descriptor.endUsFallback, reusable.endTicks),
     };
   }
 }

@@ -78,7 +78,7 @@ export function useProvideTimelineContext() {
     toolbarDragModeEnabled: computed(() => settingsStore.toolbarDragModeEnabled),
     toolbarDragMode: computed(() => settingsStore.toolbarDragMode),
 
-    setCurrentTimeUs: (timeUs: number) => timelineStore.setCurrentTimeUs(timeUs),
+    setCurrentTimeTicks: (timeTicks: number) => timelineStore.setCurrentTimeTicks(timeTicks),
     updateClipProperties: (trackId: string, itemId: string, props: Record<string, unknown>) =>
       timelineStore.updateClipProperties(trackId, itemId, props),
     updateClipTransition: (
@@ -89,8 +89,8 @@ export function useProvideTimelineContext() {
     ) => timelineStore.updateClipTransition(trackId, itemId, patch, options),
     requestTimelineSave: (options?: { immediate?: boolean }) =>
       timelineStore.requestTimelineSave(options),
-    splitClipAtTime: (target: { trackId: string; itemId: string }, atUs: number) =>
-      timelineStore.splitClipAtTime(target, atUs),
+    splitClipAtTime: (target: { trackId: string; itemId: string }, atTicks: number) =>
+      timelineStore.splitClipAtTime(target, atTicks),
     splitClipAtPlayhead: (target: { trackId: string; itemId: string }) =>
       timelineStore.splitClipAtPlayhead(target),
     selectTimelineItems: (items: Array<{ trackId: string; itemId: string }>) =>
@@ -99,10 +99,10 @@ export function useProvideTimelineContext() {
       timelineStore.trimToPlayheadLeftNoRipple(target),
     trimToPlayheadRightNoRipple: (target: { trackId: string; itemId: string }) =>
       timelineStore.trimToPlayheadRightNoRipple(target),
-    trimToTimeLeftNoRipple: (target: { trackId: string; itemId: string }, atUs: number) =>
-      timelineStore.trimToTimeLeftNoRipple(target, atUs),
-    trimToTimeRightNoRipple: (target: { trackId: string; itemId: string }, atUs: number) =>
-      timelineStore.trimToTimeRightNoRipple(target, atUs),
+    trimToTimeLeftNoRipple: (target: { trackId: string; itemId: string }, atTicks: number) =>
+      timelineStore.trimToTimeLeftNoRipple(target, atTicks),
+    trimToTimeRightNoRipple: (target: { trackId: string; itemId: string }, atTicks: number) =>
+      timelineStore.trimToTimeRightNoRipple(target, atTicks),
     applyTimeline: (cmd: TimelineCommand) => timelineStore.applyTimeline(cmd),
     batchApplyTimeline: (cmds: TimelineCommand[], options) =>
       timelineStore.batchApplyTimeline(cmds, options),
@@ -118,7 +118,7 @@ export function useProvideTimelineContext() {
     triggerScrollToEffects: () => uiStore.triggerScrollToEffects(),
     copySelectedClips: () => timelineStore.copySelectedClips() || [],
     cutSelectedClips: () => timelineStore.cutSelectedClips() || [],
-    pasteClips: (options?: { insertStartUs?: number }) =>
+    pasteClips: (options?: { insertStartTicks?: number }) =>
       timelineStore.pasteClips(
         clipboardStore.clipboardPayload?.source === 'timeline'
           ? clipboardStore.clipboardPayload.items

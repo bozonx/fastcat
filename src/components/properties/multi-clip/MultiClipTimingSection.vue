@@ -14,7 +14,7 @@ defineProps<{
 }>();
 
 const emit = defineEmits<{
-  setUniformDuration: [durationUs: number];
+  setUniformDuration: [durationTicks: number];
   durationShiftChange: [value: number];
   startShiftChange: [value: number];
 }>();
@@ -27,7 +27,7 @@ const { t } = useI18n();
     <PropertyTimecode
       v-if="!hideUniformDuration"
       :label="t('fastcat.timeline.setUniformDuration')"
-      :model-value="firstClip?.timelineRange.durationUs ?? 0"
+      :model-value="firstClip?.timelineRange.durationTicks ?? 0"
       @update:model-value="(value) => emit('setUniformDuration', value)"
     />
 

@@ -20,7 +20,7 @@ vi.mock('~/utils/file-thumbnail-generator', () => ({
   fileThumbnailGenerator: { saveManualThumbnail: saveManualThumbnailMock },
 }));
 vi.mock('~/timeline/selectors', () => ({
-  selectTimelineDurationUs: selectTimelineDurationUsMock,
+  selectTimelineDurationTicks: selectTimelineDurationUsMock,
 }));
 
 const timelineDoc = { timebase: { fps: 30 }, tracks: [] } as unknown as TimelineDocument;

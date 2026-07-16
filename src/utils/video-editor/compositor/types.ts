@@ -30,7 +30,7 @@ export interface HudMediaState {
   sink?: unknown;
   firstTimestampS?: number;
   frameRate?: number;
-  sourceDurationUs: number;
+  sourceDurationTicks: number;
   clipKind: 'video' | 'image' | 'solid';
   sourceKind: 'videoFrame' | 'canvas' | 'bitmap';
   imageSource: ImageSource;
@@ -49,17 +49,17 @@ export interface BaseCompositorClip {
   sink?: VideoSampleSink;
   firstTimestampS?: number;
   frameRate?: number;
-  startUs: number;
-  endUs: number;
-  durationUs: number;
-  sourceStartUs: number;
-  /** Duration of the used source range (trimmed), i.e. sourceRange.durationUs */
-  sourceRangeDurationUs: number;
+  startTicks: number;
+  endTicks: number;
+  durationTicks: number;
+  sourceStartTicks: number;
+  /** Duration of the used source range (trimmed), i.e. sourceRange.durationTicks */
+  sourceRangeDurationTicks: number;
   /** Full duration of the source media file, used to compute available handle material */
-  sourceDurationUs: number;
+  sourceDurationTicks: number;
   speed?: number;
 
-  freezeFrameSourceUs?: number;
+  freezeFrameSourceTicks?: number;
   sprite: Sprite | Graphics | null;
   imageSource: ImageSource;
   lastVideoFrame: VideoFrame | ImageBitmap | null;

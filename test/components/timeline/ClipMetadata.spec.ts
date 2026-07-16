@@ -8,7 +8,7 @@ describe('ClipMetadata', () => {
   const item = {
     kind: 'clip',
     id: 'c1',
-    timelineRange: { startUs: 0, durationUs: 1000000 },
+    timelineRange: { startTicks: 0, durationTicks: 1000000 },
   } as any;
 
   const timelineContextMock = {
@@ -35,7 +35,7 @@ describe('ClipMetadata', () => {
       kind: 'clip',
       id: 'c1',
       audioMuted: true,
-      timelineRange: { startUs: 0, durationUs: 1000000 },
+      timelineRange: { startTicks: 0, durationTicks: 1000000 },
     } as any;
     const component = await mountSuspended(ClipMetadata, {
       props: { item: mutedItem, track, clipWidthPx: 100 },
@@ -54,7 +54,7 @@ describe('ClipMetadata', () => {
       kind: 'clip',
       id: 'c1',
       audioMuted: true,
-      timelineRange: { startUs: 0, durationUs: 1000000 },
+      timelineRange: { startTicks: 0, durationTicks: 1000000 },
     } as any;
     const mutedTrack = { kind: 'video', audioMuted: true } as any;
     const component = await mountSuspended(ClipMetadata, {
@@ -74,7 +74,7 @@ describe('ClipMetadata', () => {
       kind: 'clip',
       id: 'c1',
       disabled: true,
-      timelineRange: { startUs: 0, durationUs: 1000000 },
+      timelineRange: { startTicks: 0, durationTicks: 1000000 },
     } as any;
     const component = await mountSuspended(ClipMetadata, {
       props: { item: disabledItem, track, clipWidthPx: 100 },
@@ -94,7 +94,7 @@ describe('ClipMetadata', () => {
       id: 'c1',
       disabled: true,
       audioMuted: true,
-      timelineRange: { startUs: 0, durationUs: 1000000 },
+      timelineRange: { startTicks: 0, durationTicks: 1000000 },
     } as any;
     const component = await mountSuspended(ClipMetadata, {
       props: { item: disabledAndMutedItem, track, clipWidthPx: 100 },
@@ -119,7 +119,7 @@ describe('ClipMetadata', () => {
     const nonAlignedItem = {
       kind: 'clip',
       id: 'c1',
-      timelineRange: { startUs: 12345, durationUs: 1000000 },
+      timelineRange: { startTicks: 12345, durationTicks: 1000000 },
     } as any;
 
     const component = await mountSuspended(ClipMetadata, {
@@ -135,12 +135,12 @@ describe('ClipMetadata', () => {
     expect(component.find('[title="fastcat.timeline.freePositionHint"]').exists()).toBe(false);
   });
 
-  it('does not render freeze frame indicator badge when freezeFrameSourceUs is present', async () => {
+  it('does not render freeze frame indicator badge when freezeFrameSourceTicks is present', async () => {
     const freezeFrameItem = {
       kind: 'clip',
       id: 'c1',
-      freezeFrameSourceUs: 500000,
-      timelineRange: { startUs: 0, durationUs: 1000000 },
+      freezeFrameSourceTicks: 500000,
+      timelineRange: { startTicks: 0, durationTicks: 1000000 },
     } as any;
 
     const component = await mountSuspended(ClipMetadata, {

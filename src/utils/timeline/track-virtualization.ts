@@ -27,7 +27,7 @@ export interface TrackVisibilityIndexEntry {
  */
 export function buildClipRenderMemo(item: TimelineTrackItem, hasAudio?: boolean): string {
   if (item.kind !== 'clip') {
-    return [item.id, item.timelineRange.startUs, item.timelineRange.durationUs].join(':');
+    return [item.id, item.timelineRange.startTicks, item.timelineRange.durationTicks].join(':');
   }
 
   const clip = item as TimelineClipItem;
@@ -37,10 +37,10 @@ export function buildClipRenderMemo(item: TimelineTrackItem, hasAudio?: boolean)
     // re-renders (and the clipHasAudio-gated waveform/fades mount) once metadata
     // loads after a fresh drop — not only after an unrelated re-render.
     hasAudio ? 1 : 0,
-    clip.timelineRange.startUs,
-    clip.timelineRange.durationUs,
-    clip.sourceRange?.startUs ?? '',
-    clip.sourceRange?.durationUs ?? '',
+    clip.timelineRange.startTicks,
+    clip.timelineRange.durationTicks,
+    clip.sourceRange?.startTicks ?? '',
+    clip.sourceRange?.durationTicks ?? '',
     clip.name,
     clip.locked ? 1 : 0,
     clip.disabled ? 1 : 0,
@@ -50,17 +50,17 @@ export function buildClipRenderMemo(item: TimelineTrackItem, hasAudio?: boolean)
     clip.audioWaveformMode ?? 'half',
     clip.audioGain ?? 1,
     clip.audioBalance ?? 0,
-    clip.audioFadeInUs ?? 0,
-    clip.audioFadeOutUs ?? 0,
+    clip.audioFadeInTicks ?? 0,
+    clip.audioFadeOutTicks ?? 0,
     clip.audioFadeInCurve ?? 'linear',
     clip.audioFadeOutCurve ?? 'linear',
     clip.speed ?? 1,
-    clip.freezeFrameSourceUs ?? '',
+    clip.freezeFrameSourceTicks ?? '',
     clip.transitionIn?.type ?? '',
-    clip.transitionIn?.durationUs ?? 0,
+    clip.transitionIn?.durationTicks ?? 0,
     clip.transitionIn?.curve ?? '',
     clip.transitionOut?.type ?? '',
-    clip.transitionOut?.durationUs ?? 0,
+    clip.transitionOut?.durationTicks ?? 0,
     clip.transitionOut?.curve ?? '',
   ].join(':');
 }

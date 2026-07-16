@@ -5,7 +5,7 @@ import {
   computeWaveformPeakLength,
   computeWaveformRenderBudget,
   computeWaveformWindowMetrics,
-  resolveWaveformSourceUs,
+  resolveWaveformSourceTicks,
   serializeWaveformPeaks,
   deserializeWaveformPeaks,
   serializeWaveformCacheEntry,
@@ -13,30 +13,30 @@ import {
   isWaveformCacheEntry,
 } from '~/utils/audio/waveform';
 import { timeUsToPx } from '~/utils/timeline/geometry';
-import { timelineUs } from '../timeline-time';
+import { timelineTicks } from '../timeline-time';
 
 describe('audio waveform utilities', () => {
   it('aligns a trimmed forward clip to the matching source window', () => {
     const zoom = 50;
     const metrics = computeWaveformWindowMetrics({
-      sourceStartUs: timelineUs(2_000_000),
-      sourceDurationUs: timelineUs(10_000_000),
-      timelineDurationUs: timelineUs(3_000_000),
+      sourceStartTicks: timelineTicks(2_000_000),
+      sourceDurationTicks: timelineTicks(10_000_000),
+      timelineDurationTicks: timelineTicks(3_000_000),
       speed: 1,
       zoom,
     });
 
     expect(metrics.reversed).toBe(false);
-    expect(metrics.leftPx).toBe(-Math.round(timeUsToPx(timelineUs(2_000_000), zoom)));
-    expect(metrics.totalWidthPx).toBe(Math.round(timeUsToPx(timelineUs(10_000_000), zoom)));
+    expect(metrics.leftPx).toBe(-Math.round(timeUsToPx(timelineTicks(2_000_000), zoom)));
+    expect(metrics.totalWidthPx).toBe(Math.round(timeUsToPx(timelineTicks(10_000_000), zoom)));
   });
 
   it('aligns a reversed clip so the visible window runs from source end to start', () => {
     const zoom = 50;
     const metrics = computeWaveformWindowMetrics({
-      sourceStartUs: timelineUs(2_000_000),
-      sourceDurationUs: timelineUs(10_000_000),
-      timelineDurationUs: timelineUs(3_000_000),
+      sourceStartTicks: timelineTicks(2_000_000),
+      sourceDurationTicks: timelineTicks(10_000_000),
+      timelineDurationTicks: timelineTicks(3_000_000),
       speed: -1,
       zoom,
     });
@@ -45,67 +45,67 @@ describe('audio waveform utilities', () => {
     const sourceAtClipRightPx = sourceAtClipLeftPx - metrics.clipWidthPx;
 
     expect(metrics.reversed).toBe(true);
-    expect(sourceAtClipLeftPx).toBe(Math.round(timeUsToPx(timelineUs(5_000_000), zoom)));
-    expect(sourceAtClipRightPx).toBe(Math.round(timeUsToPx(timelineUs(2_000_000), zoom)));
+    expect(sourceAtClipLeftPx).toBe(Math.round(timeUsToPx(timelineTicks(5_000_000), zoom)));
+    expect(sourceAtClipRightPx).toBe(Math.round(timeUsToPx(timelineTicks(2_000_000), zoom)));
   });
 
   it('maps nested timeline positive-speed local time with clip speed', () => {
-    const sourceUs = resolveWaveformSourceUs({
-      absoluteUs: timelineUs(11_000_000),
-      clipStartUs: timelineUs(10_000_000),
-      clipDurationUs: timelineUs(2_000_000),
-      sourceStartUs: timelineUs(3_000_000),
-      sourceRangeDurationUs: timelineUs(4_000_000),
+    const sourceTicks = resolveWaveformSourceTicks({
+      absoluteTicks: timelineTicks(11_000_000),
+      clipStartTicks: timelineTicks(10_000_000),
+      clipDurationTicks: timelineTicks(2_000_000),
+      sourceStartTicks: timelineTicks(3_000_000),
+      sourceRangeDurationTicks: timelineTicks(4_000_000),
       speed: 2,
     });
 
-    expect(sourceUs).toBe(timelineUs(5_000_000));
+    expect(sourceTicks).toBe(timelineTicks(5_000_000));
   });
 
   it('maps nested timeline negative-speed local time from source range end', () => {
-    const sourceUs = resolveWaveformSourceUs({
-      absoluteUs: timelineUs(11_000_000),
-      clipStartUs: timelineUs(10_000_000),
-      clipDurationUs: timelineUs(2_000_000),
-      sourceStartUs: timelineUs(3_000_000),
-      sourceRangeDurationUs: timelineUs(4_000_000),
+    const sourceTicks = resolveWaveformSourceTicks({
+      absoluteTicks: timelineTicks(11_000_000),
+      clipStartTicks: timelineTicks(10_000_000),
+      clipDurationTicks: timelineTicks(2_000_000),
+      sourceStartTicks: timelineTicks(3_000_000),
+      sourceRangeDurationTicks: timelineTicks(4_000_000),
       speed: -2,
     });
 
-    expect(sourceUs).toBe(timelineUs(5_000_000));
+    expect(sourceTicks).toBe(timelineTicks(5_000_000));
   });
 
   it('reversed speed at clip start maps to source range end', () => {
-    const sourceUs = resolveWaveformSourceUs({
-      absoluteUs: timelineUs(10_000_000),
-      clipStartUs: timelineUs(10_000_000),
-      clipDurationUs: timelineUs(2_000_000),
-      sourceStartUs: timelineUs(3_000_000),
-      sourceRangeDurationUs: timelineUs(4_000_000),
+    const sourceTicks = resolveWaveformSourceTicks({
+      absoluteTicks: timelineTicks(10_000_000),
+      clipStartTicks: timelineTicks(10_000_000),
+      clipDurationTicks: timelineTicks(2_000_000),
+      sourceStartTicks: timelineTicks(3_000_000),
+      sourceRangeDurationTicks: timelineTicks(4_000_000),
       speed: -2,
     });
 
-    expect(sourceUs).toBe(timelineUs(7_000_000));
+    expect(sourceTicks).toBe(timelineTicks(7_000_000));
   });
 
   it('reversed speed at clip end maps to source range start', () => {
-    const sourceUs = resolveWaveformSourceUs({
-      absoluteUs: timelineUs(12_000_000),
-      clipStartUs: timelineUs(10_000_000),
-      clipDurationUs: timelineUs(2_000_000),
-      sourceStartUs: timelineUs(3_000_000),
-      sourceRangeDurationUs: timelineUs(4_000_000),
+    const sourceTicks = resolveWaveformSourceTicks({
+      absoluteTicks: timelineTicks(12_000_000),
+      clipStartTicks: timelineTicks(10_000_000),
+      clipDurationTicks: timelineTicks(2_000_000),
+      sourceStartTicks: timelineTicks(3_000_000),
+      sourceRangeDurationTicks: timelineTicks(4_000_000),
       speed: -2,
     });
 
-    expect(sourceUs).toBe(timelineUs(3_000_000));
+    expect(sourceTicks).toBe(timelineTicks(3_000_000));
   });
 
   it('reversed speed yields positive totalWidthPx', () => {
     const metrics = computeWaveformWindowMetrics({
-      sourceStartUs: 0,
-      sourceDurationUs: timelineUs(10_000_000),
-      timelineDurationUs: timelineUs(5_000_000),
+      sourceStartTicks: 0,
+      sourceDurationTicks: timelineTicks(10_000_000),
+      timelineDurationTicks: timelineTicks(5_000_000),
       speed: -2,
       zoom: 50,
     });

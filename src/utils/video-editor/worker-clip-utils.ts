@@ -19,34 +19,34 @@ export function clonePlain<T>(value: T): T {
   return cloneValue(value);
 }
 
-export function mergeFadeInUs(input: {
-  childFadeInUs: unknown;
-  parentFadeInUs: unknown;
-  parentLocalStartUs: number;
+export function mergeFadeInTicks(input: {
+  childFadeInTicks: unknown;
+  parentFadeInTicks: unknown;
+  parentLocalStartTicks: number;
 }): number | undefined {
-  const child = clampNumber(input.childFadeInUs, 0, Number.MAX_SAFE_INTEGER);
-  const parent = clampNumber(input.parentFadeInUs, 0, Number.MAX_SAFE_INTEGER);
+  const child = clampNumber(input.childFadeInTicks, 0, Number.MAX_SAFE_INTEGER);
+  const parent = clampNumber(input.parentFadeInTicks, 0, Number.MAX_SAFE_INTEGER);
   if (!parent || parent <= 0) return child;
-  const remaining = Math.max(0, Math.round(parent - input.parentLocalStartUs));
+  const remaining = Math.max(0, Math.round(parent - input.parentLocalStartTicks));
   if (remaining <= 0) return child;
   if (child === undefined) return remaining;
   return Math.max(child, remaining);
 }
 
-export function mergeFadeOutUs(input: {
-  childFadeOutUs: unknown;
-  parentFadeOutUs: unknown;
-  parentLocalEndUs: number;
-  parentDurationUs: number;
+export function mergeFadeOutTicks(input: {
+  childFadeOutTicks: unknown;
+  parentFadeOutTicks: unknown;
+  parentLocalEndTicks: number;
+  parentDurationTicks: number;
 }): number | undefined {
-  const child = clampNumber(input.childFadeOutUs, 0, Number.MAX_SAFE_INTEGER);
-  const parent = clampNumber(input.parentFadeOutUs, 0, Number.MAX_SAFE_INTEGER);
+  const child = clampNumber(input.childFadeOutTicks, 0, Number.MAX_SAFE_INTEGER);
+  const parent = clampNumber(input.parentFadeOutTicks, 0, Number.MAX_SAFE_INTEGER);
   if (!parent || parent <= 0) return child;
-  const outStart = Math.max(0, Math.round(input.parentDurationUs - parent));
-  if (input.parentLocalEndUs <= outStart) return child;
+  const outStart = Math.max(0, Math.round(input.parentDurationTicks - parent));
+  if (input.parentLocalEndTicks <= outStart) return child;
   const remaining = Math.max(
     0,
-    Math.round(parent - (input.parentDurationUs - input.parentLocalEndUs)),
+    Math.round(parent - (input.parentDurationTicks - input.parentLocalEndTicks)),
   );
   if (remaining <= 0) return child;
   if (child === undefined) return remaining;

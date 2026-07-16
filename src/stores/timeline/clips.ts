@@ -10,7 +10,7 @@ import type {
 import type { TimelineCommand } from '~/timeline/commands';
 import {
   getDocFps,
-  frameToUs,
+  frameToTicks,
   nextItemId,
   nextItemIds,
   quantizeTimeUsToFrames,
@@ -60,7 +60,7 @@ export interface TimelineClipsDeps {
   clearSelection: () => void;
   clearSelectedTransition: () => void;
   removeFromSelection: (itemIds: string[]) => void;
-  rippleDeleteRange: (input: { trackIds: string[]; startUs: number; endUs: number }) => void;
+  rippleDeleteRange: (input: { trackIds: string[]; startTicks: number; endTicks: number }) => void;
   createFallbackTimelineDoc: () => TimelineDocument;
   deleteTrack: (trackId: string, options?: { allowNonEmpty?: boolean }) => void;
   selectTrack: (trackId: string | null) => void;
@@ -73,10 +73,10 @@ export interface TimelineClipsDeps {
    */
   resolvePastePlacement?: (params: {
     baseTargetTrackId: string;
-    insertStartUs: number;
-    totalDurationUs: number;
-  }) => { pseudo: boolean; insertStartUs: number; quantizeToFrames: boolean };
-  defaultStaticClipDurationUs: number;
+    insertStartTicks: number;
+    totalDurationTicks: number;
+  }) => { pseudo: boolean; insertStartTicks: number; quantizeToFrames: boolean };
+  defaultStaticClipDurationTicks: number;
   defaultAudioFadeCurve: import('~/timeline/types').AudioFadeCurve;
   lastClipTrimmed: Ref<boolean>;
 }
@@ -94,7 +94,7 @@ export interface TimelineClipsModule {
         | 'opacity'
         | 'blendMode'
         | 'effects'
-        | 'freezeFrameSourceUs'
+        | 'freezeFrameSourceTicks'
         | 'speed'
         | 'speedActive'
         | 'transform'
@@ -102,8 +102,8 @@ export interface TimelineClipsModule {
         | 'animations'
         | 'audioGain'
         | 'audioBalance'
-        | 'audioFadeInUs'
-        | 'audioFadeOutUs'
+        | 'audioFadeInTicks'
+        | 'audioFadeOutTicks'
         | 'audioFadeInCurve'
         | 'audioFadeOutCurve'
         | 'audioFadesActive'
@@ -112,7 +112,7 @@ export interface TimelineClipsModule {
         | 'showWaveform'
         | 'showThumbnails'
         | 'sourceRange'
-        | 'sourceDurationUs'
+        | 'sourceDurationTicks'
         | 'source'
         | 'opacityActive'
         | 'blendModeActive'
@@ -161,7 +161,7 @@ export interface TimelineClipsModule {
   addVirtualClipAtPlayhead: (input: {
     clipType: Extract<TimelineClipType, 'adjustment' | 'background' | 'text' | 'shape' | 'hud'>;
     name: string;
-    durationUs?: number;
+    durationTicks?: number;
     backgroundColor?: string;
     text?: string;
     style?: TextClipStyle;
@@ -173,13 +173,13 @@ export interface TimelineClipsModule {
   addVirtualClipToTrack: (
     input: {
       trackId: string;
-      startUs: number;
+      startTicks: number;
       clipType: Extract<
         import('~/timeline/types').TimelineClipType,
         'adjustment' | 'background' | 'text' | 'shape' | 'hud'
       >;
       name: string;
-      durationUs?: number;
+      durationTicks?: number;
       backgroundColor?: string;
       text?: string;
       style?: import('~/timeline/types').TextClipStyle;
@@ -202,20 +202,20 @@ export interface TimelineClipsModule {
     },
   ) => string[];
   addAdjustmentClipAtPlayhead: (options?: {
-    durationUs?: number;
+    durationTicks?: number;
     name?: string;
     pseudo?: boolean;
     trackId?: string;
   }) => string[];
   addBackgroundClipAtPlayhead: (options?: {
-    durationUs?: number;
+    durationTicks?: number;
     name?: string;
     backgroundColor?: string;
     pseudo?: boolean;
     trackId?: string;
   }) => string[];
   addTextClipAtPlayhead: (options?: {
-    durationUs?: number;
+    durationTicks?: number;
     name?: string;
     text?: string;
     style?: TextClipStyle;
@@ -234,7 +234,7 @@ export interface TimelineClipsModule {
     items: TimelineClipClipboardItem[],
     options?: {
       targetTrackId?: string | null;
-      insertStartUs?: number;
+      insertStartTicks?: number;
       respectToolbarModes?: boolean;
     },
   ) => Promise<{ trackId: string; itemId: string }[]>;
@@ -242,7 +242,7 @@ export interface TimelineClipsModule {
     trackId: string;
     itemId: string;
     edge: 'start' | 'end';
-    deltaUs: number;
+    deltaTicks: number;
     quantizeToFrames?: boolean;
   }) => void;
 }
@@ -270,7 +270,7 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
       }
     }
 
-    items.sort((a, b) => a.clip.timelineRange.startUs - b.clip.timelineRange.startUs);
+    items.sort((a, b) => a.clip.timelineRange.startTicks - b.clip.timelineRange.startTicks);
     return items;
   }
 
@@ -294,7 +294,7 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
         | 'opacity'
         | 'blendMode'
         | 'effects'
-        | 'freezeFrameSourceUs'
+        | 'freezeFrameSourceTicks'
         | 'speed'
         | 'speedActive'
         | 'transform'
@@ -302,8 +302,8 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
         | 'animations'
         | 'audioGain'
         | 'audioBalance'
-        | 'audioFadeInUs'
-        | 'audioFadeOutUs'
+        | 'audioFadeInTicks'
+        | 'audioFadeOutTicks'
         | 'audioFadeInCurve'
         | 'audioFadeOutCurve'
         | 'audioFadesActive'
@@ -313,7 +313,7 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
         | 'showThumbnails'
         | 'sourceRange'
         | 'timelineRange'
-        | 'sourceDurationUs'
+        | 'sourceDurationTicks'
         | 'linkedGroupId'
         | 'source'
         | 'opacityActive'
@@ -571,7 +571,7 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
     items: TimelineClipClipboardItem[],
     options?: {
       targetTrackId?: string | null;
-      insertStartUs?: number;
+      insertStartTicks?: number;
       /** Honour the toolbar overlap / snap / free-mode switches (user paste). */
       respectToolbarModes?: boolean;
     },
@@ -624,8 +624,8 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
     const baseTargetTrack = doc.tracks[baseTargetTrackIndex]!;
 
     // 2. Determine horizontal and vertical offsets
-    const minStartUs = Math.min(...items.map((item) => item.clip.timelineRange.startUs));
-    let insertStartUs = Math.max(0, Math.round(options?.insertStartUs ?? deps.currentTime.value));
+    const minStartTicks = Math.min(...items.map((item) => item.clip.timelineRange.startTicks));
+    let insertStartTicks = Math.max(0, Math.round(options?.insertStartTicks ?? deps.currentTime.value));
 
     // Placement mode. By default paste overlays (pseudo) and frame-quantizes —
     // this preserves programmatic callers (alt-drag copy, etc.). User-initiated
@@ -635,17 +635,17 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
     let pasteAsPseudo = true;
     let pasteQuantizeToFrames: boolean | undefined;
     if (options?.respectToolbarModes && deps.resolvePastePlacement) {
-      const spanEndUs = Math.max(
-        ...items.map((it) => it.clip.timelineRange.startUs + it.clip.timelineRange.durationUs),
+      const spanEndTicks = Math.max(
+        ...items.map((it) => it.clip.timelineRange.startTicks + it.clip.timelineRange.durationTicks),
       );
       const placement = deps.resolvePastePlacement({
         baseTargetTrackId: baseTargetTrack.id,
-        insertStartUs,
-        totalDurationUs: Math.max(0, spanEndUs - minStartUs),
+        insertStartTicks,
+        totalDurationTicks: Math.max(0, spanEndTicks - minStartTicks),
       });
       pasteAsPseudo = placement.pseudo;
       pasteQuantizeToFrames = placement.quantizeToFrames;
-      insertStartUs = Math.max(0, Math.round(placement.insertStartUs));
+      insertStartTicks = Math.max(0, Math.round(placement.insertStartTicks));
     }
 
     // Identify unique source tracks and find the "top-most" one among copied items
@@ -720,8 +720,8 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
       const clip = cloneClip(item.clip);
       const { trackId, itemId: newClipId } = pasteDescriptor[i]!;
 
-      const relativeStartUs = clip.timelineRange.startUs - minStartUs;
-      const nextStartUs = insertStartUs + relativeStartUs;
+      const relativeStartTicks = clip.timelineRange.startTicks - minStartTicks;
+      const nextStartTicks = insertStartTicks + relativeStartTicks;
 
       // A free (sub-frame) audio clip must survive copy/paste with its phase and
       // duration intact — quantizing it here would snap the copy onto the frame
@@ -739,9 +739,9 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
           clipId: newClipId,
           name: clip.name,
           path: clip.source.path,
-          startUs: nextStartUs,
-          durationUs: clip.timelineRange.durationUs,
-          sourceDurationUs: clip.sourceDurationUs,
+          startTicks: nextStartTicks,
+          durationTicks: clip.timelineRange.durationTicks,
+          sourceDurationTicks: clip.sourceDurationTicks,
           sourceRange: clip.sourceRange,
           isImage: clip.isImage,
           pseudo: pasteAsPseudo,
@@ -757,8 +757,8 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
             'adjustment' | 'background' | 'text' | 'shape' | 'hud'
           >,
           name: clip.name,
-          durationUs: clip.timelineRange.durationUs,
-          startUs: nextStartUs,
+          durationTicks: clip.timelineRange.durationTicks,
+          startTicks: nextStartTicks,
           pseudo: pasteAsPseudo,
           quantizeToFrames: clipQuantizeToFrames,
           backgroundColor: 'backgroundColor' in clip ? clip.backgroundColor : undefined,
@@ -783,7 +783,7 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
           opacity: clip.opacity,
           blendMode: clip.blendMode,
           effects: cloneClip(clip.effects ?? []),
-          freezeFrameSourceUs: clip.freezeFrameSourceUs,
+          freezeFrameSourceTicks: clip.freezeFrameSourceTicks,
           ...(clip.speed !== undefined ? { speed: clip.speed } : {}),
           speedActive: clip.speedActive,
           transform: cloneValue(clip.transform),
@@ -791,8 +791,8 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
           animations: cloneValue(clip.animations),
           audioGain: clip.audioGain,
           audioBalance: clip.audioBalance,
-          audioFadeInUs: clip.audioFadeInUs,
-          audioFadeOutUs: clip.audioFadeOutUs,
+          audioFadeInTicks: clip.audioFadeInTicks,
+          audioFadeOutTicks: clip.audioFadeOutTicks,
           audioFadeInCurve: clip.audioFadeInCurve,
           audioFadeOutCurve: clip.audioFadeOutCurve,
           audioFadesActive: clip.audioFadesActive,
@@ -801,7 +801,7 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
           showWaveform: clip.showWaveform,
           showThumbnails: clip.showThumbnails,
           sourceRange: clip.sourceRange,
-          sourceDurationUs: clip.sourceDurationUs,
+          sourceDurationTicks: clip.sourceDurationTicks,
           linkedGroupId: translatedGroupId,
           opacityActive: clip.opacityActive,
           blendModeActive: clip.blendModeActive,
@@ -847,7 +847,7 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
     trackId: string;
     itemId: string;
     edge: 'start' | 'end';
-    deltaUs: number;
+    deltaTicks: number;
     quantizeToFrames?: boolean;
   }) {
     deps.applyTimeline(
@@ -881,27 +881,27 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
     if (!targetTrack) return;
 
     // Collect selected items (both clips and gaps)
-    let startUs = Infinity;
-    let endUs = -Infinity;
+    let startTicks = Infinity;
+    let endTicks = -Infinity;
     const itemIds: string[] = [];
 
     for (const item of targetTrack.items) {
       if (!selectedSet.has(item.id)) continue;
       itemIds.push(item.id);
-      startUs = Math.min(startUs, item.timelineRange.startUs);
-      endUs = Math.max(endUs, item.timelineRange.startUs + item.timelineRange.durationUs);
+      startTicks = Math.min(startTicks, item.timelineRange.startTicks);
+      endTicks = Math.max(endTicks, item.timelineRange.startTicks + item.timelineRange.durationTicks);
     }
 
-    if (itemIds.length === 0 || startUs >= endUs) return;
+    if (itemIds.length === 0 || startTicks >= endTicks) return;
 
-    deps.rippleDeleteRange({ trackIds: [targetTrack.id], startUs, endUs });
+    deps.rippleDeleteRange({ trackIds: [targetTrack.id], startTicks, endTicks });
     deps.clearSelection();
   }
 
   function addVirtualClipAtPlayhead(input: {
     clipType: Extract<TimelineClipType, 'adjustment' | 'background' | 'text' | 'shape' | 'hud'>;
     name: string;
-    durationUs?: number;
+    durationTicks?: number;
     backgroundColor?: string;
     text?: string;
     style?: TextClipStyle;
@@ -920,13 +920,13 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
       trackId,
       clipType: input.clipType,
       name: input.name,
-      durationUs: input.durationUs,
+      durationTicks: input.durationTicks,
       backgroundColor: input.backgroundColor,
       text: input.text,
       style: input.style,
       shapeType: input.shapeType,
       hudType: input.hudType,
-      startUs: deps.currentTime.value,
+      startTicks: deps.currentTime.value,
       audioFadeInCurve: deps.defaultAudioFadeCurve,
       audioFadeOutCurve: deps.defaultAudioFadeCurve,
       pseudo: input.pseudo,
@@ -936,13 +936,13 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
   function addVirtualClipToTrack(
     input: {
       trackId: string;
-      startUs: number;
+      startTicks: number;
       clipType: Extract<
         import('~/timeline/types').TimelineClipType,
         'adjustment' | 'background' | 'text' | 'shape' | 'hud'
       >;
       name: string;
-      durationUs?: number;
+      durationTicks?: number;
       backgroundColor?: string;
       text?: string;
       style?: import('~/timeline/types').TextClipStyle;
@@ -967,35 +967,35 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
     const track = deps.timelineDoc.value?.tracks.find((t) => t.id === input.trackId);
     if (!track) throw new Error('Track not found');
 
-    const startUs = input.startUs;
-    const durationUs = input.durationUs ?? deps.defaultStaticClipDurationUs;
+    const startTicks = input.startTicks;
+    const durationTicks = input.durationTicks ?? deps.defaultStaticClipDurationTicks;
 
-    // Check if startUs falls inside any existing clip on this track
+    // Check if startTicks falls inside any existing clip on this track
     const overlappingClip = track.items.find((it) => {
       if (it.kind !== 'clip') return false;
-      const clipStart = it.timelineRange.startUs;
-      const clipEnd = clipStart + it.timelineRange.durationUs;
-      return startUs >= clipStart && startUs < clipEnd;
+      const clipStart = it.timelineRange.startTicks;
+      const clipEnd = clipStart + it.timelineRange.durationTicks;
+      return startTicks >= clipStart && startTicks < clipEnd;
     });
 
     if (overlappingClip) {
       throw new Error('cannot_insert_on_clip');
     }
 
-    // Find the next clip that starts after startUs on this track
+    // Find the next clip that starts after startTicks on this track
     const nextClip = track.items
-      .filter((it) => it.kind === 'clip' && it.timelineRange.startUs > startUs)
-      .sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs)[0];
+      .filter((it) => it.kind === 'clip' && it.timelineRange.startTicks > startTicks)
+      .sort((a, b) => a.timelineRange.startTicks - b.timelineRange.startTicks)[0];
 
-    let finalDurationUs = durationUs;
+    let finalDurationTicks = durationTicks;
 
     if (nextClip) {
-      const maxAvailableDurationUs = nextClip.timelineRange.startUs - startUs;
-      if (maxAvailableDurationUs <= 0) {
+      const maxAvailableDurationTicks = nextClip.timelineRange.startTicks - startTicks;
+      if (maxAvailableDurationTicks <= 0) {
         throw new Error('cannot_insert_on_clip');
       }
-      if (durationUs > maxAvailableDurationUs) {
-        finalDurationUs = maxAvailableDurationUs;
+      if (durationTicks > maxAvailableDurationTicks) {
+        finalDurationTicks = maxAvailableDurationTicks;
         deps.lastClipTrimmed.value = true;
       }
     }
@@ -1004,10 +1004,10 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
       {
         type: 'add_virtual_clip_to_track',
         trackId: input.trackId,
-        startUs: input.startUs,
+        startTicks: input.startTicks,
         clipType: input.clipType,
         name: input.name,
-        durationUs: finalDurationUs,
+        durationTicks: finalDurationTicks,
         backgroundColor: input.backgroundColor,
         text: input.text,
         style: input.style,
@@ -1022,7 +1022,7 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
   }
 
   function addAdjustmentClipAtPlayhead(options?: {
-    durationUs?: number;
+    durationTicks?: number;
     name?: string;
     pseudo?: boolean;
     trackId?: string;
@@ -1030,14 +1030,14 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
     return addVirtualClipAtPlayhead({
       clipType: 'adjustment',
       name: options?.name ?? 'Adjustment',
-      durationUs: options?.durationUs,
+      durationTicks: options?.durationTicks,
       pseudo: options?.pseudo,
       trackId: options?.trackId,
     });
   }
 
   function addBackgroundClipAtPlayhead(options?: {
-    durationUs?: number;
+    durationTicks?: number;
     name?: string;
     backgroundColor?: string;
     pseudo?: boolean;
@@ -1046,7 +1046,7 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
     return addVirtualClipAtPlayhead({
       clipType: 'background',
       name: options?.name ?? 'Background',
-      durationUs: options?.durationUs,
+      durationTicks: options?.durationTicks,
       backgroundColor: options?.backgroundColor,
       pseudo: options?.pseudo,
       trackId: options?.trackId,
@@ -1054,7 +1054,7 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
   }
 
   function addTextClipAtPlayhead(options?: {
-    durationUs?: number;
+    durationTicks?: number;
     name?: string;
     text?: string;
     style?: TextClipStyle;
@@ -1064,7 +1064,7 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
     return addVirtualClipAtPlayhead({
       clipType: 'text',
       name: options?.name ?? 'Text',
-      durationUs: options?.durationUs,
+      durationTicks: options?.durationTicks,
       text: options?.text,
       style: options?.style,
       pseudo: options?.pseudo,
@@ -1085,28 +1085,28 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
 
     const fps = getDocFps(doc);
 
-    const clipStartUs = item.timelineRange.startUs;
-    const clipEndUs = clipStartUs + item.timelineRange.durationUs;
-    const playheadUs = deps.currentTime.value;
+    const clipStartTicks = item.timelineRange.startTicks;
+    const clipEndTicks = clipStartTicks + item.timelineRange.durationTicks;
+    const playheadTicks = deps.currentTime.value;
 
-    const usePlayhead = playheadUs >= clipStartUs && playheadUs < clipEndUs;
+    const usePlayhead = playheadTicks >= clipStartTicks && playheadTicks < clipEndTicks;
     if (!usePlayhead) return;
 
-    const localUs = playheadUs - clipStartUs;
+    const localTicks = playheadTicks - clipStartTicks;
     const sourceUsRaw = resolveClipSourceTimeTicks({
-      localTimeTicks: localUs,
-      sourceStartTicks: item.sourceRange.startUs,
-      sourceRangeDurationTicks: item.sourceRange.durationUs,
+      localTimeTicks: localTicks,
+      sourceStartTicks: item.sourceRange.startTicks,
+      sourceRangeDurationTicks: item.sourceRange.durationTicks,
       speed: item.speed,
       frameRate: fps,
     });
-    const sourceUs = quantizeTimeUsToFrames(sourceUsRaw, fps, 'floor');
+    const sourceTicks = quantizeTimeUsToFrames(sourceUsRaw, fps, 'floor');
 
-    updateClipProperties(input.trackId, input.itemId, { freezeFrameSourceUs: sourceUs });
+    updateClipProperties(input.trackId, input.itemId, { freezeFrameSourceTicks: sourceTicks });
   }
 
   function resetClipFreezeFrame(input: { trackId: string; itemId: string }) {
-    updateClipProperties(input.trackId, input.itemId, { freezeFrameSourceUs: undefined });
+    updateClipProperties(input.trackId, input.itemId, { freezeFrameSourceTicks: undefined });
   }
 
   async function toggleDisableTargetClip() {
@@ -1195,10 +1195,10 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
     if (!doc || deps.selectedItemIds.value.length === 0) return;
 
     const fps = getDocFps(doc);
-    const frameUs = frameToUs(1, fps);
-    const deltaUs = deltaFrames * frameUs;
+    const frameTicks = frameToTicks(1, fps);
+    const deltaTicks = deltaFrames * frameTicks;
 
-    const moves: { fromTrackId: string; toTrackId: string; itemId: string; startUs: number }[] = [];
+    const moves: { fromTrackId: string; toTrackId: string; itemId: string; startTicks: number }[] = [];
 
     const selectedSet = new Set(deps.selectedItemIds.value);
     for (const track of doc.tracks) {
@@ -1210,7 +1210,7 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
           fromTrackId: track.id,
           toTrackId: track.id,
           itemId: item.id,
-          startUs: quantizeTimeUsToFrames(item.timelineRange.startUs + deltaUs, fps, 'round'),
+          startTicks: quantizeTimeUsToFrames(item.timelineRange.startTicks + deltaTicks, fps, 'round'),
         });
       }
     }

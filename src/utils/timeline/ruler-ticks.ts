@@ -1,4 +1,4 @@
-import { frameToUs } from '~/timeline/commands/utils';
+import { frameToTicks } from '~/timeline/commands/utils';
 import { timeUsToPx } from '~/utils/timeline/geometry';
 
 export interface TimelineRulerStepInput {
@@ -40,11 +40,11 @@ export function getFirstTimelineRulerMajorFrame(input: TimelineRulerFrameRangeIn
 }
 
 export function getTimelineTickCanvasX(params: {
-  timeUs: number;
+  timeTicks: number;
   zoom: number;
   renderStartPx: number;
 }): number {
-  return Math.round(timeUsToPx(params.timeUs, params.zoom)) - params.renderStartPx + 0.5;
+  return Math.round(timeUsToPx(params.timeTicks, params.zoom)) - params.renderStartPx + 0.5;
 }
 
 export function getTimelineFrameTickCanvasX(params: {
@@ -54,7 +54,7 @@ export function getTimelineFrameTickCanvasX(params: {
   renderStartPx: number;
 }): number {
   return getTimelineTickCanvasX({
-    timeUs: frameToUs(params.frame, params.fps),
+    timeTicks: frameToTicks(params.frame, params.fps),
     zoom: params.zoom,
     renderStartPx: params.renderStartPx,
   });

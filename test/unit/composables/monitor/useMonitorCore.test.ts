@@ -36,8 +36,8 @@ vi.mock('~/stores/workspace.store', () => ({
   useWorkspaceStore: () => ({
     userSettings: {
       optimization: { pixiRenderer: 'webgpu', videoFrameCacheMb: 1024 },
-      projectDefaults: { audioDeclickDurationUs: 5000 },
-      timeline: { defaultStaticClipDurationUs: 5000000 },
+      projectDefaults: { audioDeclickDurationTicks: 5000 },
+      timeline: { defaultStaticClipDurationTicks: 5000000 },
     },
     workspaceHandle: null,
     workspaceState: {
@@ -88,8 +88,8 @@ function createAudioClip(overrides: Partial<WorkerTimelineClip> = {}): WorkerTim
     id: 'audio-1',
     layer: 0,
     source: { path: 'audio.mp3' },
-    timelineRange: { startUs: 0, durationUs: 5_000_000 },
-    sourceRange: { startUs: 0, durationUs: 5_000_000 },
+    timelineRange: { startTicks: 0, durationTicks: 5_000_000 },
+    sourceRange: { startTicks: 0, durationTicks: 5_000_000 },
     ...overrides,
   };
 }
@@ -127,10 +127,10 @@ describe('useMonitorCore', () => {
       clip: createAudioClip({
         audioFadeInCurve: 'logarithmic',
         audioFadeOutCurve: 'linear',
-        audioDeclickDurationUs: 5000,
+        audioDeclickDurationTicks: 5000,
         defaultAudioFadeCurve: 'logarithmic',
-        transitionIn: { type: 'dissolve', durationUs: 100_000, mode: 'adjacent' } as any,
-        transitionOut: { type: 'dissolve', durationUs: 200_000, mode: 'adjacent' } as any,
+        transitionIn: { type: 'dissolve', durationTicks: 100_000, mode: 'adjacent' } as any,
+        transitionOut: { type: 'dissolve', durationTicks: 200_000, mode: 'adjacent' } as any,
       }),
       sourcePath: 'audio.mp3',
       fileHandle: {} as FileSystemFileHandle,
@@ -139,18 +139,18 @@ describe('useMonitorCore', () => {
     expect(item).toMatchObject({
       audioFadeInCurve: 'logarithmic',
       audioFadeOutCurve: 'linear',
-      audioDeclickDurationUs: 5000,
-      transitionIn: { durationUs: 100_000 },
-      transitionOut: { durationUs: 200_000 },
+      audioDeclickDurationTicks: 5000,
+      transitionIn: { durationTicks: 100_000 },
+      transitionOut: { durationTicks: 200_000 },
     });
   });
 
   it('does not keep stale monitor duration after timeline shrink', () => {
     expect(
       computeMonitorTimelineDuration({
-        currentDurationUs: 10_000_000,
-        maxDurationUs: 3_000_000,
-        audioDurationUs: 4_000_000,
+        currentDurationTicks: 10_000_000,
+        maxDurationTicks: 3_000_000,
+        audioDurationTicks: 4_000_000,
       }),
     ).toBe(4_000_000);
   });
@@ -175,8 +175,8 @@ describe('useMonitorCore', () => {
           trackId: 'track-audio',
           name: 'audio-1',
           source: { path: 'audio.mp3' },
-          timelineRange: { startUs: 0, durationUs: 5_000_000 },
-          sourceRange: { startUs: 0, durationUs: 5_000_000 },
+          timelineRange: { startTicks: 0, durationTicks: 5_000_000 },
+          sourceRange: { startTicks: 0, durationTicks: 5_000_000 },
         },
       ],
     };
@@ -187,13 +187,13 @@ describe('useMonitorCore', () => {
       isPlaying: false,
       masterGain: 1,
       audioMuted: false,
-      setCurrentTimeUs: vi.fn(),
+      setCurrentTimeTicks: vi.fn(),
       timelineDoc: { tracks: [audioTrack] } as any,
     });
 
     const projectStore = reactive({
       projectSettings: {
-        project: { width: 1920, height: 1080, audioDeclickDurationUs: 5000 },
+        project: { width: 1920, height: 1080, audioDeclickDurationTicks: 5000 },
         export: { width: 1920, height: 1080 },
       },
       activeMonitor: createMonitorSettings(),
@@ -223,7 +223,7 @@ describe('useMonitorCore', () => {
             workerTimelineClips: ref([]),
             workerAudioClips: audioClips,
             workerTimelinePayload: ref([]),
-            safeDurationUs: ref(0),
+            safeDurationTicks: ref(0),
             clipSourceSignature: ref(1),
             clipLayoutSignature: ref(1),
             clipContentSignature: ref(1),
@@ -263,7 +263,7 @@ describe('useMonitorCore', () => {
       isPlaying: false,
       masterGain: 1,
       audioMuted: false,
-      setCurrentTimeUs: vi.fn(),
+      setCurrentTimeTicks: vi.fn(),
       timelineDoc: null,
     });
 
@@ -295,7 +295,7 @@ describe('useMonitorCore', () => {
             workerTimelineClips: ref([]),
             workerAudioClips: ref([]),
             workerTimelinePayload: ref([]),
-            safeDurationUs: ref(0),
+            safeDurationTicks: ref(0),
             clipSourceSignature: ref(1),
             clipLayoutSignature: ref(1),
             clipContentSignature: ref(1),
@@ -342,7 +342,7 @@ describe('useMonitorCore', () => {
       isPlaying: false,
       masterGain: 1,
       audioMuted: false,
-      setCurrentTimeUs: vi.fn(),
+      setCurrentTimeTicks: vi.fn(),
       timelineDoc: null,
     });
 
@@ -378,7 +378,7 @@ describe('useMonitorCore', () => {
             workerTimelineClips: ref([]),
             workerAudioClips: ref([]),
             workerTimelinePayload: ref([]),
-            safeDurationUs: ref(0),
+            safeDurationTicks: ref(0),
             clipSourceSignature: ref(1),
             clipLayoutSignature: ref(1),
             clipContentSignature: ref(1),
@@ -423,7 +423,7 @@ describe('useMonitorCore', () => {
       isPlaying: false,
       masterGain: 1,
       audioMuted: false,
-      setCurrentTimeUs: vi.fn(),
+      setCurrentTimeTicks: vi.fn(),
       timelineDoc: null,
     });
 
@@ -451,7 +451,7 @@ describe('useMonitorCore', () => {
             workerTimelineClips: ref([]),
             workerAudioClips: ref([]),
             workerTimelinePayload: ref([]),
-            safeDurationUs: ref(0),
+            safeDurationTicks: ref(0),
             clipSourceSignature: ref(1),
             clipLayoutSignature: ref(1),
             clipContentSignature: ref(1),
@@ -503,7 +503,7 @@ describe('useMonitorCore', () => {
       isPlaying: false,
       masterGain: 1,
       audioMuted: false,
-      setCurrentTimeUs: vi.fn(),
+      setCurrentTimeTicks: vi.fn(),
       // Default fresh-timeline shape: tracks exist, but every track is empty.
       timelineDoc: {
         tracks: [
@@ -537,7 +537,7 @@ describe('useMonitorCore', () => {
             workerTimelineClips: ref([]),
             workerAudioClips: ref([]),
             workerTimelinePayload: ref([]),
-            safeDurationUs: ref(0),
+            safeDurationTicks: ref(0),
             clipSourceSignature: ref(1),
             clipLayoutSignature: ref(1),
             clipContentSignature: ref(1),
@@ -578,7 +578,7 @@ describe('useMonitorCore', () => {
       isPlaying: false,
       masterGain: 1,
       audioMuted: false,
-      setCurrentTimeUs: vi.fn(),
+      setCurrentTimeTicks: vi.fn(),
       timelineDoc: null,
     });
 
@@ -610,7 +610,7 @@ describe('useMonitorCore', () => {
             workerTimelineClips: ref([]),
             workerAudioClips: ref([]),
             workerTimelinePayload: ref([]),
-            safeDurationUs: ref(2_000_000),
+            safeDurationTicks: ref(2_000_000),
             clipSourceSignature: ref(1),
             clipLayoutSignature: ref(1),
             clipContentSignature: ref(1),
@@ -665,7 +665,7 @@ describe('useMonitorCore', () => {
       isPlaying: false,
       masterGain: 1,
       audioMuted: false,
-      setCurrentTimeUs: vi.fn(),
+      setCurrentTimeTicks: vi.fn(),
       timelineDoc: null,
     });
 
@@ -698,7 +698,7 @@ describe('useMonitorCore', () => {
             workerTimelineClips: ref([]),
             workerAudioClips: ref([]),
             workerTimelinePayload: ref([]),
-            safeDurationUs: ref(2_000_000),
+            safeDurationTicks: ref(2_000_000),
             clipSourceSignature: ref(1),
             clipLayoutSignature: clipLayoutSig,
             clipContentSignature: ref(1),
@@ -759,7 +759,7 @@ describe('useMonitorCore', () => {
       isPlaying: false,
       masterGain: 1,
       audioMuted: false,
-      setCurrentTimeUs: vi.fn(),
+      setCurrentTimeTicks: vi.fn(),
       timelineDoc: null,
     });
 
@@ -792,7 +792,7 @@ describe('useMonitorCore', () => {
             workerTimelineClips: ref([]),
             workerAudioClips: ref([]),
             workerTimelinePayload: ref([]),
-            safeDurationUs: ref(2_000_000),
+            safeDurationTicks: ref(2_000_000),
             clipSourceSignature: ref(1),
             clipLayoutSignature: ref(1),
             clipContentSignature: clipContentSig,
@@ -847,7 +847,7 @@ describe('useMonitorCore', () => {
       isPlaying: false,
       masterGain: 1,
       audioMuted: false,
-      setCurrentTimeUs: vi.fn(),
+      setCurrentTimeTicks: vi.fn(),
       timelineDoc: null,
     });
 
@@ -880,7 +880,7 @@ describe('useMonitorCore', () => {
             workerTimelineClips: ref([]),
             workerAudioClips: ref([]),
             workerTimelinePayload: ref([]),
-            safeDurationUs: ref(2_000_000),
+            safeDurationTicks: ref(2_000_000),
             clipSourceSignature: ref(1),
             clipLayoutSignature: clipLayoutSig,
             clipContentSignature: ref(1),
@@ -930,7 +930,7 @@ describe('useMonitorCore', () => {
       isPlaying: false,
       masterGain: 1,
       audioMuted: false,
-      setCurrentTimeUs: vi.fn(),
+      setCurrentTimeTicks: vi.fn(),
       timelineDoc: null,
     });
 
@@ -965,7 +965,7 @@ describe('useMonitorCore', () => {
             workerTimelineClips: ref([]),
             workerAudioClips: ref([]),
             workerTimelinePayload: ref([]),
-            safeDurationUs: ref(2_000_000),
+            safeDurationTicks: ref(2_000_000),
             clipSourceSignature: ref(1),
             clipLayoutSignature: clipLayoutSig,
             clipContentSignature: ref(1),

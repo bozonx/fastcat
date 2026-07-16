@@ -137,13 +137,13 @@ function handleToggleSelection(entry: FsEntry) {
   }
 }
 
-async function resolveInsertDurationUs(
+async function resolveInsertDurationTicks(
   entry: FsEntry,
   mediaType: string,
 ): Promise<number | undefined> {
   if (!entry.path) return undefined;
   if (mediaType === 'image' || mediaType === 'timeline') {
-    return workspaceStore.userSettings.timeline.defaultStaticClipDurationUs;
+    return workspaceStore.userSettings.timeline.defaultStaticClipDurationTicks;
   }
 
   const metadata = await mediaStore.getOrFetchMetadataByPath(entry.path);
@@ -178,14 +178,14 @@ async function addToTimeline() {
 
         const clip = track?.items.find((it) => it.id === uiStore.mediaReplaceTarget!.itemId);
         const durationS = Number(metadata?.duration);
-        const newSourceDurationUs =
+        const newSourceDurationTicks =
           metadata && Number.isFinite(durationS) && durationS > 0
             ? Math.floor(durationS * TICKS_PER_SECOND)
             : 0;
 
         const properties =
           clip && clip.kind === 'clip' && clip.clipType === 'media'
-            ? buildReplaceMediaPatch({ clip, newPath: entry.path, newSourceDurationUs })
+            ? buildReplaceMediaPatch({ clip, newPath: entry.path, newSourceDurationTicks })
             : { source: { path: entry.path } };
 
         timelineStore.updateClipProperties(
@@ -203,16 +203,16 @@ async function addToTimeline() {
       // The selection is single-type (see isSelectableEntry), so resolve the target track once and
       // lay the clips back-to-back starting at the playhead, advancing by each clip's duration.
       let targetTrackId: string | null = null;
-      let cursorUs = timelineStore.currentTime;
+      let cursorTicks = timelineStore.currentTime;
 
       for (const entry of selectedFiles.value) {
         if (!entry.path) continue;
         const mediaType = getMediaTypeFromFilename(entry.name);
-        const durationUs = await resolveInsertDurationUs(entry, mediaType);
+        const durationTicks = await resolveInsertDurationTicks(entry, mediaType);
         const kind = mediaType === 'audio' ? 'audio' : 'video';
 
         if (targetTrackId === null) {
-          targetTrackId = timelineStore.resolveMobileTargetTrackId(kind, { durationUs });
+          targetTrackId = timelineStore.resolveMobileTargetTrackId(kind, { durationTicks });
         }
 
         if (mediaType === 'timeline') {
@@ -220,10 +220,10 @@ async function addToTimeline() {
             trackId: targetTrackId,
             name: entry.name,
             path: entry.path,
-            startUs: cursorUs,
+            startTicks: cursorTicks,
             pseudo: true,
           });
-          cursorUs += durationUs ?? 0;
+          cursorTicks += durationTicks ?? 0;
           continue;
         }
 
@@ -244,7 +244,7 @@ async function addToTimeline() {
             trackId: targetTrackId,
             name: entry.name,
             path: entry.path,
-            startUs: cursorUs,
+            startTicks: cursorTicks,
             pseudo: true,
           });
           if (result.warnings?.some((w) => w.type === 'clipTrimmed')) {
@@ -254,7 +254,7 @@ async function addToTimeline() {
               icon: 'i-heroicons-exclamation-triangle',
             });
           }
-          cursorUs += result.durationUs ?? durationUs ?? 0;
+          cursorTicks += result.durationTicks ?? durationTicks ?? 0;
           addedKinds.push(kind);
         } catch (err: unknown) {
           const message = err instanceof Error ? err.message : String(err);

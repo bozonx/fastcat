@@ -1,7 +1,7 @@
 import { computed, ref, watch, type Ref } from 'vue';
 import { useResizeObserver } from '@vueuse/core';
-import { pxToTimeUs, zoomToPxPerSecond } from '~/utils/timeline/geometry';
-import { frameToUs, ticksToFrame } from '~/timeline/commands/utils';
+import { pxToTimeTicks, zoomToPxPerSecond } from '~/utils/timeline/geometry';
+import { frameToTicks, ticksToFrame } from '~/timeline/commands/utils';
 import {
   getFirstTimelineRulerMajorFrame,
   getTimelineFrameTickCanvasX,
@@ -132,8 +132,8 @@ export function useTimelineRulerDraw(options: TimelineRulerDrawOptions) {
 
     const startPx = nextRenderStartPx;
     const endPx = startPx + nextRenderWidthPx;
-    const startUs = pxToTimeUs(startPx, currentZoom);
-    const endUs = pxToTimeUs(endPx, currentZoom);
+    const startTicks = pxToTimeTicks(startPx, currentZoom);
+    const endTicks = pxToTimeTicks(endPx, currentZoom);
 
     const mainStepS = getTimelineRulerMainStepS({
       pxPerSecond: pxPerSec,
@@ -148,8 +148,8 @@ export function useTimelineRulerDraw(options: TimelineRulerDrawOptions) {
     ctx.textBaseline = 'top';
 
     const mainStepFrames = Math.max(1, Math.round(mainStepS * currentFps));
-    const startFrame = ticksToFrame(startUs, currentFps, 'floor');
-    const endFrame = ticksToFrame(endUs, currentFps, 'ceil');
+    const startFrame = ticksToFrame(startTicks, currentFps, 'floor');
+    const endFrame = ticksToFrame(endTicks, currentFps, 'ceil');
     const firstMajorFrame = getFirstTimelineRulerMajorFrame({
       startFrame,
       endFrame,
@@ -162,9 +162,9 @@ export function useTimelineRulerDraw(options: TimelineRulerDrawOptions) {
 
     ctx.beginPath();
     for (let frame = firstMajorFrame; frame <= endFrame; frame += mainStepFrames) {
-      const tickUs = frameToUs(frame, currentFps);
+      const tickTicks = frameToTicks(frame, currentFps);
       const x = getTimelineTickCanvasX({
-        timeUs: tickUs,
+        timeTicks: tickTicks,
         zoom: currentZoom,
         renderStartPx: startPx,
       });
@@ -172,7 +172,7 @@ export function useTimelineRulerDraw(options: TimelineRulerDrawOptions) {
       if (x >= -50 && x <= nextRenderWidthPx + 50) {
         ctx.moveTo(x, h - majorTickHeight);
         ctx.lineTo(x, h);
-        ctx.fillText(formatRulerTime(tickUs, currentFps), x, textTopOffset);
+        ctx.fillText(formatRulerTime(tickTicks, currentFps), x, textTopOffset);
       }
     }
     ctx.stroke();

@@ -11,7 +11,7 @@ function makeParams(overrides: Record<string, unknown> = {}) {
       width: 1920,
       height: 1080,
       clips: [] as CompositorClip[],
-      lastRenderedTimeUs: 0,
+      lastRenderedTimeTicks: 0,
       stageSortDirty: false,
       activeSortDirty: false,
       contextLost: false,
@@ -32,7 +32,7 @@ function makeParams(overrides: Record<string, unknown> = {}) {
     setPreviewEffectQuality: vi.fn(),
     setStageSortDirty: vi.fn(),
     setActiveSortDirty: vi.fn(),
-    setLastRenderedTimeUs: vi.fn(),
+    setLastRenderedTimeTicks: vi.fn(),
     resourceManager: { abortInFlight: vi.fn() } as any,
     videoFrameCache: { applyLimitMb: vi.fn() } as any,
     effectManager: {
@@ -152,12 +152,12 @@ describe('CompositorRenderContextBuilder.build', () => {
     expect(params.setActiveSortDirty).toHaveBeenCalledWith(false);
   });
 
-  it('delegates setLastRenderedTimeUs', () => {
+  it('delegates setLastRenderedTimeTicks', () => {
     const builder = new CompositorRenderContextBuilder();
     const params = makeParams();
     const ctx = builder.build(params);
-    ctx.setLastRenderedTimeUs(42);
-    expect(params.setLastRenderedTimeUs).toHaveBeenCalledWith(42);
+    ctx.setLastRenderedTimeTicks(42);
+    expect(params.setLastRenderedTimeTicks).toHaveBeenCalledWith(42);
   });
 
   it('delegates prepareAdjustmentClips', async () => {
@@ -241,7 +241,7 @@ describe('CompositorRenderContextBuilder.build', () => {
         width: 1920,
         height: 1080,
         clips: [],
-        lastRenderedTimeUs: 0,
+        lastRenderedTimeTicks: 0,
         stageSortDirty: false,
         activeSortDirty: false,
         contextLost: false,

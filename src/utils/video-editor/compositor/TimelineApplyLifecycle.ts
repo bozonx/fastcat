@@ -5,15 +5,15 @@ export interface TimelineApplyLifecycleParams {
   replacedClipIds: Set<string>;
   nextClips: CompositorClip[];
   nextClipById: Map<string, CompositorClip>;
-  sequentialTimeUs: number;
+  sequentialTimeTicks: number;
   destroyClip: (clip: CompositorClip) => void;
 }
 
 export interface TimelineApplyLifecycleResult {
   clips: CompositorClip[];
   clipById: Map<string, CompositorClip>;
-  maxDurationUs: number;
-  lastRenderedTimeUs: number;
+  maxDurationTicks: number;
+  lastRenderedTimeTicks: number;
   stageSortDirty: boolean;
   activeSortDirty: boolean;
 }
@@ -25,7 +25,7 @@ export class TimelineApplyLifecycle {
       replacedClipIds,
       nextClips,
       nextClipById,
-      sequentialTimeUs,
+      sequentialTimeTicks,
       destroyClip,
     } = params;
 
@@ -39,21 +39,21 @@ export class TimelineApplyLifecycle {
     }
     replacedClipIds.clear();
 
-    nextClips.sort((a, b) => a.startUs - b.startUs || a.layer - b.layer);
-    const maxClipEndUs =
-      nextClips.length > 0 ? Math.max(0, ...nextClips.map((clip) => clip.endUs)) : 0;
-    const maxDurationUs = Math.max(maxClipEndUs, sequentialTimeUs);
+    nextClips.sort((a, b) => a.startTicks - b.startTicks || a.layer - b.layer);
+    const maxClipEndTicks =
+      nextClips.length > 0 ? Math.max(0, ...nextClips.map((clip) => clip.endTicks)) : 0;
+    const maxDurationTicks = Math.max(maxClipEndTicks, sequentialTimeTicks);
 
     return {
       clips: nextClips,
       clipById: nextClipById,
-      maxDurationUs,
+      maxDurationTicks,
       // Force the next renderFrame to run a full pass instead of early-exiting.
       // A freshly loaded timeline (e.g. a newly created empty one) requests its
-      // first render at timeUs 0 with no dirty clips; if we reset to 0 here, the
-      // RenderingEngine early-exit (timeUs === lastRenderedTimeUs) keeps the stale
+      // first render at timeTicks 0 with no dirty clips; if we reset to 0 here, the
+      // RenderingEngine early-exit (timeTicks === lastRenderedTimeTicks) keeps the stale
       // canvas, leaving the previous timeline's frame on screen. NaN never matches.
-      lastRenderedTimeUs: Number.NaN,
+      lastRenderedTimeTicks: Number.NaN,
       stageSortDirty: true,
       activeSortDirty: true,
     };

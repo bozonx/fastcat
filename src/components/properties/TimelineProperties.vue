@@ -24,7 +24,7 @@ import type { VideoClipEffect, AudioClipEffect } from '~/timeline/types';
 import type { FsEntry } from '~/types/fs';
 import { createDevLogger } from '~/utils/dev-logger';
 import { formatBytes } from '~/utils/format';
-import { selectTimelineDurationUs } from '~/timeline/selectors';
+import { selectTimelineDurationTicks } from '~/timeline/selectors';
 import FileGeneralInfoSection from '~/components/properties/file/FileGeneralInfoSection.vue';
 import { useFilePropertiesBasics } from '~/composables/properties/useFilePropertiesBasics';
 
@@ -43,7 +43,7 @@ import {
 const props = defineProps<{
   summary?: {
     version?: string | number | null;
-    durationUs?: number | null;
+    durationTicks?: number | null;
     videoTracks?: number | null;
     audioTracks?: number | null;
     clips?: number | null;
@@ -312,10 +312,10 @@ const computedSummary = computed(() => {
     0,
   );
   const version = doc.metadata?.fastcat?.version ?? '-';
-  const durationUs = selectTimelineDurationUs(doc);
+  const durationTicks = selectTimelineDurationTicks(doc);
   return {
     version,
-    durationUs,
+    durationTicks,
     videoTracks,
     audioTracks,
     clips,
@@ -519,7 +519,7 @@ const addTrackActions = computed(() => [
         />
         <PropertyRow
           :label="t('common.duration')"
-          :value="formatDurationSeconds((computedSummary.durationUs ?? 0) / TICKS_PER_SECOND)"
+          :value="formatDurationSeconds((computedSummary.durationTicks ?? 0) / TICKS_PER_SECOND)"
         />
         <PropertyRow
           :label="t('videoEditor.fileManager.otio.videoTracks')"

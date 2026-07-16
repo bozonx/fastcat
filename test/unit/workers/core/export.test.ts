@@ -268,9 +268,9 @@ describe('isPassthroughCompatibleClip', () => {
   it.each([
     ['audioGain', { audioGain: 0.5 }, 'gain'],
     ['audioBalance', { audioBalance: 0.5 }, 'balance'],
-    ['fade in', { audioFadeInUs: 1000 }, 'fade'],
-    ['fade out', { audioFadeOutUs: 1000 }, 'fade'],
-    ['transition in', { transitionIn: { durationUs: 1000 } }, 'transition'],
+    ['fade in', { audioFadeInTicks: 1000 }, 'fade'],
+    ['fade out', { audioFadeOutTicks: 1000 }, 'fade'],
+    ['transition in', { transitionIn: { durationTicks: 1000 } }, 'transition'],
     ['speed != 1', { speed: 2 }, 'speed'],
     ['reverse', { speed: -1 }, 'speed'],
     ['audio effect', { effects: [{ target: 'audio', enabled: true }] }, 'effects'],

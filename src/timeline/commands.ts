@@ -47,10 +47,10 @@ export interface AddClipToTrackCommand {
   clipId?: string;
   name: string;
   path: string;
-  startUs: number;
-  durationUs: number;
+  startTicks: number;
+  durationTicks: number;
   quantizeToFrames?: boolean;
-  sourceDurationUs?: number;
+  sourceDurationTicks?: number;
   sourceRange?: TimelineRange;
   isImage?: boolean;
   pseudo?: boolean;
@@ -66,8 +66,8 @@ export interface AddVirtualClipToTrackCommand {
   clipId?: string;
   clipType: Extract<TimelineClipType, 'adjustment' | 'background' | 'text' | 'shape' | 'hud'>;
   name: string;
-  durationUs?: number;
-  startUs?: number;
+  durationTicks?: number;
+  startTicks?: number;
   quantizeToFrames?: boolean;
   pseudo?: boolean;
   backgroundColor?: string;
@@ -97,12 +97,12 @@ export interface MoveItemCommand {
   type: 'move_item';
   trackId: string;
   itemId: string;
-  startUs: number;
+  startTicks: number;
   ignoreLocks?: boolean;
   ignoreLinks?: boolean;
   quantizeToFrames?: boolean;
   /**
-   * Apply `startUs` verbatim without re-snapping it (or the resulting gaps) to
+   * Apply `startTicks` verbatim without re-snapping it (or the resulting gaps) to
    * the frame grid. Used by group drags where the caller has already quantized
    * the shared *delta*, so members that were placed off-grid keep their own
    * sub-frame phase instead of being pulled onto the grid. See `move_items`.
@@ -115,7 +115,7 @@ export interface TrimItemCommand {
   trackId: string;
   itemId: string;
   edge: 'start' | 'end';
-  deltaUs: number;
+  deltaTicks: number;
   quantizeToFrames?: boolean;
 }
 
@@ -125,7 +125,7 @@ export interface TrimItemsCommand {
     trackId: string;
     itemId: string;
     edge: 'start' | 'end';
-    deltaUs: number;
+    deltaTicks: number;
   }[];
   quantizeToFrames?: boolean;
 }
@@ -134,7 +134,7 @@ export interface SplitItemCommand {
   type: 'split_item';
   trackId: string;
   itemId: string;
-  atUs: number;
+  atTicks: number;
   ignoreLocks?: boolean;
   quantizeToFrames?: boolean;
 }
@@ -177,7 +177,7 @@ export interface MoveItemToTrackCommand {
   fromTrackId: string;
   toTrackId: string;
   itemId: string;
-  startUs: number;
+  startTicks: number;
   quantizeToFrames?: boolean;
   ignoreLocks?: boolean;
   ignoreLinks?: boolean;
@@ -243,7 +243,7 @@ export interface OverlayPlaceItemCommand {
   fromTrackId: string;
   toTrackId: string;
   itemId: string;
-  startUs: number;
+  startTicks: number;
   quantizeToFrames?: boolean;
   ignoreLocks?: boolean;
   ignoreLinks?: boolean;
@@ -258,15 +258,15 @@ export interface OverlayTrimItemCommand {
   trackId: string;
   itemId: string;
   edge: 'start' | 'end';
-  deltaUs: number;
+  deltaTicks: number;
   quantizeToFrames?: boolean;
 }
 
 export interface AddMarkerCommand {
   type: 'add_marker';
   id: string;
-  timeUs: number;
-  durationUs?: number;
+  timeTicks: number;
+  durationTicks?: number;
   text?: string;
   color?: string;
 }
@@ -274,8 +274,8 @@ export interface AddMarkerCommand {
 export interface UpdateMarkerCommand {
   type: 'update_marker';
   id: string;
-  timeUs?: number;
-  durationUs?: number | null;
+  timeTicks?: number;
+  durationTicks?: number | null;
   text?: string;
   color?: string;
 }
@@ -311,14 +311,14 @@ export interface MoveItemsCommand {
     fromTrackId: string;
     toTrackId: string;
     itemId: string;
-    startUs: number;
+    startTicks: number;
   }[];
   quantizeToFrames?: boolean;
   ignoreLocks?: boolean;
   ignoreLinks?: boolean;
   /**
    * Treat `moves` as a rigid group translation whose shared delta the caller has
-   * already frame-quantized: apply each `startUs` verbatim and skip frame
+   * already frame-quantized: apply each `startTicks` verbatim and skip frame
    * re-quantization (both of the item start and of gap normalization). This is
    * what lets a group with mixed on-grid / off-grid clips move together while
    * every member keeps its own sub-frame phase — per-item absolute quantization
@@ -365,7 +365,7 @@ export interface AutoTrimPausesCommand {
   clips: {
     trackId: string;
     itemId: string;
-    pauses: { startUs: number; endUs: number }[];
+    pauses: { startTicks: number; endTicks: number }[];
   }[];
   mode: 'cut' | 'mark';
 }

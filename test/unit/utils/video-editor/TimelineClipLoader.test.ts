@@ -8,37 +8,37 @@ describe('TimelineClipLoader', () => {
     const loader = new TimelineClipLoader();
     const descriptor = loader.describe({
       index: 0,
-      sequentialTimeUs: 0,
+      sequentialTimeTicks: 0,
       clipData: {
         kind: 'clip',
         id: 'clip-1',
         clipType: 'media',
         source: { path: 'video.mp4' },
-        timelineRange: { startUs: 0, durationUs: 2_000_000 },
-        sourceRange: { startUs: 5_000_000, durationUs: 2_000_000 },
+        timelineRange: { startTicks: 0, durationTicks: 2_000_000 },
+        sourceRange: { startTicks: 5_000_000, durationTicks: 2_000_000 },
       },
     });
 
-    expect(descriptor?.requestedSourceDurationUs).toBe(0);
-    expect(descriptor?.requestedSourceRangeDurationUs).toBe(2_000_000);
+    expect(descriptor?.requestedSourceDurationTicks).toBe(0);
+    expect(descriptor?.requestedSourceRangeDurationTicks).toBe(2_000_000);
   });
 
-  it('preserves explicit sourceDurationUs when available', () => {
+  it('preserves explicit sourceDurationTicks when available', () => {
     const loader = new TimelineClipLoader();
     const descriptor = loader.describe({
       index: 0,
-      sequentialTimeUs: 0,
+      sequentialTimeTicks: 0,
       clipData: {
         kind: 'clip',
         id: 'clip-1',
         clipType: 'media',
         source: { path: 'video.mp4' },
-        timelineRange: { startUs: 0, durationUs: 2_000_000 },
-        sourceRange: { startUs: 5_000_000, durationUs: 2_000_000 },
-        sourceDurationUs: 20_000_000,
+        timelineRange: { startTicks: 0, durationTicks: 2_000_000 },
+        sourceRange: { startTicks: 5_000_000, durationTicks: 2_000_000 },
+        sourceDurationTicks: 20_000_000,
       },
     });
 
-    expect(descriptor?.requestedSourceDurationUs).toBe(20_000_000);
+    expect(descriptor?.requestedSourceDurationTicks).toBe(20_000_000);
   });
 });

@@ -2,64 +2,64 @@ import type { TimelineDocument } from '~/timeline/types';
 import type { TimelineCommand } from '~/timeline/commands';
 
 /**
- * Returns commands that remove/shrink markers overlapping [rangeStartUs, rangeEndUs] and
- * shift markers starting at/after rangeEndUs left by (rangeEndUs - rangeStartUs).
+ * Returns commands that remove/shrink markers overlapping [rangeStartTicks, rangeEndTicks] and
+ * shift markers starting at/after rangeEndTicks left by (rangeEndTicks - rangeStartTicks).
  * Pure — does not apply anything. Useful for inclusion in larger batches so a single
  * history entry and reactive flush cover both clip and marker changes.
  */
 export function buildRippleMarkerCommands(
   doc: TimelineDocument,
-  rangeStartUs: number,
-  rangeEndUs: number,
+  rangeStartTicks: number,
+  rangeEndTicks: number,
 ): TimelineCommand[] {
-  if (!(rangeEndUs > rangeStartUs)) return [];
-  const deltaUs = rangeEndUs - rangeStartUs;
+  if (!(rangeEndTicks > rangeStartTicks)) return [];
+  const deltaTicks = rangeEndTicks - rangeStartTicks;
   const markers = (doc.metadata?.fastcat?.markers ?? []) as Array<{
     id: string;
-    timeUs: number;
-    durationUs?: number;
+    timeTicks: number;
+    durationTicks?: number;
   }>;
   if (markers.length === 0) return [];
 
   const cmds: TimelineCommand[] = [];
   for (const m of markers) {
-    const mStart = m.timeUs;
-    const mEnd = m.timeUs + Math.max(0, m.durationUs ?? 0);
-    if (mEnd <= rangeStartUs) continue;
-    if (mStart >= rangeEndUs) {
-      cmds.push({ type: 'update_marker', id: m.id, timeUs: Math.max(0, mStart - deltaUs) });
+    const mStart = m.timeTicks;
+    const mEnd = m.timeTicks + Math.max(0, m.durationTicks ?? 0);
+    if (mEnd <= rangeStartTicks) continue;
+    if (mStart >= rangeEndTicks) {
+      cmds.push({ type: 'update_marker', id: m.id, timeTicks: Math.max(0, mStart - deltaTicks) });
       continue;
     }
-    if (mStart >= rangeStartUs && mEnd <= rangeEndUs) {
+    if (mStart >= rangeStartTicks && mEnd <= rangeEndTicks) {
       cmds.push({ type: 'remove_marker', id: m.id });
       continue;
     }
-    if (mStart < rangeStartUs && mEnd > rangeEndUs) {
+    if (mStart < rangeStartTicks && mEnd > rangeEndTicks) {
       cmds.push({
         type: 'update_marker',
         id: m.id,
-        timeUs: mStart,
-        durationUs: Math.max(0, (m.durationUs ?? 0) - deltaUs),
+        timeTicks: mStart,
+        durationTicks: Math.max(0, (m.durationTicks ?? 0) - deltaTicks),
       });
       continue;
     }
-    if (mStart < rangeStartUs) {
+    if (mStart < rangeStartTicks) {
       cmds.push({
         type: 'update_marker',
         id: m.id,
-        timeUs: mStart,
-        durationUs: Math.max(0, rangeStartUs - mStart),
+        timeTicks: mStart,
+        durationTicks: Math.max(0, rangeStartTicks - mStart),
       });
       continue;
     }
     // Head overlap: marker starts inside the range, extends past it.
-    const newStart = Math.max(0, rangeStartUs);
-    const newEnd = Math.max(newStart, mEnd - deltaUs);
+    const newStart = Math.max(0, rangeStartTicks);
+    const newEnd = Math.max(newStart, mEnd - deltaTicks);
     cmds.push({
       type: 'update_marker',
       id: m.id,
-      timeUs: newStart,
-      durationUs: Math.max(0, newEnd - newStart),
+      timeTicks: newStart,
+      durationTicks: Math.max(0, newEnd - newStart),
     });
   }
   return cmds;

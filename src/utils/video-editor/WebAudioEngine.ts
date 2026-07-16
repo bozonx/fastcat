@@ -419,11 +419,11 @@ export class WebAudioEngine implements IAudioEngine {
       'loadClips',
       clips.map((c) => ({
         id: c.id,
-        startUs: c.startUs,
-        durationUs: c.durationUs,
-        sourceStartUs: c.sourceStartUs,
-        sourceRangeDurationUs: c.sourceRangeDurationUs,
-        sourceDurationUs: c.sourceDurationUs,
+        startTicks: c.startTicks,
+        durationTicks: c.durationTicks,
+        sourceStartTicks: c.sourceStartTicks,
+        sourceRangeDurationTicks: c.sourceRangeDurationTicks,
+        sourceDurationTicks: c.sourceDurationTicks,
       })),
     );
     this.currentClips = clips;
@@ -442,10 +442,10 @@ export class WebAudioEngine implements IAudioEngine {
     this.stopScrubPreview();
     if (this.scheduler.isPlayingActive()) {
       // Re-evaluate playing nodes — fade out to avoid a hard cut click.
-      const currentTimeUs = this.getCurrentTimeUs();
+      const currentTimeTicks = this.getCurrentTimeTicks();
       this.stopAllNodes({ fadeOutS: TRANSITION_FADE_OUT_S });
       this.scheduler.resetScheduledClips();
-      void this.play(currentTimeUs, this.scheduler.getGlobalSpeed()).catch((err) => {
+      void this.play(currentTimeTicks, this.scheduler.getGlobalSpeed()).catch((err) => {
         logger.warn('updateTimelineLayout: replay after layout change failed', err);
       });
     }
@@ -487,8 +487,8 @@ export class WebAudioEngine implements IAudioEngine {
     const sourceKey = clip.sourcePath;
     if (!sourceKey) return [];
 
-    const startOffsetS = clip.sourceStartUs / TICKS_PER_SECOND;
-    const durationS = clip.sourceRangeDurationUs / TICKS_PER_SECOND;
+    const startOffsetS = clip.sourceStartTicks / TICKS_PER_SECOND;
+    const durationS = clip.sourceRangeDurationTicks / TICKS_PER_SECOND;
 
     return this.chunkDecoder.getForRange({
       sourceKey,
@@ -721,8 +721,8 @@ export class WebAudioEngine implements IAudioEngine {
       if (this.scheduler.hasScheduledClip(clip.id)) continue;
       if (this.schedulingClipIds.has(clip.id)) continue;
 
-      const clipStartS = clip.startUs / TICKS_PER_SECOND;
-      const clipEndS = clipStartS + clip.durationUs / TICKS_PER_SECOND;
+      const clipStartS = clip.startTicks / TICKS_PER_SECOND;
+      const clipEndS = clipStartS + clip.durationTicks / TICKS_PER_SECOND;
 
       if (clipStartS <= endS && clipEndS >= currentS) {
         const generation = this.scheduleGeneration;
@@ -740,7 +740,7 @@ export class WebAudioEngine implements IAudioEngine {
     }
   }
 
-  async play(timeUs: number, speed = 1) {
+  async play(timeTicks: number, speed = 1) {
     this.scheduleGeneration += 1;
     const playbackRequestGeneration = ++this.playbackRequestGeneration;
     this.requestedPlaybackSpeed = speed;
@@ -756,27 +756,27 @@ export class WebAudioEngine implements IAudioEngine {
     }
 
     // Synchronously decode the chunk(s) under the playhead for every clip
-    // currently overlapping `timeUs`, so the first source nodes can be
+    // currently overlapping `timeTicks`, so the first source nodes can be
     // scheduled the moment scheduler.play() returns.
-    await this.prepareForPlayback(timeUs);
+    await this.prepareForPlayback(timeTicks);
 
     // Bail out if the user pressed Stop while we were awaiting decode.
     if (playbackRequestGeneration !== this.playbackRequestGeneration) return;
 
-    await this.scheduler.play(timeUs, this.requestedPlaybackSpeed);
+    await this.scheduler.play(timeTicks, this.requestedPlaybackSpeed);
   }
 
-  private async prepareForPlayback(timeUs: number): Promise<void> {
+  private async prepareForPlayback(timeTicks: number): Promise<void> {
     if (!this.ctx) return;
 
-    const timeS = timeUs / TICKS_PER_SECOND;
+    const timeS = timeTicks / TICKS_PER_SECOND;
     const LOOKAHEAD_S = 0.5;
     const windowEndS = timeS + LOOKAHEAD_S;
 
     const activeClips = this.currentClips.filter((clip) => {
       if (isReversedClip(clip)) return false; // Reverse audio muted in preview — never decode it.
-      const startS = clip.startUs / TICKS_PER_SECOND;
-      const endS = startS + clip.durationUs / TICKS_PER_SECOND;
+      const startS = clip.startTicks / TICKS_PER_SECOND;
+      const endS = startS + clip.durationTicks / TICKS_PER_SECOND;
       return endS > timeS && startS <= windowEndS;
     });
 
@@ -786,13 +786,13 @@ export class WebAudioEngine implements IAudioEngine {
       const sourceKey = clip.sourcePath;
       if (!sourceKey) return;
 
-      const clipStartS = clip.startUs / TICKS_PER_SECOND;
+      const clipStartS = clip.startTicks / TICKS_PER_SECOND;
       const clipLocalS = Math.max(0, timeS - clipStartS);
       const clipSpeed =
         typeof clip.speed === 'number' && Number.isFinite(clip.speed) && clip.speed !== 0
           ? Math.min(10, Math.abs(clip.speed))
           : 1;
-      const sourceStartS = clip.sourceStartUs / TICKS_PER_SECOND;
+      const sourceStartS = clip.sourceStartTicks / TICKS_PER_SECOND;
 
       const sourceTimeS = sourceStartS + clipLocalS * clipSpeed;
       const sourceEndS = sourceTimeS + LOOKAHEAD_S * clipSpeed;
@@ -824,9 +824,9 @@ export class WebAudioEngine implements IAudioEngine {
   }
 
   async previewScrubForward(
-    fromUs: number,
-    toUs: number,
-    maxPreviewDurationUs = (TICKS_PER_SECOND * 9) / 100,
+    fromTicks: number,
+    toTicks: number,
+    maxPreviewDurationTicks = (TICKS_PER_SECOND * 9) / 100,
   ) {
     if (this.scheduler.isPlayingActive() || !this.ctx || !this.masterGain) {
       return;
@@ -838,26 +838,26 @@ export class WebAudioEngine implements IAudioEngine {
       });
     }
 
-    const normalizedFromUs = Math.max(0, Math.round(fromUs));
-    const normalizedToUs = Math.max(normalizedFromUs, Math.round(toUs));
-    const windowUs = normalizedToUs - normalizedFromUs;
-    const previewDurationUs = Math.min(windowUs, Math.max(1, Math.round(maxPreviewDurationUs)));
+    const normalizedFromTicks = Math.max(0, Math.round(fromTicks));
+    const normalizedToTicks = Math.max(normalizedFromTicks, Math.round(toTicks));
+    const windowTicks = normalizedToTicks - normalizedFromTicks;
+    const previewDurationTicks = Math.min(windowTicks, Math.max(1, Math.round(maxPreviewDurationTicks)));
 
-    if (previewDurationUs <= 0) {
+    if (previewDurationTicks <= 0) {
       return;
     }
 
     this.stopScrubPreview();
 
-    const previewStartS = normalizedFromUs / TICKS_PER_SECOND;
-    const previewEndS = normalizedToUs / TICKS_PER_SECOND;
-    const maxPlaybackDurationS = previewDurationUs / TICKS_PER_SECOND;
+    const previewStartS = normalizedFromTicks / TICKS_PER_SECOND;
+    const previewEndS = normalizedToTicks / TICKS_PER_SECOND;
+    const maxPlaybackDurationS = previewDurationTicks / TICKS_PER_SECOND;
 
     const previewClips = this.currentClips.filter((clip) => {
       if (isReversedClip(clip)) return false; // Reverse audio muted in preview
 
-      const clipStartS = clip.startUs / TICKS_PER_SECOND;
-      const clipEndS = clipStartS + clip.durationUs / TICKS_PER_SECOND;
+      const clipStartS = clip.startTicks / TICKS_PER_SECOND;
+      const clipEndS = clipStartS + clip.durationTicks / TICKS_PER_SECOND;
 
       return clipEndS > previewStartS && clipStartS < previewEndS;
     });
@@ -903,10 +903,10 @@ export class WebAudioEngine implements IAudioEngine {
     this.scheduler.setGlobalSpeed(speed);
   }
 
-  seek(timeUs: number) {
+  seek(timeTicks: number) {
     this.scheduleGeneration += 1;
     this.schedulingClipIds.clear();
-    this.scheduler.seek(timeUs);
+    this.scheduler.seek(timeTicks);
   }
 
   setVolume(volume: number) {
@@ -1018,7 +1018,7 @@ export class WebAudioEngine implements IAudioEngine {
     return this.scheduler.getCurrentTimeS();
   }
 
-  getCurrentTimeUs(): number {
+  getCurrentTimeTicks(): number {
     const s = this.getCurrentTimeS();
     return Math.round(s * TICKS_PER_SECOND);
   }
@@ -1033,7 +1033,7 @@ export class WebAudioEngine implements IAudioEngine {
       else cache.set(trackKey, [clip]);
     }
     for (const list of cache.values()) {
-      list.sort((a, b) => a.startUs - b.startUs);
+      list.sort((a, b) => a.startTicks - b.startTicks);
     }
     this.trackClipsCache = cache;
     return cache;
@@ -1060,8 +1060,8 @@ export class WebAudioEngine implements IAudioEngine {
     const sourceKey = clip.sourcePath;
     if (!sourceKey) return false;
 
-    const clipStartS = clip.startUs / TICKS_PER_SECOND;
-    const clipDurationS = clip.durationUs / TICKS_PER_SECOND;
+    const clipStartS = clip.startTicks / TICKS_PER_SECOND;
+    const clipDurationS = clip.durationTicks / TICKS_PER_SECOND;
     const clipEndS = clipStartS + clipDurationS;
     const currentTimeS = this.getCurrentTimeS();
     if (clipEndS <= currentTimeS) return false;

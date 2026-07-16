@@ -51,7 +51,7 @@ let latestLoadTimelineRequestId = 0;
 let pixiRendererPreference: 'webgl' | 'webgpu' = PIXI_RENDERER_PREFERENCE;
 
 let renderInFlight = false;
-let latestRenderTimeUs: number | null = null;
+let latestRenderTimeTicks: number | null = null;
 let latestPreviewOptions: PreviewRenderOptions | undefined;
 
 type WorkerPendingCall = {
@@ -246,9 +246,9 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
     return compositor.updateTimelineLayout(validatedClips);
   },
 
-  async renderFrame(timeUs: number, options?: PreviewRenderOptions) {
+  async renderFrame(timeTicks: number, options?: PreviewRenderOptions) {
     if (!compositor) return null;
-    latestRenderTimeUs = Math.round(Number(timeUs) || 0);
+    latestRenderTimeTicks = Math.round(Number(timeTicks) || 0);
     latestPreviewOptions = options ? PreviewRenderOptionsSchema.parse(options) : undefined;
     if (renderInFlight) return null;
 
@@ -259,36 +259,36 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
     // mutates at any await point to supersede the in-flight request.
     const driver: RenderRetryLoopDriver = {
       takeQueued: () => {
-        if (latestRenderTimeUs === null) return null;
-        const timeUs = latestRenderTimeUs;
+        if (latestRenderTimeTicks === null) return null;
+        const timeTicks = latestRenderTimeTicks;
         const options = latestPreviewOptions;
-        latestRenderTimeUs = null;
+        latestRenderTimeTicks = null;
         latestPreviewOptions = undefined;
-        return { timeUs, options };
+        return { timeTicks, options };
       },
-      hasQueued: () => latestRenderTimeUs !== null,
-      queueRetry: (timeUs) => {
-        latestRenderTimeUs = timeUs;
+      hasQueued: () => latestRenderTimeTicks !== null,
+      queueRetry: (timeTicks) => {
+        latestRenderTimeTicks = timeTicks;
       },
-      render: (timeUs, options) =>
-        compositor!.renderFrame(timeUs, options as PreviewRenderOptions | undefined),
+      render: (timeTicks, options) =>
+        compositor!.renderFrame(timeTicks, options as PreviewRenderOptions | undefined),
       delay: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
       isActive: () => compositor !== null,
-      onError: (timeUs, err) => log.error('[Worker] renderFrame error at time', timeUs, err),
+      onError: (timeTicks, err) => log.error('[Worker] renderFrame error at time', timeTicks, err),
     };
 
     try {
       return await runRenderRetryLoop(driver);
     } finally {
       renderInFlight = false;
-      latestRenderTimeUs = null;
+      latestRenderTimeTicks = null;
       latestPreviewOptions = undefined;
     }
   },
 
-  async prewarmVideoFrames(timeUs: number, lookaheadUs?: number) {
+  async prewarmVideoFrames(timeTicks: number, lookaheadTicks?: number) {
     if (!compositor) return;
-    await compositor.prewarmVideoFrames(timeUs, lookaheadUs);
+    await compositor.prewarmVideoFrames(timeTicks, lookaheadTicks);
   },
 
   async clearClips() {
@@ -382,7 +382,7 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
   },
 
   async extractFrameToBlob(
-    timeUs: number,
+    timeTicks: number,
     width: number,
     height: number,
     timelineClips: import('../composables/timeline/export/types').WorkerVideoPayloadItem[],
@@ -438,7 +438,7 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
         () => false,
       );
 
-      const canvas = await localCompositor.renderFrame(timeUs);
+      const canvas = await localCompositor.renderFrame(timeTicks);
       if (!canvas) {
         throw new Error('Failed to render frame');
       }

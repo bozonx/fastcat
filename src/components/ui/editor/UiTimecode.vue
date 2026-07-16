@@ -135,20 +135,20 @@ onBeforeUnmount(() => {
 });
 
 function stepValue(direction: number, isFrame: boolean) {
-  const currentUs = isFocused.value ? parseTimecode(localValue.value, fps.value) : props.modelValue;
-  const validUs = isNaN(currentUs) ? props.modelValue : currentUs;
+  const currentTicks = isFocused.value ? parseTimecode(localValue.value, fps.value) : props.modelValue;
+  const validTicks = isNaN(currentTicks) ? props.modelValue : currentTicks;
 
-  const frameUs = TICKS_PER_SECOND / fps.value;
-  const stepUs = isFrame ? frameUs : TICKS_PER_SECOND; // frame or 1 second
+  const frameTicks = TICKS_PER_SECOND / fps.value;
+  const stepTicks = isFrame ? frameTicks : TICKS_PER_SECOND; // frame or 1 second
 
-  let newUs = validUs + direction * stepUs;
-  newUs = clampValue(newUs);
+  let newTicks = validTicks + direction * stepTicks;
+  newTicks = clampValue(newTicks);
 
   if (isFocused.value) {
-    localValue.value = formatTimecode(newUs, fps.value);
+    localValue.value = formatTimecode(newTicks, fps.value);
     commitValue();
   } else {
-    emit('update:modelValue', newUs);
+    emit('update:modelValue', newTicks);
   }
 }
 </script>

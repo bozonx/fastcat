@@ -4,11 +4,11 @@ import { defineComponent, h, ref } from 'vue';
 import { describe, expect, it, vi } from 'vitest';
 
 import { useTimelineRulerSelectionDrag } from '~/composables/timeline/useTimelineRulerSelectionDrag';
-import { timelineUs } from '../../utils/timeline-time';
+import { timelineTicks } from '../../utils/timeline-time';
 
 describe('useTimelineRulerSelectionDrag', () => {
   it('snaps created selection range to snap targets while dragging', async () => {
-    const selectionRange = ref<{ startUs: number; endUs: number } | null>(null);
+    const selectionRange = ref<{ startTicks: number; endTicks: number } | null>(null);
     const createSelectionRange = vi.fn();
     const updateSelectionRange = vi.fn();
     const setPreviewSelectionRange = vi.fn();
@@ -21,12 +21,12 @@ describe('useTimelineRulerSelectionDrag', () => {
           selectionRange,
           zoom: ref(50),
           fps: ref(25),
-          getTimeUsFromPointerEvent: (event) => timelineUs(event.clientX * 1000),
+          getTimeUsFromPointerEvent: (event) => timelineTicks(event.clientX * 1000),
           selectSelectionRange: vi.fn(),
           updateSelectionRange,
           createSelectionRange,
           setPreviewSelectionRange,
-          computeSnapTargets: () => [timelineUs(1_000_000)],
+          computeSnapTargets: () => [timelineTicks(1_000_000)],
           snapThresholdPx: 1,
         });
 
@@ -45,22 +45,22 @@ describe('useTimelineRulerSelectionDrag', () => {
     window.dispatchEvent(new PointerEvent('pointermove', { clientX: 1040 }));
 
     expect(api.displaySelectionRange.value).toEqual({
-      startUs: 0,
-      endUs: timelineUs(1_000_000),
+      startTicks: 0,
+      endTicks: timelineTicks(1_000_000),
     });
 
     window.dispatchEvent(new PointerEvent('pointerup'));
 
     expect(createSelectionRange).toHaveBeenCalledWith({
-      startUs: 0,
-      endUs: timelineUs(1_000_000),
+      startTicks: 0,
+      endTicks: timelineTicks(1_000_000),
     });
 
     wrapper.unmount();
   });
 
   it('cancels creation of selection range and resets state on pointercancel', async () => {
-    const selectionRange = ref<{ startUs: number; endUs: number } | null>(null);
+    const selectionRange = ref<{ startTicks: number; endTicks: number } | null>(null);
     const createSelectionRange = vi.fn();
     const updateSelectionRange = vi.fn();
 
@@ -72,7 +72,7 @@ describe('useTimelineRulerSelectionDrag', () => {
           selectionRange,
           zoom: ref(50),
           fps: ref(25),
-          getTimeUsFromPointerEvent: (event) => timelineUs(event.clientX * 1000),
+          getTimeUsFromPointerEvent: (event) => timelineTicks(event.clientX * 1000),
           selectSelectionRange: vi.fn(),
           updateSelectionRange,
           createSelectionRange,

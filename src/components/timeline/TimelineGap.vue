@@ -26,7 +26,7 @@ function onPaste() {
   const payload = clipboardStore.clipboardPayload;
   if (!payload || payload.source !== 'timeline' || payload.items.length === 0) return;
   void timelineStore.pasteClips(payload.items, {
-    insertStartUs: props.item.timelineRange.startUs,
+    insertStartTicks: props.item.timelineRange.startTicks,
   });
   if (payload.operation === 'cut') clipboardStore.setClipboardPayload(null);
 }

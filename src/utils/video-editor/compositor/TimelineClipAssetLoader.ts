@@ -15,9 +15,9 @@ export interface TimelineFixedClipDescriptor {
   itemId: string;
   trackId?: string;
   layer: number;
-  startUs: number;
-  endUs: number;
-  requestedTimelineDurationUs: number;
+  startTicks: number;
+  endTicks: number;
+  requestedTimelineDurationTicks: number;
   speed?: number;
 }
 
@@ -43,12 +43,12 @@ export class TimelineClipAssetLoader {
       itemId: descriptor.itemId,
       trackId: descriptor.trackId,
       layer: descriptor.layer,
-      startUs: descriptor.startUs,
-      endUs: descriptor.endUs,
-      durationUs: Math.max(0, descriptor.requestedTimelineDurationUs),
-      sourceStartUs: 0,
-      sourceRangeDurationUs: Math.max(0, descriptor.requestedTimelineDurationUs),
-      sourceDurationUs: Math.max(0, descriptor.requestedTimelineDurationUs),
+      startTicks: descriptor.startTicks,
+      endTicks: descriptor.endTicks,
+      durationTicks: Math.max(0, descriptor.requestedTimelineDurationTicks),
+      sourceStartTicks: 0,
+      sourceRangeDurationTicks: Math.max(0, descriptor.requestedTimelineDurationTicks),
+      sourceDurationTicks: Math.max(0, descriptor.requestedTimelineDurationTicks),
       speed: descriptor.speed,
       opacity: clipData.opacity,
       blendMode: resolveBlendMode(clipData.blendMode),
@@ -160,11 +160,11 @@ export class TimelineClipAssetLoader {
         const loadedVideo = await this.context.mediaClipLoader.loadVideoRuntime({
           mediabunny,
           file,
-          sourceStartUs: 0,
-          requestedTimelineDurationUs: clip.durationUs,
-          requestedSourceDurationUs: 0,
-          requestedSourceRangeDurationUs: 0,
-          startUs: clip.startUs,
+          sourceStartTicks: 0,
+          requestedTimelineDurationTicks: clip.durationTicks,
+          requestedSourceDurationTicks: 0,
+          requestedSourceRangeDurationTicks: 0,
+          startTicks: clip.startTicks,
         });
 
         if (loadedVideo) {
@@ -175,7 +175,7 @@ export class TimelineClipAssetLoader {
             sink: loadedVideo.sink,
             firstTimestampS: loadedVideo.firstTimestampS,
             frameRate: loadedVideo.frameRate,
-            sourceDurationUs: loadedVideo.sourceDurationUs,
+            sourceDurationTicks: loadedVideo.sourceDurationTicks,
             clipKind: 'video',
             sourceKind: 'videoFrame',
             imageSource: loadedVideo.imageSource,
@@ -267,11 +267,11 @@ export class TimelineClipAssetLoader {
         const loadedVideo = await this.context.mediaClipLoader.loadVideoRuntime({
           mediabunny,
           file,
-          sourceStartUs: 0,
-          requestedTimelineDurationUs: clip.durationUs,
-          requestedSourceDurationUs: 0,
-          requestedSourceRangeDurationUs: 0,
-          startUs: clip.startUs,
+          sourceStartTicks: 0,
+          requestedTimelineDurationTicks: clip.durationTicks,
+          requestedSourceDurationTicks: 0,
+          requestedSourceRangeDurationTicks: 0,
+          startTicks: clip.startTicks,
         });
 
         if (loadedVideo) {
@@ -282,7 +282,7 @@ export class TimelineClipAssetLoader {
             sink: loadedVideo.sink,
             firstTimestampS: loadedVideo.firstTimestampS,
             frameRate: loadedVideo.frameRate,
-            sourceDurationUs: loadedVideo.sourceDurationUs,
+            sourceDurationTicks: loadedVideo.sourceDurationTicks,
             clipKind: 'video',
             sourceKind: 'videoFrame',
             imageSource: loadedVideo.imageSource,

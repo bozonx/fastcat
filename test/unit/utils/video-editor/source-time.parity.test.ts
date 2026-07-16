@@ -34,7 +34,7 @@ describe('clip source-PTS parity (shared fixture)', () => {
   for (const c of fixture.cases) {
     it(`matches native for "${c.name}"`, () => {
       const localTimeTicks = (c.timelineSec - c.timelineStartSec) * TICKS_PER_SECOND;
-      const sourceUs = resolveClipSourceTimeTicks({
+      const sourceTicks = resolveClipSourceTimeTicks({
         localTimeTicks,
         sourceStartTicks: c.sourceStartSec * TICKS_PER_SECOND,
         sourceRangeDurationTicks: c.sourceRangeDurationSec * TICKS_PER_SECOND,
@@ -42,7 +42,7 @@ describe('clip source-PTS parity (shared fixture)', () => {
         // No frameRate: this is the frame-rate-independent region where the two
         // engines agree exactly (the guard is the flat fixture.guardSec).
       });
-      expect(sourceUs / TICKS_PER_SECOND).toBeCloseTo(c.expectedSourceSec, 5);
+      expect(sourceTicks / TICKS_PER_SECOND).toBeCloseTo(c.expectedSourceSec, 5);
     });
   }
 });
@@ -82,7 +82,7 @@ describe('source-time core', () => {
   });
 
   it('maps source time from clip speed and source fps, independent of timeline fps', () => {
-    const sourceUs = resolveClipSourceTimeTicks({
+    const sourceTicks = resolveClipSourceTimeTicks({
       localTimeTicks: 1 * TICKS_PER_SECOND,
       sourceStartTicks: 2 * TICKS_PER_SECOND,
       sourceRangeDurationTicks: 5 * TICKS_PER_SECOND,
@@ -90,11 +90,11 @@ describe('source-time core', () => {
       frameRate: 24,
     });
 
-    expect(sourceUs).toBe(4 * TICKS_PER_SECOND);
+    expect(sourceTicks).toBe(4 * TICKS_PER_SECOND);
   });
 
   it('maps negative-speed video from the readable tail backwards', () => {
-    const sourceUs = resolveClipSourceTimeTicks({
+    const sourceTicks = resolveClipSourceTimeTicks({
       localTimeTicks: TICKS_PER_SECOND / 2,
       sourceStartTicks: 10 * TICKS_PER_SECOND,
       sourceRangeDurationTicks: 5 * TICKS_PER_SECOND,
@@ -102,7 +102,7 @@ describe('source-time core', () => {
       frameRate: 25,
     });
 
-    expect(sourceUs).toBe(
+    expect(sourceTicks).toBe(
       10 * TICKS_PER_SECOND +
         5 * TICKS_PER_SECOND -
         Math.round(TICKS_PER_SECOND / (2 * 25)) -

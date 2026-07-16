@@ -17,7 +17,7 @@ export function useMonitorSnapshot(input: {
   workspaceStore: ReturnType<typeof useWorkspaceStore>;
   isLoading: Ref<boolean>;
   loadError: Ref<string | null>;
-  uiCurrentTimeUs: Ref<number>;
+  uiCurrentTimeTicks: Ref<number>;
 }) {
   const toast = useToast();
   const uiStore = useUiStore();
@@ -41,14 +41,14 @@ export function useMonitorSnapshot(input: {
       input.timelineStore.timelineFormat?.fps ??
       input.projectStore.projectSettings?.project?.fps ??
       30;
-    const timeUs = input.uiCurrentTimeUs.value;
+    const timeTicks = input.uiCurrentTimeTicks.value;
 
     const qualityPercent = input.workspaceStore.userSettings.stopFrames?.qualityPercent ?? 85;
     const quality = Math.max(0.01, Math.min(1, qualityPercent / 100));
     const extension = 'webp';
     const baseName = buildStopFrameBaseName({
       timelineName,
-      timeTicks: timeUs,
+      timeTicks: timeTicks,
       fps,
     });
 
@@ -80,7 +80,7 @@ export function useMonitorSnapshot(input: {
         false;
       const blob = await renderStopFrameWebp({
         timelineDoc,
-        timeUs,
+        timeTicks,
         quality,
         isTransparent,
       });

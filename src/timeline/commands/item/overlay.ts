@@ -35,13 +35,13 @@ export function overlayTrimItem(
 
   const { timelineRange, sourceRange, valid } = computeTrimGeometry({
     edge: cmd.edge,
-    deltaUs: cmd.deltaUs,
+    deltaTicks: cmd.deltaTicks,
     speed: moved.speed,
     fps,
     quantizeToFrames: shouldQuantizeToFrames,
     timelineRange: moved.timelineRange,
     sourceRange: moved.sourceRange,
-    sourceDurationUs: moved.sourceDurationUs,
+    sourceDurationTicks: moved.sourceDurationTicks,
     hasFixedSourceDuration,
   });
 
@@ -53,20 +53,20 @@ export function overlayTrimItem(
     sourceRange,
   };
 
-  const startUs = movedNext.timelineRange.startUs;
-  const durationUs = Math.max(0, movedNext.timelineRange.durationUs);
+  const startTicks = movedNext.timelineRange.startTicks;
+  const durationTicks = Math.max(0, movedNext.timelineRange.durationTicks);
 
   const nextItems = sliceTrackItemsForOverlay(
     track.items,
-    startUs,
-    durationUs,
+    startTicks,
+    durationTicks,
     fps,
     shouldQuantizeToFrames,
     moved.id,
   );
   nextItems.push(movedNext);
 
-  nextItems.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
+  nextItems.sort((a, b) => a.timelineRange.startTicks - b.timelineRange.startTicks);
   const docWithMoved: TimelineDocument = {
     ...doc,
     tracks: doc.tracks.map((t) => (t.id === track.id ? { ...t, items: nextItems } : t)),
@@ -100,19 +100,19 @@ export function overlayPlaceItem(
 
   const fps = getDocFps(doc);
   const shouldQuantizeToFrames = cmd.quantizeToFrames !== false;
-  const startCandidate = Math.max(0, Math.round(Number(cmd.startUs)));
-  const startUs = shouldQuantizeToFrames
+  const startCandidate = Math.max(0, Math.round(Number(cmd.startTicks)));
+  const startTicks = shouldQuantizeToFrames
     ? quantizeTimeUsToFrames(startCandidate, fps, 'round')
     : startCandidate;
-  const durationUs = Math.max(0, item.timelineRange.durationUs);
+  const durationTicks = Math.max(0, item.timelineRange.durationTicks);
   const nextFromItemsRaw = fromTrack.items.filter((x) => x.id !== cmd.itemId);
   const isSameTrack = fromTrack.id === toTrack.id;
   const destItems: TimelineTrackItem[] = isSameTrack ? [...nextFromItemsRaw] : [...toTrack.items];
 
   const nextDestItems = sliceTrackItemsForOverlay(
     destItems,
-    startUs,
-    durationUs,
+    startTicks,
+    durationTicks,
     fps,
     shouldQuantizeToFrames,
   );
@@ -120,10 +120,10 @@ export function overlayPlaceItem(
   const movedItem: TimelineTrackItem = {
     ...item,
     trackId: toTrack.id,
-    timelineRange: { ...item.timelineRange, startUs },
+    timelineRange: { ...item.timelineRange, startTicks },
   };
   nextDestItems.push(movedItem);
-  nextDestItems.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
+  nextDestItems.sort((a, b) => a.timelineRange.startTicks - b.timelineRange.startTicks);
 
   const normalizedDest = normalizeGaps(doc, toTrack.id, nextDestItems, {
     quantizeToFrames: shouldQuantizeToFrames,

@@ -59,7 +59,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
     workerTimelineClips,
     workerAudioClips,
     workerTimelinePayload,
-    safeDurationUs,
+    safeDurationTicks,
     clipSourceSignature,
     clipLayoutSignature,
     clipContentSignature,
@@ -252,7 +252,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
         await ensureCompositorReady();
         if (!client) {
           return flattenedClips.reduce((max, clip) => {
-            return Math.max(max, clip.timelineRange.startUs + clip.timelineRange.durationUs);
+            return Math.max(max, clip.timelineRange.startTicks + clip.timelineRange.durationTicks);
           }, 0);
         }
         return await client.updateTimelineLayout(payload);
@@ -260,9 +260,9 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
       timelineStore.duration = Math.max(
         timelineStore.duration,
         computeMonitorTimelineDuration({
-          currentDurationUs: timelineStore.duration,
-          maxDurationUs: maxDuration,
-          audioDurationUs: preparedTimeline.audioDurationUs,
+          currentDurationTicks: timelineStore.duration,
+          maxDurationTicks: maxDuration,
+          audioDurationTicks: preparedTimeline.audioDurationTicks,
         }),
       );
       lastBuiltLayoutSignature = clipLayoutSignature.value;
@@ -318,16 +318,16 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
 
   const scheduleRender = compositorRuntime.scheduleRender;
 
-  function updateStoreTime(timeUs: number) {
-    const normalizedTimeUs = clampToTimeline(timeUs);
-    if (timelineStore.currentTime === normalizedTimeUs) {
+  function updateStoreTime(timeTicks: number) {
+    const normalizedTimeTicks = clampToTimeline(timeTicks);
+    if (timelineStore.currentTime === normalizedTimeTicks) {
       return;
     }
-    timelineStore.setCurrentTimeUs(normalizedTimeUs);
+    timelineStore.setCurrentTimeTicks(normalizedTimeTicks);
   }
 
-  function clampToTimeline(timeUs: number): number {
-    return clampTicks(timeUs, safeDurationUs.value);
+  function clampToTimeline(timeTicks: number): number {
+    return clampTicks(timeTicks, safeDurationTicks.value);
   }
 
   async function ensureCompositorReady(options?: { forceRecreate?: boolean }) {
@@ -449,7 +449,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
         forceRecreateCompositorNextBuild = false;
         if (!client) {
           return clips.reduce((max, clip) => {
-            return Math.max(max, clip.timelineRange.startUs + clip.timelineRange.durationUs);
+            return Math.max(max, clip.timelineRange.startTicks + clip.timelineRange.durationTicks);
           }, 0);
         }
         return clips.length > 0 ? await client.loadTimeline(payload, requestId) : 0;
@@ -482,9 +482,9 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
       timelineStore.duration = Math.max(
         timelineStore.duration,
         computeMonitorTimelineDuration({
-          currentDurationUs: timelineStore.duration,
-          maxDurationUs: maxDuration,
-          audioDurationUs: preparedTimeline.audioDurationUs,
+          currentDurationTicks: timelineStore.duration,
+          maxDurationTicks: maxDuration,
+          audioDurationTicks: preparedTimeline.audioDurationTicks,
           normalize: true,
         }),
       );

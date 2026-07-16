@@ -57,12 +57,12 @@ describe('MarkerThumbnail.vue URL ownership + stale-result guard', () => {
 
   it('mints its own URL from the blob and ignores a stale generation after the marker moves', async () => {
     const component = await mountWithNuxt(MarkerThumbnail, {
-      props: { markerId: 'marker-1', timeUs: 1_000_000 },
+      props: { markerId: 'marker-1', timeTicks: 1_000_000 },
     });
     await vi.waitFor(() => expect(dispatches).toHaveLength(1));
 
     // Marker moves before the first generation completes.
-    await component.setProps({ timeUs: 2_000_000 });
+    await component.setProps({ timeTicks: 2_000_000 });
     await vi.waitFor(() => expect(dispatches).toHaveLength(2));
 
     const currentBlob = new Blob(['current'], { type: 'image/webp' });
@@ -82,7 +82,7 @@ describe('MarkerThumbnail.vue URL ownership + stale-result guard', () => {
 
   it('revokes its owned URL on unmount', async () => {
     const component = await mountWithNuxt(MarkerThumbnail, {
-      props: { markerId: 'marker-1', timeUs: 1_000_000 },
+      props: { markerId: 'marker-1', timeTicks: 1_000_000 },
     });
     await vi.waitFor(() => expect(dispatches).toHaveLength(1));
 

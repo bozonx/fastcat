@@ -46,13 +46,13 @@ export function splitItem(doc: TimelineDocument, cmd: SplitItemCommand): Timelin
   // frame-quantized, and only when requested. Previously the outer edges were run
   // through `quantizeRangeToFrames` unconditionally, which snapped free clips onto
   // the grid on every split.
-  const startUs = Math.max(0, Math.round(item.timelineRange.startUs));
-  const endUs = startUs + Math.max(0, Math.round(item.timelineRange.durationUs));
+  const startTicks = Math.max(0, Math.round(item.timelineRange.startTicks));
+  const endTicks = startTicks + Math.max(0, Math.round(item.timelineRange.durationTicks));
 
-  const atUsRaw = Math.max(0, Math.round(Number(cmd.atUs)));
-  const atUs = shouldQuantizeToFrames ? quantizeTimeUsToFrames(atUsRaw, fps, 'round') : atUsRaw;
+  const atUsRaw = Math.max(0, Math.round(Number(cmd.atTicks)));
+  const atTicks = shouldQuantizeToFrames ? quantizeTimeUsToFrames(atUsRaw, fps, 'round') : atUsRaw;
 
-  if (!(atUs > startUs && atUs < endUs)) {
+  if (!(atTicks > startTicks && atTicks < endTicks)) {
     return { next: doc };
   }
 
@@ -77,45 +77,45 @@ export function splitItem(doc: TimelineDocument, cmd: SplitItemCommand): Timelin
           continue;
         }
 
-        const clipStartUs = it.timelineRange.startUs;
-        const clipEndUs = clipStartUs + it.timelineRange.durationUs;
-        const clipStartFrame = ticksToFrame(clipStartUs, fps, 'round');
-        const clipEndFrame = ticksToFrame(clipEndUs, fps, 'round');
-        const cutFrameForClip = ticksToFrame(atUs, fps, 'round');
+        const clipStartTicks = it.timelineRange.startTicks;
+        const clipEndTicks = clipStartTicks + it.timelineRange.durationTicks;
+        const clipStartFrame = ticksToFrame(clipStartTicks, fps, 'round');
+        const clipEndFrame = ticksToFrame(clipEndTicks, fps, 'round');
+        const cutFrameForClip = ticksToFrame(atTicks, fps, 'round');
 
         const isSplit = shouldQuantizeToFrames
           ? cutFrameForClip > clipStartFrame && cutFrameForClip < clipEndFrame
-          : atUs > clipStartUs && atUs < clipEndUs;
+          : atTicks > clipStartTicks && atTicks < clipEndTicks;
 
         if (isSplit) {
           trackItemsChanged = true;
 
-          const leftDurationUs = Math.max(0, atUs - clipStartUs);
-          const rightDurationUs = Math.max(0, clipEndUs - atUs);
+          const leftDurationTicks = Math.max(0, atTicks - clipStartTicks);
+          const rightDurationTicks = Math.max(0, clipEndTicks - atTicks);
 
           const speed = typeof it.speed === 'number' && Number.isFinite(it.speed) ? it.speed : 1;
           const absSpeed = Math.abs(speed);
-          const localCutUs = Math.max(0, Math.round((atUs - clipStartUs) * absSpeed));
+          const localCutTicks = Math.max(0, Math.round((atTicks - clipStartTicks) * absSpeed));
 
-          let leftSourceStartUs: number;
-          let leftSourceDurationUs: number;
-          let rightSourceStartUs: number;
-          let rightSourceDurationUs: number;
+          let leftSourceStartTicks: number;
+          let leftSourceDurationTicks: number;
+          let rightSourceStartTicks: number;
+          let rightSourceDurationTicks: number;
 
           if (speed >= 0) {
-            leftSourceStartUs = Math.round(it.sourceRange.startUs);
-            leftSourceDurationUs = Math.max(0, localCutUs);
-            rightSourceStartUs = Math.max(0, Math.round(it.sourceRange.startUs) + localCutUs);
-            rightSourceDurationUs = Math.max(0, Math.round(it.sourceRange.durationUs) - localCutUs);
+            leftSourceStartTicks = Math.round(it.sourceRange.startTicks);
+            leftSourceDurationTicks = Math.max(0, localCutTicks);
+            rightSourceStartTicks = Math.max(0, Math.round(it.sourceRange.startTicks) + localCutTicks);
+            rightSourceDurationTicks = Math.max(0, Math.round(it.sourceRange.durationTicks) - localCutTicks);
           } else {
-            const sourceDurationUs = Math.round(it.sourceRange.durationUs);
-            leftSourceStartUs = Math.max(
+            const sourceDurationTicks = Math.round(it.sourceRange.durationTicks);
+            leftSourceStartTicks = Math.max(
               0,
-              Math.round(it.sourceRange.startUs) + sourceDurationUs - localCutUs,
+              Math.round(it.sourceRange.startTicks) + sourceDurationTicks - localCutTicks,
             );
-            leftSourceDurationUs = localCutUs;
-            rightSourceStartUs = Math.round(it.sourceRange.startUs);
-            rightSourceDurationUs = Math.max(0, sourceDurationUs - localCutUs);
+            leftSourceDurationTicks = localCutTicks;
+            rightSourceStartTicks = Math.round(it.sourceRange.startTicks);
+            rightSourceDurationTicks = Math.max(0, sourceDurationTicks - localCutTicks);
           }
 
           const rightItemId = nextItemId(t.id, 'clip');
@@ -123,8 +123,8 @@ export function splitItem(doc: TimelineDocument, cmd: SplitItemCommand): Timelin
 
           const leftPatched: TimelineClipItem = {
             ...(it as TimelineClipItem),
-            timelineRange: { startUs: clipStartUs, durationUs: leftDurationUs },
-            sourceRange: { startUs: leftSourceStartUs, durationUs: leftSourceDurationUs },
+            timelineRange: { startTicks: clipStartTicks, durationTicks: leftDurationTicks },
+            sourceRange: { startTicks: leftSourceStartTicks, durationTicks: leftSourceDurationTicks },
             transitionOut: undefined,
             effects: it.effects ? cloneEffects(it.effects) : undefined,
             linkedGroupId: leftGroupId,
@@ -134,8 +134,8 @@ export function splitItem(doc: TimelineDocument, cmd: SplitItemCommand): Timelin
             ...(it as TimelineClipItem),
             id: rightItemId,
             trackId: t.id,
-            timelineRange: { startUs: atUs, durationUs: rightDurationUs },
-            sourceRange: { startUs: rightSourceStartUs, durationUs: rightSourceDurationUs },
+            timelineRange: { startTicks: atTicks, durationTicks: rightDurationTicks },
+            sourceRange: { startTicks: rightSourceStartTicks, durationTicks: rightSourceDurationTicks },
             linkedGroupId: rightGroupId,
             transitionIn: undefined,
             effects: it.effects ? cloneEffects(it.effects) : undefined,
@@ -147,7 +147,7 @@ export function splitItem(doc: TimelineDocument, cmd: SplitItemCommand): Timelin
           // Reassign uncut clip to the left or right group depending on its position
           const isLeft = shouldQuantizeToFrames
             ? clipStartFrame < cutFrameForClip
-            : clipStartUs < atUs;
+            : clipStartTicks < atTicks;
 
           const nextGroupId = isLeft ? leftGroupId : rightGroupId;
           trackItemsChanged = true;
@@ -160,7 +160,7 @@ export function splitItem(doc: TimelineDocument, cmd: SplitItemCommand): Timelin
 
       if (!trackItemsChanged) return t;
 
-      nextItemsRaw.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
+      nextItemsRaw.sort((a, b) => a.timelineRange.startTicks - b.timelineRange.startTicks);
       const nextItems = normalizeGaps(doc, t.id, nextItemsRaw, {
         quantizeToFrames: shouldQuantizeToFrames,
       });
@@ -172,42 +172,42 @@ export function splitItem(doc: TimelineDocument, cmd: SplitItemCommand): Timelin
     return { next: { ...doc, tracks: nextTracks }, createdItemIds };
   }
 
-  const leftDurationUs = Math.max(0, atUs - startUs);
-  const rightDurationUs = Math.max(0, endUs - atUs);
-  if (leftDurationUs <= 0 || rightDurationUs <= 0) return { next: doc };
+  const leftDurationTicks = Math.max(0, atTicks - startTicks);
+  const rightDurationTicks = Math.max(0, endTicks - atTicks);
+  if (leftDurationTicks <= 0 || rightDurationTicks <= 0) return { next: doc };
 
   const speed = typeof item.speed === 'number' && Number.isFinite(item.speed) ? item.speed : 1;
   const absSpeed = Math.abs(speed);
-  const localCutUs = Math.max(0, Math.round((atUs - startUs) * absSpeed));
+  const localCutTicks = Math.max(0, Math.round((atTicks - startTicks) * absSpeed));
 
-  let leftSourceStartUs: number;
-  let leftSourceDurationUs: number;
-  let rightSourceStartUs: number;
-  let rightSourceDurationUs: number;
+  let leftSourceStartTicks: number;
+  let leftSourceDurationTicks: number;
+  let rightSourceStartTicks: number;
+  let rightSourceDurationTicks: number;
 
   if (speed >= 0) {
-    leftSourceStartUs = Math.round(item.sourceRange.startUs);
-    leftSourceDurationUs = Math.max(0, localCutUs);
-    rightSourceStartUs = Math.max(0, Math.round(item.sourceRange.startUs) + localCutUs);
-    rightSourceDurationUs = Math.max(0, Math.round(item.sourceRange.durationUs) - localCutUs);
+    leftSourceStartTicks = Math.round(item.sourceRange.startTicks);
+    leftSourceDurationTicks = Math.max(0, localCutTicks);
+    rightSourceStartTicks = Math.max(0, Math.round(item.sourceRange.startTicks) + localCutTicks);
+    rightSourceDurationTicks = Math.max(0, Math.round(item.sourceRange.durationTicks) - localCutTicks);
   } else {
     // For reversed clips, the left part of the timeline is the later part of the source range.
-    const sourceDurationUs = Math.round(item.sourceRange.durationUs);
-    leftSourceStartUs = Math.max(
+    const sourceDurationTicks = Math.round(item.sourceRange.durationTicks);
+    leftSourceStartTicks = Math.max(
       0,
-      Math.round(item.sourceRange.startUs) + sourceDurationUs - localCutUs,
+      Math.round(item.sourceRange.startTicks) + sourceDurationTicks - localCutTicks,
     );
-    leftSourceDurationUs = localCutUs;
-    rightSourceStartUs = Math.round(item.sourceRange.startUs);
-    rightSourceDurationUs = Math.max(0, sourceDurationUs - localCutUs);
+    leftSourceDurationTicks = localCutTicks;
+    rightSourceStartTicks = Math.round(item.sourceRange.startTicks);
+    rightSourceDurationTicks = Math.max(0, sourceDurationTicks - localCutTicks);
   }
 
   const rightItemId = nextItemId(track.id, 'clip');
 
   const leftPatched: TimelineClipItem = {
     ...(item as TimelineClipItem),
-    timelineRange: { startUs, durationUs: leftDurationUs },
-    sourceRange: { startUs: leftSourceStartUs, durationUs: leftSourceDurationUs },
+    timelineRange: { startTicks, durationTicks: leftDurationTicks },
+    sourceRange: { startTicks: leftSourceStartTicks, durationTicks: leftSourceDurationTicks },
     transitionOut: undefined,
     effects: item.effects ? cloneEffects(item.effects) : undefined,
     linkedGroupId: undefined,
@@ -217,8 +217,8 @@ export function splitItem(doc: TimelineDocument, cmd: SplitItemCommand): Timelin
     ...(item as TimelineClipItem),
     id: rightItemId,
     trackId: track.id,
-    timelineRange: { startUs: atUs, durationUs: rightDurationUs },
-    sourceRange: { startUs: rightSourceStartUs, durationUs: rightSourceDurationUs },
+    timelineRange: { startTicks: atTicks, durationTicks: rightDurationTicks },
+    sourceRange: { startTicks: rightSourceStartTicks, durationTicks: rightSourceDurationTicks },
     linkedGroupId: undefined,
     transitionIn: undefined,
     effects: item.effects ? cloneEffects(item.effects) : undefined,
@@ -233,7 +233,7 @@ export function splitItem(doc: TimelineDocument, cmd: SplitItemCommand): Timelin
     nextItemsRaw.push(leftPatched);
     nextItemsRaw.push(rightItem);
   }
-  nextItemsRaw.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
+  nextItemsRaw.sort((a, b) => a.timelineRange.startTicks - b.timelineRange.startTicks);
   const nextItems = normalizeGaps(doc, track.id, nextItemsRaw, {
     quantizeToFrames: shouldQuantizeToFrames,
   });

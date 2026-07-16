@@ -5,7 +5,7 @@ import { computed, onBeforeUnmount, ref, toRaw } from 'vue';
 import type { TimelineTrack, TimelineMoveItemPayload, TimelineDocument } from '~/timeline/types';
 import {
   buildMultiItemMoves,
-  computeSnapTargetsUs,
+  computeSnapTargetsTicks,
   getSelectedMovableItemIds,
   resolveMoveTargetTrackId,
 } from '~/composables/timeline/timeline-drag-domain';
@@ -26,12 +26,12 @@ import { isCommandMatched } from '~/utils/hotkeys/runtime';
 
 import {
   zoomToPxPerSecond,
-  pxToDeltaUs,
+  pxToDeltaTicks,
   quantizeDeltaUsToFrames,
   quantizeStartUsToFrames,
-  subframePhaseUs,
-  pickBestSnapCandidateUs,
-  computeSnappedStartUs,
+  subframePhaseTicks,
+  pickBestSnapCandidateTicks,
+  computeSnappedStartTicks,
 } from '~/utils/timeline/geometry';
 import { sanitizeFps, getLinkedClipGroupItemIds, findClipById } from '~/timeline/commands/utils';
 import { computeTrimGeometry } from '~/timeline/commands/item/trimGeometry';
@@ -39,7 +39,7 @@ import { formatStopFrameTimecode } from '~/utils/stop-frames';
 import { useTimelinePointerSession } from '~/composables/timeline/useTimelinePointerSession';
 import { useTimelineEdgeScroll } from '~/composables/timeline/useTimelineEdgeScroll';
 import type { TimelineCommand } from '~/timeline/commands';
-import { selectTimelineDurationUs } from '~/timeline/selectors';
+import { selectTimelineDurationTicks } from '~/timeline/selectors';
 
 interface DragApplyContext {
   mode: 'move' | 'slip' | 'trim_start' | 'trim_end';
@@ -59,24 +59,24 @@ interface DragApplyContext {
 export interface TimelineMovePreview {
   itemId: string;
   trackId: string;
-  startUs: number;
+  startTicks: number;
   isCollision?: boolean;
 }
 
 export interface TimelineSlipPreview {
   itemId: string;
   trackId: string;
-  deltaUs: number;
+  deltaTicks: number;
   timecode: string;
 }
 
 export interface TimelineTrimPreview {
   itemId: string;
   trackId: string;
-  startUs: number;
-  durationUs: number;
+  startTicks: number;
+  durationTicks: number;
   edge: 'start' | 'end';
-  deltaUs: number;
+  deltaTicks: number;
 }
 
 export function useTimelineItemDrag(
@@ -98,13 +98,13 @@ export function useTimelineItemDrag(
   const draggingMode = ref<'move' | 'slip' | 'trim_start' | 'trim_end' | null>(null);
   const dragAnchorClientX = ref(0);
   const dragAnchorScrollLeft = ref(0);
-  const dragAnchorStartUs = ref(0);
-  const dragAnchorDurationUs = ref(0);
-  const dragAnchorSourceStartUs = ref(0);
-  const dragAnchorSourceDurationUs = ref(0);
-  const dragLastAppliedQuantizedDeltaUs = ref(0);
-  const dragSnapTargetsUs = ref<number[]>([]);
-  const dragAnchorItemDurationUs = ref(0);
+  const dragAnchorStartTicks = ref(0);
+  const dragAnchorDurationTicks = ref(0);
+  const dragAnchorSourceStartTicks = ref(0);
+  const dragAnchorSourceDurationTicks = ref(0);
+  const dragLastAppliedQuantizedDeltaTicks = ref(0);
+  const dragSnapTargetsTicks = ref<number[]>([]);
+  const dragAnchorItemDurationTicks = ref(0);
   const hasPendingTimelinePersist = ref(false);
   const lastDragClientX = ref(0);
   const lastDragClientY = ref(0);
@@ -119,7 +119,7 @@ export function useTimelineItemDrag(
       fromTrackId: string;
       toTrackId: string;
       itemId: string;
-      startUs: number;
+      startTicks: number;
     }>;
     isCollision?: boolean;
   } | null>(null);
@@ -127,7 +127,7 @@ export function useTimelineItemDrag(
     targetTrackId: string;
     targetItemId: string;
     edge: 'start' | 'end';
-    deltaUs: number;
+    deltaTicks: number;
     quantizeToFrames: boolean;
     commandType: 'trim_item' | 'trim_items' | 'overlay_trim_item';
   } | null>(null);
@@ -224,10 +224,10 @@ export function useTimelineItemDrag(
     if (item.clipType !== 'media' && item.clipType !== 'timeline') return false;
     if (item.isImage) return false;
 
-    const sourceDurationUs = Math.max(0, Math.round(Number(item.sourceDurationUs ?? 0)));
-    const sourceRangeDurationUs = Math.max(0, Math.round(Number(item.sourceRange.durationUs ?? 0)));
+    const sourceDurationTicks = Math.max(0, Math.round(Number(item.sourceDurationTicks ?? 0)));
+    const sourceRangeDurationTicks = Math.max(0, Math.round(Number(item.sourceRange.durationTicks ?? 0)));
 
-    return sourceDurationUs > sourceRangeDurationUs;
+    return sourceDurationTicks > sourceRangeDurationTicks;
   }
 
   function scheduleDragReapplyFromLastPointerPosition() {
@@ -262,7 +262,7 @@ export function useTimelineItemDrag(
   }
 
   function startMoveItem(e: PointerEvent, payload: TimelineMoveItemPayload) {
-    const { trackId, itemId, startUs } = payload;
+    const { trackId, itemId, startTicks } = payload;
 
     if (e.button !== 0 && e.button !== 2) return;
     e.preventDefault();
@@ -302,18 +302,18 @@ export function useTimelineItemDrag(
     dragPointerButton.value = e.button as 0 | 2;
     applyDragAction(resolveDragAction(e, dragPointerButton.value));
 
-    dragAnchorStartUs.value = startUs;
+    dragAnchorStartTicks.value = startTicks;
     dragIsMobileTouch.value = e.pointerType === 'touch';
     isTrimEdgeBlocked.value = false;
-    dragAnchorDurationUs.value =
+    dragAnchorDurationTicks.value =
       tracks.value.find((t) => t.id === trackId)?.items.find((it) => it.id === itemId)
-        ?.timelineRange.durationUs ?? 0;
-    dragAnchorSourceStartUs.value = item?.kind === 'clip' ? item.sourceRange.startUs : 0;
-    dragAnchorSourceDurationUs.value = item?.kind === 'clip' ? item.sourceRange.durationUs : 0;
-    dragAnchorItemDurationUs.value = dragAnchorDurationUs.value;
-    dragLastAppliedQuantizedDeltaUs.value = 0;
+        ?.timelineRange.durationTicks ?? 0;
+    dragAnchorSourceStartTicks.value = item?.kind === 'clip' ? item.sourceRange.startTicks : 0;
+    dragAnchorSourceDurationTicks.value = item?.kind === 'clip' ? item.sourceRange.durationTicks : 0;
+    dragAnchorItemDurationTicks.value = dragAnchorDurationTicks.value;
+    dragLastAppliedQuantizedDeltaTicks.value = 0;
 
-    const timelineEndUs = Number.isFinite(timelineStore.duration)
+    const timelineEndTicks = Number.isFinite(timelineStore.duration)
       ? Math.max(0, Math.round(timelineStore.duration))
       : null;
     const snapSettings = workspaceStore.userSettings.timeline.snapping;
@@ -323,16 +323,16 @@ export function useTimelineItemDrag(
       selectedItemIds: timelineStore.selectedItemIds,
       tracks: tracks.value,
     });
-    dragSnapTargetsUs.value = computeSnapTargetsUs({
+    dragSnapTargetsTicks.value = computeSnapTargetsTicks({
       tracks: tracks.value,
       excludeItemIds: moveExcludeItemIds.length > 0 ? moveExcludeItemIds : [itemId],
       includeTimelineStart: snapSettings.timelineEdges,
-      includeTimelineEndUs: snapSettings.timelineEdges ? timelineEndUs : null,
-      includePlayheadUs: snapSettings.playhead ? timelineStore.currentTime : null,
+      includeTimelineEndTicks: snapSettings.timelineEdges ? timelineEndTicks : null,
+      includePlayheadTicks: snapSettings.playhead ? timelineStore.currentTime : null,
       includeMarkers: snapSettings.markers,
       markers: timelineStore.getMarkers(),
       includeClips: snapSettings.clips,
-      selectionRangeUs: snapSettings.selection ? timelineStore.getSelectionRange() : null,
+      selectionRangeTicks: snapSettings.selection ? timelineStore.getSelectionRange() : null,
     });
 
     dragStartSnapshot.value = toRaw(timelineStore.timelineDoc) as TimelineDocument | null;
@@ -340,7 +340,7 @@ export function useTimelineItemDrag(
     dragCancelRequested.value = false;
     isTrimEdgeBlocked.value = false;
 
-    movePreview.value = [{ itemId, trackId, startUs }];
+    movePreview.value = [{ itemId, trackId, startTicks }];
     pendingMoveCommit.value = null;
     slipPreview.value = null;
     trimPreview.value = [];
@@ -352,7 +352,7 @@ export function useTimelineItemDrag(
 
   function startTrimItem(
     e: PointerEvent,
-    input: { trackId: string; itemId: string; edge: 'start' | 'end'; startUs: number },
+    input: { trackId: string; itemId: string; edge: 'start' | 'end'; startTicks: number },
   ) {
     if (e.button !== 0 && e.button !== 2) return;
     e.preventDefault();
@@ -379,31 +379,31 @@ export function useTimelineItemDrag(
     dragPointerButton.value = e.button as 0 | 2;
     applyDragAction(resolveDragAction(e, dragPointerButton.value));
 
-    dragAnchorStartUs.value = input.startUs;
-    dragLastAppliedQuantizedDeltaUs.value = 0;
+    dragAnchorStartTicks.value = input.startTicks;
+    dragLastAppliedQuantizedDeltaTicks.value = 0;
 
     const currentItem = tracks.value
       .find((t) => t.id === targetTrackId)
       ?.items.find((it) => it.id === targetItemId);
-    const durationUs = currentItem?.kind === 'clip' ? currentItem.timelineRange.durationUs : 0;
-    dragAnchorItemDurationUs.value = Math.max(0, Math.round(Number(durationUs ?? 0)));
+    const durationTicks = currentItem?.kind === 'clip' ? currentItem.timelineRange.durationTicks : 0;
+    dragAnchorItemDurationTicks.value = Math.max(0, Math.round(Number(durationTicks ?? 0)));
 
-    const timelineEndUs = Number.isFinite(timelineStore.duration)
+    const timelineEndTicks = Number.isFinite(timelineStore.duration)
       ? Math.max(0, Math.round(timelineStore.duration))
       : null;
     const snapSettings = workspaceStore.userSettings.timeline.snapping;
 
     const groupedIds = doc ? getLinkedClipGroupItemIds(doc, targetItemId) : [targetItemId];
-    dragSnapTargetsUs.value = computeSnapTargetsUs({
+    dragSnapTargetsTicks.value = computeSnapTargetsTicks({
       tracks: tracks.value,
       excludeItemIds: groupedIds,
       includeTimelineStart: snapSettings.timelineEdges,
-      includeTimelineEndUs: snapSettings.timelineEdges ? timelineEndUs : null,
-      includePlayheadUs: snapSettings.playhead ? timelineStore.currentTime : null,
+      includeTimelineEndTicks: snapSettings.timelineEdges ? timelineEndTicks : null,
+      includePlayheadTicks: snapSettings.playhead ? timelineStore.currentTime : null,
       includeMarkers: snapSettings.markers,
       markers: timelineStore.getMarkers(),
       includeClips: snapSettings.clips,
-      selectionRangeUs: snapSettings.selection ? timelineStore.getSelectionRange() : null,
+      selectionRangeTicks: snapSettings.selection ? timelineStore.getSelectionRange() : null,
     });
 
     dragStartSnapshot.value = toRaw(timelineStore.timelineDoc) as TimelineDocument | null;
@@ -426,10 +426,10 @@ export function useTimelineItemDrag(
         previewItems.push({
           itemId: id,
           trackId: tr!.id,
-          startUs: it.timelineRange.startUs,
-          durationUs: it.timelineRange.durationUs,
+          startTicks: it.timelineRange.startTicks,
+          durationTicks: it.timelineRange.durationTicks,
           edge: input.edge,
-          deltaUs: 0,
+          deltaTicks: 0,
         });
       }
     }
@@ -470,12 +470,12 @@ export function useTimelineItemDrag(
     scheduleDragReapplyFromLastPointerPosition();
   }
 
-  function getDragDeltaUs(clientX: number, zoom: number): number {
+  function getDragDeltaTicks(clientX: number, zoom: number): number {
     const currentScrollLeft = scrollEl.value?.scrollLeft ?? 0;
     const dxPx =
       clientX - dragAnchorClientX.value + (currentScrollLeft - dragAnchorScrollLeft.value);
 
-    return pxToDeltaUs(dxPx, zoom);
+    return pxToDeltaTicks(dxPx, zoom);
   }
 
   function applySlipDrag(ctx: DragApplyContext) {
@@ -484,27 +484,27 @@ export function useTimelineItemDrag(
     const item = track?.items.find((value) => value.id === itemId);
     if (!item || item.kind !== 'clip') return;
 
-    const rawDeltaUs = getDragDeltaUs(clientX, zoom);
+    const rawDeltaTicks = getDragDeltaTicks(clientX, zoom);
     const speed = typeof item.speed === 'number' && Number.isFinite(item.speed) ? item.speed : 1;
     const absSpeed = Math.abs(speed);
-    const sourceDeltaUs = rawDeltaUs * absSpeed;
+    const sourceDeltaTicks = rawDeltaTicks * absSpeed;
 
-    const maxSourceStartUs = Math.max(
+    const maxSourceStartTicks = Math.max(
       0,
-      Math.round(Number(item.sourceDurationUs ?? 0) - dragAnchorSourceDurationUs.value),
+      Math.round(Number(item.sourceDurationTicks ?? 0) - dragAnchorSourceDurationTicks.value),
     );
-    const nextSourceStartUs = Math.min(
-      maxSourceStartUs,
-      Math.max(0, Math.round(dragAnchorSourceStartUs.value - sourceDeltaUs)),
+    const nextSourceStartTicks = Math.min(
+      maxSourceStartTicks,
+      Math.max(0, Math.round(dragAnchorSourceStartTicks.value - sourceDeltaTicks)),
     );
-    const deltaUs = nextSourceStartUs - dragAnchorSourceStartUs.value;
+    const deltaTicks = nextSourceStartTicks - dragAnchorSourceStartTicks.value;
 
     slipPreview.value = {
       itemId,
       trackId,
-      deltaUs,
-      timecode: `${deltaUs >= 0 ? '+' : '-'}${formatStopFrameTimecode({
-        timeTicks: Math.abs(deltaUs),
+      deltaTicks,
+      timecode: `${deltaTicks >= 0 ? '+' : '-'}${formatStopFrameTimecode({
+        timeTicks: Math.abs(deltaTicks),
         fps,
         frameDigits: 1,
       })}`,
@@ -517,8 +517,8 @@ export function useTimelineItemDrag(
       properties: {
         sourceRange: {
           ...item.sourceRange,
-          startUs: nextSourceStartUs,
-          durationUs: dragAnchorSourceDurationUs.value,
+          startTicks: nextSourceStartTicks,
+          durationTicks: dragAnchorSourceDurationTicks.value,
         },
       },
     };
@@ -546,8 +546,8 @@ export function useTimelineItemDrag(
       isAudioOnly,
     } = ctx;
 
-    const rawDeltaUs = getDragDeltaUs(clientX, zoom);
-    const rawStartUs = Math.max(0, dragAnchorStartUs.value + rawDeltaUs);
+    const rawDeltaTicks = getDragDeltaTicks(clientX, zoom);
+    const rawStartTicks = Math.max(0, dragAnchorStartTicks.value + rawDeltaTicks);
 
     const selectedMovableItemIds = getSelectedMovableItemIds({
       selectedItemIds: timelineStore.selectedItemIds,
@@ -556,22 +556,22 @@ export function useTimelineItemDrag(
 
     // Preserve the clip's sub-frame phase when frame-snapping. A free (off-grid)
     // audio clip carries a deliberate sub-frame offset — e.g. a hand-dialed
-    // multi-mic sync. Frame-snapping it by delta (via `frameOffsetUs`) translates
+    // multi-mic sync. Frame-snapping it by delta (via `frameOffsetTicks`) translates
     // it by whole frames while keeping that phase, instead of re-quantizing the
     // absolute start onto the grid and destroying the sync. Only audio can be
     // free, so non-audio drags always use phase 0 (locked to the absolute grid).
-    const frameOffsetUs = isAudioOnly ? subframePhaseUs(dragAnchorStartUs.value, fps) : 0;
+    const frameOffsetTicks = isAudioOnly ? subframePhaseTicks(dragAnchorStartTicks.value, fps) : 0;
 
-    const startUs = computeSnappedStartUs({
-      rawStartUs,
-      draggingItemDurationUs: dragAnchorDurationUs.value,
+    const startTicks = computeSnappedStartTicks({
+      rawStartTicks,
+      draggingItemDurationTicks: dragAnchorDurationTicks.value,
       fps,
       zoom,
       snapThresholdPx,
-      snapTargetsUs: dragSnapTargetsUs.value,
+      snapTargetsTicks: dragSnapTargetsTicks.value,
       enableFrameSnap,
       enableClipSnap,
-      frameOffsetUs,
+      frameOffsetTicks,
     });
 
     const targetTrackId = resolveMoveTargetTrackId({
@@ -589,15 +589,15 @@ export function useTimelineItemDrag(
       // member keeps its own sub-frame phase. The commit sets `preserveItemOffsets`
       // so `move_items` applies these starts verbatim instead of re-snapping the
       // off-grid members onto the frame grid. Mirrors the linked-clip move path.
-      const rawDeltaUs = startUs - dragAnchorStartUs.value;
-      const deltaUs = enableFrameSnap ? quantizeDeltaUsToFrames(rawDeltaUs, fps) : rawDeltaUs;
+      const rawDeltaTicks = startTicks - dragAnchorStartTicks.value;
+      const deltaTicks = enableFrameSnap ? quantizeDeltaUsToFrames(rawDeltaTicks, fps) : rawDeltaTicks;
       const moves = buildMultiItemMoves({
         currentTracks: tracks.value,
         dragStartSnapshot: dragStartSnapshot.value,
         dragOriginTrackId: dragOriginTrackId.value,
         targetTrackId,
         selectedMovableItemIds,
-        deltaUs,
+        deltaTicks,
       });
 
       if (moves.length > 0) {
@@ -610,13 +610,13 @@ export function useTimelineItemDrag(
               .flatMap((track) => track.items)
               .find((trackItem) => trackItem.id === move.itemId);
             if (!targetTrack || !previewItem || previewItem.kind !== 'clip') continue;
-            const endUs = move.startUs + previewItem.timelineRange.durationUs;
+            const endTicks = move.startTicks + previewItem.timelineRange.durationTicks;
             for (const it of targetTrack.items) {
               if ((movingIds.has(it.id) && !dragIsCopyOverride.value) || it.kind !== 'clip')
                 continue;
-              const itStart = it.timelineRange.startUs;
-              const itEnd = itStart + it.timelineRange.durationUs;
-              if (move.startUs < itEnd && itStart < endUs) {
+              const itStart = it.timelineRange.startTicks;
+              const itEnd = itStart + it.timelineRange.durationTicks;
+              if (move.startTicks < itEnd && itStart < endTicks) {
                 isCollision = true;
                 break;
               }
@@ -628,7 +628,7 @@ export function useTimelineItemDrag(
         movePreview.value = moves.map((move) => ({
           itemId: move.itemId,
           trackId: move.toTrackId,
-          startUs: move.startUs,
+          startTicks: move.startTicks,
           isCollision,
         }));
         pendingMoveCommit.value = { moves, isCollision };
@@ -640,7 +640,7 @@ export function useTimelineItemDrag(
 
     if (lastDragAppliedCmd.value && dragStartSnapshot.value) {
       timelineStore.timelineDoc = dragStartSnapshot.value;
-      timelineStore.duration = selectTimelineDurationUs(dragStartSnapshot.value);
+      timelineStore.duration = selectTimelineDurationTicks(dragStartSnapshot.value);
       lastDragAppliedCmd.value = null;
       draggingTrackId.value = dragOriginTrackId.value ?? trackId;
     }
@@ -649,13 +649,13 @@ export function useTimelineItemDrag(
     if (overlapMode !== 'pseudo' && dragStartSnapshot.value) {
       const targetTrack = dragStartSnapshot.value.tracks.find((t) => t.id === targetTrackId);
       if (targetTrack) {
-        const endUs = startUs + dragAnchorDurationUs.value;
+        const endTicks = startTicks + dragAnchorDurationTicks.value;
         for (const it of targetTrack.items) {
           if (it.id === itemId && !dragIsCopyOverride.value) continue;
           if (it.kind !== 'clip') continue;
-          const itStart = it.timelineRange.startUs;
-          const itEnd = itStart + it.timelineRange.durationUs;
-          if (startUs < itEnd && itStart < endUs) {
+          const itStart = it.timelineRange.startTicks;
+          const itEnd = itStart + it.timelineRange.durationTicks;
+          if (startTicks < itEnd && itStart < endTicks) {
             isCollision = true;
             break;
           }
@@ -663,14 +663,14 @@ export function useTimelineItemDrag(
       }
     }
 
-    movePreview.value = [{ itemId, trackId: targetTrackId, startUs, isCollision }];
+    movePreview.value = [{ itemId, trackId: targetTrackId, startTicks, isCollision }];
     pendingMoveCommit.value = {
       moves: [
         {
           fromTrackId: dragOriginTrackId.value ?? trackId,
           toTrackId: targetTrackId,
           itemId,
-          startUs,
+          startTicks,
         },
       ],
       isCollision,
@@ -691,15 +691,15 @@ export function useTimelineItemDrag(
       overlapMode,
     } = ctx;
 
-    const rawDeltaUs = getDragDeltaUs(clientX, zoom);
+    const rawDeltaTicks = getDragDeltaTicks(clientX, zoom);
 
-    const thresholdUs = Math.round((snapThresholdPx / zoomToPxPerSecond(zoom)) * TICKS_PER_SECOND);
-    const anchorStartUs = Math.max(0, Math.round(dragAnchorStartUs.value));
-    const anchorDurationUs = Math.max(0, Math.round(dragAnchorItemDurationUs.value));
-    const anchorEndUs = anchorStartUs + anchorDurationUs;
+    const thresholdTicks = Math.round((snapThresholdPx / zoomToPxPerSecond(zoom)) * TICKS_PER_SECOND);
+    const anchorStartTicks = Math.max(0, Math.round(dragAnchorStartTicks.value));
+    const anchorDurationTicks = Math.max(0, Math.round(dragAnchorItemDurationTicks.value));
+    const anchorEndTicks = anchorStartTicks + anchorDurationTicks;
 
-    let minEdgeUs = 0;
-    let maxEdgeUs = Number.POSITIVE_INFINITY;
+    let minEdgeTicks = 0;
+    let maxEdgeTicks = Number.POSITIVE_INFINITY;
 
     const doc = dragStartSnapshot.value;
     if (doc) {
@@ -715,15 +715,15 @@ export function useTimelineItemDrag(
           const itemsOnTrack = startTrack.items
             .filter((it) => it.kind === 'clip' && it.id !== itemId && !it.locked)
             .map((it) => ({
-              start: it.timelineRange.startUs,
-              end: it.timelineRange.startUs + it.timelineRange.durationUs,
+              start: it.timelineRange.startTicks,
+              end: it.timelineRange.startTicks + it.timelineRange.durationTicks,
             }));
 
           for (const it of itemsOnTrack) {
-            if (it.end <= anchorStartUs && it.end > prevClipEnd) {
+            if (it.end <= anchorStartTicks && it.end > prevClipEnd) {
               prevClipEnd = it.end;
             }
-            if (it.start >= anchorEndUs && it.start < nextClipStart) {
+            if (it.start >= anchorEndTicks && it.start < nextClipStart) {
               nextClipStart = it.start;
             }
           }
@@ -739,87 +739,87 @@ export function useTimelineItemDrag(
           (startItem.clipType === 'media' && !startItem.isImage) ||
           startItem.clipType === 'timeline';
 
-        const prevSourceStartUs = Math.max(
+        const prevSourceStartTicks = Math.max(
           0,
-          Math.round(Number(startItem.sourceRange?.startUs ?? 0)),
+          Math.round(Number(startItem.sourceRange?.startTicks ?? 0)),
         );
-        const prevSourceDurationUs = Math.max(
+        const prevSourceDurationTicks = Math.max(
           0,
           Math.round(
-            Number(startItem.sourceRange?.durationUs ?? startItem.timelineRange?.durationUs ?? 0),
+            Number(startItem.sourceRange?.durationTicks ?? startItem.timelineRange?.durationTicks ?? 0),
           ),
         );
-        const prevSourceEndUs = prevSourceStartUs + prevSourceDurationUs;
+        const prevSourceEndTicks = prevSourceStartTicks + prevSourceDurationTicks;
 
         // Furthest source position the clip may consume. Mirrors computeTrimGeometry:
         // material-backed clips are bound to their real source; when the source
         // duration is not resolved yet, fall back to what is already consumed so
         // the clip cannot be extended into material that does not exist.
-        const rawSourceDurationUs = Number(startItem.sourceDurationUs);
-        const knownSourceEndUs =
-          Number.isFinite(rawSourceDurationUs) && rawSourceDurationUs > 0
-            ? Math.round(rawSourceDurationUs)
-            : prevSourceEndUs;
+        const rawSourceDurationTicks = Number(startItem.sourceDurationTicks);
+        const knownSourceEndTicks =
+          Number.isFinite(rawSourceDurationTicks) && rawSourceDurationTicks > 0
+            ? Math.round(rawSourceDurationTicks)
+            : prevSourceEndTicks;
         if (mode === 'trim_start') {
           // Leftmost the start edge can travel: until the consumed source start
-          // reaches 0 (the clip already begins `prevSourceStartUs` into the
-          // material). Using `knownSourceEndUs` here ignored an already-trimmed
+          // reaches 0 (the clip already begins `prevSourceStartTicks` into the
+          // material). Using `knownSourceEndTicks` here ignored an already-trimmed
           // end and let the start drag past where the clip can actually grow.
           const minSourceBound = hasFixedSourceDuration
-            ? anchorStartUs - prevSourceStartUs / absSpeed
+            ? anchorStartTicks - prevSourceStartTicks / absSpeed
             : Number.NEGATIVE_INFINITY;
 
-          minEdgeUs = Math.max(prevClipEnd, minSourceBound);
-          maxEdgeUs = anchorEndUs;
+          minEdgeTicks = Math.max(prevClipEnd, minSourceBound);
+          maxEdgeTicks = anchorEndTicks;
         } else {
           // Rightmost the end edge can travel: until the consumed source end
           // reaches the material end. Anchored on the clip's real consumed source
-          // (`prevSourceStartUs`), so a clip trimmed at the start can't be dragged
+          // (`prevSourceStartTicks`), so a clip trimmed at the start can't be dragged
           // past the actual end of material.
           const maxSourceBound = hasFixedSourceDuration
-            ? anchorStartUs + (knownSourceEndUs - prevSourceStartUs) / absSpeed
+            ? anchorStartTicks + (knownSourceEndTicks - prevSourceStartTicks) / absSpeed
             : Number.POSITIVE_INFINITY;
 
-          minEdgeUs = anchorStartUs;
-          maxEdgeUs = Math.min(nextClipStart, maxSourceBound);
+          minEdgeTicks = anchorStartTicks;
+          maxEdgeTicks = Math.min(nextClipStart, maxSourceBound);
         }
       }
     }
 
-    const unclampedRawEdgeUs =
-      mode === 'trim_start' ? anchorStartUs + rawDeltaUs : anchorEndUs + rawDeltaUs;
-    const rawEdgeUs = Math.max(minEdgeUs, Math.min(maxEdgeUs, unclampedRawEdgeUs));
-    isTrimEdgeBlocked.value = unclampedRawEdgeUs !== rawEdgeUs;
+    const unclampedRawEdgeTicks =
+      mode === 'trim_start' ? anchorStartTicks + rawDeltaTicks : anchorEndTicks + rawDeltaTicks;
+    const rawEdgeTicks = Math.max(minEdgeTicks, Math.min(maxEdgeTicks, unclampedRawEdgeTicks));
+    isTrimEdgeBlocked.value = unclampedRawEdgeTicks !== rawEdgeTicks;
 
-    let snappedEdgeUs = Math.round(rawEdgeUs);
-    let bestDist = thresholdUs;
+    let snappedEdgeTicks = Math.round(rawEdgeTicks);
+    let bestDist = thresholdTicks;
 
     if (enableClipSnap) {
-      const clipSnap = pickBestSnapCandidateUs({
-        rawUs: rawEdgeUs,
-        thresholdUs,
-        targetsUs: dragSnapTargetsUs.value,
+      const clipSnap = pickBestSnapCandidateTicks({
+        rawTicks: rawEdgeTicks,
+        thresholdTicks,
+        targetsTicks: dragSnapTargetsTicks.value,
       });
-      snappedEdgeUs = clipSnap.snappedUs;
-      bestDist = clipSnap.distUs;
+      snappedEdgeTicks = clipSnap.snappedTicks;
+      bestDist = clipSnap.distTicks;
     }
 
     if (enableFrameSnap) {
-      const baseUs = bestDist < thresholdUs ? snappedEdgeUs : rawEdgeUs;
-      snappedEdgeUs = quantizeStartUsToFrames(baseUs, fps);
+      const baseTicks = bestDist < thresholdTicks ? snappedEdgeTicks : rawEdgeTicks;
+      snappedEdgeTicks = quantizeStartUsToFrames(baseTicks, fps);
     }
 
     // Re-clamp after snap/frame snap to enforce media boundaries.
-    snappedEdgeUs = Math.max(minEdgeUs, Math.min(maxEdgeUs, snappedEdgeUs));
+    snappedEdgeTicks = Math.max(minEdgeTicks, Math.min(maxEdgeTicks, snappedEdgeTicks));
 
-    const desiredDeltaUs =
-      mode === 'trim_start' ? snappedEdgeUs - anchorStartUs : snappedEdgeUs - anchorEndUs;
-    const desiredQuantizedDeltaUs = enableFrameSnap
-      ? quantizeDeltaUsToFrames(desiredDeltaUs, fps)
-      : Math.round(desiredDeltaUs);
+    const desiredDeltaTicks =
+      mode === 'trim_start' ? snappedEdgeTicks - anchorStartTicks : snappedEdgeTicks - anchorEndTicks;
+    const desiredQuantizedDeltaTicks = enableFrameSnap
+      ? quantizeDeltaUsToFrames(desiredDeltaTicks, fps)
+      : Math.round(desiredDeltaTicks);
 
     lastDragClientX.value = clientX;
-    dragLastAppliedQuantizedDeltaUs.value = desiredQuantizedDeltaUs;
+    dragLastAppliedQuantizedDeltaTicks.value = desiredQuantizedDeltaTicks;
 
     const cmdEdge = mode === 'trim_start' ? 'start' : 'end';
 
@@ -836,13 +836,13 @@ export function useTimelineItemDrag(
 
       const { timelineRange, valid } = computeTrimGeometry({
         edge: cmdEdge,
-        deltaUs: desiredQuantizedDeltaUs,
+        deltaTicks: desiredQuantizedDeltaTicks,
         speed,
         fps,
         quantizeToFrames: enableFrameSnap,
         timelineRange: pItem.timelineRange,
         sourceRange: pItem.sourceRange,
-        sourceDurationUs: pItem.sourceDurationUs,
+        sourceDurationTicks: pItem.sourceDurationTicks,
         hasFixedSourceDuration,
       });
 
@@ -850,9 +850,9 @@ export function useTimelineItemDrag(
 
       nextPreviews.push({
         ...preview,
-        startUs: Math.max(0, Math.round(timelineRange.startUs)),
-        durationUs: Math.max(0, Math.round(timelineRange.durationUs)),
-        deltaUs: desiredQuantizedDeltaUs,
+        startTicks: Math.max(0, Math.round(timelineRange.startTicks)),
+        durationTicks: Math.max(0, Math.round(timelineRange.durationTicks)),
+        deltaTicks: desiredQuantizedDeltaTicks,
       });
     }
 
@@ -861,7 +861,7 @@ export function useTimelineItemDrag(
       targetTrackId: trackId,
       targetItemId: itemId,
       edge: cmdEdge,
-      deltaUs: desiredQuantizedDeltaUs,
+      deltaTicks: desiredQuantizedDeltaTicks,
       quantizeToFrames: enableFrameSnap,
       commandType: overlapMode === 'pseudo' ? 'overlay_trim_item' : 'trim_item',
     };
@@ -988,7 +988,7 @@ export function useTimelineItemDrag(
       sourceTrackId: string;
       clip: import('~/timeline/types').TimelineClipItem;
       targetTrackId: string;
-      targetStartUs: number;
+      targetStartTicks: number;
     } | null = null;
 
     if (shouldCopyDraggedClip) {
@@ -1013,7 +1013,7 @@ export function useTimelineItemDrag(
             sourceTrackId: move.fromTrackId,
             clip: cloneValue(clip),
             targetTrackId: move.toTrackId,
-            targetStartUs: move.startUs,
+            targetStartTicks: move.startTicks,
           };
         }
       }
@@ -1040,7 +1040,7 @@ export function useTimelineItemDrag(
               fromTrackId: move.fromTrackId,
               toTrackId: move.toTrackId,
               itemId: move.itemId,
-              startUs: move.startUs,
+              startTicks: move.startTicks,
               quantizeToFrames: enableFrameSnap,
               ignoreLinks: usePseudoOverlap,
             }),
@@ -1075,7 +1075,7 @@ export function useTimelineItemDrag(
 
     if (!cancel && (draggingMode.value === 'trim_start' || draggingMode.value === 'trim_end')) {
       const commit = pendingTrimCommit.value;
-      if (commit && commit.deltaUs !== 0) {
+      if (commit && commit.deltaTicks !== 0) {
         const docBeforeApply = timelineStore.timelineDoc;
 
         if (commit.commandType === 'overlay_trim_item') {
@@ -1084,7 +1084,7 @@ export function useTimelineItemDrag(
             trackId: commit.targetTrackId,
             itemId: commit.targetItemId,
             edge: commit.edge,
-            deltaUs: commit.deltaUs,
+            deltaTicks: commit.deltaTicks,
             quantizeToFrames: commit.quantizeToFrames,
           };
           timelineStore.applyTimeline(cmd, { saveMode: 'none', skipHistory: true });
@@ -1101,7 +1101,7 @@ export function useTimelineItemDrag(
                 trackId: preview.trackId,
                 itemId: preview.itemId,
                 edge: commit.edge,
-                deltaUs: commit.deltaUs,
+                deltaTicks: commit.deltaTicks,
               };
             })
             .filter(
@@ -1111,7 +1111,7 @@ export function useTimelineItemDrag(
                 trackId: string;
                 itemId: string;
                 edge: 'start' | 'end';
-                deltaUs: number;
+                deltaTicks: number;
               } => x !== null,
             );
 
@@ -1168,7 +1168,7 @@ export function useTimelineItemDrag(
 
     if (cancel && snapshot) {
       timelineStore.timelineDoc = snapshot;
-      timelineStore.duration = selectTimelineDurationUs(snapshot);
+      timelineStore.duration = selectTimelineDurationTicks(snapshot);
     }
 
     if (!cancel && shouldCopyDraggedClip && snapshot) {
@@ -1182,13 +1182,13 @@ export function useTimelineItemDrag(
         });
       } else if (copiedSingleClipPayload) {
         timelineStore.timelineDoc = snapshot;
-        timelineStore.duration = selectTimelineDurationUs(snapshot);
+        timelineStore.duration = selectTimelineDurationTicks(snapshot);
         const copyClip = copiedSingleClipPayload.clip;
         void timelineStore.pasteClips(
           [{ sourceTrackId: copiedSingleClipPayload.sourceTrackId, clip: copyClip }],
           {
             targetTrackId: copiedSingleClipPayload.targetTrackId,
-            insertStartUs: copiedSingleClipPayload.targetStartUs,
+            insertStartTicks: copiedSingleClipPayload.targetStartTicks,
             respectToolbarModes: true,
           },
         );

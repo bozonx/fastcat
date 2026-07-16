@@ -46,30 +46,30 @@ export function applyClipSpeedChange(params: {
   // never reached playback — video kept playing forward and reversed-clip audio was
   // not muted. Unit speed (1×) carries no time-warp, so the flag clears there.
   nextProps.speedActive = speed !== 1;
-  const nextDurationUsRaw = Math.round(item.sourceRange.durationUs / Math.abs(speed));
-  const nextDurationUs = Math.max(0, quantizeTimeUsToFrames(nextDurationUsRaw, fps, 'round'));
-  const startUs = item.timelineRange.startUs;
-  const prevDurationUs = Math.max(0, item.timelineRange.durationUs);
+  const nextDurationUsRaw = Math.round(item.sourceRange.durationTicks / Math.abs(speed));
+  const nextDurationTicks = Math.max(0, quantizeTimeUsToFrames(nextDurationUsRaw, fps, 'round'));
+  const startTicks = item.timelineRange.startTicks;
+  const prevDurationTicks = Math.max(0, item.timelineRange.durationTicks);
 
-  const shouldTryRipple = nextDurationUs !== prevDurationUs;
+  const shouldTryRipple = nextDurationTicks !== prevDurationTicks;
   if (!shouldTryRipple) {
-    assertNoOverlap(track, item.id, startUs, nextDurationUs);
-    nextProps.timelineRange = { ...item.timelineRange, durationUs: nextDurationUs };
+    assertNoOverlap(track, item.id, startTicks, nextDurationTicks);
+    nextProps.timelineRange = { ...item.timelineRange, durationTicks: nextDurationTicks };
     return null;
   }
 
   try {
-    if (nextDurationUs > prevDurationUs) {
-      assertNoOverlap(track, item.id, startUs, nextDurationUs);
+    if (nextDurationTicks > prevDurationTicks) {
+      assertNoOverlap(track, item.id, startTicks, nextDurationTicks);
     }
-    nextProps.timelineRange = { ...item.timelineRange, durationUs: nextDurationUs };
+    nextProps.timelineRange = { ...item.timelineRange, durationTicks: nextDurationTicks };
     return null;
   } catch {
     // Exception means overlap occurred (or we want to explicitly ripple shift)
     const clips = track.items
       .filter((it): it is TimelineClipItem => it.kind === 'clip')
       .map((c) => ({ ...c, timelineRange: { ...c.timelineRange } }));
-    clips.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
+    clips.sort((a, b) => a.timelineRange.startTicks - b.timelineRange.startTicks);
 
     const movedVideoClipIds: string[] = [];
     const nextClips = clips.map((c) => {
@@ -78,12 +78,12 @@ export function applyClipSpeedChange(params: {
         ...c,
         speed,
         speedActive: speed !== 1,
-        timelineRange: { ...c.timelineRange, durationUs: nextDurationUs },
+        timelineRange: { ...c.timelineRange, durationTicks: nextDurationTicks },
       };
     });
 
     // Calculate how much the clips after this one should move
-    const deltaUs = nextDurationUs - prevDurationUs;
+    const deltaTicks = nextDurationTicks - prevDurationTicks;
     let foundCurrent = false;
 
     for (let i = 0; i < nextClips.length; i++) {
@@ -101,24 +101,24 @@ export function applyClipSpeedChange(params: {
         // the lock invariant — but still throw an overlap error if the
         // new geometry would collide with the locked clip.
         if (curr.locked) {
-          const lockedStartUs = curr.timelineRange.startUs;
+          const lockedStartTicks = curr.timelineRange.startTicks;
           const rippledEndOfCurrent = nextClips
             .slice(0, i)
             .reduce(
-              (max, c) => Math.max(max, c.timelineRange.startUs + c.timelineRange.durationUs),
+              (max, c) => Math.max(max, c.timelineRange.startTicks + c.timelineRange.durationTicks),
               0,
             );
-          if (rippledEndOfCurrent > lockedStartUs) {
+          if (rippledEndOfCurrent > lockedStartTicks) {
             throw new Error('Item overlaps with another item');
           }
           break;
         }
 
-        const newStartUs = Math.max(0, curr.timelineRange.startUs + deltaUs);
-        if (newStartUs !== curr.timelineRange.startUs) {
+        const newStartTicks = Math.max(0, curr.timelineRange.startTicks + deltaTicks);
+        if (newStartTicks !== curr.timelineRange.startTicks) {
           nextClips[i] = {
             ...curr,
-            timelineRange: { ...curr.timelineRange, startUs: newStartUs },
+            timelineRange: { ...curr.timelineRange, startTicks: newStartTicks },
           };
           if (track.kind === 'video') {
             movedVideoClipIds.push(curr.id);
@@ -132,8 +132,8 @@ export function applyClipSpeedChange(params: {
     for (let i = 1; i < nextClips.length; i++) {
       const prev = nextClips[i - 1]!;
       const cur = nextClips[i]!;
-      const prevEnd = prev.timelineRange.startUs + prev.timelineRange.durationUs;
-      if (cur.timelineRange.startUs < prevEnd) {
+      const prevEnd = prev.timelineRange.startTicks + prev.timelineRange.durationTicks;
+      if (cur.timelineRange.startTicks < prevEnd) {
         throw new Error('Item overlaps with another item');
       }
     }

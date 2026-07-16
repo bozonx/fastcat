@@ -5,7 +5,7 @@ import {
   MIN_TIMELINE_ZOOM_POSITION,
 } from '~/utils/zoom';
 import { clampGain } from '~/utils/audio/clamp';
-import { frameToUs } from '~/timeline/commands/utils';
+import { frameToTicks } from '~/timeline/commands/utils';
 
 export interface TimelinePlaybackDeps {
   currentTime: Ref<number>;
@@ -17,7 +17,7 @@ export interface TimelinePlaybackDeps {
   duration: Ref<number>;
   playbackGestureHandler: Ref<((nextPlaying: boolean) => void) | null>;
   getDocFps: () => number;
-  setCurrentTimeUs: (nextTimeUs: number) => void;
+  setCurrentTimeTicks: (nextTimeTicks: number) => void;
   onPlayheadJump?: () => void;
 }
 
@@ -117,8 +117,8 @@ export function createTimelinePlaybackModule(deps: TimelinePlaybackDeps): Timeli
 
   function seekFrames(deltaFrames: number) {
     const fps = deps.getDocFps();
-    const frameUs = frameToUs(1, fps);
-    deps.setCurrentTimeUs(deps.currentTime.value + deltaFrames * frameUs);
+    const frameTicks = frameToTicks(1, fps);
+    deps.setCurrentTimeTicks(deps.currentTime.value + deltaFrames * frameTicks);
   }
 
   return {

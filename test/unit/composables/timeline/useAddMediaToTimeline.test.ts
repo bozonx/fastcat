@@ -43,7 +43,7 @@ vi.mock('~/stores/workspace.store', () => ({
   useWorkspaceStore: () => ({
     userSettings: {
       timeline: {
-        defaultStaticClipDurationUs: 5_000_000,
+        defaultStaticClipDurationTicks: 5_000_000,
       },
     },
   }),
@@ -86,8 +86,8 @@ describe('useAddMediaToTimeline', () => {
   });
 
   it('places multiple media files sequentially instead of reusing the playhead time', async () => {
-    timelineStoreMock.addClipToTimelineFromPath.mockResolvedValueOnce({ durationUs: 2_000_000 });
-    timelineStoreMock.addClipToTimelineFromPath.mockResolvedValueOnce({ durationUs: 3_000_000 });
+    timelineStoreMock.addClipToTimelineFromPath.mockResolvedValueOnce({ durationTicks: 2_000_000 });
+    timelineStoreMock.addClipToTimelineFromPath.mockResolvedValueOnce({ durationTicks: 3_000_000 });
     mediaStoreMock.getOrFetchMetadataByPath.mockResolvedValueOnce({ duration: 2 });
     mediaStoreMock.getOrFetchMetadataByPath.mockResolvedValueOnce({ duration: 3 });
 
@@ -100,11 +100,11 @@ describe('useAddMediaToTimeline', () => {
 
     expect(timelineStoreMock.addClipToTimelineFromPath).toHaveBeenNthCalledWith(
       1,
-      expect.objectContaining({ path: '_video/one.mp4', startUs: 0 }),
+      expect.objectContaining({ path: '_video/one.mp4', startTicks: 0 }),
     );
     expect(timelineStoreMock.addClipToTimelineFromPath).toHaveBeenNthCalledWith(
       2,
-      expect.objectContaining({ path: '_video/two.mp4', startUs: 2_000_000 }),
+      expect.objectContaining({ path: '_video/two.mp4', startTicks: 2_000_000 }),
     );
     expect(timelineStoreMock.requestTimelineSave).toHaveBeenCalledWith({ immediate: true });
   });
@@ -118,11 +118,11 @@ describe('useAddMediaToTimeline', () => {
         {
           id: 'clip-1',
           kind: 'clip',
-          timelineRange: { startUs: 0, durationUs: 2_000_000 },
+          timelineRange: { startTicks: 0, durationTicks: 2_000_000 },
         },
       ],
     };
-    timelineStoreMock.addClipToTimelineFromPath.mockResolvedValueOnce({ durationUs: 1_000_000 });
+    timelineStoreMock.addClipToTimelineFromPath.mockResolvedValueOnce({ durationTicks: 1_000_000 });
     mediaStoreMock.getOrFetchMetadataByPath.mockResolvedValueOnce({ duration: 1 });
 
     const { addMediaToTimeline } = useAddMediaToTimeline();
@@ -130,7 +130,7 @@ describe('useAddMediaToTimeline', () => {
     await addMediaToTimeline([{ name: 'new.mp4', path: '_video/new.mp4' }]);
 
     expect(timelineStoreMock.addClipToTimelineFromPath).toHaveBeenCalledWith(
-      expect.objectContaining({ startUs: 500_000 }),
+      expect.objectContaining({ startTicks: 500_000 }),
     );
   });
 });

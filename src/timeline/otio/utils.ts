@@ -39,7 +39,7 @@ export function toRationalTime(ticks: number, rate?: number): OtioRationalTime {
   };
 }
 
-export function fromRationalTimeUs(rt: unknown): number {
+export function fromRationalTimeTicks(rt: unknown): number {
   if (!rt || typeof rt !== 'object') return 0;
   const value = Number((rt as Record<string, unknown>).value);
   const rate = Number((rt as Record<string, unknown>).rate);
@@ -50,16 +50,16 @@ export function fromRationalTimeUs(rt: unknown): number {
 export function toTimeRange(range: TimelineRange, rate?: number): OtioTimeRange {
   return {
     OTIO_SCHEMA: 'TimeRange.1',
-    start_time: toRationalTime(range.startUs, rate),
-    duration: toRationalTime(range.durationUs, rate),
+    start_time: toRationalTime(range.startTicks, rate),
+    duration: toRationalTime(range.durationTicks, rate),
   };
 }
 
 export function fromTimeRange(tr: unknown): TimelineRange {
-  if (!tr || typeof tr !== 'object') return { startUs: 0, durationUs: 0 };
+  if (!tr || typeof tr !== 'object') return { startTicks: 0, durationTicks: 0 };
   return {
-    startUs: fromRationalTimeUs((tr as Record<string, unknown>).start_time),
-    durationUs: fromRationalTimeUs((tr as Record<string, unknown>).duration),
+    startTicks: fromRationalTimeTicks((tr as Record<string, unknown>).start_time),
+    durationTicks: fromRationalTimeTicks((tr as Record<string, unknown>).duration),
   };
 }
 

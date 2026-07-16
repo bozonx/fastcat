@@ -4,7 +4,7 @@ import type { TimelineTrack, TimelineTrackItem } from '~/timeline/types';
 export interface MovePreviewEntry {
   itemId: string;
   trackId: string;
-  startUs: number;
+  startTicks: number;
   isCollision?: boolean;
 }
 
@@ -62,7 +62,7 @@ export function useTimelineMovePreviews(deps: MovePreviewDeps) {
         result[preview.trackId] = '';
       }
       result[preview.trackId] +=
-        `${preview.itemId}:${preview.startUs}:${preview.isCollision ? 1 : 0}|`;
+        `${preview.itemId}:${preview.startTicks}:${preview.isCollision ? 1 : 0}|`;
     }
     return result;
   });

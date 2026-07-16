@@ -3,7 +3,7 @@ import { mountSuspended } from '@nuxt/test-utils/runtime';
 import UiTimecode from '~/components/ui/editor/UiTimecode.vue';
 import { TICKS_PER_MICROSECOND } from '~/utils/time';
 
-const timelineUs = (value: number) => value * TICKS_PER_MICROSECOND;
+const timelineTicks = (value: number) => value * TICKS_PER_MICROSECOND;
 
 vi.mock('~/utils/hotkeys/layerUtils', () => ({
   isLayer1Active: (e: Event) => (e as any).shiftKey,
@@ -27,7 +27,7 @@ describe('UiTimecode', () => {
   it('formats modelValue correctly to HH:MM:SS:FF', async () => {
     const component = await mountSuspended(UiTimecode, {
       props: {
-        modelValue: timelineUs(1_000_000),
+        modelValue: timelineTicks(1_000_000),
       },
     });
 
@@ -38,7 +38,7 @@ describe('UiTimecode', () => {
   it('formats partial seconds to frames correctly', async () => {
     const component = await mountSuspended(UiTimecode, {
       props: {
-        modelValue: (timelineUs(1_000_000) / 30) * 5, // exactly 5 frames
+        modelValue: (timelineTicks(1_000_000) / 30) * 5, // exactly 5 frames
       },
     });
 
@@ -59,13 +59,13 @@ describe('UiTimecode', () => {
     await input.trigger('keydown', { key: 'Enter' });
 
     expect(component.emitted('update:modelValue')).toBeTruthy();
-    expect(component.emitted('update:modelValue')?.[0]).toEqual([timelineUs(2_500_000)]);
+    expect(component.emitted('update:modelValue')?.[0]).toEqual([timelineTicks(2_500_000)]);
   });
 
   it('reverts to valid prop value if input is invalid on blur', async () => {
     const component = await mountSuspended(UiTimecode, {
       props: {
-        modelValue: timelineUs(1_000_000),
+        modelValue: timelineTicks(1_000_000),
       },
     });
 
@@ -81,7 +81,7 @@ describe('UiTimecode', () => {
   it('steps value up and down via up/down buttons', async () => {
     const component = await mountSuspended(UiTimecode, {
       props: {
-        modelValue: timelineUs(1_000_000),
+        modelValue: timelineTicks(1_000_000),
       },
     });
 
@@ -91,19 +91,19 @@ describe('UiTimecode', () => {
 
     await upButton.trigger('click');
     expect(component.emitted('update:modelValue')?.[0]).toEqual([
-      timelineUs(1_000_000) + timelineUs(1_000_000) / 30,
+      timelineTicks(1_000_000) + timelineTicks(1_000_000) / 30,
     ]);
 
     await downButton.trigger('click');
     expect(component.emitted('update:modelValue')?.[1]).toEqual([
-      timelineUs(1_000_000) - timelineUs(1_000_000) / 30,
+      timelineTicks(1_000_000) - timelineTicks(1_000_000) / 30,
     ]);
   });
 
   it('steps value up and down via arrow keys', async () => {
     const component = await mountSuspended(UiTimecode, {
       props: {
-        modelValue: timelineUs(1_000_000),
+        modelValue: timelineTicks(1_000_000),
       },
     });
 
@@ -111,12 +111,12 @@ describe('UiTimecode', () => {
 
     await input.trigger('keydown', { key: 'ArrowUp' });
     expect(component.emitted('update:modelValue')?.[0]).toEqual([
-      timelineUs(1_000_000) + timelineUs(1_000_000) / 30,
+      timelineTicks(1_000_000) + timelineTicks(1_000_000) / 30,
     ]);
 
     await input.trigger('keydown', { key: 'ArrowDown' });
     expect(component.emitted('update:modelValue')?.[1]).toEqual([
-      timelineUs(1_000_000) - timelineUs(1_000_000) / 30,
+      timelineTicks(1_000_000) - timelineTicks(1_000_000) / 30,
     ]);
   });
 
@@ -131,7 +131,7 @@ describe('UiTimecode', () => {
     await input.trigger('focus');
     await input.setValue('00:00:01:00');
 
-    await component.setProps({ modelValue: timelineUs(2_000_000) });
+    await component.setProps({ modelValue: timelineTicks(2_000_000) });
 
     expect((input.element as HTMLInputElement).value).toBe('00:00:01:00');
   });
@@ -139,7 +139,7 @@ describe('UiTimecode', () => {
   it('handles mouse wheel scrolling only when focused by default', async () => {
     const component = await mountSuspended(UiTimecode, {
       props: {
-        modelValue: timelineUs(1_000_000),
+        modelValue: timelineTicks(1_000_000),
       },
     });
 
@@ -158,7 +158,7 @@ describe('UiTimecode', () => {
   it('handles mouse wheel scrolling without focus when wheelWithoutFocus is true', async () => {
     const component = await mountSuspended(UiTimecode, {
       props: {
-        modelValue: timelineUs(1_000_000),
+        modelValue: timelineTicks(1_000_000),
         wheelWithoutFocus: true,
       },
     });
@@ -171,11 +171,11 @@ describe('UiTimecode', () => {
   });
 
   describe('bounds (min/max)', () => {
-    const frameUs = timelineUs(1_000_000) / 30;
+    const frameTicks = timelineTicks(1_000_000) / 30;
 
     it('clamps manual entry to max on Enter', async () => {
       const component = await mountSuspended(UiTimecode, {
-        props: { modelValue: timelineUs(1_000_000), max: timelineUs(2_000_000) },
+        props: { modelValue: timelineTicks(1_000_000), max: timelineTicks(2_000_000) },
       });
 
       const input = component.find('input');
@@ -183,13 +183,13 @@ describe('UiTimecode', () => {
       await input.setValue('00:00:10:00'); // 10s, well above 2s max
       await input.trigger('keydown', { key: 'Enter' });
 
-      expect(component.emitted('update:modelValue')?.[0]).toEqual([timelineUs(2_000_000)]);
+      expect(component.emitted('update:modelValue')?.[0]).toEqual([timelineTicks(2_000_000)]);
       expect((input.element as HTMLInputElement).value).toBe('00:00:02:00');
     });
 
     it('clamps manual entry to min on Enter', async () => {
       const component = await mountSuspended(UiTimecode, {
-        props: { modelValue: timelineUs(1_000_000), min: timelineUs(500_000) },
+        props: { modelValue: timelineTicks(1_000_000), min: timelineTicks(500_000) },
       });
 
       const input = component.find('input');
@@ -197,12 +197,12 @@ describe('UiTimecode', () => {
       await input.setValue('00:00:00:00'); // 0, below min 500ms
       await input.trigger('keydown', { key: 'Enter' });
 
-      expect(component.emitted('update:modelValue')?.[0]).toEqual([timelineUs(500_000)]);
+      expect(component.emitted('update:modelValue')?.[0]).toEqual([timelineTicks(500_000)]);
     });
 
     it('clamps step (up button) to max', async () => {
       const component = await mountSuspended(UiTimecode, {
-        props: { modelValue: timelineUs(1_990_000), max: timelineUs(2_000_000) },
+        props: { modelValue: timelineTicks(1_990_000), max: timelineTicks(2_000_000) },
       });
 
       const input = component.find('input');
@@ -210,7 +210,7 @@ describe('UiTimecode', () => {
       // up arrow adds one frame; 1.99s + 1 frame (~33ms) exceeds the 2s cap
       await input.trigger('keydown', { key: 'ArrowUp' });
 
-      expect(component.emitted('update:modelValue')?.[0]).toEqual([timelineUs(2_000_000)]);
+      expect(component.emitted('update:modelValue')?.[0]).toEqual([timelineTicks(2_000_000)]);
     });
 
     it('clamps step (down) to min at 0', async () => {
@@ -227,7 +227,7 @@ describe('UiTimecode', () => {
 
     it('does not clamp when max is Infinity/omitted', async () => {
       const component = await mountSuspended(UiTimecode, {
-        props: { modelValue: timelineUs(1_000_000) },
+        props: { modelValue: timelineTicks(1_000_000) },
       });
 
       const input = component.find('input');
@@ -235,7 +235,7 @@ describe('UiTimecode', () => {
       await input.setValue('00:10:00:00'); // 10 minutes
       await input.trigger('keydown', { key: 'Enter' });
 
-      expect(component.emitted('update:modelValue')?.[0]).toEqual([timelineUs(600_000_000)]);
+      expect(component.emitted('update:modelValue')?.[0]).toEqual([timelineTicks(600_000_000)]);
     });
 
     it('defaults lower bound to 0 when allowNegative is false', async () => {
@@ -259,7 +259,7 @@ describe('UiTimecode', () => {
       await input.setValue('-00:00:01:00');
       await input.trigger('keydown', { key: 'Enter' });
 
-      expect(component.emitted('update:modelValue')?.[0]).toEqual([-timelineUs(1_000_000)]);
+      expect(component.emitted('update:modelValue')?.[0]).toEqual([-timelineTicks(1_000_000)]);
     });
   });
 });

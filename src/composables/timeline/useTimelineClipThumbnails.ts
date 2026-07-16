@@ -87,7 +87,7 @@ export function useTimelineClipThumbnails(options: UseTimelineClipThumbnailsOpti
   let isUnmounted = false;
 
   const intervalSeconds = TIMELINE_CLIP_THUMBNAILS.INTERVAL_SECONDS;
-  const intervalUs = intervalSeconds * TICKS_PER_SECOND;
+  const intervalTicks = intervalSeconds * TICKS_PER_SECOND;
 
   const isGenerating = ref(false);
   // `shallowRef`, not `ref`: every write reassigns the whole Map (see below),
@@ -142,7 +142,7 @@ export function useTimelineClipThumbnails(options: UseTimelineClipThumbnailsOpti
   );
 
   const duration = computed(() => {
-    return (options.item.value.sourceDurationUs || 0) / TICKS_PER_SECOND;
+    return (options.item.value.sourceDurationTicks || 0) / TICKS_PER_SECOND;
   });
 
   // Content fingerprint (mtime) for a nested timeline's `.otio` file. Folded
@@ -186,11 +186,11 @@ export function useTimelineClipThumbnails(options: UseTimelineClipThumbnailsOpti
   });
 
   const pxPerThumbnail = computed(() => {
-    return timeUsToPx(intervalUs, timelineStore.timelineZoom);
+    return timeUsToPx(intervalTicks, timelineStore.timelineZoom);
   });
 
   const trimOffsetPx = computed(() => {
-    return timeUsToPx(options.item.value.sourceRange.startUs, timelineStore.timelineZoom);
+    return timeUsToPx(options.item.value.sourceRange.startTicks, timelineStore.timelineZoom);
   });
 
   /**
@@ -220,7 +220,7 @@ export function useTimelineClipThumbnails(options: UseTimelineClipThumbnailsOpti
   const clipWidthPx = computed(() => {
     return Math.max(
       1,
-      timeUsToPx(options.item.value.timelineRange.durationUs, timelineStore.timelineZoom),
+      timeUsToPx(options.item.value.timelineRange.durationTicks, timelineStore.timelineZoom),
     );
   });
 
@@ -263,7 +263,7 @@ export function useTimelineClipThumbnails(options: UseTimelineClipThumbnailsOpti
 
     if (visibleEndLocalPx < visibleStartLocalPx) return [];
 
-    const sourceStartUs = options.item.value.sourceRange.startUs;
+    const sourceStartTicks = options.item.value.sourceRange.startTicks;
 
     if (clipThumbnailMode.value === 'edges') {
       const totalTiles = Math.max(1, Math.ceil(clipW / tileW));
@@ -275,7 +275,7 @@ export function useTimelineClipThumbnails(options: UseTimelineClipThumbnailsOpti
 
       for (let idx = firstIdx; idx <= lastIdx; idx++) {
         if (idx === 0 || idx === totalTiles - 1) {
-          const sourceTimeSec = sourceStartUs / TICKS_PER_SECOND + (idx * tileW) / pxPerSec;
+          const sourceTimeSec = sourceStartTicks / TICKS_PER_SECOND + (idx * tileW) / pxPerSec;
           const nearestSecond = Math.round(sourceTimeSec / intervalSeconds) * intervalSeconds;
           const roundedTime = Math.round(nearestSecond);
           if (roundedTime >= 0 && roundedTime <= duration.value && !addedTimes.has(roundedTime)) {
@@ -290,11 +290,11 @@ export function useTimelineClipThumbnails(options: UseTimelineClipThumbnailsOpti
 
     const sourceStartSec = Math.max(
       0,
-      sourceStartUs / TICKS_PER_SECOND + visibleStartLocalPx / pxPerSec,
+      sourceStartTicks / TICKS_PER_SECOND + visibleStartLocalPx / pxPerSec,
     );
     const sourceEndSec = Math.min(
       duration.value,
-      sourceStartUs / TICKS_PER_SECOND + visibleEndLocalPx / pxPerSec,
+      sourceStartTicks / TICKS_PER_SECOND + visibleEndLocalPx / pxPerSec,
     );
 
     const step = thumbnailGridStepSeconds.value;

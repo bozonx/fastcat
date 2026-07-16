@@ -2,22 +2,22 @@ import type { CompositorClip } from './types';
 
 export interface TimelineUpdateLifecycleResult {
   clips: CompositorClip[];
-  maxDurationUs: number;
-  lastRenderedTimeUs: number;
+  maxDurationTicks: number;
+  lastRenderedTimeTicks: number;
   stageSortDirty: boolean;
   activeSortDirty: boolean;
 }
 
 export class TimelineUpdateLifecycle {
   public apply(clips: CompositorClip[]): TimelineUpdateLifecycleResult {
-    clips.sort((a, b) => a.startUs - b.startUs || a.layer - b.layer);
+    clips.sort((a, b) => a.startTicks - b.startTicks || a.layer - b.layer);
 
-    const maxDurationUs = clips.length > 0 ? Math.max(0, ...clips.map((clip) => clip.endUs)) : 0;
+    const maxDurationTicks = clips.length > 0 ? Math.max(0, ...clips.map((clip) => clip.endTicks)) : 0;
 
     return {
       clips,
-      maxDurationUs,
-      lastRenderedTimeUs: Number.NaN,
+      maxDurationTicks,
+      lastRenderedTimeTicks: Number.NaN,
       stageSortDirty: true,
       activeSortDirty: true,
     };

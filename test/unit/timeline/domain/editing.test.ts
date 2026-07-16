@@ -1,14 +1,14 @@
 /** @vitest-environment node */
 import { describe, it, expect, vi } from 'vitest';
 import {
-  computeCutUs,
+  computeCutTicks,
   buildSplitClipCommands,
   buildSplitAllClipsCommands,
   buildSplitSelectedClipsCommands,
 } from '~/timeline/domain/editing';
 
 vi.mock('~/timeline/commands/utils', () => ({
-  quantizeTimeUsToFrames: vi.fn((atUs) => atUs),
+  quantizeTimeUsToFrames: vi.fn((atTicks) => atTicks),
   getDocFps: vi.fn(() => 30),
 }));
 
@@ -22,16 +22,16 @@ const mockDoc: any = {
         {
           id: 'clip-1',
           kind: 'clip',
-          timelineRange: { startUs: 0, durationUs: 1_000_000 },
+          timelineRange: { startTicks: 0, durationTicks: 1_000_000 },
           locked: false,
         },
         {
           id: 'clip-2',
           kind: 'clip',
-          timelineRange: { startUs: 1_000_000, durationUs: 1_000_000 },
+          timelineRange: { startTicks: 1_000_000, durationTicks: 1_000_000 },
           locked: true,
         },
-        { id: 'gap-1', kind: 'gap', timelineRange: { startUs: 2_000_000, durationUs: 500_000 } },
+        { id: 'gap-1', kind: 'gap', timelineRange: { startTicks: 2_000_000, durationTicks: 500_000 } },
       ],
     },
     {
@@ -41,7 +41,7 @@ const mockDoc: any = {
         {
           id: 'clip-3',
           kind: 'clip',
-          timelineRange: { startUs: 0, durationUs: 2_000_000 },
+          timelineRange: { startTicks: 0, durationTicks: 2_000_000 },
           locked: false,
         },
       ],
@@ -49,9 +49,9 @@ const mockDoc: any = {
   ],
 };
 
-describe('computeCutUs', () => {
+describe('computeCutTicks', () => {
   it('returns quantized time', () => {
-    expect(computeCutUs(mockDoc, 500_000)).toBe(500_000);
+    expect(computeCutTicks(mockDoc, 500_000)).toBe(500_000);
   });
 });
 
@@ -63,7 +63,7 @@ describe('buildSplitClipCommands', () => {
   it('returns split command for target', () => {
     const cmds = buildSplitClipCommands(mockDoc, 500_000, { trackId: 'track-1', itemId: 'clip-1' });
     expect(cmds).toEqual([
-      { type: 'split_item', trackId: 'track-1', itemId: 'clip-1', atUs: 500_000 },
+      { type: 'split_item', trackId: 'track-1', itemId: 'clip-1', atTicks: 500_000 },
     ]);
   });
 });
@@ -75,7 +75,7 @@ describe('buildSplitAllClipsCommands', () => {
     expect(cmds[0].itemId).toBe('clip-1');
   });
 
-  it('skips items where cutUs is outside range', () => {
+  it('skips items where cutTicks is outside range', () => {
     const cmds = buildSplitAllClipsCommands(mockDoc, 3_000_000);
     expect(cmds).toEqual([]);
   });

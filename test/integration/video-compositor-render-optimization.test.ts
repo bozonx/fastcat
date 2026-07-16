@@ -24,7 +24,7 @@ describe('VideoCompositor render optimization', () => {
     compositor.canvas = { id: 'canvas' } as any;
     compositor.clips = [];
     compositor.clipById = new Map();
-    compositor.lastRenderedTimeUs = 1_000;
+    compositor.lastRenderedTimeTicks = 1_000;
     compositor.stageSortDirty = false;
     compositor.activeSortDirty = false;
 
@@ -61,7 +61,7 @@ describe('VideoCompositor render optimization', () => {
 
   it('prepares adjustment clips before and after shader transitions during renderFrame', async () => {
     const { compositor, app } = createCompositor();
-    compositor.lastRenderedTimeUs = 0;
+    compositor.lastRenderedTimeTicks = 0;
     compositor.clips = [];
     compositor.tracks = [];
     compositor.trackById = new Map();
@@ -94,7 +94,7 @@ describe('VideoCompositor render optimization', () => {
     const lowerTrack = { visible: true, alpha: 1, blendMode: 'normal' } as any;
     const currentTrack = { visible: true, alpha: 1, blendMode: 'normal' } as any;
     compositor.app.stage.children = [lowerTrack, currentTrack];
-    compositor.lastRenderedTimeUs = 0;
+    compositor.lastRenderedTimeTicks = 0;
     compositor.clips = [];
     compositor.tracks = [];
     compositor.activeTracker = {
@@ -142,8 +142,8 @@ describe('VideoCompositor render optimization', () => {
       { id: 'track-bottom', layer: 0, container: bottomTrack },
     ];
     compositor.clipById = new Map([
-      ['clip-late', { itemId: 'clip-late', startUs: 2_000, endUs: 3_000, layer: 2 }],
-      ['clip-early', { itemId: 'clip-early', startUs: 0, endUs: 1_000, layer: 2 }],
+      ['clip-late', { itemId: 'clip-late', startTicks: 2_000, endTicks: 3_000, layer: 2 }],
+      ['clip-early', { itemId: 'clip-early', startTicks: 0, endTicks: 1_000, layer: 2 }],
     ]);
     compositor.stageSortDirty = true;
 
@@ -180,25 +180,25 @@ describe('VideoCompositor render optimization', () => {
         itemId: 'active',
         clipKind: 'video',
         sink: {},
-        startUs: 0,
-        sourceStartUs: 0,
-        sourceRangeDurationUs: 5 * TICKS_PER_SECOND,
+        startTicks: 0,
+        sourceStartTicks: 0,
+        sourceRangeDurationTicks: 5 * TICKS_PER_SECOND,
       },
       {
         itemId: 'near',
         clipKind: 'video',
         sink: {},
-        startUs: 2 * TICKS_PER_SECOND,
-        sourceStartUs: 0.5 * TICKS_PER_SECOND,
-        sourceRangeDurationUs: 5 * TICKS_PER_SECOND,
+        startTicks: 2 * TICKS_PER_SECOND,
+        sourceStartTicks: 0.5 * TICKS_PER_SECOND,
+        sourceRangeDurationTicks: 5 * TICKS_PER_SECOND,
       },
       {
         itemId: 'far',
         clipKind: 'video',
         sink: {},
-        startUs: 5 * TICKS_PER_SECOND,
-        sourceStartUs: 0,
-        sourceRangeDurationUs: 5 * TICKS_PER_SECOND,
+        startTicks: 5 * TICKS_PER_SECOND,
+        sourceStartTicks: 0,
+        sourceRangeDurationTicks: 5 * TICKS_PER_SECOND,
       },
     ];
     compositor.getVideoSampleForClip = vi.fn().mockResolvedValue({});
@@ -230,11 +230,11 @@ describe('VideoCompositor render optimization', () => {
     };
     const clip = {
       itemId: 'text-1',
-      startUs: 0,
-      endUs: 1_000,
-      durationUs: 1_000,
-      sourceStartUs: 0,
-      sourceDurationUs: 1_000,
+      startTicks: 0,
+      endTicks: 1_000,
+      durationTicks: 1_000,
+      sourceStartTicks: 0,
+      sourceDurationTicks: 1_000,
       layer: 0,
       trackId: 'track_0',
       clipKind: 'text',
@@ -268,8 +268,8 @@ describe('VideoCompositor render optimization', () => {
         id: 'text-1',
         trackId: 'track_0',
         layer: 0,
-        timelineRange: { startUs: 0, durationUs: 1_000 },
-        sourceRange: { startUs: 0, durationUs: 1_000 },
+        timelineRange: { startTicks: 0, durationTicks: 1_000 },
+        sourceRange: { startTicks: 0, durationTicks: 1_000 },
         text: 'Hello',
         style: { ...clipStyle },
       },
@@ -300,11 +300,11 @@ describe('VideoCompositor render optimization', () => {
     compositor.clips = [
       {
         itemId: 'text-1',
-        startUs: 0,
-        endUs: 1_000,
-        durationUs: 1_000,
-        sourceStartUs: 0,
-        sourceDurationUs: 1_000,
+        startTicks: 0,
+        endTicks: 1_000,
+        durationTicks: 1_000,
+        sourceStartTicks: 0,
+        sourceDurationTicks: 1_000,
         layer: 0,
         trackId: 'track_0',
         clipKind: 'text',
@@ -326,8 +326,8 @@ describe('VideoCompositor render optimization', () => {
         id: 'text-1',
         trackId: 'track_0',
         layer: 0,
-        timelineRange: { startUs: 0, durationUs: 1_000 },
-        sourceRange: { startUs: 0, durationUs: 1_000 },
+        timelineRange: { startTicks: 0, durationTicks: 1_000 },
+        sourceRange: { startTicks: 0, durationTicks: 1_000 },
         text: 'Hello',
         transform: { position: { x: 120, y: -40 }, anchor: { preset: 'center' } },
       },
@@ -359,7 +359,7 @@ describe('VideoCompositor render optimization', () => {
       itemId: 'adj-low',
       clipKind: 'adjustment',
       layer: 1,
-      startUs: 0,
+      startTicks: 0,
       sprite: { visible: true, texture: null },
       adjustmentSourceTexture: null,
     } as any;
@@ -367,7 +367,7 @@ describe('VideoCompositor render optimization', () => {
       itemId: 'adj-high',
       clipKind: 'adjustment',
       layer: 3,
-      startUs: 0,
+      startTicks: 0,
       sprite: { visible: true, texture: null },
       adjustmentSourceTexture: null,
     } as any;
@@ -375,7 +375,7 @@ describe('VideoCompositor render optimization', () => {
       itemId: 'adj-inactive',
       clipKind: 'adjustment',
       layer: 5,
-      startUs: 0,
+      startTicks: 0,
       sprite: { visible: false, texture: { stale: true } },
       adjustmentSourceTexture: null,
     } as any;
@@ -403,7 +403,7 @@ describe('VideoCompositor render optimization', () => {
       itemId: 'adj-blur',
       clipKind: 'adjustment',
       layer: 1,
-      startUs: 0,
+      startTicks: 0,
       sprite: { destroyed: false, visible: true, texture: null },
       adjustmentSourceTexture: null,
       effects: [
@@ -450,7 +450,7 @@ describe('VideoCompositor render optimization', () => {
       itemId: 'adj-gpu',
       clipKind: 'adjustment',
       layer: 1,
-      startUs: 0,
+      startTicks: 0,
       sprite: { destroyed: false, visible: true, texture: null },
       adjustmentSourceTexture: null,
       effects: [
@@ -499,7 +499,7 @@ describe('VideoCompositor render optimization', () => {
       itemId: 'adj-blur-fill',
       clipKind: 'adjustment',
       layer: 1,
-      startUs: 0,
+      startTicks: 0,
       sprite: { destroyed: false, visible: true, texture: null },
       adjustmentSourceTexture: null,
       effects: [
@@ -566,12 +566,12 @@ describe('VideoCompositor render optimization', () => {
 
     const clip = {
       itemId: 'bg1',
-      startUs: 0,
-      endUs: 1000,
-      durationUs: 1000,
-      sourceStartUs: 0,
-      sourceRangeDurationUs: 1000,
-      sourceDurationUs: 1000,
+      startTicks: 0,
+      endTicks: 1000,
+      durationTicks: 1000,
+      sourceStartTicks: 0,
+      sourceRangeDurationTicks: 1000,
+      sourceDurationTicks: 1000,
       layer: 0,
       trackId: 'track_0',
       clipKind: 'solid',
@@ -601,8 +601,8 @@ describe('VideoCompositor render optimization', () => {
         layer: 0,
         clipType: 'background',
         backgroundColor: 'abc',
-        timelineRange: { startUs: 0, durationUs: 1000 },
-        sourceRange: { startUs: 0, durationUs: 1000 },
+        timelineRange: { startTicks: 0, durationTicks: 1000 },
+        sourceRange: { startTicks: 0, durationTicks: 1000 },
       },
     ]);
 

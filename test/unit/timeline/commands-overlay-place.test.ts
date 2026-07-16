@@ -1,6 +1,6 @@
 /** @vitest-environment node */
 import { describe, it, expect } from 'vitest';
-import { timelineUs } from '../utils/timeline-time';
+import { timelineTicks } from '../utils/timeline-time';
 import { applyTimelineCommand } from '~/timeline/commands';
 import type { TimelineDocument, TimelineTrack, TimelineTrackItem } from '~/timeline/types';
 
@@ -33,8 +33,8 @@ describe('timeline/commands overlay_place_item', () => {
             trackId: 'v1',
             name: 'C1',
             backgroundColor: '#000',
-            timelineRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
-            sourceRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
+            timelineRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
+            sourceRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
           },
           {
             kind: 'clip',
@@ -43,8 +43,8 @@ describe('timeline/commands overlay_place_item', () => {
             trackId: 'v1',
             name: 'C2',
             backgroundColor: '#fff',
-            timelineRange: { startUs: timelineUs(3_000_000), durationUs: timelineUs(1_000_000) },
-            sourceRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
+            timelineRange: { startTicks: timelineTicks(3_000_000), durationTicks: timelineTicks(1_000_000) },
+            sourceRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
           },
         ],
       },
@@ -55,7 +55,7 @@ describe('timeline/commands overlay_place_item', () => {
       fromTrackId: 'v1',
       toTrackId: 'v1',
       itemId: 'c1',
-      startUs: timelineUs(5_000_000),
+      startTicks: timelineTicks(5_000_000),
     });
 
     const track = next.tracks[0]!;
@@ -64,11 +64,11 @@ describe('timeline/commands overlay_place_item', () => {
 
     const movedClip = resultClips.find((x) => x.id === 'c1');
     expect(movedClip).toBeTruthy();
-    expect(movedClip.timelineRange.startUs).toBe(timelineUs(5_000_000));
+    expect(movedClip.timelineRange.startTicks).toBe(timelineTicks(5_000_000));
 
     const otherClip = resultClips.find((x) => x.id === 'c2');
     expect(otherClip).toBeTruthy();
-    expect(otherClip.timelineRange.startUs).toBe(timelineUs(3_000_000));
+    expect(otherClip.timelineRange.startTicks).toBe(timelineTicks(3_000_000));
   });
 
   it('deletes a clip fully covered by the placed clip', () => {
@@ -85,8 +85,8 @@ describe('timeline/commands overlay_place_item', () => {
             trackId: 'v1',
             name: 'Big',
             backgroundColor: '#000',
-            timelineRange: { startUs: 0, durationUs: timelineUs(5_000_000) },
-            sourceRange: { startUs: 0, durationUs: timelineUs(5_000_000) },
+            timelineRange: { startTicks: 0, durationTicks: timelineTicks(5_000_000) },
+            sourceRange: { startTicks: 0, durationTicks: timelineTicks(5_000_000) },
           },
           {
             kind: 'clip',
@@ -95,8 +95,8 @@ describe('timeline/commands overlay_place_item', () => {
             trackId: 'v1',
             name: 'Small',
             backgroundColor: '#fff',
-            timelineRange: { startUs: timelineUs(7_000_000), durationUs: timelineUs(500_000) },
-            sourceRange: { startUs: 0, durationUs: timelineUs(500_000) },
+            timelineRange: { startTicks: timelineTicks(7_000_000), durationTicks: timelineTicks(500_000) },
+            sourceRange: { startTicks: 0, durationTicks: timelineTicks(500_000) },
           },
         ],
       },
@@ -108,7 +108,7 @@ describe('timeline/commands overlay_place_item', () => {
       fromTrackId: 'v1',
       toTrackId: 'v1',
       itemId: 'big',
-      startUs: timelineUs(6_000_000),
+      startTicks: timelineTicks(6_000_000),
     });
 
     const track = next.tracks[0]!;
@@ -119,8 +119,8 @@ describe('timeline/commands overlay_place_item', () => {
 
     const movedClip = resultClips.find((x) => x.id === 'big');
     expect(movedClip).toBeTruthy();
-    expect(movedClip.timelineRange.startUs).toBe(timelineUs(6_000_000));
-    expect(movedClip.timelineRange.durationUs).toBe(timelineUs(5_000_000));
+    expect(movedClip.timelineRange.startTicks).toBe(timelineTicks(6_000_000));
+    expect(movedClip.timelineRange.durationTicks).toBe(timelineTicks(5_000_000));
   });
 
   it('trims end of clip that overlaps on the left', () => {
@@ -137,8 +137,8 @@ describe('timeline/commands overlay_place_item', () => {
             trackId: 'v1',
             name: 'Left',
             backgroundColor: '#000',
-            timelineRange: { startUs: 0, durationUs: timelineUs(3_000_000) },
-            sourceRange: { startUs: 0, durationUs: timelineUs(3_000_000) },
+            timelineRange: { startTicks: 0, durationTicks: timelineTicks(3_000_000) },
+            sourceRange: { startTicks: 0, durationTicks: timelineTicks(3_000_000) },
           },
           {
             kind: 'clip',
@@ -147,8 +147,8 @@ describe('timeline/commands overlay_place_item', () => {
             trackId: 'v1',
             name: 'Right',
             backgroundColor: '#fff',
-            timelineRange: { startUs: timelineUs(8_000_000), durationUs: timelineUs(2_000_000) },
-            sourceRange: { startUs: 0, durationUs: timelineUs(2_000_000) },
+            timelineRange: { startTicks: timelineTicks(8_000_000), durationTicks: timelineTicks(2_000_000) },
+            sourceRange: { startTicks: 0, durationTicks: timelineTicks(2_000_000) },
           },
         ],
       },
@@ -160,7 +160,7 @@ describe('timeline/commands overlay_place_item', () => {
       fromTrackId: 'v1',
       toTrackId: 'v1',
       itemId: 'right',
-      startUs: timelineUs(2_000_000),
+      startTicks: timelineTicks(2_000_000),
     });
 
     const track = next.tracks[0]!;
@@ -169,11 +169,11 @@ describe('timeline/commands overlay_place_item', () => {
     const leftClip = resultClips.find((x) => x.id === 'left');
     expect(leftClip).toBeTruthy();
     // Should be trimmed to end at 2_000_000
-    expect(leftClip.timelineRange.durationUs).toBe(timelineUs(2_000_000));
+    expect(leftClip.timelineRange.durationTicks).toBe(timelineTicks(2_000_000));
 
     const movedClip = resultClips.find((x) => x.id === 'right');
     expect(movedClip).toBeTruthy();
-    expect(movedClip.timelineRange.startUs).toBe(timelineUs(2_000_000));
+    expect(movedClip.timelineRange.startTicks).toBe(timelineTicks(2_000_000));
   });
 
   it('trims start of clip that overlaps on the right', () => {
@@ -190,8 +190,8 @@ describe('timeline/commands overlay_place_item', () => {
             trackId: 'v1',
             name: 'Mover',
             backgroundColor: '#000',
-            timelineRange: { startUs: 0, durationUs: timelineUs(2_000_000) },
-            sourceRange: { startUs: 0, durationUs: timelineUs(2_000_000) },
+            timelineRange: { startTicks: 0, durationTicks: timelineTicks(2_000_000) },
+            sourceRange: { startTicks: 0, durationTicks: timelineTicks(2_000_000) },
           },
           {
             kind: 'clip',
@@ -200,8 +200,8 @@ describe('timeline/commands overlay_place_item', () => {
             trackId: 'v1',
             name: 'Existing',
             backgroundColor: '#fff',
-            timelineRange: { startUs: timelineUs(3_000_000), durationUs: timelineUs(3_000_000) },
-            sourceRange: { startUs: 0, durationUs: timelineUs(3_000_000) },
+            timelineRange: { startTicks: timelineTicks(3_000_000), durationTicks: timelineTicks(3_000_000) },
+            sourceRange: { startTicks: 0, durationTicks: timelineTicks(3_000_000) },
           },
         ],
       },
@@ -213,7 +213,7 @@ describe('timeline/commands overlay_place_item', () => {
       fromTrackId: 'v1',
       toTrackId: 'v1',
       itemId: 'mover',
-      startUs: timelineUs(4_000_000),
+      startTicks: timelineTicks(4_000_000),
     });
 
     const track = next.tracks[0]!;
@@ -223,12 +223,12 @@ describe('timeline/commands overlay_place_item', () => {
     expect(existingClip).toBeTruthy();
     // Existing starts at 3_000_000, mover covers 4_000_000–6_000_000
     // Existing should be trimmed to 3_000_000–4_000_000 (1s)
-    expect(existingClip.timelineRange.startUs).toBe(timelineUs(3_000_000));
-    expect(existingClip.timelineRange.durationUs).toBe(timelineUs(1_000_000));
+    expect(existingClip.timelineRange.startTicks).toBe(timelineTicks(3_000_000));
+    expect(existingClip.timelineRange.durationTicks).toBe(timelineTicks(1_000_000));
 
     const movedClip = resultClips.find((x) => x.id === 'mover');
     expect(movedClip).toBeTruthy();
-    expect(movedClip.timelineRange.startUs).toBe(timelineUs(4_000_000));
+    expect(movedClip.timelineRange.startTicks).toBe(timelineTicks(4_000_000));
   });
 
   it('splits a clip when placed fully inside it', () => {
@@ -245,8 +245,8 @@ describe('timeline/commands overlay_place_item', () => {
             trackId: 'v1',
             name: 'Long',
             backgroundColor: '#000',
-            timelineRange: { startUs: 0, durationUs: timelineUs(10_000_000) },
-            sourceRange: { startUs: 0, durationUs: timelineUs(10_000_000) },
+            timelineRange: { startTicks: 0, durationTicks: timelineTicks(10_000_000) },
+            sourceRange: { startTicks: 0, durationTicks: timelineTicks(10_000_000) },
           },
           {
             kind: 'clip',
@@ -255,8 +255,8 @@ describe('timeline/commands overlay_place_item', () => {
             trackId: 'v1',
             name: 'Short',
             backgroundColor: '#fff',
-            timelineRange: { startUs: timelineUs(20_000_000), durationUs: timelineUs(2_000_000) },
-            sourceRange: { startUs: 0, durationUs: timelineUs(2_000_000) },
+            timelineRange: { startTicks: timelineTicks(20_000_000), durationTicks: timelineTicks(2_000_000) },
+            sourceRange: { startTicks: 0, durationTicks: timelineTicks(2_000_000) },
           },
         ],
       },
@@ -268,7 +268,7 @@ describe('timeline/commands overlay_place_item', () => {
       fromTrackId: 'v1',
       toTrackId: 'v1',
       itemId: 'short',
-      startUs: timelineUs(3_000_000),
+      startTicks: timelineTicks(3_000_000),
     });
 
     const track = next.tracks[0]!;
@@ -278,13 +278,13 @@ describe('timeline/commands overlay_place_item', () => {
     const longPieces = resultClips.filter((x) => x.id !== 'short');
     expect(longPieces.length).toBe(2);
 
-    const leftPiece = longPieces.find((x) => x.timelineRange.startUs === 0);
+    const leftPiece = longPieces.find((x) => x.timelineRange.startTicks === 0);
     expect(leftPiece).toBeTruthy();
-    expect(leftPiece.timelineRange.durationUs).toBe(timelineUs(3_000_000));
+    expect(leftPiece.timelineRange.durationTicks).toBe(timelineTicks(3_000_000));
 
     const movedClip = resultClips.find((x) => x.id === 'short');
     expect(movedClip).toBeTruthy();
-    expect(movedClip.timelineRange.startUs).toBe(timelineUs(3_000_000));
+    expect(movedClip.timelineRange.startTicks).toBe(timelineTicks(3_000_000));
   });
 
   it('preserves source ranges when splitting a reversed clip', () => {
@@ -301,10 +301,10 @@ describe('timeline/commands overlay_place_item', () => {
             trackId: 'v1',
             name: 'Long',
             source: { path: 'a.mp4' },
-            sourceDurationUs: timelineUs(10_000_000),
+            sourceDurationTicks: timelineTicks(10_000_000),
             speed: -1,
-            timelineRange: { startUs: 0, durationUs: timelineUs(6_000_000) },
-            sourceRange: { startUs: timelineUs(2_000_000), durationUs: timelineUs(6_000_000) },
+            timelineRange: { startTicks: 0, durationTicks: timelineTicks(6_000_000) },
+            sourceRange: { startTicks: timelineTicks(2_000_000), durationTicks: timelineTicks(6_000_000) },
           },
           {
             kind: 'clip',
@@ -313,8 +313,8 @@ describe('timeline/commands overlay_place_item', () => {
             trackId: 'v1',
             name: 'Short',
             backgroundColor: '#fff',
-            timelineRange: { startUs: timelineUs(20_000_000), durationUs: timelineUs(2_000_000) },
-            sourceRange: { startUs: 0, durationUs: timelineUs(2_000_000) },
+            timelineRange: { startTicks: timelineTicks(20_000_000), durationTicks: timelineTicks(2_000_000) },
+            sourceRange: { startTicks: 0, durationTicks: timelineTicks(2_000_000) },
           },
         ],
       },
@@ -325,28 +325,28 @@ describe('timeline/commands overlay_place_item', () => {
       fromTrackId: 'v1',
       toTrackId: 'v1',
       itemId: 'short',
-      startUs: timelineUs(2_000_000),
+      startTicks: timelineTicks(2_000_000),
       quantizeToFrames: false,
     });
 
     const resultClips = clips(next.tracks[0]!);
     const longPieces = resultClips
       .filter((x) => x.id !== 'short')
-      .sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
+      .sort((a, b) => a.timelineRange.startTicks - b.timelineRange.startTicks);
 
     expect(longPieces).toHaveLength(2);
-    expect(longPieces[0].timelineRange).toEqual({ startUs: 0, durationUs: timelineUs(2_000_000) });
+    expect(longPieces[0].timelineRange).toEqual({ startTicks: 0, durationTicks: timelineTicks(2_000_000) });
     expect(longPieces[0].sourceRange).toEqual({
-      startUs: timelineUs(6_000_000),
-      durationUs: timelineUs(2_000_000),
+      startTicks: timelineTicks(6_000_000),
+      durationTicks: timelineTicks(2_000_000),
     });
     expect(longPieces[1].timelineRange).toEqual({
-      startUs: timelineUs(4_000_000),
-      durationUs: timelineUs(2_000_000),
+      startTicks: timelineTicks(4_000_000),
+      durationTicks: timelineTicks(2_000_000),
     });
     expect(longPieces[1].sourceRange).toEqual({
-      startUs: timelineUs(2_000_000),
-      durationUs: timelineUs(2_000_000),
+      startTicks: timelineTicks(2_000_000),
+      durationTicks: timelineTicks(2_000_000),
     });
   });
 
@@ -364,8 +364,8 @@ describe('timeline/commands overlay_place_item', () => {
             trackId: 'v1',
             name: 'C1',
             backgroundColor: '#000',
-            timelineRange: { startUs: 0, durationUs: timelineUs(4_000_000) },
-            sourceRange: { startUs: 0, durationUs: timelineUs(4_000_000) },
+            timelineRange: { startTicks: 0, durationTicks: timelineTicks(4_000_000) },
+            sourceRange: { startTicks: 0, durationTicks: timelineTicks(4_000_000) },
           },
           {
             kind: 'clip',
@@ -374,8 +374,8 @@ describe('timeline/commands overlay_place_item', () => {
             trackId: 'v1',
             name: 'C2',
             backgroundColor: '#fff',
-            timelineRange: { startUs: timelineUs(8_000_000), durationUs: timelineUs(2_000_000) },
-            sourceRange: { startUs: 0, durationUs: timelineUs(2_000_000) },
+            timelineRange: { startTicks: timelineTicks(8_000_000), durationTicks: timelineTicks(2_000_000) },
+            sourceRange: { startTicks: 0, durationTicks: timelineTicks(2_000_000) },
           },
         ],
       },
@@ -387,20 +387,20 @@ describe('timeline/commands overlay_place_item', () => {
       fromTrackId: 'v1',
       toTrackId: 'v1',
       itemId: 'c2',
-      startUs: timelineUs(2_000_000),
+      startTicks: timelineTicks(2_000_000),
     });
 
     const track = next.tracks[0]!;
     const resultClips = clips(track).sort(
-      (a: any, b: any) => a.timelineRange.startUs - b.timelineRange.startUs,
+      (a: any, b: any) => a.timelineRange.startTicks - b.timelineRange.startTicks,
     );
 
     // Check no overlapping clips
     for (let i = 1; i < resultClips.length; i++) {
       const prev = resultClips[i - 1];
       const curr = resultClips[i];
-      const prevEnd = prev.timelineRange.startUs + prev.timelineRange.durationUs;
-      expect(curr.timelineRange.startUs).toBeGreaterThanOrEqual(prevEnd);
+      const prevEnd = prev.timelineRange.startTicks + prev.timelineRange.durationTicks;
+      expect(curr.timelineRange.startTicks).toBeGreaterThanOrEqual(prevEnd);
     }
   });
 });

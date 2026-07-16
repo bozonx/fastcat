@@ -21,23 +21,23 @@ const selectionRange = computed(() => timelineStore.getSelectionRange());
 
 const timelineFps = computed(() => timelineStore.timelineFormat?.fps ?? timelineStore.fps);
 
-const selectionRangeDurationUs = computed(() => {
+const selectionRangeDurationTicks = computed(() => {
   const range = selectionRange.value;
   if (!range) return 0;
-  return Math.max(0, range.endUs - range.startUs);
+  return Math.max(0, range.endTicks - range.startTicks);
 });
 
 function handleUpdateStartTime(val: number | string) {
   const range = selectionRange.value;
   if (!range) return;
 
-  const startUs =
+  const startTicks =
     typeof val === 'number' ? val : Math.max(0, Math.round(Number(val) * TICKS_PER_SECOND));
-  if (!Number.isFinite(startUs)) return;
+  if (!Number.isFinite(startTicks)) return;
 
   timelineStore.updateSelectionRange({
-    startUs,
-    endUs: Math.max(startUs + 1, range.endUs),
+    startTicks,
+    endTicks: Math.max(startTicks + 1, range.endTicks),
   });
 }
 
@@ -45,13 +45,13 @@ function handleUpdateEndTime(val: number | string) {
   const range = selectionRange.value;
   if (!range) return;
 
-  const endUs =
+  const endTicks =
     typeof val === 'number' ? val : Math.max(0, Math.round(Number(val) * TICKS_PER_SECOND));
-  if (!Number.isFinite(endUs) || endUs <= range.startUs) return;
+  if (!Number.isFinite(endTicks) || endTicks <= range.startTicks) return;
 
   timelineStore.updateSelectionRange({
-    startUs: range.startUs,
-    endUs,
+    startTicks: range.startTicks,
+    endTicks,
   });
 }
 
@@ -108,20 +108,20 @@ const mainActions = computed(() => [
     <PropertySection :title="t('fastcat.selectionRange.info')">
       <PropertyDuration
         :label="t('common.duration')"
-        :model-value="selectionRangeDurationUs"
+        :model-value="selectionRangeDurationTicks"
         :fps="timelineFps"
       />
 
       <PropertyTimecode
         :label="t('common.start')"
-        :model-value="selectionRange.startUs"
+        :model-value="selectionRange.startTicks"
         :min="0"
         @update:model-value="handleUpdateStartTime"
       />
 
       <PropertyTimecode
         :label="t('common.end')"
-        :model-value="selectionRange.endUs"
+        :model-value="selectionRange.endTicks"
         :min="0"
         @update:model-value="handleUpdateEndTime"
       />

@@ -26,11 +26,11 @@ vi.mock('~/composables/monitor/useMonitorRuntime', () => ({
     },
     timelineStore: {
       togglePlayback: vi.fn(),
-      setCurrentTimeUs: vi.fn(),
+      setCurrentTimeTicks: vi.fn(),
     },
     selectionStore: {},
     videoItems: mockVideoItems,
-    safeDurationUs: ref(1000000),
+    safeDurationTicks: ref(1000000),
     isTextClipSelected: ref(false),
     isAdjustmentClipSelected: ref(false),
     containerEl: ref(null),
@@ -48,7 +48,7 @@ vi.mock('~/composables/monitor/useMonitorRuntime', () => ({
     isSavingStopFrame: ref(false),
     createStopFrameSnapshot: vi.fn(),
     timecodeEl: ref(null),
-    uiCurrentTimeUs: ref(0),
+    uiCurrentTimeTicks: ref(0),
   }),
 }));
 
@@ -285,7 +285,7 @@ describe('MobileMonitorContainer', () => {
       },
     });
 
-    // In the setup above, canInteractPlayback is true because of safeDurationUs: ref(1000000)
+    // In the setup above, canInteractPlayback is true because of safeDurationTicks: ref(1000000)
     // and useMonitorRuntime mock.
     // Let's check the play button
     const playBtn = wrapper.find('[aria-label="fastcat.monitor.play"]');

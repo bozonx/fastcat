@@ -87,7 +87,7 @@ describe('TransitionRenderer', () => {
     } as any;
     const clip = {
       itemId: 'clip-current',
-      startUs: 1_000,
+      startTicks: 1_000,
       layer: 2,
       clipKind: 'video',
       blendMode: 'screen',
@@ -150,7 +150,7 @@ describe('TransitionRenderer', () => {
         edge: 'in',
         transition: {
           type: 'dissolve',
-          durationUs: 1_000,
+          durationTicks: 1_000,
           mode: 'background',
           params: { softness: 1 },
         },
@@ -197,7 +197,7 @@ describe('TransitionRenderer', () => {
     } as any;
     const clip = {
       itemId: 'clip-current',
-      startUs: 1_000,
+      startTicks: 1_000,
       layer: 2,
       clipKind: 'video',
       blendMode: 'screen',
@@ -250,7 +250,7 @@ describe('TransitionRenderer', () => {
         edge: 'in',
         transition: {
           type: 'dissolve',
-          durationUs: 1_000,
+          durationTicks: 1_000,
           mode: 'background',
           params: {},
         },
@@ -288,11 +288,11 @@ describe('TransitionRenderer', () => {
     const renderer = new TransitionRenderer();
     const prevClip = {
       itemId: 'clip-prev',
-      startUs: 0,
-      endUs: 1_000,
-      sourceStartUs: 0,
-      sourceRangeDurationUs: 500_000,
-      sourceDurationUs: 1_500_000,
+      startTicks: 0,
+      endTicks: 1_000,
+      sourceStartTicks: 0,
+      sourceRangeDurationTicks: 500_000,
+      sourceDurationTicks: 1_500_000,
       clipKind: 'video',
       sink: { id: 'sink' },
       lastVideoFrame: null,
@@ -301,7 +301,7 @@ describe('TransitionRenderer', () => {
     } as any;
     const clip = {
       itemId: 'clip-current',
-      startUs: 1_000,
+      startTicks: 1_000,
       layer: 1,
       clipKind: 'video',
       sprite: { visible: true },
@@ -360,7 +360,7 @@ describe('TransitionRenderer', () => {
         progress: 0.25,
         curve: 'linear',
         edge: 'in',
-        transition: { type: 'dissolve', durationUs: 1_000, mode: 'adjacent', params: {} },
+        transition: { type: 'dissolve', durationTicks: 1_000, mode: 'adjacent', params: {} },
       }),
       ensureTransitionRenderTexture: ((texture: any) => texture ?? { id: Math.random() }) as any,
       findPrevClipOnLayer: vi.fn(() => prevClip),
@@ -390,7 +390,7 @@ describe('TransitionRenderer', () => {
     } as any;
     const clip = {
       itemId: 'clip-current',
-      startUs: 1_000,
+      startTicks: 1_000,
       layer: 1,
       clipKind: 'video',
       sprite: { visible: true },
@@ -437,7 +437,7 @@ describe('TransitionRenderer', () => {
         progress: 0.25,
         curve: 'linear',
         edge: 'in',
-        transition: { type: 'dissolve', durationUs: 1_000, mode: 'adjacent', params: {} },
+        transition: { type: 'dissolve', durationTicks: 1_000, mode: 'adjacent', params: {} },
       }),
       ensureTransitionRenderTexture: ((texture: any) => texture ?? { id: Math.random() }) as any,
       findPrevClipOnLayer: vi.fn(() => prevClip),
@@ -471,7 +471,7 @@ describe('TransitionRenderer', () => {
     } as any;
     const clip = {
       itemId: 'clip-current',
-      startUs: 1_000,
+      startTicks: 1_000,
       layer: 1,
       clipKind: 'video',
       sprite: { visible: true },
@@ -508,7 +508,7 @@ describe('TransitionRenderer', () => {
         progress: 0.5,
         curve: 'linear',
         edge: 'in',
-        transition: { type: 'dissolve', durationUs: 1_000, mode: 'background', params: {} },
+        transition: { type: 'dissolve', durationTicks: 1_000, mode: 'background', params: {} },
       }),
       ensureTransitionRenderTexture: ((texture: any) => texture ?? { id: Math.random() }) as any,
       findPrevClipOnLayer: vi.fn(),

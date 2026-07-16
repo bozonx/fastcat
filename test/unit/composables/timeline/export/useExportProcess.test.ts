@@ -245,8 +245,8 @@ describe('useExportProcess - format resolution', () => {
           fps: 30,
           bitrate: 5_000_000,
         },
-        rangeStartUs: 0,
-        rangeEndUs: 1_000_000,
+        rangeStartTicks: 0,
+        rangeEndTicks: 1_000_000,
       });
 
       expect(options).toMatchObject({
@@ -282,8 +282,8 @@ describe('useExportProcess - format resolution', () => {
           fps: 30,
           bitrate: 5_000_000,
         },
-        rangeStartUs: 0,
-        rangeEndUs: 1_000_000,
+        rangeStartTicks: 0,
+        rangeEndTicks: 1_000_000,
       });
 
       expect(options).toMatchObject({
@@ -362,7 +362,7 @@ describe('useExportProcess - platform routing', () => {
           id: 'v1',
           layer: 0,
           source: { path: 'test.mp4' },
-          transitionIn: { type: 'slide', durationUs: 1000000 },
+          transitionIn: { type: 'slide', durationTicks: 1000000 },
         },
       ] as any,
       tracks: [],
@@ -372,7 +372,7 @@ describe('useExportProcess - platform routing', () => {
         kind: 'clip',
         id: 'v1',
         layer: 0,
-        transitionIn: { type: 'slide', durationUs: 1000000 },
+        transitionIn: { type: 'slide', durationTicks: 1000000 },
       },
     ]);
 

@@ -10,7 +10,7 @@ import { sanitizeFps, quantizeTimeUsToFrames } from './utils';
 const log = createDevLogger('markerHandlers');
 
 /** Markers always live on the frame grid, regardless of the entry path. */
-function snapMarkerTimeUs(value: number, fps: number): number {
+function snapMarkerTimeTicks(value: number, fps: number): number {
   return Math.max(0, quantizeTimeUsToFrames(Math.max(0, Number(value)), fps, 'round'));
 }
 
@@ -44,8 +44,8 @@ export function addMarker(doc: TimelineDocument, cmd: AddMarkerCommand): Timelin
   const fps = sanitizeFps(doc.timebase);
   const marker: TimelineMarker = {
     id: cmd.id,
-    timeUs: snapMarkerTimeUs(cmd.timeUs, fps),
-    durationUs: cmd.durationUs !== undefined ? snapMarkerTimeUs(cmd.durationUs, fps) : undefined,
+    timeTicks: snapMarkerTimeTicks(cmd.timeTicks, fps),
+    durationTicks: cmd.durationTicks !== undefined ? snapMarkerTimeTicks(cmd.durationTicks, fps) : undefined,
     text: typeof cmd.text === 'string' ? cmd.text : '',
     color:
       typeof (cmd as { color?: string }).color === 'string'
@@ -53,11 +53,11 @@ export function addMarker(doc: TimelineDocument, cmd: AddMarkerCommand): Timelin
         : '#eab308',
   };
 
-  if (markers.some((m) => m.timeUs === marker.timeUs)) {
+  if (markers.some((m) => m.timeTicks === marker.timeTicks)) {
     throw new Error('Marker already exists at this time');
   }
 
-  const next = [...markers, marker].sort((a, b) => a.timeUs - b.timeUs);
+  const next = [...markers, marker].sort((a, b) => a.timeTicks - b.timeTicks);
   return { next: withMarkers(doc, next) };
 }
 
@@ -77,24 +77,24 @@ export function updateMarker(
   const fps = sanitizeFps(doc.timebase);
   const nextMarker: TimelineMarker = {
     ...prev,
-    timeUs: cmd.timeUs !== undefined ? snapMarkerTimeUs(cmd.timeUs, fps) : prev.timeUs,
-    durationUs:
-      cmd.durationUs !== undefined
-        ? cmd.durationUs === null
+    timeTicks: cmd.timeTicks !== undefined ? snapMarkerTimeTicks(cmd.timeTicks, fps) : prev.timeTicks,
+    durationTicks:
+      cmd.durationTicks !== undefined
+        ? cmd.durationTicks === null
           ? undefined
-          : snapMarkerTimeUs(cmd.durationUs, fps)
-        : prev.durationUs,
+          : snapMarkerTimeTicks(cmd.durationTicks, fps)
+        : prev.durationTicks,
     text: cmd.text !== undefined ? String(cmd.text) : prev.text,
     color: cmd.color !== undefined ? String(cmd.color) : (prev as { color?: string }).color,
   };
 
-  if (markers.some((m) => m.id !== cmd.id && m.timeUs === nextMarker.timeUs)) {
+  if (markers.some((m) => m.id !== cmd.id && m.timeTicks === nextMarker.timeTicks)) {
     throw new Error('Marker already exists at this time');
   }
 
   const nextMarkers = [...markers];
   nextMarkers[idx] = nextMarker;
-  nextMarkers.sort((a, b) => a.timeUs - b.timeUs);
+  nextMarkers.sort((a, b) => a.timeTicks - b.timeTicks);
 
   return { next: withMarkers(doc, nextMarkers) };
 }

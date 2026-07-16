@@ -86,11 +86,11 @@ const timelineStore = reactive({
   fps: 30,
   timelineFormat: null as { fps: number } | null,
   markers: [
-    { id: 'point', timeUs: TICKS_PER_SECOND, text: 'Point', color: '#eab308' },
+    { id: 'point', timeTicks: TICKS_PER_SECOND, text: 'Point', color: '#eab308' },
     {
       id: 'zone',
-      timeUs: 2 * TICKS_PER_SECOND,
-      durationUs: 4 * TICKS_PER_SECOND,
+      timeTicks: 2 * TICKS_PER_SECOND,
+      durationTicks: 4 * TICKS_PER_SECOND,
       text: 'Zone',
       color: '#4a90e2',
     },
@@ -111,11 +111,11 @@ describe('MarkerProperties', () => {
     timelineStore.fps = 30;
     timelineStore.timelineFormat = null;
     timelineStore.markers = [
-      { id: 'point', timeUs: TICKS_PER_SECOND, text: 'Point', color: '#eab308' },
+      { id: 'point', timeTicks: TICKS_PER_SECOND, text: 'Point', color: '#eab308' },
       {
         id: 'zone',
-        timeUs: 2 * TICKS_PER_SECOND,
-        durationUs: 4 * TICKS_PER_SECOND,
+        timeTicks: 2 * TICKS_PER_SECOND,
+        durationTicks: 4 * TICKS_PER_SECOND,
         text: 'Zone',
         color: '#4a90e2',
       },
@@ -150,7 +150,7 @@ describe('MarkerProperties', () => {
     await wrapper.find('.timecode').trigger('click');
 
     expect(timelineStore.updateMarker).toHaveBeenCalledWith('point', {
-      timeUs: 2 * TICKS_PER_SECOND,
+      timeTicks: 2 * TICKS_PER_SECOND,
     });
   });
 
@@ -162,8 +162,8 @@ describe('MarkerProperties', () => {
     await wrapper.findAll('.timecode')[0]!.trigger('click');
 
     expect(timelineStore.updateMarker).toHaveBeenCalledWith('zone', {
-      timeUs: 3 * TICKS_PER_SECOND,
-      durationUs: 3 * TICKS_PER_SECOND,
+      timeTicks: 3 * TICKS_PER_SECOND,
+      durationTicks: 3 * TICKS_PER_SECOND,
     });
   });
 
@@ -175,7 +175,7 @@ describe('MarkerProperties', () => {
     await wrapper.findAll('.timecode')[1]!.trigger('click');
 
     expect(timelineStore.updateMarker).toHaveBeenCalledWith('zone', {
-      durationUs: 5 * TICKS_PER_SECOND,
+      durationTicks: 5 * TICKS_PER_SECOND,
     });
   });
 

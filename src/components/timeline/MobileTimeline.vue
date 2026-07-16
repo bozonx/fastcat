@@ -316,8 +316,8 @@ const pastePreviews = computed(() => {
     .sort((a, b) => a - b);
   const minSourceTrackIndex = sourceTrackIndices[0] ?? 0;
 
-  const minStartUs = Math.min(...payload.items.map((item) => item.clip.timelineRange.startUs));
-  const playheadUs = timelineStore.currentTime;
+  const minStartTicks = Math.min(...payload.items.map((item) => item.clip.timelineRange.startTicks));
+  const playheadTicks = timelineStore.currentTime;
 
   return payload.items.flatMap((item) => {
     const sourceTrackIndex = doc.tracks.findIndex((t) => t.id === item.sourceTrackId);
@@ -330,17 +330,17 @@ const pastePreviews = computed(() => {
     const targetTrack = doc.tracks[clampedIndex];
     if (!targetTrack) return [];
 
-    const offsetUs = item.clip.timelineRange.startUs - minStartUs;
-    const startUs = playheadUs + offsetUs;
-    const durationUs = item.clip.timelineRange.durationUs;
+    const offsetTicks = item.clip.timelineRange.startTicks - minStartTicks;
+    const startTicks = playheadTicks + offsetTicks;
+    const durationTicks = item.clip.timelineRange.durationTicks;
     const label =
       item.clip.name || (payload.operation === 'cut' ? t('common.cut') : t('common.copied'));
 
     return [
       {
         trackId: targetTrack.id,
-        startUs,
-        durationUs,
+        startTicks,
+        durationTicks,
         label,
       },
     ];
@@ -361,8 +361,8 @@ const sourcePreviews = computed(() => {
     const label = item.clip.name || t('common.cut');
     return {
       trackId: item.sourceTrackId,
-      startUs: item.clip.timelineRange.startUs,
-      durationUs: item.clip.timelineRange.durationUs,
+      startTicks: item.clip.timelineRange.startTicks,
+      durationTicks: item.clip.timelineRange.durationTicks,
       label,
     };
   });

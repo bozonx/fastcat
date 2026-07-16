@@ -1,8 +1,8 @@
 /** @vitest-environment node */
 import { describe, it, expect } from 'vitest';
 import {
-  mergeFadeInUs,
-  mergeFadeOutUs,
+  mergeFadeInTicks,
+  mergeFadeOutTicks,
   isProbablyUrlLike,
   getDirname,
   joinPaths,
@@ -75,57 +75,57 @@ describe('worker-clip-utils', () => {
     });
   });
 
-  describe('mergeFadeInUs', () => {
+  describe('mergeFadeInTicks', () => {
     it('returns child fade if no parent fade', () => {
       expect(
-        mergeFadeInUs({
-          childFadeInUs: 100,
-          parentFadeInUs: 0,
-          parentLocalStartUs: 0,
+        mergeFadeInTicks({
+          childFadeInTicks: 100,
+          parentFadeInTicks: 0,
+          parentLocalStartTicks: 0,
         }),
       ).toBe(100);
     });
 
     it('returns parent remaining fade if larger', () => {
       expect(
-        mergeFadeInUs({
-          childFadeInUs: 100,
-          parentFadeInUs: 500,
-          parentLocalStartUs: 200,
+        mergeFadeInTicks({
+          childFadeInTicks: 100,
+          parentFadeInTicks: 500,
+          parentLocalStartTicks: 200,
         }),
       ).toBe(300); // 500 - 200
     });
 
     it('returns child fade if child fade is larger than remaining parent fade', () => {
       expect(
-        mergeFadeInUs({
-          childFadeInUs: 400,
-          parentFadeInUs: 500,
-          parentLocalStartUs: 200,
+        mergeFadeInTicks({
+          childFadeInTicks: 400,
+          parentFadeInTicks: 500,
+          parentLocalStartTicks: 200,
         }),
       ).toBe(400); // max(400, 300)
     });
   });
 
-  describe('mergeFadeOutUs', () => {
+  describe('mergeFadeOutTicks', () => {
     it('returns child fade if no parent fade', () => {
       expect(
-        mergeFadeOutUs({
-          childFadeOutUs: 100,
-          parentFadeOutUs: 0,
-          parentLocalEndUs: 1000,
-          parentDurationUs: 1000,
+        mergeFadeOutTicks({
+          childFadeOutTicks: 100,
+          parentFadeOutTicks: 0,
+          parentLocalEndTicks: 1000,
+          parentDurationTicks: 1000,
         }),
       ).toBe(100);
     });
 
     it('computes correctly if parent ends before child ends', () => {
       expect(
-        mergeFadeOutUs({
-          childFadeOutUs: 100,
-          parentFadeOutUs: 500,
-          parentLocalEndUs: 1000,
-          parentDurationUs: 1000,
+        mergeFadeOutTicks({
+          childFadeOutTicks: 100,
+          parentFadeOutTicks: 500,
+          parentLocalEndTicks: 1000,
+          parentDurationTicks: 1000,
         }),
       ).toBe(500);
     });

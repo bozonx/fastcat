@@ -242,8 +242,8 @@ export function useExportProcess(
           isExport: true,
         });
         ensureNotCancelled();
-        const rangeStartTicks = options.exportRangeTicks?.startUs ?? 0;
-        const rangeEndTicks = options.exportRangeTicks?.endUs ?? timelineStore.duration;
+        const rangeStartTicks = options.exportRangeTicks?.startTicks ?? 0;
+        const rangeEndTicks = options.exportRangeTicks?.endTicks ?? timelineStore.duration;
         if (rangeEndTicks <= rangeStartTicks) {
           throw new Error('Export range is zero or negative');
         }

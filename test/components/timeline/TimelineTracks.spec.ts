@@ -25,7 +25,7 @@ vi.mock('~/components/timeline/TimelineClip.vue', () => ({
   default: {
     name: 'TimelineClip',
     template:
-      '<div class="mock-timeline-clip" :data-clip-id="item.id" :data-item-id="item.id" :data-start-us="item.timelineRange.startUs" :data-duration-us="item.timelineRange.durationUs" :data-locked="item.locked" :data-disabled="item.disabled" :data-audio-muted="item.audioMuted" :data-show-waveform="item.showWaveform" :data-show-thumbnails="item.showThumbnails" :data-waveform-mode="item.audioWaveformMode" :data-is-move-preview="isMovePreviewCurrentItem" :data-has-slip-preview="Boolean(slipPreview)" :data-is-multi-select-mode="isMultiSelectMode" :data-is-selected="isSelected"><slot /></div>',
+      '<div class="mock-timeline-clip" :data-clip-id="item.id" :data-item-id="item.id" :data-start-us="item.timelineRange.startTicks" :data-duration-us="item.timelineRange.durationTicks" :data-locked="item.locked" :data-disabled="item.disabled" :data-audio-muted="item.audioMuted" :data-show-waveform="item.showWaveform" :data-show-thumbnails="item.showThumbnails" :data-waveform-mode="item.audioWaveformMode" :data-is-move-preview="isMovePreviewCurrentItem" :data-has-slip-preview="Boolean(slipPreview)" :data-is-multi-select-mode="isMultiSelectMode" :data-is-selected="isSelected"><slot /></div>',
     props: ['item', 'track', 'isMovePreviewCurrentItem', 'slipPreview', 'isMultiSelectMode'],
     setup(props: any) {
       const timelineContext = inject<any>('timelineContext');
@@ -39,7 +39,7 @@ vi.mock('~/components/timeline/TimelineGap.vue', () => ({
   default: {
     name: 'TimelineGap',
     template:
-      '<div class="mock-timeline-gap" :data-gap-id="item.id" :data-item-id="item.id" :data-start-us="item.timelineRange.startUs" :data-duration-us="item.timelineRange.durationUs"><slot /></div>',
+      '<div class="mock-timeline-gap" :data-gap-id="item.id" :data-item-id="item.id" :data-start-us="item.timelineRange.startTicks" :data-duration-us="item.timelineRange.durationTicks"><slot /></div>',
     props: ['item', 'trackId'],
   },
 }));
@@ -176,12 +176,12 @@ describe('TimelineTracks', () => {
         {
           id: 'clip-1',
           kind: 'clip',
-          timelineRange: { startUs: 0, durationUs: 5 * TICKS_PER_SECOND },
+          timelineRange: { startTicks: 0, durationTicks: 5 * TICKS_PER_SECOND },
         },
         {
           id: 'gap-1',
           kind: 'gap',
-          timelineRange: { startUs: 5 * TICKS_PER_SECOND, durationUs: 2 * TICKS_PER_SECOND },
+          timelineRange: { startTicks: 5 * TICKS_PER_SECOND, durationTicks: 2 * TICKS_PER_SECOND },
         },
       ],
     },
@@ -192,7 +192,7 @@ describe('TimelineTracks', () => {
         {
           id: 'clip-2',
           kind: 'clip',
-          timelineRange: { startUs: TICKS_PER_SECOND, durationUs: 3 * TICKS_PER_SECOND },
+          timelineRange: { startTicks: TICKS_PER_SECOND, durationTicks: 3 * TICKS_PER_SECOND },
         },
       ],
     },
@@ -380,19 +380,19 @@ describe('TimelineTracks', () => {
               {
                 id: 'clip-overlap',
                 kind: 'clip',
-                timelineRange: { startUs: 0, durationUs: 80 * TICKS_PER_SECOND },
+                timelineRange: { startTicks: 0, durationTicks: 80 * TICKS_PER_SECOND },
               },
               {
                 id: 'clip-hidden-left',
                 kind: 'clip',
-                timelineRange: { startUs: 10 * TICKS_PER_SECOND, durationUs: 5 * TICKS_PER_SECOND },
+                timelineRange: { startTicks: 10 * TICKS_PER_SECOND, durationTicks: 5 * TICKS_PER_SECOND },
               },
               {
                 id: 'clip-visible',
                 kind: 'clip',
                 timelineRange: {
-                  startUs: 65 * TICKS_PER_SECOND,
-                  durationUs: 10 * TICKS_PER_SECOND,
+                  startTicks: 65 * TICKS_PER_SECOND,
+                  durationTicks: 10 * TICKS_PER_SECOND,
                 },
               },
             ],
@@ -424,19 +424,19 @@ describe('TimelineTracks', () => {
                 id: 'clip-visible',
                 kind: 'clip',
                 timelineRange: {
-                  startUs: 65 * TICKS_PER_SECOND,
-                  durationUs: 10 * TICKS_PER_SECOND,
+                  startTicks: 65 * TICKS_PER_SECOND,
+                  durationTicks: 10 * TICKS_PER_SECOND,
                 },
               },
               {
                 id: 'clip-overlap',
                 kind: 'clip',
-                timelineRange: { startUs: 0, durationUs: 80 * TICKS_PER_SECOND },
+                timelineRange: { startTicks: 0, durationTicks: 80 * TICKS_PER_SECOND },
               },
               {
                 id: 'clip-hidden-left',
                 kind: 'clip',
-                timelineRange: { startUs: 10 * TICKS_PER_SECOND, durationUs: 5 * TICKS_PER_SECOND },
+                timelineRange: { startTicks: 10 * TICKS_PER_SECOND, durationTicks: 5 * TICKS_PER_SECOND },
               },
             ],
           },
@@ -460,9 +460,9 @@ describe('TimelineTracks', () => {
         ...defaultProps,
         dragPreview: {
           trackId: 'track-1',
-          startUs: 0,
+          startTicks: 0,
           label: 'Dragging Clip',
-          durationUs: TICKS_PER_SECOND,
+          durationTicks: TICKS_PER_SECOND,
           kind: 'timeline-clip',
         },
       },
@@ -481,13 +481,13 @@ describe('TimelineTracks', () => {
           {
             itemId: 'clip-1',
             trackId: 'track-1',
-            startUs: TICKS_PER_SECOND / 2,
+            startTicks: TICKS_PER_SECOND / 2,
             isCollision: false,
           },
           {
             itemId: 'clip-2',
             trackId: 'track-2',
-            startUs: 1.5 * TICKS_PER_SECOND,
+            startTicks: 1.5 * TICKS_PER_SECOND,
             isCollision: false,
           },
         ],
@@ -511,14 +511,14 @@ describe('TimelineTracks', () => {
           {
             itemId: 'clip-1',
             trackId: 'track-1',
-            startUs: TICKS_PER_SECOND / 2,
+            startTicks: TICKS_PER_SECOND / 2,
             isCollision: false,
           },
         ],
         slipPreview: {
           itemId: 'clip-1',
           trackId: 'track-1',
-          deltaUs: TICKS_PER_SECOND / 2,
+          deltaTicks: TICKS_PER_SECOND / 2,
           timecode: '+00-00-00-15',
         },
       },
@@ -546,7 +546,7 @@ describe('TimelineTracks', () => {
             showWaveform: true,
             showThumbnails: true,
             audioWaveformMode: 'half',
-            timelineRange: { startUs: 0, durationUs: 5 * TICKS_PER_SECOND },
+            timelineRange: { startTicks: 0, durationTicks: 5 * TICKS_PER_SECOND },
           },
         ],
       },
@@ -591,7 +591,7 @@ describe('TimelineTracks', () => {
           {
             id: 'clip-1',
             kind: 'clip',
-            timelineRange: { startUs: 0, durationUs: 5 * TICKS_PER_SECOND },
+            timelineRange: { startTicks: 0, durationTicks: 5 * TICKS_PER_SECOND },
           },
         ],
       },
@@ -612,7 +612,7 @@ describe('TimelineTracks', () => {
           items: [
             {
               ...tracks[0]!.items[0],
-              timelineRange: { startUs: 2 * TICKS_PER_SECOND, durationUs: 3 * TICKS_PER_SECOND },
+              timelineRange: { startTicks: 2 * TICKS_PER_SECOND, durationTicks: 3 * TICKS_PER_SECOND },
             },
           ],
         },
@@ -658,7 +658,7 @@ describe('TimelineTracks', () => {
           {
             id: 'gap-1',
             kind: 'gap',
-            timelineRange: { startUs: TICKS_PER_SECOND, durationUs: 2 * TICKS_PER_SECOND },
+            timelineRange: { startTicks: TICKS_PER_SECOND, durationTicks: 2 * TICKS_PER_SECOND },
           },
         ],
       },
@@ -679,7 +679,7 @@ describe('TimelineTracks', () => {
           items: [
             {
               ...tracks[0]!.items[0],
-              timelineRange: { startUs: 2 * TICKS_PER_SECOND, durationUs: 4 * TICKS_PER_SECOND },
+              timelineRange: { startTicks: 2 * TICKS_PER_SECOND, durationTicks: 4 * TICKS_PER_SECOND },
             },
           ],
         },
@@ -703,7 +703,7 @@ describe('TimelineTracks', () => {
             locked: false,
             disabled: false,
             audioMuted: false,
-            timelineRange: { startUs: 0, durationUs: 5 * TICKS_PER_SECOND },
+            timelineRange: { startTicks: 0, durationTicks: 5 * TICKS_PER_SECOND },
           },
         ],
       },
@@ -751,7 +751,7 @@ describe('TimelineTracks', () => {
               id: 'clip-1',
               kind: 'clip',
               clipType: 'media',
-              timelineRange: { startUs: 0, durationUs: 5 * TICKS_PER_SECOND },
+              timelineRange: { startTicks: 0, durationTicks: 5 * TICKS_PER_SECOND },
             },
           ],
         },
@@ -763,7 +763,7 @@ describe('TimelineTracks', () => {
               id: 'clip-2',
               kind: 'clip',
               clipType: 'media',
-              timelineRange: { startUs: 0, durationUs: 5 * TICKS_PER_SECOND },
+              timelineRange: { startTicks: 0, durationTicks: 5 * TICKS_PER_SECOND },
             },
           ],
         },

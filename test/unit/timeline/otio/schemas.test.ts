@@ -76,7 +76,7 @@ describe('ClipTransformSchema', () => {
 
 describe('ClipAnimationsSchema', () => {
   it('parses every fixed animatable path used by timeline clips', () => {
-    const track = { keyframes: [{ tUs: 0, value: 1, easing: 'linear' }] };
+    const track = { keyframes: [{ tTicks: 0, value: 1, easing: 'linear' }] };
     const result = ClipAnimationsSchema.parse({
       opacity: track,
       'audio.volume': track,

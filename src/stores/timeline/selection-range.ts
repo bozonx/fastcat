@@ -16,7 +16,7 @@ export interface TimelineSelectionRangeDeps {
   markerService: ReturnType<typeof createTimelineMarkerService>;
   trimming: ReturnType<typeof createTimelineTrimmingModule>;
   applyTimeline: (cmd: TimelineCommand, options?: TimelineApplyOptions) => void;
-  defaultStaticClipDurationUs: number;
+  defaultStaticClipDurationTicks: number;
 }
 
 export interface TimelineSelectionRangeModule {
@@ -26,7 +26,7 @@ export interface TimelineSelectionRangeModule {
     range: TimelineSelectionRange | null,
     options?: TimelineApplyOptions,
   ) => void;
-  createSelectionRangeAtPlayhead: (durationUs?: number) => void;
+  createSelectionRangeAtPlayhead: (durationTicks?: number) => void;
   createSelectionRange: (input: TimelineSelectionRange) => void;
   removeSelectionRange: (options?: TimelineApplyOptions) => void;
   convertMarkerToSelectionRange: (markerId: string) => void;
@@ -47,7 +47,7 @@ export function createTimelineSelectionRangeModule(
     clearSelection,
     markerService,
     trimming,
-    defaultStaticClipDurationUs,
+    defaultStaticClipDurationTicks,
   } = params;
 
   const previewRange = ref<TimelineSelectionRange | null>(null);
@@ -55,16 +55,16 @@ export function createTimelineSelectionRangeModule(
   function getSelectionRange(): TimelineSelectionRange | null {
     const range = previewRange.value || params.selectionRange.value;
     if (!range) return null;
-    if (!Number.isFinite(range.startUs) || !Number.isFinite(range.endUs)) return null;
+    if (!Number.isFinite(range.startTicks) || !Number.isFinite(range.endTicks)) return null;
 
-    const startUs = Math.max(0, Math.round(range.startUs));
-    const endUs = Math.max(startUs, Math.round(range.endUs));
+    const startTicks = Math.max(0, Math.round(range.startTicks));
+    const endTicks = Math.max(startTicks, Math.round(range.endTicks));
 
-    if (endUs <= startUs) return null;
+    if (endTicks <= startTicks) return null;
 
     return {
-      startUs,
-      endUs,
+      startTicks,
+      endTicks,
     };
   }
 
@@ -80,8 +80,8 @@ export function createTimelineSelectionRangeModule(
 
     const nextRange = range
       ? {
-          startUs: Math.max(0, Math.round(range.startUs)),
-          endUs: Math.max(Math.round(range.startUs), Math.round(range.endUs)),
+          startTicks: Math.max(0, Math.round(range.startTicks)),
+          endTicks: Math.max(Math.round(range.startTicks), Math.round(range.endTicks)),
         }
       : null;
 
@@ -98,20 +98,20 @@ export function createTimelineSelectionRangeModule(
     params.selectionRange.value = nextRange ? { ...nextRange } : null;
   }
 
-  function createSelectionRangeAtPlayhead(durationUs?: number) {
-    const startUs = Math.max(0, Math.round(currentTime.value));
-    const dur = durationUs ?? defaultStaticClipDurationUs;
+  function createSelectionRangeAtPlayhead(durationTicks?: number) {
+    const startTicks = Math.max(0, Math.round(currentTime.value));
+    const dur = durationTicks ?? defaultStaticClipDurationTicks;
     updateSelectionRange({
-      startUs,
-      endUs: startUs + Math.max(1, Math.round(dur)),
+      startTicks,
+      endTicks: startTicks + Math.max(1, Math.round(dur)),
     });
     selectTimelineSelectionRange();
   }
 
   function createSelectionRange(input: TimelineSelectionRange) {
     updateSelectionRange({
-      startUs: Math.max(0, Math.round(input.startUs)),
-      endUs: Math.max(Math.round(input.startUs) + 1, Math.round(input.endUs)),
+      startTicks: Math.max(0, Math.round(input.startTicks)),
+      endTicks: Math.max(Math.round(input.startTicks) + 1, Math.round(input.endTicks)),
     });
     selectTimelineSelectionRange();
   }
@@ -127,12 +127,12 @@ export function createTimelineSelectionRangeModule(
     const marker = markerService.getMarkers().find((item) => item.id === markerId);
     if (!marker) return;
 
-    const startUs = Math.max(0, Math.round(marker.timeUs));
-    const durationUs = Math.max(1, Math.round(marker.durationUs ?? defaultStaticClipDurationUs));
+    const startTicks = Math.max(0, Math.round(marker.timeTicks));
+    const durationTicks = Math.max(1, Math.round(marker.durationTicks ?? defaultStaticClipDurationTicks));
 
     createSelectionRange({
-      startUs,
-      endUs: startUs + durationUs,
+      startTicks,
+      endTicks: startTicks + durationTicks,
     });
     markerService.removeMarker(markerId);
   }
@@ -141,12 +141,12 @@ export function createTimelineSelectionRangeModule(
     const marker = markerService.getMarkers().find((item) => item.id === markerId);
     if (!marker) return;
 
-    const startUs = Math.max(0, Math.round(marker.timeUs));
-    const durationUs = Math.max(1, Math.round(marker.durationUs ?? defaultStaticClipDurationUs));
+    const startTicks = Math.max(0, Math.round(marker.timeTicks));
+    const durationTicks = Math.max(1, Math.round(marker.durationTicks ?? defaultStaticClipDurationTicks));
 
     createSelectionRange({
-      startUs,
-      endUs: startUs + durationUs,
+      startTicks,
+      endTicks: startTicks + durationTicks,
     });
   }
 
@@ -159,8 +159,8 @@ export function createTimelineSelectionRangeModule(
     if (!range) return;
 
     const markerId = markerService.addMarker({
-      timeUs: range.startUs,
-      durationUs: range.endUs - range.startUs,
+      timeTicks: range.startTicks,
+      durationTicks: range.endTicks - range.startTicks,
     });
 
     removeSelectionRange();
@@ -188,8 +188,8 @@ export function createTimelineSelectionRangeModule(
     trimming.rippleDeleteRange(
       {
         trackIds: doc.tracks.map((track) => track.id),
-        startUs: range.startUs,
-        endUs: range.endUs,
+        startTicks: range.startTicks,
+        endTicks: range.endTicks,
       },
       options,
     );

@@ -11,7 +11,7 @@ describe('useMobileTimelineTrim', () => {
 
   const selectedClipContext = computed(() => ({
     clip: {
-      timelineRange: { startUs: 1_000_000 },
+      timelineRange: { startTicks: 1_000_000 },
     },
   }));
   const startTrimItem = vi.fn();
@@ -45,7 +45,7 @@ describe('useMobileTimelineTrim', () => {
       trackId: 't1',
       itemId: 'c1',
       edge: 'start',
-      startUs: 1_000_000,
+      startTicks: 1_000_000,
     });
   });
 

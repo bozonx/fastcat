@@ -11,14 +11,14 @@ export function getClipRangesS(clip: unknown): ClipRangesS {
   const c = clip as Record<string, unknown>;
   const timelineRange = c.timelineRange as Record<string, unknown> | undefined;
   const sourceRange = c.sourceRange as Record<string, unknown> | undefined;
-  const timelineStartUs = Number(timelineRange?.startUs ?? 0);
-  const timelineDurationUs = Number(timelineRange?.durationUs ?? 0);
-  const sourceStartUs = Number(sourceRange?.startUs ?? 0);
-  const sourceDurationUs = Number(sourceRange?.durationUs ?? timelineDurationUs ?? 0);
+  const timelineStartTicks = Number(timelineRange?.startTicks ?? 0);
+  const timelineDurationTicks = Number(timelineRange?.durationTicks ?? 0);
+  const sourceStartTicks = Number(sourceRange?.startTicks ?? 0);
+  const sourceDurationTicks = Number(sourceRange?.durationTicks ?? timelineDurationTicks ?? 0);
 
-  const timelineStartS = Math.max(0, ticksToSecondsClamped(timelineStartUs));
-  const sourceStartS = Math.max(0, ticksToSecondsClamped(sourceStartUs));
-  const durationS = Math.max(0, ticksToSecondsClamped(sourceDurationUs));
+  const timelineStartS = Math.max(0, ticksToSecondsClamped(timelineStartTicks));
+  const sourceStartS = Math.max(0, ticksToSecondsClamped(sourceStartTicks));
+  const durationS = Math.max(0, ticksToSecondsClamped(sourceDurationTicks));
 
   return {
     timelineStartS,
@@ -27,18 +27,18 @@ export function getClipRangesS(clip: unknown): ClipRangesS {
   };
 }
 
-export function computeMaxAudioDurationUs(clips: unknown[]): number {
+export function computeMaxAudioDurationTicks(clips: unknown[]): number {
   return clips.reduce<number>((max, clip) => {
     const c = clip as Record<string, unknown>;
     const timelineRange = c.timelineRange as Record<string, unknown> | undefined;
-    const endUs = Number(timelineRange?.startUs ?? 0) + Number(timelineRange?.durationUs ?? 0);
-    return Math.max(max, endUs);
+    const endTicks = Number(timelineRange?.startTicks ?? 0) + Number(timelineRange?.durationTicks ?? 0);
+    return Math.max(max, endTicks);
   }, 0);
 }
 
 export interface ExportFrameTiming {
   frameNum: number;
-  timeUs: number;
+  timeTicks: number;
   timestampS: number;
   durationS: number;
 }
@@ -84,7 +84,7 @@ function gcd(a: number, b: number): number {
   return x || 1;
 }
 
-function rationalFrameTimeUs(frameNum: number, fps: ExportFpsRatio): number {
+function rationalFrameTimeTicks(frameNum: number, fps: ExportFpsRatio): number {
   return Number(
     (BigInt(frameNum) * BigInt(TICKS_PER_SECOND) * BigInt(fps.denominator) +
       BigInt(Math.floor(fps.numerator / 2))) /
@@ -92,11 +92,11 @@ function rationalFrameTimeUs(frameNum: number, fps: ExportFpsRatio): number {
   );
 }
 
-export function computeExportTotalFrames(params: { durationUs: number; fps: number }): number {
-  const durationUs = Math.max(0, Math.round(Number(params.durationUs) || 0));
+export function computeExportTotalFrames(params: { durationTicks: number; fps: number }): number {
+  const durationTicks = Math.max(0, Math.round(Number(params.durationTicks) || 0));
   const fps = normalizeExportFps(params.fps);
   const divisor = BigInt(TICKS_PER_SECOND) * BigInt(fps.denominator);
-  const value = BigInt(durationUs) * BigInt(fps.numerator);
+  const value = BigInt(durationTicks) * BigInt(fps.numerator);
   return Number((value + divisor / 2n) / divisor);
 }
 
@@ -116,24 +116,24 @@ export function computeExportFrameInterval(params: {
 export function getExportFrameTiming(params: {
   frameNum: number;
   totalFrames: number;
-  durationUs: number;
+  durationTicks: number;
   fps: number;
 }): ExportFrameTiming {
   const fps = normalizeExportFps(params.fps);
   const frameNum = Math.max(0, Math.round(Number(params.frameNum) || 0));
   const totalFrames = Math.max(0, Math.round(Number(params.totalFrames) || 0));
-  const durationUs = Math.max(0, Math.round(Number(params.durationUs) || 0));
-  const frameStartUs = rationalFrameTimeUs(frameNum, fps);
-  const nextFrameStartUs = rationalFrameTimeUs(frameNum + 1, fps);
-  const clampedStartUs = Math.min(frameStartUs, durationUs);
-  const clampedNextFrameStartUs = Math.min(nextFrameStartUs, durationUs);
-  const frameDurationUs = Math.max(1, clampedNextFrameStartUs - clampedStartUs);
-  const durationS = totalFrames > 0 ? frameDurationUs / TICKS_PER_SECOND : 0;
+  const durationTicks = Math.max(0, Math.round(Number(params.durationTicks) || 0));
+  const frameStartTicks = rationalFrameTimeTicks(frameNum, fps);
+  const nextFrameStartTicks = rationalFrameTimeTicks(frameNum + 1, fps);
+  const clampedStartTicks = Math.min(frameStartTicks, durationTicks);
+  const clampedNextFrameStartTicks = Math.min(nextFrameStartTicks, durationTicks);
+  const frameDurationTicks = Math.max(1, clampedNextFrameStartTicks - clampedStartTicks);
+  const durationS = totalFrames > 0 ? frameDurationTicks / TICKS_PER_SECOND : 0;
 
   return {
     frameNum,
-    timeUs: clampedStartUs,
-    timestampS: clampedStartUs / TICKS_PER_SECOND,
+    timeTicks: clampedStartTicks,
+    timestampS: clampedStartTicks / TICKS_PER_SECOND,
     durationS,
   };
 }

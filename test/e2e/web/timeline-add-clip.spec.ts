@@ -30,7 +30,7 @@ test.describe('Web timeline add clip', () => {
     const doc = await waitForTimelineDoc(page, e2eProject, (d) => d.allClips.length === 1);
     expect(doc.videoTracks.some((t) => t.clips.length === 1)).toBe(true);
     expect(doc.allClips[0].targetUrl ?? '').toContain(fileName);
-    expect(doc.allClips[0].timelineDurationUs).toBeGreaterThan(0);
+    expect(doc.allClips[0].timelineDurationTicks).toBeGreaterThan(0);
   });
 
   test('adds an audio file to an audio track', async ({ page, e2eProject }) => {
@@ -54,7 +54,7 @@ test.describe('Web timeline add clip', () => {
     await addFileToTrack(page, uiPath, videoTrackId);
 
     const doc = await waitForTimelineDoc(page, e2eProject, (d) => d.allClips.length === 1);
-    expect(doc.allClips[0].timelineDurationUs).toBeGreaterThan(0);
+    expect(doc.allClips[0].timelineDurationTicks).toBeGreaterThan(0);
   });
 
   test('rejects adding audio media to a video track', async ({ page, e2eProject }) => {

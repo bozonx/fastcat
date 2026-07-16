@@ -88,8 +88,8 @@ async function loadWebDiagnostics() {
 }
 
 function resetDefaults() {
-  workspaceStore.userSettings.projectDefaults.audioDeclickDurationUs =
-    DEFAULT_USER_SETTINGS.projectDefaults.audioDeclickDurationUs;
+  workspaceStore.userSettings.projectDefaults.audioDeclickDurationTicks =
+    DEFAULT_USER_SETTINGS.projectDefaults.audioDeclickDurationTicks;
   workspaceStore.userSettings.projectDefaults.audioScrubbingEnabled =
     DEFAULT_USER_SETTINGS.projectDefaults.audioScrubbingEnabled;
   workspaceStore.userSettings.audioEngine.bufferSize = DEFAULT_USER_SETTINGS.audioEngine.bufferSize;
@@ -208,7 +208,7 @@ const hasDiagnostics = computed(() => audioCodecRows.value.length > 0);
     >
       <UiWheelNumberInput
         :model-value="
-          workspaceStore.userSettings.projectDefaults.audioDeclickDurationUs / TICKS_PER_MILLISECOND
+          workspaceStore.userSettings.projectDefaults.audioDeclickDurationTicks / TICKS_PER_MILLISECOND
         "
         size="sm"
         :step="1"
@@ -216,7 +216,7 @@ const hasDiagnostics = computed(() => audioCodecRows.value.length > 0);
         :max="1000"
         @update:model-value="
           (value: number) =>
-            (workspaceStore.userSettings.projectDefaults.audioDeclickDurationUs = Math.round(
+            (workspaceStore.userSettings.projectDefaults.audioDeclickDurationTicks = Math.round(
               Math.max(0, Math.min(1000, Number(value) || 0)) * TICKS_PER_MILLISECOND,
             ))
         "

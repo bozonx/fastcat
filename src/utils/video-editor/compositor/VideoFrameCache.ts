@@ -3,7 +3,7 @@ export interface CachedVideoFrameEntry {
   key: string;
   clipId: string;
   frameIndex: number;
-  timelineTimeUs: number;
+  timelineTimeTicks: number;
   frame: VideoFrame;
   sizeBytes: number;
   width: number;
@@ -20,7 +20,7 @@ export class VideoFrameCache {
   private maxVideoFrameCacheBytes: number;
   private videoFrameCache = new Map<string, CachedVideoFrameEntry>();
   private videoFrameCacheSizeBytes = 0;
-  private priorityTimeUs = 0;
+  private priorityTimeTicks = 0;
 
   constructor(maxVideoFrameCacheBytes: number) {
     this.maxVideoFrameCacheBytes = Math.max(0, Math.round(maxVideoFrameCacheBytes));
@@ -60,13 +60,13 @@ export class VideoFrameCache {
     return entry;
   }
 
-  public setPriorityTimeUs(timeUs: number) {
-    const next = Math.max(0, Math.round(Number(timeUs) || 0));
-    if (next === this.priorityTimeUs) {
+  public setPriorityTimeTicks(timeTicks: number) {
+    const next = Math.max(0, Math.round(Number(timeTicks) || 0));
+    if (next === this.priorityTimeTicks) {
       return;
     }
 
-    this.priorityTimeUs = next;
+    this.priorityTimeTicks = next;
     this.evictIfNeeded();
   }
 
@@ -151,12 +151,12 @@ export class VideoFrameCache {
       // (farthest from priority first; ties toward the larger time; among equal
       // times the earliest-inserted entry) without re-scanning the whole map per
       // evicted frame — the old loop was O(n²) when the limit shrank sharply.
-      const priority = this.priorityTimeUs;
+      const priority = this.priorityTimeTicks;
       const ranked = Array.from(this.videoFrameCache.entries(), ([key, entry], index) => ({
         key,
         entry,
         index,
-        time: Math.max(0, Math.round(Number(entry.timelineTimeUs) || 0)),
+        time: Math.max(0, Math.round(Number(entry.timelineTimeTicks) || 0)),
       }));
       ranked.sort(
         (a, b) =>

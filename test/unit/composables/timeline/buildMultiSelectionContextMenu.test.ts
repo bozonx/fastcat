@@ -11,9 +11,9 @@ function createOptions(selectedItemIds: string[]): UseClipContextMenuOptions {
     trackId: 'a1',
     clipType: 'media' as const,
     name: 'Audio',
-    timelineRange: { startUs: 0, durationUs: 5_000_000 },
-    sourceRange: { startUs: 0, durationUs: 5_000_000 },
-    sourceDurationUs: 5_000_000,
+    timelineRange: { startTicks: 0, durationTicks: 5_000_000 },
+    sourceRange: { startTicks: 0, durationTicks: 5_000_000 },
+    sourceDurationTicks: 5_000_000,
   };
   const textClip = {
     id: 'text-1',
@@ -21,8 +21,8 @@ function createOptions(selectedItemIds: string[]): UseClipContextMenuOptions {
     trackId: 'v1',
     clipType: 'text' as const,
     name: 'Text',
-    timelineRange: { startUs: 0, durationUs: 5_000_000 },
-    sourceRange: { startUs: 0, durationUs: 5_000_000 },
+    timelineRange: { startTicks: 0, durationTicks: 5_000_000 },
+    sourceRange: { startTicks: 0, durationTicks: 5_000_000 },
   };
   const audioTrack = { id: 'a1', kind: 'audio' as const, name: 'Audio', items: [audioClip] };
   const videoTrack = { id: 'v1', kind: 'video' as const, name: 'Video', items: [textClip] };
@@ -40,7 +40,7 @@ function createOptions(selectedItemIds: string[]): UseClipContextMenuOptions {
       tracks: [audioTrack, videoTrack],
     } as any),
     projectSettings: ref({} as any),
-    defaultTransitionDurationUs: ref(1_000_000),
+    defaultTransitionDurationTicks: ref(1_000_000),
     selectedItemIds: ref(selectedItemIds),
     applyTimelineCommand: vi.fn(() => []),
     batchApplyTimeline,

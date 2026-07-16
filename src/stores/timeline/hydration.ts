@@ -25,13 +25,13 @@ export function createTimelineHydrationModule(
           const meta = deps.mediaMetadata.value[it.source.path];
           if (meta) {
             const durationS = Number(meta.duration);
-            const durationUs =
+            const durationTicks =
               Number.isFinite(durationS) && durationS > 0
                 ? Math.floor(durationS * TICKS_PER_SECOND)
                 : 0;
             const isImageLike = !meta.video && !meta.audio;
             if (
-              (durationUs > 0 && it.sourceDurationUs !== durationUs) ||
+              (durationTicks > 0 && it.sourceDurationTicks !== durationTicks) ||
               it.isImage !== isImageLike
             ) {
               anyPatch = true;
@@ -52,19 +52,19 @@ export function createTimelineHydrationModule(
           const meta = deps.mediaMetadata.value[it.source.path];
           if (meta) {
             const durationS = Number(meta.duration);
-            const durationUs =
+            const durationTicks =
               Number.isFinite(durationS) && durationS > 0
                 ? Math.floor(durationS * TICKS_PER_SECOND)
                 : 0;
             const isImageLike = !meta.video && !meta.audio;
 
-            const needsSourceDurationPatch = durationUs > 0 && it.sourceDurationUs !== durationUs;
+            const needsSourceDurationPatch = durationTicks > 0 && it.sourceDurationTicks !== durationTicks;
             const needsIsImagePatch = it.isImage !== isImageLike;
             if (needsSourceDurationPatch || needsIsImagePatch) {
               trackChanged = true;
               return {
                 ...it,
-                ...(needsSourceDurationPatch ? { sourceDurationUs: durationUs } : {}),
+                ...(needsSourceDurationPatch ? { sourceDurationTicks: durationTicks } : {}),
                 ...(needsIsImagePatch ? { isImage: isImageLike } : {}),
               };
             }
@@ -119,10 +119,10 @@ export function createTimelineHydrationModule(
     const isImageLike = !hasVideo && !hasAudio;
 
     const durationS = Number(meta.duration);
-    const durationUs =
+    const durationTicks =
       Number.isFinite(durationS) && durationS > 0 ? Math.floor(durationS * TICKS_PER_SECOND) : 0;
 
-    const needsSourceDurationPatch = durationUs > 0 && item.sourceDurationUs !== durationUs;
+    const needsSourceDurationPatch = durationTicks > 0 && item.sourceDurationTicks !== durationTicks;
     const needsIsImagePatch = item.isImage !== isImageLike;
 
     if (!needsSourceDurationPatch && !needsIsImagePatch) return doc;
@@ -134,8 +134,8 @@ export function createTimelineHydrationModule(
             ...t,
             items: t.items.map((it) => {
               if (it.id === item.id && it.kind === 'clip' && it.clipType === 'media') {
-                const patch: { sourceDurationUs?: number; isImage?: boolean } = {};
-                if (needsSourceDurationPatch) patch.sourceDurationUs = durationUs;
+                const patch: { sourceDurationTicks?: number; isImage?: boolean } = {};
+                if (needsSourceDurationPatch) patch.sourceDurationTicks = durationTicks;
                 if (needsIsImagePatch) patch.isImage = isImageLike;
                 return { ...it, ...patch };
               }

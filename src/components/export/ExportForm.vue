@@ -107,7 +107,7 @@ function getOptionDuration(option: ExportRangeOption) {
     return ticksToSeconds(timelineStore.duration || 0);
   }
   if (option.range) {
-    return ticksToSeconds(option.range.endUs - option.range.startUs);
+    return ticksToSeconds(option.range.endTicks - option.range.startTicks);
   }
   return 0;
 }

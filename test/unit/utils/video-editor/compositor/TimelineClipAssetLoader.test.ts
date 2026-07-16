@@ -39,9 +39,9 @@ describe('TimelineClipAssetLoader.build', () => {
         itemId: 'bg1',
         trackId: 't1',
         layer: 0,
-        startUs: 0,
-        endUs: 1_000_000,
-        requestedTimelineDurationUs: 1_000_000,
+        startTicks: 0,
+        endTicks: 1_000_000,
+        requestedTimelineDurationTicks: 1_000_000,
       },
       toVideoEffects,
     });
@@ -59,9 +59,9 @@ describe('TimelineClipAssetLoader.build', () => {
         itemId: 'text1',
         trackId: 't1',
         layer: 0,
-        startUs: 0,
-        endUs: 1_000_000,
-        requestedTimelineDurationUs: 1_000_000,
+        startTicks: 0,
+        endTicks: 1_000_000,
+        requestedTimelineDurationTicks: 1_000_000,
       },
       toVideoEffects,
     });
@@ -85,9 +85,9 @@ describe('TimelineClipAssetLoader.build', () => {
         itemId: 'text1',
         trackId: 't1',
         layer: 0,
-        startUs: 0,
-        endUs: 1_000_000,
-        requestedTimelineDurationUs: 1_000_000,
+        startTicks: 0,
+        endTicks: 1_000_000,
+        requestedTimelineDurationTicks: 1_000_000,
       },
       toVideoEffects,
     });
@@ -114,9 +114,9 @@ describe('TimelineClipAssetLoader.build', () => {
           itemId: 'text1',
           trackId: 't1',
           layer: 0,
-          startUs: 0,
-          endUs: 1_000_000,
-          requestedTimelineDurationUs: 1_000_000,
+          startTicks: 0,
+          endTicks: 1_000_000,
+          requestedTimelineDurationTicks: 1_000_000,
         },
         toVideoEffects,
       });
@@ -142,9 +142,9 @@ describe('TimelineClipAssetLoader.build', () => {
         itemId: 'shape1',
         trackId: 't1',
         layer: 0,
-        startUs: 0,
-        endUs: 1_000_000,
-        requestedTimelineDurationUs: 1_000_000,
+        startTicks: 0,
+        endTicks: 1_000_000,
+        requestedTimelineDurationTicks: 1_000_000,
       },
       toVideoEffects,
     });
@@ -175,9 +175,9 @@ describe('TimelineClipAssetLoader.build', () => {
         itemId: 'shape1',
         trackId: 't1',
         layer: 0,
-        startUs: 0,
-        endUs: 1_000_000,
-        requestedTimelineDurationUs: 1_000_000,
+        startTicks: 0,
+        endTicks: 1_000_000,
+        requestedTimelineDurationTicks: 1_000_000,
       },
       toVideoEffects,
     });
@@ -206,9 +206,9 @@ describe('TimelineClipAssetLoader.build', () => {
           itemId: 'shape1',
           trackId: 't1',
           layer: 0,
-          startUs: 0,
-          endUs: 1_000_000,
-          requestedTimelineDurationUs: 1_000_000,
+          startTicks: 0,
+          endTicks: 1_000_000,
+          requestedTimelineDurationTicks: 1_000_000,
         },
         toVideoEffects,
       });
@@ -229,9 +229,9 @@ describe('TimelineClipAssetLoader.build', () => {
         itemId: 'adj1',
         trackId: 't1',
         layer: 0,
-        startUs: 0,
-        endUs: 1_000_000,
-        requestedTimelineDurationUs: 1_000_000,
+        startTicks: 0,
+        endTicks: 1_000_000,
+        requestedTimelineDurationTicks: 1_000_000,
       },
       toVideoEffects,
     });
@@ -248,9 +248,9 @@ describe('TimelineClipAssetLoader.build', () => {
         itemId: 'hud1',
         trackId: 't1',
         layer: 0,
-        startUs: 0,
-        endUs: 1_000_000,
-        requestedTimelineDurationUs: 1_000_000,
+        startTicks: 0,
+        endTicks: 1_000_000,
+        requestedTimelineDurationTicks: 1_000_000,
       },
       toVideoEffects,
     });
@@ -269,9 +269,9 @@ describe('TimelineClipAssetLoader.build', () => {
         itemId: 'hud1',
         trackId: 't1',
         layer: 0,
-        startUs: 0,
-        endUs: 1_000_000,
-        requestedTimelineDurationUs: 1_000_000,
+        startTicks: 0,
+        endTicks: 1_000_000,
+        requestedTimelineDurationTicks: 1_000_000,
       },
       toVideoEffects,
     });
@@ -290,9 +290,9 @@ describe('TimelineClipAssetLoader.build', () => {
         itemId: 'shape1',
         trackId: 't1',
         layer: 0,
-        startUs: 0,
-        endUs: 1_000_000,
-        requestedTimelineDurationUs: 1_000_000,
+        startTicks: 0,
+        endTicks: 1_000_000,
+        requestedTimelineDurationTicks: 1_000_000,
       },
       toVideoEffects,
     });
@@ -317,8 +317,8 @@ describe('TimelineClipAssetLoader.initializeMaskState', () => {
     const loader = new TimelineClipAssetLoader(makeContext() as any);
     const clip = {
       mask: { source: { path: '/mask.png' } } as any,
-      durationUs: 1_000_000,
-      startUs: 0,
+      durationTicks: 1_000_000,
+      startTicks: 0,
     } as CompositorClip;
     await loader.initializeMaskState({
       clip,
@@ -338,8 +338,8 @@ describe('TimelineClipAssetLoader.initializeMaskState', () => {
     const loader = new TimelineClipAssetLoader(ctx as any);
     const clip = {
       mask: { source: { path: '/mask.png' } } as any,
-      durationUs: 1_000_000,
-      startUs: 0,
+      durationTicks: 1_000_000,
+      startTicks: 0,
       maskState: null,
     } as unknown as CompositorClip;
     const mockFile = { type: 'image/png' };
@@ -361,8 +361,8 @@ describe('TimelineClipAssetLoader.initializeMaskState', () => {
     const loader = new TimelineClipAssetLoader(makeContext() as any);
     const clip = {
       mask: { source: { path: '/mask.png' } } as any,
-      durationUs: 1_000_000,
-      startUs: 0,
+      durationTicks: 1_000_000,
+      startTicks: 0,
     } as CompositorClip;
     // Should not throw
     await loader.initializeMaskState({

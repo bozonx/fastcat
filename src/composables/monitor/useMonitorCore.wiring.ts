@@ -46,7 +46,7 @@ export interface RegisterMonitorCoreWatchersOptions {
   invalidateCompositor: () => void;
   updateCanvasDisplaySize: () => void;
   scheduleBuild: () => void;
-  scheduleRender: (timeUs: number) => void;
+  scheduleRender: (timeTicks: number) => void;
   scheduleLayoutUpdate: (debounceMs?: number) => void;
   setAudioEngineMasterVolume: (volume: number) => void;
   setAudioEngineMonitorVolume: (volume: number) => void;

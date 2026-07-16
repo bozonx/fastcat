@@ -8,7 +8,7 @@ import {
 } from '~/utils/video-editor/compositor/TimelineActiveClipProcessor';
 import type { CompositorClip } from '~/utils/video-editor/compositor/types';
 import { TICKS_PER_SECOND } from '~/utils/time';
-import { timelineUs } from '../timeline-time';
+import { timelineTicks } from '../timeline-time';
 
 function makeOrchestrator() {
   return new FrameSampleOrchestrator();
@@ -20,10 +20,10 @@ function makeProcessor() {
 
 interface ShadowSampleScenarioOptions {
   prevSpeed: number;
-  localTimeUs: number;
-  prevSourceStartUs?: number;
-  prevSourceRangeDurationUs?: number;
-  prevSourceDurationUs?: number;
+  localTimeTicks: number;
+  prevSourceStartTicks?: number;
+  prevSourceRangeDurationTicks?: number;
+  prevSourceDurationTicks?: number;
   prevFrameRate?: number;
 }
 
@@ -36,16 +36,16 @@ async function collectShadowSampleTimesS(options: ShadowSampleScenarioOptions): 
     return null;
   });
 
-  const transitionDurationUs = timelineUs(500_000);
+  const transitionDurationTicks = timelineTicks(500_000);
   const prevClip = {
     itemId: 'prev',
     sprite: { alpha: 1, blendMode: 'normal', visible: true },
     clipKind: 'video',
-    startUs: 0,
-    durationUs: timelineUs(1_000_000),
-    sourceStartUs: timelineUs(options.prevSourceStartUs ?? 2_000_000),
-    sourceRangeDurationUs: timelineUs(options.prevSourceRangeDurationUs ?? 1_000_000),
-    sourceDurationUs: timelineUs(options.prevSourceDurationUs ?? 10_000_000),
+    startTicks: 0,
+    durationTicks: timelineTicks(1_000_000),
+    sourceStartTicks: timelineTicks(options.prevSourceStartTicks ?? 2_000_000),
+    sourceRangeDurationTicks: timelineTicks(options.prevSourceRangeDurationTicks ?? 1_000_000),
+    sourceDurationTicks: timelineTicks(options.prevSourceDurationTicks ?? 10_000_000),
     speed: options.prevSpeed,
     frameRate: options.prevFrameRate,
     sink: {},
@@ -55,14 +55,14 @@ async function collectShadowSampleTimesS(options: ShadowSampleScenarioOptions): 
     itemId: 'next',
     sprite: { alpha: 1, blendMode: 'normal', visible: true },
     clipKind: 'video',
-    startUs: timelineUs(1_000_000),
-    durationUs: timelineUs(1_000_000),
-    sourceStartUs: 0,
-    sourceRangeDurationUs: timelineUs(1_000_000),
-    sourceDurationUs: timelineUs(5_000_000),
+    startTicks: timelineTicks(1_000_000),
+    durationTicks: timelineTicks(1_000_000),
+    sourceStartTicks: 0,
+    sourceRangeDurationTicks: timelineTicks(1_000_000),
+    sourceDurationTicks: timelineTicks(5_000_000),
     speed: 1,
     transitionIn: {
-      durationUs: transitionDurationUs,
+      durationTicks: transitionDurationTicks,
       mode: 'adjacent',
       type: 'fade',
     },
@@ -71,7 +71,7 @@ async function collectShadowSampleTimesS(options: ShadowSampleScenarioOptions): 
 
   await orchestrator.process({
     activeClips: [nextClip],
-    timeUs: nextClip.startUs + timelineUs(options.localTimeUs),
+    timeTicks: nextClip.startTicks + timelineTicks(options.localTimeTicks),
     width: 1920,
     height: 1080,
     activeClipProcessor: processor,
@@ -101,14 +101,14 @@ describe('FrameSampleOrchestrator', () => {
       itemId: 'c1',
       sprite: { alpha: 1, blendMode: 'normal', visible: true },
       clipKind: 'video',
-      startUs: 0,
-      durationUs: 1_000_000,
+      startTicks: 0,
+      durationTicks: 1_000_000,
       sink: {},
     } as unknown as CompositorClip;
 
     await orchestrator.process({
       activeClips: [clip],
-      timeUs: 0,
+      timeTicks: 0,
       width: 1920,
       height: 1080,
       activeClipProcessor: processor,
@@ -150,17 +150,17 @@ describe('FrameSampleOrchestrator', () => {
       itemId: 'primary',
       sprite: { alpha: 1, blendMode: 'normal', visible: true },
       clipKind: 'video',
-      startUs: 1_000_000,
-      durationUs: 2_000_000,
-      sourceStartUs: 0,
-      sourceRangeDurationUs: 2_000_000,
+      startTicks: 1_000_000,
+      durationTicks: 2_000_000,
+      sourceStartTicks: 0,
+      sourceRangeDurationTicks: 2_000_000,
       speed: 1,
       sink: {},
     } as unknown as CompositorClip;
 
     await orchestrator.process({
       activeClips: [clip],
-      timeUs: 1_500_000,
+      timeTicks: 1_500_000,
       width: 1920,
       height: 1080,
       activeClipProcessor: processor,
@@ -178,7 +178,7 @@ describe('FrameSampleOrchestrator', () => {
     });
 
     expect(getVideoSampleForClip).toHaveBeenCalledWith(
-      expect.objectContaining({ timelineTimeUs: 1_500_000 }),
+      expect.objectContaining({ timelineTimeTicks: 1_500_000 }),
     );
   });
 
@@ -190,8 +190,8 @@ describe('FrameSampleOrchestrator', () => {
       itemId: 'text',
       sprite: { alpha: 1, blendMode: 'normal', visible: false },
       clipKind: 'text',
-      startUs: 0,
-      durationUs: 1_000_000,
+      startTicks: 0,
+      durationTicks: 1_000_000,
       text: 'Hello',
       textDirty: true,
       canvas: null,
@@ -209,7 +209,7 @@ describe('FrameSampleOrchestrator', () => {
 
     await orchestrator.process({
       activeClips: [textClip],
-      timeUs: 0,
+      timeTicks: 0,
       width: 1920,
       height: 1080,
       activeClipProcessor: processor,
@@ -233,10 +233,10 @@ describe('FrameSampleOrchestrator', () => {
   });
 
   it('tags blend-shadow sample requests with the render timeline time for cache priority', async () => {
-    const calls: Array<{ timelineTimeUs?: number }> = [];
+    const calls: Array<{ timelineTimeTicks?: number }> = [];
     const orchestrator = new FrameSampleOrchestrator();
     const processor = new TimelineActiveClipProcessor();
-    const getVideoSampleForClip = vi.fn(async (req: { timelineTimeUs?: number }) => {
+    const getVideoSampleForClip = vi.fn(async (req: { timelineTimeTicks?: number }) => {
       calls.push(req);
       return null;
     });
@@ -244,11 +244,11 @@ describe('FrameSampleOrchestrator', () => {
       itemId: 'prev',
       sprite: { alpha: 1, blendMode: 'normal', visible: true },
       clipKind: 'video',
-      startUs: 0,
-      durationUs: 1_000_000,
-      sourceStartUs: 0,
-      sourceRangeDurationUs: 1_000_000,
-      sourceDurationUs: 5_000_000,
+      startTicks: 0,
+      durationTicks: 1_000_000,
+      sourceStartTicks: 0,
+      sourceRangeDurationTicks: 1_000_000,
+      sourceDurationTicks: 5_000_000,
       speed: 1,
       sink: {},
     } as unknown as CompositorClip;
@@ -256,14 +256,14 @@ describe('FrameSampleOrchestrator', () => {
       itemId: 'next',
       sprite: { alpha: 1, blendMode: 'normal', visible: true },
       clipKind: 'video',
-      startUs: 1_000_000,
-      durationUs: 1_000_000,
-      sourceStartUs: 0,
-      sourceRangeDurationUs: 1_000_000,
-      sourceDurationUs: 5_000_000,
+      startTicks: 1_000_000,
+      durationTicks: 1_000_000,
+      sourceStartTicks: 0,
+      sourceRangeDurationTicks: 1_000_000,
+      sourceDurationTicks: 5_000_000,
       speed: 1,
       transitionIn: {
-        durationUs: 500_000,
+        durationTicks: 500_000,
         mode: 'adjacent',
         type: 'fade',
       },
@@ -272,7 +272,7 @@ describe('FrameSampleOrchestrator', () => {
 
     await orchestrator.process({
       activeClips: [nextClip],
-      timeUs: 1_100_000,
+      timeTicks: 1_100_000,
       width: 1920,
       height: 1080,
       activeClipProcessor: processor,
@@ -290,7 +290,7 @@ describe('FrameSampleOrchestrator', () => {
     });
 
     expect(calls).toEqual(
-      expect.arrayContaining([expect.objectContaining({ timelineTimeUs: 1_100_000 })]),
+      expect.arrayContaining([expect.objectContaining({ timelineTimeTicks: 1_100_000 })]),
     );
   });
 
@@ -308,17 +308,17 @@ describe('FrameSampleOrchestrator', () => {
       itemId: 'reverse',
       sprite: { alpha: 1, blendMode: 'normal', visible: true },
       clipKind: 'video',
-      startUs: 0,
-      durationUs: timelineUs(1_000_000),
-      sourceStartUs: timelineUs(2_000_000),
-      sourceRangeDurationUs: timelineUs(1_000_000),
+      startTicks: 0,
+      durationTicks: timelineTicks(1_000_000),
+      sourceStartTicks: timelineTicks(2_000_000),
+      sourceRangeDurationTicks: timelineTicks(1_000_000),
       speed: -1,
       sink: {},
     } as unknown as CompositorClip;
 
     await orchestrator.process({
       activeClips: [clip],
-      timeUs: 0,
+      timeTicks: 0,
       width: 1920,
       height: 1080,
       activeClipProcessor: processor,
@@ -336,7 +336,7 @@ describe('FrameSampleOrchestrator', () => {
     });
 
     const expectedSampleS =
-      (timelineUs(2_000_000) + clampToLastReadableSourceTicks(timelineUs(1_000_000))) /
+      (timelineTicks(2_000_000) + clampToLastReadableSourceTicks(timelineTicks(1_000_000))) /
       TICKS_PER_SECOND;
     expect(getVideoSampleForClip).toHaveBeenCalledWith(
       expect.objectContaining({ sampleTimeS: expectedSampleS }),
@@ -357,10 +357,10 @@ describe('FrameSampleOrchestrator', () => {
       itemId: 'forward',
       sprite: { alpha: 1, blendMode: 'normal', visible: true },
       clipKind: 'video',
-      startUs: 0,
-      durationUs: timelineUs(1_000_001),
-      sourceStartUs: timelineUs(2_000_000),
-      sourceRangeDurationUs: timelineUs(1_000_000),
+      startTicks: 0,
+      durationTicks: timelineTicks(1_000_001),
+      sourceStartTicks: timelineTicks(2_000_000),
+      sourceRangeDurationTicks: timelineTicks(1_000_000),
       speed: 1,
       frameRate: 30,
       sink: {},
@@ -368,7 +368,7 @@ describe('FrameSampleOrchestrator', () => {
 
     await orchestrator.process({
       activeClips: [clip],
-      timeUs: timelineUs(1_000_000),
+      timeTicks: timelineTicks(1_000_000),
       width: 1920,
       height: 1080,
       activeClipProcessor: processor,
@@ -388,7 +388,7 @@ describe('FrameSampleOrchestrator', () => {
     expect(getVideoSampleForClip).toHaveBeenCalledWith(
       expect.objectContaining({
         sampleTimeS:
-          (timelineUs(2_000_000) + clampToLastReadableSourceTicks(timelineUs(1_000_000), 30)) /
+          (timelineTicks(2_000_000) + clampToLastReadableSourceTicks(timelineTicks(1_000_000), 30)) /
           TICKS_PER_SECOND,
       }),
     );
@@ -401,8 +401,8 @@ describe('FrameSampleOrchestrator', () => {
       itemId: 'good',
       sprite: { alpha: 1, blendMode: 'normal', visible: true },
       clipKind: 'video',
-      startUs: 0,
-      durationUs: 1_000_000,
+      startTicks: 0,
+      durationTicks: 1_000_000,
       sink: {},
     } as unknown as CompositorClip;
 
@@ -412,7 +412,7 @@ describe('FrameSampleOrchestrator', () => {
 
     await orchestrator.process({
       activeClips: [goodClip],
-      timeUs: 0,
+      timeTicks: 0,
       width: 1920,
       height: 1080,
       activeClipProcessor: processor,
@@ -440,46 +440,46 @@ describe('FrameSampleOrchestrator', () => {
 
 describe('FrameSampleOrchestrator shadow sampling during adjacent transition', () => {
   it('maps timeline delta to source delta via |speed| for forward prev clip', async () => {
-    const localTimeUs = 200_000;
+    const localTimeTicks = 200_000;
     const prevSpeed = 2;
     const calls = await collectShadowSampleTimesS({
       prevSpeed,
-      localTimeUs,
+      localTimeTicks,
     });
 
     // Two requests: shadow for prev (overrun beyond sourceRangeEnd) + primary
     // for next clip. We only assert the shadow request — primary is part of
     // the next clip's flow and tested elsewhere.
-    const expectedSampleUs = 2_000_000 + 1_000_000 + Math.round(localTimeUs * prevSpeed); // 3_400_000
-    expect(calls).toContain(expectedSampleUs / 1_000_000);
+    const expectedSampleTicks = 2_000_000 + 1_000_000 + Math.round(localTimeTicks * prevSpeed); // 3_400_000
+    expect(calls).toContain(expectedSampleTicks / 1_000_000);
   });
 
   it('honours |speed| < 1 (slow-motion) by reducing the shadow source delta', async () => {
-    const localTimeUs = 400_000;
+    const localTimeTicks = 400_000;
     const prevSpeed = 0.5;
     const calls = await collectShadowSampleTimesS({
       prevSpeed,
-      localTimeUs,
+      localTimeTicks,
     });
 
-    const expectedSampleUs = 3_000_000 + Math.round(localTimeUs * prevSpeed); // 3_200_000
-    expect(calls).toContain(expectedSampleUs / 1_000_000);
+    const expectedSampleTicks = 3_000_000 + Math.round(localTimeTicks * prevSpeed); // 3_200_000
+    expect(calls).toContain(expectedSampleTicks / 1_000_000);
   });
 
   it('reverses the shadow direction for negative-speed prev clip', async () => {
-    const localTimeUs = 250_000;
+    const localTimeTicks = 250_000;
     const prevSpeed = -2;
     const calls = await collectShadowSampleTimesS({
       prevSpeed,
-      localTimeUs,
+      localTimeTicks,
       // Leading handle 2s, trailing handle 7s; reversed consumes the leading.
-      prevSourceStartUs: 2_000_000,
-      prevSourceRangeDurationUs: 1_000_000,
-      prevSourceDurationUs: 10_000_000,
+      prevSourceStartTicks: 2_000_000,
+      prevSourceRangeDurationTicks: 1_000_000,
+      prevSourceDurationTicks: 10_000_000,
     });
 
-    const expectedSampleUs = 2_000_000 - Math.round(localTimeUs * Math.abs(prevSpeed)); // 1_500_000
-    expect(calls).toContain(expectedSampleUs / 1_000_000);
+    const expectedSampleTicks = 2_000_000 - Math.round(localTimeTicks * Math.abs(prevSpeed)); // 1_500_000
+    expect(calls).toContain(expectedSampleTicks / 1_000_000);
   });
 
   it('clamps the shadow sample to the last readable source frame', async () => {
@@ -489,23 +489,23 @@ describe('FrameSampleOrchestrator shadow sampling during adjacent transition', (
     const frameRate = 24;
     const calls = await collectShadowSampleTimesS({
       prevSpeed: 4,
-      localTimeUs: 250_000,
-      prevSourceStartUs: 0,
-      prevSourceRangeDurationUs: 1_000_000,
-      prevSourceDurationUs: 5_000_000,
+      localTimeTicks: 250_000,
+      prevSourceStartTicks: 0,
+      prevSourceRangeDurationTicks: 1_000_000,
+      prevSourceDurationTicks: 5_000_000,
       prevFrameRate: frameRate,
     });
 
-    const lastReadableUs = clampToLastReadableSourceTicks(timelineUs(5_000_000), frameRate);
+    const lastReadableTicks = clampToLastReadableSourceTicks(timelineTicks(5_000_000), frameRate);
     // 4× speed × 250ms = 1s past sourceRangeEnd → would land at 2s; the
-    // sample must instead be clamped to lastReadableUs (~4.979s).
+    // sample must instead be clamped to lastReadableTicks (~4.979s).
     const candidate =
-      (timelineUs(1_000_000) + Math.round(timelineUs(250_000) * 4)) / TICKS_PER_SECOND;
+      (timelineTicks(1_000_000) + Math.round(timelineTicks(250_000) * 4)) / TICKS_PER_SECOND;
     expect(candidate).toBeGreaterThan(0);
-    expect(calls).toContain(Math.min(candidate, lastReadableUs / TICKS_PER_SECOND));
+    expect(calls).toContain(Math.min(candidate, lastReadableTicks / TICKS_PER_SECOND));
     // Sanity: the actual call should not exceed the last readable frame.
     for (const sampleS of calls) {
-      expect(sampleS).toBeLessThanOrEqual(lastReadableUs / TICKS_PER_SECOND);
+      expect(sampleS).toBeLessThanOrEqual(lastReadableTicks / TICKS_PER_SECOND);
     }
   });
 
@@ -515,23 +515,23 @@ describe('FrameSampleOrchestrator shadow sampling during adjacent transition', (
     const frameRate = 30;
     const calls = await collectShadowSampleTimesS({
       prevSpeed: 1,
-      localTimeUs: 200_000,
-      prevSourceStartUs: 0,
-      prevSourceRangeDurationUs: 5_000_000,
-      prevSourceDurationUs: 5_000_000,
+      localTimeTicks: 200_000,
+      prevSourceStartTicks: 0,
+      prevSourceRangeDurationTicks: 5_000_000,
+      prevSourceDurationTicks: 5_000_000,
       prevFrameRate: frameRate,
     });
 
     // Production clamps the shadow to the last readable source frame in the
     // tick domain; compute the expected using the same tick-based inputs.
-    const lastReadableUs = clampToLastReadableSourceTicks(timelineUs(5_000_000), frameRate);
+    const lastReadableTicks = clampToLastReadableSourceTicks(timelineTicks(5_000_000), frameRate);
     // The "small handle" path uses (sourceRangeEnd - 1ms) but clamped to the
     // last readable source position; with frameRate=30 the half-frame guard
-    // is larger than 1ms so we use the lastReadableUs path.
-    const sampleUs = Math.max(
+    // is larger than 1ms so we use the lastReadableTicks path.
+    const sampleTicks = Math.max(
       0,
-      Math.min(lastReadableUs, timelineUs(5_000_000) - timelineUs(1_000)),
+      Math.min(lastReadableTicks, timelineTicks(5_000_000) - timelineTicks(1_000)),
     );
-    expect(calls).toContain(sampleUs / TICKS_PER_SECOND);
+    expect(calls).toContain(sampleTicks / TICKS_PER_SECOND);
   });
 });

@@ -5,7 +5,7 @@ import {
   sanitizeBlendMode,
   sanitizeSourceOrientation,
   sanitizeAnimations,
-  clampAudioFadeUs,
+  clampAudioFadeTicks,
   sanitizeTransform,
   sanitizeTextStyle,
 } from '~/timeline/commands/item/clip-property-sanitizers';
@@ -46,42 +46,42 @@ describe('sanitizeAnimations', () => {
   it('normalizes invalid easing to linear before crossing renderer boundaries', () => {
     const result = sanitizeAnimations({
       opacity: {
-        keyframes: [{ tUs: 10, value: 0.5, easing: 'snappy' }],
+        keyframes: [{ tTicks: 10, value: 0.5, easing: 'snappy' }],
       },
     });
-    expect(result?.opacity?.keyframes).toEqual([{ tUs: 10, value: 0.5, easing: 'linear' }]);
+    expect(result?.opacity?.keyframes).toEqual([{ tTicks: 10, value: 0.5, easing: 'linear' }]);
   });
 
   it('keeps well-formed effect-param paths', () => {
     const result = sanitizeAnimations({
       'effect.blur.radius': {
-        keyframes: [{ tUs: 10, value: 0.5, easing: 'linear' }],
+        keyframes: [{ tTicks: 10, value: 0.5, easing: 'linear' }],
       },
     });
     expect(result?.['effect.blur.radius']?.keyframes).toEqual([
-      { tUs: 10, value: 0.5, easing: 'linear' },
+      { tTicks: 10, value: 0.5, easing: 'linear' },
     ]);
   });
 
   it('drops unknown / malformed animation paths', () => {
     const result = sanitizeAnimations({
-      'not.a.real.path': { keyframes: [{ tUs: 10, value: 0.5, easing: 'linear' }] },
-      'effect.': { keyframes: [{ tUs: 0, value: 1, easing: 'linear' }] },
+      'not.a.real.path': { keyframes: [{ tTicks: 10, value: 0.5, easing: 'linear' }] },
+      'effect.': { keyframes: [{ tTicks: 0, value: 1, easing: 'linear' }] },
     });
     expect(result).toBeUndefined();
   });
 });
 
-describe('clampAudioFadeUs', () => {
+describe('clampAudioFadeTicks', () => {
   it('returns undefined for undefined input', () => {
-    expect(clampAudioFadeUs(undefined, 1000)).toBeUndefined();
+    expect(clampAudioFadeTicks(undefined, 1000)).toBeUndefined();
   });
 
-  it('rounds and clamps to [0, maxUs]', () => {
-    expect(clampAudioFadeUs(500.4, 1000)).toBe(500);
-    expect(clampAudioFadeUs(-10, 1000)).toBe(0);
-    expect(clampAudioFadeUs(5000, 1000)).toBe(1000);
-    expect(clampAudioFadeUs('bad', 1000)).toBe(0);
+  it('rounds and clamps to [0, maxTicks]', () => {
+    expect(clampAudioFadeTicks(500.4, 1000)).toBe(500);
+    expect(clampAudioFadeTicks(-10, 1000)).toBe(0);
+    expect(clampAudioFadeTicks(5000, 1000)).toBe(1000);
+    expect(clampAudioFadeTicks('bad', 1000)).toBe(0);
   });
 });
 

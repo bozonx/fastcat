@@ -1,6 +1,6 @@
 /** @vitest-environment node */
 import { describe, it, expect } from 'vitest';
-import { timelineUs } from '../utils/timeline-time';
+import { timelineTicks } from '../utils/timeline-time';
 import { TICKS_PER_SECOND } from '~/utils/time';
 import { addClipToTrack, addVirtualClipToTrack } from '~/timeline/commands/item/add';
 import type { TimelineDocument } from '~/timeline/types';
@@ -16,60 +16,60 @@ function makeDoc(): TimelineDocument {
 }
 
 describe('addClipToTrack', () => {
-  it('quantizes startUs and durationUs to frame grid', () => {
+  it('quantizes startTicks and durationTicks to frame grid', () => {
     const doc = makeDoc();
     const result = addClipToTrack(doc, {
       type: 'add_clip_to_track',
       trackId: 'v1',
       name: 'clip',
       path: 'video/a.mp4',
-      startUs: timelineUs(50_000),
-      durationUs: timelineUs(50_000),
+      startTicks: timelineTicks(50_000),
+      durationTicks: timelineTicks(50_000),
     });
 
     const items = result.next.tracks[0].items;
     const clip = items.find((it: any) => it.kind === 'clip');
     expect(clip).toBeDefined();
     // 50_000us at 30fps is between 1 and 2 frames; rounding gives two exact frames.
-    expect(clip.timelineRange.startUs).toBe((2 * TICKS_PER_SECOND) / 30);
-    expect(clip.timelineRange.durationUs).toBe((2 * TICKS_PER_SECOND) / 30);
+    expect(clip.timelineRange.startTicks).toBe((2 * TICKS_PER_SECOND) / 30);
+    expect(clip.timelineRange.durationTicks).toBe((2 * TICKS_PER_SECOND) / 30);
   });
 
-  it('keeps free startUs and durationUs when frame quantization is disabled', () => {
+  it('keeps free startTicks and durationTicks when frame quantization is disabled', () => {
     const doc = makeDoc();
     const result = addClipToTrack(doc, {
       type: 'add_clip_to_track',
       trackId: 'v1',
       name: 'clip',
       path: 'video/a.mp4',
-      startUs: timelineUs(50_000),
-      durationUs: timelineUs(50_001),
+      startTicks: timelineTicks(50_000),
+      durationTicks: timelineTicks(50_001),
       quantizeToFrames: false,
     });
 
     const clip = result.next.tracks[0].items.find((it: any) => it.kind === 'clip');
     expect(clip?.timelineRange).toEqual({
-      startUs: timelineUs(50_000),
-      durationUs: timelineUs(50_001),
+      startTicks: timelineTicks(50_000),
+      durationTicks: timelineTicks(50_001),
     });
   });
 
-  it('keeps virtual clip free startUs and durationUs when frame quantization is disabled', () => {
+  it('keeps virtual clip free startTicks and durationTicks when frame quantization is disabled', () => {
     const doc = makeDoc();
     const result = addVirtualClipToTrack(doc, {
       type: 'add_virtual_clip_to_track',
       trackId: 'v1',
       clipType: 'text',
       name: 'text',
-      startUs: timelineUs(50_000),
-      durationUs: timelineUs(50_001),
+      startTicks: timelineTicks(50_000),
+      durationTicks: timelineTicks(50_001),
       quantizeToFrames: false,
     });
 
     const clip = result.next.tracks[0].items.find((it: any) => it.kind === 'clip');
     expect(clip?.timelineRange).toEqual({
-      startUs: timelineUs(50_000),
-      durationUs: timelineUs(50_001),
+      startTicks: timelineTicks(50_000),
+      durationTicks: timelineTicks(50_001),
     });
   });
 
@@ -80,8 +80,8 @@ describe('addClipToTrack', () => {
       trackId: 'v1',
       name: 'first',
       path: 'video/a.mp4',
-      startUs: 0,
-      durationUs: timelineUs(1_000_000),
+      startTicks: 0,
+      durationTicks: timelineTicks(1_000_000),
     });
 
     expect(() =>
@@ -90,8 +90,8 @@ describe('addClipToTrack', () => {
         trackId: 'v1',
         name: 'second',
         path: 'video/b.mp4',
-        startUs: timelineUs(500_000),
-        durationUs: timelineUs(1_000_000),
+        startTicks: timelineTicks(500_000),
+        durationTicks: timelineTicks(1_000_000),
       }),
     ).toThrow('Item overlaps with another item');
   });
@@ -103,8 +103,8 @@ describe('addClipToTrack', () => {
       trackId: 'v1',
       name: 'first',
       path: 'video/a.mp4',
-      startUs: 0,
-      durationUs: timelineUs(1_000_000),
+      startTicks: 0,
+      durationTicks: timelineTicks(1_000_000),
     });
 
     expect(() =>
@@ -113,8 +113,8 @@ describe('addClipToTrack', () => {
         trackId: 'v1',
         name: 'second',
         path: 'video/b.mp4',
-        startUs: timelineUs(1_000_000),
-        durationUs: timelineUs(1_000_000),
+        startTicks: timelineTicks(1_000_000),
+        durationTicks: timelineTicks(1_000_000),
       }),
     ).not.toThrow();
   });
@@ -125,8 +125,8 @@ describe('addClipToTrack', () => {
       trackId: 'v1',
       name: 'existing',
       path: 'video/existing.mp4',
-      startUs: timelineUs(2_000_000),
-      durationUs: timelineUs(4_000_000),
+      startTicks: timelineTicks(2_000_000),
+      durationTicks: timelineTicks(4_000_000),
       quantizeToFrames: false,
     });
 
@@ -135,9 +135,9 @@ describe('addClipToTrack', () => {
       trackId: 'v1',
       name: 'dropped',
       path: 'image/dropped.png',
-      startUs: 0,
-      durationUs: timelineUs(4_000_000),
-      sourceDurationUs: timelineUs(4_000_000),
+      startTicks: 0,
+      durationTicks: timelineTicks(4_000_000),
+      sourceDurationTicks: timelineTicks(4_000_000),
       isImage: true,
       pseudo: true,
       quantizeToFrames: false,
@@ -148,11 +148,11 @@ describe('addClipToTrack', () => {
     const dropped = clips.find((it: any) => it.name === 'dropped');
 
     expect(existing?.timelineRange).toEqual({
-      startUs: timelineUs(4_000_000),
-      durationUs: timelineUs(2_000_000),
+      startTicks: timelineTicks(4_000_000),
+      durationTicks: timelineTicks(2_000_000),
     });
-    expect(dropped?.timelineRange).toEqual({ startUs: 0, durationUs: timelineUs(4_000_000) });
-    expect(dropped?.sourceRange).toEqual({ startUs: 0, durationUs: timelineUs(4_000_000) });
+    expect(dropped?.timelineRange).toEqual({ startTicks: 0, durationTicks: timelineTicks(4_000_000) });
+    expect(dropped?.sourceRange).toEqual({ startTicks: 0, durationTicks: timelineTicks(4_000_000) });
   });
 
   it('allows a new pseudo clip to start inside an existing clip and cuts the existing clip', () => {
@@ -161,8 +161,8 @@ describe('addClipToTrack', () => {
       trackId: 'v1',
       name: 'existing',
       path: 'video/existing.mp4',
-      startUs: 0,
-      durationUs: timelineUs(2_000_000),
+      startTicks: 0,
+      durationTicks: timelineTicks(2_000_000),
       quantizeToFrames: false,
     });
 
@@ -171,9 +171,9 @@ describe('addClipToTrack', () => {
       trackId: 'v1',
       name: 'dropped',
       path: 'video/dropped.mp4',
-      startUs: timelineUs(1_000_000),
-      durationUs: timelineUs(4_000_000),
-      sourceDurationUs: timelineUs(4_000_000),
+      startTicks: timelineTicks(1_000_000),
+      durationTicks: timelineTicks(4_000_000),
+      sourceDurationTicks: timelineTicks(4_000_000),
       pseudo: true,
       quantizeToFrames: false,
     });
@@ -182,11 +182,11 @@ describe('addClipToTrack', () => {
     const existing = clips.find((it: any) => it.name === 'existing');
     const dropped = clips.find((it: any) => it.name === 'dropped');
 
-    expect(existing?.timelineRange).toEqual({ startUs: 0, durationUs: timelineUs(1_000_000) });
+    expect(existing?.timelineRange).toEqual({ startTicks: 0, durationTicks: timelineTicks(1_000_000) });
     expect(dropped?.timelineRange).toEqual({
-      startUs: timelineUs(1_000_000),
-      durationUs: timelineUs(4_000_000),
+      startTicks: timelineTicks(1_000_000),
+      durationTicks: timelineTicks(4_000_000),
     });
-    expect(dropped?.sourceRange).toEqual({ startUs: 0, durationUs: timelineUs(4_000_000) });
+    expect(dropped?.sourceRange).toEqual({ startTicks: 0, durationTicks: timelineTicks(4_000_000) });
   });
 });

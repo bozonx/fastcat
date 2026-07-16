@@ -8,12 +8,12 @@ function makeClip(overrides: Partial<CompositorClip> = {}): CompositorClip {
     itemId: 'clip-1',
     clipKind: 'video',
     layer: 0,
-    startUs: 0,
-    endUs: 1_000_000,
-    durationUs: 1_000_000,
-    sourceStartUs: 0,
-    sourceRangeDurationUs: 1_000_000,
-    sourceDurationUs: 1_000_000,
+    startTicks: 0,
+    endTicks: 1_000_000,
+    durationTicks: 1_000_000,
+    sourceStartTicks: 0,
+    sourceRangeDurationTicks: 1_000_000,
+    sourceDurationTicks: 1_000_000,
     speed: 1,
     sprite: { visible: true, alpha: 1, blendMode: 'normal' } as any,
     transitionSprite: null,
@@ -114,7 +114,7 @@ describe('TransitionRenderer.applyShaderTransitions', () => {
         opacity: 1,
         progress: 0.5,
         manifest: { renderMode: 'shader', toTransitionSpec: vi.fn() },
-        transition: { type: 'fade', mode: 'adjacent', durationUs: 500_000 },
+        transition: { type: 'fade', mode: 'adjacent', durationTicks: 500_000 },
       }),
       computeRunner: { isReady: () => false, applyTransition: vi.fn() } as any,
     });
@@ -132,7 +132,7 @@ describe('TransitionRenderer.applyShaderTransitions', () => {
         opacity: 1,
         progress: 0.5,
         manifest: { renderMode: 'canvas' },
-        transition: { type: 'fade', mode: 'adjacent', durationUs: 500_000 },
+        transition: { type: 'fade', mode: 'adjacent', durationTicks: 500_000 },
       }),
     });
     await renderer.applyShaderTransitions([clip], 500_000, params);
@@ -147,7 +147,7 @@ describe('TransitionRenderer.applyShaderTransitions', () => {
         opacity: 1,
         progress: 0.5,
         manifest: { renderMode: 'shader' },
-        transition: { type: 'fade', mode: 'adjacent', durationUs: 500_000 },
+        transition: { type: 'fade', mode: 'adjacent', durationTicks: 500_000 },
       }),
     });
     await renderer.applyShaderTransitions([clip], 500_000, params);
@@ -162,7 +162,7 @@ describe('TransitionRenderer.applyShaderTransitions', () => {
         opacity: 1,
         progress: 0.5,
         manifest: { renderMode: 'shader', toTransitionSpec: vi.fn() },
-        transition: { type: 'fade', mode: 'unsupported', durationUs: 500_000 },
+        transition: { type: 'fade', mode: 'unsupported', durationTicks: 500_000 },
       }),
     });
     await renderer.applyShaderTransitions([clip], 500_000, params);

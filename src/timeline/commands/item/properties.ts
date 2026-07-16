@@ -26,7 +26,7 @@ import {
   sanitizeTransform,
   sanitizeAnimations,
   sanitizeTextStyle,
-  clampAudioFadeUs,
+  clampAudioFadeTicks,
 } from './clip-property-sanitizers';
 import { applyClipSpeedChange } from './clip-speed';
 
@@ -204,26 +204,26 @@ export function updateClipProperties(
 
   // Fade values are stored in timeline ticks.
   // Clamp to the current clip duration to avoid invalid envelopes.
-  if ('audioFadeInUs' in nextProps) {
-    const clipDurationUs = Math.max(0, Math.round(item.timelineRange.durationUs));
-    const oppFadeUs = Math.max(0, Math.round(item.audioFadeOutUs ?? 0));
-    const maxUs = Math.max(0, clipDurationUs - oppFadeUs);
-    const safe = clampAudioFadeUs(nextProps['audioFadeInUs'], maxUs);
+  if ('audioFadeInTicks' in nextProps) {
+    const clipDurationTicks = Math.max(0, Math.round(item.timelineRange.durationTicks));
+    const oppFadeTicks = Math.max(0, Math.round(item.audioFadeOutTicks ?? 0));
+    const maxTicks = Math.max(0, clipDurationTicks - oppFadeTicks);
+    const safe = clampAudioFadeTicks(nextProps['audioFadeInTicks'], maxTicks);
     if (safe === undefined) {
-      delete nextProps['audioFadeInUs'];
+      delete nextProps['audioFadeInTicks'];
     } else {
-      nextProps['audioFadeInUs'] = safe;
+      nextProps['audioFadeInTicks'] = safe;
     }
   }
-  if ('audioFadeOutUs' in nextProps) {
-    const clipDurationUs = Math.max(0, Math.round(item.timelineRange.durationUs));
-    const oppFadeUs = Math.max(0, Math.round(item.audioFadeInUs ?? 0));
-    const maxUs = Math.max(0, clipDurationUs - oppFadeUs);
-    const safe = clampAudioFadeUs(nextProps['audioFadeOutUs'], maxUs);
+  if ('audioFadeOutTicks' in nextProps) {
+    const clipDurationTicks = Math.max(0, Math.round(item.timelineRange.durationTicks));
+    const oppFadeTicks = Math.max(0, Math.round(item.audioFadeInTicks ?? 0));
+    const maxTicks = Math.max(0, clipDurationTicks - oppFadeTicks);
+    const safe = clampAudioFadeTicks(nextProps['audioFadeOutTicks'], maxTicks);
     if (safe === undefined) {
-      delete nextProps['audioFadeOutUs'];
+      delete nextProps['audioFadeOutTicks'];
     } else {
-      nextProps['audioFadeOutUs'] = safe;
+      nextProps['audioFadeOutTicks'] = safe;
     }
   }
   if ('audioFadeInCurve' in nextProps) {
@@ -263,7 +263,7 @@ export function updateClipTransition(
 
   function coerceTransition(raw: unknown): {
     type: string;
-    durationUs: number;
+    durationTicks: number;
     mode: TransitionMode;
     curve: TransitionCurve;
     params?: Record<string, unknown>;
@@ -272,12 +272,12 @@ export function updateClipTransition(
     if (!raw) return null;
     const rawObj = raw as Record<string, unknown>;
     const type = typeof rawObj.type === 'string' ? rawObj.type : '';
-    const durationUs = Number(rawObj.durationUs);
+    const durationTicks = Number(rawObj.durationTicks);
     if (!type) return null;
-    if (!Number.isFinite(durationUs) || durationUs <= 0) {
+    if (!Number.isFinite(durationTicks) || durationTicks <= 0) {
       return {
         type,
-        durationUs: 0,
+        durationTicks: 0,
         mode: normalizeTransitionMode(rawObj.mode),
         curve: normalizeTransitionCurve(rawObj.curve),
         params: normalizeTransitionParams(
@@ -289,7 +289,7 @@ export function updateClipTransition(
     }
     return {
       type,
-      durationUs: Math.max(0, Math.round(durationUs)),
+      durationTicks: Math.max(0, Math.round(durationTicks)),
       mode: normalizeTransitionMode(rawObj.mode),
       curve: normalizeTransitionCurve(rawObj.curve),
       params: normalizeTransitionParams(type, rawObj.params as Record<string, unknown> | undefined),
@@ -299,20 +299,20 @@ export function updateClipTransition(
 
   const patch: Record<string, unknown> = {};
 
-  const clipDurationUs = Math.max(0, Math.round(item.timelineRange.durationUs));
+  const clipDurationTicks = Math.max(0, Math.round(item.timelineRange.durationTicks));
 
   // Existing transitions on the *other* edge cap how long this edge can grow.
   // Without this, setting a long fade-in on a short clip with an existing
   // fade-out drops the user's value through the global normalization pass and
   // also shrinks the unrelated opposite edge — surprising behaviour.
-  const existingInUs = Math.max(0, Math.round(item.transitionIn?.durationUs ?? 0));
-  const existingOutUs = Math.max(0, Math.round(item.transitionOut?.durationUs ?? 0));
+  const existingInTicks = Math.max(0, Math.round(item.transitionIn?.durationTicks ?? 0));
+  const existingOutTicks = Math.max(0, Math.round(item.transitionOut?.durationTicks ?? 0));
 
-  function clampTransitionUs(input: {
+  function clampTransitionTicks(input: {
     edge: 'in' | 'out';
     requested: {
       type: string;
-      durationUs: number;
+      durationTicks: number;
       mode: TransitionMode;
       curve: TransitionCurve;
       params?: Record<string, unknown>;
@@ -320,23 +320,23 @@ export function updateClipTransition(
     };
   }): {
     type: string;
-    durationUs: number;
+    durationTicks: number;
     mode: TransitionMode;
     curve: TransitionCurve;
     params?: Record<string, unknown>;
     isOverridden?: boolean;
   } {
-    const oppositeUs = input.edge === 'in' ? existingOutUs : existingInUs;
-    const maxUs = Math.max(0, clipDurationUs - oppositeUs);
+    const oppositeTicks = input.edge === 'in' ? existingOutTicks : existingInTicks;
+    const maxTicks = Math.max(0, clipDurationTicks - oppositeTicks);
     return {
       ...input.requested,
-      durationUs: Math.min(Math.max(0, Math.round(input.requested.durationUs)), maxUs),
+      durationTicks: Math.min(Math.max(0, Math.round(input.requested.durationTicks)), maxTicks),
     };
   }
 
   let requestedIn = 'transitionIn' in cmd ? coerceTransition(cmd.transitionIn) : undefined;
   if (requestedIn) {
-    requestedIn = clampTransitionUs({
+    requestedIn = clampTransitionTicks({
       edge: 'in',
       requested: requestedIn,
     });
@@ -344,7 +344,7 @@ export function updateClipTransition(
 
   let requestedOut = 'transitionOut' in cmd ? coerceTransition(cmd.transitionOut) : undefined;
   if (requestedOut) {
-    requestedOut = clampTransitionUs({
+    requestedOut = clampTransitionTicks({
       edge: 'out',
       requested: requestedOut,
     });
@@ -362,7 +362,7 @@ export function updateClipTransition(
     const nextItemsRaw = t.items.map((it) =>
       it.id === item.id ? ({ ...it, ...patch } as TimelineTrackItem) : it,
     );
-    nextItemsRaw.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
+    nextItemsRaw.sort((a, b) => a.timelineRange.startTicks - b.timelineRange.startTicks);
     const nextItems = autoAdaptClipEdgeDurations(
       normalizeGaps(doc, t.id, nextItemsRaw, { quantizeToFrames: false }),
     );

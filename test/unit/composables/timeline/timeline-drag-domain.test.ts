@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { TimelineDocument, TimelineTrack, TimelineMarker } from '~/timeline/types';
 import {
-  computeSnapTargetsUs,
+  computeSnapTargetsTicks,
   getSelectedMovableItemIds,
   buildMultiItemMoves,
 } from '~/composables/timeline/timeline-drag-domain';
@@ -12,8 +12,8 @@ function clip(overrides: Record<string, unknown> = {}): any {
     kind: 'clip',
     clipType: 'media',
     trackId: 'v1',
-    timelineRange: { startUs: 0, durationUs: 5_000_000 },
-    sourceRange: { startUs: 0, durationUs: 5_000_000 },
+    timelineRange: { startTicks: 0, durationTicks: 5_000_000 },
+    sourceRange: { startTicks: 0, durationTicks: 5_000_000 },
     ...overrides,
   };
 }
@@ -30,16 +30,16 @@ function track(items: any[], overrides: Record<string, unknown> = {}): TimelineT
 }
 
 function marker(overrides: Record<string, unknown> = {}): TimelineMarker {
-  return { id: 'm1', timeUs: 1_000_000, text: '', ...overrides } as TimelineMarker;
+  return { id: 'm1', timeTicks: 1_000_000, text: '', ...overrides } as TimelineMarker;
 }
 
-describe('computeSnapTargetsUs', () => {
+describe('computeSnapTargetsTicks', () => {
   it('returns empty array when nothing is included', () => {
-    const result = computeSnapTargetsUs({
+    const result = computeSnapTargetsTicks({
       tracks: [],
       includeTimelineStart: false,
-      includeTimelineEndUs: null,
-      includePlayheadUs: null,
+      includeTimelineEndTicks: null,
+      includePlayheadTicks: null,
       includeMarkers: false,
       markers: [],
       includeClips: false,
@@ -48,11 +48,11 @@ describe('computeSnapTargetsUs', () => {
   });
 
   it('includes timeline start and end', () => {
-    const result = computeSnapTargetsUs({
+    const result = computeSnapTargetsTicks({
       tracks: [],
       includeTimelineStart: true,
-      includeTimelineEndUs: 10_000_000,
-      includePlayheadUs: null,
+      includeTimelineEndTicks: 10_000_000,
+      includePlayheadTicks: null,
       includeMarkers: false,
       markers: [],
       includeClips: false,
@@ -61,11 +61,11 @@ describe('computeSnapTargetsUs', () => {
   });
 
   it('includes playhead position', () => {
-    const result = computeSnapTargetsUs({
+    const result = computeSnapTargetsTicks({
       tracks: [],
       includeTimelineStart: false,
-      includeTimelineEndUs: null,
-      includePlayheadUs: 3_500_000,
+      includeTimelineEndTicks: null,
+      includePlayheadTicks: 3_500_000,
       includeMarkers: false,
       markers: [],
       includeClips: false,
@@ -74,15 +74,15 @@ describe('computeSnapTargetsUs', () => {
   });
 
   it('includes marker time and marker end when duration is set', () => {
-    const result = computeSnapTargetsUs({
+    const result = computeSnapTargetsTicks({
       tracks: [],
       includeTimelineStart: false,
-      includeTimelineEndUs: null,
-      includePlayheadUs: null,
+      includeTimelineEndTicks: null,
+      includePlayheadTicks: null,
       includeMarkers: true,
       markers: [
-        marker({ id: 'm1', timeUs: 1_000_000, durationUs: 500_000 }),
-        marker({ id: 'm2', timeUs: 3_000_000 }),
+        marker({ id: 'm1', timeTicks: 1_000_000, durationTicks: 500_000 }),
+        marker({ id: 'm2', timeTicks: 3_000_000 }),
       ],
       includeClips: false,
     });
@@ -90,57 +90,57 @@ describe('computeSnapTargetsUs', () => {
   });
 
   it('excludes marker by excludeMarkerId', () => {
-    const result = computeSnapTargetsUs({
+    const result = computeSnapTargetsTicks({
       tracks: [],
       includeTimelineStart: false,
-      includeTimelineEndUs: null,
-      includePlayheadUs: null,
+      includeTimelineEndTicks: null,
+      includePlayheadTicks: null,
       includeMarkers: true,
-      markers: [marker({ id: 'm1', timeUs: 1_000_000 }), marker({ id: 'm2', timeUs: 3_000_000 })],
+      markers: [marker({ id: 'm1', timeTicks: 1_000_000 }), marker({ id: 'm2', timeTicks: 3_000_000 })],
       excludeMarkerId: 'm1',
       includeClips: false,
     });
     expect(result).toEqual([3_000_000]);
   });
 
-  it('skips markers with non-finite timeUs', () => {
-    const result = computeSnapTargetsUs({
+  it('skips markers with non-finite timeTicks', () => {
+    const result = computeSnapTargetsTicks({
       tracks: [],
       includeTimelineStart: false,
-      includeTimelineEndUs: null,
-      includePlayheadUs: null,
+      includeTimelineEndTicks: null,
+      includePlayheadTicks: null,
       includeMarkers: true,
-      markers: [marker({ id: 'm1', timeUs: Number.NaN }), marker({ id: 'm2', timeUs: 2_000_000 })],
+      markers: [marker({ id: 'm1', timeTicks: Number.NaN }), marker({ id: 'm2', timeTicks: 2_000_000 })],
       includeClips: false,
     });
     expect(result).toEqual([2_000_000]);
   });
 
   it('includes selection range start and end', () => {
-    const result = computeSnapTargetsUs({
+    const result = computeSnapTargetsTicks({
       tracks: [],
       includeTimelineStart: false,
-      includeTimelineEndUs: null,
-      includePlayheadUs: null,
+      includeTimelineEndTicks: null,
+      includePlayheadTicks: null,
       includeMarkers: false,
       markers: [],
       includeClips: false,
-      selectionRangeUs: { startUs: 2_000_000, endUs: 4_000_000 },
+      selectionRangeTicks: { startTicks: 2_000_000, endTicks: 4_000_000 },
     });
     expect(result).toEqual([2_000_000, 4_000_000]);
   });
 
   it('includes clip start and end edges', () => {
-    const result = computeSnapTargetsUs({
+    const result = computeSnapTargetsTicks({
       tracks: [
         track([
-          clip({ id: 'c1', timelineRange: { startUs: 1_000_000, durationUs: 2_000_000 } }),
-          clip({ id: 'c2', timelineRange: { startUs: 5_000_000, durationUs: 3_000_000 } }),
+          clip({ id: 'c1', timelineRange: { startTicks: 1_000_000, durationTicks: 2_000_000 } }),
+          clip({ id: 'c2', timelineRange: { startTicks: 5_000_000, durationTicks: 3_000_000 } }),
         ]),
       ],
       includeTimelineStart: false,
-      includeTimelineEndUs: null,
-      includePlayheadUs: null,
+      includeTimelineEndTicks: null,
+      includePlayheadTicks: null,
       includeMarkers: false,
       markers: [],
       includeClips: true,
@@ -149,16 +149,16 @@ describe('computeSnapTargetsUs', () => {
   });
 
   it('excludes clips by excludeItemIds', () => {
-    const result = computeSnapTargetsUs({
+    const result = computeSnapTargetsTicks({
       tracks: [
         track([
-          clip({ id: 'c1', timelineRange: { startUs: 1_000_000, durationUs: 2_000_000 } }),
-          clip({ id: 'c2', timelineRange: { startUs: 5_000_000, durationUs: 3_000_000 } }),
+          clip({ id: 'c1', timelineRange: { startTicks: 1_000_000, durationTicks: 2_000_000 } }),
+          clip({ id: 'c2', timelineRange: { startTicks: 5_000_000, durationTicks: 3_000_000 } }),
         ]),
       ],
       includeTimelineStart: false,
-      includeTimelineEndUs: null,
-      includePlayheadUs: null,
+      includeTimelineEndTicks: null,
+      includePlayheadTicks: null,
       includeMarkers: false,
       markers: [],
       includeClips: true,
@@ -168,16 +168,16 @@ describe('computeSnapTargetsUs', () => {
   });
 
   it('skips non-clip items (gaps)', () => {
-    const result = computeSnapTargetsUs({
+    const result = computeSnapTargetsTicks({
       tracks: [
         track([
-          { id: 'gap1', kind: 'gap', timelineRange: { startUs: 0, durationUs: 500_000 } },
-          clip({ id: 'c1', timelineRange: { startUs: 500_000, durationUs: 2_000_000 } }),
+          { id: 'gap1', kind: 'gap', timelineRange: { startTicks: 0, durationTicks: 500_000 } },
+          clip({ id: 'c1', timelineRange: { startTicks: 500_000, durationTicks: 2_000_000 } }),
         ]),
       ],
       includeTimelineStart: false,
-      includeTimelineEndUs: null,
-      includePlayheadUs: null,
+      includeTimelineEndTicks: null,
+      includePlayheadTicks: null,
       includeMarkers: false,
       markers: [],
       includeClips: true,
@@ -186,11 +186,11 @@ describe('computeSnapTargetsUs', () => {
   });
 
   it('deduplicates and sorts targets', () => {
-    const result = computeSnapTargetsUs({
-      tracks: [track([clip({ id: 'c1', timelineRange: { startUs: 0, durationUs: 5_000_000 } })])],
+    const result = computeSnapTargetsTicks({
+      tracks: [track([clip({ id: 'c1', timelineRange: { startTicks: 0, durationTicks: 5_000_000 } })])],
       includeTimelineStart: true,
-      includeTimelineEndUs: 5_000_000,
-      includePlayheadUs: 0,
+      includeTimelineEndTicks: 5_000_000,
+      includePlayheadTicks: 0,
       includeMarkers: false,
       markers: [],
       includeClips: true,
@@ -199,17 +199,17 @@ describe('computeSnapTargetsUs', () => {
   });
 
   it('combines all sources', () => {
-    const result = computeSnapTargetsUs({
+    const result = computeSnapTargetsTicks({
       tracks: [
-        track([clip({ id: 'c1', timelineRange: { startUs: 2_000_000, durationUs: 1_000_000 } })]),
+        track([clip({ id: 'c1', timelineRange: { startTicks: 2_000_000, durationTicks: 1_000_000 } })]),
       ],
       includeTimelineStart: true,
-      includeTimelineEndUs: 10_000_000,
-      includePlayheadUs: 5_000_000,
+      includeTimelineEndTicks: 10_000_000,
+      includePlayheadTicks: 5_000_000,
       includeMarkers: true,
-      markers: [marker({ id: 'm1', timeUs: 7_000_000 })],
+      markers: [marker({ id: 'm1', timeTicks: 7_000_000 })],
       includeClips: true,
-      selectionRangeUs: { startUs: 0, endUs: 3_000_000 },
+      selectionRangeTicks: { startTicks: 0, endTicks: 3_000_000 },
     });
     expect(result).toEqual([0, 2_000_000, 3_000_000, 5_000_000, 7_000_000, 10_000_000]);
   });
@@ -238,7 +238,7 @@ describe('getSelectedMovableItemIds', () => {
 
   it('excludes non-clip items', () => {
     const tracks: TimelineTrack[] = [
-      track([{ id: 'gap1', kind: 'gap', timelineRange: { startUs: 0, durationUs: 1 } } as any]),
+      track([{ id: 'gap1', kind: 'gap', timelineRange: { startTicks: 0, durationTicks: 1 } } as any]),
     ];
     const result = getSelectedMovableItemIds({
       selectedItemIds: ['gap1'],
@@ -268,10 +268,10 @@ describe('buildMultiItemMoves', () => {
     };
   }
 
-  it('moves items by deltaUs on the same track', () => {
+  it('moves items by deltaTicks on the same track', () => {
     const t1 = track([
-      clip({ id: 'c1', timelineRange: { startUs: 1_000_000, durationUs: 2_000_000 } }),
-      clip({ id: 'c2', timelineRange: { startUs: 5_000_000, durationUs: 2_000_000 } }),
+      clip({ id: 'c1', timelineRange: { startTicks: 1_000_000, durationTicks: 2_000_000 } }),
+      clip({ id: 'c2', timelineRange: { startTicks: 5_000_000, durationTicks: 2_000_000 } }),
     ]);
     const snapshot = makeDoc([t1]);
 
@@ -281,7 +281,7 @@ describe('buildMultiItemMoves', () => {
       dragOriginTrackId: 'v1',
       targetTrackId: 'v1',
       selectedMovableItemIds: ['c1', 'c2'],
-      deltaUs: 500_000,
+      deltaTicks: 500_000,
     });
 
     expect(moves).toHaveLength(2);
@@ -289,19 +289,19 @@ describe('buildMultiItemMoves', () => {
       fromTrackId: 'v1',
       toTrackId: 'v1',
       itemId: 'c2',
-      startUs: 5_500_000,
+      startTicks: 5_500_000,
     });
     expect(moves[1]).toEqual({
       fromTrackId: 'v1',
       toTrackId: 'v1',
       itemId: 'c1',
-      startUs: 1_500_000,
+      startTicks: 1_500_000,
     });
   });
 
-  it('clamps startUs to 0 for negative delta', () => {
+  it('clamps startTicks to 0 for negative delta', () => {
     const t1 = track([
-      clip({ id: 'c1', timelineRange: { startUs: 200_000, durationUs: 2_000_000 } }),
+      clip({ id: 'c1', timelineRange: { startTicks: 200_000, durationTicks: 2_000_000 } }),
     ]);
     const snapshot = makeDoc([t1]);
 
@@ -311,11 +311,11 @@ describe('buildMultiItemMoves', () => {
       dragOriginTrackId: 'v1',
       targetTrackId: 'v1',
       selectedMovableItemIds: ['c1'],
-      deltaUs: -500_000,
+      deltaTicks: -500_000,
     });
 
     expect(moves).toHaveLength(1);
-    expect(moves[0]!.startUs).toBe(0);
+    expect(moves[0]!.startTicks).toBe(0);
   });
 
   it('clamps a negative-delta group rigidly against its earliest member', () => {
@@ -323,8 +323,8 @@ describe('buildMultiItemMoves', () => {
     // group must shift by the same clamped delta (-200_000) so relative geometry
     // is preserved, instead of piling c1 at 0 while c2 keeps its full -500_000.
     const t1 = track([
-      clip({ id: 'c1', timelineRange: { startUs: 200_000, durationUs: 1_000_000 } }),
-      clip({ id: 'c2', timelineRange: { startUs: 5_000_000, durationUs: 1_000_000 } }),
+      clip({ id: 'c1', timelineRange: { startTicks: 200_000, durationTicks: 1_000_000 } }),
+      clip({ id: 'c2', timelineRange: { startTicks: 5_000_000, durationTicks: 1_000_000 } }),
     ]);
     const snapshot = makeDoc([t1]);
 
@@ -334,10 +334,10 @@ describe('buildMultiItemMoves', () => {
       dragOriginTrackId: 'v1',
       targetTrackId: 'v1',
       selectedMovableItemIds: ['c1', 'c2'],
-      deltaUs: -500_000,
+      deltaTicks: -500_000,
     });
 
-    const byId = Object.fromEntries(moves.map((m) => [m.itemId, m.startUs]));
+    const byId = Object.fromEntries(moves.map((m) => [m.itemId, m.startTicks]));
     expect(byId.c1).toBe(0);
     expect(byId.c2).toBe(4_800_000);
     // Relative gap between members is unchanged (4_800_000, same as original).
@@ -346,11 +346,11 @@ describe('buildMultiItemMoves', () => {
 
   it('moves items to a different track with same kind', () => {
     const t1 = track(
-      [clip({ id: 'c1', timelineRange: { startUs: 1_000_000, durationUs: 2_000_000 } })],
+      [clip({ id: 'c1', timelineRange: { startTicks: 1_000_000, durationTicks: 2_000_000 } })],
       { id: 'v1' },
     );
     const t2 = track(
-      [clip({ id: 'c2', timelineRange: { startUs: 3_000_000, durationUs: 2_000_000 } })],
+      [clip({ id: 'c2', timelineRange: { startTicks: 3_000_000, durationTicks: 2_000_000 } })],
       { id: 'v2' },
     );
     const snapshot = makeDoc([t1, t2]);
@@ -361,7 +361,7 @@ describe('buildMultiItemMoves', () => {
       dragOriginTrackId: 'v1',
       targetTrackId: 'v2',
       selectedMovableItemIds: ['c1'],
-      deltaUs: 0,
+      deltaTicks: 0,
     });
 
     expect(moves).toHaveLength(1);
@@ -371,11 +371,11 @@ describe('buildMultiItemMoves', () => {
 
   it('does not move to track of different kind', () => {
     const t1 = track(
-      [clip({ id: 'c1', timelineRange: { startUs: 1_000_000, durationUs: 2_000_000 } })],
+      [clip({ id: 'c1', timelineRange: { startTicks: 1_000_000, durationTicks: 2_000_000 } })],
       { id: 'v1', kind: 'video' },
     );
     const t2 = track(
-      [clip({ id: 'c2', timelineRange: { startUs: 3_000_000, durationUs: 2_000_000 } })],
+      [clip({ id: 'c2', timelineRange: { startTicks: 3_000_000, durationTicks: 2_000_000 } })],
       { id: 'a1', kind: 'audio' },
     );
     const snapshot = makeDoc([t1, t2]);
@@ -386,17 +386,17 @@ describe('buildMultiItemMoves', () => {
       dragOriginTrackId: 'v1',
       targetTrackId: 'a1',
       selectedMovableItemIds: ['c1'],
-      deltaUs: 0,
+      deltaTicks: 0,
     });
 
     expect(moves).toHaveLength(1);
     expect(moves[0]!.toTrackId).toBe('v1');
   });
 
-  it('sorts descending by startUs for positive delta', () => {
+  it('sorts descending by startTicks for positive delta', () => {
     const t1 = track([
-      clip({ id: 'c1', timelineRange: { startUs: 1_000_000, durationUs: 1_000_000 } }),
-      clip({ id: 'c2', timelineRange: { startUs: 5_000_000, durationUs: 1_000_000 } }),
+      clip({ id: 'c1', timelineRange: { startTicks: 1_000_000, durationTicks: 1_000_000 } }),
+      clip({ id: 'c2', timelineRange: { startTicks: 5_000_000, durationTicks: 1_000_000 } }),
     ]);
     const snapshot = makeDoc([t1]);
 
@@ -406,16 +406,16 @@ describe('buildMultiItemMoves', () => {
       dragOriginTrackId: 'v1',
       targetTrackId: 'v1',
       selectedMovableItemIds: ['c1', 'c2'],
-      deltaUs: 100_000,
+      deltaTicks: 100_000,
     });
 
-    expect(moves[0]!.startUs).toBeGreaterThanOrEqual(moves[1]!.startUs);
+    expect(moves[0]!.startTicks).toBeGreaterThanOrEqual(moves[1]!.startTicks);
   });
 
-  it('sorts ascending by startUs for negative delta', () => {
+  it('sorts ascending by startTicks for negative delta', () => {
     const t1 = track([
-      clip({ id: 'c1', timelineRange: { startUs: 1_000_000, durationUs: 1_000_000 } }),
-      clip({ id: 'c2', timelineRange: { startUs: 5_000_000, durationUs: 1_000_000 } }),
+      clip({ id: 'c1', timelineRange: { startTicks: 1_000_000, durationTicks: 1_000_000 } }),
+      clip({ id: 'c2', timelineRange: { startTicks: 5_000_000, durationTicks: 1_000_000 } }),
     ]);
     const snapshot = makeDoc([t1]);
 
@@ -425,10 +425,10 @@ describe('buildMultiItemMoves', () => {
       dragOriginTrackId: 'v1',
       targetTrackId: 'v1',
       selectedMovableItemIds: ['c1', 'c2'],
-      deltaUs: -100_000,
+      deltaTicks: -100_000,
     });
 
-    expect(moves[0]!.startUs).toBeLessThanOrEqual(moves[1]!.startUs);
+    expect(moves[0]!.startTicks).toBeLessThanOrEqual(moves[1]!.startTicks);
   });
 
   it('skips items not found in snapshot', () => {
@@ -441,7 +441,7 @@ describe('buildMultiItemMoves', () => {
       dragOriginTrackId: 'v1',
       targetTrackId: 'v1',
       selectedMovableItemIds: ['unknown'],
-      deltaUs: 0,
+      deltaTicks: 0,
     });
 
     expect(moves).toEqual([]);

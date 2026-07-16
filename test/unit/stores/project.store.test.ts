@@ -184,11 +184,11 @@ const workspaceMock = {
   error: null as string | null,
   lastProjectName: null,
   userSettings: {
-    projectDefaults: { audioDeclickDurationUs: 5000, defaultAudioFadeCurve: 'logarithmic' },
+    projectDefaults: { audioDeclickDurationTicks: 5000, defaultAudioFadeCurve: 'logarithmic' },
     projectPresets: createDefaultProjectPresets(),
     exportPresets: createDefaultExportPresets(),
     optimization: {},
-    timeline: { defaultStaticClipDurationUs: 5000000, snapThresholdPx: 8 },
+    timeline: { defaultStaticClipDurationTicks: 5000000, snapThresholdPx: 8 },
   },
   workspaceState: { fileBrowser: { instances: {} } },
   resolvedStorageTopology: {

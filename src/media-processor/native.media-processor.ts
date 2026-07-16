@@ -83,7 +83,7 @@ export function createNativeMediaProcessor(): IMediaProcessor {
       const { width, height } = resolveTimelineFrameDimensions(scene, options);
       return await nativeRenderTimelineFrameWebp({
         scene,
-        timeSec: ticksToSeconds(options.timeUs),
+        timeSec: ticksToSeconds(options.timeTicks),
         width,
         height,
         quality: options.quality ?? 0.8,

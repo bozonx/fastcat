@@ -104,7 +104,7 @@ function formatTimeForExport(us: number): string {
 }
 
 function formatMarkerLine(marker: TimelineMarker): string {
-  const timeValue = formatTimeForExport(marker.timeUs);
+  const timeValue = formatTimeForExport(marker.timeTicks);
   const text = marker.text || '';
   switch (exportFormat.value) {
     case 'ms-or-hms-left':
@@ -143,7 +143,7 @@ const filteredMarkers = computed(() => {
   }
   return [...props.markers]
     .filter((marker) => selectedColors.value.has(marker.color || DEFAULT_MARKER_COLOR))
-    .sort((a, b) => a.timeUs - b.timeUs);
+    .sort((a, b) => a.timeTicks - b.timeTicks);
 });
 
 const exportText = computed(() => {
@@ -154,8 +154,8 @@ const exportText = computed(() => {
     return JSON.stringify(
       markers.map((m) => ({
         id: m.id,
-        timeUs: m.timeUs,
-        timecode: formatTimecode(m.timeUs, props.fps),
+        timeTicks: m.timeTicks,
+        timecode: formatTimecode(m.timeTicks, props.fps),
         text: m.text,
         color: m.color || DEFAULT_MARKER_COLOR,
       })),
@@ -167,9 +167,9 @@ const exportText = computed(() => {
   if (exportFormat.value === 'audacity') {
     return markers
       .map((m) => {
-        const startSec = (m.timeUs / TICKS_PER_SECOND).toFixed(6);
-        const endUs = m.durationUs ? m.timeUs + m.durationUs : m.timeUs;
-        const endSec = (endUs / TICKS_PER_SECOND).toFixed(6);
+        const startSec = (m.timeTicks / TICKS_PER_SECOND).toFixed(6);
+        const endTicks = m.durationTicks ? m.timeTicks + m.durationTicks : m.timeTicks;
+        const endSec = (endTicks / TICKS_PER_SECOND).toFixed(6);
         return `${startSec}\t${endSec}\t${m.text || ''}`;
       })
       .join('\n');
@@ -180,7 +180,7 @@ const exportText = computed(() => {
     const header = ['Name', 'Timecode', 'Description', 'Color'].join(delimiter);
     const rows = markers.map((m) => {
       const name = (m.text || '').replace(/"/g, '""');
-      const timecode = formatTimecode(m.timeUs, props.fps);
+      const timecode = formatTimecode(m.timeTicks, props.fps);
       const color = m.color || DEFAULT_MARKER_COLOR;
       return `"${name}"${delimiter}"${timecode}"${delimiter}""${delimiter}"${color}"`;
     });
@@ -193,14 +193,14 @@ const exportText = computed(() => {
       const marker = markers[i];
       if (!marker) continue;
       const nextMarker = markers[i + 1];
-      const startUs = marker.timeUs;
-      let endUs = startUs + 5 * TICKS_PER_SECOND;
-      if (marker.durationUs && marker.durationUs > 0) {
-        endUs = startUs + marker.durationUs;
+      const startTicks = marker.timeTicks;
+      let endTicks = startTicks + 5 * TICKS_PER_SECOND;
+      if (marker.durationTicks && marker.durationTicks > 0) {
+        endTicks = startTicks + marker.durationTicks;
       } else if (nextMarker) {
-        endUs = nextMarker.timeUs;
+        endTicks = nextMarker.timeTicks;
       }
-      lines.push(`${formatVttTime(startUs)} --> ${formatVttTime(endUs)}`);
+      lines.push(`${formatVttTime(startTicks)} --> ${formatVttTime(endTicks)}`);
       lines.push(marker.text || '');
       lines.push('');
     }

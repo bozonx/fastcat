@@ -12,7 +12,7 @@ import { TICKS_PER_SECOND } from '~/utils/time';
 
 /** A clip plus the optional fields the resize logic reads off it. */
 type ClipWithResizeFields = TimelineClipItem & {
-  sourceDurationUs?: number;
+  sourceDurationTicks?: number;
   transitionIn?: ClipTransition | null;
   transitionOut?: ClipTransition | null;
 };
@@ -20,7 +20,7 @@ type ClipWithResizeFields = TimelineClipItem & {
 /** Clips on a track, in start-time order (gaps and non-clips removed). */
 export function getOrderedClipsOnTrack(track: TimelineTrack): TimelineClipItem[] {
   const clips = track.items.filter((it): it is TimelineClipItem => it.kind === 'clip');
-  return [...clips].sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
+  return [...clips].sort((a, b) => a.timelineRange.startTicks - b.timelineRange.startTicks);
 }
 
 /**
@@ -55,7 +55,7 @@ export function getAdjacentClipForTransitionEdge(input: {
  * media past the neighbouring clip's available source. Infinite when there is
  * no source-bound neighbour (e.g. text/image clips).
  */
-export function getTransitionAdjacentHandleLimitUs(input: {
+export function getTransitionAdjacentHandleLimitTicks(input: {
   edge: 'in' | 'out';
   adjacent: TimelineClipItem | null;
 }): number {
@@ -63,10 +63,10 @@ export function getTransitionAdjacentHandleLimitUs(input: {
 
   if (input.edge === 'in') {
     const prev = input.adjacent as ClipWithResizeFields;
-    const prevSourceEnd = (prev.sourceRange?.startUs ?? 0) + (prev.sourceRange?.durationUs ?? 0);
+    const prevSourceEnd = (prev.sourceRange?.startTicks ?? 0) + (prev.sourceRange?.durationTicks ?? 0);
     const prevMaxEnd =
       (prev.clipType === 'media' || prev.clipType === 'timeline') && !prev.isImage
-        ? (prev.sourceDurationUs ?? prevSourceEnd)
+        ? (prev.sourceDurationTicks ?? prevSourceEnd)
         : Number.POSITIVE_INFINITY;
     return Number.isFinite(prevMaxEnd)
       ? Math.max(0, Math.round(Number(prevMaxEnd)) - Math.round(prevSourceEnd))
@@ -74,7 +74,7 @@ export function getTransitionAdjacentHandleLimitUs(input: {
   }
 
   return input.adjacent.clipType === 'media' || input.adjacent.clipType === 'timeline'
-    ? Math.max(0, Math.round(Number(input.adjacent.sourceRange?.startUs ?? 0)))
+    ? Math.max(0, Math.round(Number(input.adjacent.sourceRange?.startTicks ?? 0)))
     : Number.POSITIVE_INFINITY;
 }
 
@@ -83,7 +83,7 @@ export function getTransitionAdjacentHandleLimitUs(input: {
  * clip's own length (minus the opposite-edge transition) and, in adjacent mode,
  * the neighbour's source headroom.
  */
-export function computeMaxResizableTransitionDurationUs(input: {
+export function computeMaxResizableTransitionDurationTicks(input: {
   tracks: TimelineTrack[];
   trackId: string;
   itemId: string;
@@ -101,18 +101,18 @@ export function computeMaxResizableTransitionDurationUs(input: {
   const { clip, adjacent } = resolved;
   const clipFields = clip as ClipWithResizeFields;
 
-  const clipDuration = clip.timelineRange.durationUs;
-  const oppTransitionUs =
+  const clipDuration = clip.timelineRange.durationTicks;
+  const oppTransitionTicks =
     input.edge === 'in'
-      ? (clipFields.transitionOut?.durationUs ?? 0)
-      : (clipFields.transitionIn?.durationUs ?? 0);
-  const maxWithinClip = Math.max(0, clipDuration - oppTransitionUs);
+      ? (clipFields.transitionOut?.durationTicks ?? 0)
+      : (clipFields.transitionIn?.durationTicks ?? 0);
+  const maxWithinClip = Math.max(0, clipDuration - oppTransitionTicks);
 
   let limitByHandle = Number.POSITIVE_INFINITY;
 
   const mode = input.currentTransition.mode ?? DEFAULT_TRANSITION_MODE;
   if (mode === 'adjacent' && adjacent) {
-    limitByHandle = getTransitionAdjacentHandleLimitUs({ edge: input.edge, adjacent });
+    limitByHandle = getTransitionAdjacentHandleLimitTicks({ edge: input.edge, adjacent });
   }
 
   return Math.min(maxWithinClip, limitByHandle);
@@ -123,13 +123,13 @@ export function computeMaxResizableTransitionDurationUs(input: {
  * the duration it should snap to (the neighbour's source headroom), or null when
  * snapping does not apply.
  */
-export function computeTransitionHandleSnapDurationUs(input: {
+export function computeTransitionHandleSnapDurationTicks(input: {
   tracks: TimelineTrack[];
   trackId: string;
   itemId: string;
   edge: 'in' | 'out';
   currentTransition: ClipTransition;
-  rawDurationUs: number;
+  rawDurationTicks: number;
 }): number | null {
   const resolved = getAdjacentClipForTransitionEdge({
     tracks: input.tracks,
@@ -143,19 +143,19 @@ export function computeTransitionHandleSnapDurationUs(input: {
   const mode = input.currentTransition.mode ?? DEFAULT_TRANSITION_MODE;
   if (mode !== 'adjacent' || !adjacent) return null;
 
-  const clipEdgeUs =
+  const clipEdgeTicks =
     input.edge === 'in'
-      ? clip.timelineRange.startUs
-      : clip.timelineRange.startUs + clip.timelineRange.durationUs;
-  const adjacentEdgeUs =
+      ? clip.timelineRange.startTicks
+      : clip.timelineRange.startTicks + clip.timelineRange.durationTicks;
+  const adjacentEdgeTicks =
     input.edge === 'in'
-      ? adjacent.timelineRange.startUs + adjacent.timelineRange.durationUs
-      : adjacent.timelineRange.startUs;
-  const gapUs = Math.abs(clipEdgeUs - adjacentEdgeUs);
-  if (gapUs !== 0) return null;
+      ? adjacent.timelineRange.startTicks + adjacent.timelineRange.durationTicks
+      : adjacent.timelineRange.startTicks;
+  const gapTicks = Math.abs(clipEdgeTicks - adjacentEdgeTicks);
+  if (gapTicks !== 0) return null;
 
-  const handleLimitUs = getTransitionAdjacentHandleLimitUs({ edge: input.edge, adjacent });
+  const handleLimitTicks = getTransitionAdjacentHandleLimitTicks({ edge: input.edge, adjacent });
 
-  if (!Number.isFinite(handleLimitUs)) return null;
-  return Math.max(0, Math.round(handleLimitUs));
+  if (!Number.isFinite(handleLimitTicks)) return null;
+  return Math.max(0, Math.round(handleLimitTicks));
 }

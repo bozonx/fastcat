@@ -26,7 +26,7 @@ const mockProjectStore = reactive({
       isCustomResolution: false,
       sampleRate: 48000,
       isAutoSettings: true,
-      audioDeclickDurationUs: 1000,
+      audioDeclickDurationTicks: 1000,
     },
     exportDefaults: {
       encoding: {
@@ -50,10 +50,10 @@ const mockProjectStore = reactive({
 const mockWorkspaceStore = reactive({
   userSettings: {
     timeline: {
-      defaultStaticClipDurationUs: 5000000,
+      defaultStaticClipDurationTicks: 5000000,
     },
     projectDefaults: {
-      audioDeclickDurationUs: 5000,
+      audioDeclickDurationTicks: 5000,
     },
     projectPresets: {
       selectedPresetId: '1080p',

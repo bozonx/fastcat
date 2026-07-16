@@ -1,6 +1,6 @@
 /** @vitest-environment node */
 import { describe, expect, it } from 'vitest';
-import { timelineUs } from '../utils/timeline-time';
+import { timelineTicks } from '../utils/timeline-time';
 import { applyTimelineCommand } from '~/timeline/commands';
 import type { TimelineDocument, TimelineClipItem } from '~/timeline/types';
 
@@ -21,15 +21,15 @@ describe('timeline/commands add clip', () => {
       trackId: 'v1',
       name: 'Clip',
       path: '_video/clip.mp4',
-      startUs: 0,
-      durationUs: timelineUs(1_017_685),
-      sourceDurationUs: timelineUs(1_017_685),
+      startTicks: 0,
+      durationTicks: timelineTicks(1_017_685),
+      sourceDurationTicks: timelineTicks(1_017_685),
     }).next;
 
     const clip = result.tracks[0]?.items[0] as TimelineClipItem;
 
-    expect(clip.timelineRange.durationUs).toBeGreaterThan(clip.sourceDurationUs ?? 0);
-    expect(clip.sourceRange).toEqual({ startUs: 0, durationUs: timelineUs(1_017_685) });
+    expect(clip.timelineRange.durationTicks).toBeGreaterThan(clip.sourceDurationTicks ?? 0);
+    expect(clip.sourceRange).toEqual({ startTicks: 0, durationTicks: timelineTicks(1_017_685) });
   });
 
   it('clamps explicit source range start and duration to the available source tail', () => {
@@ -38,17 +38,17 @@ describe('timeline/commands add clip', () => {
       trackId: 'v1',
       name: 'Clip',
       path: '_video/clip.mp4',
-      startUs: 0,
-      durationUs: timelineUs(1_000_000),
-      sourceDurationUs: timelineUs(3_000_000),
-      sourceRange: { startUs: timelineUs(2_500_000), durationUs: timelineUs(1_000_000) },
+      startTicks: 0,
+      durationTicks: timelineTicks(1_000_000),
+      sourceDurationTicks: timelineTicks(3_000_000),
+      sourceRange: { startTicks: timelineTicks(2_500_000), durationTicks: timelineTicks(1_000_000) },
     }).next;
 
     const clip = result.tracks[0]?.items[0] as TimelineClipItem;
 
     expect(clip.sourceRange).toEqual({
-      startUs: timelineUs(2_500_000),
-      durationUs: timelineUs(500_000),
+      startTicks: timelineTicks(2_500_000),
+      durationTicks: timelineTicks(500_000),
     });
   });
 });

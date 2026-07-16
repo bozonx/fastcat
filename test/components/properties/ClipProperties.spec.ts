@@ -113,7 +113,7 @@ const mockUiStore = reactive({
 const mockWorkspaceStore = reactive({
   userSettings: {
     timeline: {
-      defaultTransitionDurationUs: 1_000_000,
+      defaultTransitionDurationTicks: 1_000_000,
     },
   },
   inDevelopmentFeaturesEnabled: false,
@@ -255,9 +255,9 @@ describe('ClipProperties.vue', () => {
     trackId: 'track-1',
     clipType: 'media' as const,
     name: 'Test Clip',
-    timelineRange: { startUs: 1000000, durationUs: 5000000 },
-    sourceRange: { startUs: 0, durationUs: 5000000 },
-    sourceDurationUs: 10000000,
+    timelineRange: { startTicks: 1000000, durationTicks: 5000000 },
+    sourceRange: { startTicks: 0, durationTicks: 5000000 },
+    sourceDurationTicks: 10000000,
     source: { path: 'file.mp4' },
     ...overrides,
   });
@@ -368,7 +368,7 @@ describe('ClipProperties.vue', () => {
         type: 'move_item',
         trackId: 'track-1',
         itemId: 'clip-1',
-        startUs: 2000000,
+        startTicks: 2000000,
         quantizeToFrames: false,
       },
       { historyMode: 'debounced' },
@@ -382,7 +382,7 @@ describe('ClipProperties.vue', () => {
         trackId: 'track-1',
         itemId: 'clip-1',
         edge: 'end',
-        deltaUs: 1000000,
+        deltaTicks: 1000000,
       },
       { historyMode: 'debounced' },
     );
@@ -393,7 +393,7 @@ describe('ClipProperties.vue', () => {
   it('clamps start time and end time to neighboring clip boundaries', async () => {
     const clip = createClip({
       id: 'clip-center',
-      timelineRange: { startUs: 3000000, durationUs: 2000000 },
+      timelineRange: { startTicks: 3000000, durationTicks: 2000000 },
     });
 
     // Set up neighboring clips on the same track
@@ -405,13 +405,13 @@ describe('ClipProperties.vue', () => {
           {
             id: 'clip-left',
             kind: 'clip',
-            timelineRange: { startUs: 500000, durationUs: 1500000 }, // ends at 2000000
+            timelineRange: { startTicks: 500000, durationTicks: 1500000 }, // ends at 2000000
           },
           clip as any,
           {
             id: 'clip-right',
             kind: 'clip',
-            timelineRange: { startUs: 6000000, durationUs: 1000000 }, // starts at 6000000
+            timelineRange: { startTicks: 6000000, durationTicks: 1000000 }, // starts at 6000000
           },
         ],
       },
@@ -420,7 +420,7 @@ describe('ClipProperties.vue', () => {
     const wrapper = await mountComponent({ clip });
     const infoSection = wrapper.findComponent({ name: 'ClipInfoSection' });
 
-    // Test startUs clamping (moving clip-center leftwards)
+    // Test startTicks clamping (moving clip-center leftwards)
     // Desired start is 1000000, but left clip ends at 2000000. Start should be clamped to 2000000.
     infoSection.vm.$emit('update-start-time', 1000000);
     await nextTick();
@@ -429,15 +429,15 @@ describe('ClipProperties.vue', () => {
         type: 'move_item',
         trackId: 'track-1',
         itemId: 'clip-center',
-        startUs: 2000000,
+        startTicks: 2000000,
         quantizeToFrames: false,
       },
       { historyMode: 'debounced' },
     );
 
-    // Test startUs clamping (moving clip-center rightwards)
+    // Test startTicks clamping (moving clip-center rightwards)
     // Desired start is 5000000. Right clip starts at 6000000. Clip duration is 2000000.
-    // Max startUs is 6000000 - 2000000 = 4000000. Start should be clamped to 4000000.
+    // Max startTicks is 6000000 - 2000000 = 4000000. Start should be clamped to 4000000.
     infoSection.vm.$emit('update-start-time', 5000000);
     await nextTick();
     expect(mockTimelineStore.applyTimeline).toHaveBeenLastCalledWith(
@@ -445,15 +445,15 @@ describe('ClipProperties.vue', () => {
         type: 'move_item',
         trackId: 'track-1',
         itemId: 'clip-center',
-        startUs: 4000000,
+        startTicks: 4000000,
         quantizeToFrames: false,
       },
       { historyMode: 'debounced' },
     );
 
-    // Test endUs clamping (trimming clip-center end rightwards)
+    // Test endTicks clamping (trimming clip-center end rightwards)
     // Desired end is 7000000, but right clip starts at 6000000.
-    // End should be clamped to 6000000, which means deltaUs is 6000000 - (3000000 + 2000000) = 1000000.
+    // End should be clamped to 6000000, which means deltaTicks is 6000000 - (3000000 + 2000000) = 1000000.
     infoSection.vm.$emit('update-end-time', 7000000);
     await nextTick();
     expect(mockTimelineStore.applyTimeline).toHaveBeenLastCalledWith(
@@ -462,7 +462,7 @@ describe('ClipProperties.vue', () => {
         trackId: 'track-1',
         itemId: 'clip-center',
         edge: 'end',
-        deltaUs: 1000000,
+        deltaTicks: 1000000,
       },
       { historyMode: 'debounced' },
     );

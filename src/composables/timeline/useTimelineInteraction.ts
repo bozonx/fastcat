@@ -7,7 +7,7 @@ import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useEffectiveHotkeys } from '~/composables/editor/hotkeys/useEffectiveHotkeys';
 import { isCommandMatched } from '~/utils/hotkeys/runtime';
-import { pxToTimeUs } from '~/utils/timeline/geometry';
+import { pxToTimeTicks } from '~/utils/timeline/geometry';
 import { useTimelinePlayheadDrag } from '~/composables/timeline/useTimelinePlayheadDrag';
 import { useTimelineItemSelection } from '~/composables/timeline/useTimelineItemSelection';
 import { useTimelineItemDrag } from '~/composables/timeline/useTimelineItemDrag';
@@ -63,7 +63,7 @@ export function useTimelineInteraction(
         const scrollerRect = getCachedScrollRect(scroller);
         const scrollX = scroller.scrollLeft;
         const x = e.clientX - scrollerRect.left + scrollX;
-        timelineStore.setCurrentTimeUs(pxToTimeUs(x, timelineStore.timelineZoom));
+        timelineStore.setCurrentTimeTicks(pxToTimeTicks(x, timelineStore.timelineZoom));
       }
       return;
     }
@@ -88,7 +88,7 @@ export function useTimelineInteraction(
 
   function startTrimItem(
     e: PointerEvent,
-    input: { trackId: string; itemId: string; edge: 'start' | 'end'; startUs: number },
+    input: { trackId: string; itemId: string; edge: 'start' | 'end'; startTicks: number },
   ) {
     if (!canEditClipContent.value) return;
     if (isReadOnly.value) return;

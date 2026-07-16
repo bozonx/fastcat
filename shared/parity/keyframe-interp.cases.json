@@ -8,7 +8,7 @@
     "  - 'linear' -> constant-rate interpolation to the next keyframe",
     "  - 'ease'   -> smoothstep (t*t*(3-2t)) interpolation to the next keyframe",
     "  - 'hold'   -> stays at the left value until the next keyframe, then jumps",
-    "  - coincident keyframes (equal tUs) at a query time equal to that time -> resolves to the LAST one in source order (a hard cut)",
+    "  - coincident keyframes (equal tTicks) at a query time equal to that time -> resolves to the LAST one in source order (a hard cut)",
     "",
     "Each case is a standalone track + a single query time; `expected` is the value",
     "both engines must produce within 1e-9 absolute tolerance."
@@ -17,168 +17,168 @@
     {
       "name": "empty track has no defined value (engines return None/undefined; not asserted numerically here)",
       "keyframes": [],
-      "queryTUs": 0,
+      "queryTTicks": 0,
       "expected": null
     },
     {
       "name": "single keyframe holds its value at t=0",
-      "keyframes": [{ "tUs": 500, "value": 0.4, "easing": "linear" }],
-      "queryTUs": 0,
+      "keyframes": [{ "tTicks": 500, "value": 0.4, "easing": "linear" }],
+      "queryTTicks": 0,
       "expected": 0.4
     },
     {
       "name": "single keyframe holds its value far in the future",
-      "keyframes": [{ "tUs": 500, "value": 0.4, "easing": "linear" }],
-      "queryTUs": 999999,
+      "keyframes": [{ "tTicks": 500, "value": 0.4, "easing": "linear" }],
+      "queryTTicks": 999999,
       "expected": 0.4
     },
     {
       "name": "before the first keyframe holds the first value",
       "keyframes": [
-        { "tUs": 100, "value": 0.2, "easing": "linear" },
-        { "tUs": 300, "value": 0.8, "easing": "linear" }
+        { "tTicks": 100, "value": 0.2, "easing": "linear" },
+        { "tTicks": 300, "value": 0.8, "easing": "linear" }
       ],
-      "queryTUs": 0,
+      "queryTTicks": 0,
       "expected": 0.2
     },
     {
       "name": "exactly at the first keyframe holds the first value",
       "keyframes": [
-        { "tUs": 100, "value": 0.2, "easing": "linear" },
-        { "tUs": 300, "value": 0.8, "easing": "linear" }
+        { "tTicks": 100, "value": 0.2, "easing": "linear" },
+        { "tTicks": 300, "value": 0.8, "easing": "linear" }
       ],
-      "queryTUs": 100,
+      "queryTTicks": 100,
       "expected": 0.2
     },
     {
       "name": "after the last keyframe holds the last value",
       "keyframes": [
-        { "tUs": 100, "value": 0.2, "easing": "linear" },
-        { "tUs": 300, "value": 0.8, "easing": "linear" }
+        { "tTicks": 100, "value": 0.2, "easing": "linear" },
+        { "tTicks": 300, "value": 0.8, "easing": "linear" }
       ],
-      "queryTUs": 9999,
+      "queryTTicks": 9999,
       "expected": 0.8
     },
     {
       "name": "exactly at the last keyframe holds the last value",
       "keyframes": [
-        { "tUs": 100, "value": 0.2, "easing": "linear" },
-        { "tUs": 300, "value": 0.8, "easing": "linear" }
+        { "tTicks": 100, "value": 0.2, "easing": "linear" },
+        { "tTicks": 300, "value": 0.8, "easing": "linear" }
       ],
-      "queryTUs": 300,
+      "queryTTicks": 300,
       "expected": 0.8
     },
     {
       "name": "linear interpolation at the midpoint",
       "keyframes": [
-        { "tUs": 0, "value": 0.0, "easing": "linear" },
-        { "tUs": 200, "value": 1.0, "easing": "linear" }
+        { "tTicks": 0, "value": 0.0, "easing": "linear" },
+        { "tTicks": 200, "value": 1.0, "easing": "linear" }
       ],
-      "queryTUs": 100,
+      "queryTTicks": 100,
       "expected": 0.5
     },
     {
       "name": "linear interpolation at 25%",
       "keyframes": [
-        { "tUs": 0, "value": 0.0, "easing": "linear" },
-        { "tUs": 200, "value": 1.0, "easing": "linear" }
+        { "tTicks": 0, "value": 0.0, "easing": "linear" },
+        { "tTicks": 200, "value": 1.0, "easing": "linear" }
       ],
-      "queryTUs": 50,
+      "queryTTicks": 50,
       "expected": 0.25
     },
     {
       "name": "linear interpolation with a negative-going value",
       "keyframes": [
-        { "tUs": 0, "value": 90.0, "easing": "linear" },
-        { "tUs": 1000, "value": -90.0, "easing": "linear" }
+        { "tTicks": 0, "value": 90.0, "easing": "linear" },
+        { "tTicks": 1000, "value": -90.0, "easing": "linear" }
       ],
-      "queryTUs": 250,
+      "queryTTicks": 250,
       "expected": 45.0
     },
     {
       "name": "ease interpolation at the midpoint equals linear",
       "keyframes": [
-        { "tUs": 0, "value": 0.0, "easing": "ease" },
-        { "tUs": 100, "value": 1.0, "easing": "linear" }
+        { "tTicks": 0, "value": 0.0, "easing": "ease" },
+        { "tTicks": 100, "value": 1.0, "easing": "linear" }
       ],
-      "queryTUs": 50,
+      "queryTTicks": 50,
       "expected": 0.5
     },
     {
       "name": "ease interpolation at 25% (smoothstep, slower than linear near the edge)",
       "keyframes": [
-        { "tUs": 0, "value": 0.0, "easing": "ease" },
-        { "tUs": 100, "value": 1.0, "easing": "linear" }
+        { "tTicks": 0, "value": 0.0, "easing": "ease" },
+        { "tTicks": 100, "value": 1.0, "easing": "linear" }
       ],
-      "queryTUs": 25,
+      "queryTTicks": 25,
       "expected": 0.15625
     },
     {
       "name": "ease interpolation at 75%",
       "keyframes": [
-        { "tUs": 0, "value": 0.0, "easing": "ease" },
-        { "tUs": 100, "value": 1.0, "easing": "linear" }
+        { "tTicks": 0, "value": 0.0, "easing": "ease" },
+        { "tTicks": 100, "value": 1.0, "easing": "linear" }
       ],
-      "queryTUs": 75,
+      "queryTTicks": 75,
       "expected": 0.84375
     },
     {
       "name": "hold segment stays at the left value until the next keyframe",
       "keyframes": [
-        { "tUs": 0, "value": 0.3, "easing": "hold" },
-        { "tUs": 100, "value": 0.9, "easing": "linear" }
+        { "tTicks": 0, "value": 0.3, "easing": "hold" },
+        { "tTicks": 100, "value": 0.9, "easing": "linear" }
       ],
-      "queryTUs": 50,
+      "queryTTicks": 50,
       "expected": 0.3
     },
     {
       "name": "hold segment holds right up to (but not including) the next keyframe",
       "keyframes": [
-        { "tUs": 0, "value": 0.3, "easing": "hold" },
-        { "tUs": 100, "value": 0.9, "easing": "linear" }
+        { "tTicks": 0, "value": 0.3, "easing": "hold" },
+        { "tTicks": 100, "value": 0.9, "easing": "linear" }
       ],
-      "queryTUs": 99,
+      "queryTTicks": 99,
       "expected": 0.3
     },
     {
       "name": "hold segment jumps exactly at the next keyframe",
       "keyframes": [
-        { "tUs": 0, "value": 0.3, "easing": "hold" },
-        { "tUs": 100, "value": 0.9, "easing": "linear" }
+        { "tTicks": 0, "value": 0.3, "easing": "hold" },
+        { "tTicks": 100, "value": 0.9, "easing": "linear" }
       ],
-      "queryTUs": 100,
+      "queryTTicks": 100,
       "expected": 0.9
     },
     {
       "name": "three-keyframe track queried in the second segment",
       "keyframes": [
-        { "tUs": 0, "value": 0.0, "easing": "linear" },
-        { "tUs": 100, "value": 1.0, "easing": "linear" },
-        { "tUs": 300, "value": 0.0, "easing": "linear" }
+        { "tTicks": 0, "value": 0.0, "easing": "linear" },
+        { "tTicks": 100, "value": 1.0, "easing": "linear" },
+        { "tTicks": 300, "value": 0.0, "easing": "linear" }
       ],
-      "queryTUs": 200,
+      "queryTTicks": 200,
       "expected": 0.5
     },
     {
       "name": "coincident keyframes (hard cut) at the shared time resolve to the later value",
       "keyframes": [
-        { "tUs": 0, "value": 0.0, "easing": "linear" },
-        { "tUs": 100, "value": 0.1, "easing": "linear" },
-        { "tUs": 100, "value": 0.7, "easing": "linear" },
-        { "tUs": 200, "value": 1.0, "easing": "linear" }
+        { "tTicks": 0, "value": 0.0, "easing": "linear" },
+        { "tTicks": 100, "value": 0.1, "easing": "linear" },
+        { "tTicks": 100, "value": 0.7, "easing": "linear" },
+        { "tTicks": 200, "value": 1.0, "easing": "linear" }
       ],
-      "queryTUs": 100,
+      "queryTTicks": 100,
       "expected": 0.7
     },
     {
       "name": "interpolation after a coincident (hard-cut) segment",
       "keyframes": [
-        { "tUs": 0, "value": 0.0, "easing": "linear" },
-        { "tUs": 100, "value": 0.1, "easing": "linear" },
-        { "tUs": 100, "value": 0.7, "easing": "linear" },
-        { "tUs": 200, "value": 1.0, "easing": "linear" }
+        { "tTicks": 0, "value": 0.0, "easing": "linear" },
+        { "tTicks": 100, "value": 0.1, "easing": "linear" },
+        { "tTicks": 100, "value": 0.7, "easing": "linear" },
+        { "tTicks": 200, "value": 1.0, "easing": "linear" }
       ],
-      "queryTUs": 150,
+      "queryTTicks": 150,
       "expected": 0.85
     }
   ]

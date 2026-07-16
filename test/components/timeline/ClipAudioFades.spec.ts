@@ -2,16 +2,16 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
 import { TICKS_PER_SECOND } from '~/utils/time';
 import ClipAudioFades from '~/components/timeline/ClipAudioFades.vue';
-import { timelineUs } from '../../unit/utils/timeline-time';
+import { timelineTicks } from '../../unit/utils/timeline-time';
 
 describe('ClipAudioFades', () => {
   const baseItem = {
     id: 'clip-1',
     kind: 'clip',
     trackId: 'track-1',
-    timelineRange: { startUs: 0, durationUs: 10 * TICKS_PER_SECOND },
-    audioFadeInUs: TICKS_PER_SECOND,
-    audioFadeOutUs: TICKS_PER_SECOND,
+    timelineRange: { startTicks: 0, durationTicks: 10 * TICKS_PER_SECOND },
+    audioFadeInTicks: TICKS_PER_SECOND,
+    audioFadeOutTicks: TICKS_PER_SECOND,
     audioGain: 1,
     locked: false,
   } as any;
@@ -31,7 +31,7 @@ describe('ClipAudioFades', () => {
     canEdit: true,
     trackHeight: 100,
     isSelected: true,
-    defaultFadeDurationUs: 2 * TICKS_PER_SECOND,
+    defaultFadeDurationTicks: 2 * TICKS_PER_SECOND,
     defaultFadeCurve: 'logarithmic' as const,
   };
 
@@ -142,7 +142,7 @@ describe('ClipAudioFades', () => {
     expect(component.emitted('startResizeFade')).toBeTruthy();
     expect(component.emitted('startResizeFade')![0][1]).toEqual({
       edge: 'in',
-      durationUs: TICKS_PER_SECOND,
+      durationTicks: TICKS_PER_SECOND,
     });
 
     addEventListenerSpy.mockRestore();
@@ -184,7 +184,7 @@ describe('ClipAudioFades', () => {
     const component = await mountSuspended(ClipAudioFades, {
       props: {
         ...defaultProps,
-        clip: { ...baseItem, audioFadeInUs: 0 },
+        clip: { ...baseItem, audioFadeInTicks: 0 },
       },
     });
 
@@ -203,7 +203,7 @@ describe('ClipAudioFades', () => {
 
     expect(component.emitted('commitFade')![0][0]).toEqual({
       edge: 'in',
-      durationUs: 2 * TICKS_PER_SECOND,
+      durationTicks: 2 * TICKS_PER_SECOND,
       curve: 'logarithmic',
     });
     expect(component.emitted('toggleFadeCurve')).toBeUndefined();
@@ -235,7 +235,7 @@ describe('ClipAudioFades', () => {
 
     expect(component.emitted('commitFade')![0][0]).toEqual({
       edge: 'in',
-      durationUs: 0,
+      durationTicks: 0,
     });
     expect(component.emitted('toggleFadeCurve')).toBeUndefined();
 
@@ -401,11 +401,11 @@ describe('ClipAudioFades', () => {
           viewportWidth: 1000,
           item: {
             ...baseItem,
-            timelineRange: { startUs: timelineUs(100_000), durationUs: timelineUs(4_000_000) },
+            timelineRange: { startTicks: timelineTicks(100_000), durationTicks: timelineTicks(4_000_000) },
           },
           clip: {
             ...baseItem,
-            timelineRange: { startUs: timelineUs(100_000), durationUs: timelineUs(4_000_000) },
+            timelineRange: { startTicks: timelineTicks(100_000), durationTicks: timelineTicks(4_000_000) },
           },
         },
       });
@@ -424,8 +424,8 @@ describe('ClipAudioFades', () => {
           scrollLeft: 250,
           viewportWidth: 500,
           zoom: 50,
-          item: { ...baseItem, timelineRange: { startUs: 0, durationUs: timelineUs(4_000_000) } },
-          clip: { ...baseItem, timelineRange: { startUs: 0, durationUs: timelineUs(4_000_000) } },
+          item: { ...baseItem, timelineRange: { startTicks: 0, durationTicks: timelineTicks(4_000_000) } },
+          clip: { ...baseItem, timelineRange: { startTicks: 0, durationTicks: timelineTicks(4_000_000) } },
         },
       });
 

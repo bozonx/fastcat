@@ -110,8 +110,8 @@ export function useExportForm() {
   const selectionRange = computed(() => timelineStore.getSelectionRange());
   const zoneMarkers = computed(() =>
     [...timelineStore.getMarkers()]
-      .filter((marker) => Number.isFinite(marker.durationUs) && Number(marker.durationUs) > 0)
-      .sort((a, b) => a.timeUs - b.timeUs),
+      .filter((marker) => Number.isFinite(marker.durationTicks) && Number(marker.durationTicks) > 0)
+      .sort((a, b) => a.timeTicks - b.timeTicks),
   );
   const exportRangeOptions = computed<ExportRangeOption[]>(() => {
     const options: ExportRangeOption[] = [
@@ -136,10 +136,10 @@ export function useExportForm() {
         label: t('videoEditor.export.zoneMarker', { index: index + 1 }),
         description: text || undefined,
         range: {
-          startUs: Math.max(0, Math.round(marker.timeUs)),
-          endUs: Math.max(
-            Math.round(marker.timeUs),
-            Math.round(marker.timeUs + (marker.durationUs ?? 0)),
+          startTicks: Math.max(0, Math.round(marker.timeTicks)),
+          endTicks: Math.max(
+            Math.round(marker.timeTicks),
+            Math.round(marker.timeTicks + (marker.durationTicks ?? 0)),
           ),
         },
         color: marker.color || undefined,

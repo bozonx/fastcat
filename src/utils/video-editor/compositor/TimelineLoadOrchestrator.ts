@@ -38,12 +38,12 @@ export interface TimelineLoadOrchestratorCallbacks {
   applySolidLayout: (clip: CompositorClip) => void;
   replaceExistingClip: (params: { reusable: CompositorClip | undefined; itemId: string }) => void;
   resolveFixedClipEnd: (params: {
-    startUs: number;
-    requestedTimelineDurationUs: number;
-    sequentialTimeUs: number;
+    startTicks: number;
+    requestedTimelineDurationTicks: number;
+    sequentialTimeTicks: number;
   }) => {
-    endUs: number;
-    sequentialTimeUs: number;
+    endTicks: number;
+    sequentialTimeTicks: number;
   };
   registerLoadedClip: (params: {
     clip: CompositorClip;
@@ -63,7 +63,7 @@ export interface TimelineLoadOrchestratorParams {
 export interface TimelineLoadOrchestratorResult {
   nextClips: CompositorClip[];
   nextClipById: Map<string, CompositorClip>;
-  sequentialTimeUs: number;
+  sequentialTimeTicks: number;
 }
 
 export class TimelineLoadOrchestrator {
@@ -79,7 +79,7 @@ export class TimelineLoadOrchestrator {
     const { timelineClips, deps, mediabunny, callbacks } = params;
     const nextClips: CompositorClip[] = [];
     const nextClipById = new Map<string, CompositorClip>();
-    let sequentialTimeUs = 0;
+    let sequentialTimeTicks = 0;
 
     for (const [index, clipData] of timelineClips.entries()) {
       if (callbacks.checkCancel?.()) {
@@ -96,7 +96,7 @@ export class TimelineLoadOrchestrator {
       const descriptor = this.context.timelineClipLoader.describe({
         index,
         clipData: clipData as unknown as Record<string, unknown>,
-        sequentialTimeUs,
+        sequentialTimeTicks,
         fallbackTrackId: callbacks.getFallbackTrackId(
           clipData as unknown as Record<string, unknown>,
         ),
@@ -113,15 +113,15 @@ export class TimelineLoadOrchestrator {
         callbacks,
         nextClips,
         nextClipById,
-        sequentialTimeUs,
+        sequentialTimeTicks,
       });
-      sequentialTimeUs = processed.sequentialTimeUs;
+      sequentialTimeTicks = processed.sequentialTimeTicks;
     }
 
     return {
       nextClips,
       nextClipById,
-      sequentialTimeUs,
+      sequentialTimeTicks,
     };
   }
 
@@ -133,23 +133,23 @@ export class TimelineLoadOrchestrator {
     callbacks: TimelineLoadOrchestratorCallbacks;
     nextClips: CompositorClip[];
     nextClipById: Map<string, CompositorClip>;
-    sequentialTimeUs: number;
-  }): Promise<{ sequentialTimeUs: number }> {
+    sequentialTimeTicks: number;
+  }): Promise<{ sequentialTimeTicks: number }> {
     const { descriptor, clipData, deps, mediabunny, callbacks, nextClips, nextClipById } = params;
-    let { sequentialTimeUs } = params;
+    let { sequentialTimeTicks } = params;
     const {
       clipType,
       itemId,
       sourcePath,
-      sourceStartUs,
-      freezeFrameSourceUs,
+      sourceStartTicks,
+      freezeFrameSourceTicks,
       layer,
       trackId,
-      requestedTimelineDurationUs,
-      requestedSourceRangeDurationUs,
-      requestedSourceDurationUs,
+      requestedTimelineDurationTicks,
+      requestedSourceRangeDurationTicks,
+      requestedSourceDurationTicks,
       speed,
-      startUs,
+      startTicks,
       endUsFallback,
     } = descriptor;
 
@@ -175,7 +175,7 @@ export class TimelineLoadOrchestrator {
       nextClips.push(updated.clip);
       nextClipById.set(itemId, updated.clip);
       return {
-        sequentialTimeUs: updated.sequentialTimeUs,
+        sequentialTimeTicks: updated.sequentialTimeTicks,
       };
     }
 
@@ -187,11 +187,11 @@ export class TimelineLoadOrchestrator {
       clipType === 'hud'
     ) {
       const fixedDuration = callbacks.resolveFixedClipEnd({
-        startUs,
-        requestedTimelineDurationUs,
-        sequentialTimeUs,
+        startTicks,
+        requestedTimelineDurationTicks,
+        sequentialTimeTicks,
       });
-      sequentialTimeUs = fixedDuration.sequentialTimeUs;
+      sequentialTimeTicks = fixedDuration.sequentialTimeTicks;
 
       callbacks.replaceExistingClip({ reusable, itemId });
       const compositorClip = this.context.timelineClipAssetLoader.build({
@@ -201,9 +201,9 @@ export class TimelineLoadOrchestrator {
           itemId,
           trackId,
           layer,
-          startUs,
-          endUs: fixedDuration.endUs,
-          requestedTimelineDurationUs,
+          startTicks,
+          endTicks: fixedDuration.endTicks,
+          requestedTimelineDurationTicks,
           speed,
         },
         toVideoEffects: callbacks.toVideoEffects,
@@ -227,12 +227,12 @@ export class TimelineLoadOrchestrator {
           mediabunny,
         });
       }
-      return { sequentialTimeUs };
+      return { sequentialTimeTicks };
     }
 
     if (!sourcePath) {
       return {
-        sequentialTimeUs: Math.max(sequentialTimeUs, endUsFallback),
+        sequentialTimeTicks: Math.max(sequentialTimeTicks, endUsFallback),
       };
     }
 
@@ -241,7 +241,7 @@ export class TimelineLoadOrchestrator {
     const fileHandle = await deps.getFileHandleByPath(sourcePath);
     if (!fileHandle) {
       return {
-        sequentialTimeUs: Math.max(sequentialTimeUs, endUsFallback),
+        sequentialTimeTicks: Math.max(sequentialTimeTicks, endUsFallback),
       };
     }
 
@@ -261,11 +261,11 @@ export class TimelineLoadOrchestrator {
       getMediaTypeFromFilename(sourcePath) === 'image';
     if (isImage) {
       const fixedDuration = callbacks.resolveFixedClipEnd({
-        startUs,
-        requestedTimelineDurationUs,
-        sequentialTimeUs,
+        startTicks,
+        requestedTimelineDurationTicks,
+        sequentialTimeTicks,
       });
-      sequentialTimeUs = fixedDuration.sequentialTimeUs;
+      sequentialTimeTicks = fixedDuration.sequentialTimeTicks;
 
       const imageSource = createPlaceholderImageSource();
       let bitmap: ImageBitmap | null = null;
@@ -282,12 +282,12 @@ export class TimelineLoadOrchestrator {
         layer,
         sourcePath,
         fileHandle,
-        startUs,
-        endUs: fixedDuration.endUs,
-        durationUs: Math.max(0, requestedTimelineDurationUs),
-        sourceStartUs: 0,
-        sourceRangeDurationUs: Math.max(0, requestedTimelineDurationUs),
-        sourceDurationUs: Math.max(0, requestedTimelineDurationUs),
+        startTicks,
+        endTicks: fixedDuration.endTicks,
+        durationTicks: Math.max(0, requestedTimelineDurationTicks),
+        sourceStartTicks: 0,
+        sourceRangeDurationTicks: Math.max(0, requestedTimelineDurationTicks),
+        sourceDurationTicks: Math.max(0, requestedTimelineDurationTicks),
         speed,
         bitmap,
         imageSource,
@@ -326,7 +326,7 @@ export class TimelineLoadOrchestrator {
           mediabunny,
         });
       }
-      return { sequentialTimeUs };
+      return { sequentialTimeTicks };
     }
 
     const queue = this.getClipLoadQueue(isOpfs);
@@ -336,33 +336,33 @@ export class TimelineLoadOrchestrator {
         this.context.mediaClipLoader.loadVideoRuntime({
           mediabunny,
           file,
-          sourceStartUs,
-          requestedTimelineDurationUs,
-          requestedSourceDurationUs,
-          requestedSourceRangeDurationUs,
-          startUs,
+          sourceStartTicks,
+          requestedTimelineDurationTicks,
+          requestedSourceDurationTicks,
+          requestedSourceRangeDurationTicks,
+          startTicks,
           abortSignal: callbacks.abortSignal,
         }),
       );
       if (!loadedVideo) {
-        return { sequentialTimeUs };
+        return { sequentialTimeTicks };
       }
 
-      sequentialTimeUs = Math.max(sequentialTimeUs, loadedVideo.endUs);
+      sequentialTimeTicks = Math.max(sequentialTimeTicks, loadedVideo.endTicks);
       const compositorClip = this.context.clipFactory.createVideoClip({
         itemId,
         trackId,
         layer,
         sourcePath,
         fileHandle,
-        startUs,
-        endUs: loadedVideo.endUs,
-        durationUs: loadedVideo.durationUs,
-        sourceStartUs,
-        sourceRangeDurationUs: loadedVideo.sourceRangeDurationUs,
-        sourceDurationUs: loadedVideo.sourceDurationUs,
+        startTicks,
+        endTicks: loadedVideo.endTicks,
+        durationTicks: loadedVideo.durationTicks,
+        sourceStartTicks,
+        sourceRangeDurationTicks: loadedVideo.sourceRangeDurationTicks,
+        sourceDurationTicks: loadedVideo.sourceDurationTicks,
         speed,
-        freezeFrameSourceUs,
+        freezeFrameSourceTicks,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         input: loadedVideo.input as any,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -401,7 +401,7 @@ export class TimelineLoadOrchestrator {
           mediabunny,
         });
       }
-      return { sequentialTimeUs };
+      return { sequentialTimeTicks };
     } catch (err) {
       if (
         err instanceof Error &&
@@ -410,7 +410,7 @@ export class TimelineLoadOrchestrator {
         log.error(`[VideoCompositor] Failed to load video clip ${itemId}:`, err);
       }
       return {
-        sequentialTimeUs: Math.max(sequentialTimeUs, endUsFallback),
+        sequentialTimeTicks: Math.max(sequentialTimeTicks, endUsFallback),
       };
     }
   }

@@ -4,7 +4,7 @@ import { ref } from 'vue';
 import { createTimelineHydrationModule } from '~/stores/timeline/hydration';
 import type { TimelineDocument } from '~/timeline/types';
 import type { TimelineCommand } from '~/timeline/commands';
-import { timelineUs } from '../../utils/timeline-time';
+import { timelineTicks } from '../../utils/timeline-time';
 
 function makeDoc(overrides?: Partial<TimelineDocument>): TimelineDocument {
   return {
@@ -18,14 +18,14 @@ function makeDoc(overrides?: Partial<TimelineDocument>): TimelineDocument {
             kind: 'clip',
             clipType: 'media',
             source: { path: '/path/video.mp4' },
-            sourceDurationUs: 0,
+            sourceDurationTicks: 0,
             isImage: false,
           },
         ],
       },
     ],
     timebase: { fps: 30 },
-    durationUs: 0,
+    durationTicks: 0,
     ...overrides,
   } as unknown as TimelineDocument;
 }
@@ -39,7 +39,7 @@ describe('createTimelineHydrationModule', () => {
     expect(result).toBe(doc);
   });
 
-  it('hydrateAllClips patches sourceDurationUs from metadata', () => {
+  it('hydrateAllClips patches sourceDurationTicks from metadata', () => {
     const mediaMetadata = ref({
       '/path/video.mp4': { duration: 10, video: { width: 1920, height: 1080 } },
     });
@@ -47,8 +47,8 @@ describe('createTimelineHydrationModule', () => {
     const doc = makeDoc();
     const result = mod.hydrateAllClips(doc);
     expect(result).not.toBe(doc);
-    const clip = result.tracks[0]!.items[0] as { sourceDurationUs: number };
-    expect(clip.sourceDurationUs).toBe(timelineUs(10_000_000));
+    const clip = result.tracks[0]!.items[0] as { sourceDurationTicks: number };
+    expect(clip.sourceDurationTicks).toBe(timelineTicks(10_000_000));
   });
 
   it('hydrateAllClips sets isImage for image-like media (no video/audio)', () => {
@@ -99,8 +99,8 @@ describe('createTimelineHydrationModule', () => {
     } as unknown as TimelineCommand;
     const result = mod.hydrateClipSourceDuration(doc, cmd);
     expect(result).not.toBe(doc);
-    const clip = result.tracks[0]!.items[0] as { sourceDurationUs: number };
-    expect(clip.sourceDurationUs).toBe(timelineUs(5_000_000));
+    const clip = result.tracks[0]!.items[0] as { sourceDurationTicks: number };
+    expect(clip.sourceDurationTicks).toBe(timelineTicks(5_000_000));
   });
 
   it('hydrateClipSourceDuration returns doc when track not found', () => {
@@ -159,7 +159,7 @@ describe('createTimelineHydrationModule', () => {
     } as unknown as TimelineCommand;
     const result = mod.hydrateClipSourceDuration(doc, cmd);
     expect(result).not.toBe(doc);
-    const clip = result.tracks[0]!.items[0] as { sourceDurationUs: number };
-    expect(clip.sourceDurationUs).toBe(timelineUs(8_000_000));
+    const clip = result.tracks[0]!.items[0] as { sourceDurationTicks: number };
+    expect(clip.sourceDurationTicks).toBe(timelineTicks(8_000_000));
   });
 });

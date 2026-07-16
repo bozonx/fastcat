@@ -89,8 +89,8 @@ function createClip(clipType: string, overrides: Partial<TimelineClipItem> = {})
     id: 'clip-1',
     trackId: 'track-1',
     name: 'My Clip',
-    timelineRange: { startUs: 0, durationUs: 5_000_000 },
-    sourceRange: { startUs: 0, durationUs: 5_000_000 },
+    timelineRange: { startTicks: 0, durationTicks: 5_000_000 },
+    sourceRange: { startTicks: 0, durationTicks: 5_000_000 },
     ...overrides,
   } as TimelineClipItem;
 }

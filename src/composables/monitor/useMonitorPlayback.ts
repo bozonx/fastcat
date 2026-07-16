@@ -58,9 +58,9 @@ function advanceMonitorPlaybackLoop(params: {
 // the judder we saw versus the native monitor. Mirrors the worker-side
 // `computeFrameIndex` floor+epsilon so the main thread and the compositor agree on
 // where a frame boundary falls.
-export function computeMonitorFrameIndex(params: { timeUs: number; fps: number }): number {
+export function computeMonitorFrameIndex(params: { timeTicks: number; fps: number }): number {
   const fps = Number.isFinite(params.fps) && params.fps > 0 ? params.fps : 30;
-  const timeS = Number.isFinite(params.timeUs) ? Math.max(0, params.timeUs / TICKS_PER_SECOND) : 0;
+  const timeS = Number.isFinite(params.timeTicks) ? Math.max(0, params.timeTicks / TICKS_PER_SECOND) : 0;
   return Math.max(0, Math.floor(timeS * fps + 1e-6));
 }
 
@@ -139,10 +139,10 @@ function syncMonitorAudioLevels(params: {
 function syncMonitorPlaybackVisibility(params: {
   isPlaying: boolean;
   isMobile: { readonly value: boolean };
-  clampToTimeline: (timeUs: number) => number;
+  clampToTimeline: (timeTicks: number) => number;
   audioEngine: IAudioEngine;
   onPauseHiddenPlayback: () => void;
-  onRestoreVisiblePlayback: (timeUs: number) => void;
+  onRestoreVisiblePlayback: (timeTicks: number) => void;
 }) {
   if (document.hidden) {
     if (params.isMobile.value && params.isPlaying) {
@@ -155,29 +155,29 @@ function syncMonitorPlaybackVisibility(params: {
     return;
   }
 
-  const timeUs = params.clampToTimeline(params.audioEngine.getCurrentTimeUs());
-  params.onRestoreVisiblePlayback(timeUs);
+  const timeTicks = params.clampToTimeline(params.audioEngine.getCurrentTimeTicks());
+  params.onRestoreVisiblePlayback(timeTicks);
 }
 
-export function formatMonitorTimecode(params: { timeUs: number; fps: number }): string {
-  if (!Number.isFinite(params.timeUs) || params.timeUs <= 0) {
+export function formatMonitorTimecode(params: { timeTicks: number; fps: number }): string {
+  if (!Number.isFinite(params.timeTicks) || params.timeTicks <= 0) {
     return '00:00:00:00';
   }
 
-  return formatTimecode(params.timeUs, params.fps);
+  return formatTimecode(params.timeTicks, params.fps);
 }
 
 export function buildMonitorTimecodeText(params: {
-  currentTimeUs: number;
-  durationUs: number;
+  currentTimeTicks: number;
+  durationTicks: number;
   fps: number;
 }): string {
   const current = formatMonitorTimecode({
-    timeUs: params.currentTimeUs,
+    timeTicks: params.currentTimeTicks,
     fps: params.fps,
   });
   const total = formatMonitorTimecode({
-    timeUs: normalizeTicks(params.durationUs),
+    timeTicks: normalizeTicks(params.durationTicks),
     fps: params.fps,
   });
 
@@ -186,8 +186,8 @@ export function buildMonitorTimecodeText(params: {
 
 function syncMonitorTimecodeText(params: {
   element: HTMLElement | null;
-  currentTimeUs: number;
-  durationUs: number;
+  currentTimeTicks: number;
+  durationTicks: number;
   fps: number;
 }) {
   if (!params.element) {
@@ -195,8 +195,8 @@ function syncMonitorTimecodeText(params: {
   }
 
   const nextText = buildMonitorTimecodeText({
-    currentTimeUs: params.currentTimeUs,
-    durationUs: params.durationUs,
+    currentTimeTicks: params.currentTimeTicks,
+    durationTicks: params.durationTicks,
     fps: params.fps,
   });
 
@@ -211,11 +211,11 @@ export interface UseMonitorPlaybackOptions {
   isPlaying: { value: boolean };
   currentTime: { value: number };
   duration: { value: number };
-  safeDurationUs: { value: number };
+  safeDurationTicks: { value: number };
   getFps: () => number;
-  clampToTimeline: (timeUs: number) => number;
-  updateStoreTime: (timeUs: number) => void;
-  scheduleRender: (timeUs: number, options?: MonitorRenderScheduleOptions) => void;
+  clampToTimeline: (timeTicks: number) => number;
+  updateStoreTime: (timeTicks: number) => void;
+  scheduleRender: (timeTicks: number, options?: MonitorRenderScheduleOptions) => void;
   /**
    * Opens the preview-quality settle window (see `useMonitorCore.ts`): marks the paused
    * frame as interactive so it renders at the user-selected quality instead of jumping
@@ -234,7 +234,7 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
     isPlaying,
     currentTime,
     duration,
-    safeDurationUs,
+    safeDurationTicks,
     getFps,
     clampToTimeline,
     updateStoreTime,
@@ -276,8 +276,8 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
     lastScrubPreviewAtMs: 0,
   };
   let scrubPreviewRequestId = 0;
-  let localCurrentTimeUs = 0;
-  const uiCurrentTimeUs = ref(0);
+  let localCurrentTimeTicks = 0;
+  const uiCurrentTimeTicks = ref(0);
   let isUnmounted = false;
   let suppressStoreSeekWatch = false;
   let timecodeEl: HTMLElement | null = null;
@@ -285,36 +285,36 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
 
   // Track hidden/visible stats to detect browser throttling
   let hiddenAtMs = 0;
-  let hiddenAtAudioUs = 0;
+  let hiddenAtAudioTicks = 0;
 
-  function getLocalCurrentTimeUs() {
-    return localCurrentTimeUs;
+  function getLocalCurrentTimeTicks() {
+    return localCurrentTimeTicks;
   }
 
   function setTimecodeEl(el: HTMLElement | null) {
     timecodeEl = el;
-    updateTimecodeUi(localCurrentTimeUs);
+    updateTimecodeUi(localCurrentTimeTicks);
   }
 
-  function updateTimecodeUi(timeUs: number) {
+  function updateTimecodeUi(timeTicks: number) {
     syncMonitorTimecodeText({
       element: timecodeEl,
-      currentTimeUs: timeUs,
-      durationUs: duration.value,
+      currentTimeTicks: timeTicks,
+      durationTicks: duration.value,
       fps: sanitizeFps(getFps()),
     });
   }
 
-  function internalUpdateStoreTime(timeUs: number) {
+  function internalUpdateStoreTime(timeTicks: number) {
     suppressStoreSeekWatch = true;
-    updateStoreTime(timeUs);
+    updateStoreTime(timeTicks);
     suppressStoreSeekWatch = false;
   }
 
   function setLocalTimeFromStore() {
-    localCurrentTimeUs = clampToTimeline(currentTime.value);
-    uiCurrentTimeUs.value = localCurrentTimeUs;
-    updateTimecodeUi(localCurrentTimeUs);
+    localCurrentTimeTicks = clampToTimeline(currentTime.value);
+    uiCurrentTimeTicks.value = localCurrentTimeTicks;
+    updateTimecodeUi(localCurrentTimeTicks);
   }
 
   // After a paused seek settles, fire one prewarm-flagged render so the
@@ -334,12 +334,12 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
     }
   }
 
-  function schedulePausedPrewarm(timeUs: number) {
+  function schedulePausedPrewarm(timeTicks: number) {
     cancelPausedPrewarm();
     pausedPrewarmTimer = setTimeout(() => {
       pausedPrewarmTimer = null;
       if (isUnmounted || isPlaying.value) return;
-      scheduleRender(timeUs, { prewarm: true });
+      scheduleRender(timeTicks, { prewarm: true });
     }, PAUSED_PREWARM_SETTLE_MS);
   }
 
@@ -367,39 +367,39 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
       state: playbackLoopState,
     });
 
-    let newTimeUs = clampToTimeline(audioEngine.getCurrentTimeUs());
+    let newTimeTicks = clampToTimeline(audioEngine.getCurrentTimeTicks());
 
-    if (newTimeUs <= 0 && timelineStore.playbackSpeed < 0) {
-      newTimeUs = 0;
+    if (newTimeTicks <= 0 && timelineStore.playbackSpeed < 0) {
+      newTimeTicks = 0;
       isPlaying.value = false;
-      localCurrentTimeUs = newTimeUs;
-      uiCurrentTimeUs.value = newTimeUs;
-      updateTimecodeUi(newTimeUs);
-      updateStoreTime(newTimeUs);
-      scheduleRender(newTimeUs);
+      localCurrentTimeTicks = newTimeTicks;
+      uiCurrentTimeTicks.value = newTimeTicks;
+      updateTimecodeUi(newTimeTicks);
+      updateStoreTime(newTimeTicks);
+      scheduleRender(newTimeTicks);
       return;
     }
 
-    if (safeDurationUs.value > 0 && newTimeUs >= safeDurationUs.value) {
-      newTimeUs = safeDurationUs.value;
+    if (safeDurationTicks.value > 0 && newTimeTicks >= safeDurationTicks.value) {
+      newTimeTicks = safeDurationTicks.value;
       isPlaying.value = false;
-      localCurrentTimeUs = newTimeUs;
-      uiCurrentTimeUs.value = newTimeUs;
-      updateTimecodeUi(newTimeUs);
-      updateStoreTime(newTimeUs);
-      scheduleRender(newTimeUs);
+      localCurrentTimeTicks = newTimeTicks;
+      uiCurrentTimeTicks.value = newTimeTicks;
+      updateTimecodeUi(newTimeTicks);
+      updateStoreTime(newTimeTicks);
+      scheduleRender(newTimeTicks);
       return;
     }
 
-    localCurrentTimeUs = newTimeUs;
+    localCurrentTimeTicks = newTimeTicks;
 
     // Avoid component rerenders on each RAF tick.
-    updateTimecodeUi(newTimeUs);
+    updateTimecodeUi(newTimeTicks);
 
     if (playbackLoopState.storeSyncAccumulatorMs >= STORE_TIME_SYNC_MS) {
       playbackLoopState.storeSyncAccumulatorMs = 0;
-      uiCurrentTimeUs.value = newTimeUs;
-      updateStoreTime(newTimeUs);
+      uiCurrentTimeTicks.value = newTimeTicks;
+      updateStoreTime(newTimeTicks);
     }
 
     if (playbackLoopState.audioLevelsAccumulatorMs >= AUDIO_LEVELS_SYNC_MS) {
@@ -415,10 +415,10 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
     // frames are dropped to stay in sync instead of piling up. Only schedule while
     // the document is visible to save resources in the background (Desktop).
     const fps = sanitizeFps(getFps());
-    const targetFrameIndex = computeMonitorFrameIndex({ timeUs: newTimeUs, fps });
+    const targetFrameIndex = computeMonitorFrameIndex({ timeTicks: newTimeTicks, fps });
     if (targetFrameIndex !== playbackLoopState.lastRenderedFrameIndex && !document.hidden) {
       playbackLoopState.lastRenderedFrameIndex = targetFrameIndex;
-      scheduleRender(newTimeUs, { prewarm: true });
+      scheduleRender(newTimeTicks, { prewarm: true });
     }
 
     if (isPlaying.value) {
@@ -446,9 +446,9 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
       if (playing) {
         // The playback loop prewarms on its own cadence.
         cancelPausedPrewarm();
-        if (safeDurationUs.value > 0 && localCurrentTimeUs >= safeDurationUs.value) {
-          localCurrentTimeUs = 0;
-          uiCurrentTimeUs.value = 0;
+        if (safeDurationTicks.value > 0 && localCurrentTimeTicks >= safeDurationTicks.value) {
+          localCurrentTimeTicks = 0;
+          uiCurrentTimeTicks.value = 0;
           updateTimecodeUi(0);
           internalUpdateStoreTime(0);
         }
@@ -461,7 +461,7 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
         // before we let the render loop start ticking — this keeps audio and
         // video aligned from the very first frame.
         void audioEngine
-          .play(localCurrentTimeUs, timelineStore.playbackSpeed)
+          .play(localCurrentTimeTicks, timelineStore.playbackSpeed)
           .then(() => {
             if (isUnmounted || !isPlaying.value) return;
             // Native monitor owns the clock: don't run the frontend RAF loop (it would
@@ -486,9 +486,9 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
         audioEngine.stopScrubPreview();
         audioEngine.stop();
         cancelAnimationFrame(playbackLoopId);
-        uiCurrentTimeUs.value = clampToTimeline(localCurrentTimeUs);
-        updateTimecodeUi(uiCurrentTimeUs.value);
-        internalUpdateStoreTime(uiCurrentTimeUs.value);
+        uiCurrentTimeTicks.value = clampToTimeline(localCurrentTimeTicks);
+        updateTimecodeUi(uiCurrentTimeTicks.value);
+        internalUpdateStoreTime(uiCurrentTimeTicks.value);
       }
     },
   );
@@ -514,26 +514,26 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
       // scrub-preview, which is meant only for a user dragging the playhead.
       const isProgrammaticSeek = timelineStore.consumeProgrammaticSeek();
 
-      const normalizedTimeUs = clampToTimeline(val);
-      if (normalizedTimeUs !== val) {
-        internalUpdateStoreTime(normalizedTimeUs);
+      const normalizedTimeTicks = clampToTimeline(val);
+      if (normalizedTimeTicks !== val) {
+        internalUpdateStoreTime(normalizedTimeTicks);
         return;
       }
       if (!isPlaying.value) {
-        const previousTimeUs = localCurrentTimeUs;
-        localCurrentTimeUs = normalizedTimeUs;
-        uiCurrentTimeUs.value = normalizedTimeUs;
-        updateTimecodeUi(normalizedTimeUs);
+        const previousTimeTicks = localCurrentTimeTicks;
+        localCurrentTimeTicks = normalizedTimeTicks;
+        uiCurrentTimeTicks.value = normalizedTimeTicks;
+        updateTimecodeUi(normalizedTimeTicks);
 
-        if (normalizedTimeUs > previousTimeUs && !isProgrammaticSeek) {
+        if (normalizedTimeTicks > previousTimeTicks && !isProgrammaticSeek) {
           if (
             workspaceStore.userSettings.projectDefaults.audioScrubbingEnabled &&
-            canPlayScrubPreview(previousTimeUs, normalizedTimeUs)
+            canPlayScrubPreview(previousTimeTicks, normalizedTimeTicks)
           ) {
             const requestId = ++scrubPreviewRequestId;
             audioEngine.stopScrubPreview();
             void audioEngine
-              .previewScrubForward(previousTimeUs, normalizedTimeUs, SCRUB_PREVIEW_DURATION_TICKS)
+              .previewScrubForward(previousTimeTicks, normalizedTimeTicks, SCRUB_PREVIEW_DURATION_TICKS)
               .catch((error) => {
                 if (requestId !== scrubPreviewRequestId || isUnmounted) return;
                 log.warn('[Monitor] Failed to preview audio scrub', error);
@@ -547,34 +547,34 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
         // Scrubbing is interactive: render at the user-selected quality now, upgrade to
         // ultra once the settle window elapses (see useMonitorCore.ts's beginInteractiveWindow).
         beginInteractiveWindow?.();
-        scheduleRender(normalizedTimeUs);
-        schedulePausedPrewarm(normalizedTimeUs);
+        scheduleRender(normalizedTimeTicks);
+        schedulePausedPrewarm(normalizedTimeTicks);
       } else if (isNativeMonitor) {
         // Native monitor is the master clock: `currentTime` advances from
         // `monitor:time` (the bridge). Mirror it into the timecode/UI without
         // echoing a seek — the native bridge owns transport, and user scrubs
         // during playback already seek the native engine through it.
-        localCurrentTimeUs = normalizedTimeUs;
-        uiCurrentTimeUs.value = normalizedTimeUs;
-        updateTimecodeUi(normalizedTimeUs);
+        localCurrentTimeTicks = normalizedTimeTicks;
+        uiCurrentTimeTicks.value = normalizedTimeTicks;
+        updateTimecodeUi(normalizedTimeTicks);
       } else {
         // Ignore tiny store updates produced by the local playback loop itself.
         // Only external timeline jumps should trigger an actual seek.
-        if (Math.abs(normalizedTimeUs - localCurrentTimeUs) <= PLAYBACK_SEEK_EPSILON_TICKS) {
+        if (Math.abs(normalizedTimeTicks - localCurrentTimeTicks) <= PLAYBACK_SEEK_EPSILON_TICKS) {
           return;
         }
-        localCurrentTimeUs = normalizedTimeUs;
-        audioEngine.seek(normalizedTimeUs);
+        localCurrentTimeTicks = normalizedTimeTicks;
+        audioEngine.seek(normalizedTimeTicks);
       }
     },
   );
 
   watch(
-    () => safeDurationUs.value,
+    () => safeDurationTicks.value,
     (newDuration) => {
       if (newDuration > 0 && !isPlaying.value) {
         setLocalTimeFromStore();
-        scheduleRender(localCurrentTimeUs);
+        scheduleRender(localCurrentTimeTicks);
       }
     },
   );
@@ -592,11 +592,11 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
         onPauseHiddenPlayback: () => {
           isPlaying.value = false;
         },
-        onRestoreVisiblePlayback: (timeUs) => {
+        onRestoreVisiblePlayback: (timeTicks) => {
           if (!isMobile.value && hiddenAtMs > 0 && isPlaying.value) {
             const elapsedMs = performance.now() - hiddenAtMs;
-            const audioDeltaUs = timeUs - hiddenAtAudioUs;
-            const audioDeltaMs = audioDeltaUs / 1000;
+            const audioDeltaTicks = timeTicks - hiddenAtAudioTicks;
+            const audioDeltaMs = audioDeltaTicks / 1000;
 
             // If audio delta is significantly less than real elapsed time, browser throttled us.
             // Check for at least 300ms gap to avoid false positives on short task switches.
@@ -610,20 +610,20 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
           }
 
           hiddenAtMs = 0;
-          hiddenAtAudioUs = 0;
+          hiddenAtAudioTicks = 0;
 
-          localCurrentTimeUs = timeUs;
-          uiCurrentTimeUs.value = timeUs;
-          updateTimecodeUi(timeUs);
+          localCurrentTimeTicks = timeTicks;
+          uiCurrentTimeTicks.value = timeTicks;
+          updateTimecodeUi(timeTicks);
 
           // Force a render command immediately upon returning to the tab
-          scheduleRender(timeUs);
+          scheduleRender(timeTicks);
         },
       });
 
       if (document.hidden && !isMobile.value && isPlaying.value) {
         hiddenAtMs = performance.now();
-        hiddenAtAudioUs = audioEngine.getCurrentTimeUs();
+        hiddenAtAudioTicks = audioEngine.getCurrentTimeTicks();
       }
     };
     document.addEventListener('visibilitychange', visibilityHandler);
@@ -644,8 +644,8 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
   });
 
   return {
-    uiCurrentTimeUs,
-    getLocalCurrentTimeUs,
+    uiCurrentTimeTicks,
+    getLocalCurrentTimeTicks,
     setTimecodeEl,
     setLocalTimeFromStore,
   };

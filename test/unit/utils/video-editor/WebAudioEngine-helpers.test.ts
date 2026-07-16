@@ -7,7 +7,7 @@ import {
   deepEqualEffects,
 } from '~/utils/video-editor/WebAudioEngine';
 import type { ClipPlaybackWindow } from '~/utils/video-editor/audio-engine.types';
-import { timelineUs } from '../../utils/timeline-time';
+import { timelineTicks } from '../../utils/timeline-time';
 
 function createMockGainNode() {
   const calls: Array<{ method: string; args: unknown[] }> = [];
@@ -357,8 +357,8 @@ describe('applyClipGainEnvelope', () => {
         animations: {
           'audio.volume': {
             keyframes: [
-              { tUs: 0, value: 1, easing: 'linear' },
-              { tUs: timelineUs(2_000_000), value: 0, easing: 'linear' },
+              { tTicks: 0, value: 1, easing: 'linear' },
+              { tTicks: timelineTicks(2_000_000), value: 0, easing: 'linear' },
             ],
           },
         },
@@ -437,7 +437,7 @@ describe('applyClipPanEnvelope', () => {
     // Must not throw.
     applyClipPanEnvelope({
       window: makeWindow({
-        animations: { 'audio.pan': { keyframes: [{ tUs: 0, value: 1, easing: 'linear' }] } },
+        animations: { 'audio.pan': { keyframes: [{ tTicks: 0, value: 1, easing: 'linear' }] } },
       }),
       panner: null,
       startAtS: 10,
@@ -452,8 +452,8 @@ describe('applyClipPanEnvelope', () => {
         animations: {
           'audio.pan': {
             keyframes: [
-              { tUs: 0, value: -1, easing: 'linear' },
-              { tUs: timelineUs(2_000_000), value: 1, easing: 'linear' },
+              { tTicks: 0, value: -1, easing: 'linear' },
+              { tTicks: timelineTicks(2_000_000), value: 1, easing: 'linear' },
             ],
           },
         },

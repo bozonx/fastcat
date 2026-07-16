@@ -25,9 +25,9 @@ describe('StageManager', () => {
       { id: 'track-bottom', layer: 0, container: bottomContainer },
     ] as any[];
     const clipById = new Map([
-      ['clip-late', { itemId: 'clip-late', startUs: 2_000, endUs: 4_000 }],
-      ['clip-same-start-a', { itemId: 'clip-same-start-a', startUs: 1_000, endUs: 3_000 }],
-      ['clip-same-start-b', { itemId: 'clip-same-start-b', startUs: 1_000, endUs: 3_000 }],
+      ['clip-late', { itemId: 'clip-late', startTicks: 2_000, endTicks: 4_000 }],
+      ['clip-same-start-a', { itemId: 'clip-same-start-a', startTicks: 1_000, endTicks: 3_000 }],
+      ['clip-same-start-b', { itemId: 'clip-same-start-b', startTicks: 1_000, endTicks: 3_000 }],
     ]);
     const trackById = new Map(tracks.map((track) => [track.id, track]));
     const app = {

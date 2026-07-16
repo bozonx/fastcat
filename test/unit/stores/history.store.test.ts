@@ -93,13 +93,13 @@ describe('HistoryStore', () => {
           clips: [
             {
               id: 'clip-1',
-              sourceStartUs: 0,
-              durationUs: 5_000_000,
+              sourceStartTicks: 0,
+              durationTicks: 5_000_000,
               transform: { x: 0.5, y: -1.25, scale: 2 },
               effects: [{ type: 'blur', radius: 3, enabled: true }],
               keyframes: [
-                { tUs: 0, value: 0 },
-                { tUs: 1000, value: 1 },
+                { tTicks: 0, value: 0 },
+                { tTicks: 1000, value: 1 },
               ],
             },
           ],

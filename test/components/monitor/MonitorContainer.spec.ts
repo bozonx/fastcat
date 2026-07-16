@@ -5,7 +5,7 @@ import MonitorContainer from '~/components/monitor/MonitorContainer.vue';
 import { ref, nextTick } from 'vue';
 import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
 import { useWorkspaceStore } from '~/stores/workspace.store';
-import { timelineUs } from '../../unit/utils/timeline-time';
+import { timelineTicks } from '../../unit/utils/timeline-time';
 
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
@@ -17,7 +17,7 @@ vi.mock('~/composables/monitor/useMonitorRuntime', () => ({
   useMonitorRuntime: () => ({
     selectionStore: {},
     videoItems: ref([]),
-    safeDurationUs: ref(timelineUs(1_000_000)),
+    safeDurationTicks: ref(timelineTicks(1_000_000)),
     isTextClipSelected: ref(false),
     isAdjustmentClipSelected: ref(false),
     containerEl: ref(null),
@@ -32,7 +32,7 @@ vi.mock('~/composables/monitor/useMonitorRuntime', () => ({
     isSavingStopFrame: ref(false),
     createStopFrameSnapshot: vi.fn(),
     timecodeEl: ref(null),
-    uiCurrentTimeUs: ref(0),
+    uiCurrentTimeTicks: ref(0),
   }),
 }));
 
@@ -597,7 +597,7 @@ describe('MonitorContainer', () => {
   it('renders seekbar and seeks on interaction', async () => {
     const { useTimelineStore } = await import('~/stores/timeline.store');
     const timelineStore = useTimelineStore(pinia);
-    timelineStore.setCurrentTimeUs = vi.fn();
+    timelineStore.setCurrentTimeTicks = vi.fn();
     timelineStore.requestScrollToPlayhead = vi.fn();
 
     wrapper = mount(MonitorContainer, {
@@ -643,7 +643,7 @@ describe('MonitorContainer', () => {
     });
 
     // 50% of 1,000,000 Us is 500,000 Us
-    expect(timelineStore.setCurrentTimeUs).toHaveBeenCalledWith(timelineUs(500_000));
+    expect(timelineStore.setCurrentTimeTicks).toHaveBeenCalledWith(timelineTicks(500_000));
     expect(timelineStore.requestScrollToPlayhead).toHaveBeenCalled();
 
     // Reset calls and test pointerup triggers requestScrollToPlayhead

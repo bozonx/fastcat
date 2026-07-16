@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
 import type { TimelineClipItem, TimelineTrack } from '~/timeline/types';
 import TransitionProperties from '~/components/properties/TransitionProperties.vue';
-import { timelineUs } from '../../unit/utils/timeline-time';
+import { timelineTicks } from '../../unit/utils/timeline-time';
 
 const mockUpdateClipTransition = vi.fn();
 
@@ -14,16 +14,16 @@ vi.mock('~/stores/timeline.store', () => ({
 
 const getPrevClipForItemMock = vi.fn(() => null);
 const getNextClipForItemMock = vi.fn(() => null);
-const getClipTailTimelineHandleUsMock = vi.fn(() => timelineUs(1_000_000));
-const getClipHeadTimelineHandleUsMock = vi.fn(() => timelineUs(1_000_000));
+const getClipTailTimelineHandleUsMock = vi.fn(() => timelineTicks(1_000_000));
+const getClipHeadTimelineHandleUsMock = vi.fn(() => timelineTicks(1_000_000));
 
 vi.mock('~/utils/timeline/clip', () => ({
   getPrevClipForItem: (...args: unknown[]) =>
     getPrevClipForItemMock(...(args as [TimelineTrack, TimelineClipItem])),
   getNextClipForItem: (...args: unknown[]) =>
     getNextClipForItemMock(...(args as [TimelineTrack, TimelineClipItem])),
-  getClipTailTimelineHandleUs: (c: TimelineClipItem) => getClipTailTimelineHandleUsMock(c),
-  getClipHeadTimelineHandleUs: (c: TimelineClipItem) => getClipHeadTimelineHandleUsMock(c),
+  getClipTailTimelineHandleTicks: (c: TimelineClipItem) => getClipTailTimelineHandleUsMock(c),
+  getClipHeadTimelineHandleTicks: (c: TimelineClipItem) => getClipHeadTimelineHandleUsMock(c),
 }));
 
 // Stub the panel — we drive its update event to test handleTransitionUpdate.
@@ -35,7 +35,7 @@ const ClipTransitionPanelStub = {
     expose({ openSaveModal: vi.fn() });
     return { exposedOpenSaveModal: vi.fn() };
   },
-  template: `<div class="panel-mock" :data-edge="edge" :data-max="maxDuration"><button class="emit-update" @click="$emit('update', { trackId, itemId, edge, transition: { type: 'fade', durationUs: ${timelineUs(500_000)} } })" /></div>`,
+  template: `<div class="panel-mock" :data-edge="edge" :data-max="maxDuration"><button class="emit-update" @click="$emit('update', { trackId, itemId, edge, transition: { type: 'fade', durationTicks: ${timelineTicks(500_000)} } })" /></div>`,
 };
 
 function createClip(overrides: Partial<TimelineClipItem> = {}): TimelineClipItem {
@@ -45,28 +45,28 @@ function createClip(overrides: Partial<TimelineClipItem> = {}): TimelineClipItem
     id: 'item-1',
     trackId: 'track-1',
     name: 'Clip',
-    timelineRange: { startUs: 1_000_000, durationUs: 5_000_000 },
-    sourceRange: { startUs: 0, durationUs: 5_000_000 },
+    timelineRange: { startTicks: 1_000_000, durationTicks: 5_000_000 },
+    sourceRange: { startTicks: 0, durationTicks: 5_000_000 },
     ...overrides,
   } as TimelineClipItem;
 
   return {
     ...clip,
     timelineRange: {
-      startUs: timelineUs(clip.timelineRange.startUs),
-      durationUs: timelineUs(clip.timelineRange.durationUs),
+      startTicks: timelineTicks(clip.timelineRange.startTicks),
+      durationTicks: timelineTicks(clip.timelineRange.durationTicks),
     },
     sourceRange: {
-      startUs: timelineUs(clip.sourceRange.startUs),
-      durationUs: timelineUs(clip.sourceRange.durationUs),
+      startTicks: timelineTicks(clip.sourceRange.startTicks),
+      durationTicks: timelineTicks(clip.sourceRange.durationTicks),
     },
     transitionIn: clip.transitionIn && {
       ...clip.transitionIn,
-      durationUs: timelineUs(clip.transitionIn.durationUs),
+      durationTicks: timelineTicks(clip.transitionIn.durationTicks),
     },
     transitionOut: clip.transitionOut && {
       ...clip.transitionOut,
-      durationUs: timelineUs(clip.transitionOut.durationUs),
+      durationTicks: timelineTicks(clip.transitionOut.durationTicks),
     },
   } as TimelineClipItem;
 }
@@ -88,7 +88,7 @@ describe('TransitionProperties', () => {
   });
 
   it('renders panel with transitionIn value for edge in', async () => {
-    const clip = createClip({ transitionIn: { type: 'fade', durationUs: 300_000 } as any });
+    const clip = createClip({ transitionIn: { type: 'fade', durationTicks: 300_000 } as any });
     const component = await mountSuspended(TransitionProperties, {
       props: {
         transitionSelection: { trackId: 'track-1', itemId: 'item-1', edge: 'in' },
@@ -102,8 +102,8 @@ describe('TransitionProperties', () => {
 
   it('computes basic maxDuration from clip duration minus opposite transition (edge in)', async () => {
     const clip = createClip({
-      transitionIn: { type: 'fade', durationUs: 300_000 } as any,
-      transitionOut: { type: 'wipe', durationUs: 500_000 } as any,
+      transitionIn: { type: 'fade', durationTicks: 300_000 } as any,
+      transitionOut: { type: 'wipe', durationTicks: 500_000 } as any,
     });
     const component = await mountSuspended(TransitionProperties, {
       props: {
@@ -119,8 +119,8 @@ describe('TransitionProperties', () => {
 
   it('computes maxDuration for edge out subtracting transitionIn', async () => {
     const clip = createClip({
-      transitionIn: { type: 'fade', durationUs: 2_000_000 } as any,
-      transitionOut: { type: 'wipe', durationUs: 500_000 } as any,
+      transitionIn: { type: 'fade', durationTicks: 2_000_000 } as any,
+      transitionOut: { type: 'wipe', durationTicks: 500_000 } as any,
     });
     const component = await mountSuspended(TransitionProperties, {
       props: {
@@ -136,15 +136,15 @@ describe('TransitionProperties', () => {
 
   it('limits maxDuration to adjacent clip handle when mode is adjacent and prev clip is close', async () => {
     const clip = createClip({
-      timelineRange: { startUs: 1_000_000, durationUs: 5_000_000 },
-      transitionIn: { type: 'fade', durationUs: 100_000, mode: 'adjacent' } as any,
+      timelineRange: { startTicks: 1_000_000, durationTicks: 5_000_000 },
+      transitionIn: { type: 'fade', durationTicks: 100_000, mode: 'adjacent' } as any,
     });
     const adjacent = createClip({
       id: 'adj-1',
-      timelineRange: { startUs: 0, durationUs: 1_000_000 }, // ends at 1_000_000, touches clip start
+      timelineRange: { startTicks: 0, durationTicks: 1_000_000 }, // ends at 1_000_000, touches clip start
     });
     getPrevClipForItemMock.mockReturnValueOnce(adjacent);
-    getClipTailTimelineHandleUsMock.mockReturnValueOnce(timelineUs(500_000)); // 0.5s handle limit
+    getClipTailTimelineHandleUsMock.mockReturnValueOnce(timelineTicks(500_000)); // 0.5s handle limit
 
     const component = await mountSuspended(TransitionProperties, {
       props: {
@@ -162,7 +162,7 @@ describe('TransitionProperties', () => {
 
   it('forwards update event to timelineStore.updateClipTransition for edge in', async () => {
     mockUpdateClipTransition.mockClear();
-    const clip = createClip({ transitionIn: { type: 'fade', durationUs: 300_000 } as any });
+    const clip = createClip({ transitionIn: { type: 'fade', durationTicks: 300_000 } as any });
     const component = await mountSuspended(TransitionProperties, {
       props: {
         transitionSelection: { trackId: 'track-1', itemId: 'item-1', edge: 'in' },
@@ -174,13 +174,13 @@ describe('TransitionProperties', () => {
     await component.find('.emit-update').trigger('click');
 
     expect(mockUpdateClipTransition).toHaveBeenCalledWith('track-1', 'item-1', {
-      transitionIn: { type: 'fade', durationUs: timelineUs(500_000) },
+      transitionIn: { type: 'fade', durationTicks: timelineTicks(500_000) },
     });
   });
 
   it('forwards update event to timelineStore.updateClipTransition for edge out', async () => {
     mockUpdateClipTransition.mockClear();
-    const clip = createClip({ transitionOut: { type: 'fade', durationUs: 300_000 } as any });
+    const clip = createClip({ transitionOut: { type: 'fade', durationTicks: 300_000 } as any });
     const component = await mountSuspended(TransitionProperties, {
       props: {
         transitionSelection: { trackId: 'track-1', itemId: 'item-1', edge: 'out' },
@@ -192,12 +192,12 @@ describe('TransitionProperties', () => {
     await component.find('.emit-update').trigger('click');
 
     expect(mockUpdateClipTransition).toHaveBeenCalledWith('track-1', 'item-1', {
-      transitionOut: { type: 'fade', durationUs: timelineUs(500_000) },
+      transitionOut: { type: 'fade', durationTicks: timelineTicks(500_000) },
     });
   });
 
   it('exposes openSaveModal via defineExpose', async () => {
-    const clip = createClip({ transitionIn: { type: 'fade', durationUs: 300_000 } as any });
+    const clip = createClip({ transitionIn: { type: 'fade', durationTicks: 300_000 } as any });
     const component = await mountSuspended(TransitionProperties, {
       props: {
         transitionSelection: { trackId: 'track-1', itemId: 'item-1', edge: 'in' },

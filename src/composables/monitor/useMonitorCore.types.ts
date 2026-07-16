@@ -11,7 +11,7 @@ export interface MonitorTimelineState {
   workerTimelineClips: Ref<WorkerTimelineClip[]>;
   workerAudioClips: Ref<WorkerTimelineClip[]>;
   workerTimelinePayload: Ref<WorkerVideoPayloadItem[]>;
-  safeDurationUs: Ref<number>;
+  safeDurationTicks: Ref<number>;
   clipSourceSignature: Ref<number>;
   clipLayoutSignature: Ref<number>;
   clipContentSignature: Ref<number>;
@@ -34,7 +34,7 @@ export interface MonitorDisplayState {
 export interface TimelineStoreState {
   duration: number;
   currentTime: number;
-  setCurrentTimeUs: (timeUs: number) => void;
+  setCurrentTimeTicks: (timeTicks: number) => void;
   isPlaying: boolean;
   masterGain: number;
   audioMuted: boolean;

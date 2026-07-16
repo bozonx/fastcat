@@ -44,43 +44,43 @@ describe('MediaClipLoader', () => {
     vi.spyOn(loader, 'loadVideoRuntime').mockImplementation((options) =>
       loadVideoRuntime({
         ...options,
-        startUs: options.startUs * TICKS_PER_MICROSECOND,
-        sourceStartUs: options.sourceStartUs * TICKS_PER_MICROSECOND,
-        requestedTimelineDurationUs: options.requestedTimelineDurationUs * TICKS_PER_MICROSECOND,
-        requestedSourceDurationUs: options.requestedSourceDurationUs * TICKS_PER_MICROSECOND,
-        requestedSourceRangeDurationUs:
-          options.requestedSourceRangeDurationUs * TICKS_PER_MICROSECOND,
+        startTicks: options.startTicks * TICKS_PER_MICROSECOND,
+        sourceStartTicks: options.sourceStartTicks * TICKS_PER_MICROSECOND,
+        requestedTimelineDurationTicks: options.requestedTimelineDurationTicks * TICKS_PER_MICROSECOND,
+        requestedSourceDurationTicks: options.requestedSourceDurationTicks * TICKS_PER_MICROSECOND,
+        requestedSourceRangeDurationTicks:
+          options.requestedSourceRangeDurationTicks * TICKS_PER_MICROSECOND,
       }),
     );
   });
 
-  it('computes sourceDurationUs as min(requested, full media duration)', async () => {
+  it('computes sourceDurationTicks as min(requested, full media duration)', async () => {
     const track = makeTrack({ computeDuration: async () => 10 });
     const mediabunny = makeMediabunny(track);
 
     const result = await loader.loadVideoRuntime({
       mediabunny,
       file: new File([], 'test.mp4'),
-      sourceStartUs: 2_000_000,
-      requestedTimelineDurationUs: 0,
-      requestedSourceDurationUs: 5_000_000,
-      requestedSourceRangeDurationUs: 0,
-      startUs: 1_000_000,
+      sourceStartTicks: 2_000_000,
+      requestedTimelineDurationTicks: 0,
+      requestedSourceDurationTicks: 5_000_000,
+      requestedSourceRangeDurationTicks: 0,
+      startTicks: 1_000_000,
     });
 
     expect(result).not.toBeNull();
-    // mediaDurationUs = 10 * 1_000_000 = 10_000_000
-    // sourceDurationUs = min(5_000_000, 10_000_000) = 5_000_000
-    expect(result!.sourceDurationUs).toBe(5_000_000 * TICKS_PER_MICROSECOND);
+    // mediaDurationTicks = 10 * 1_000_000 = 10_000_000
+    // sourceDurationTicks = min(5_000_000, 10_000_000) = 5_000_000
+    expect(result!.sourceDurationTicks).toBe(5_000_000 * TICKS_PER_MICROSECOND);
   });
 
   it('keeps the FULL media duration for a clip trimmed at its start', async () => {
-    // Regression: sourceDurationUs is an ABSOLUTE source-domain value — the full
+    // Regression: sourceDurationTicks is an ABSOLUTE source-domain value — the full
     // media duration. Transition handle math downstream computes
-    // `sourceDurationUs - sourceStartUs - sourceRangeDurationUs`, and the
+    // `sourceDurationTicks - sourceStartTicks - sourceRangeDurationTicks`, and the
     // reuse/layout-update paths store the payload's full-duration value as-is.
     // The loader used to clamp by the tail (media - sourceStart), double-counting
-    // sourceStartUs: a 60s file trimmed to start at 10s reported 50s, so a
+    // sourceStartTicks: a 60s file trimmed to start at 10s reported 50s, so a
     // transition's trailing handle came out 10s short (frozen shadow frames).
     const track = makeTrack({ computeDuration: async () => 10 });
     const mediabunny = makeMediabunny(track);
@@ -88,97 +88,97 @@ describe('MediaClipLoader', () => {
     const result = await loader.loadVideoRuntime({
       mediabunny,
       file: new File([], 'test.mp4'),
-      sourceStartUs: 2_000_000,
-      requestedTimelineDurationUs: 4_000_000,
-      requestedSourceDurationUs: 10_000_000,
-      requestedSourceRangeDurationUs: 4_000_000,
-      startUs: 0,
+      sourceStartTicks: 2_000_000,
+      requestedTimelineDurationTicks: 4_000_000,
+      requestedSourceDurationTicks: 10_000_000,
+      requestedSourceRangeDurationTicks: 4_000_000,
+      startTicks: 0,
     });
 
     expect(result).not.toBeNull();
-    expect(result!.sourceDurationUs).toBe(10_000_000 * TICKS_PER_MICROSECOND);
+    expect(result!.sourceDurationTicks).toBe(10_000_000 * TICKS_PER_MICROSECOND);
     // Trailing handle available past the source range: 10 - 2 - 4 = 4s.
     expect(
-      result!.sourceDurationUs - 2_000_000 * TICKS_PER_MICROSECOND - result!.sourceRangeDurationUs,
+      result!.sourceDurationTicks - 2_000_000 * TICKS_PER_MICROSECOND - result!.sourceRangeDurationTicks,
     ).toBe(4_000_000 * TICKS_PER_MICROSECOND);
   });
 
-  it('uses the full media duration when requestedSourceDurationUs is 0', async () => {
+  it('uses the full media duration when requestedSourceDurationTicks is 0', async () => {
     const track = makeTrack({ computeDuration: async () => 8 });
     const mediabunny = makeMediabunny(track);
 
     const result = await loader.loadVideoRuntime({
       mediabunny,
       file: new File([], 'test.mp4'),
-      sourceStartUs: 3_000_000,
-      requestedTimelineDurationUs: 0,
-      requestedSourceDurationUs: 0,
-      requestedSourceRangeDurationUs: 0,
-      startUs: 0,
+      sourceStartTicks: 3_000_000,
+      requestedTimelineDurationTicks: 0,
+      requestedSourceDurationTicks: 0,
+      requestedSourceRangeDurationTicks: 0,
+      startTicks: 0,
     });
 
     expect(result).not.toBeNull();
-    // mediaDurationUs = 8_000_000 (absolute, NOT reduced by sourceStartUs)
-    expect(result!.sourceDurationUs).toBe(8_000_000 * TICKS_PER_MICROSECOND);
+    // mediaDurationTicks = 8_000_000 (absolute, NOT reduced by sourceStartTicks)
+    expect(result!.sourceDurationTicks).toBe(8_000_000 * TICKS_PER_MICROSECOND);
     // The timeline-duration fallback, by contrast, is the playable tail.
-    expect(result!.durationUs).toBe(5_000_000 * TICKS_PER_MICROSECOND);
+    expect(result!.durationTicks).toBe(5_000_000 * TICKS_PER_MICROSECOND);
   });
 
-  it('uses requestedTimelineDurationUs when > 0, else sourceDurationUs', async () => {
+  it('uses requestedTimelineDurationTicks when > 0, else sourceDurationTicks', async () => {
     const track = makeTrack({ computeDuration: async () => 10 });
     const mediabunny = makeMediabunny(track);
 
     const result = await loader.loadVideoRuntime({
       mediabunny,
       file: new File([], 'test.mp4'),
-      sourceStartUs: 0,
-      requestedTimelineDurationUs: 3_000_000,
-      requestedSourceDurationUs: 0,
-      requestedSourceRangeDurationUs: 0,
-      startUs: 1_000_000,
+      sourceStartTicks: 0,
+      requestedTimelineDurationTicks: 3_000_000,
+      requestedSourceDurationTicks: 0,
+      requestedSourceRangeDurationTicks: 0,
+      startTicks: 1_000_000,
     });
 
     expect(result).not.toBeNull();
-    expect(result!.durationUs).toBe(3_000_000 * TICKS_PER_MICROSECOND);
-    expect(result!.endUs).toBe(4_000_000 * TICKS_PER_MICROSECOND);
+    expect(result!.durationTicks).toBe(3_000_000 * TICKS_PER_MICROSECOND);
+    expect(result!.endTicks).toBe(4_000_000 * TICKS_PER_MICROSECOND);
   });
 
-  it('falls back to the playable source tail for durationUs when timelineDuration is 0', async () => {
+  it('falls back to the playable source tail for durationTicks when timelineDuration is 0', async () => {
     const track = makeTrack({ computeDuration: async () => 6 });
     const mediabunny = makeMediabunny(track);
 
     const result = await loader.loadVideoRuntime({
       mediabunny,
       file: new File([], 'test.mp4'),
-      sourceStartUs: 0,
-      requestedTimelineDurationUs: 0,
-      requestedSourceDurationUs: 0,
-      requestedSourceRangeDurationUs: 0,
-      startUs: 2_000_000,
+      sourceStartTicks: 0,
+      requestedTimelineDurationTicks: 0,
+      requestedSourceDurationTicks: 0,
+      requestedSourceRangeDurationTicks: 0,
+      startTicks: 2_000_000,
     });
 
     expect(result).not.toBeNull();
-    // sourceDurationUs = 6_000_000, durationUs = 6_000_000
-    expect(result!.durationUs).toBe(6_000_000 * TICKS_PER_MICROSECOND);
-    expect(result!.endUs).toBe(8_000_000 * TICKS_PER_MICROSECOND);
+    // sourceDurationTicks = 6_000_000, durationTicks = 6_000_000
+    expect(result!.durationTicks).toBe(6_000_000 * TICKS_PER_MICROSECOND);
+    expect(result!.endTicks).toBe(8_000_000 * TICKS_PER_MICROSECOND);
   });
 
-  it('uses requestedSourceRangeDurationUs when > 0, else durationUs', async () => {
+  it('uses requestedSourceRangeDurationTicks when > 0, else durationTicks', async () => {
     const track = makeTrack({ computeDuration: async () => 10 });
     const mediabunny = makeMediabunny(track);
 
     const result = await loader.loadVideoRuntime({
       mediabunny,
       file: new File([], 'test.mp4'),
-      sourceStartUs: 0,
-      requestedTimelineDurationUs: 4_000_000,
-      requestedSourceDurationUs: 0,
-      requestedSourceRangeDurationUs: 2_000_000,
-      startUs: 0,
+      sourceStartTicks: 0,
+      requestedTimelineDurationTicks: 4_000_000,
+      requestedSourceDurationTicks: 0,
+      requestedSourceRangeDurationTicks: 2_000_000,
+      startTicks: 0,
     });
 
     expect(result).not.toBeNull();
-    expect(result!.sourceRangeDurationUs).toBe(2_000_000 * TICKS_PER_MICROSECOND);
+    expect(result!.sourceRangeDurationTicks).toBe(2_000_000 * TICKS_PER_MICROSECOND);
   });
 
   it('returns null when track is null', async () => {
@@ -187,11 +187,11 @@ describe('MediaClipLoader', () => {
     const result = await loader.loadVideoRuntime({
       mediabunny,
       file: new File([], 'test.mp4'),
-      sourceStartUs: 0,
-      requestedTimelineDurationUs: 0,
-      requestedSourceDurationUs: 0,
-      requestedSourceRangeDurationUs: 0,
-      startUs: 0,
+      sourceStartTicks: 0,
+      requestedTimelineDurationTicks: 0,
+      requestedSourceDurationTicks: 0,
+      requestedSourceRangeDurationTicks: 0,
+      startTicks: 0,
     });
 
     expect(result).toBeNull();
@@ -204,11 +204,11 @@ describe('MediaClipLoader', () => {
     const result = await loader.loadVideoRuntime({
       mediabunny,
       file: new File([], 'test.mp4'),
-      sourceStartUs: 0,
-      requestedTimelineDurationUs: 0,
-      requestedSourceDurationUs: 0,
-      requestedSourceRangeDurationUs: 0,
-      startUs: 0,
+      sourceStartTicks: 0,
+      requestedTimelineDurationTicks: 0,
+      requestedSourceDurationTicks: 0,
+      requestedSourceRangeDurationTicks: 0,
+      startTicks: 0,
     });
 
     expect(result).toBeNull();
@@ -224,11 +224,11 @@ describe('MediaClipLoader', () => {
       loader.loadVideoRuntime({
         mediabunny,
         file: new File([], 'test.mp4'),
-        sourceStartUs: 0,
-        requestedTimelineDurationUs: 0,
-        requestedSourceDurationUs: 0,
-        requestedSourceRangeDurationUs: 0,
-        startUs: 0,
+        sourceStartTicks: 0,
+        requestedTimelineDurationTicks: 0,
+        requestedSourceDurationTicks: 0,
+        requestedSourceRangeDurationTicks: 0,
+        startTicks: 0,
         abortSignal: controller.signal,
       }),
     ).rejects.toThrow('Video runtime load was aborted');
@@ -241,11 +241,11 @@ describe('MediaClipLoader', () => {
     const result = await loader.loadVideoRuntime({
       mediabunny,
       file: new File([], 'test.mp4'),
-      sourceStartUs: 0,
-      requestedTimelineDurationUs: 0,
-      requestedSourceDurationUs: 0,
-      requestedSourceRangeDurationUs: 0,
-      startUs: 0,
+      sourceStartTicks: 0,
+      requestedTimelineDurationTicks: 0,
+      requestedSourceDurationTicks: 0,
+      requestedSourceRangeDurationTicks: 0,
+      startTicks: 0,
     });
 
     expect(result!.frameRate).toBe(60);
@@ -258,11 +258,11 @@ describe('MediaClipLoader', () => {
     const result = await loader.loadVideoRuntime({
       mediabunny,
       file: new File([], 'test.mp4'),
-      sourceStartUs: 0,
-      requestedTimelineDurationUs: 0,
-      requestedSourceDurationUs: 0,
-      requestedSourceRangeDurationUs: 0,
-      startUs: 0,
+      sourceStartTicks: 0,
+      requestedTimelineDurationTicks: 0,
+      requestedSourceDurationTicks: 0,
+      requestedSourceRangeDurationTicks: 0,
+      startTicks: 0,
     });
 
     expect(result!.frameRate).toBeUndefined();
@@ -275,11 +275,11 @@ describe('MediaClipLoader', () => {
     const result = await loader.loadVideoRuntime({
       mediabunny,
       file: new File([], 'test.mp4'),
-      sourceStartUs: 0,
-      requestedTimelineDurationUs: 0,
-      requestedSourceDurationUs: 0,
-      requestedSourceRangeDurationUs: 0,
-      startUs: 0,
+      sourceStartTicks: 0,
+      requestedTimelineDurationTicks: 0,
+      requestedSourceDurationTicks: 0,
+      requestedSourceRangeDurationTicks: 0,
+      startTicks: 0,
     });
 
     expect(result!.frameRate).toBe(24);
@@ -306,11 +306,11 @@ describe('MediaClipLoader', () => {
     const result = await loader.loadVideoRuntime({
       mediabunny,
       file: new File([], 'test.mp4'),
-      sourceStartUs: 0,
-      requestedTimelineDurationUs: 0,
-      requestedSourceDurationUs: 0,
-      requestedSourceRangeDurationUs: 0,
-      startUs: 0,
+      sourceStartTicks: 0,
+      requestedTimelineDurationTicks: 0,
+      requestedSourceDurationTicks: 0,
+      requestedSourceRangeDurationTicks: 0,
+      startTicks: 0,
     });
 
     expect(computePacketStats).toHaveBeenCalledWith(60);
@@ -328,11 +328,11 @@ describe('MediaClipLoader', () => {
     const result = await loader.loadVideoRuntime({
       mediabunny,
       file: new File([], 'test.mp4'),
-      sourceStartUs: 0,
-      requestedTimelineDurationUs: 0,
-      requestedSourceDurationUs: 0,
-      requestedSourceRangeDurationUs: 0,
-      startUs: 0,
+      sourceStartTicks: 0,
+      requestedTimelineDurationTicks: 0,
+      requestedSourceDurationTicks: 0,
+      requestedSourceRangeDurationTicks: 0,
+      startTicks: 0,
     });
 
     expect(computePacketStats).not.toHaveBeenCalled();
@@ -350,11 +350,11 @@ describe('MediaClipLoader', () => {
     const result = await loader.loadVideoRuntime({
       mediabunny,
       file: new File([], 'test.mp4'),
-      sourceStartUs: 0,
-      requestedTimelineDurationUs: 0,
-      requestedSourceDurationUs: 0,
-      requestedSourceRangeDurationUs: 0,
-      startUs: 0,
+      sourceStartTicks: 0,
+      requestedTimelineDurationTicks: 0,
+      requestedSourceDurationTicks: 0,
+      requestedSourceRangeDurationTicks: 0,
+      startTicks: 0,
     });
 
     expect(computePacketStats).toHaveBeenCalledWith(60);
@@ -374,11 +374,11 @@ describe('MediaClipLoader', () => {
     const result = await loader.loadVideoRuntime({
       mediabunny,
       file: new File([], 'test.mp4'),
-      sourceStartUs: 0,
-      requestedTimelineDurationUs: 0,
-      requestedSourceDurationUs: 0,
-      requestedSourceRangeDurationUs: 0,
-      startUs: 0,
+      sourceStartTicks: 0,
+      requestedTimelineDurationTicks: 0,
+      requestedSourceDurationTicks: 0,
+      requestedSourceRangeDurationTicks: 0,
+      startTicks: 0,
     });
 
     // Exact-tick cache keying still works for repeat renders — just no cross-timestamp reuse.
@@ -386,24 +386,24 @@ describe('MediaClipLoader', () => {
     expect(result!.frameRate).toBeUndefined();
   });
 
-  it('clamps the timeline-duration fallback to 0 when sourceStartUs exceeds mediaDuration', async () => {
+  it('clamps the timeline-duration fallback to 0 when sourceStartTicks exceeds mediaDuration', async () => {
     const track = makeTrack({ computeDuration: async () => 5 });
     const mediabunny = makeMediabunny(track);
 
     const result = await loader.loadVideoRuntime({
       mediabunny,
       file: new File([], 'test.mp4'),
-      sourceStartUs: 6_000_000,
-      requestedTimelineDurationUs: 0,
-      requestedSourceDurationUs: 0,
-      requestedSourceRangeDurationUs: 0,
-      startUs: 0,
+      sourceStartTicks: 6_000_000,
+      requestedTimelineDurationTicks: 0,
+      requestedSourceDurationTicks: 0,
+      requestedSourceRangeDurationTicks: 0,
+      startTicks: 0,
     });
 
     expect(result).not.toBeNull();
-    // sourceDurationUs stays the absolute media duration...
-    expect(result!.sourceDurationUs).toBe(5_000_000 * TICKS_PER_MICROSECOND);
+    // sourceDurationTicks stays the absolute media duration...
+    expect(result!.sourceDurationTicks).toBe(5_000_000 * TICKS_PER_MICROSECOND);
     // ...while the playable tail past the trim-in point is empty.
-    expect(result!.durationUs).toBe(0);
+    expect(result!.durationTicks).toBe(0);
   });
 });

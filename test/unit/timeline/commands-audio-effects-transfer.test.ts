@@ -16,9 +16,9 @@ function makeDoc(): TimelineDocument {
         trackId: 'v1',
         name: 'Clip 1',
         source: { path: 'sample.mp4' },
-        sourceDurationUs: 10_000_000,
-        timelineRange: { startUs: 0, durationUs: 3_000_000 },
-        sourceRange: { startUs: 0, durationUs: 3_000_000 },
+        sourceDurationTicks: 10_000_000,
+        timelineRange: { startTicks: 0, durationTicks: 3_000_000 },
+        sourceRange: { startTicks: 0, durationTicks: 3_000_000 },
         effects: [
           {
             id: 'video-blur-1',
@@ -128,9 +128,9 @@ describe('timeline/commands audio effects transfer', () => {
       trackId: 'a1',
       name: 'Existing audio',
       source: { path: 'audio.wav' },
-      sourceDurationUs: 10_000_000,
-      timelineRange: { startUs: 1_000_000, durationUs: 2_000_000 },
-      sourceRange: { startUs: 0, durationUs: 2_000_000 },
+      sourceDurationTicks: 10_000_000,
+      timelineRange: { startTicks: 1_000_000, durationTicks: 2_000_000 },
+      sourceRange: { startTicks: 0, durationTicks: 2_000_000 },
     });
 
     expect(() =>

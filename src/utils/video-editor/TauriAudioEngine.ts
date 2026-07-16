@@ -112,16 +112,16 @@ export class TauriAudioEngine implements IAudioEngine {
     this.currentClips = clips;
   }
 
-  async play(timeUs: number, speed = 1) {
-    await this.scheduler.play(timeUs, speed);
+  async play(timeTicks: number, speed = 1) {
+    await this.scheduler.play(timeTicks, speed);
   }
 
   stop() {
     this.scheduler.stop();
   }
 
-  seek(timeUs: number) {
-    this.scheduler.seek(timeUs);
+  seek(timeTicks: number) {
+    this.scheduler.seek(timeTicks);
   }
 
   setGlobalSpeed(speed: number) {
@@ -150,8 +150,8 @@ export class TauriAudioEngine implements IAudioEngine {
     // Native audio master effects are handled by the Rust engine via the scene DTO.
   }
 
-  getCurrentTimeUs(): number {
-    return this.scheduler.getCurrentTimeUs();
+  getCurrentTimeTicks(): number {
+    return this.scheduler.getCurrentTimeTicks();
   }
 
   getLevels(trackId?: string): { rmsDb: number; peakDb: number } {
@@ -168,20 +168,20 @@ export class TauriAudioEngine implements IAudioEngine {
   }
 
   async previewScrubForward(
-    fromUs: number,
-    toUs: number,
-    maxPreviewDurationUs = (TICKS_PER_SECOND * 9) / 100,
+    fromTicks: number,
+    toTicks: number,
+    maxPreviewDurationTicks = (TICKS_PER_SECOND * 9) / 100,
   ): Promise<void> {
     // Play a one-shot audio snippet at the scrub position via the native engine.
     // The native side mixes [from, from+dur) once and plays it out without moving
     // the transport (see NativeAudioEngine::scrub_preview). Reverse scrubbing
-    // (toUs <= fromUs) stays silent — only forward scrub previews audio.
-    const spanUs = toUs - fromUs;
-    if (spanUs <= 0) return;
-    const durationSec = ticksToSeconds(Math.min(spanUs, maxPreviewDurationUs));
+    // (toTicks <= fromTicks) stays silent — only forward scrub previews audio.
+    const spanTicks = toTicks - fromTicks;
+    if (spanTicks <= 0) return;
+    const durationSec = ticksToSeconds(Math.min(spanTicks, maxPreviewDurationTicks));
     if (durationSec <= 0) return;
     try {
-      await nativeMonitorIpc.scrubPreview(ticksToSeconds(fromUs), durationSec);
+      await nativeMonitorIpc.scrubPreview(ticksToSeconds(fromTicks), durationSec);
     } catch (error) {
       logger.debug('previewScrubForward failed', error);
     }

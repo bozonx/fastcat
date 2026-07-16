@@ -178,7 +178,7 @@ export function normalizeUserPresets(input: Record<string, unknown>) {
     exportPresets,
     selectedProjectPreset,
     selectedExportPreset,
-    fallbackAudioDeclickDurationUs: DEFAULT_USER_SETTINGS.projectDefaults.audioDeclickDurationUs,
+    fallbackAudioDeclickDurationTicks: DEFAULT_USER_SETTINGS.projectDefaults.audioDeclickDurationTicks,
     fallbackDefaultAudioFadeCurve: DEFAULT_USER_SETTINGS.projectDefaults.defaultAudioFadeCurve,
   };
 }

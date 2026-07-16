@@ -28,10 +28,10 @@ export function sanitizeSourceOrientation(value: unknown): ClipSourceOrientation
     : undefined;
 }
 
-export function clampAudioFadeUs(value: unknown, maxUs: number): number | undefined {
+export function clampAudioFadeTicks(value: unknown, maxTicks: number): number | undefined {
   if (value === undefined) return undefined;
   const n = typeof value === 'number' && Number.isFinite(value) ? Math.round(value) : 0;
-  return clampNumber(n, 0, Math.max(0, Math.round(maxUs)));
+  return clampNumber(n, 0, Math.max(0, Math.round(maxTicks)));
 }
 
 export function sanitizeTransform(raw: unknown): ClipTransform | undefined {

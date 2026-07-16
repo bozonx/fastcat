@@ -34,7 +34,7 @@ import {
   parseOtioTransition,
   serializeTimeEffects,
 } from './otio/serialization';
-import { parseGapItem, parseClipItem, parseItemSequenceDurationUs } from './otio/items';
+import { parseGapItem, parseClipItem, parseItemSequenceDurationTicks } from './otio/items';
 import { TimelineDocFastCatMetaSchema, TimelineTrackFastCatMetaSchema } from './otio/schemas';
 import { getTimelineFormat, normalizeTimelineFormat, type TimelineFormatInput } from './format';
 import { createTimelineTimebaseFromFps, getTimelineFps, getTimelineFrameRate } from './timebase';
@@ -91,8 +91,8 @@ export function createDefaultTimelineDocument(params: {
 
 function calculateTransitionOverlaps(
   items: TimelineTrackItem[],
-): Map<string, { leftOverlapUs: number; rightOverlapUs: number }> {
-  const overlaps = new Map<string, { leftOverlapUs: number; rightOverlapUs: number }>();
+): Map<string, { leftOverlapTicks: number; rightOverlapTicks: number }> {
+  const overlaps = new Map<string, { leftOverlapTicks: number; rightOverlapTicks: number }>();
 
   for (let i = 0; i < items.length; i++) {
     const item = items[i]!;
@@ -101,8 +101,8 @@ function calculateTransitionOverlaps(
     const prevItem = i > 0 ? items[i - 1] : null;
     const nextItem = i < items.length - 1 ? items[i + 1] : null;
 
-    let leftOverlapUs = 0;
-    let rightOverlapUs = 0;
+    let leftOverlapTicks = 0;
+    let rightOverlapTicks = 0;
 
     const prevIsClip = prevItem?.kind === 'clip';
     const prevClip = prevIsClip ? (prevItem as TimelineClipItem) : null;
@@ -110,12 +110,12 @@ function calculateTransitionOverlaps(
 
     if (hasSharedTransitionIn) {
       const sharedDuration = Math.max(
-        prevClip!.transitionOut!.durationUs,
-        item.transitionIn!.durationUs,
+        prevClip!.transitionOut!.durationTicks,
+        item.transitionIn!.durationTicks,
       );
-      leftOverlapUs = Math.round(sharedDuration / 2);
+      leftOverlapTicks = Math.round(sharedDuration / 2);
     } else if (item.transitionIn) {
-      leftOverlapUs = Math.round(item.transitionIn.durationUs);
+      leftOverlapTicks = Math.round(item.transitionIn.durationTicks);
     }
 
     const nextIsClip = nextItem?.kind === 'clip';
@@ -124,15 +124,15 @@ function calculateTransitionOverlaps(
 
     if (hasSharedTransitionOut) {
       const sharedDuration = Math.max(
-        item.transitionOut!.durationUs,
-        nextClip!.transitionIn!.durationUs,
+        item.transitionOut!.durationTicks,
+        nextClip!.transitionIn!.durationTicks,
       );
-      rightOverlapUs = Math.round(sharedDuration / 2);
+      rightOverlapTicks = Math.round(sharedDuration / 2);
     } else if (item.transitionOut) {
-      rightOverlapUs = Math.round(item.transitionOut.durationUs);
+      rightOverlapTicks = Math.round(item.transitionOut.durationTicks);
     }
 
-    overlaps.set(item.id, { leftOverlapUs, rightOverlapUs });
+    overlaps.set(item.id, { leftOverlapTicks, rightOverlapTicks });
   }
 
   return overlaps;
@@ -147,38 +147,38 @@ function serializeTrackItems(
   trackId: string,
   timeRate: number,
 ): OtioTrackChild[] {
-  const sortedItems = [...items].sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
+  const sortedItems = [...items].sort((a, b) => a.timelineRange.startTicks - b.timelineRange.startTicks);
   const overlaps = calculateTransitionOverlaps(sortedItems);
   const children: OtioTrackChild[] = [];
-  let cursorUs = 0;
+  let cursorTicks = 0;
 
   for (let i = 0; i < sortedItems.length; i++) {
     const item = sortedItems[i]!;
-    const startUs = Math.max(0, Math.round(item.timelineRange.startUs));
-    const durationUs = Math.max(0, Math.round(item.timelineRange.durationUs));
+    const startTicks = Math.max(0, Math.round(item.timelineRange.startTicks));
+    const durationTicks = Math.max(0, Math.round(item.timelineRange.durationTicks));
 
-    if (startUs > cursorUs) {
+    if (startTicks > cursorTicks) {
       children.push({
         OTIO_SCHEMA: 'Gap.1',
         name: 'gap',
-        source_range: toTimeRange({ startUs: 0, durationUs: startUs - cursorUs }, timeRate),
+        source_range: toTimeRange({ startTicks: 0, durationTicks: startTicks - cursorTicks }, timeRate),
         metadata: {
           fastcat: {
-            id: `gap_${trackId}_${cursorUs}`,
+            id: `gap_${trackId}_${cursorTicks}`,
             roundtrip: {
-              timelineRange: { startUs: cursorUs, durationUs: startUs - cursorUs },
+              timelineRange: { startTicks: cursorTicks, durationTicks: startTicks - cursorTicks },
             },
           },
         },
       });
-      cursorUs = startUs;
+      cursorTicks = startTicks;
     }
 
     if (item.kind === 'gap') {
       children.push({
         OTIO_SCHEMA: 'Gap.1',
         name: 'gap',
-        source_range: toTimeRange({ startUs: 0, durationUs }, timeRate),
+        source_range: toTimeRange({ startTicks: 0, durationTicks }, timeRate),
         metadata: {
           fastcat: {
             id: item.id,
@@ -188,7 +188,7 @@ function serializeTrackItems(
           },
         },
       });
-      cursorUs += durationUs;
+      cursorTicks += durationTicks;
       continue;
     }
 
@@ -207,7 +207,7 @@ function serializeTrackItems(
         `${item.name}_transition_in`,
         timeRate,
         { itemId: item.id, edge: 'in' },
-        { inOffsetUs: 0, outOffsetUs: Math.round(item.transitionIn.durationUs) },
+        { inOffsetTicks: 0, outOffsetTicks: Math.round(item.transitionIn.durationTicks) },
       );
       if (t1) children.push(t1);
     }
@@ -220,16 +220,16 @@ function serializeTrackItems(
           target_url: path,
           available_range:
             item.clipType === 'media' || item.clipType === 'timeline'
-              ? toTimeRange({ startUs: 0, durationUs: item.sourceDurationUs }, timeRate)
+              ? toTimeRange({ startTicks: 0, durationTicks: item.sourceDurationTicks }, timeRate)
               : undefined,
         }
       : { OTIO_SCHEMA: 'MissingReference.1' };
 
     const adjustedSourceRange: TimelineRange = {
-      startUs: item.sourceRange.startUs + overlap.leftOverlapUs,
-      durationUs: Math.max(
+      startTicks: item.sourceRange.startTicks + overlap.leftOverlapTicks,
+      durationTicks: Math.max(
         0,
-        item.sourceRange.durationUs - overlap.leftOverlapUs - overlap.rightOverlapUs,
+        item.sourceRange.durationTicks - overlap.leftOverlapTicks - overlap.rightOverlapTicks,
       ),
     };
 
@@ -240,7 +240,7 @@ function serializeTrackItems(
     const timeEffects = serializeTimeEffects({
       speed: item.speed,
       speedActive: item.speedActive,
-      freezeFrameSourceUs: item.clipType === 'media' ? item.freezeFrameSourceUs : undefined,
+      freezeFrameSourceTicks: item.clipType === 'media' ? item.freezeFrameSourceTicks : undefined,
     });
     const allEffects = [...(standardEffects ?? []), ...(timeEffects ?? [])];
 
@@ -284,17 +284,17 @@ function serializeTrackItems(
           id: item.id,
           clipType: item.clipType,
           source: {
-            durationUs: item.sourceDurationUs,
+            durationTicks: item.sourceDurationTicks,
           },
           playback: {
             speed: item.speed,
-            freezeFrameSourceUs: item.clipType === 'media' ? item.freezeFrameSourceUs : undefined,
+            freezeFrameSourceTicks: item.clipType === 'media' ? item.freezeFrameSourceTicks : undefined,
           },
           audio: {
             gain: item.audioGain,
             balance: item.audioBalance,
-            fadeInUs: item.audioFadeInUs,
-            fadeOutUs: item.audioFadeOutUs,
+            fadeInTicks: item.audioFadeInTicks,
+            fadeOutTicks: item.audioFadeOutTicks,
             fadeInCurve: item.audioFadeInCurve,
             fadeOutCurve: item.audioFadeOutCurve,
             muted: item.audioMuted,
@@ -344,8 +344,8 @@ function serializeTrackItems(
 
     if (hasSharedTransitionOut) {
       const sharedDuration = Math.max(
-        item.transitionOut!.durationUs,
-        nextClip!.transitionIn!.durationUs,
+        item.transitionOut!.durationTicks,
+        nextClip!.transitionIn!.durationTicks,
       );
       const half = Math.round(sharedDuration / 2);
       const t1 = buildOtioTransition(
@@ -353,7 +353,7 @@ function serializeTrackItems(
         `${item.name}_transition_out`,
         timeRate,
         { itemId: item.id, edge: 'out' },
-        { inOffsetUs: half, outOffsetUs: sharedDuration - half },
+        { inOffsetTicks: half, outOffsetTicks: sharedDuration - half },
       );
       if (t1) children.push(t1);
     } else if (item.transitionOut) {
@@ -362,12 +362,12 @@ function serializeTrackItems(
         `${item.name}_transition_out`,
         timeRate,
         { itemId: item.id, edge: 'out' },
-        { inOffsetUs: Math.round(item.transitionOut.durationUs), outOffsetUs: 0 },
+        { inOffsetTicks: Math.round(item.transitionOut.durationTicks), outOffsetTicks: 0 },
       );
       if (t1) children.push(t1);
     }
 
-    cursorUs += durationUs;
+    cursorTicks += durationTicks;
   }
 
   return children;
@@ -398,7 +398,7 @@ export function serializeTimelineToOtio(doc: TimelineDocument): string {
       effects: serializeEffects(t.effects),
       markers: Array.isArray(t.markers)
         ? [...t.markers]
-            .sort((a, b) => a.timeUs - b.timeUs)
+            .sort((a, b) => a.timeTicks - b.timeTicks)
             .map((m) => serializeMarker(m, timeRate))
         : undefined,
       color: toOtioColor(t.color),
@@ -431,7 +431,7 @@ export function serializeTimelineToOtio(doc: TimelineDocument): string {
   const fastcatMeta = doc.metadata?.fastcat;
   const markers = Array.isArray(fastcatMeta?.markers)
     ? [...(fastcatMeta.markers as TimelineMarker[])]
-        .sort((a, b) => a.timeUs - b.timeUs)
+        .sort((a, b) => a.timeTicks - b.timeTicks)
         .map((m) => serializeMarker(m, videoTimeRate))
     : [];
 
@@ -480,7 +480,7 @@ function parseDocumentMetadata(raw: unknown): {
   masterGain?: number;
   masterMuted?: boolean;
   masterEffects?: ClipEffect[];
-  selectionRange?: { startUs: number; endUs: number } | null;
+  selectionRange?: { startTicks: number; endTicks: number } | null;
   markers?: TimelineMarker[];
   version?: number;
 } {
@@ -578,7 +578,7 @@ export function parseTimelineFromOtio(
 
     const children = Array.isArray(otioTrack.children) ? otioTrack.children : [];
     const occupiedIds = new Set<string>();
-    let cursorUs = 0;
+    let cursorTicks = 0;
 
     // Pre-scan track children to associate adjacent Transition.1 nodes with clips.
     let pendingTransitionIn: ClipTransition | null = null;
@@ -632,10 +632,10 @@ export function parseTimelineFromOtio(
           otio: child as unknown as import('~/timeline/otio/types').OtioGap,
           index: i,
           occupiedIds,
-          fallbackStartUs: cursorUs,
+          fallbackStartTicks: cursorTicks,
         });
         rawItems.push(item);
-        cursorUs += parseItemSequenceDurationUs(child);
+        cursorTicks += parseItemSequenceDurationTicks(child);
         pendingTransitionIn = null;
         continue;
       }
@@ -646,12 +646,12 @@ export function parseTimelineFromOtio(
           otio: child as unknown as import('~/timeline/otio/types').OtioAnyClip,
           index: i,
           occupiedIds,
-          fallbackStartUs: cursorUs,
+          fallbackStartTicks: cursorTicks,
           transitionIn: pendingTransitionIn ?? undefined,
           report,
         });
         rawItems.push(item);
-        cursorUs += parseItemSequenceDurationUs(child);
+        cursorTicks += parseItemSequenceDurationTicks(child);
         pendingTransitionIn = null;
         continue;
       }
@@ -663,7 +663,7 @@ export function parseTimelineFromOtio(
       );
     }
 
-    const items = [...rawItems].sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
+    const items = [...rawItems].sort((a, b) => a.timelineRange.startTicks - b.timelineRange.startTicks);
 
     const videoHidden = kind === 'video' ? Boolean(trackFastCatMeta.video?.hidden) : undefined;
     const opacity = trackFastCatMeta.video?.opacity;

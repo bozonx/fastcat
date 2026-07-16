@@ -66,7 +66,7 @@ describe('useMonitorSnapshot', () => {
   it('creates a stop frame snapshot successfully', async () => {
     const isLoading = ref(false);
     const loadError = ref(null);
-    const uiCurrentTimeUs = ref(1000000);
+    const uiCurrentTimeTicks = ref(1000000);
 
     const timelineDoc = { id: 'test', name: 'test', tracks: [] };
     const { createStopFrameSnapshot } = useMonitorSnapshot({
@@ -75,7 +75,7 @@ describe('useMonitorSnapshot', () => {
       workspaceStore: mockWorkspaceStore as any,
       isLoading,
       loadError,
-      uiCurrentTimeUs,
+      uiCurrentTimeTicks,
     });
 
     const write = vi.fn().mockResolvedValue(undefined);
@@ -95,7 +95,7 @@ describe('useMonitorSnapshot', () => {
 
     expect(renderStopFrameWebpMock).toHaveBeenCalledWith({
       timelineDoc,
-      timeUs: 1000000,
+      timeTicks: 1000000,
       quality: 0.9,
       isTransparent: false,
     });
@@ -119,7 +119,7 @@ describe('useMonitorSnapshot', () => {
       workspaceStore: mockWorkspaceStore as any,
       isLoading: ref(false),
       loadError: ref(null),
-      uiCurrentTimeUs: ref(1000000),
+      uiCurrentTimeTicks: ref(1000000),
     });
 
     mockProjectStore.getProjectFileHandleByRelativePath
@@ -147,7 +147,7 @@ describe('useMonitorSnapshot', () => {
       workspaceStore: mockWorkspaceStore as any,
       isLoading: ref(false),
       loadError: ref(null),
-      uiCurrentTimeUs: ref(1000000),
+      uiCurrentTimeTicks: ref(1000000),
     });
 
     mockProjectStore.getProjectFileHandleByRelativePath

@@ -6,12 +6,12 @@ function makeClip(overrides: Partial<CompositorClip> = {}): CompositorClip {
   return {
     itemId: 'c1',
     layer: 0,
-    startUs: 0,
-    endUs: 5_000_000,
-    durationUs: 5_000_000,
-    sourceStartUs: 0,
-    sourceRangeDurationUs: 5_000_000,
-    sourceDurationUs: 10_000_000,
+    startTicks: 0,
+    endTicks: 5_000_000,
+    durationTicks: 5_000_000,
+    sourceStartTicks: 0,
+    sourceRangeDurationTicks: 5_000_000,
+    sourceDurationTicks: 10_000_000,
     sprite: null,
     imageSource: null as any,
     lastVideoFrame: null,
@@ -25,29 +25,29 @@ function makeClip(overrides: Partial<CompositorClip> = {}): CompositorClip {
 describe('TimelineUpdateLifecycle', () => {
   const lifecycle = new TimelineUpdateLifecycle();
 
-  it('returns maxDurationUs as max of all clip endUs', () => {
+  it('returns maxDurationTicks as max of all clip endTicks', () => {
     const clips = [
-      makeClip({ itemId: 'a', startUs: 0, endUs: 3_000_000 }),
-      makeClip({ itemId: 'b', startUs: 2_000_000, endUs: 8_000_000 }),
-      makeClip({ itemId: 'c', startUs: 5_000_000, endUs: 6_000_000 }),
+      makeClip({ itemId: 'a', startTicks: 0, endTicks: 3_000_000 }),
+      makeClip({ itemId: 'b', startTicks: 2_000_000, endTicks: 8_000_000 }),
+      makeClip({ itemId: 'c', startTicks: 5_000_000, endTicks: 6_000_000 }),
     ];
 
     const result = lifecycle.apply(clips);
 
-    expect(result.maxDurationUs).toBe(8_000_000);
+    expect(result.maxDurationTicks).toBe(8_000_000);
   });
 
   it('returns 0 for empty clips array', () => {
     const result = lifecycle.apply([]);
 
-    expect(result.maxDurationUs).toBe(0);
+    expect(result.maxDurationTicks).toBe(0);
   });
 
-  it('sorts clips by startUs then layer', () => {
+  it('sorts clips by startTicks then layer', () => {
     const clips = [
-      makeClip({ itemId: 'c', startUs: 5_000_000, layer: 0 }),
-      makeClip({ itemId: 'a', startUs: 1_000_000, layer: 2 }),
-      makeClip({ itemId: 'b', startUs: 1_000_000, layer: 1 }),
+      makeClip({ itemId: 'c', startTicks: 5_000_000, layer: 0 }),
+      makeClip({ itemId: 'a', startTicks: 1_000_000, layer: 2 }),
+      makeClip({ itemId: 'b', startTicks: 1_000_000, layer: 1 }),
     ];
 
     const result = lifecycle.apply(clips);
@@ -62,17 +62,17 @@ describe('TimelineUpdateLifecycle', () => {
     expect(result.activeSortDirty).toBe(true);
   });
 
-  it('sets lastRenderedTimeUs to NaN', () => {
+  it('sets lastRenderedTimeTicks to NaN', () => {
     const result = lifecycle.apply([makeClip()]);
 
-    expect(Number.isNaN(result.lastRenderedTimeUs)).toBe(true);
+    expect(Number.isNaN(result.lastRenderedTimeTicks)).toBe(true);
   });
 
-  it('clamps maxDurationUs to 0 when all endUs are negative', () => {
-    const clips = [makeClip({ itemId: 'a', endUs: -100 }), makeClip({ itemId: 'b', endUs: -200 })];
+  it('clamps maxDurationTicks to 0 when all endTicks are negative', () => {
+    const clips = [makeClip({ itemId: 'a', endTicks: -100 }), makeClip({ itemId: 'b', endTicks: -200 })];
 
     const result = lifecycle.apply(clips);
 
-    expect(result.maxDurationUs).toBe(0);
+    expect(result.maxDurationTicks).toBe(0);
   });
 });

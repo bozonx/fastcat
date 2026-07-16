@@ -5,7 +5,7 @@ import { useEventListener } from '@vueuse/core';
 import type { FastCatUserSettings } from '~/utils/settings/defaults';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
-import { pxPerSecondToZoom, pxToTimeUs, timeUsToPx } from '~/utils/timeline/geometry';
+import { pxPerSecondToZoom, pxToTimeTicks, timeUsToPx } from '~/utils/timeline/geometry';
 import { isLayer1Active } from '~/utils/hotkeys/layerUtils';
 import { getWheelDelta, isSecondaryWheel } from '~/utils/mouse';
 import { useTimelineZoom } from '~/composables/timeline/useTimelineZoom';
@@ -160,14 +160,14 @@ export function useTimelineWheelHandler({
 
       const scrollLeft = horizontalScrollEl.value?.scrollLeft ?? 0;
       const viewportWidth = horizontalScrollEl.value?.clientWidth ?? 0;
-      const durationUs = timelineStore.duration;
-      const timelineWidthPx = timeUsToPx(durationUs, timelineStore.timelineZoom);
+      const durationTicks = timelineStore.duration;
+      const timelineWidthPx = timeUsToPx(durationTicks, timelineStore.timelineZoom);
       let nextZoom = Math.min(110, Math.max(0, prevZoom + zoomStep));
 
-      if (zoomStep < 0 && durationUs > 0 && viewportWidth > 0) {
+      if (zoomStep < 0 && durationTicks > 0 && viewportWidth > 0) {
         const minCursorZoom = Math.min(
           110,
-          Math.max(0, pxPerSecondToZoom(viewportWidth / (durationUs / TICKS_PER_SECOND))),
+          Math.max(0, pxPerSecondToZoom(viewportWidth / (durationTicks / TICKS_PER_SECOND))),
         );
 
         if (prevZoom <= minCursorZoom) return;
@@ -176,8 +176,8 @@ export function useTimelineWheelHandler({
       }
 
       let anchorViewportX = rawAnchorViewportX;
-      let anchorTimeUs = pxToTimeUs(scrollLeft + rawAnchorViewportX, timelineStore.timelineZoom);
-      const nextTimelineWidthPx = timeUsToPx(durationUs, nextZoom);
+      let anchorTimeTicks = pxToTimeTicks(scrollLeft + rawAnchorViewportX, timelineStore.timelineZoom);
+      const nextTimelineWidthPx = timeUsToPx(durationTicks, nextZoom);
 
       // Adaptive anchor: zoom out from viewport center when the timeline fits or will fit.
       if (
@@ -187,15 +187,15 @@ export function useTimelineWheelHandler({
           (nextTimelineWidthPx > 0 && nextTimelineWidthPx <= viewportWidth))
       ) {
         anchorViewportX = viewportWidth / 2;
-        anchorTimeUs = Math.max(0, Math.min(durationUs, durationUs / 2));
+        anchorTimeTicks = Math.max(0, Math.min(durationTicks, durationTicks / 2));
       } else {
         // Clamp anchor time to timeline bounds to avoid jumping past the end
-        anchorTimeUs = Math.max(0, Math.min(durationUs, anchorTimeUs));
+        anchorTimeTicks = Math.max(0, Math.min(durationTicks, anchorTimeTicks));
       }
 
       const nextZoomStep = nextZoom - prevZoom;
       if (nextZoomStep !== 0) {
-        handleZoomWheel(nextZoomStep, { anchorTimeUs, anchorViewportX });
+        handleZoomWheel(nextZoomStep, { anchorTimeTicks, anchorViewportX });
       }
       return;
     }
@@ -205,9 +205,9 @@ export function useTimelineWheelHandler({
       const scrollLeft = horizontalScrollEl.value?.scrollLeft ?? 0;
       const playheadPx = timeUsToPx(timelineStore.currentTime, timelineStore.timelineZoom);
       const anchorViewportX = playheadPx - scrollLeft;
-      const anchorTimeUs = Math.max(0, Math.min(timelineStore.duration, timelineStore.currentTime));
+      const anchorTimeTicks = Math.max(0, Math.min(timelineStore.duration, timelineStore.currentTime));
 
-      handleZoomWheel(getZoomStep(delta), { anchorTimeUs, anchorViewportX });
+      handleZoomWheel(getZoomStep(delta), { anchorTimeTicks, anchorViewportX });
       return;
     }
 
@@ -223,16 +223,16 @@ export function useTimelineWheelHandler({
 
     if (action === 'seek_frame') {
       e.preventDefault();
-      const frameDurationUs = TICKS_PER_SECOND / fps.value;
-      timelineStore.setCurrentTimeUs(
-        Math.max(0, Math.round(timelineStore.currentTime + (delta > 0 ? 1 : -1) * frameDurationUs)),
+      const frameDurationTicks = TICKS_PER_SECOND / fps.value;
+      timelineStore.setCurrentTimeTicks(
+        Math.max(0, Math.round(timelineStore.currentTime + (delta > 0 ? 1 : -1) * frameDurationTicks)),
       );
       return;
     }
 
     if (action === 'seek_second') {
       e.preventDefault();
-      timelineStore.setCurrentTimeUs(
+      timelineStore.setCurrentTimeTicks(
         Math.max(
           0,
           Math.round(timelineStore.currentTime + (delta > 0 ? 1 : -1) * TICKS_PER_SECOND),

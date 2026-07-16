@@ -167,10 +167,10 @@ export interface VideoCoreWorkerAPI {
    */
   updateTimelineLayout(clips: WorkerVideoPayloadItem[]): Promise<number>;
   renderFrame(
-    timeUs: number,
+    timeTicks: number,
     options?: PreviewRenderOptions,
   ): Promise<OffscreenCanvas | HTMLCanvasElement | null>;
-  prewarmVideoFrames(timeUs: number, lookaheadUs?: number): Promise<void>;
+  prewarmVideoFrames(timeTicks: number, lookaheadTicks?: number): Promise<void>;
   clearClips(): Promise<void>;
   destroyCompositor(): Promise<void>;
 
@@ -194,7 +194,7 @@ export interface VideoCoreWorkerAPI {
   cancelExport(taskId?: string): Promise<void>;
 
   extractFrameToBlob(
-    timeUs: number,
+    timeTicks: number,
     width: number,
     height: number,
     timelineClips: WorkerVideoPayloadItem[],

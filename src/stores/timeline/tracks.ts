@@ -25,7 +25,7 @@ export interface TimelineTracksModule {
   resolveTargetVideoTrackIdForInsert: () => string;
   resolveMobileTargetTrackId: (
     kind: 'video' | 'audio',
-    options?: { durationUs?: number },
+    options?: { durationTicks?: number },
   ) => string;
   getMobileSelectionKind: () => 'video' | 'audio' | null;
   renameTrack: (trackId: string, name: string) => void;
@@ -114,7 +114,7 @@ export function createTimelineTracksModule(deps: TimelineTracksDeps): TimelineTr
 
   function resolveMobileTargetTrackId(
     kind: 'video' | 'audio',
-    _options?: { durationUs?: number },
+    _options?: { durationTicks?: number },
   ): string {
     const doc = deps.timelineDoc.value;
     if (!doc) return kind === 'video' ? 'v1' : 'a1';

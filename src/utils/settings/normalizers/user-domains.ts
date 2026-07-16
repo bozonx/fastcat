@@ -1,10 +1,10 @@
 import { z } from 'zod';
 import {
   DEFAULT_USER_SETTINGS,
-  MAX_DEFAULT_FADE_DURATION_US,
-  MAX_DEFAULT_STATIC_CLIP_DURATION_US,
-  MAX_DEFAULT_TRANSITION_DURATION_US,
-  MIN_DEFAULT_DURATION_US,
+  MAX_DEFAULT_FADE_DURATION_TICKS,
+  MAX_DEFAULT_STATIC_CLIP_DURATION_TICKS,
+  MAX_DEFAULT_TRANSITION_DURATION_TICKS,
+  MIN_DEFAULT_DURATION_TICKS,
   type FastCatUserSettings,
 } from '../defaults';
 import { TICKS_PER_MICROSECOND } from '~/utils/time';
@@ -77,9 +77,9 @@ export function normalizeTimelineSettings(raw: unknown): FastCatUserSettings['ti
   const timeline = legacyTimeline ? { ...legacyTimeline } : legacyTimeline;
 
   for (const key of [
-    'defaultAudioFadeDurationUs',
-    'defaultTransitionDurationUs',
-    'defaultStaticClipDurationUs',
+    'defaultAudioFadeDurationTicks',
+    'defaultTransitionDurationTicks',
+    'defaultStaticClipDurationTicks',
   ] as const) {
     const value = Number(legacyTimeline?.[key]);
     if (Number.isFinite(value) && value >= 100_000 && value <= 3_600_000_000) {
@@ -104,21 +104,21 @@ export function normalizeTimelineSettings(raw: unknown): FastCatUserSettings['ti
         .min(1)
         .max(50)
         .catch(DEFAULT_USER_SETTINGS.timeline.snapThresholdPx),
-      defaultAudioFadeDurationUs: z.coerce
+      defaultAudioFadeDurationTicks: z.coerce
         .number()
-        .min(MIN_DEFAULT_DURATION_US)
-        .max(MAX_DEFAULT_FADE_DURATION_US)
-        .catch(DEFAULT_USER_SETTINGS.timeline.defaultAudioFadeDurationUs),
-      defaultTransitionDurationUs: z.coerce
+        .min(MIN_DEFAULT_DURATION_TICKS)
+        .max(MAX_DEFAULT_FADE_DURATION_TICKS)
+        .catch(DEFAULT_USER_SETTINGS.timeline.defaultAudioFadeDurationTicks),
+      defaultTransitionDurationTicks: z.coerce
         .number()
-        .min(MIN_DEFAULT_DURATION_US)
-        .max(MAX_DEFAULT_TRANSITION_DURATION_US)
-        .catch(DEFAULT_USER_SETTINGS.timeline.defaultTransitionDurationUs),
-      defaultStaticClipDurationUs: z.coerce
+        .min(MIN_DEFAULT_DURATION_TICKS)
+        .max(MAX_DEFAULT_TRANSITION_DURATION_TICKS)
+        .catch(DEFAULT_USER_SETTINGS.timeline.defaultTransitionDurationTicks),
+      defaultStaticClipDurationTicks: z.coerce
         .number()
-        .min(MIN_DEFAULT_DURATION_US)
-        .max(MAX_DEFAULT_STATIC_CLIP_DURATION_US)
-        .catch(DEFAULT_USER_SETTINGS.timeline.defaultStaticClipDurationUs),
+        .min(MIN_DEFAULT_DURATION_TICKS)
+        .max(MAX_DEFAULT_STATIC_CLIP_DURATION_TICKS)
+        .catch(DEFAULT_USER_SETTINGS.timeline.defaultStaticClipDurationTicks),
       snapping: snapSchema,
       frameSnapMode: z.enum(['free', 'frames']).catch(DEFAULT_USER_SETTINGS.timeline.frameSnapMode),
       toolbarSnapMode: z
@@ -294,10 +294,10 @@ export function normalizeProjectDefaults(raw: unknown): FastCatUserSettings['pro
         .min(8000)
         .max(192000)
         .catch(DEFAULT_USER_SETTINGS.projectDefaults.sampleRate),
-      audioDeclickDurationUs: z.coerce
+      audioDeclickDurationTicks: z.coerce
         .number()
         .min(0)
-        .catch(DEFAULT_USER_SETTINGS.projectDefaults.audioDeclickDurationUs),
+        .catch(DEFAULT_USER_SETTINGS.projectDefaults.audioDeclickDurationTicks),
       defaultAudioFadeCurve: z
         .enum(['linear', 'logarithmic'])
         .catch(DEFAULT_USER_SETTINGS.projectDefaults.defaultAudioFadeCurve),
@@ -306,10 +306,10 @@ export function normalizeProjectDefaults(raw: unknown): FastCatUserSettings['pro
         .catch(DEFAULT_USER_SETTINGS.projectDefaults.audioScrubbingEnabled),
     })
     .transform((val) => {
-      const audioDeclickDurationUs =
-        val.audioDeclickDurationUs > 0 && val.audioDeclickDurationUs <= 1_000_000
-          ? val.audioDeclickDurationUs * TICKS_PER_MICROSECOND
-          : val.audioDeclickDurationUs;
+      const audioDeclickDurationTicks =
+        val.audioDeclickDurationTicks > 0 && val.audioDeclickDurationTicks <= 1_000_000
+          ? val.audioDeclickDurationTicks * TICKS_PER_MICROSECOND
+          : val.audioDeclickDurationTicks;
       // Keep the display fields consistent with the geometry on load (parity with
       // project-settings / preset normalizers), so stale orientation/format can't
       // survive a round-trip. Only re-derive for non-default geometry, so an
@@ -317,7 +317,7 @@ export function normalizeProjectDefaults(raw: unknown): FastCatUserSettings['pro
       const isWidthHeightCustom =
         val.width !== DEFAULT_USER_SETTINGS.projectDefaults.width ||
         val.height !== DEFAULT_USER_SETTINGS.projectDefaults.height;
-      const normalized = { ...val, audioDeclickDurationUs };
+      const normalized = { ...val, audioDeclickDurationTicks };
       return isWidthHeightCustom ? applyResolutionPreset(normalized) : normalized;
     })
     .catch(DEFAULT_USER_SETTINGS.projectDefaults);

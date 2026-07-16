@@ -7,7 +7,7 @@ import {
   getDocFps,
   quantizeRangeToFrames,
   ticksToFrame,
-  frameToUs,
+  frameToTicks,
   autoAdaptChangedTracks,
 } from '../utils';
 
@@ -32,12 +32,12 @@ export function autoTrimPauses(
 
     // Sorting split points from RIGHT to LEFT to keep the original ID stable on the left part
     const splitPoints = target.pauses
-      .flatMap((p) => [p.startUs, p.endUs])
+      .flatMap((p) => [p.startTicks, p.endTicks])
       // Filter out points outside or exactly at boundaries
       .filter(
         (t) =>
-          t > originalItem.timelineRange.startUs + 10 &&
-          t < originalItem.timelineRange.startUs + originalItem.timelineRange.durationUs - 10,
+          t > originalItem.timelineRange.startTicks + 10 &&
+          t < originalItem.timelineRange.startTicks + originalItem.timelineRange.durationTicks - 10,
       )
       .sort((a, b) => b - a);
 
@@ -51,14 +51,14 @@ export function autoTrimPauses(
 
     const isSilence = (start: number, end: number) => {
       const mid = (start + end) / 2;
-      return target.pauses.some((p) => mid >= p.startUs - 100 && mid <= p.endUs + 100);
+      return target.pauses.some((p) => mid >= p.startTicks - 100 && mid <= p.endTicks + 100);
     };
 
     const currentItemId = originalItem.id;
     const itemsToMarkSilence: string[] = [];
     const itemsToDelete: string[] = [];
 
-    for (const atUs of uniquePoints) {
+    for (const atTicks of uniquePoints) {
       // Manual split logic similar to splitItem but simplified for batch
       const currentTrack = getTrackById(nextDoc, target.trackId);
       const item = currentTrack?.items.find((it) => it.id === currentItemId) as
@@ -68,48 +68,48 @@ export function autoTrimPauses(
 
       const fps = getDocFps(nextDoc);
       const qTimeline = quantizeRangeToFrames(item.timelineRange, fps);
-      const startUs = qTimeline.startUs;
-      const endUs = startUs + qTimeline.durationUs;
-      const cutFrame = ticksToFrame(atUs, fps, 'round');
-      const quantizedAtUs = frameToUs(cutFrame, fps);
+      const startTicks = qTimeline.startTicks;
+      const endTicks = startTicks + qTimeline.durationTicks;
+      const cutFrame = ticksToFrame(atTicks, fps, 'round');
+      const quantizedAtTicks = frameToTicks(cutFrame, fps);
 
-      if (!(quantizedAtUs > startUs && quantizedAtUs < endUs)) continue;
+      if (!(quantizedAtTicks > startTicks && quantizedAtTicks < endTicks)) continue;
 
-      const leftDurationUs = Math.max(0, quantizedAtUs - startUs);
-      const rightDurationUs = Math.max(0, endUs - quantizedAtUs);
+      const leftDurationTicks = Math.max(0, quantizedAtTicks - startTicks);
+      const rightDurationTicks = Math.max(0, endTicks - quantizedAtTicks);
       const speed = typeof item.speed === 'number' && Number.isFinite(item.speed) ? item.speed : 1;
       const absSpeed = Math.abs(speed) || 1;
-      const localCutUs = Math.max(0, Math.round((quantizedAtUs - startUs) * absSpeed));
+      const localCutTicks = Math.max(0, Math.round((quantizedAtTicks - startTicks) * absSpeed));
 
       const rightItemId = nextItemId(target.trackId, 'clip');
 
-      let leftSourceStartUs: number;
-      let leftSourceDurationUs: number;
-      let rightSourceStartUs: number;
-      let rightSourceDurationUs: number;
+      let leftSourceStartTicks: number;
+      let leftSourceDurationTicks: number;
+      let rightSourceStartTicks: number;
+      let rightSourceDurationTicks: number;
 
-      const sourceDurationUs = Math.max(0, Math.round(item.sourceRange.durationUs));
-      const safeLocalCutUs = Math.min(localCutUs, sourceDurationUs);
+      const sourceDurationTicks = Math.max(0, Math.round(item.sourceRange.durationTicks));
+      const safeLocalCutTicks = Math.min(localCutTicks, sourceDurationTicks);
 
       if (speed >= 0) {
-        leftSourceStartUs = Math.max(0, Math.round(item.sourceRange.startUs));
-        leftSourceDurationUs = safeLocalCutUs;
-        rightSourceStartUs = Math.max(0, Math.round(item.sourceRange.startUs) + safeLocalCutUs);
-        rightSourceDurationUs = Math.max(0, sourceDurationUs - safeLocalCutUs);
+        leftSourceStartTicks = Math.max(0, Math.round(item.sourceRange.startTicks));
+        leftSourceDurationTicks = safeLocalCutTicks;
+        rightSourceStartTicks = Math.max(0, Math.round(item.sourceRange.startTicks) + safeLocalCutTicks);
+        rightSourceDurationTicks = Math.max(0, sourceDurationTicks - safeLocalCutTicks);
       } else {
-        leftSourceStartUs = Math.max(
+        leftSourceStartTicks = Math.max(
           0,
-          Math.round(item.sourceRange.startUs) + sourceDurationUs - safeLocalCutUs,
+          Math.round(item.sourceRange.startTicks) + sourceDurationTicks - safeLocalCutTicks,
         );
-        leftSourceDurationUs = safeLocalCutUs;
-        rightSourceStartUs = Math.max(0, Math.round(item.sourceRange.startUs));
-        rightSourceDurationUs = Math.max(0, sourceDurationUs - safeLocalCutUs);
+        leftSourceDurationTicks = safeLocalCutTicks;
+        rightSourceStartTicks = Math.max(0, Math.round(item.sourceRange.startTicks));
+        rightSourceDurationTicks = Math.max(0, sourceDurationTicks - safeLocalCutTicks);
       }
 
       const leftPatched: TimelineMediaClipItem = {
         ...item,
-        timelineRange: { startUs, durationUs: leftDurationUs },
-        sourceRange: { startUs: leftSourceStartUs, durationUs: leftSourceDurationUs },
+        timelineRange: { startTicks, durationTicks: leftDurationTicks },
+        sourceRange: { startTicks: leftSourceStartTicks, durationTicks: leftSourceDurationTicks },
         transitionOut: undefined,
         linkedGroupId: undefined,
       };
@@ -117,14 +117,14 @@ export function autoTrimPauses(
       const rightItem: TimelineMediaClipItem = {
         ...item,
         id: rightItemId,
-        timelineRange: { startUs: quantizedAtUs, durationUs: rightDurationUs },
-        sourceRange: { startUs: rightSourceStartUs, durationUs: rightSourceDurationUs },
+        timelineRange: { startTicks: quantizedAtTicks, durationTicks: rightDurationTicks },
+        sourceRange: { startTicks: rightSourceStartTicks, durationTicks: rightSourceDurationTicks },
         transitionIn: undefined,
         linkedGroupId: undefined,
       };
 
       // Check if Right Item is silence
-      if (isSilence(quantizedAtUs, endUs)) {
+      if (isSilence(quantizedAtTicks, endTicks)) {
         if (cmd.mode === 'cut') itemsToDelete.push(rightItemId);
         else itemsToMarkSilence.push(rightItemId);
       }
@@ -152,8 +152,8 @@ export function autoTrimPauses(
     if (
       finalLeft &&
       isSilence(
-        finalLeft.timelineRange.startUs,
-        finalLeft.timelineRange.startUs + finalLeft.timelineRange.durationUs,
+        finalLeft.timelineRange.startTicks,
+        finalLeft.timelineRange.startTicks + finalLeft.timelineRange.durationTicks,
       )
     ) {
       if (cmd.mode === 'cut') itemsToDelete.push(currentItemId);

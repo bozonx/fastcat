@@ -411,7 +411,7 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
   }
 
   /**
-   * Reads the persisted marker thumbnail for the exact `timeUs` and returns its raw
+   * Reads the persisted marker thumbnail for the exact `timeTicks` and returns its raw
    * blob (or `null` when absent). The object URL is intentionally NOT created or
    * cached here: each `MarkerThumbnail` instance owns and revokes its own URL, so a
    * second consumer of the same marker can never revoke the URL a first one is still
@@ -420,7 +420,7 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
   async getMarkerThumbnail(input: {
     projectId: string;
     markerId: string;
-    timeUs: number;
+    timeTicks: number;
   }): Promise<Blob | null> {
     const workspaceStore = useWorkspaceStore();
     if (!workspaceStore.hasPersistentStorage) return null;
@@ -433,7 +433,7 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
       });
 
       const prefix = `${input.markerId}_`;
-      const expectedFileName = `${prefix}${input.timeUs}.webp`;
+      const expectedFileName = `${prefix}${input.timeTicks}.webp`;
       const expectedPath = `${dirPath}/${expectedFileName}`;
 
       let foundBlob: Blob | null = null;
@@ -445,7 +445,7 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
 
       if (!foundBlob) {
         // Fall back to scan (and cleanup) only when the exact file is missing —
-        // this is the case where the marker's timeUs changed since last save.
+        // this is the case where the marker's timeTicks changed since last save.
         const entries = await vfs.readDirectory(dirPath);
         for (const entry of entries) {
           if (entry.kind === 'file' && entry.name.startsWith(prefix)) {
@@ -473,7 +473,7 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
   async saveMarkerThumbnail(input: {
     projectId: string;
     markerId: string;
-    timeUs: number;
+    timeTicks: number;
     blob: Blob;
   }): Promise<void> {
     const workspaceStore = useWorkspaceStore();
@@ -484,7 +484,7 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
       const filePath = getThumbnailFileVfsPath({
         projectId: input.projectId,
         dirName: MARKER_THUMBNAILS.DIR_NAME,
-        fileName: `${input.markerId}_${input.timeUs}.webp`,
+        fileName: `${input.markerId}_${input.timeTicks}.webp`,
       });
       await vfs.writeFile(filePath, input.blob);
     } catch (e) {

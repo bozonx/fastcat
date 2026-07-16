@@ -1,6 +1,6 @@
 /** @vitest-environment node */
 import { describe, it, expect } from 'vitest';
-import { timelineUs } from '../../utils/timeline-time';
+import { timelineTicks } from '../../utils/timeline-time';
 import { computeExportTotalFrames, getExportFrameTiming } from '~/workers/core/export-helpers';
 import {
   computeFrameIndex,
@@ -39,13 +39,13 @@ describe('web export frame cadence', () => {
   describe('getExportFrameTiming', () => {
     it('emits CFR, leading-edge, strictly increasing timestamps', () => {
       const fps = 25;
-      const durationUs = timelineUs(1_000_000);
-      const totalFrames = computeExportTotalFrames({ durationUs, fps });
+      const durationTicks = timelineTicks(1_000_000);
+      const totalFrames = computeExportTotalFrames({ durationTicks, fps });
       expect(totalFrames).toBe(25);
 
       let prev = -1;
       for (let i = 0; i < totalFrames; i++) {
-        const t = getExportFrameTiming({ frameNum: i, totalFrames, durationUs, fps });
+        const t = getExportFrameTiming({ frameNum: i, totalFrames, durationTicks, fps });
         // Leading edge i/fps (NOT the centre (i+0.5)/fps that the native path uses).
         expect(t.timestampS * fps).toBeCloseTo(i, 6);
         expect(t.durationS).toBeCloseTo(1 / fps, 6);
@@ -55,8 +55,8 @@ describe('web export frame cadence', () => {
     });
 
     it('computes total frame counts for whole and fractional rates', () => {
-      expect(computeExportTotalFrames({ durationUs: timelineUs(1_000_000), fps: 30 })).toBe(30);
-      expect(computeExportTotalFrames({ durationUs: timelineUs(2_000_000), fps: 25 })).toBe(50);
+      expect(computeExportTotalFrames({ durationTicks: timelineTicks(1_000_000), fps: 30 })).toBe(30);
+      expect(computeExportTotalFrames({ durationTicks: timelineTicks(2_000_000), fps: 25 })).toBe(50);
     });
   });
 

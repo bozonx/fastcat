@@ -43,7 +43,7 @@ vi.mock('~/stores/project-settings.store', () => ({
       },
       timelines: { openPaths: [], sessions: {} },
 
-      transitions: { defaultDurationUs: 2000000 },
+      transitions: { defaultDurationTicks: 2000000 },
       ui: { activeTabId: null, fileTabs: [], staticTabsOrder: [], fileManagerPaths: {} },
     },
   })),
@@ -77,7 +77,7 @@ vi.mock('~/stores/workspace.store', () => ({
     userSettings: {
       projectDefaults: { defaultAudioFadeCurve: 'linear' },
       optimization: { autoCreateProxies: false },
-      timeline: { defaultStaticClipDurationUs: 5000000, snapThresholdPx: 10 },
+      timeline: { defaultStaticClipDurationTicks: 5000000, snapThresholdPx: 10 },
       projectPresets: { items: [] },
       presets: {
         custom: [],

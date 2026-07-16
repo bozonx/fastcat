@@ -43,8 +43,8 @@ import ClipTypeSection from '~/components/properties/clip/ClipTypeSection.vue';
 import ClipMaskSection from '~/components/properties/clip/ClipMaskSection.vue';
 import ClipParametersPasteModal from '~/components/properties/clip/ClipParametersPasteModal.vue';
 import ClipBackgroundProperties from '~/components/properties/clip/ClipBackgroundProperties.vue';
-import { getClipMaxTimelineDurationUs } from '~/utils/timeline/clip';
-import { frameToUs, quantizeTimeUsToFrames, sanitizeFps } from '~/timeline/commands/utils';
+import { getClipMaxTimelineDurationTicks } from '~/utils/timeline/clip';
+import { frameToTicks, quantizeTimeUsToFrames, sanitizeFps } from '~/timeline/commands/utils';
 import type { TimelineCommand } from '~/timeline/commands';
 import ClipEffectsEditor from '~/components/effects/ClipEffectsEditor.vue';
 import { useClipAudio } from '~/composables/properties/useClipAudio';
@@ -259,39 +259,39 @@ const otherClips = computed(() => {
   if (!track) return [];
   return track.items
     .filter((it) => it.kind === 'clip' && it.id !== props.clip.id)
-    .sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
+    .sort((a, b) => a.timelineRange.startTicks - b.timelineRange.startTicks);
 });
 
 function handleUpdateStartTime(val: number) {
-  const currentDurationUs = props.clip.timelineRange.durationUs;
+  const currentDurationTicks = props.clip.timelineRange.durationTicks;
 
-  let minStartUs = 0;
-  let maxStartUs = Number.POSITIVE_INFINITY;
+  let minStartTicks = 0;
+  let maxStartTicks = Number.POSITIVE_INFINITY;
 
   for (const it of otherClips.value) {
-    const itStart = it.timelineRange.startUs;
-    const itEnd = itStart + it.timelineRange.durationUs;
+    const itStart = it.timelineRange.startTicks;
+    const itEnd = itStart + it.timelineRange.durationTicks;
 
-    if (itEnd <= props.clip.timelineRange.startUs) {
-      minStartUs = Math.max(minStartUs, itEnd);
-    } else if (itStart >= props.clip.timelineRange.startUs + currentDurationUs) {
-      maxStartUs = Math.min(maxStartUs, itStart - currentDurationUs);
+    if (itEnd <= props.clip.timelineRange.startTicks) {
+      minStartTicks = Math.max(minStartTicks, itEnd);
+    } else if (itStart >= props.clip.timelineRange.startTicks + currentDurationTicks) {
+      maxStartTicks = Math.min(maxStartTicks, itStart - currentDurationTicks);
     }
   }
 
-  let newStartUs = Math.round(val);
-  newStartUs = Math.max(minStartUs, newStartUs);
-  if (Number.isFinite(maxStartUs)) {
-    newStartUs = Math.min(maxStartUs, newStartUs);
+  let newStartTicks = Math.round(val);
+  newStartTicks = Math.max(minStartTicks, newStartTicks);
+  if (Number.isFinite(maxStartTicks)) {
+    newStartTicks = Math.min(maxStartTicks, newStartTicks);
   }
 
-  if (newStartUs === props.clip.timelineRange.startUs) return;
+  if (newStartTicks === props.clip.timelineRange.startTicks) return;
   timelineStore.applyTimeline(
     {
       type: 'move_item',
       trackId: props.clip.trackId,
       itemId: props.clip.id,
-      startUs: newStartUs,
+      startTicks: newStartTicks,
       quantizeToFrames: false,
     },
     { historyMode: 'debounced' },
@@ -299,37 +299,37 @@ function handleUpdateStartTime(val: number) {
 }
 
 function handleUpdateEndTime(val: number) {
-  const startUs = props.clip.timelineRange.startUs;
+  const startTicks = props.clip.timelineRange.startTicks;
   // Clamp into the clip's allowed [start, start + maxDuration] window as a
   // second line of defense — the UI input already clamps, but this guards any
   // programmatic callers and prevents a manual entry from exceeding the clip's
   // source material (which would otherwise trigger a source-window slip).
-  const maxEndUs = startUs + getClipMaxTimelineDurationUs(props.clip);
+  const maxEndTicks = startTicks + getClipMaxTimelineDurationTicks(props.clip);
 
-  let nextClipStartUs = Number.POSITIVE_INFINITY;
+  let nextClipStartTicks = Number.POSITIVE_INFINITY;
   for (const it of otherClips.value) {
-    if (it.timelineRange.startUs >= startUs + props.clip.timelineRange.durationUs) {
-      nextClipStartUs = Math.min(nextClipStartUs, it.timelineRange.startUs);
+    if (it.timelineRange.startTicks >= startTicks + props.clip.timelineRange.durationTicks) {
+      nextClipStartTicks = Math.min(nextClipStartTicks, it.timelineRange.startTicks);
       break;
     }
   }
 
-  const limitEndUs = Math.min(
-    Number.isFinite(maxEndUs) ? maxEndUs : Number.POSITIVE_INFINITY,
-    nextClipStartUs,
+  const limitEndTicks = Math.min(
+    Number.isFinite(maxEndTicks) ? maxEndTicks : Number.POSITIVE_INFINITY,
+    nextClipStartTicks,
   );
 
-  const newEndUs = Math.min(Math.max(startUs, Math.round(val)), limitEndUs);
+  const newEndTicks = Math.min(Math.max(startTicks, Math.round(val)), limitEndTicks);
 
-  const currentEndUs = startUs + props.clip.timelineRange.durationUs;
-  if (newEndUs === currentEndUs) return;
+  const currentEndTicks = startTicks + props.clip.timelineRange.durationTicks;
+  if (newEndTicks === currentEndTicks) return;
   timelineStore.applyTimeline(
     {
       type: 'trim_item',
       trackId: props.clip.trackId,
       itemId: props.clip.id,
       edge: 'end',
-      deltaUs: newEndUs - currentEndUs,
+      deltaTicks: newEndTicks - currentEndTicks,
     },
     { historyMode: 'debounced' },
   );
@@ -343,74 +343,74 @@ function handleUpdateEndTime(val: number) {
 function handleSnapClipToGrid() {
   const clip = props.clip;
   const fps = sanitizeFps(timelineStore.timelineDoc?.timebase);
-  const startUs = clip.timelineRange.startUs;
-  const durationUs = clip.timelineRange.durationUs;
+  const startTicks = clip.timelineRange.startTicks;
+  const durationTicks = clip.timelineRange.durationTicks;
 
   // Snap the start, clamped between neighbours (they are grid-aligned already, so
   // a clamp keeps the result on grid). Mirrors handleUpdateStartTime's clamping.
-  let minStartUs = 0;
-  let maxStartUs = Number.POSITIVE_INFINITY;
+  let minStartTicks = 0;
+  let maxStartTicks = Number.POSITIVE_INFINITY;
   for (const it of otherClips.value) {
-    const itStart = it.timelineRange.startUs;
-    const itEnd = itStart + it.timelineRange.durationUs;
-    if (itEnd <= startUs) minStartUs = Math.max(minStartUs, itEnd);
-    else if (itStart >= startUs + durationUs)
-      maxStartUs = Math.min(maxStartUs, itStart - durationUs);
+    const itStart = it.timelineRange.startTicks;
+    const itEnd = itStart + it.timelineRange.durationTicks;
+    if (itEnd <= startTicks) minStartTicks = Math.max(minStartTicks, itEnd);
+    else if (itStart >= startTicks + durationTicks)
+      maxStartTicks = Math.min(maxStartTicks, itStart - durationTicks);
   }
-  let snappedStartUs = quantizeTimeUsToFrames(startUs, fps, 'round');
-  snappedStartUs = Math.max(minStartUs, snappedStartUs);
-  if (Number.isFinite(maxStartUs)) snappedStartUs = Math.min(maxStartUs, snappedStartUs);
+  let snappedStartTicks = quantizeTimeUsToFrames(startTicks, fps, 'round');
+  snappedStartTicks = Math.max(minStartTicks, snappedStartTicks);
+  if (Number.isFinite(maxStartTicks)) snappedStartTicks = Math.min(maxStartTicks, snappedStartTicks);
 
   // Snap the end, clamped to the source material and the next clip, evaluated at
   // the snapped start. Mirrors handleUpdateEndTime's clamping.
-  const maxEndUs = snappedStartUs + getClipMaxTimelineDurationUs(clip);
-  let nextClipStartUs = Number.POSITIVE_INFINITY;
+  const maxEndTicks = snappedStartTicks + getClipMaxTimelineDurationTicks(clip);
+  let nextClipStartTicks = Number.POSITIVE_INFINITY;
   for (const it of otherClips.value) {
-    if (it.timelineRange.startUs >= snappedStartUs + durationUs) {
-      nextClipStartUs = Math.min(nextClipStartUs, it.timelineRange.startUs);
+    if (it.timelineRange.startTicks >= snappedStartTicks + durationTicks) {
+      nextClipStartTicks = Math.min(nextClipStartTicks, it.timelineRange.startTicks);
       break;
     }
   }
-  const limitEndUs = Math.min(
-    Number.isFinite(maxEndUs) ? maxEndUs : Number.POSITIVE_INFINITY,
-    nextClipStartUs,
+  const limitEndTicks = Math.min(
+    Number.isFinite(maxEndTicks) ? maxEndTicks : Number.POSITIVE_INFINITY,
+    nextClipStartTicks,
   );
-  const oneFrameUs = frameToUs(1, fps);
-  let snappedEndUs = quantizeTimeUsToFrames(snappedStartUs + durationUs, fps, 'round');
+  const oneFrameTicks = frameToTicks(1, fps);
+  let snappedEndTicks = quantizeTimeUsToFrames(snappedStartTicks + durationTicks, fps, 'round');
   // Never grow past the limit: if rounding up would collide/overrun, round the
   // limit down to the grid instead so the clip only ever shrinks to fit.
-  if (snappedEndUs > limitEndUs) {
-    snappedEndUs = quantizeTimeUsToFrames(limitEndUs, fps, 'floor');
+  if (snappedEndTicks > limitEndTicks) {
+    snappedEndTicks = quantizeTimeUsToFrames(limitEndTicks, fps, 'floor');
   }
-  snappedEndUs = Math.max(snappedStartUs + oneFrameUs, snappedEndUs);
+  snappedEndTicks = Math.max(snappedStartTicks + oneFrameTicks, snappedEndTicks);
 
-  const currentEndUs = startUs + durationUs;
+  const currentEndTicks = startTicks + durationTicks;
   const cmds: TimelineCommand[] = [];
-  if (snappedStartUs !== startUs) {
+  if (snappedStartTicks !== startTicks) {
     cmds.push({
       type: 'move_item',
       trackId: clip.trackId,
       itemId: clip.id,
-      startUs: snappedStartUs,
+      startTicks: snappedStartTicks,
       quantizeToFrames: true,
     });
   }
-  // After the move the end sits at snappedStartUs + durationUs; trim it to the
+  // After the move the end sits at snappedStartTicks + durationTicks; trim it to the
   // grid-aligned end.
-  const endAfterMoveUs = snappedStartUs + durationUs;
-  const endDeltaUs = snappedEndUs - endAfterMoveUs;
-  if (endDeltaUs !== 0) {
+  const endAfterMoveTicks = snappedStartTicks + durationTicks;
+  const endDeltaTicks = snappedEndTicks - endAfterMoveTicks;
+  if (endDeltaTicks !== 0) {
     cmds.push({
       type: 'trim_item',
       trackId: clip.trackId,
       itemId: clip.id,
       edge: 'end',
-      deltaUs: endDeltaUs,
+      deltaTicks: endDeltaTicks,
       quantizeToFrames: true,
     });
   }
 
-  if (cmds.length === 0 || (snappedStartUs === startUs && snappedEndUs === currentEndUs)) return;
+  if (cmds.length === 0 || (snappedStartTicks === startTicks && snappedEndTicks === currentEndTicks)) return;
   timelineStore.batchApplyTimeline(cmds, {
     historyMode: 'immediate',
     labelKey: 'videoEditor.fileManager.history.entries.moveItem',
@@ -420,14 +420,14 @@ function handleSnapClipToGrid() {
 // Keyframe animation (v1: opacity + transform). The playhead-driven "current
 // value" and "record edit as keyframe" logic lives in the shared composable so
 // the timeline's keyframe lane and this panel stay in sync.
-const playheadUs = computed(() => timelineStore.currentTime) as Ref<number>;
+const playheadTicks = computed(() => timelineStore.currentTime) as Ref<number>;
 const clipKeyframes = useClipKeyframes({
   clip: clipRef,
-  playheadUs,
+  playheadTicks,
   updateAnimations: (next: ClipAnimations | undefined) => {
     timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, { animations: next });
   },
-  seek: (timelineUs: number) => timelineStore.setCurrentTimeUs(timelineUs),
+  seek: (timelineTicks: number) => timelineStore.setCurrentTimeTicks(timelineTicks),
 });
 
 const hasAnyKeyframes = computed(() => clipKeyframes.keyframeTimes.value.length > 0);
@@ -445,46 +445,46 @@ function handlePasteKeyframeMoment() {
 type AnimationPreset = 'fade-in' | 'fade-out' | 'ken-burns' | 'slide-in';
 
 function handleApplyAnimationPreset(preset: AnimationPreset) {
-  const durationUs = Math.max(
+  const durationTicks = Math.max(
     1,
-    props.clip.sourceRange.durationUs || props.clip.timelineRange.durationUs,
+    props.clip.sourceRange.durationTicks || props.clip.timelineRange.durationTicks,
   );
-  const presetSpanUs = Math.min(TICKS_PER_SECOND, durationUs);
+  const presetSpanTicks = Math.min(TICKS_PER_SECOND, durationTicks);
   let next = props.clip.animations;
 
   if (preset === 'fade-in') {
-    next = upsertKeyframe(next, 'opacity', props.clip.sourceRange.startUs, 0, 'linear');
+    next = upsertKeyframe(next, 'opacity', props.clip.sourceRange.startTicks, 0, 'linear');
     next = upsertKeyframe(
       next,
       'opacity',
-      props.clip.sourceRange.startUs + presetSpanUs,
+      props.clip.sourceRange.startTicks + presetSpanTicks,
       1,
       'linear',
     );
   } else if (preset === 'fade-out') {
-    const endUs = props.clip.sourceRange.startUs + durationUs;
+    const endTicks = props.clip.sourceRange.startTicks + durationTicks;
     next = upsertKeyframe(
       next,
       'opacity',
-      Math.max(props.clip.sourceRange.startUs, endUs - presetSpanUs),
+      Math.max(props.clip.sourceRange.startTicks, endTicks - presetSpanTicks),
       1,
       'linear',
     );
-    next = upsertKeyframe(next, 'opacity', endUs, 0, 'linear');
+    next = upsertKeyframe(next, 'opacity', endTicks, 0, 'linear');
   } else if (preset === 'ken-burns') {
-    next = upsertKeyframe(next, 'transform.scale.x', props.clip.sourceRange.startUs, 1, 'ease');
-    next = upsertKeyframe(next, 'transform.scale.y', props.clip.sourceRange.startUs, 1, 'ease');
+    next = upsertKeyframe(next, 'transform.scale.x', props.clip.sourceRange.startTicks, 1, 'ease');
+    next = upsertKeyframe(next, 'transform.scale.y', props.clip.sourceRange.startTicks, 1, 'ease');
     next = upsertKeyframe(
       next,
       'transform.scale.x',
-      props.clip.sourceRange.startUs + durationUs,
+      props.clip.sourceRange.startTicks + durationTicks,
       1.12,
       'linear',
     );
     next = upsertKeyframe(
       next,
       'transform.scale.y',
-      props.clip.sourceRange.startUs + durationUs,
+      props.clip.sourceRange.startTicks + durationTicks,
       1.12,
       'linear',
     );
@@ -492,22 +492,22 @@ function handleApplyAnimationPreset(preset: AnimationPreset) {
     next = upsertKeyframe(
       next,
       'transform.position.x',
-      props.clip.sourceRange.startUs,
+      props.clip.sourceRange.startTicks,
       -400,
       'ease',
     );
     next = upsertKeyframe(
       next,
       'transform.position.x',
-      props.clip.sourceRange.startUs + presetSpanUs,
+      props.clip.sourceRange.startTicks + presetSpanTicks,
       0,
       'linear',
     );
-    next = upsertKeyframe(next, 'opacity', props.clip.sourceRange.startUs, 0, 'linear');
+    next = upsertKeyframe(next, 'opacity', props.clip.sourceRange.startTicks, 0, 'linear');
     next = upsertKeyframe(
       next,
       'opacity',
-      props.clip.sourceRange.startUs + presetSpanUs,
+      props.clip.sourceRange.startTicks + presetSpanTicks,
       1,
       'linear',
     );
@@ -775,12 +775,12 @@ const canEditAudioEffects = computed(() => canEditAudioFades.value && canEditAud
 const { selectTransitionEdge, toggleTransition, updateTransitionDuration, updateTransitionType } =
   useClipTransitions({
     clip: clipRef,
-    defaultDurationUs: computed(() =>
+    defaultDurationTicks: computed(() =>
       Math.max(
         0,
         Math.round(
           Number(
-            workspaceStore.userSettings.timeline.defaultTransitionDurationUs ?? TICKS_PER_SECOND,
+            workspaceStore.userSettings.timeline.defaultTransitionDurationTicks ?? TICKS_PER_SECOND,
           ),
         ),
       ),
@@ -857,7 +857,7 @@ defineExpose({
         :is-video-track="isVideoTrack"
         :transition-in="clip.transitionIn ?? null"
         :transition-out="clip.transitionOut ?? null"
-        :clip-duration-us="clip.timelineRange.durationUs"
+        :clip-duration-us="clip.timelineRange.durationTicks"
         @select-edge="selectTransitionEdge"
         @toggle="toggleTransition"
         @update-duration="({ edge, durationSec }) => updateTransitionDuration(edge, durationSec)"
@@ -1059,7 +1059,7 @@ defineExpose({
         :is-video-track="isVideoTrack"
         :transition-in="clip.transitionIn ?? null"
         :transition-out="clip.transitionOut ?? null"
-        :clip-duration-us="clip.timelineRange.durationUs"
+        :clip-duration-us="clip.timelineRange.durationTicks"
         @select-edge="selectTransitionEdge"
         @toggle="toggleTransition"
         @update-duration="({ edge, durationSec }) => updateTransitionDuration(edge, durationSec)"

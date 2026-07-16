@@ -96,21 +96,21 @@ interface AudioClipData {
   sourcePath?: string;
   source?: { path?: string };
   fileHandle?: FileSystemFileHandle;
-  timelineRange?: { startUs?: number; durationUs?: number };
-  sourceRange?: { startUs?: number; durationUs?: number };
-  startUs?: number;
-  durationUs?: number;
-  sourceStartUs?: number;
-  sourceDurationUs?: number;
+  timelineRange?: { startTicks?: number; durationTicks?: number };
+  sourceRange?: { startTicks?: number; durationTicks?: number };
+  startTicks?: number;
+  durationTicks?: number;
+  sourceStartTicks?: number;
+  sourceDurationTicks?: number;
   speed?: number;
   audioGain?: number;
   audioBalance?: number;
   animations?: ClipAnimations;
-  audioFadeInUs?: number;
-  audioFadeOutUs?: number;
+  audioFadeInTicks?: number;
+  audioFadeOutTicks?: number;
   audioFadeInCurve?: AudioFadeCurve;
   audioFadeOutCurve?: AudioFadeCurve;
-  audioDeclickDurationUs?: number;
+  audioDeclickDurationTicks?: number;
   defaultAudioFadeCurve?: AudioFadeCurve;
   transitionIn?: AudioTransitionEnvelope | null;
   transitionOut?: AudioTransitionEnvelope | null;
@@ -118,11 +118,11 @@ interface AudioClipData {
     audioGain?: number;
     audioBalance?: number;
     animations?: ClipAnimations;
-    audioFadeInUs?: number;
-    audioFadeOutUs?: number;
+    audioFadeInTicks?: number;
+    audioFadeOutTicks?: number;
     audioFadeInCurve?: AudioFadeCurve;
     audioFadeOutCurve?: AudioFadeCurve;
-    audioDeclickDurationUs?: number;
+    audioDeclickDurationTicks?: number;
     defaultAudioFadeCurve?: AudioFadeCurve;
     transitionIn?: AudioTransitionEnvelope | null;
     transitionOut?: AudioTransitionEnvelope | null;
@@ -680,8 +680,8 @@ function buildAdjacencyMap(audioClips: AudioClipData[]): AdjacencyMap {
   for (const list of byTrack.values()) {
     list.sort(
       (a, b) =>
-        Number(a.startUs ?? a.timelineRange?.startUs ?? 0) -
-        Number(b.startUs ?? b.timelineRange?.startUs ?? 0),
+        Number(a.startTicks ?? a.timelineRange?.startTicks ?? 0) -
+        Number(b.startTicks ?? b.timelineRange?.startTicks ?? 0),
     );
     for (let i = 0; i < list.length; i += 1) {
       const clip = list[i]!;
@@ -863,10 +863,10 @@ export class AudioMixer {
         continue;
       }
 
-      const startUs = clipData.startUs ?? clipData.timelineRange?.startUs ?? 0;
-      const sourceStartUs = clipData.sourceStartUs ?? clipData.sourceRange?.startUs ?? 0;
-      const sourceDurationUs = clipData.sourceDurationUs ?? clipData.sourceRange?.durationUs ?? 0;
-      const durationUs = clipData.durationUs ?? clipData.timelineRange?.durationUs ?? 0;
+      const startTicks = clipData.startTicks ?? clipData.timelineRange?.startTicks ?? 0;
+      const sourceStartTicks = clipData.sourceStartTicks ?? clipData.sourceRange?.startTicks ?? 0;
+      const sourceDurationTicks = clipData.sourceDurationTicks ?? clipData.sourceRange?.durationTicks ?? 0;
+      const durationTicks = clipData.durationTicks ?? clipData.timelineRange?.durationTicks ?? 0;
 
       const speedRaw = Number(clipData.speed);
       const speed =
@@ -879,8 +879,8 @@ export class AudioMixer {
       // Fade math is done in timeline-space: source duration must be scaled by
       // 1/speed before comparing with timeline duration so the clamp doesn't
       // chop fades short when speed < 1.
-      const timelineDurationS = ticksToSecondsClamped(Number(durationUs));
-      const sourceTimelineDurationS = ticksToSecondsClamped(Number(sourceDurationUs)) / speed;
+      const timelineDurationS = ticksToSecondsClamped(Number(durationTicks));
+      const sourceTimelineDurationS = ticksToSecondsClamped(Number(sourceDurationTicks)) / speed;
       const fadeClipDurationS = Math.max(
         0,
         Math.min(sourceTimelineDurationS, timelineDurationS || sourceTimelineDurationS),
@@ -893,12 +893,12 @@ export class AudioMixer {
       } = resolveEffectiveFadeDurationsSeconds({
         clipDurationS: fadeClipDurationS,
         clip: {
-          audioFadeInUs: clipData.audioFadeInUs ?? clipData.fastcat?.audioFadeInUs,
-          audioFadeOutUs: clipData.audioFadeOutUs ?? clipData.fastcat?.audioFadeOutUs,
+          audioFadeInTicks: clipData.audioFadeInTicks ?? clipData.fastcat?.audioFadeInTicks,
+          audioFadeOutTicks: clipData.audioFadeOutTicks ?? clipData.fastcat?.audioFadeOutTicks,
           audioFadeInCurve: clipData.audioFadeInCurve ?? clipData.fastcat?.audioFadeInCurve,
           audioFadeOutCurve: clipData.audioFadeOutCurve ?? clipData.fastcat?.audioFadeOutCurve,
-          audioDeclickDurationUs:
-            clipData.audioDeclickDurationUs ?? clipData.fastcat?.audioDeclickDurationUs,
+          audioDeclickDurationTicks:
+            clipData.audioDeclickDurationTicks ?? clipData.fastcat?.audioDeclickDurationTicks,
           transitionIn: clipData.transitionIn ?? clipData.fastcat?.transitionIn,
           transitionOut: clipData.transitionOut ?? clipData.fastcat?.transitionOut,
         },
@@ -908,15 +908,15 @@ export class AudioMixer {
           clipData.defaultAudioFadeCurve ?? clipData.fastcat?.defaultAudioFadeCurve,
       });
 
-      const clipStartS = Math.max(0, ticksToSecondsClamped(Number(startUs)));
-      const rawOffsetS = Math.max(0, ticksToSecondsClamped(Number(sourceStartUs)));
+      const clipStartS = Math.max(0, ticksToSecondsClamped(Number(startTicks)));
+      const rawOffsetS = Math.max(0, ticksToSecondsClamped(Number(sourceStartTicks)));
 
       const baseClipDurationS = Math.max(
         0,
         Math.min(
-          ticksToSecondsClamped(Number(sourceDurationUs)) / speed,
-          ticksToSecondsClamped(Number(durationUs)) ||
-            ticksToSecondsClamped(Number(sourceDurationUs)) / speed,
+          ticksToSecondsClamped(Number(sourceDurationTicks)) / speed,
+          ticksToSecondsClamped(Number(durationTicks)) ||
+            ticksToSecondsClamped(Number(sourceDurationTicks)) / speed,
         ),
       );
 
@@ -927,21 +927,21 @@ export class AudioMixer {
 
       const transitionOut = clipData.transitionOut ?? clipData.fastcat?.transitionOut;
       if (
-        transitionOut?.durationUs &&
-        Number(transitionOut.durationUs) > 0 &&
+        transitionOut?.durationTicks &&
+        Number(transitionOut.durationTicks) > 0 &&
         transitionOut.mode === 'adjacent'
       ) {
-        const outExtensionS = ticksToSecondsClamped(Number(transitionOut.durationUs));
+        const outExtensionS = ticksToSecondsClamped(Number(transitionOut.durationTicks));
         playDurationS += outExtensionS;
       }
 
       const transitionIn = clipData.transitionIn ?? clipData.fastcat?.transitionIn;
       if (
-        transitionIn?.durationUs &&
-        Number(transitionIn.durationUs) > 0 &&
+        transitionIn?.durationTicks &&
+        Number(transitionIn.durationTicks) > 0 &&
         transitionIn.mode === 'adjacent'
       ) {
-        const inExtensionS = ticksToSecondsClamped(Number(transitionIn.durationUs));
+        const inExtensionS = ticksToSecondsClamped(Number(transitionIn.durationTicks));
         playDurationS += inExtensionS;
         effectiveClipStartS = Math.max(0, clipStartS - inExtensionS);
         effectiveOffsetS = Math.max(0, effectiveOffsetS - inExtensionS * speed);

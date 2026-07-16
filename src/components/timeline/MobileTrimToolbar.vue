@@ -7,8 +7,8 @@ defineProps<{
     | {
         itemId: string;
         trackId: string;
-        startUs: number;
-        durationUs: number;
+        startTicks: number;
+        durationTicks: number;
         edge: 'start' | 'end';
       }[]
     | null;

@@ -7,9 +7,9 @@ import type { CompositorClip } from '~/utils/video-editor/compositor/types';
 function makeClip(overrides: Partial<CompositorClip> = {}): CompositorClip {
   return {
     itemId: 'clip-1',
-    startUs: 0,
-    endUs: 1_000_000,
-    durationUs: 1_000_000,
+    startTicks: 0,
+    endTicks: 1_000_000,
+    durationTicks: 1_000_000,
     layer: 0,
     sprite: null,
     imageSource: {} as any,
@@ -20,7 +20,7 @@ function makeClip(overrides: Partial<CompositorClip> = {}): CompositorClip {
     transitionIn: {
       type: 'fade',
       mode: 'adjacent',
-      durationUs: 500_000,
+      durationTicks: 500_000,
       params: {},
     },
     ...overrides,
@@ -50,7 +50,7 @@ describe('TransitionManager.getActiveTransitionState', () => {
       transitionOut: {
         type: 'fade',
         mode: 'adjacent',
-        durationUs: 500_000,
+        durationTicks: 500_000,
         params: {},
       },
     });
@@ -64,11 +64,11 @@ describe('TransitionManager.getActiveTransitionState', () => {
   it('returns null when time is outside transition windows', () => {
     const tm = new TransitionManager();
     const clip = makeClip({
-      transitionIn: { type: 'fade', mode: 'adjacent', durationUs: 200_000, params: {} },
+      transitionIn: { type: 'fade', mode: 'adjacent', durationTicks: 200_000, params: {} },
       transitionOut: {
         type: 'fade',
         mode: 'adjacent',
-        durationUs: 200_000,
+        durationTicks: 200_000,
         params: {},
       },
     });
@@ -80,13 +80,13 @@ describe('TransitionManager.getActiveTransitionState', () => {
     const tm = new TransitionManager();
     // Clip is 300ms, in transition 200ms, out transition 200ms → overlap
     const clip = makeClip({
-      durationUs: 300_000,
-      endUs: 300_000,
-      transitionIn: { type: 'fade', mode: 'adjacent', durationUs: 200_000, params: {} },
+      durationTicks: 300_000,
+      endTicks: 300_000,
+      transitionIn: { type: 'fade', mode: 'adjacent', durationTicks: 200_000, params: {} },
       transitionOut: {
         type: 'fade',
         mode: 'adjacent',
-        durationUs: 200_000,
+        durationTicks: 200_000,
         params: {},
       },
     });
@@ -129,7 +129,7 @@ describe('TransitionManager.computeTransitionOpacity', () => {
     const clip = makeClip({
       transitionOut: undefined,
       opacity: 1,
-      transitionIn: { type: 'fade', mode: 'adjacent', durationUs: 1_000_000, params: {} },
+      transitionIn: { type: 'fade', mode: 'adjacent', durationTicks: 1_000_000, params: {} },
     });
     // At time 0, progress = 0 → opacity should be 0
     expect(tm.computeTransitionOpacity(clip, 0, false)).toBeCloseTo(0, 5);
@@ -147,7 +147,7 @@ describe('TransitionManager.computeTransitionOpacity', () => {
       transitionOut: {
         type: 'fade',
         mode: 'adjacent',
-        durationUs: 500_000,
+        durationTicks: 500_000,
         params: {},
       },
     });

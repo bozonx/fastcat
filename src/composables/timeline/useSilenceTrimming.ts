@@ -37,7 +37,7 @@ export function useSilenceTrimming() {
     const clipsData: {
       trackId: string;
       itemId: string;
-      pauses: { startUs: number; endUs: number }[];
+      pauses: { startTicks: number; endTicks: number }[];
     }[] = [];
 
     const missingTranscriptionPaths = new Set<string>();
@@ -71,27 +71,27 @@ export function useSilenceTrimming() {
       const firstWordStartTicks = firstWord.start * TICKS_PER_MILLISECOND;
       const lastWordEndTicks = lastWord.end * TICKS_PER_MILLISECOND;
 
-      const pauses: { startUs: number; endUs: number }[] = [];
+      const pauses: { startTicks: number; endTicks: number }[] = [];
 
       // 1. Identify start pause
-      if (options.settings.trimStart && firstWordStartTicks > item.sourceRange.startUs) {
+      if (options.settings.trimStart && firstWordStartTicks > item.sourceRange.startTicks) {
         pauses.push({
-          startUs: item.timelineRange.startUs,
-          endUs:
-            item.timelineRange.startUs +
-            (firstWordStartTicks - item.sourceRange.startUs) / absSpeed,
+          startTicks: item.timelineRange.startTicks,
+          endTicks:
+            item.timelineRange.startTicks +
+            (firstWordStartTicks - item.sourceRange.startTicks) / absSpeed,
         });
       }
 
       // 2. Identify end pause
       if (
         options.settings.trimEnd &&
-        lastWordEndTicks < item.sourceRange.startUs + item.sourceRange.durationUs
+        lastWordEndTicks < item.sourceRange.startTicks + item.sourceRange.durationTicks
       ) {
         pauses.push({
-          startUs:
-            item.timelineRange.startUs + (lastWordEndTicks - item.sourceRange.startUs) / absSpeed,
-          endUs: item.timelineRange.startUs + item.timelineRange.durationUs,
+          startTicks:
+            item.timelineRange.startTicks + (lastWordEndTicks - item.sourceRange.startTicks) / absSpeed,
+          endTicks: item.timelineRange.startTicks + item.timelineRange.durationTicks,
         });
       }
 
@@ -105,18 +105,18 @@ export function useSilenceTrimming() {
 
           if (gapEndTicks - gapStartTicks > PAUSE_THRESHOLD_TICKS) {
             const t1 =
-              item.timelineRange.startUs + (gapStartTicks - item.sourceRange.startUs) / absSpeed;
+              item.timelineRange.startTicks + (gapStartTicks - item.sourceRange.startTicks) / absSpeed;
             const t2 =
-              item.timelineRange.startUs + (gapEndTicks - item.sourceRange.startUs) / absSpeed;
+              item.timelineRange.startTicks + (gapEndTicks - item.sourceRange.startTicks) / absSpeed;
 
             // Only add if it's within current clip's timeline range
-            const clipEndUs = item.timelineRange.startUs + item.timelineRange.durationUs;
-            const pauseStart = Math.max(item.timelineRange.startUs, t1);
-            const pauseEnd = Math.min(clipEndUs, t2);
+            const clipEndTicks = item.timelineRange.startTicks + item.timelineRange.durationTicks;
+            const pauseStart = Math.max(item.timelineRange.startTicks, t1);
+            const pauseEnd = Math.min(clipEndTicks, t2);
 
             if (pauseEnd - pauseStart > 100 * TICKS_PER_MILLISECOND) {
               // at least 100ms
-              pauses.push({ startUs: pauseStart, endUs: pauseEnd });
+              pauses.push({ startTicks: pauseStart, endTicks: pauseEnd });
             }
           }
         }

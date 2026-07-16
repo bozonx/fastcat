@@ -16,11 +16,11 @@ afterEach(() => {
 function setupInteractions(rulerOverrides: Record<string, unknown>) {
   const applyTimeline = vi.fn();
   const selectTimelineMarker = vi.fn();
-  const setCurrentTimeUs = vi.fn();
+  const setCurrentTimeTicks = vi.fn();
   const requestCenterPlayhead = vi.fn();
   const fitTimelineZoom = vi.fn();
   // Returns a recognizable snapped value so we can prove snapping was applied.
-  const resolvePlayheadClickTimeUs = vi.fn((raw: number) => raw + 777);
+  const resolvePlayheadClickTimeTicks = vi.fn((raw: number) => raw + 777);
 
   const userSettings = structuredClone(DEFAULT_USER_SETTINGS);
   Object.assign(userSettings.mouse.ruler, rulerOverrides);
@@ -39,7 +39,7 @@ function setupInteractions(rulerOverrides: Record<string, unknown>) {
           removeSelectionRange: vi.fn(),
           resetTimelineZoom: vi.fn(),
           fitTimelineZoom,
-          setCurrentTimeUs,
+          setCurrentTimeTicks,
           requestCenterPlayhead,
         },
         selectionStore: { clearSelection: vi.fn(), selectTimelineMarker },
@@ -47,7 +47,7 @@ function setupInteractions(rulerOverrides: Record<string, unknown>) {
         isDraggingSelectionRange: ref(false),
         suppressNextRulerClick: ref(false),
         startSelectionRangeCreate: vi.fn(),
-        resolvePlayheadClickTimeUs,
+        resolvePlayheadClickTimeTicks,
         emit: Object.assign(vi.fn(), {}) as never,
       });
       return () => h('div');
@@ -59,23 +59,23 @@ function setupInteractions(rulerOverrides: Record<string, unknown>) {
     api,
     applyTimeline,
     selectTimelineMarker,
-    setCurrentTimeUs,
+    setCurrentTimeTicks,
     requestCenterPlayhead,
     fitTimelineZoom,
-    resolvePlayheadClickTimeUs,
+    resolvePlayheadClickTimeTicks,
   };
 }
 
 describe('useTimelineRulerInteractions', () => {
   it('creates a marker through the snapping resolver (add_marker)', () => {
-    const { api, applyTimeline, selectTimelineMarker, resolvePlayheadClickTimeUs } =
+    const { api, applyTimeline, selectTimelineMarker, resolvePlayheadClickTimeTicks } =
       setupInteractions({ click: 'add_marker' });
 
     api.onRulerClick(new MouseEvent('click', { button: 0 }));
 
-    expect(resolvePlayheadClickTimeUs).toHaveBeenCalled();
+    expect(resolvePlayheadClickTimeTicks).toHaveBeenCalled();
     expect(applyTimeline).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'add_marker', timeUs: 777, text: '' }),
+      expect.objectContaining({ type: 'add_marker', timeTicks: 777, text: '' }),
     );
     // The freshly created marker becomes the selection.
     const createdId = applyTimeline.mock.calls[0]![0].id;
@@ -83,14 +83,14 @@ describe('useTimelineRulerInteractions', () => {
   });
 
   it('seeks through the snapping resolver (seek)', () => {
-    const { api, setCurrentTimeUs, resolvePlayheadClickTimeUs } = setupInteractions({
+    const { api, setCurrentTimeTicks, resolvePlayheadClickTimeTicks } = setupInteractions({
       click: 'seek',
     });
 
     api.onRulerClick(new MouseEvent('click', { button: 0 }));
 
-    expect(resolvePlayheadClickTimeUs).toHaveBeenCalled();
-    expect(setCurrentTimeUs).toHaveBeenCalledWith(777);
+    expect(resolvePlayheadClickTimeTicks).toHaveBeenCalled();
+    expect(setCurrentTimeTicks).toHaveBeenCalledWith(777);
   });
 
   it('ignores non-primary clicks', () => {

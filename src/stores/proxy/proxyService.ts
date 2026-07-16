@@ -299,8 +299,8 @@ export function createProxyService(params: {
                 throw new Error('Could not resolve native file paths for proxy generation');
               }
               const meta = await nativeMediaMetadata(sourcePath);
-              const durationUs = Math.round((meta.duration || 0) * TICKS_PER_SECOND);
-              if (!durationUs) throw new Error('Invalid video duration');
+              const durationTicks = Math.round((meta.duration || 0) * TICKS_PER_SECOND);
+              if (!durationTicks) throw new Error('Invalid video duration');
               await nativeGenerateProxy({
                 taskId,
                 sourcePath,
@@ -356,9 +356,9 @@ export function createProxyService(params: {
             const width = Math.max(16, Math.round((sourceWidth * scale) / 2) * 2);
             const height = Math.max(16, Math.round((sourceHeight * scale) / 2) * 2);
 
-            const durationUs = Math.round((meta.duration || 0) * TICKS_PER_SECOND);
+            const durationTicks = Math.round((meta.duration || 0) * TICKS_PER_SECOND);
 
-            if (!durationUs) throw new Error('Invalid video duration');
+            if (!durationTicks) throw new Error('Invalid video duration');
 
             const videoClips = [
               {
@@ -366,8 +366,8 @@ export function createProxyService(params: {
                 id: 'proxy_video',
                 layer: 0,
                 source: { path: projectRelativePath },
-                timelineRange: { startUs: 0, durationUs },
-                sourceRange: { startUs: 0, durationUs },
+                timelineRange: { startTicks: 0, durationTicks },
+                sourceRange: { startTicks: 0, durationTicks },
               },
             ] as unknown[];
 
@@ -378,8 +378,8 @@ export function createProxyService(params: {
                     id: 'proxy_audio',
                     layer: 0,
                     source: { path: projectRelativePath },
-                    timelineRange: { startUs: 0, durationUs },
-                    sourceRange: { startUs: 0, durationUs },
+                    timelineRange: { startTicks: 0, durationTicks },
+                    sourceRange: { startTicks: 0, durationTicks },
                   },
                 ] as unknown[])
               : [];

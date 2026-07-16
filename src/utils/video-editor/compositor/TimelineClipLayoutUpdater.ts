@@ -32,30 +32,30 @@ export class TimelineClipLayoutUpdater {
 
     const n = next as unknown as Record<string, unknown>;
     const timelineRange = n['timelineRange'] as
-      | { startUs?: unknown; durationUs?: unknown }
+      | { startTicks?: unknown; durationTicks?: unknown }
       | undefined;
-    const sourceRange = n['sourceRange'] as { startUs?: unknown; durationUs?: unknown } | undefined;
-    const startUs = Math.max(0, Math.round(Number(timelineRange?.startUs ?? clip.startUs)));
-    const timelineDurationUs = Math.max(
+    const sourceRange = n['sourceRange'] as { startTicks?: unknown; durationTicks?: unknown } | undefined;
+    const startTicks = Math.max(0, Math.round(Number(timelineRange?.startTicks ?? clip.startTicks)));
+    const timelineDurationTicks = Math.max(
       0,
-      Math.round(Number(timelineRange?.durationUs ?? clip.durationUs)),
+      Math.round(Number(timelineRange?.durationTicks ?? clip.durationTicks)),
     );
-    const sourceStartUs = Math.max(
+    const sourceStartTicks = Math.max(
       0,
-      Math.round(Number(sourceRange?.startUs ?? clip.sourceStartUs)),
+      Math.round(Number(sourceRange?.startTicks ?? clip.sourceStartTicks)),
     );
-    const sourceRangeDurationUs = Math.max(
+    const sourceRangeDurationTicks = Math.max(
       0,
-      Math.round(Number(sourceRange?.durationUs ?? clip.sourceRangeDurationUs)),
+      Math.round(Number(sourceRange?.durationTicks ?? clip.sourceRangeDurationTicks)),
     );
-    const nextSourceDurationRaw = n['sourceDurationUs'];
-    const sourceDurationUs = Math.max(
+    const nextSourceDurationRaw = n['sourceDurationTicks'];
+    const sourceDurationTicks = Math.max(
       0,
       Math.round(
         Number(
           typeof nextSourceDurationRaw === 'number' && nextSourceDurationRaw > 0
             ? nextSourceDurationRaw
-            : clip.sourceDurationUs,
+            : clip.sourceDurationTicks,
         ),
       ),
     );
@@ -66,20 +66,20 @@ export class TimelineClipLayoutUpdater {
         ? Math.max(-10, Math.min(10, speedRaw))
         : undefined;
 
-    const freezeFrameSourceUsRaw = n['freezeFrameSourceUs'];
-    const freezeFrameSourceUs =
+    const freezeFrameSourceUsRaw = n['freezeFrameSourceTicks'];
+    const freezeFrameSourceTicks =
       typeof freezeFrameSourceUsRaw === 'number' && Number.isFinite(freezeFrameSourceUsRaw)
         ? Math.max(0, Math.round(freezeFrameSourceUsRaw))
         : undefined;
 
-    clip.startUs = startUs;
-    clip.durationUs = timelineDurationUs;
-    clip.endUs = startUs + timelineDurationUs;
-    clip.sourceStartUs = sourceStartUs;
-    clip.sourceRangeDurationUs = sourceRangeDurationUs;
-    clip.sourceDurationUs = sourceDurationUs;
+    clip.startTicks = startTicks;
+    clip.durationTicks = timelineDurationTicks;
+    clip.endTicks = startTicks + timelineDurationTicks;
+    clip.sourceStartTicks = sourceStartTicks;
+    clip.sourceRangeDurationTicks = sourceRangeDurationTicks;
+    clip.sourceDurationTicks = sourceDurationTicks;
     clip.speed = speed;
-    clip.freezeFrameSourceUs = freezeFrameSourceUs;
+    clip.freezeFrameSourceTicks = freezeFrameSourceTicks;
     clip.layer = layer;
     clip.trackId =
       typeof n['trackId'] === 'string' && (n['trackId'] as string).length > 0

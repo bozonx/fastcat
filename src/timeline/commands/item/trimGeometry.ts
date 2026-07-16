@@ -1,11 +1,11 @@
 import type { TimelineRange } from '../../types';
-import { clampInt, frameToUs, quantizeDeltaUsToFrames, quantizeRangeToFrames } from '../utils';
+import { clampInt, frameToTicks, quantizeDeltaUsToFrames, quantizeRangeToFrames } from '../utils';
 import { isClipFrameAligned } from '~/utils/timeline/clip-capabilities';
 
 export interface TrimGeometryInput {
   edge: 'start' | 'end';
   /** Requested edge movement on the timeline, in canonical timeline ticks (sign per edge). */
-  deltaUs: number;
+  deltaTicks: number;
   /** Clip playback speed; negative values play the source in reverse. */
   speed: number | undefined;
   fps: number;
@@ -13,7 +13,7 @@ export interface TrimGeometryInput {
   timelineRange: TimelineRange;
   sourceRange: TimelineRange;
   /** Total length of the underlying source material, if it is already known. */
-  sourceDurationUs: number | undefined;
+  sourceDurationTicks: number | undefined;
   /**
    * True for clips backed by finite source material (video/audio media and
    * nested timelines). Images and virtual clips (text/shape/background/...)
@@ -45,8 +45,8 @@ export function computeTrimGeometry(input: TrimGeometryInput): TrimGeometryResul
   const speed = typeof input.speed === 'number' && Number.isFinite(input.speed) ? input.speed : 1;
   const absSpeed = Math.abs(speed) || 1;
 
-  const deltaCandidate = Math.round(Number(input.deltaUs));
-  const deltaUs = quantizeToFrames
+  const deltaCandidate = Math.round(Number(input.deltaTicks));
+  const deltaTicks = quantizeToFrames
     ? quantizeDeltaUsToFrames(deltaCandidate, fps, 'round')
     : deltaCandidate;
 
@@ -58,144 +58,144 @@ export function computeTrimGeometry(input: TrimGeometryInput): TrimGeometryResul
   // the frame lock for video/virtual clips.
   const snapAbsoluteToGrid =
     quantizeToFrames && isClipFrameAligned({ timelineRange: input.timelineRange }, fps);
-  const sourceDeltaUs = Math.round(deltaUs * absSpeed);
+  const sourceDeltaTicks = Math.round(deltaTicks * absSpeed);
 
-  const prevTimelineStartUs = Math.max(0, Math.round(input.timelineRange.startUs));
-  const prevTimelineDurationUs = Math.max(0, Math.round(input.timelineRange.durationUs));
-  const prevSourceStartUs = Math.max(0, Math.round(input.sourceRange.startUs));
-  const prevSourceDurationUs = Math.max(0, Math.round(input.sourceRange.durationUs));
-  const prevSourceEndUs = prevSourceStartUs + prevSourceDurationUs;
+  const prevTimelineStartTicks = Math.max(0, Math.round(input.timelineRange.startTicks));
+  const prevTimelineDurationTicks = Math.max(0, Math.round(input.timelineRange.durationTicks));
+  const prevSourceStartTicks = Math.max(0, Math.round(input.sourceRange.startTicks));
+  const prevSourceDurationTicks = Math.max(0, Math.round(input.sourceRange.durationTicks));
+  const prevSourceEndTicks = prevSourceStartTicks + prevSourceDurationTicks;
 
   if (!hasFixedSourceDuration) {
-    const prevTimelineEndUs = prevTimelineStartUs + prevTimelineDurationUs;
-    let nextTimelineStartUs = prevTimelineStartUs;
-    let nextTimelineDurationUs = prevTimelineDurationUs;
+    const prevTimelineEndTicks = prevTimelineStartTicks + prevTimelineDurationTicks;
+    let nextTimelineStartTicks = prevTimelineStartTicks;
+    let nextTimelineDurationTicks = prevTimelineDurationTicks;
 
     if (edge === 'start') {
-      nextTimelineStartUs = Math.max(0, Math.min(prevTimelineEndUs, prevTimelineStartUs + deltaUs));
-      nextTimelineDurationUs = Math.max(0, prevTimelineEndUs - nextTimelineStartUs);
+      nextTimelineStartTicks = Math.max(0, Math.min(prevTimelineEndTicks, prevTimelineStartTicks + deltaTicks));
+      nextTimelineDurationTicks = Math.max(0, prevTimelineEndTicks - nextTimelineStartTicks);
     } else {
-      nextTimelineDurationUs = Math.max(0, prevTimelineDurationUs + deltaUs);
+      nextTimelineDurationTicks = Math.max(0, prevTimelineDurationTicks + deltaTicks);
     }
 
     if (snapAbsoluteToGrid) {
       const qTimeline = quantizeRangeToFrames(
-        { startUs: nextTimelineStartUs, durationUs: nextTimelineDurationUs },
+        { startTicks: nextTimelineStartTicks, durationTicks: nextTimelineDurationTicks },
         fps,
       );
-      nextTimelineStartUs = qTimeline.startUs;
-      nextTimelineDurationUs = qTimeline.durationUs;
+      nextTimelineStartTicks = qTimeline.startTicks;
+      nextTimelineDurationTicks = qTimeline.durationTicks;
     }
 
-    const minFrameDurationUs = frameToUs(1, fps);
-    const valid = nextTimelineDurationUs >= minFrameDurationUs;
-    const nextSourceDurationUs = Math.max(0, Math.round(nextTimelineDurationUs * absSpeed));
+    const minFrameDurationTicks = frameToTicks(1, fps);
+    const valid = nextTimelineDurationTicks >= minFrameDurationTicks;
+    const nextSourceDurationTicks = Math.max(0, Math.round(nextTimelineDurationTicks * absSpeed));
 
     return {
-      timelineRange: { startUs: nextTimelineStartUs, durationUs: nextTimelineDurationUs },
-      sourceRange: { startUs: 0, durationUs: nextSourceDurationUs },
+      timelineRange: { startTicks: nextTimelineStartTicks, durationTicks: nextTimelineDurationTicks },
+      sourceRange: { startTicks: 0, durationTicks: nextSourceDurationTicks },
       valid,
     };
   }
 
   // Furthest source position the clip may consume. For material-backed clips with
   // an unknown duration we refuse to extend past what is already consumed.
-  const rawSourceDurationUs = Number(input.sourceDurationUs);
-  const knownSourceDurationUs =
-    Number.isFinite(rawSourceDurationUs) && rawSourceDurationUs > 0
-      ? Math.round(rawSourceDurationUs)
+  const rawSourceDurationTicks = Number(input.sourceDurationTicks);
+  const knownSourceDurationTicks =
+    Number.isFinite(rawSourceDurationTicks) && rawSourceDurationTicks > 0
+      ? Math.round(rawSourceDurationTicks)
       : null;
-  const minSourceStartUs = hasFixedSourceDuration ? 0 : Number.NEGATIVE_INFINITY;
-  const maxSourceEndUs = hasFixedSourceDuration
-    ? (knownSourceDurationUs ?? prevSourceEndUs)
+  const minSourceStartTicks = hasFixedSourceDuration ? 0 : Number.NEGATIVE_INFINITY;
+  const maxSourceEndTicks = hasFixedSourceDuration
+    ? (knownSourceDurationTicks ?? prevSourceEndTicks)
     : Number.POSITIVE_INFINITY;
 
-  let nextTimelineStartUs = prevTimelineStartUs;
-  let nextTimelineDurationUs = prevTimelineDurationUs;
-  let nextSourceStartUs = prevSourceStartUs;
-  let nextSourceEndUs = prevSourceEndUs;
+  let nextTimelineStartTicks = prevTimelineStartTicks;
+  let nextTimelineDurationTicks = prevTimelineDurationTicks;
+  let nextSourceStartTicks = prevSourceStartTicks;
+  let nextSourceEndTicks = prevSourceEndTicks;
 
   if (edge === 'start') {
     if (speed >= 0) {
-      const unclampedSourceStartUs = prevSourceStartUs + sourceDeltaUs;
-      if (unclampedSourceStartUs < minSourceStartUs) {
-        const overshoot = minSourceStartUs - unclampedSourceStartUs;
-        nextSourceStartUs = minSourceStartUs;
-        nextSourceEndUs = clampInt(prevSourceEndUs + overshoot, prevSourceStartUs, maxSourceEndUs);
+      const unclampedSourceStartTicks = prevSourceStartTicks + sourceDeltaTicks;
+      if (unclampedSourceStartTicks < minSourceStartTicks) {
+        const overshoot = minSourceStartTicks - unclampedSourceStartTicks;
+        nextSourceStartTicks = minSourceStartTicks;
+        nextSourceEndTicks = clampInt(prevSourceEndTicks + overshoot, prevSourceStartTicks, maxSourceEndTicks);
       } else {
-        nextSourceStartUs = clampInt(unclampedSourceStartUs, minSourceStartUs, prevSourceEndUs);
-        nextSourceEndUs = prevSourceEndUs;
+        nextSourceStartTicks = clampInt(unclampedSourceStartTicks, minSourceStartTicks, prevSourceEndTicks);
+        nextSourceEndTicks = prevSourceEndTicks;
       }
-      const appliedDeltaUs = nextSourceStartUs - prevSourceStartUs;
-      const appliedTimelineDeltaUs = Math.round(appliedDeltaUs / absSpeed);
+      const appliedDeltaTicks = nextSourceStartTicks - prevSourceStartTicks;
+      const appliedTimelineDeltaTicks = Math.round(appliedDeltaTicks / absSpeed);
 
-      nextTimelineStartUs = Math.max(0, prevTimelineStartUs + appliedTimelineDeltaUs);
-      nextTimelineDurationUs = Math.max(0, prevTimelineDurationUs - appliedTimelineDeltaUs);
+      nextTimelineStartTicks = Math.max(0, prevTimelineStartTicks + appliedTimelineDeltaTicks);
+      nextTimelineDurationTicks = Math.max(0, prevTimelineDurationTicks - appliedTimelineDeltaTicks);
     } else {
       // Reversed: trimming the timeline start moves the end of the source range.
-      const unclampedSourceEndUs = prevSourceEndUs - sourceDeltaUs;
-      if (unclampedSourceEndUs > maxSourceEndUs) {
-        const overshoot = unclampedSourceEndUs - maxSourceEndUs;
-        nextSourceEndUs = maxSourceEndUs;
-        nextSourceStartUs = clampInt(
-          prevSourceStartUs - overshoot,
-          minSourceStartUs,
-          prevSourceEndUs,
+      const unclampedSourceEndTicks = prevSourceEndTicks - sourceDeltaTicks;
+      if (unclampedSourceEndTicks > maxSourceEndTicks) {
+        const overshoot = unclampedSourceEndTicks - maxSourceEndTicks;
+        nextSourceEndTicks = maxSourceEndTicks;
+        nextSourceStartTicks = clampInt(
+          prevSourceStartTicks - overshoot,
+          minSourceStartTicks,
+          prevSourceEndTicks,
         );
       } else {
-        nextSourceEndUs = clampInt(unclampedSourceEndUs, prevSourceStartUs, maxSourceEndUs);
-        nextSourceStartUs = prevSourceStartUs;
+        nextSourceEndTicks = clampInt(unclampedSourceEndTicks, prevSourceStartTicks, maxSourceEndTicks);
+        nextSourceStartTicks = prevSourceStartTicks;
       }
-      const appliedDeltaUs = prevSourceEndUs - nextSourceEndUs;
-      const appliedTimelineDeltaUs = Math.round(appliedDeltaUs / absSpeed);
+      const appliedDeltaTicks = prevSourceEndTicks - nextSourceEndTicks;
+      const appliedTimelineDeltaTicks = Math.round(appliedDeltaTicks / absSpeed);
 
-      nextTimelineStartUs = Math.max(0, prevTimelineStartUs + appliedTimelineDeltaUs);
-      nextTimelineDurationUs = Math.max(0, prevTimelineDurationUs - appliedTimelineDeltaUs);
+      nextTimelineStartTicks = Math.max(0, prevTimelineStartTicks + appliedTimelineDeltaTicks);
+      nextTimelineDurationTicks = Math.max(0, prevTimelineDurationTicks - appliedTimelineDeltaTicks);
     }
   } else {
     if (speed >= 0) {
-      const unclampedSourceEndUs = prevSourceEndUs + sourceDeltaUs;
-      if (unclampedSourceEndUs > maxSourceEndUs) {
-        const overshoot = unclampedSourceEndUs - maxSourceEndUs;
-        nextSourceEndUs = maxSourceEndUs;
-        nextSourceStartUs = clampInt(
-          prevSourceStartUs - overshoot,
-          minSourceStartUs,
-          prevSourceEndUs,
+      const unclampedSourceEndTicks = prevSourceEndTicks + sourceDeltaTicks;
+      if (unclampedSourceEndTicks > maxSourceEndTicks) {
+        const overshoot = unclampedSourceEndTicks - maxSourceEndTicks;
+        nextSourceEndTicks = maxSourceEndTicks;
+        nextSourceStartTicks = clampInt(
+          prevSourceStartTicks - overshoot,
+          minSourceStartTicks,
+          prevSourceEndTicks,
         );
       } else {
-        nextSourceEndUs = clampInt(unclampedSourceEndUs, prevSourceStartUs, maxSourceEndUs);
-        nextSourceStartUs = prevSourceStartUs;
+        nextSourceEndTicks = clampInt(unclampedSourceEndTicks, prevSourceStartTicks, maxSourceEndTicks);
+        nextSourceStartTicks = prevSourceStartTicks;
       }
-      const appliedDeltaUs = nextSourceEndUs - prevSourceEndUs;
-      const appliedTimelineDeltaUs = Math.round(appliedDeltaUs / absSpeed);
+      const appliedDeltaTicks = nextSourceEndTicks - prevSourceEndTicks;
+      const appliedTimelineDeltaTicks = Math.round(appliedDeltaTicks / absSpeed);
 
-      nextTimelineDurationUs = Math.max(0, prevTimelineDurationUs + appliedTimelineDeltaUs);
-      nextTimelineStartUs = prevTimelineStartUs;
+      nextTimelineDurationTicks = Math.max(0, prevTimelineDurationTicks + appliedTimelineDeltaTicks);
+      nextTimelineStartTicks = prevTimelineStartTicks;
     } else {
       // Reversed: trimming the timeline end moves the start of the source range.
-      const unclampedSourceStartUs = prevSourceStartUs - sourceDeltaUs;
-      if (unclampedSourceStartUs < minSourceStartUs) {
-        const overshoot = minSourceStartUs - unclampedSourceStartUs;
-        nextSourceStartUs = minSourceStartUs;
-        nextSourceEndUs = clampInt(prevSourceEndUs + overshoot, prevSourceStartUs, maxSourceEndUs);
+      const unclampedSourceStartTicks = prevSourceStartTicks - sourceDeltaTicks;
+      if (unclampedSourceStartTicks < minSourceStartTicks) {
+        const overshoot = minSourceStartTicks - unclampedSourceStartTicks;
+        nextSourceStartTicks = minSourceStartTicks;
+        nextSourceEndTicks = clampInt(prevSourceEndTicks + overshoot, prevSourceStartTicks, maxSourceEndTicks);
       } else {
-        nextSourceStartUs = clampInt(unclampedSourceStartUs, minSourceStartUs, prevSourceEndUs);
-        nextSourceEndUs = prevSourceEndUs;
+        nextSourceStartTicks = clampInt(unclampedSourceStartTicks, minSourceStartTicks, prevSourceEndTicks);
+        nextSourceEndTicks = prevSourceEndTicks;
       }
-      const appliedDeltaUs = prevSourceStartUs - nextSourceStartUs;
-      const appliedTimelineDeltaUs = Math.round(appliedDeltaUs / absSpeed);
+      const appliedDeltaTicks = prevSourceStartTicks - nextSourceStartTicks;
+      const appliedTimelineDeltaTicks = Math.round(appliedDeltaTicks / absSpeed);
 
-      nextTimelineDurationUs = Math.max(0, prevTimelineDurationUs + appliedTimelineDeltaUs);
-      nextTimelineStartUs = prevTimelineStartUs;
+      nextTimelineDurationTicks = Math.max(0, prevTimelineDurationTicks + appliedTimelineDeltaTicks);
+      nextTimelineStartTicks = prevTimelineStartTicks;
     }
   }
 
-  let nextSourceDurationUs = Math.max(0, nextSourceEndUs - nextSourceStartUs);
+  let nextSourceDurationTicks = Math.max(0, nextSourceEndTicks - nextSourceStartTicks);
 
   if (snapAbsoluteToGrid) {
     const qTimeline = quantizeRangeToFrames(
-      { startUs: nextTimelineStartUs, durationUs: nextTimelineDurationUs },
+      { startTicks: nextTimelineStartTicks, durationTicks: nextTimelineDurationTicks },
       fps,
     );
 
@@ -203,24 +203,24 @@ export function computeTrimGeometry(input: TrimGeometryInput): TrimGeometryResul
     // sourceRange from the quantized timeline so the invariant
     // sourceDuration = timelineDuration * absSpeed holds — otherwise long edits
     // accumulate sub-frame source drift.
-    const deltaLeftUs = qTimeline.startUs - nextTimelineStartUs;
-    const deltaRightUs =
-      qTimeline.startUs + qTimeline.durationUs - (nextTimelineStartUs + nextTimelineDurationUs);
+    const deltaLeftTicks = qTimeline.startTicks - nextTimelineStartTicks;
+    const deltaRightTicks =
+      qTimeline.startTicks + qTimeline.durationTicks - (nextTimelineStartTicks + nextTimelineDurationTicks);
 
-    nextTimelineStartUs = qTimeline.startUs;
-    nextTimelineDurationUs = qTimeline.durationUs;
+    nextTimelineStartTicks = qTimeline.startTicks;
+    nextTimelineDurationTicks = qTimeline.durationTicks;
 
     if (speed >= 0) {
-      nextSourceStartUs = Math.max(0, nextSourceStartUs + Math.round(deltaLeftUs * absSpeed));
-      nextSourceEndUs = Math.max(
-        nextSourceStartUs,
-        nextSourceEndUs + Math.round(deltaRightUs * absSpeed),
+      nextSourceStartTicks = Math.max(0, nextSourceStartTicks + Math.round(deltaLeftTicks * absSpeed));
+      nextSourceEndTicks = Math.max(
+        nextSourceStartTicks,
+        nextSourceEndTicks + Math.round(deltaRightTicks * absSpeed),
       );
     } else {
-      nextSourceStartUs = Math.max(0, nextSourceStartUs - Math.round(deltaRightUs * absSpeed));
-      nextSourceEndUs = Math.max(
-        nextSourceStartUs,
-        nextSourceEndUs - Math.round(deltaLeftUs * absSpeed),
+      nextSourceStartTicks = Math.max(0, nextSourceStartTicks - Math.round(deltaRightTicks * absSpeed));
+      nextSourceEndTicks = Math.max(
+        nextSourceStartTicks,
+        nextSourceEndTicks - Math.round(deltaLeftTicks * absSpeed),
       );
     }
 
@@ -229,20 +229,20 @@ export function computeTrimGeometry(input: TrimGeometryInput): TrimGeometryResul
     // freezes the last video frame and zero-pads audio (an end-of-clip click),
     // so pin the source back inside the material bounds. The timeline range stays
     // frame-quantized; only the source edge is clamped (a sub-frame correction).
-    nextSourceEndUs = Math.min(nextSourceEndUs, maxSourceEndUs);
-    nextSourceStartUs = Math.max(minSourceStartUs, Math.min(nextSourceStartUs, nextSourceEndUs));
+    nextSourceEndTicks = Math.min(nextSourceEndTicks, maxSourceEndTicks);
+    nextSourceStartTicks = Math.max(minSourceStartTicks, Math.min(nextSourceStartTicks, nextSourceEndTicks));
 
-    nextSourceDurationUs = Math.max(0, nextSourceEndUs - nextSourceStartUs);
+    nextSourceDurationTicks = Math.max(0, nextSourceEndTicks - nextSourceStartTicks);
   }
 
   // Refuse to shrink below one frame — a zero-duration clip is invisible in the
   // UI and a hazard for downstream calculations (Math.min(...) === 0 chains).
-  const minFrameDurationUs = frameToUs(1, fps);
-  const valid = nextTimelineDurationUs >= minFrameDurationUs;
+  const minFrameDurationTicks = frameToTicks(1, fps);
+  const valid = nextTimelineDurationTicks >= minFrameDurationTicks;
 
   return {
-    timelineRange: { startUs: nextTimelineStartUs, durationUs: nextTimelineDurationUs },
-    sourceRange: { startUs: nextSourceStartUs, durationUs: nextSourceDurationUs },
+    timelineRange: { startTicks: nextTimelineStartTicks, durationTicks: nextTimelineDurationTicks },
+    sourceRange: { startTicks: nextSourceStartTicks, durationTicks: nextSourceDurationTicks },
     valid,
   };
 }

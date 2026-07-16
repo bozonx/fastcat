@@ -27,8 +27,8 @@ describe('timeline/commands add_virtual_clip_to_track (text)', () => {
       trackId: 'v1',
       clipType: 'text',
       name: 'Text',
-      durationUs: 5_000_000,
-      startUs: 0,
+      durationTicks: 5_000_000,
+      startTicks: 0,
     }).next;
 
     const track = next.tracks[0]!;
@@ -53,8 +53,8 @@ describe('timeline/commands add_virtual_clip_to_track (text)', () => {
       trackId: 'v1',
       clipType: 'text',
       name: 'Title',
-      durationUs: 5_000_000,
-      startUs: 0,
+      durationTicks: 5_000_000,
+      startTicks: 0,
       text: 'Hello',
       style: { fontSize: 80, color: '#ff0000', align: 'left' },
     }).next;

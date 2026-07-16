@@ -1,6 +1,6 @@
 /** @vitest-environment node */
 import { describe, expect, it } from 'vitest';
-import { timelineUs } from '../utils/timeline-time';
+import { timelineTicks } from '../utils/timeline-time';
 import {
   buildSplitAllClipsCommands,
   buildSplitSelectedClipsCommands,
@@ -17,7 +17,7 @@ function makeDoc(tracks: TimelineTrack[]): TimelineDocument {
   };
 }
 
-function makeClip(id: string, startUs: number, durationUs: number): TimelineTrackItem {
+function makeClip(id: string, startTicks: number, durationTicks: number): TimelineTrackItem {
   return {
     kind: 'clip',
     clipType: 'media',
@@ -25,9 +25,9 @@ function makeClip(id: string, startUs: number, durationUs: number): TimelineTrac
     trackId: 'v1',
     name: id,
     source: { path: `${id}.mp4` },
-    sourceDurationUs: durationUs,
-    timelineRange: { startUs, durationUs },
-    sourceRange: { startUs: 0, durationUs },
+    sourceDurationTicks: durationTicks,
+    timelineRange: { startTicks, durationTicks },
+    sourceRange: { startTicks: 0, durationTicks },
   };
 }
 
@@ -39,15 +39,15 @@ describe('timeline/domain editing', () => {
         kind: 'video',
         name: 'V1',
         items: [
-          makeClip('before', 0, timelineUs(1_000_000)),
-          makeClip('target', timelineUs(2_000_000), timelineUs(1_000_000)),
-          makeClip('after', timelineUs(4_000_000), timelineUs(1_000_000)),
+          makeClip('before', 0, timelineTicks(1_000_000)),
+          makeClip('target', timelineTicks(2_000_000), timelineTicks(1_000_000)),
+          makeClip('after', timelineTicks(4_000_000), timelineTicks(1_000_000)),
         ],
       },
     ]);
 
-    expect(buildSplitAllClipsCommands(doc, timelineUs(2_500_000))).toEqual([
-      { type: 'split_item', trackId: 'v1', itemId: 'target', atUs: timelineUs(2_500_000) },
+    expect(buildSplitAllClipsCommands(doc, timelineTicks(2_500_000))).toEqual([
+      { type: 'split_item', trackId: 'v1', itemId: 'target', atTicks: timelineTicks(2_500_000) },
     ]);
   });
 
@@ -57,12 +57,12 @@ describe('timeline/domain editing', () => {
         id: 'v1',
         kind: 'video',
         name: 'V1',
-        items: [makeClip('selected-outside', 0, timelineUs(1_000_000))],
+        items: [makeClip('selected-outside', 0, timelineTicks(1_000_000))],
       },
     ]);
 
     expect(
-      buildSplitSelectedClipsCommands(doc, timelineUs(2_500_000), ['selected-outside']),
+      buildSplitSelectedClipsCommands(doc, timelineTicks(2_500_000), ['selected-outside']),
     ).toEqual([]);
   });
 });

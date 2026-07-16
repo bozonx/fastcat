@@ -1,7 +1,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, type Ref } from 'vue';
 import { isLayer1Active } from '~/utils/hotkeys/layerUtils';
 import { isSecondaryWheel, DRAG_DEADZONE_PX } from '~/utils/mouse';
-import { pxToTimeUs } from '~/utils/timeline/geometry';
+import { pxToTimeTicks } from '~/utils/timeline/geometry';
 import type { FastCatUserSettings } from '~/utils/settings';
 import { createMarkerId } from '~/timeline/id';
 
@@ -14,14 +14,14 @@ interface TimelineStoreLike {
   applyTimeline: (payload: {
     type: 'add_marker';
     id: string;
-    timeUs: number;
+    timeTicks: number;
     text: string;
   }) => void;
   clearSelection: () => void;
   removeSelectionRange: () => void;
   resetTimelineZoom: () => void;
   fitTimelineZoom: () => void;
-  setCurrentTimeUs: (timeUs: number) => void;
+  setCurrentTimeTicks: (timeTicks: number) => void;
   requestCenterPlayhead: () => void;
 }
 
@@ -39,11 +39,11 @@ interface UseTimelineRulerInteractionsOptions {
   isDraggingSelectionRange: Ref<boolean>;
   suppressNextRulerClick: Ref<boolean>;
   startSelectionRangeCreate: (event: PointerEvent) => void;
-  resolvePlayheadClickTimeUs?: (rawTimeUs: number) => number;
+  resolvePlayheadClickTimeTicks?: (rawTimeTicks: number) => number;
   emit: {
     (e: 'pointerdown' | 'start-playhead-drag' | 'start-pan', event: PointerEvent): void;
     (e: 'wheel', event: WheelEvent): void;
-    (e: 'dblclick-ruler', timeUs: number): void;
+    (e: 'dblclick-ruler', timeTicks: number): void;
     (e: 'middleclick-ruler', event: MouseEvent): void;
   };
 }
@@ -51,7 +51,7 @@ interface UseTimelineRulerInteractionsOptions {
 export function useTimelineRulerInteractions(options: UseTimelineRulerInteractionsOptions) {
   const middlePointerDown = ref<{ x: number; y: number; moved: boolean } | null>(null);
   const pendingSelectAreaEvent = ref<PointerEvent | null>(null);
-  const lastRightClickTimeUs = ref<number | null>(null);
+  const lastRightClickTimeTicks = ref<number | null>(null);
 
   const rulerSettings = computed(() => options.workspaceStore.userSettings.mouse.ruler);
 
@@ -60,16 +60,16 @@ export function useTimelineRulerInteractions(options: UseTimelineRulerInteractio
     if (!rect) return 0;
 
     const x = event.clientX - rect.left;
-    return pxToTimeUs(options.scrollLeft.value + x, options.zoom.value);
+    return pxToTimeTicks(options.scrollLeft.value + x, options.zoom.value);
   }
 
   function executeRulerClickAction(action: string, event: PointerEvent | MouseEvent) {
     if (action === 'none') return;
 
     if (action === 'seek') {
-      const rawTimeUs = getTimeUsFromMouseEvent(event as MouseEvent);
-      const timeUs = options.resolvePlayheadClickTimeUs?.(rawTimeUs) ?? rawTimeUs;
-      options.timelineStore.setCurrentTimeUs(timeUs);
+      const rawTimeTicks = getTimeUsFromMouseEvent(event as MouseEvent);
+      const timeTicks = options.resolvePlayheadClickTimeTicks?.(rawTimeTicks) ?? rawTimeTicks;
+      options.timelineStore.setCurrentTimeTicks(timeTicks);
       return;
     }
 
@@ -101,14 +101,14 @@ export function useTimelineRulerInteractions(options: UseTimelineRulerInteractio
     }
 
     if (action === 'add_marker') {
-      const rawTimeUs = getTimeUsFromMouseEvent(event as MouseEvent);
-      const timeUs = options.resolvePlayheadClickTimeUs?.(rawTimeUs) ?? rawTimeUs;
+      const rawTimeTicks = getTimeUsFromMouseEvent(event as MouseEvent);
+      const timeTicks = options.resolvePlayheadClickTimeTicks?.(rawTimeTicks) ?? rawTimeTicks;
       const markerId = createMarkerId();
 
       options.timelineStore.applyTimeline({
         type: 'add_marker',
         id: markerId,
-        timeUs,
+        timeTicks,
         text: '',
       });
       options.selectionStore.selectTimelineMarker(markerId);
@@ -117,12 +117,12 @@ export function useTimelineRulerInteractions(options: UseTimelineRulerInteractio
 
   function onContextMenuOpenChange(isOpen: boolean) {
     if (!isOpen) {
-      lastRightClickTimeUs.value = null;
+      lastRightClickTimeTicks.value = null;
     }
   }
 
   function onRulerContextMenu(event: MouseEvent) {
-    lastRightClickTimeUs.value = getTimeUsFromMouseEvent(event);
+    lastRightClickTimeTicks.value = getTimeUsFromMouseEvent(event);
   }
 
   function onRulerClick(event: MouseEvent) {
@@ -171,9 +171,9 @@ export function useTimelineRulerInteractions(options: UseTimelineRulerInteractio
     }
 
     if (action === 'move_playhead') {
-      const rawTimeUs = getTimeUsFromMouseEvent(event);
-      const timeUs = options.resolvePlayheadClickTimeUs?.(rawTimeUs) ?? rawTimeUs;
-      options.timelineStore.setCurrentTimeUs(timeUs);
+      const rawTimeTicks = getTimeUsFromMouseEvent(event);
+      const timeTicks = options.resolvePlayheadClickTimeTicks?.(rawTimeTicks) ?? rawTimeTicks;
+      options.timelineStore.setCurrentTimeTicks(timeTicks);
       options.emit('start-playhead-drag', event);
       return;
     }
@@ -271,6 +271,6 @@ export function useTimelineRulerInteractions(options: UseTimelineRulerInteractio
     onRulerPointerMove,
     onRulerPointerUp,
     rulerSettings,
-    lastRightClickTimeUs,
+    lastRightClickTimeTicks,
   };
 }

@@ -95,16 +95,16 @@ const isAdjacentAvailable = computed(() => {
 
   if (!adjacent) return false;
 
-  const clipEdgeUs =
+  const clipEdgeTicks =
     props.edge === 'in'
-      ? props.clip.timelineRange.startUs
-      : props.clip.timelineRange.startUs + props.clip.timelineRange.durationUs;
-  const adjacentEdgeUs =
+      ? props.clip.timelineRange.startTicks
+      : props.clip.timelineRange.startTicks + props.clip.timelineRange.durationTicks;
+  const adjacentEdgeTicks =
     props.edge === 'in'
-      ? adjacent.timelineRange.startUs + adjacent.timelineRange.durationUs
-      : adjacent.timelineRange.startUs;
+      ? adjacent.timelineRange.startTicks + adjacent.timelineRange.durationTicks
+      : adjacent.timelineRange.startTicks;
 
-  return clipEdgeUs === adjacentEdgeUs;
+  return clipEdgeTicks === adjacentEdgeTicks;
 });
 
 const sourceOptions = computed(() => [

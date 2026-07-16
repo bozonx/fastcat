@@ -17,11 +17,11 @@ function makeOptions(overrides?: Partial<UseClipContextMenuOptions>): UseClipCon
         kind: 'clip',
         transitionIn: null,
         transitionOut: null,
-        timelineRange: { startUs: 0, durationUs: 2000000 },
+        timelineRange: { startTicks: 0, durationTicks: 2000000 },
       },
     } as any,
     t: vi.fn((key: string) => key),
-    defaultTransitionDurationUs: { value: 1000000 } as any,
+    defaultTransitionDurationTicks: { value: 1000000 } as any,
     updateClipTransition: vi.fn(),
     clearSelection: vi.fn(),
     selectTransition: vi.fn(),
@@ -61,9 +61,9 @@ describe('buildTransitionContextMenu', () => {
         value: {
           id: 'clip1',
           kind: 'clip',
-          transitionIn: { type: 'dissolve', durationUs: 500000 },
+          transitionIn: { type: 'dissolve', durationTicks: 500000 },
           transitionOut: null,
-          timelineRange: { startUs: 0, durationUs: 2000000 },
+          timelineRange: { startTicks: 0, durationTicks: 2000000 },
         },
       } as any,
     });
@@ -79,8 +79,8 @@ describe('buildTransitionContextMenu', () => {
           id: 'clip1',
           kind: 'clip',
           transitionIn: null,
-          transitionOut: { type: 'dissolve', durationUs: 500000 },
-          timelineRange: { startUs: 0, durationUs: 2000000 },
+          transitionOut: { type: 'dissolve', durationTicks: 500000 },
+          timelineRange: { startTicks: 0, durationTicks: 2000000 },
         },
       } as any,
     });
@@ -113,9 +113,9 @@ describe('buildTransitionContextMenu', () => {
         value: {
           id: 'clip1',
           kind: 'clip',
-          transitionIn: { type: 'dissolve', durationUs: 500000 },
+          transitionIn: { type: 'dissolve', durationTicks: 500000 },
           transitionOut: null,
-          timelineRange: { startUs: 0, durationUs: 2000000 },
+          timelineRange: { startTicks: 0, durationTicks: 2000000 },
         },
       } as any,
     });
@@ -133,17 +133,17 @@ describe('buildTransitionContextMenu', () => {
           kind: 'clip',
           transitionIn: null,
           transitionOut: null,
-          timelineRange: { startUs: 0, durationUs: 500000 },
+          timelineRange: { startTicks: 0, durationTicks: 500000 },
         },
       } as any,
-      defaultTransitionDurationUs: { value: 1000000 } as any,
+      defaultTransitionDurationTicks: { value: 1000000 } as any,
     });
     const updateClipTransition = vi.fn();
     opts.updateClipTransition = updateClipTransition;
     const result = buildTransitionContextMenu(opts);
     result![0][0].onSelect!();
     expect(updateClipTransition).toHaveBeenCalledWith('t1', 'clip1', {
-      transitionIn: expect.objectContaining({ durationUs: 150000 }),
+      transitionIn: expect.objectContaining({ durationTicks: 150000 }),
     });
   });
 });

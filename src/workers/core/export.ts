@@ -9,13 +9,13 @@ import { buildMixedAudioTrack } from './audio';
 import {
   computeExportFrameInterval,
   computeExportTotalFrames,
-  computeMaxAudioDurationUs,
+  computeMaxAudioDurationTicks,
   getClipRangesS,
   getExportFrameTiming,
 } from './export-helpers';
 import {
   buildPassthroughVideoTrack,
-  computePayloadVideoEndUs,
+  computePayloadVideoEndTicks,
   findVideoPassthroughCandidate,
   writeVideoPassthrough,
   type PassthroughPacketSink,
@@ -411,10 +411,10 @@ interface PassthroughClip {
   fastcat?: Record<string, unknown>;
   audioGain?: number;
   audioBalance?: number;
-  audioFadeInUs?: number;
-  audioFadeOutUs?: number;
-  transitionIn?: { durationUs?: number };
-  transitionOut?: { durationUs?: number };
+  audioFadeInTicks?: number;
+  audioFadeOutTicks?: number;
+  transitionIn?: { durationTicks?: number };
+  transitionOut?: { durationTicks?: number };
   effects?: { target?: string; enabled?: boolean }[];
   speed?: number;
   sourcePath?: string;
@@ -435,20 +435,20 @@ export function isPassthroughCompatibleClip(
   if (Number.isFinite(balance) && Math.abs(balance) > 1e-6) {
     return { ok: false, reason: 'clip balance is not centered' };
   }
-  const fadeInUs = Number(clip.audioFadeInUs ?? fastcat.audioFadeInUs ?? 0);
-  const fadeOutUs = Number(clip.audioFadeOutUs ?? fastcat.audioFadeOutUs ?? 0);
-  if (fadeInUs > 0 || fadeOutUs > 0) {
+  const fadeInTicks = Number(clip.audioFadeInTicks ?? fastcat.audioFadeInTicks ?? 0);
+  const fadeOutTicks = Number(clip.audioFadeOutTicks ?? fastcat.audioFadeOutTicks ?? 0);
+  if (fadeInTicks > 0 || fadeOutTicks > 0) {
     return { ok: false, reason: 'clip has fade in/out' };
   }
   const transitionIn = (clip.transitionIn ?? fastcat.transitionIn) as
-    | { durationUs?: unknown }
+    | { durationTicks?: unknown }
     | undefined;
   const transitionOut = (clip.transitionOut ?? fastcat.transitionOut) as
-    | { durationUs?: unknown }
+    | { durationTicks?: unknown }
     | undefined;
   if (
-    (transitionIn?.durationUs && Number(transitionIn.durationUs) > 0) ||
-    (transitionOut?.durationUs && Number(transitionOut.durationUs) > 0)
+    (transitionIn?.durationTicks && Number(transitionIn.durationTicks) > 0) ||
+    (transitionOut?.durationTicks && Number(transitionOut.durationTicks) > 0)
   ) {
     return { ok: false, reason: 'clip has audio transition' };
   }
@@ -730,14 +730,14 @@ export async function runExport(
   }
 
   async function encodeFrames(params: {
-    durationUs: number;
+    durationTicks: number;
     fps: number;
     videoSource: { add: (timestampS: number, durationS: number) => Promise<void> };
     compositor: VideoCompositor;
     writerProgress: ExportWriterProgressAggregator;
   }) {
     const fps = Math.max(1, Number(params.fps) || 30);
-    const totalFrames = computeExportTotalFrames({ durationUs: params.durationUs, fps });
+    const totalFrames = computeExportTotalFrames({ durationTicks: params.durationTicks, fps });
 
     const nowMsFn = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
     let lastYieldAtMs = nowMsFn();
@@ -764,11 +764,11 @@ export async function runExport(
       const frame = getExportFrameTiming({
         frameNum,
         totalFrames,
-        durationUs: params.durationUs,
+        durationTicks: params.durationTicks,
         fps,
       });
       const renderStartMs = nowMsFn();
-      const generatedCanvas = await params.compositor.renderFrame(frame.timeUs);
+      const generatedCanvas = await params.compositor.renderFrame(frame.timeTicks);
       renderMsTotal += nowMsFn() - renderStartMs;
       if (!generatedCanvas) {
         fillCanvasBlack(params.compositor.canvas);
@@ -788,10 +788,10 @@ export async function runExport(
         const nextFrame = getExportFrameTiming({
           frameNum: frameNum + 1,
           totalFrames,
-          durationUs: params.durationUs,
+          durationTicks: params.durationTicks,
           fps,
         });
-        void params.compositor.prewarmVideoFrames(nextFrame.timeUs).catch(() => {
+        void params.compositor.prewarmVideoFrames(nextFrame.timeTicks).catch(() => {
           // Prewarm is an optimization; a failure must never fail the export.
         });
       }
@@ -849,11 +849,11 @@ export async function runExport(
   // validation — unnecessary. The duration the eligibility gate needs is
   // derived purely from the payload; for the passthrough-eligible shape
   // (single full-coverage clip) it equals what loadTimeline would return.
-  const payloadVideoEndUs =
-    options.videoCodec !== 'none' ? computePayloadVideoEndUs(timelineClips) : 0;
-  const passthroughMaxDurationUs = Math.max(
-    payloadVideoEndUs,
-    options.audio ? computeMaxAudioDurationUs(audioClips) : 0,
+  const payloadVideoEndTicks =
+    options.videoCodec !== 'none' ? computePayloadVideoEndTicks(timelineClips) : 0;
+  const passthroughMaxDurationTicks = Math.max(
+    payloadVideoEndTicks,
+    options.audio ? computeMaxAudioDurationTicks(audioClips) : 0,
   );
   const buildVideoPassthrough = async (): Promise<
     Awaited<ReturnType<typeof buildPassthroughVideoTrack>>
@@ -861,7 +861,7 @@ export async function runExport(
     const candidate = findVideoPassthroughCandidate({
       timelineClips,
       options,
-      maxDurationUs: passthroughMaxDurationUs,
+      maxDurationTicks: passthroughMaxDurationTicks,
     });
     if (!candidate.ok) {
       log.info(`[Worker Export] video passthrough not applicable: ${candidate.reason}`);
@@ -917,11 +917,11 @@ export async function runExport(
   }
 
   try {
-    let maxVideoDurationUs = 0;
+    let maxVideoDurationTicks = 0;
     if (passthroughChosen) {
-      maxVideoDurationUs = payloadVideoEndUs;
+      maxVideoDurationTicks = payloadVideoEndTicks;
     } else if (localCompositor) {
-      maxVideoDurationUs = await localCompositor.loadTimeline(
+      maxVideoDurationTicks = await localCompositor.loadTimeline(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         timelineClips as any,
         {
@@ -964,13 +964,13 @@ export async function runExport(
       }
     }
 
-    const maxAudioDurationUs = options.audio ? computeMaxAudioDurationUs(audioClips) : 0;
+    const maxAudioDurationTicks = options.audio ? computeMaxAudioDurationTicks(audioClips) : 0;
 
-    const maxDurationUs = Math.max(maxVideoDurationUs, maxAudioDurationUs);
+    const maxDurationTicks = Math.max(maxVideoDurationTicks, maxAudioDurationTicks);
 
-    if (maxDurationUs <= 0) throw new Error('No clips to export');
+    if (maxDurationTicks <= 0) throw new Error('No clips to export');
 
-    const durationS = ticksToSecondsClamped(maxDurationUs);
+    const durationS = ticksToSecondsClamped(maxDurationTicks);
     const hasAnyAudio = options.audio && audioClips.length > 0;
 
     const format = selectOutputFormat(options.format, {
@@ -1160,7 +1160,7 @@ export async function runExport(
           : videoSource && localCompositor
             ? () =>
                 encodeFrames({
-                  durationUs: maxDurationUs,
+                  durationTicks: maxDurationTicks,
                   fps: options.fps,
                   // Without a passthrough state this is always the CanvasSource.
                   videoSource: videoSource as InstanceType<typeof CanvasSource>,

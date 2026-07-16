@@ -19,7 +19,7 @@ import { useFileManagerStore } from '~/stores/file-manager.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useClipboardStore } from '~/stores/clipboard.store';
-import { timelineUs } from '../../utils/timeline-time';
+import { timelineTicks } from '../../utils/timeline-time';
 
 const mockWorkspaceStore = {
   userSettings: reactive({
@@ -35,7 +35,7 @@ const mockWorkspaceStore = {
       },
     },
     timeline: {
-      defaultStaticClipDurationUs: 5000000,
+      defaultStaticClipDurationTicks: 5000000,
       frameSnapMode: 'frames',
       toolbarSnapMode: 'snap',
       toolbarDragMode: 'pseudo_overlap',
@@ -354,11 +354,11 @@ describe('useEditorHotkeys', () => {
         {
           id: 'track-1',
           items: [
-            { id: 'clip-1', kind: 'clip', timelineRange: { startUs: 0, durationUs: 1_000_000 } },
+            { id: 'clip-1', kind: 'clip', timelineRange: { startTicks: 0, durationTicks: 1_000_000 } },
             {
               id: 'gap-1',
               kind: 'gap',
-              timelineRange: { startUs: 1_000_000, durationUs: 1_000_000 },
+              timelineRange: { startTicks: 1_000_000, durationTicks: 1_000_000 },
             },
           ],
         },
@@ -368,7 +368,7 @@ describe('useEditorHotkeys', () => {
             {
               id: 'clip-2',
               kind: 'clip',
-              timelineRange: { startUs: 0, durationUs: 1_000_000 },
+              timelineRange: { startTicks: 0, durationTicks: 1_000_000 },
             },
           ],
         },
@@ -1074,7 +1074,7 @@ describe('useEditorHotkeys', () => {
               kind: 'clip',
               trackId: 'track-1',
               name: 'Clip 1',
-              timelineRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
+              timelineRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
             },
           ],
         },
@@ -1082,8 +1082,8 @@ describe('useEditorHotkeys', () => {
     };
     timelineStore.selectTimelineItems(['clip-1']);
     timelineStore.updateSelectionRange({
-      startUs: timelineUs(2_000_000),
-      endUs: timelineUs(3_000_000),
+      startTicks: timelineTicks(2_000_000),
+      endTicks: timelineTicks(3_000_000),
     });
     expect(timelineStore.selectedItemIds).toEqual(['clip-1']);
     expect(focusStore.canUseTimelineHotkeys).toBe(true);
@@ -1095,8 +1095,8 @@ describe('useEditorHotkeys', () => {
 
     expect(handled).toBe(true);
     expect(timelineStore.getSelectionRange()).toEqual({
-      startUs: timelineUs(1_000_000),
-      endUs: timelineUs(2_000_000),
+      startTicks: timelineTicks(1_000_000),
+      endTicks: timelineTicks(2_000_000),
     });
   });
 
@@ -1711,7 +1711,7 @@ describe('useEditorHotkeys', () => {
     expect(createSelectionRangeSpy).toHaveBeenCalledOnce();
 
     createSelectionRangeSpy.mockClear();
-    timelineStore.getSelectionRange = vi.fn(() => ({ startUs: 0, endUs: 2_000_000 }));
+    timelineStore.getSelectionRange = vi.fn(() => ({ startTicks: 0, endTicks: 2_000_000 }));
 
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'o', code: 'KeyO', bubbles: true }));
     expect(timelineStore.updateSelectionRange).toHaveBeenCalledOnce();

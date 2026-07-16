@@ -19,7 +19,7 @@ vi.mock('~/composables/monitor/useMonitorTimeline', () => ({
       { id: 'clip-adj-1', clipType: 'adjustment' },
     ]),
     rawWorkerAudioClips: ref([]),
-    safeDurationUs: ref(10000000),
+    safeDurationTicks: ref(10000000),
     clipSourceSignature: ref(''),
     clipLayoutSignature: ref(''),
     clipContentSignature: ref(''),
@@ -59,8 +59,8 @@ vi.mock('~/composables/monitor/useMonitorCore', () => ({
 
 vi.mock('~/composables/monitor/useMonitorPlayback', () => ({
   useMonitorPlayback: () => ({
-    uiCurrentTimeUs: ref(0),
-    getLocalCurrentTimeUs: vi.fn().mockReturnValue(0),
+    uiCurrentTimeTicks: ref(0),
+    getLocalCurrentTimeTicks: vi.fn().mockReturnValue(0),
     setTimecodeEl: vi.fn(),
   }),
 }));

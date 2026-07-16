@@ -64,7 +64,7 @@ test.describe('Main Editing User Journey', () => {
     await waitForTimelineDoc(
       page,
       e2eProject,
-      (d) => d.allClips[0].timelineDurationUs < docMultiTrack.allClips[0].timelineDurationUs,
+      (d) => d.allClips[0].timelineDurationTicks < docMultiTrack.allClips[0].timelineDurationTicks,
     );
 
     // 3. Clip Effects: Select video clip and apply color adjustment

@@ -31,7 +31,7 @@ interface PresetItem {
 
 function resolveVideoTrackForVirtualClip() {
   return timelineStore.resolveMobileTargetTrackId('video', {
-    durationUs: workspaceStore.userSettings.timeline.defaultStaticClipDurationUs,
+    durationTicks: workspaceStore.userSettings.timeline.defaultStaticClipDurationTicks,
   });
 }
 

@@ -12,7 +12,7 @@ import {
   type PreparedClip,
 } from '~/workers/core/AudioMixer';
 import { applyAudioEffectsOffline } from '~/utils/audio/apply-audio-effects-offline';
-import { timelineUs } from '../../utils/timeline-time';
+import { timelineTicks } from '../../utils/timeline-time';
 
 vi.mock('~/utils/audio/apply-audio-effects-offline', () => ({
   applyAudioEffectsOffline: vi
@@ -312,8 +312,8 @@ describe('AudioMixer clip mix parity primitives', () => {
         animations: {
           'audio.volume': {
             keyframes: [
-              { tUs: 0, value: 0, easing: 'linear' },
-              { tUs: timelineUs(1_000_000), value: 1, easing: 'linear' },
+              { tTicks: 0, value: 0, easing: 'linear' },
+              { tTicks: timelineTicks(1_000_000), value: 1, easing: 'linear' },
             ],
           },
         },
@@ -409,10 +409,10 @@ describe('AudioMixer.prepareClips', () => {
     const audioClips = [
       {
         sourcePath: 'test.mp3',
-        startUs: 0,
-        durationUs: timelineUs(1_000_000),
-        sourceStartUs: 0,
-        sourceDurationUs: timelineUs(1_000_000),
+        startTicks: 0,
+        durationTicks: timelineTicks(1_000_000),
+        sourceStartTicks: 0,
+        sourceDurationTicks: timelineTicks(1_000_000),
         audioGain: 0.5,
         audioBalance: 0,
         trackId: 'track1',
@@ -440,16 +440,16 @@ describe('AudioMixer.prepareClips', () => {
     const audioClips = [
       {
         sourcePath: 'test1.mp3',
-        startUs: 0,
-        durationUs: timelineUs(1_000_000),
-        sourceDurationUs: timelineUs(1_000_000),
+        startTicks: 0,
+        durationTicks: timelineTicks(1_000_000),
+        sourceDurationTicks: timelineTicks(1_000_000),
         trackId: 'track1',
       },
       {
         sourcePath: 'test2.mp3',
-        startUs: timelineUs(1_000_000),
-        durationUs: timelineUs(1_000_000),
-        sourceDurationUs: timelineUs(1_000_000),
+        startTicks: timelineTicks(1_000_000),
+        durationTicks: timelineTicks(1_000_000),
+        sourceDurationTicks: timelineTicks(1_000_000),
         trackId: 'track1',
       },
     ];
@@ -469,13 +469,13 @@ describe('AudioMixer.prepareClips', () => {
       audioClips: [
         {
           sourcePath: 'test.mp3',
-          startUs: timelineUs(1_000_000),
-          durationUs: timelineUs(1_000_000),
-          sourceStartUs: timelineUs(500_000),
-          sourceDurationUs: timelineUs(1_000_000),
+          startTicks: timelineTicks(1_000_000),
+          durationTicks: timelineTicks(1_000_000),
+          sourceStartTicks: timelineTicks(500_000),
+          sourceDurationTicks: timelineTicks(1_000_000),
           speed: 1,
-          transitionIn: { durationUs: timelineUs(100_000), mode: 'adjacent' },
-          transitionOut: { durationUs: timelineUs(150_000), mode: 'adjacent' },
+          transitionIn: { durationTicks: timelineTicks(100_000), mode: 'adjacent' },
+          transitionOut: { durationTicks: timelineTicks(150_000), mode: 'adjacent' },
         },
       ],
       hostClient: mockHostClient,

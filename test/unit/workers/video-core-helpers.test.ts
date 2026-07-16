@@ -452,25 +452,25 @@ describe('disposeFrameExtractorState', () => {
 
 describe('runRenderRetryLoop', () => {
   // Backs the driver with a one-slot mailbox, mirroring the worker's real
-  // `latestRenderTimeUs`/`latestPreviewOptions` module state: a concurrent
+  // `latestRenderTimeTicks`/`latestPreviewOptions` module state: a concurrent
   // renderFrame RPC call would overwrite this mailbox at any await point, which
   // tests below simulate by queuing from inside a render/delay callback.
   function createMailboxDriver(overrides: Partial<RenderRetryLoopDriver> = {}) {
-    let queuedTimeUs: number | null = null;
+    let queuedTimeTicks: number | null = null;
     let queuedOptions: unknown;
 
     const driver: RenderRetryLoopDriver = {
       takeQueued: () => {
-        if (queuedTimeUs === null) return null;
-        const timeUs = queuedTimeUs;
+        if (queuedTimeTicks === null) return null;
+        const timeTicks = queuedTimeTicks;
         const options = queuedOptions;
-        queuedTimeUs = null;
+        queuedTimeTicks = null;
         queuedOptions = undefined;
-        return { timeUs, options };
+        return { timeTicks, options };
       },
-      hasQueued: () => queuedTimeUs !== null,
-      queueRetry: (timeUs) => {
-        queuedTimeUs = timeUs;
+      hasQueued: () => queuedTimeTicks !== null,
+      queueRetry: (timeTicks) => {
+        queuedTimeTicks = timeTicks;
       },
       render: vi.fn(async () => 'presented'),
       delay: vi.fn(async () => {}),
@@ -479,15 +479,15 @@ describe('runRenderRetryLoop', () => {
 
     return {
       driver,
-      queue: (timeUs: number, options?: unknown) => {
-        queuedTimeUs = timeUs;
+      queue: (timeTicks: number, options?: unknown) => {
+        queuedTimeTicks = timeTicks;
         queuedOptions = options;
       },
     };
   }
 
   function renderedTimes(driver: RenderRetryLoopDriver): unknown[] {
-    return vi.mocked(driver.render).mock.calls.map(([timeUs]) => timeUs);
+    return vi.mocked(driver.render).mock.calls.map(([timeTicks]) => timeTicks);
   }
 
   it('returns immediately when nothing is queued', async () => {
@@ -538,8 +538,8 @@ describe('runRenderRetryLoop', () => {
 
   it('a request queued while rendering supersedes the retry, spending no retry budget', async () => {
     const { driver, queue } = createMailboxDriver({
-      render: vi.fn(async (timeUs: number) => {
-        if (timeUs === 100) {
+      render: vi.fn(async (timeTicks: number) => {
+        if (timeTicks === 100) {
           // Simulate a concurrent renderFrame RPC call landing mid-render.
           queue(200);
           return null;

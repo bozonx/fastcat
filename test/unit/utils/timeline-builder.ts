@@ -1,5 +1,5 @@
 import type { TimelineDocument, TimelineTrack, TimelineClipItem } from '~/timeline/types';
-import { timelineUs } from './timeline-time';
+import { timelineTicks } from './timeline-time';
 
 export class TimelineBuilder {
   private doc: TimelineDocument;
@@ -31,13 +31,13 @@ export class TimelineBuilder {
     id: string,
     trackId: string,
     options: {
-      startUs?: number;
-      durationUs: number;
-      sourceDurationUs?: number;
+      startTicks?: number;
+      durationTicks: number;
+      sourceDurationTicks?: number;
       clipType?: 'media' | 'adjustment' | 'background' | 'text' | 'timeline';
       disabled?: boolean;
       audioGain?: number;
-      freezeFrameSourceUs?: number;
+      freezeFrameSourceTicks?: number;
     },
   ) {
     const track = this.doc.tracks.find((t) => t.id === trackId);
@@ -51,16 +51,16 @@ export class TimelineBuilder {
       clipType: options.clipType ?? 'media',
       disabled: options.disabled ?? false,
       audioGain: options.audioGain ?? 1,
-      freezeFrameSourceUs: options.freezeFrameSourceUs,
-      sourceDurationUs: timelineUs(options.sourceDurationUs ?? options.durationUs),
+      freezeFrameSourceTicks: options.freezeFrameSourceTicks,
+      sourceDurationTicks: timelineTicks(options.sourceDurationTicks ?? options.durationTicks),
       source: { path: '/dummy.mp4' },
       timelineRange: {
-        startUs: timelineUs(options.startUs ?? 0),
-        durationUs: timelineUs(options.durationUs),
+        startTicks: timelineTicks(options.startTicks ?? 0),
+        durationTicks: timelineTicks(options.durationTicks),
       },
       sourceRange: {
-        startUs: 0,
-        durationUs: timelineUs(options.durationUs),
+        startTicks: 0,
+        durationTicks: timelineTicks(options.durationTicks),
       },
     } as unknown as TimelineClipItem;
 
@@ -83,14 +83,14 @@ export type TestTimelineConfig = {
     name?: string;
     clips?: Array<{
       id: string;
-      startUs?: number;
-      durationUs: number;
-      sourceDurationUs?: number;
+      startTicks?: number;
+      durationTicks: number;
+      sourceDurationTicks?: number;
       clipType?: 'media' | 'adjustment' | 'background' | 'text' | 'timeline';
       disabled?: boolean;
       audioGain?: number;
-      freezeFrameSourceUs?: number;
-      freezeFrame?: { sourceTimeUs: number };
+      freezeFrameSourceTicks?: number;
+      freezeFrame?: { sourceTimeTicks: number };
     }>;
   }>;
 };
@@ -110,7 +110,7 @@ export function createTestTimeline(config?: TestTimelineConfig) {
             const clip = track.items.find((i: any) => i.id === clipDef.id);
             if (clip) {
               clip.freezeFrame = {
-                sourceTimeUs: timelineUs(clipDef.freezeFrame.sourceTimeUs),
+                sourceTimeTicks: timelineTicks(clipDef.freezeFrame.sourceTimeTicks),
               };
             }
           }

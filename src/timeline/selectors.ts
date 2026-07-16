@@ -20,13 +20,13 @@ export function selectAllItems(doc: TimelineDocument): TimelineTrackItem[] {
 
 const durationCache = new WeakMap<TimelineDocument, number>();
 
-export function selectTimelineDurationUs(doc: TimelineDocument): number {
+export function selectTimelineDurationTicks(doc: TimelineDocument): number {
   const cached = durationCache.get(doc);
   if (cached !== undefined) return cached;
   let maxEnd = 0;
   for (const t of doc.tracks) {
     for (const it of t.items) {
-      maxEnd = Math.max(maxEnd, it.timelineRange.startUs + it.timelineRange.durationUs);
+      maxEnd = Math.max(maxEnd, it.timelineRange.startTicks + it.timelineRange.durationTicks);
     }
   }
   durationCache.set(doc, maxEnd);

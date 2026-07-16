@@ -25,9 +25,9 @@ describe('timeline OTIO roundtrip', () => {
       trackId: 'v1',
       name: 'Video',
       source: { path: '_video/video.mp4' },
-      sourceDurationUs: 20 * frameTicks,
-      timelineRange: { startUs: 2 * frameTicks, durationUs: 3 * frameTicks },
-      sourceRange: { startUs: 4 * frameTicks, durationUs: 3 * frameTicks },
+      sourceDurationTicks: 20 * frameTicks,
+      timelineRange: { startTicks: 2 * frameTicks, durationTicks: 3 * frameTicks },
+      sourceRange: { startTicks: 4 * frameTicks, durationTicks: 3 * frameTicks },
     };
     const audioClip = {
       kind: 'clip' as const,
@@ -36,9 +36,9 @@ describe('timeline OTIO roundtrip', () => {
       trackId: 'a1',
       name: 'Audio',
       source: { path: '_audio/audio.wav' },
-      sourceDurationUs: 96_000 * sampleTicks,
-      timelineRange: { startUs: 24_000 * sampleTicks, durationUs: 48_000 * sampleTicks },
-      sourceRange: { startUs: 100 * sampleTicks, durationUs: 24_000 * sampleTicks },
+      sourceDurationTicks: 96_000 * sampleTicks,
+      timelineRange: { startTicks: 24_000 * sampleTicks, durationTicks: 48_000 * sampleTicks },
+      sourceRange: { startTicks: 100 * sampleTicks, durationTicks: 24_000 * sampleTicks },
     };
     const doc = {
       ...base,
@@ -108,9 +108,9 @@ describe('timeline OTIO roundtrip', () => {
       trackId: 'v1',
       name: 'Clip',
       path: '_video/clip.mp4',
-      startUs: 0,
-      durationUs: 1_000_000,
-      sourceDurationUs: 1_000_000,
+      startTicks: 0,
+      durationTicks: 1_000_000,
+      sourceDurationTicks: 1_000_000,
     }).next;
 
     const parsed = parseTimelineFromOtio(serializeTimelineToOtio(doc), {
@@ -140,7 +140,7 @@ describe('timeline OTIO roundtrip', () => {
         ...base.metadata,
         fastcat: {
           ...base.metadata?.fastcat,
-          selectionRange: { startUs: 1_000_000, endUs: 3_000_000 },
+          selectionRange: { startTicks: 1_000_000, endTicks: 3_000_000 },
         },
       },
     };
@@ -152,8 +152,8 @@ describe('timeline OTIO roundtrip', () => {
     });
 
     expect(parsed.metadata?.fastcat?.selectionRange).toEqual({
-      startUs: 1_000_000,
-      endUs: 3_000_000,
+      startTicks: 1_000_000,
+      endTicks: 3_000_000,
     });
   });
 
@@ -169,9 +169,9 @@ describe('timeline OTIO roundtrip', () => {
       trackId: 'v1',
       name: 'Clip',
       path: '_video/clip.mp4',
-      startUs: 0,
-      durationUs: 1_000_000,
-      sourceDurationUs: 1_000_000,
+      startTicks: 0,
+      durationTicks: 1_000_000,
+      sourceDurationTicks: 1_000_000,
     }).next;
 
     const clipId = added.tracks.flatMap((t) => t.items).find((it) => it.kind === 'clip')!.id;
@@ -184,12 +184,12 @@ describe('timeline OTIO roundtrip', () => {
         animations: {
           opacity: {
             keyframes: [
-              { tUs: 0, value: 0, easing: 'ease' },
-              { tUs: 500_000, value: 1, easing: 'linear' },
+              { tTicks: 0, value: 0, easing: 'ease' },
+              { tTicks: 500_000, value: 1, easing: 'linear' },
             ],
           },
           'transform.rotationDeg': {
-            keyframes: [{ tUs: 0, value: 90, easing: 'hold' }],
+            keyframes: [{ tTicks: 0, value: 90, easing: 'hold' }],
           },
         },
       },
@@ -206,11 +206,11 @@ describe('timeline OTIO roundtrip', () => {
       .find((item): item is TimelineClipItem => item.kind === 'clip');
 
     expect(clip?.animations?.opacity?.keyframes).toEqual([
-      { tUs: 0, value: 0, easing: 'ease' },
-      { tUs: 500_000, value: 1, easing: 'linear' },
+      { tTicks: 0, value: 0, easing: 'ease' },
+      { tTicks: 500_000, value: 1, easing: 'linear' },
     ]);
     expect(clip?.animations?.['transform.rotationDeg']?.keyframes).toEqual([
-      { tUs: 0, value: 90, easing: 'hold' },
+      { tTicks: 0, value: 90, easing: 'hold' },
     ]);
   });
 
@@ -252,9 +252,9 @@ describe('timeline OTIO roundtrip', () => {
       trackId: 'v1',
       name: 'Free Clip',
       path: '_video/clip.mp4',
-      startUs: 10_000,
-      durationUs: 1_010_001,
-      sourceDurationUs: 2_000_000,
+      startTicks: 10_000,
+      durationTicks: 1_010_001,
+      sourceDurationTicks: 2_000_000,
       quantizeToFrames: false,
     }).next;
 
@@ -268,8 +268,8 @@ describe('timeline OTIO roundtrip', () => {
     const gap = track?.items.find((item) => item.kind === 'gap');
     const clip = track?.items.find((item): item is TimelineClipItem => item.kind === 'clip');
 
-    expect(gap?.timelineRange).toEqual({ startUs: 0, durationUs: 10_000 });
-    expect(clip?.timelineRange).toEqual({ startUs: 10_000, durationUs: 1_010_001 });
+    expect(gap?.timelineRange).toEqual({ startTicks: 0, durationTicks: 10_000 });
+    expect(clip?.timelineRange).toEqual({ startTicks: 10_000, durationTicks: 1_010_001 });
   });
 
   it('preserves parameter block active flags after serializing and parsing', () => {
@@ -284,9 +284,9 @@ describe('timeline OTIO roundtrip', () => {
       trackId: 'v1',
       name: 'Clip',
       path: '_video/clip.mp4',
-      startUs: 0,
-      durationUs: 1_000_000,
-      sourceDurationUs: 1_000_000,
+      startTicks: 0,
+      durationTicks: 1_000_000,
+      sourceDurationTicks: 1_000_000,
     }).next;
 
     const track = doc.tracks.find((t) => t.id === 'v1');
@@ -338,9 +338,9 @@ describe('timeline OTIO roundtrip', () => {
       trackId: 'v1',
       name: 'Clip',
       path: '_video/clip.mp4',
-      startUs: 0,
-      durationUs: 1_000_000,
-      sourceDurationUs: 1_000_000,
+      startTicks: 0,
+      durationTicks: 1_000_000,
+      sourceDurationTicks: 1_000_000,
     }).next;
 
     const track = doc.tracks.find((t) => t.id === 'v1');
@@ -383,9 +383,9 @@ describe('timeline OTIO roundtrip', () => {
       trackId: 'v1',
       name: 'Clip',
       path: '_video/clip.mp4',
-      startUs: 0,
-      durationUs: 1_000_000,
-      sourceDurationUs: 1_000_000,
+      startTicks: 0,
+      durationTicks: 1_000_000,
+      sourceDurationTicks: 1_000_000,
     }).next;
 
     const track = doc.tracks.find((t) => t.id === 'v1');

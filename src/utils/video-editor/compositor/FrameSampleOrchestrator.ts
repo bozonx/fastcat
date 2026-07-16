@@ -18,7 +18,7 @@ const MIN_SOURCE_HANDLE_TICKS = 1_000 * TICKS_PER_MICROSECOND;
 
 export interface FrameSampleOrchestratorParams {
   activeClips: CompositorClip[];
-  timeUs: number;
+  timeTicks: number;
   monitorSyncMode?: 'smooth' | 'balanced' | 'strict';
   width: number;
   height: number;
@@ -28,12 +28,12 @@ export interface FrameSampleOrchestratorParams {
    * kinds that don't re-layout per sample. Runs before any per-clip processing so
    * opacity/transform reads see this frame's animated values.
    */
-  resolveClipOverlays?: (activeClips: CompositorClip[], timeUs: number) => void;
-  syncTransitionFilter: (clip: CompositorClip, timeUs: number) => void;
-  computeTransitionOpacity: (clip: CompositorClip, timeUs: number) => number;
+  resolveClipOverlays?: (activeClips: CompositorClip[], timeTicks: number) => void;
+  syncTransitionFilter: (clip: CompositorClip, timeTicks: number) => void;
+  computeTransitionOpacity: (clip: CompositorClip, timeTicks: number) => number;
   applyClipEffects: (clip: CompositorClip) => void;
   applyWebGpuClipEffects?: (clip: CompositorClip) => Promise<void>;
-  drawHudClip: (clip: CompositorClip, timeUs: number) => void;
+  drawHudClip: (clip: CompositorClip, timeTicks: number) => void;
   drawShapeClip: (clip: CompositorClip, size: { width: number; height: number }) => void;
   drawTextClip: (clip: CompositorClip, size: { width: number; height: number }) => void;
   createAbortController: (key: string) => AbortController;
@@ -41,7 +41,7 @@ export interface FrameSampleOrchestratorParams {
   getVideoSampleForClip: (params: {
     clip: CompositorClip;
     sampleTimeS: number;
-    timelineTimeUs?: number;
+    timelineTimeTicks?: number;
     monitorSyncMode?: 'smooth' | 'balanced' | 'strict';
     abortSignal?: AbortSignal;
   }) => Promise<unknown | null>;
@@ -58,11 +58,11 @@ export class FrameSampleOrchestrator {
   public async process(
     params: FrameSampleOrchestratorParams,
   ): Promise<FrameSampleOrchestratorResult> {
-    params.resolveClipOverlays?.(params.activeClips, params.timeUs);
+    params.resolveClipOverlays?.(params.activeClips, params.timeTicks);
 
     const { sampleRequests } = params.activeClipProcessor.process({
       activeClips: params.activeClips,
-      timeUs: params.timeUs,
+      timeTicks: params.timeTicks,
       width: params.width,
       height: params.height,
       syncTransitionFilter: params.syncTransitionFilter,
@@ -78,7 +78,7 @@ export class FrameSampleOrchestrator {
           .getVideoSampleForClip({
             clip,
             sampleTimeS,
-            timelineTimeUs: params.timeUs,
+            timelineTimeTicks: params.timeTicks,
             monitorSyncMode: params.monitorSyncMode,
             abortSignal: abortController.signal,
           })
@@ -110,7 +110,7 @@ export class FrameSampleOrchestrator {
       });
     }
 
-    this.hideCompositePrevClips(params.activeClips, params.timeUs, params.getPrevClipOnLayer);
+    this.hideCompositePrevClips(params.activeClips, params.timeTicks, params.getPrevClipOnLayer);
 
     if (sampleRequests.length > 0) {
       const settled = await Promise.allSettled(sampleRequests);
@@ -163,12 +163,12 @@ export class FrameSampleOrchestrator {
     for (const clip of params.activeClips) {
       const transition = clip.transitionIn;
       const mode = transition?.mode ?? DEFAULT_TRANSITION_MODE;
-      if (!transition || mode !== 'adjacent' || transition.durationUs <= 0) {
+      if (!transition || mode !== 'adjacent' || transition.durationTicks <= 0) {
         continue;
       }
 
-      const localTimeTicks = params.timeUs - clip.startUs;
-      if (localTimeTicks >= transition.durationUs) {
+      const localTimeTicks = params.timeTicks - clip.startTicks;
+      if (localTimeTicks >= transition.durationTicks) {
         continue;
       }
 
@@ -178,7 +178,7 @@ export class FrameSampleOrchestrator {
       }
 
       const manifest = getTransitionManifest(transition.type);
-      const rawProgress = Math.max(0, Math.min(1, localTimeTicks / transition.durationUs));
+      const rawProgress = Math.max(0, Math.min(1, localTimeTicks / transition.durationTicks));
       const shadowAlpha = manifest
         ? manifest.computeOutOpacity(
             rawProgress,
@@ -210,7 +210,7 @@ export class FrameSampleOrchestrator {
         continue;
       }
 
-      // Timeline-space localTimeUs maps to source-space via |speed|; sampling
+      // Timeline-space localTimeTicks maps to source-space via |speed|; sampling
       // without it freezes/overshoots the shadow frame whenever the previous
       // clip is not at unity speed.
       const speedRaw = Number(prevClip.speed);
@@ -222,22 +222,22 @@ export class FrameSampleOrchestrator {
       // Forward playback consumes the trailing handle; reversed consumes leading.
       const trailingHandleTicks = Math.max(
         0,
-        prevClip.sourceDurationUs - prevClip.sourceStartUs - prevClip.sourceRangeDurationUs,
+        prevClip.sourceDurationTicks - prevClip.sourceStartTicks - prevClip.sourceRangeDurationTicks,
       );
-      const leadingHandleTicks = Math.max(0, prevClip.sourceStartUs);
+      const leadingHandleTicks = Math.max(0, prevClip.sourceStartTicks);
       const handleTicks = reversed ? leadingHandleTicks : trailingHandleTicks;
 
       const lastReadableSourceTicks = clampToLastReadableSourceTicks(
-        prevClip.sourceDurationUs,
+        prevClip.sourceDurationTicks,
         prevClip.frameRate,
       );
 
       if (handleTicks < MIN_SOURCE_HANDLE_TICKS) {
-        const sourceRangeEndTicks = prevClip.sourceStartUs + prevClip.sourceRangeDurationUs;
+        const sourceRangeEndTicks = prevClip.sourceStartTicks + prevClip.sourceRangeDurationTicks;
         const lastTicks = reversed
           ? Math.max(
               0,
-              Math.min(sourceRangeEndTicks, prevClip.sourceStartUs + MIN_SOURCE_HANDLE_TICKS),
+              Math.min(sourceRangeEndTicks, prevClip.sourceStartTicks + MIN_SOURCE_HANDLE_TICKS),
             )
           : Math.max(
               0,
@@ -248,7 +248,7 @@ export class FrameSampleOrchestrator {
             clip: prevClip,
             key: prevClip.itemId + '_shadow_end',
             sampleTimeS: lastTicks / TICKS_PER_SECOND,
-            timelineTimeUs: params.timeUs,
+            timelineTimeTicks: params.timeTicks,
             monitorSyncMode: params.monitorSyncMode,
             createAbortController: params.createAbortController,
             removeAbortController: params.removeAbortController,
@@ -258,9 +258,9 @@ export class FrameSampleOrchestrator {
         continue;
       }
 
-      const sourceRangeEndTicks = prevClip.sourceStartUs + prevClip.sourceRangeDurationUs;
+      const sourceRangeEndTicks = prevClip.sourceStartTicks + prevClip.sourceRangeDurationTicks;
       const sampleTicks = reversed
-        ? Math.max(0, prevClip.sourceStartUs - sourceDeltaTicks)
+        ? Math.max(0, prevClip.sourceStartTicks - sourceDeltaTicks)
         : Math.min(sourceRangeEndTicks + sourceDeltaTicks, lastReadableSourceTicks);
 
       requests.push(
@@ -268,7 +268,7 @@ export class FrameSampleOrchestrator {
           clip: prevClip,
           key: prevClip.itemId + '_shadow_overrun',
           sampleTimeS: Math.max(0, sampleTicks / TICKS_PER_SECOND),
-          timelineTimeUs: params.timeUs,
+          timelineTimeTicks: params.timeTicks,
           monitorSyncMode: params.monitorSyncMode,
           createAbortController: params.createAbortController,
           removeAbortController: params.removeAbortController,
@@ -284,14 +284,14 @@ export class FrameSampleOrchestrator {
     clip: CompositorClip;
     key: string;
     sampleTimeS: number;
-    timelineTimeUs: number;
+    timelineTimeTicks: number;
     monitorSyncMode?: 'smooth' | 'balanced' | 'strict';
     createAbortController: (key: string) => AbortController;
     removeAbortController?: (key: string) => void;
     getVideoSampleForClip: (params: {
       clip: CompositorClip;
       sampleTimeS: number;
-      timelineTimeUs?: number;
+      timelineTimeTicks?: number;
       monitorSyncMode?: 'smooth' | 'balanced' | 'strict';
       abortSignal?: AbortSignal;
     }) => Promise<unknown | null>;
@@ -302,7 +302,7 @@ export class FrameSampleOrchestrator {
       .getVideoSampleForClip({
         clip: params.clip,
         sampleTimeS: params.sampleTimeS,
-        timelineTimeUs: params.timelineTimeUs,
+        timelineTimeTicks: params.timelineTimeTicks,
         monitorSyncMode: params.monitorSyncMode,
         abortSignal: abortController.signal,
       })
@@ -363,7 +363,7 @@ export class FrameSampleOrchestrator {
 
   private hideCompositePrevClips(
     activeClips: CompositorClip[],
-    timeUs: number,
+    timeTicks: number,
     getPrevClipOnLayer: (clip: CompositorClip) => CompositorClip | null,
   ) {
     for (const clip of activeClips) {
@@ -372,13 +372,13 @@ export class FrameSampleOrchestrator {
       if (
         !transition ||
         (mode !== 'background' && mode !== 'transparent') ||
-        transition.durationUs <= 0
+        transition.durationTicks <= 0
       ) {
         continue;
       }
 
-      const localTimeUs = timeUs - clip.startUs;
-      if (localTimeUs >= transition.durationUs) {
+      const localTimeTicks = timeTicks - clip.startTicks;
+      if (localTimeTicks >= transition.durationTicks) {
         continue;
       }
 

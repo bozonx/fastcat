@@ -3,7 +3,7 @@ import { describe, expect, it, vi, afterEach } from 'vitest';
 import type { TimelineTrack } from '~/timeline/types';
 import {
   resolveMoveTargetTrackId,
-  resolvePlayheadClickTimeUs,
+  resolvePlayheadClickTimeTicks,
 } from '~/composables/timeline/timeline-drag-domain';
 
 describe('timelineInteractionUtils', () => {
@@ -62,8 +62,8 @@ describe('timelineInteractionUtils', () => {
   });
 
   it('snaps playhead click to nearest enabled timeline point', () => {
-    const result = resolvePlayheadClickTimeUs({
-      rawTimeUs: 1_030_000,
+    const result = resolvePlayheadClickTimeTicks({
+      rawTimeTicks: 1_030_000,
       zoom: 50,
       snapThresholdPx: 8,
       toolbarSnapMode: 'snap',
@@ -84,22 +84,22 @@ describe('timelineInteractionUtils', () => {
             {
               id: 'clip-1',
               kind: 'clip',
-              timelineRange: { startUs: 3_000_000, durationUs: 1_000_000 },
+              timelineRange: { startTicks: 3_000_000, durationTicks: 1_000_000 },
             },
           ],
         },
       ] as TimelineTrack[],
-      markers: [{ id: 'marker-1', timeUs: 1_000_000, text: '' }],
-      durationUs: 10_000_000,
-      selectionRangeUs: { startUs: 5_000_000, endUs: 6_000_000 },
+      markers: [{ id: 'marker-1', timeTicks: 1_000_000, text: '' }],
+      durationTicks: 10_000_000,
+      selectionRangeTicks: { startTicks: 5_000_000, endTicks: 6_000_000 },
     });
 
     expect(result).toBe(1_000_000);
   });
 
   it('does not snap playhead click when the option is disabled', () => {
-    const result = resolvePlayheadClickTimeUs({
-      rawTimeUs: 1_030_000,
+    const result = resolvePlayheadClickTimeTicks({
+      rawTimeTicks: 1_030_000,
       zoom: 50,
       snapThresholdPx: 8,
       toolbarSnapMode: 'snap',
@@ -112,9 +112,9 @@ describe('timelineInteractionUtils', () => {
         playheadClick: false,
       },
       tracks: [] as TimelineTrack[],
-      markers: [{ id: 'marker-1', timeUs: 1_000_000, text: '' }],
-      durationUs: 10_000_000,
-      selectionRangeUs: null,
+      markers: [{ id: 'marker-1', timeTicks: 1_000_000, text: '' }],
+      durationTicks: 10_000_000,
+      selectionRangeTicks: null,
     });
 
     expect(result).toBe(1_030_000);

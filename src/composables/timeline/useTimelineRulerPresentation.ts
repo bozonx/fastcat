@@ -9,15 +9,15 @@ import {
 
 interface MarkerLike {
   id: string;
-  timeUs: number;
-  durationUs?: number;
+  timeTicks: number;
+  durationTicks?: number;
   text?: string;
   color?: string;
 }
 
 interface SelectionRangeLike {
-  startUs: number;
-  endUs: number;
+  startTicks: number;
+  endTicks: number;
 }
 
 interface UseTimelineRulerPresentationOptions {
@@ -57,11 +57,11 @@ export function useTimelineRulerPresentation(options: UseTimelineRulerPresentati
         // Round both endpoints in absolute space (clip convention) so the ruler
         // pin/band aligns with the marker's vertical guide line in the tracks
         // overlay for any scrollLeft.
-        const x = absolutePxToViewportPx(timeUsToPx(marker.timeUs, currentZoom), startPx);
+        const x = absolutePxToViewportPx(timeUsToPx(marker.timeTicks, currentZoom), startPx);
         const width =
-          marker.durationUs !== undefined
+          marker.durationTicks !== undefined
             ? absolutePxToViewportPx(
-                timeUsToPx(marker.timeUs + marker.durationUs, currentZoom),
+                timeUsToPx(marker.timeTicks + marker.durationTicks, currentZoom),
                 startPx,
               ) - x
             : 0;
@@ -70,7 +70,7 @@ export function useTimelineRulerPresentation(options: UseTimelineRulerPresentati
           id: marker.id,
           x,
           width,
-          isZone: marker.durationUs !== undefined,
+          isZone: marker.durationTicks !== undefined,
           text: marker.text ?? '',
           color: marker.color ?? '#eab308',
         };
@@ -88,8 +88,8 @@ export function useTimelineRulerPresentation(options: UseTimelineRulerPresentati
 
     const currentZoom = options.zoom.value;
     const startPx = options.scrollLeft.value;
-    const x = absolutePxToViewportPx(timeUsToPx(range.startUs, currentZoom), startPx);
-    const endX = absolutePxToViewportPx(timeUsToPx(range.endUs, currentZoom), startPx);
+    const x = absolutePxToViewportPx(timeUsToPx(range.startTicks, currentZoom), startPx);
+    const endX = absolutePxToViewportPx(timeUsToPx(range.endTicks, currentZoom), startPx);
     const width = Math.max(1, endX - x);
 
     return {
@@ -109,16 +109,16 @@ export function useTimelineRulerPresentation(options: UseTimelineRulerPresentati
     const currentFrameIndex = Math.floor(
       ((options.currentTime.value + 0.5) * currentFps) / TICKS_PER_SECOND,
     );
-    const currentFrameStartUs = Math.round((currentFrameIndex * TICKS_PER_SECOND) / currentFps);
-    const nextFrameStartUs = Math.round(((currentFrameIndex + 1) * TICKS_PER_SECOND) / currentFps);
+    const currentFrameStartTicks = Math.round((currentFrameIndex * TICKS_PER_SECOND) / currentFps);
+    const nextFrameStartTicks = Math.round(((currentFrameIndex + 1) * TICKS_PER_SECOND) / currentFps);
 
     const currentFrameStartX = timeUsToViewportPx(
-      currentFrameStartUs,
+      currentFrameStartTicks,
       currentZoom,
       options.scrollLeft.value,
     );
     const nextFrameStartX = timeUsToViewportPx(
-      nextFrameStartUs,
+      nextFrameStartTicks,
       currentZoom,
       options.scrollLeft.value,
     );

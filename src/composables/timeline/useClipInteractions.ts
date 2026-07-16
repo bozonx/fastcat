@@ -12,11 +12,11 @@ export interface ClipInteractionsContext {
   selectTimelineItems: (ids: string[]) => void;
   trimToPlayheadLeftNoRipple: (target: { trackId: string; itemId: string }) => void;
   trimToPlayheadRightNoRipple: (target: { trackId: string; itemId: string }) => void;
-  trimToTimeLeftNoRipple?: (target: { trackId: string; itemId: string }, atUs: number) => void;
-  trimToTimeRightNoRipple?: (target: { trackId: string; itemId: string }, atUs: number) => void;
+  trimToTimeLeftNoRipple?: (target: { trackId: string; itemId: string }, atTicks: number) => void;
+  trimToTimeRightNoRipple?: (target: { trackId: string; itemId: string }, atTicks: number) => void;
   splitClipAtPlayhead: (target: { trackId: string; itemId: string }) => void;
-  splitClipAtTime?: (target: { trackId: string; itemId: string }, atUs: number) => void;
-  getPointerTimeUs?: (e: MouseEvent) => number | null;
+  splitClipAtTime?: (target: { trackId: string; itemId: string }, atTicks: number) => void;
+  getPointerTimeTicks?: (e: MouseEvent) => number | null;
   emitSelectItem: (e: PointerEvent, itemId: string) => void;
   didStartDrag: Ref<boolean>;
   longPressTriggered: Ref<boolean>;
@@ -47,23 +47,23 @@ export function useClipInteractions(ctx: ClipInteractionsContext) {
 
         ctx.selectTimelineItems([ctx.item.value.id]);
 
-        const pointerTimeUs = ctx.getPointerTimeUs?.(e) ?? null;
+        const pointerTimeTicks = ctx.getPointerTimeTicks?.(e) ?? null;
 
         if (isShift && !isCtrl) {
-          if (pointerTimeUs !== null && ctx.trimToTimeLeftNoRipple) {
-            ctx.trimToTimeLeftNoRipple(target, pointerTimeUs);
+          if (pointerTimeTicks !== null && ctx.trimToTimeLeftNoRipple) {
+            ctx.trimToTimeLeftNoRipple(target, pointerTimeTicks);
           } else {
             ctx.trimToPlayheadLeftNoRipple(target);
           }
         } else if (!isShift && isCtrl) {
-          if (pointerTimeUs !== null && ctx.trimToTimeRightNoRipple) {
-            ctx.trimToTimeRightNoRipple(target, pointerTimeUs);
+          if (pointerTimeTicks !== null && ctx.trimToTimeRightNoRipple) {
+            ctx.trimToTimeRightNoRipple(target, pointerTimeTicks);
           } else {
             ctx.trimToPlayheadRightNoRipple(target);
           }
         } else {
-          if (pointerTimeUs !== null && ctx.splitClipAtTime) {
-            ctx.splitClipAtTime(target, pointerTimeUs);
+          if (pointerTimeTicks !== null && ctx.splitClipAtTime) {
+            ctx.splitClipAtTime(target, pointerTimeTicks);
           } else {
             ctx.splitClipAtPlayhead(target);
           }

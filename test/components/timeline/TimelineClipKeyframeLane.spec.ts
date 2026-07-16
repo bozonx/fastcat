@@ -21,7 +21,7 @@ vi.mock('~/composables/timeline/useClipKeyframes', () => ({
 }));
 
 vi.mock('~/utils/timeline/geometry', () => ({
-  pxToDeltaUs: (px: number) => px * 1000,
+  pxToDeltaTicks: (px: number) => px * 1000,
   timeUsToPx: (us: number) => us / 1000,
 }));
 
@@ -43,8 +43,8 @@ function createClip(animations?: any): TimelineClipItem {
     id: 'clip-1',
     trackId: 'track-1',
     name: 'Clip',
-    timelineRange: { startUs: 0, durationUs: 5_000_000 },
-    sourceRange: { startUs: 0, durationUs: 5_000_000 },
+    timelineRange: { startTicks: 0, durationTicks: 5_000_000 },
+    sourceRange: { startTicks: 0, durationTicks: 5_000_000 },
     animations,
   } as TimelineClipItem;
 }
@@ -57,7 +57,7 @@ function mountLane(clip: TimelineClipItem) {
         timelineContext: {
           currentTime: ref(0),
           updateClipProperties: vi.fn(),
-          setCurrentTimeUs: vi.fn(),
+          setCurrentTimeTicks: vi.fn(),
         },
       },
     },
@@ -81,8 +81,8 @@ describe('TimelineClipKeyframeLane', () => {
       createClip({
         opacity: {
           keyframes: [
-            { tUs: 1_000_000, easing: 'linear' },
-            { tUs: 2_000_000, easing: 'ease-in' },
+            { tTicks: 1_000_000, easing: 'linear' },
+            { tTicks: 2_000_000, easing: 'ease-in' },
           ],
         },
       } as any),
@@ -152,7 +152,7 @@ describe('TimelineClipKeyframeLane', () => {
   it('calls deleteKeyframeMomentAt on diamond double-click', async () => {
     keyframeTimesRef.value = [1_000_000];
     const clip = createClip({
-      opacity: { keyframes: [{ tUs: 1_000_000, easing: 'linear' }] },
+      opacity: { keyframes: [{ tTicks: 1_000_000, easing: 'linear' }] },
     } as any);
     const component = await mountLane(clip);
 
@@ -165,7 +165,7 @@ describe('TimelineClipKeyframeLane', () => {
   it('calls setKeyframeMomentEasingAt on diamond context-menu', async () => {
     keyframeTimesRef.value = [1_000_000];
     const clip = createClip({
-      opacity: { keyframes: [{ tUs: 1_000_000, easing: 'linear' }] },
+      opacity: { keyframes: [{ tTicks: 1_000_000, easing: 'linear' }] },
     } as any);
     const component = await mountLane(clip);
 
@@ -178,7 +178,7 @@ describe('TimelineClipKeyframeLane', () => {
   it('positions diamonds via diamondLeftPx style', async () => {
     keyframeTimesRef.value = [1_000_000];
     const clip = createClip({
-      opacity: { keyframes: [{ tUs: 1_000_000, easing: 'linear' }] },
+      opacity: { keyframes: [{ tTicks: 1_000_000, easing: 'linear' }] },
     } as any);
     const component = await mountLane(clip);
 

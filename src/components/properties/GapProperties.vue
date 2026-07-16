@@ -34,7 +34,7 @@ const gap = computed<TimelineGapItem | null>(
 );
 
 const fps = computed(() => timelineStore.timelineFormat.fps || 30);
-const gapDuration = computed(() => gap.value?.timelineRange.durationUs ?? 0);
+const gapDuration = computed(() => gap.value?.timelineRange.durationTicks ?? 0);
 const formattedGapDuration = computed(() => formatTimecode(gapDuration.value, fps.value));
 
 const gapActions = computed(() => [

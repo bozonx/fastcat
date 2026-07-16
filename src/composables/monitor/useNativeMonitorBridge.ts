@@ -158,7 +158,7 @@ export function useNativeMonitorBridge(): void {
   // Instead we anchor to the last authoritative native time + wall clock and only
   // treat a currentTime change as a real seek when it deviates from where playback
   // SHOULD be by now. Re-pinned on every native sync so drift can't accumulate.
-  let playbackAnchorUs = 0;
+  let playbackAnchorTicks = 0;
   let playbackAnchorWallMs = 0;
   // True from the moment Play is requested until the native engine confirms it
   // actually started (first `monitor:time`). The native side defers the start
@@ -400,7 +400,7 @@ export function useNativeMonitorBridge(): void {
         // Seed the expected-position anchor at the moment playback starts so the
         // first local ticks (before any native `monitor:time` arrives) are judged
         // as normal progression, not seeks.
-        playbackAnchorUs = timelineStore.currentTime;
+        playbackAnchorTicks = timelineStore.currentTime;
         playbackAnchorWallMs = performance.now();
         // Native start is deferred until decoders warm up; suppress seek-detection
         // until it confirms by emitting the first `monitor:time` (see flag docs).
@@ -436,7 +436,7 @@ export function useNativeMonitorBridge(): void {
       // Re-pin the expected-position anchor: a speed change re-bases how fast the
       // playhead is expected to move, otherwise the seek watcher below would read
       // the next local tick as a jump and echo a spurious seek.
-      playbackAnchorUs = timelineStore.currentTime;
+      playbackAnchorTicks = timelineStore.currentTime;
       playbackAnchorWallMs = performance.now();
       if (isNativeMonitorDisabled()) return;
       const s = Number(speed);
@@ -476,9 +476,9 @@ export function useNativeMonitorBridge(): void {
         const speed = Number.isFinite(timelineStore.playbackSpeed)
           ? timelineStore.playbackSpeed
           : 1;
-        const expectedUs =
-          playbackAnchorUs + (performance.now() - playbackAnchorWallMs) * 1000 * speed;
-        if (Math.abs(t - expectedUs) <= PLAYING_SEEK_IGNORE_TICKS) {
+        const expectedTicks =
+          playbackAnchorTicks + (performance.now() - playbackAnchorWallMs) * 1000 * speed;
+        if (Math.abs(t - expectedTicks) <= PLAYING_SEEK_IGNORE_TICKS) {
           return;
         }
       }
@@ -527,8 +527,8 @@ export function useNativeMonitorBridge(): void {
   const unsubs: UnlistenFn[] = [];
   void onMonitorTime((timelineSec) => {
     if (disposed) return;
-    const timelineUs = secondsToTicks({ seconds: timelineSec });
-    const diffTicks = Math.abs(timelineUs - timelineStore.currentTime);
+    const timelineTicks = secondsToTicks({ seconds: timelineSec });
+    const diffTicks = Math.abs(timelineTicks - timelineStore.currentTime);
     const nowMs = performance.now();
     // Any native time means playback actually started — clear the deferred-start
     // guard up front, even when the sync itself is throttled below (the first tick
@@ -536,7 +536,7 @@ export function useNativeMonitorBridge(): void {
     // suppressed for the rest of the session.
     if (awaitingFirstNativeTime) {
       awaitingFirstNativeTime = false;
-      playbackAnchorUs = timelineUs;
+      playbackAnchorTicks = timelineTicks;
       playbackAnchorWallMs = nowMs;
     }
     if (
@@ -553,10 +553,10 @@ export function useNativeMonitorBridge(): void {
     // Re-pin the expected-position anchor to the authoritative native time so the
     // seek watcher's extrapolation tracks the master clock and never drifts into
     // a spurious echo-seek.
-    playbackAnchorUs = timelineUs;
+    playbackAnchorTicks = timelineTicks;
     playbackAnchorWallMs = nowMs;
     suppressSeekFromTimeUpdate = true;
-    timelineStore.setCurrentTimeUs(timelineUs);
+    timelineStore.setCurrentTimeTicks(timelineTicks);
     queueMicrotask(() => {
       suppressSeekFromTimeUpdate = false;
     });

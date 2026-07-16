@@ -9,7 +9,7 @@ describe('useClipInteractions', () => {
     id: 'clip-1',
     kind: 'clip',
     locked: false,
-    timelineRange: { startUs: 0, durationUs: 5_000_000 },
+    timelineRange: { startTicks: 0, durationTicks: 5_000_000 },
   });
   const mockSettings = ref({
     hotkeys: { layer1: 'Shift', layer2: 'Control' },
@@ -28,7 +28,7 @@ describe('useClipInteractions', () => {
     trimToTimeRightNoRipple: vi.fn(),
     splitClipAtPlayhead: vi.fn(),
     splitClipAtTime: vi.fn(),
-    getPointerTimeUs: vi.fn(),
+    getPointerTimeTicks: vi.fn(),
     emitSelectItem: vi.fn(),
     didStartDrag: ref(false),
     longPressTriggered: ref(false),
@@ -39,7 +39,7 @@ describe('useClipInteractions', () => {
     ctx.isTrimModeActive.value = false;
     ctx.didStartDrag.value = false;
     ctx.longPressTriggered.value = false;
-    ctx.getPointerTimeUs.mockReturnValue(null);
+    ctx.getPointerTimeTicks.mockReturnValue(null);
     mockTrack.value.locked = false;
     mockItem.value.locked = false;
   });
@@ -66,7 +66,7 @@ describe('useClipInteractions', () => {
 
   it('splits clip in trim mode at pointer time when available', () => {
     ctx.isTrimModeActive.value = true;
-    ctx.getPointerTimeUs.mockReturnValue(2_000_000);
+    ctx.getPointerTimeTicks.mockReturnValue(2_000_000);
     const { onClipClick } = useClipInteractions(ctx);
     const event = new MouseEvent('click', { button: 0 });
 
@@ -82,7 +82,7 @@ describe('useClipInteractions', () => {
 
   it('trims left in trim mode with Shift (fallback to playhead if pointer time is null)', () => {
     ctx.isTrimModeActive.value = true;
-    ctx.getPointerTimeUs.mockReturnValue(null);
+    ctx.getPointerTimeTicks.mockReturnValue(null);
     const { onClipClick } = useClipInteractions(ctx);
     const event = new MouseEvent('click', { button: 0, shiftKey: true });
 
@@ -97,7 +97,7 @@ describe('useClipInteractions', () => {
 
   it('trims left in trim mode with Shift at specific pointer time', () => {
     ctx.isTrimModeActive.value = true;
-    ctx.getPointerTimeUs.mockReturnValue(3_000_000);
+    ctx.getPointerTimeTicks.mockReturnValue(3_000_000);
     const { onClipClick } = useClipInteractions(ctx);
     const event = new MouseEvent('click', { button: 0, shiftKey: true });
 
@@ -112,7 +112,7 @@ describe('useClipInteractions', () => {
 
   it('trims right in trim mode with Ctrl (fallback to playhead if pointer time is null)', () => {
     ctx.isTrimModeActive.value = true;
-    ctx.getPointerTimeUs.mockReturnValue(null);
+    ctx.getPointerTimeTicks.mockReturnValue(null);
     const { onClipClick } = useClipInteractions(ctx);
     const event = new MouseEvent('click', { button: 0, ctrlKey: true });
 
@@ -127,7 +127,7 @@ describe('useClipInteractions', () => {
 
   it('trims right in trim mode with Ctrl at specific pointer time', () => {
     ctx.isTrimModeActive.value = true;
-    ctx.getPointerTimeUs.mockReturnValue(7_000_000);
+    ctx.getPointerTimeTicks.mockReturnValue(7_000_000);
     const { onClipClick } = useClipInteractions(ctx);
     const event = new MouseEvent('click', { button: 0, ctrlKey: true });
 

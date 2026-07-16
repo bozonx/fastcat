@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { TICKS_PER_SECOND } from '~/utils/time';
-import { timelineUs } from '../utils/timeline-time';
+import { timelineTicks } from '../utils/timeline-time';
 import { TimelineBuilder } from '../utils/timeline-builder';
 
 // Mock dependencies if needed
@@ -27,7 +27,7 @@ describe('TimelineStore Copy/Paste', () => {
     const builder = new TimelineBuilder();
     store.timelineDoc = builder
       .withTrack('v1', 'video', 'Video 1')
-      .withClip('clip1', 'v1', { startUs: 0, durationUs: 5_000_000 })
+      .withClip('clip1', 'v1', { startTicks: 0, durationTicks: 5_000_000 })
       .build() as any;
 
     // Select clip1
@@ -60,7 +60,7 @@ describe('TimelineStore Copy/Paste', () => {
     ) as any;
 
     expect(pastedClip).toBeDefined();
-    expect(pastedClip.timelineRange.startUs).toBe(10 * TICKS_PER_SECOND);
+    expect(pastedClip.timelineRange.startTicks).toBe(10 * TICKS_PER_SECOND);
     expect(pastedClip.opacity).toBe(0.5);
     expect(pastedClip.disabled).toBe(true);
     expect(pastedClip.source.path).toBe('/dummy.mp4');
@@ -70,10 +70,10 @@ describe('TimelineStore Copy/Paste', () => {
     const store = useTimelineStore();
     const builder = new TimelineBuilder();
     // 30fps → one frame ≈ 33333µs; this duration sits between frame boundaries.
-    const freeDurationUs = 3_457_000;
+    const freeDurationTicks = 3_457_000;
     store.timelineDoc = builder
       .withTrack('a1', 'audio', 'Audio 1')
-      .withClip('audio1', 'a1', { startUs: 2_007_000, durationUs: freeDurationUs })
+      .withClip('audio1', 'a1', { startTicks: 2_007_000, durationTicks: freeDurationTicks })
       .build() as any;
 
     store.toggleSelection('audio1');
@@ -92,7 +92,7 @@ describe('TimelineStore Copy/Paste', () => {
 
     expect(pastedClip).toBeDefined();
     // The sub-frame duration survives — the copy is NOT snapped onto the grid.
-    expect(pastedClip.timelineRange.durationUs).toBe(timelineUs(freeDurationUs));
+    expect(pastedClip.timelineRange.durationTicks).toBe(timelineTicks(freeDurationTicks));
   });
 
   it('cuts clips from timeline', () => {
@@ -100,7 +100,7 @@ describe('TimelineStore Copy/Paste', () => {
     const builder = new TimelineBuilder();
     store.timelineDoc = builder
       .withTrack('v1', 'video', 'Video 1')
-      .withClip('clip1', 'v1', { startUs: 0, durationUs: 5_000_000 })
+      .withClip('clip1', 'v1', { startTicks: 0, durationTicks: 5_000_000 })
       .build() as any;
 
     store.toggleSelection('clip1');
@@ -117,7 +117,7 @@ describe('TimelineStore Copy/Paste', () => {
     store.timelineDoc = builder
       .withTrack('v1', 'video', 'Video 1')
       .withTrack('v2', 'video', 'Video 2')
-      .withClip('clip1', 'v2', { startUs: 0, durationUs: 1_000_000 })
+      .withClip('clip1', 'v2', { startTicks: 0, durationTicks: 1_000_000 })
       .build() as any;
 
     store.selectTrack(null);
@@ -140,7 +140,7 @@ describe('TimelineStore Copy/Paste', () => {
     store.timelineDoc = builder
       .withTrack('v1', 'video', 'Video 1')
       .withTrack('v2', 'video', 'Video 2')
-      .withClip('clip1', 'v2', { startUs: 0, durationUs: 1_000_000 })
+      .withClip('clip1', 'v2', { startTicks: 0, durationTicks: 1_000_000 })
       .build() as any;
 
     store.selectTrack(null);
@@ -167,8 +167,8 @@ describe('TimelineStore Copy/Paste', () => {
       .withTrack('v2', 'video', 'Video 2')
       .withTrack('v3', 'video', 'Video 1 Target')
       .withTrack('v4', 'video', 'Video 2 Target')
-      .withClip('c1', 'v1', { startUs: 0, durationUs: 1_000_000 })
-      .withClip('c2', 'v2', { startUs: 0, durationUs: 1_000_000 })
+      .withClip('c1', 'v1', { startTicks: 0, durationTicks: 1_000_000 })
+      .withClip('c2', 'v2', { startTicks: 0, durationTicks: 1_000_000 })
       .build() as any;
 
     // Select both c1 and c2
@@ -204,12 +204,12 @@ describe('TimelineStore Copy/Paste', () => {
     const track4 = store.timelineDoc!.tracks.find((t: any) => t.id === 'v4')!;
 
     expect(track3.items.some((it: any) => it.id === pasted1.itemId)).toBe(true);
-    expect(track3.items.find((it: any) => it.id === pasted1.itemId)!.timelineRange.startUs).toBe(
+    expect(track3.items.find((it: any) => it.id === pasted1.itemId)!.timelineRange.startTicks).toBe(
       5 * TICKS_PER_SECOND,
     );
 
     expect(track4.items.some((it: any) => it.id === pasted2.itemId)).toBe(true);
-    expect(track4.items.find((it: any) => it.id === pasted2.itemId)!.timelineRange.startUs).toBe(
+    expect(track4.items.find((it: any) => it.id === pasted2.itemId)!.timelineRange.startTicks).toBe(
       5 * TICKS_PER_SECOND,
     );
   });
@@ -220,8 +220,8 @@ describe('TimelineStore Copy/Paste', () => {
     store.timelineDoc = builder
       .withTrack('v1', 'video', 'Video 1')
       .withTrack('a1', 'audio', 'Audio 1')
-      .withClip('vclip', 'v1', { startUs: 0, durationUs: 1_000_000 })
-      .withClip('aclip', 'a1', { startUs: 0, durationUs: 1_000_000 })
+      .withClip('vclip', 'v1', { startTicks: 0, durationTicks: 1_000_000 })
+      .withClip('aclip', 'a1', { startTicks: 0, durationTicks: 1_000_000 })
       .build() as any;
 
     const video = store.timelineDoc.tracks[0].items.find((item: any) => item.id === 'vclip');
@@ -234,7 +234,7 @@ describe('TimelineStore Copy/Paste', () => {
 
     const pastedItems = await store.pasteClips(copiedItems, {
       targetTrackId: 'v1',
-      insertStartUs: 5 * TICKS_PER_SECOND,
+      insertStartTicks: 5 * TICKS_PER_SECOND,
     });
 
     const pastedVideo = store.timelineDoc.tracks
@@ -254,7 +254,7 @@ describe('TimelineStore Copy/Paste', () => {
     const builder = new TimelineBuilder();
     store.timelineDoc = builder
       .withTrack('v1', 'video', 'Video 1')
-      .withClip('clip1', 'v1', { startUs: 0, durationUs: 1_000_000, clipType: 'media' })
+      .withClip('clip1', 'v1', { startTicks: 0, durationTicks: 1_000_000, clipType: 'media' })
       .build() as any;
 
     const clip = store.timelineDoc.tracks[0].items.find((item: any) => item.id === 'clip1');
@@ -273,7 +273,7 @@ describe('TimelineStore Copy/Paste', () => {
     const copiedItems = store.copySelectedClips();
     const [pasted] = await store.pasteClips(copiedItems, {
       targetTrackId: 'v1',
-      insertStartUs: 5 * TICKS_PER_SECOND,
+      insertStartTicks: 5 * TICKS_PER_SECOND,
     });
 
     const pastedClip = store.timelineDoc.tracks[0].items.find(
@@ -296,14 +296,14 @@ describe('TimelineStore Copy/Paste', () => {
       .withTrack('v1', 'video', 'Video 1')
       .withTrack('v2', 'video', 'Video 2')
       .withTrack('a1', 'audio', 'Audio 1')
-      .withClip('aclip', 'a1', { startUs: 0, durationUs: 1_000_000 })
+      .withClip('aclip', 'a1', { startTicks: 0, durationTicks: 1_000_000 })
       .build() as any;
 
     store.selectedItemIds = ['aclip'];
     const copiedItems = store.copySelectedClips();
     const [pasted] = await store.pasteClips(copiedItems, {
       targetTrackId: 'v2',
-      insertStartUs: 5 * TICKS_PER_SECOND,
+      insertStartTicks: 5 * TICKS_PER_SECOND,
     });
 
     expect(pasted?.trackId).toBe('a1');
@@ -318,7 +318,7 @@ describe('TimelineStore Copy/Paste', () => {
     const builder = new TimelineBuilder();
     store.timelineDoc = builder
       .withTrack('v1', 'video', 'Video 1')
-      .withClip('textClip', 'v1', { startUs: 0, durationUs: 5_000_000, clipType: 'text' })
+      .withClip('textClip', 'v1', { startTicks: 0, durationTicks: 5_000_000, clipType: 'text' })
       .build() as any;
 
     const clip = store.timelineDoc.tracks[0].items.find((item: any) => item.id === 'textClip');
@@ -345,7 +345,7 @@ describe('TimelineStore Copy/Paste', () => {
       (item: any) => item.id === pasted?.itemId,
     );
     expect(pastedClip).toBeDefined();
-    expect(pastedClip.timelineRange.startUs).toBe(10 * TICKS_PER_SECOND);
+    expect(pastedClip.timelineRange.startTicks).toBe(10 * TICKS_PER_SECOND);
     expect(pastedClip.opacity).toBe(0.8);
     expect(pastedClip.blendMode).toBe('multiply');
     expect(pastedClip.text).toBe('Hello World');

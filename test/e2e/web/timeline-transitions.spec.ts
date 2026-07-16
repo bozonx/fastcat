@@ -73,7 +73,7 @@ test.describe('Web timeline transitions', () => {
       edge: 'out',
       transition: {
         type: 'dissolve',
-        durationUs: 300_000,
+        durationTicks: 300_000,
         mode: 'adjacent',
         curve: 'linear',
       },

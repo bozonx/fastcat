@@ -59,12 +59,12 @@ type PayloadClip = Extract<WorkerVideoPayloadItem, { kind: 'clip' }>;
  * the passthrough decision can run before (and instead of) the compositor's
  * `loadTimeline`.
  */
-export function computePayloadVideoEndUs(timelineClips: readonly WorkerVideoPayloadItem[]): number {
+export function computePayloadVideoEndTicks(timelineClips: readonly WorkerVideoPayloadItem[]): number {
   let end = 0;
   for (const item of timelineClips) {
     if (!item || typeof item !== 'object' || item.kind !== 'clip') continue;
-    const start = Number(item.timelineRange?.startUs ?? 0);
-    const duration = Number(item.timelineRange?.durationUs ?? 0);
+    const start = Number(item.timelineRange?.startTicks ?? 0);
+    const duration = Number(item.timelineRange?.durationTicks ?? 0);
     if (Number.isFinite(start) && Number.isFinite(duration)) {
       end = Math.max(end, start + duration);
     }
@@ -108,9 +108,9 @@ export function findVideoPassthroughCandidate(params: {
   timelineClips: readonly WorkerVideoPayloadItem[];
   options: PassthroughExportOptions;
   /** Full container duration (video + audio) in canonical timeline ticks. */
-  maxDurationUs: number;
+  maxDurationTicks: number;
 }): { ok: true; clip: PayloadClip } | { ok: false; reason: string } {
-  const { timelineClips, options, maxDurationUs } = params;
+  const { timelineClips, options, maxDurationTicks } = params;
   if (options.videoPassthrough === false) {
     return { ok: false, reason: 'disabled by option' };
   }
@@ -154,7 +154,7 @@ export function findVideoPassthroughCandidate(params: {
   if (speed !== 1) {
     return { ok: false, reason: 'clip speed is not 1' };
   }
-  if (typeof clip.freezeFrameSourceUs === 'number') {
+  if (typeof clip.freezeFrameSourceTicks === 'number') {
     return { ok: false, reason: 'clip is a freeze frame' };
   }
   const opacity = clip.opacity;
@@ -192,18 +192,18 @@ export function findVideoPassthroughCandidate(params: {
     return { ok: false, reason: 'clip has source orientation rotation' };
   }
 
-  const timelineStartTicks = Number(clip.timelineRange?.startUs ?? 0);
-  const timelineDurationTicks = Number(clip.timelineRange?.durationUs ?? 0);
+  const timelineStartTicks = Number(clip.timelineRange?.startTicks ?? 0);
+  const timelineDurationTicks = Number(clip.timelineRange?.durationTicks ?? 0);
   if (timelineStartTicks > DURATION_EPSILON_TICKS) {
     return { ok: false, reason: 'clip does not start at timeline zero' };
   }
-  if (timelineDurationTicks + DURATION_EPSILON_TICKS < maxDurationUs) {
+  if (timelineDurationTicks + DURATION_EPSILON_TICKS < maxDurationTicks) {
     return { ok: false, reason: 'clip does not cover the whole export' };
   }
 
   // With speed 1 the timeline and source windows must agree; a mismatch means
   // some engine-side stretching/holding would happen that a copy can't express.
-  const sourceRangeDurationTicks = Number(clip.sourceRange?.durationUs ?? 0);
+  const sourceRangeDurationTicks = Number(clip.sourceRange?.durationTicks ?? 0);
   if (Math.abs(sourceRangeDurationTicks - timelineDurationTicks) > DURATION_EPSILON_TICKS) {
     return { ok: false, reason: 'timeline and source windows disagree' };
   }
@@ -341,9 +341,9 @@ export async function buildPassthroughVideoTrack(params: {
     }
 
     const packetSink = makePacketSink(videoTrack);
-    const sourceStartS = Math.max(0, ticksToSeconds(Number(clip.sourceRange?.startUs ?? 0)));
+    const sourceStartS = Math.max(0, ticksToSeconds(Number(clip.sourceRange?.startTicks ?? 0)));
     const requestedEndS =
-      sourceStartS + Math.max(0, ticksToSeconds(Number(clip.sourceRange?.durationUs ?? 0)));
+      sourceStartS + Math.max(0, ticksToSeconds(Number(clip.sourceRange?.durationTicks ?? 0)));
     const halfFrameS = 1 / (2 * requestedFps);
 
     // Head trim must land on a keyframe: the copy has to start at one, and

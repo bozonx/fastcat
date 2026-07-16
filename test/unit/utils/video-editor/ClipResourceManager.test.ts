@@ -8,7 +8,7 @@ import {
 } from '~/utils/video-editor/compositor/ClipResourceManager';
 import type { CompositorClip } from '~/utils/video-editor/compositor/types';
 import type { WebGpuComputeRunner } from '~/utils/video-editor/compositor/WebGpuComputeRunner';
-import { timelineUs } from '../timeline-time';
+import { timelineTicks } from '../timeline-time';
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -151,9 +151,9 @@ describe('ClipResourceManager.warmClipFrameWindow', () => {
       clipKind: 'video',
       frameRate: 25,
       firstTimestampS: 0,
-      startUs: 0,
-      sourceStartUs: 0,
-      sourceRangeDurationUs: timelineUs(10_000_000),
+      startTicks: 0,
+      sourceStartTicks: 0,
+      sourceRangeDurationTicks: timelineTicks(10_000_000),
       sink,
     } as unknown as CompositorClip;
   }
@@ -167,7 +167,7 @@ describe('ClipResourceManager.warmClipFrameWindow', () => {
       clip: createVideoClip(sink),
       nowSourceTimeS: 0,
       aheadSourceTimeS: 0.12,
-      timelineNowUs: 0,
+      timelineNowTicks: 0,
       speed: 1,
     });
 
@@ -191,7 +191,7 @@ describe('ClipResourceManager.warmClipFrameWindow', () => {
       clip,
       nowSourceTimeS: 0,
       aheadSourceTimeS: 0.12,
-      timelineNowUs: 0,
+      timelineNowTicks: 0,
       speed: 1,
     });
     const storedAfterFirst = videoFrameCache.set.mock.calls.length;
@@ -201,7 +201,7 @@ describe('ClipResourceManager.warmClipFrameWindow', () => {
       clip,
       nowSourceTimeS: 0.08,
       aheadSourceTimeS: 0.2,
-      timelineNowUs: 80_000,
+      timelineNowTicks: 80_000,
       speed: 1,
     });
 
@@ -221,7 +221,7 @@ describe('ClipResourceManager.warmClipFrameWindow', () => {
       clip,
       nowSourceTimeS: 1.0,
       aheadSourceTimeS: 1.12,
-      timelineNowUs: 1_000_000,
+      timelineNowTicks: 1_000_000,
       speed: 1,
     });
 
@@ -229,7 +229,7 @@ describe('ClipResourceManager.warmClipFrameWindow', () => {
       clip,
       nowSourceTimeS: 0.2,
       aheadSourceTimeS: 0.32,
-      timelineNowUs: 200_000,
+      timelineNowTicks: 200_000,
       speed: 1,
     });
 
@@ -249,7 +249,7 @@ describe('ClipResourceManager.warmClipFrameWindow', () => {
       clip,
       nowSourceTimeS: 0,
       aheadSourceTimeS: 0.08,
-      timelineNowUs: 0,
+      timelineNowTicks: 0,
       speed: 1,
     });
 
@@ -265,7 +265,7 @@ describe('ClipResourceManager.warmClipFrameWindow', () => {
       clip: createVideoClip({ getSample: vi.fn() }),
       nowSourceTimeS: 0,
       aheadSourceTimeS: 0.12,
-      timelineNowUs: 0,
+      timelineNowTicks: 0,
       speed: 1,
     });
 

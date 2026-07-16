@@ -52,7 +52,7 @@ export class AudioScheduler {
     this.kickoffLatencyS = normalizeKickoffLatency(options.kickoffLatencyS);
   }
 
-  async play(timeUs: number, speed = 1) {
+  async play(timeTicks: number, speed = 1) {
     if (this.destroyed) {
       if (import.meta.dev) {
         log.warn('play() called on destroyed instance');
@@ -61,7 +61,7 @@ export class AudioScheduler {
     }
     this.isPlaying = true;
     this.globalSpeed = speed;
-    this.baseTimeS = timeUs / TICKS_PER_SECOND;
+    this.baseTimeS = timeTicks / TICKS_PER_SECOND;
     this.scheduledClipIds.clear();
 
     const ctx = this.getContext();
@@ -127,7 +127,7 @@ export class AudioScheduler {
     }
   }
 
-  seek(timeUs: number) {
+  seek(timeTicks: number) {
     if (this.destroyed) {
       if (import.meta.dev) {
         log.warn('seek() called on destroyed instance');
@@ -140,7 +140,7 @@ export class AudioScheduler {
 
     this.onStopNodes({ fadeOutS: TRANSITION_FADE_OUT_S });
     this.scheduledClipIds.clear();
-    this.baseTimeS = timeUs / TICKS_PER_SECOND;
+    this.baseTimeS = timeTicks / TICKS_PER_SECOND;
 
     const ctx = this.getContext();
     if (!ctx) {
@@ -175,9 +175,9 @@ export class AudioScheduler {
    * clips — it only adjusts baseTimeS so that getCurrentTimeS() matches the
    * external source.
    */
-  syncTime(timeUs: number) {
+  syncTime(timeTicks: number) {
     if (!this.isPlaying) return;
-    const timeS = timeUs / TICKS_PER_SECOND;
+    const timeS = timeTicks / TICKS_PER_SECOND;
     const ctx = this.getContext();
     const nowS = ctx ? ctx.currentTime : this.wallClockS();
     this.baseTimeS = timeS;
@@ -197,7 +197,7 @@ export class AudioScheduler {
     return this.baseTimeS + elapsed * this.globalSpeed;
   }
 
-  getCurrentTimeUs(): number {
+  getCurrentTimeTicks(): number {
     return Math.round(this.getCurrentTimeS() * TICKS_PER_SECOND);
   }
 

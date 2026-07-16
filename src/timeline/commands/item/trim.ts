@@ -52,13 +52,13 @@ export function trimItem(doc: TimelineDocument, cmd: TrimItemCommand): TimelineC
 
       const geom = computeTrimGeometry({
         edge: cmd.edge,
-        deltaUs: cmd.deltaUs,
+        deltaTicks: cmd.deltaTicks,
         speed: c.speed,
         fps,
         quantizeToFrames: shouldQuantizeToFrames,
         timelineRange: c.timelineRange,
         sourceRange: c.sourceRange,
-        sourceDurationUs: c.sourceDurationUs,
+        sourceDurationTicks: c.sourceDurationTicks,
         hasFixedSourceDuration,
       });
 
@@ -79,8 +79,8 @@ export function trimItem(doc: TimelineDocument, cmd: TrimItemCommand): TimelineC
       assertNoOverlap(
         geom.track,
         geom.clip.id,
-        geom.timelineRange.startUs,
-        geom.timelineRange.durationUs,
+        geom.timelineRange.startTicks,
+        geom.timelineRange.durationTicks,
       );
     }
 
@@ -111,7 +111,7 @@ export function trimItem(doc: TimelineDocument, cmd: TrimItemCommand): TimelineC
         return x;
       });
 
-      nextItemsRaw.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
+      nextItemsRaw.sort((a, b) => a.timelineRange.startTicks - b.timelineRange.startTicks);
       const nextItems = normalizeGaps(doc, t.id, nextItemsRaw, {
         quantizeToFrames: shouldQuantizeToFrames,
       });
@@ -130,25 +130,25 @@ export function trimItem(doc: TimelineDocument, cmd: TrimItemCommand): TimelineC
 
   const { timelineRange, sourceRange, valid } = computeTrimGeometry({
     edge: cmd.edge,
-    deltaUs: cmd.deltaUs,
+    deltaTicks: cmd.deltaTicks,
     speed: item.speed,
     fps,
     quantizeToFrames: shouldQuantizeToFrames,
     timelineRange: item.timelineRange,
     sourceRange: item.sourceRange,
-    sourceDurationUs: item.sourceDurationUs,
+    sourceDurationTicks: item.sourceDurationTicks,
     hasFixedSourceDuration,
   });
 
   if (!valid) return { next: doc };
 
-  assertNoOverlap(track, item.id, timelineRange.startUs, timelineRange.durationUs);
+  assertNoOverlap(track, item.id, timelineRange.startTicks, timelineRange.durationTicks);
 
   const nextItemsRaw: TimelineTrackItem[] = track.items.map((x) =>
     x.id === item.id ? { ...x, timelineRange, sourceRange } : x,
   );
 
-  nextItemsRaw.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
+  nextItemsRaw.sort((a, b) => a.timelineRange.startTicks - b.timelineRange.startTicks);
   const nextItems = normalizeGaps(doc, track.id, nextItemsRaw, {
     quantizeToFrames: shouldQuantizeToFrames,
   });
@@ -169,7 +169,7 @@ export function trimItems(doc: TimelineDocument, cmd: TrimItemsCommand): Timelin
       trackId: trim.trackId,
       itemId: trim.itemId,
       edge: trim.edge,
-      deltaUs: trim.deltaUs,
+      deltaTicks: trim.deltaTicks,
       quantizeToFrames: cmd.quantizeToFrames,
     });
     currentDoc = result.next;

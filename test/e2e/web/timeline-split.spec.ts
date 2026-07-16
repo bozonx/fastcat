@@ -5,7 +5,7 @@ import {
   addFileToTrack,
   clipIds,
   selectClip,
-  setCurrentTimeUs,
+  setCurrentTimeTicks,
   splitClipAtPlayhead,
   trackIds,
 } from '../../utils/e2e/timeline';
@@ -30,17 +30,17 @@ test.describe('Web timeline clip split', () => {
     await addFileToTrack(page, uiPath, videoTrackId);
 
     const before = await waitForTimelineDoc(page, e2eProject, (d) => d.allClips.length === 1);
-    const originalDuration = before.allClips[0].timelineDurationUs;
-    const cutUs = Math.round(originalDuration / 2);
+    const originalDuration = before.allClips[0].timelineDurationTicks;
+    const cutTicks = Math.round(originalDuration / 2);
 
     const clipId = (await clipIds(page))[0];
     await selectClip(page, clipId);
-    await setCurrentTimeUs(page, cutUs);
+    await setCurrentTimeTicks(page, cutTicks);
     await splitClipAtPlayhead(page);
 
     const split = await waitForTimelineDoc(page, e2eProject, (d) => d.allClips.length === 2);
     expect(split.allClips).toHaveLength(2);
-    const totalDuration = split.allClips.reduce((sum, c) => sum + c.timelineDurationUs, 0);
+    const totalDuration = split.allClips.reduce((sum, c) => sum + c.timelineDurationTicks, 0);
     expect(totalDuration).toBe(originalDuration);
 
     await expect.poll(async () => (await clipIds(page)).length).toBe(2);
@@ -50,7 +50,7 @@ test.describe('Web timeline clip split', () => {
     await waitForEditorReady(page);
     await expect.poll(async () => (await clipIds(page)).length).toBe(2);
     const reloaded = await waitForTimelineDoc(page, e2eProject, (d) => d.allClips.length === 2);
-    const reloadedTotal = reloaded.allClips.reduce((sum, c) => sum + c.timelineDurationUs, 0);
+    const reloadedTotal = reloaded.allClips.reduce((sum, c) => sum + c.timelineDurationTicks, 0);
     expect(reloadedTotal).toBe(originalDuration);
   });
 });

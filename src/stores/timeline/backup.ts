@@ -7,7 +7,7 @@ import type { I18nService } from '~/services/i18n.service';
 import { withFileIoSlot } from '~/utils/io/io-governor';
 import { parseTimelineFromOtio } from '~/timeline/otio-serializer';
 import { getTimelineFps } from '~/timeline/timebase';
-import { selectTimelineDurationUs } from '~/timeline/selectors';
+import { selectTimelineDurationTicks } from '~/timeline/selectors';
 import { getNextBackupName, getBackupsToDelete, getBackupNumber } from '~/utils/timeline-backup';
 const log = createDevLogger('backup');
 
@@ -237,7 +237,7 @@ export function createTimelineBackupModule(deps: TimelineBackupDeps): TimelineBa
       deps.clearSelection?.();
       deps.removeSelectionRange?.();
 
-      deps.duration.value = selectTimelineDurationUs(parsed);
+      deps.duration.value = selectTimelineDurationTicks(parsed);
       deps.currentTime.value = 0;
     } catch (e) {
       log.error('Failed to open version for preview', e);
@@ -276,7 +276,7 @@ export function createTimelineBackupModule(deps: TimelineBackupDeps): TimelineBa
       deps.clearSelection?.();
       deps.removeSelectionRange?.();
 
-      deps.duration.value = selectTimelineDurationUs(parsed);
+      deps.duration.value = selectTimelineDurationTicks(parsed);
       deps.currentTime.value = 0;
 
       deps.markTimelineAsDirty();

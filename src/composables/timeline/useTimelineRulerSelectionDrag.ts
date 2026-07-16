@@ -1,6 +1,6 @@
 import { TICKS_PER_SECOND } from '~/utils/time';
 import { onUnmounted, ref, type Ref, computed } from 'vue';
-import { pxToTimeUs, pickBestSnapCandidateUs, zoomToPxPerSecond } from '~/utils/timeline/geometry';
+import { pxToTimeTicks, pickBestSnapCandidateTicks, zoomToPxPerSecond } from '~/utils/timeline/geometry';
 import { TIMELINE_RULER_CONSTANTS } from '~/utils/constants';
 import { quantizeTimeUsToFrames } from '~/timeline/commands/utils';
 import { useWorkspaceStore } from '~/stores/workspace.store';
@@ -10,8 +10,8 @@ import { isCommandMatched } from '~/utils/hotkeys/runtime';
 export type TimelineRulerSelectionDragPart = 'move' | 'left' | 'right';
 
 interface SelectionRangeLike {
-  startUs: number;
-  endUs: number;
+  startTicks: number;
+  endTicks: number;
 }
 
 interface UseTimelineRulerSelectionDragOptions {
@@ -21,9 +21,9 @@ interface UseTimelineRulerSelectionDragOptions {
   scrollLeft: Ref<number>;
   getTimeUsFromPointerEvent: (event: PointerEvent) => number;
   selectSelectionRange: () => void;
-  updateSelectionRange: (payload: { startUs: number; endUs: number } | null) => void;
-  createSelectionRange: (payload: { startUs: number; endUs: number }) => void;
-  setPreviewSelectionRange?: (payload: { startUs: number; endUs: number } | null) => void;
+  updateSelectionRange: (payload: { startTicks: number; endTicks: number } | null) => void;
+  createSelectionRange: (payload: { startTicks: number; endTicks: number }) => void;
+  setPreviewSelectionRange?: (payload: { startTicks: number; endTicks: number } | null) => void;
   computeSnapTargets?: () => number[];
   snapThresholdPx?: Ref<number> | number;
   isSnappingEnabled?: Ref<boolean>;
@@ -34,17 +34,17 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
   const selectionDragPart = ref<TimelineRulerSelectionDragPart>('move');
   const selectionDragStartX = ref(0);
   const selectionDragStartScrollLeft = ref(0);
-  const selectionDragStartMouseTimeUs = ref(0);
-  const selectionDragStartStartUs = ref(0);
-  const selectionDragStartEndUs = ref(0);
-  const draggedSelectionPatch = ref<{ startUs: number; endUs: number } | null>(null);
+  const selectionDragStartMouseTimeTicks = ref(0);
+  const selectionDragStartStartTicks = ref(0);
+  const selectionDragStartEndTicks = ref(0);
+  const draggedSelectionPatch = ref<{ startTicks: number; endTicks: number } | null>(null);
   const workspaceStore = useWorkspaceStore();
 
   const { hotkeyLookup, defaultHotkeyLookup } = useEffectiveHotkeys();
 
   const suppressNextRulerClick = ref(false);
   const isCreatingSelectionRange = ref(false);
-  const selectionCreateStartUs = ref(0);
+  const selectionCreateStartTicks = ref(0);
 
   const displaySelectionRange = computed(() => {
     if (isDraggingSelectionRange.value && draggedSelectionPatch.value) {
@@ -84,11 +84,11 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
     }, 0);
   }
 
-  function quantize(timeUs: number) {
-    return quantizeTimeUsToFrames(timeUs, options.fps.value, 'round');
+  function quantize(timeTicks: number) {
+    return quantizeTimeUsToFrames(timeTicks, options.fps.value, 'round');
   }
 
-  function getFrameDurationUs() {
+  function getFrameDurationTicks() {
     return Math.max(1, Math.round(TICKS_PER_SECOND / options.fps.value));
   }
 
@@ -110,48 +110,48 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
       event.clientX -
       selectionDragStartX.value +
       (options.scrollLeft.value - selectionDragStartScrollLeft.value);
-    const mouseDeltaUs = Math.round(
+    const mouseDeltaTicks = Math.round(
       (dxPx / zoomToPxPerSecond(options.zoom.value)) * TICKS_PER_SECOND,
     );
-    const minDurationUs = Math.max(
-      getFrameDurationUs(),
-      pxToTimeUs(TIMELINE_RULER_CONSTANTS.MIN_SELECTION_DURATION_PX, options.zoom.value),
+    const minDurationTicks = Math.max(
+      getFrameDurationTicks(),
+      pxToTimeTicks(TIMELINE_RULER_CONSTANTS.MIN_SELECTION_DURATION_PX, options.zoom.value),
     );
 
     if (selectionDragPart.value === 'move') {
-      const durationUs = selectionDragStartEndUs.value - selectionDragStartStartUs.value;
-      let nextStartUs = Math.max(0, quantize(selectionDragStartStartUs.value + mouseDeltaUs));
-      let nextEndUs = nextStartUs + durationUs;
+      const durationTicks = selectionDragStartEndTicks.value - selectionDragStartStartTicks.value;
+      let nextStartTicks = Math.max(0, quantize(selectionDragStartStartTicks.value + mouseDeltaTicks));
+      let nextEndTicks = nextStartTicks + durationTicks;
 
       if (getIsSnappingEnabled() && options.computeSnapTargets && options.snapThresholdPx) {
-        const thresholdUs = Math.round(
+        const thresholdTicks = Math.round(
           (getSnapThresholdPx() / zoomToPxPerSecond(options.zoom.value)) * TICKS_PER_SECOND,
         );
         const targets = options.computeSnapTargets();
 
-        const snapStart = pickBestSnapCandidateUs({
-          rawUs: nextStartUs,
-          thresholdUs,
-          targetsUs: targets,
+        const snapStart = pickBestSnapCandidateTicks({
+          rawTicks: nextStartTicks,
+          thresholdTicks,
+          targetsTicks: targets,
         });
-        const snapEnd = pickBestSnapCandidateUs({
-          rawUs: nextEndUs,
-          thresholdUs,
-          targetsUs: targets,
+        const snapEnd = pickBestSnapCandidateTicks({
+          rawTicks: nextEndTicks,
+          thresholdTicks,
+          targetsTicks: targets,
         });
 
-        if (snapStart.distUs < thresholdUs && snapStart.distUs <= snapEnd.distUs) {
-          nextStartUs = quantize(snapStart.snappedUs);
-          nextEndUs = nextStartUs + quantize(durationUs);
-        } else if (snapEnd.distUs < thresholdUs) {
-          nextEndUs = quantize(snapEnd.snappedUs);
-          nextStartUs = Math.max(0, nextEndUs - quantize(durationUs));
+        if (snapStart.distTicks < thresholdTicks && snapStart.distTicks <= snapEnd.distTicks) {
+          nextStartTicks = quantize(snapStart.snappedTicks);
+          nextEndTicks = nextStartTicks + quantize(durationTicks);
+        } else if (snapEnd.distTicks < thresholdTicks) {
+          nextEndTicks = quantize(snapEnd.snappedTicks);
+          nextStartTicks = Math.max(0, nextEndTicks - quantize(durationTicks));
         }
       }
 
       draggedSelectionPatch.value = {
-        startUs: nextStartUs,
-        endUs: nextStartUs + quantize(durationUs),
+        startTicks: nextStartTicks,
+        endTicks: nextStartTicks + quantize(durationTicks),
       };
       if (options.setPreviewSelectionRange) {
         options.setPreviewSelectionRange(draggedSelectionPatch.value);
@@ -160,30 +160,30 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
     }
 
     if (selectionDragPart.value === 'left') {
-      const maxStartUs = selectionDragStartEndUs.value - minDurationUs;
-      let nextStartUs = Math.max(
+      const maxStartTicks = selectionDragStartEndTicks.value - minDurationTicks;
+      let nextStartTicks = Math.max(
         0,
-        Math.min(maxStartUs, quantize(selectionDragStartStartUs.value + mouseDeltaUs)),
+        Math.min(maxStartTicks, quantize(selectionDragStartStartTicks.value + mouseDeltaTicks)),
       );
 
       if (getIsSnappingEnabled() && options.computeSnapTargets && options.snapThresholdPx) {
-        const thresholdUs = Math.round(
+        const thresholdTicks = Math.round(
           (getSnapThresholdPx() / zoomToPxPerSecond(options.zoom.value)) * TICKS_PER_SECOND,
         );
         const targets = options.computeSnapTargets();
-        const snap = pickBestSnapCandidateUs({
-          rawUs: nextStartUs,
-          thresholdUs,
-          targetsUs: targets,
+        const snap = pickBestSnapCandidateTicks({
+          rawTicks: nextStartTicks,
+          thresholdTicks,
+          targetsTicks: targets,
         });
-        if (snap.distUs < thresholdUs) {
-          nextStartUs = Math.max(0, Math.min(maxStartUs, quantize(snap.snappedUs)));
+        if (snap.distTicks < thresholdTicks) {
+          nextStartTicks = Math.max(0, Math.min(maxStartTicks, quantize(snap.snappedTicks)));
         }
       }
 
       draggedSelectionPatch.value = {
-        startUs: nextStartUs,
-        endUs: selectionDragStartEndUs.value,
+        startTicks: nextStartTicks,
+        endTicks: selectionDragStartEndTicks.value,
       };
       if (options.setPreviewSelectionRange) {
         options.setPreviewSelectionRange(draggedSelectionPatch.value);
@@ -191,28 +191,28 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
       return;
     }
 
-    let nextEndUs = Math.max(
-      selectionDragStartStartUs.value + minDurationUs,
-      quantize(selectionDragStartEndUs.value + mouseDeltaUs),
+    let nextEndTicks = Math.max(
+      selectionDragStartStartTicks.value + minDurationTicks,
+      quantize(selectionDragStartEndTicks.value + mouseDeltaTicks),
     );
 
     if (getIsSnappingEnabled() && options.computeSnapTargets && options.snapThresholdPx) {
-      const thresholdUs = Math.round(
+      const thresholdTicks = Math.round(
         (getSnapThresholdPx() / zoomToPxPerSecond(options.zoom.value)) * TICKS_PER_SECOND,
       );
       const targets = options.computeSnapTargets();
-      const snap = pickBestSnapCandidateUs({ rawUs: nextEndUs, thresholdUs, targetsUs: targets });
-      if (snap.distUs < thresholdUs) {
-        nextEndUs = Math.max(
-          selectionDragStartStartUs.value + minDurationUs,
-          quantize(snap.snappedUs),
+      const snap = pickBestSnapCandidateTicks({ rawTicks: nextEndTicks, thresholdTicks, targetsTicks: targets });
+      if (snap.distTicks < thresholdTicks) {
+        nextEndTicks = Math.max(
+          selectionDragStartStartTicks.value + minDurationTicks,
+          quantize(snap.snappedTicks),
         );
       }
     }
 
     draggedSelectionPatch.value = {
-      startUs: selectionDragStartStartUs.value,
-      endUs: nextEndUs,
+      startTicks: selectionDragStartStartTicks.value,
+      endTicks: nextEndTicks,
     };
     if (options.setPreviewSelectionRange) {
       options.setPreviewSelectionRange(draggedSelectionPatch.value);
@@ -280,9 +280,9 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
     selectionDragPart.value = part;
     selectionDragStartX.value = event.clientX;
     selectionDragStartScrollLeft.value = options.scrollLeft.value;
-    selectionDragStartMouseTimeUs.value = options.getTimeUsFromPointerEvent(event);
-    selectionDragStartStartUs.value = quantize(options.selectionRange.value.startUs);
-    selectionDragStartEndUs.value = quantize(options.selectionRange.value.endUs);
+    selectionDragStartMouseTimeTicks.value = options.getTimeUsFromPointerEvent(event);
+    selectionDragStartStartTicks.value = quantize(options.selectionRange.value.startTicks);
+    selectionDragStartEndTicks.value = quantize(options.selectionRange.value.endTicks);
     draggedSelectionPatch.value = null;
     suppressNextRulerClick.value = part !== 'move';
 
@@ -300,29 +300,29 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
     if (!isCreatingSelectionRange.value) return;
 
     suppressNextRulerClick.value = true;
-    let currentUs = quantize(options.getTimeUsFromPointerEvent(event));
+    let currentTicks = quantize(options.getTimeUsFromPointerEvent(event));
 
     if (getIsSnappingEnabled() && options.computeSnapTargets && options.snapThresholdPx) {
-      const thresholdUs = Math.round(
+      const thresholdTicks = Math.round(
         (getSnapThresholdPx() / zoomToPxPerSecond(options.zoom.value)) * TICKS_PER_SECOND,
       );
       const targets = options.computeSnapTargets();
-      const snap = pickBestSnapCandidateUs({
-        rawUs: currentUs,
-        thresholdUs,
-        targetsUs: targets,
+      const snap = pickBestSnapCandidateTicks({
+        rawTicks: currentTicks,
+        thresholdTicks,
+        targetsTicks: targets,
       });
-      if (snap.distUs < thresholdUs) {
-        currentUs = snap.snappedUs;
+      if (snap.distTicks < thresholdTicks) {
+        currentTicks = snap.snappedTicks;
       }
     }
 
-    const startUs = Math.min(selectionCreateStartUs.value, currentUs);
-    const endUs = Math.max(selectionCreateStartUs.value, currentUs);
+    const startTicks = Math.min(selectionCreateStartTicks.value, currentTicks);
+    const endTicks = Math.max(selectionCreateStartTicks.value, currentTicks);
 
     draggedSelectionPatch.value = {
-      startUs,
-      endUs: Math.max(startUs + getFrameDurationUs(), endUs),
+      startTicks,
+      endTicks: Math.max(startTicks + getFrameDurationTicks(), endTicks),
     };
 
     if (options.setPreviewSelectionRange) {
@@ -358,13 +358,13 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
       }
     }
 
-    const timeUs = quantize(options.getTimeUsFromPointerEvent(event));
-    selectionCreateStartUs.value = timeUs;
+    const timeTicks = quantize(options.getTimeUsFromPointerEvent(event));
+    selectionCreateStartTicks.value = timeTicks;
     isCreatingSelectionRange.value = true;
 
     draggedSelectionPatch.value = {
-      startUs: timeUs,
-      endUs: timeUs + getFrameDurationUs(),
+      startTicks: timeTicks,
+      endTicks: timeTicks + getFrameDurationTicks(),
     };
 
     if (options.setPreviewSelectionRange) {

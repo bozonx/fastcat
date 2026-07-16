@@ -3,8 +3,8 @@ import {
   MOBILE_CLICK_MOVE_THRESHOLD_PX,
   MOBILE_LONG_PRESS_RESET_DELAY_MS,
 } from '~/utils/mobile/timeline';
-import { resolvePlayheadClickTimeUs } from '~/composables/timeline/timeline-drag-domain';
-import { pxToTimeUs } from '~/utils/timeline/geometry';
+import { resolvePlayheadClickTimeTicks } from '~/composables/timeline/timeline-drag-domain';
+import { pxToTimeTicks } from '~/utils/timeline/geometry';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
@@ -152,7 +152,7 @@ export function useMobileTimelineGestures(options: UseMobileTimelineGesturesOpti
     startMoveItem(event, {
       trackId: payload.trackId,
       itemId: payload.itemId,
-      startUs: payload.startUs,
+      startTicks: payload.startTicks,
     });
   }
 
@@ -198,23 +198,23 @@ export function useMobileTimelineGestures(options: UseMobileTimelineGesturesOpti
         const scrollerRectY = getCachedScrollRect(el);
         const scrollX = el.scrollLeft;
         const x = e.clientX - scrollerRectY.left + scrollX;
-        const rawTimeUs = pxToTimeUs(x, timelineStore.timelineZoom);
-        const timelineEndUs = Number.isFinite(timelineStore.duration)
+        const rawTimeTicks = pxToTimeTicks(x, timelineStore.timelineZoom);
+        const timelineEndTicks = Number.isFinite(timelineStore.duration)
           ? Math.max(0, Math.round(timelineStore.duration))
           : null;
-        const timeUs = resolvePlayheadClickTimeUs({
-          rawTimeUs,
+        const timeTicks = resolvePlayheadClickTimeTicks({
+          rawTimeTicks,
           zoom: timelineStore.timelineZoom,
           snapThresholdPx: workspaceStore.userSettings.timeline.snapThresholdPx,
           toolbarSnapMode: timelineSettingsStore.toolbarSnapMode,
           snapping: workspaceStore.userSettings.timeline.snapping,
           tracks: timelineStore.timelineDoc?.tracks ?? [],
           markers: timelineStore.markers,
-          durationUs: timelineEndUs,
-          selectionRangeUs: timelineStore.selectionRange,
+          durationTicks: timelineEndTicks,
+          selectionRangeTicks: timelineStore.selectionRange,
         });
 
-        timelineStore.setCurrentTimeUs(timeUs);
+        timelineStore.setCurrentTimeTicks(timeTicks);
       }
       return;
     }
@@ -238,23 +238,23 @@ export function useMobileTimelineGestures(options: UseMobileTimelineGesturesOpti
 
     const scrollX = el.scrollLeft;
     const x = e.clientX - scrollerRectY.left + scrollX;
-    const rawTimeUs = pxToTimeUs(x, timelineStore.timelineZoom);
-    const timelineEndUs = Number.isFinite(timelineStore.duration)
+    const rawTimeTicks = pxToTimeTicks(x, timelineStore.timelineZoom);
+    const timelineEndTicks = Number.isFinite(timelineStore.duration)
       ? Math.max(0, Math.round(timelineStore.duration))
       : null;
-    const timeUs = resolvePlayheadClickTimeUs({
-      rawTimeUs,
+    const timeTicks = resolvePlayheadClickTimeTicks({
+      rawTimeTicks,
       zoom: timelineStore.timelineZoom,
       snapThresholdPx: workspaceStore.userSettings.timeline.snapThresholdPx,
       toolbarSnapMode: timelineSettingsStore.toolbarSnapMode,
       snapping: workspaceStore.userSettings.timeline.snapping,
       tracks: timelineStore.timelineDoc?.tracks ?? [],
       markers: timelineStore.markers,
-      durationUs: timelineEndUs,
-      selectionRangeUs: timelineStore.selectionRange,
+      durationTicks: timelineEndTicks,
+      selectionRangeTicks: timelineStore.selectionRange,
     });
 
-    timelineStore.setCurrentTimeUs(timeUs);
+    timelineStore.setCurrentTimeTicks(timeTicks);
   }
 
   async function onClipAction(payload: TimelineClipActionPayload) {

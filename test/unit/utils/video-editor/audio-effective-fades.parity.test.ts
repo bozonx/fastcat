@@ -30,8 +30,8 @@ describe('audio effective-fades parity (shared fixture)', () => {
     it(`matches native for "${c.name}"`, () => {
       const { fadeInS, fadeOutS } = computeFadeDurationsSeconds({
         clipDurationS: c.durationS,
-        fadeInUs: secondsToTicksSigned(c.fadeInS),
-        fadeOutUs: secondsToTicksSigned(c.fadeOutS),
+        fadeInTicks: secondsToTicksSigned(c.fadeInS),
+        fadeOutTicks: secondsToTicksSigned(c.fadeOutS),
       });
       expect(fadeInS).toBeCloseTo(c.expectedFadeInS, 9);
       expect(fadeOutS).toBeCloseTo(c.expectedFadeOutS, 9);

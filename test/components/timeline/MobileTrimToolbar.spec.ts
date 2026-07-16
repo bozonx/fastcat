@@ -23,7 +23,7 @@ const mockTimelineStore = reactive({
             kind: 'clip',
             locked: false,
             name: 'Test Clip',
-            timelineRange: { startUs: 1000000, durationUs: 5000000 },
+            timelineRange: { startTicks: 1000000, durationTicks: 5000000 },
           },
         ],
       },

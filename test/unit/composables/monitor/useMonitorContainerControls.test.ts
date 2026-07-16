@@ -54,7 +54,7 @@ function createControls(options: { isMobile?: boolean } = {}) {
       },
       setPlaybackSpeed: vi.fn(),
       togglePlayback: vi.fn(),
-      setCurrentTimeUs: vi.fn(),
+      setCurrentTimeTicks: vi.fn(),
       requestScrollToPlayhead: vi.fn(),
       jumpToNextClipBoundary: vi.fn(),
       jumpToPrevClipBoundary: vi.fn(),
@@ -68,7 +68,7 @@ function createControls(options: { isMobile?: boolean } = {}) {
     videoItems: ref([]),
     isLoading: ref(false),
     loadError: ref(null),
-    safeDurationUs: ref(0),
+    safeDurationTicks: ref(0),
     previewEffectsEnabled: ref(true),
     useProxyInMonitor: ref(false),
     showGrid: ref(false),
@@ -228,7 +228,7 @@ describe('useMonitorContainerControls', () => {
     controls.createMarkerWithTextAtPlayhead({ text: 'hello', color: '#eab308' });
     expect(addMarkerMock).toHaveBeenCalledOnce();
     expect(addMarkerMock).toHaveBeenCalledWith({
-      timeUs: 5000,
+      timeTicks: 5000,
       text: 'hello',
       color: '#eab308',
     });

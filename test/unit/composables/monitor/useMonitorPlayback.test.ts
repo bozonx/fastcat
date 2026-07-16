@@ -9,7 +9,7 @@ import {
 } from '~/composables/monitor/useMonitorPlayback';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { TICKS_PER_SECOND } from '~/utils/time';
-import { timelineUs } from '../../utils/timeline-time';
+import { timelineTicks } from '../../utils/timeline-time';
 
 describe('useMonitorPlayback', () => {
   let pinia: any;
@@ -43,19 +43,19 @@ describe('useMonitorPlayback', () => {
   it('maps timeline time to a drift-free composition frame index', () => {
     // Advances exactly once per frame interval, phase-locked to the clock: at 25fps
     // the index only ticks when the audio time crosses a 40ms boundary.
-    expect(computeMonitorFrameIndex({ timeUs: 0, fps: 25 })).toBe(0);
-    expect(computeMonitorFrameIndex({ timeUs: timelineUs(39_000), fps: 25 })).toBe(0);
-    expect(computeMonitorFrameIndex({ timeUs: timelineUs(40_000), fps: 25 })).toBe(1);
-    expect(computeMonitorFrameIndex({ timeUs: timelineUs(79_999), fps: 25 })).toBe(1);
-    expect(computeMonitorFrameIndex({ timeUs: timelineUs(80_000), fps: 25 })).toBe(2);
+    expect(computeMonitorFrameIndex({ timeTicks: 0, fps: 25 })).toBe(0);
+    expect(computeMonitorFrameIndex({ timeTicks: timelineTicks(39_000), fps: 25 })).toBe(0);
+    expect(computeMonitorFrameIndex({ timeTicks: timelineTicks(40_000), fps: 25 })).toBe(1);
+    expect(computeMonitorFrameIndex({ timeTicks: timelineTicks(79_999), fps: 25 })).toBe(1);
+    expect(computeMonitorFrameIndex({ timeTicks: timelineTicks(80_000), fps: 25 })).toBe(2);
 
     // A time landing exactly on a boundary must not float just under it (epsilon).
-    expect(computeMonitorFrameIndex({ timeUs: timelineUs(1_000_000), fps: 30 })).toBe(30);
+    expect(computeMonitorFrameIndex({ timeTicks: timelineTicks(1_000_000), fps: 30 })).toBe(30);
 
     // Invalid inputs clamp to a safe frame 0 rather than NaN.
-    expect(computeMonitorFrameIndex({ timeUs: timelineUs(-100), fps: 30 })).toBe(0);
-    expect(computeMonitorFrameIndex({ timeUs: timelineUs(100_000), fps: 0 })).toBe(3);
-    expect(computeMonitorFrameIndex({ timeUs: Number.NaN, fps: 30 })).toBe(0);
+    expect(computeMonitorFrameIndex({ timeTicks: timelineTicks(-100), fps: 30 })).toBe(0);
+    expect(computeMonitorFrameIndex({ timeTicks: timelineTicks(100_000), fps: 0 })).toBe(3);
+    expect(computeMonitorFrameIndex({ timeTicks: Number.NaN, fps: 30 })).toBe(0);
   });
 
   function createAudioEngineMock() {
@@ -66,15 +66,15 @@ describe('useMonitorPlayback', () => {
       previewScrubForward: vi.fn().mockResolvedValue(undefined),
       seek: vi.fn(),
       setGlobalSpeed: vi.fn(),
-      getCurrentTimeUs: vi.fn(() => 0),
+      getCurrentTimeTicks: vi.fn(() => 0),
     } as any;
   }
 
   it('pauses playback when document becomes hidden', async () => {
     const isPlaying = ref(false);
     const currentTime = ref(0);
-    const duration = ref(timelineUs(1_000_000));
-    const safeDurationUs = ref(timelineUs(1_000_000));
+    const duration = ref(timelineTicks(1_000_000));
+    const safeDurationTicks = ref(timelineTicks(1_000_000));
     const audioEngine = createAudioEngineMock();
 
     const TestComp = defineComponent({
@@ -85,9 +85,9 @@ describe('useMonitorPlayback', () => {
           isPlaying,
           currentTime,
           duration,
-          safeDurationUs,
+          safeDurationTicks,
           getFps: () => 30,
-          clampToTimeline: (t: number) => Math.max(0, Math.min(t, safeDurationUs.value)),
+          clampToTimeline: (t: number) => Math.max(0, Math.min(t, safeDurationTicks.value)),
           updateStoreTime: vi.fn(),
           scheduleRender: vi.fn(),
           audioEngine,
@@ -119,7 +119,7 @@ describe('useMonitorPlayback', () => {
   it('plays scrub preview when current time moves forward while paused', async () => {
     const isPlaying = ref(false);
     const currentTime = ref(0);
-    const safeDurationUs = ref(timelineUs(1_000_000));
+    const safeDurationTicks = ref(timelineTicks(1_000_000));
     const audioEngine = createAudioEngineMock();
     const scheduleRender = vi.fn();
 
@@ -130,10 +130,10 @@ describe('useMonitorPlayback', () => {
           loadError: ref(null),
           isPlaying,
           currentTime,
-          duration: ref(timelineUs(1_000_000)),
-          safeDurationUs,
+          duration: ref(timelineTicks(1_000_000)),
+          safeDurationTicks,
           getFps: () => 30,
-          clampToTimeline: (t: number) => Math.max(0, Math.min(t, safeDurationUs.value)),
+          clampToTimeline: (t: number) => Math.max(0, Math.min(t, safeDurationTicks.value)),
           updateStoreTime: vi.fn(),
           scheduleRender,
           audioEngine,
@@ -144,16 +144,16 @@ describe('useMonitorPlayback', () => {
 
     const wrapper = mount(TestComp, { global: { plugins: [pinia] } });
 
-    const scrubDeltaUs = timelineUs(50_000);
-    currentTime.value = scrubDeltaUs;
+    const scrubDeltaTicks = timelineTicks(50_000);
+    currentTime.value = scrubDeltaTicks;
     await nextTick();
 
     expect(audioEngine.previewScrubForward).toHaveBeenCalledWith(
       0,
-      scrubDeltaUs,
+      scrubDeltaTicks,
       (TICKS_PER_SECOND * 3) / 40,
     );
-    expect(scheduleRender).toHaveBeenCalledWith(scrubDeltaUs);
+    expect(scheduleRender).toHaveBeenCalledWith(scrubDeltaTicks);
     wrapper.unmount();
   });
 
@@ -169,8 +169,8 @@ describe('useMonitorPlayback', () => {
           loadError: ref(null),
           isPlaying,
           currentTime: ref(0),
-          duration: ref(timelineUs(1_000_000)),
-          safeDurationUs: ref(timelineUs(1_000_000)),
+          duration: ref(timelineTicks(1_000_000)),
+          safeDurationTicks: ref(timelineTicks(1_000_000)),
           getFps: () => 30,
           clampToTimeline: (t: number) => t,
           updateStoreTime: vi.fn(),
@@ -193,12 +193,12 @@ describe('useMonitorPlayback', () => {
     wrapper.unmount();
   });
 
-  it('stops playback when reaching safeDurationUs', async () => {
+  it('stops playback when reaching safeDurationTicks', async () => {
     const isPlaying = ref(false);
     const currentTime = ref(0);
-    const safeDurationUs = ref(timelineUs(500_000));
+    const safeDurationTicks = ref(timelineTicks(500_000));
     const audioEngine = createAudioEngineMock();
-    audioEngine.getCurrentTimeUs.mockReturnValue(timelineUs(600_000));
+    audioEngine.getCurrentTimeTicks.mockReturnValue(timelineTicks(600_000));
 
     // We need to control RAF precisely
     let rafCb: any;
@@ -218,9 +218,9 @@ describe('useMonitorPlayback', () => {
           isPlaying,
           currentTime,
           duration: ref(1_000_000),
-          safeDurationUs,
+          safeDurationTicks,
           getFps: () => 30,
-          clampToTimeline: (t: number) => Math.max(0, Math.min(t, safeDurationUs.value)),
+          clampToTimeline: (t: number) => Math.max(0, Math.min(t, safeDurationTicks.value)),
           updateStoreTime: (t: any) => {
             currentTime.value = t;
           },
@@ -241,7 +241,7 @@ describe('useMonitorPlayback', () => {
     await nextTick();
 
     expect(isPlaying.value).toBe(false);
-    expect(currentTime.value).toBe(safeDurationUs.value);
+    expect(currentTime.value).toBe(safeDurationTicks.value);
     wrapper.unmount();
   });
 });

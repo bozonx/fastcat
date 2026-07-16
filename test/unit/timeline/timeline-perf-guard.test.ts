@@ -12,18 +12,18 @@
  * scaled with the TOTAL number of clips on the timeline.
  */
 import { describe, it, expect } from 'vitest';
-import { timelineUs } from '../utils/timeline-time';
+import { timelineTicks } from '../utils/timeline-time';
 import { applyTimelineCommand } from '~/timeline/commands';
 import type { TimelineCommand } from '~/timeline/commands';
 import {
   selectAllItems,
-  selectTimelineDurationUs,
+  selectTimelineDurationTicks,
   selectItemToTrackMap,
 } from '~/timeline/selectors';
 import type { TimelineDocument, TimelineTrack, TimelineClipItem } from '~/timeline/types';
 
 const FPS = 30;
-const CLIP_DUR = timelineUs(1_000_000);
+const CLIP_DUR = timelineTicks(1_000_000);
 
 /** Build a timeline with `tracks` tracks, each holding `perTrack` back-to-back clips. */
 function makeLargeDoc(tracks: number, perTrack: number): TimelineDocument {
@@ -38,9 +38,9 @@ function makeLargeDoc(tracks: number, perTrack: number): TimelineDocument {
         trackId: `t${t}`,
         name: `clip ${t}-${i}`,
         source: { path: `t${t}-c${i}.mp4` },
-        sourceDurationUs: timelineUs(60_000_000),
-        timelineRange: { startUs: i * CLIP_DUR, durationUs: CLIP_DUR },
-        sourceRange: { startUs: 0, durationUs: CLIP_DUR },
+        sourceDurationTicks: timelineTicks(60_000_000),
+        timelineRange: { startTicks: i * CLIP_DUR, durationTicks: CLIP_DUR },
+        sourceRange: { startTicks: 0, durationTicks: CLIP_DUR },
       } as TimelineClipItem);
     }
     trackList.push({ id: `t${t}`, kind: t % 4 === 3 ? 'audio' : 'video', name: `T${t}`, items });
@@ -79,28 +79,28 @@ describe('timeline reducer performance guard (large timeline)', () => {
       trackId: 't0',
       name: 'appended',
       path: 'appended.mp4',
-      startUs: PER_TRACK * CLIP_DUR,
-      durationUs: CLIP_DUR,
-      sourceDurationUs: timelineUs(60_000_000),
+      startTicks: PER_TRACK * CLIP_DUR,
+      durationTicks: CLIP_DUR,
+      sourceDurationTicks: timelineTicks(60_000_000),
     };
     const moveCmd: TimelineCommand = {
       type: 'move_item',
       trackId: 't0',
       itemId: 't0-c500',
-      startUs: 500 * CLIP_DUR, // same slot -> valid, exercises the full rebuild
+      startTicks: 500 * CLIP_DUR, // same slot -> valid, exercises the full rebuild
     };
     const splitCmd: TimelineCommand = {
       type: 'split_item',
       trackId: 't0',
       itemId: 't0-c500',
-      atUs: 500 * CLIP_DUR + CLIP_DUR / 2,
+      atTicks: 500 * CLIP_DUR + CLIP_DUR / 2,
     };
     const trimCmd: TimelineCommand = {
       type: 'trim_item',
       trackId: 't0',
       itemId: 't0-c0',
       edge: 'end',
-      deltaUs: -timelineUs(100_000),
+      deltaTicks: -timelineTicks(100_000),
     };
 
     const addMs = bestOf(5, () => void applyTimelineCommand(doc, addCmd));
@@ -125,7 +125,7 @@ describe('timeline reducer performance guard (large timeline)', () => {
     const ms = bestOf(5, () => {
       const doc = build();
       selectAllItems(doc);
-      selectTimelineDurationUs(doc);
+      selectTimelineDurationTicks(doc);
       selectItemToTrackMap(doc);
     });
 
@@ -141,7 +141,7 @@ describe('timeline reducer performance guard (large timeline)', () => {
       type: 'move_item',
       trackId: 't0',
       itemId: `t0-c${Math.floor(perTrack / 2)}`,
-      startUs: Math.floor(perTrack / 2) * CLIP_DUR,
+      startTicks: Math.floor(perTrack / 2) * CLIP_DUR,
     });
 
     const smallMs = bestOf(8, () => void applyTimelineCommand(small, cmdFor(500)));

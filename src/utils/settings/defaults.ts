@@ -31,12 +31,12 @@ const LEGACY_MAX_DEFAULT_FADE_DURATION_US = 100_000_000;
 const LEGACY_MAX_DEFAULT_TRANSITION_DURATION_US = 100_000_000;
 const LEGACY_MAX_DEFAULT_STATIC_CLIP_DURATION_US = 3_600_000_000;
 
-export const MIN_DEFAULT_DURATION_US = LEGACY_MIN_DEFAULT_DURATION_US * TICKS_PER_MICROSECOND;
-export const MAX_DEFAULT_FADE_DURATION_US =
+export const MIN_DEFAULT_DURATION_TICKS = LEGACY_MIN_DEFAULT_DURATION_US * TICKS_PER_MICROSECOND;
+export const MAX_DEFAULT_FADE_DURATION_TICKS =
   LEGACY_MAX_DEFAULT_FADE_DURATION_US * TICKS_PER_MICROSECOND;
-export const MAX_DEFAULT_TRANSITION_DURATION_US =
+export const MAX_DEFAULT_TRANSITION_DURATION_TICKS =
   LEGACY_MAX_DEFAULT_TRANSITION_DURATION_US * TICKS_PER_MICROSECOND;
-export const MAX_DEFAULT_STATIC_CLIP_DURATION_US =
+export const MAX_DEFAULT_STATIC_CLIP_DURATION_TICKS =
   LEGACY_MAX_DEFAULT_STATIC_CLIP_DURATION_US * TICKS_PER_MICROSECOND;
 
 export interface ManualExternalApiSettings {
@@ -79,11 +79,11 @@ export interface FastCatUserSettings {
     /** Snap threshold in pixels. Used as snapping area size for clips/playhead/markers. */
     snapThresholdPx: number;
     /** Default audio fade duration in canonical timeline ticks. */
-    defaultAudioFadeDurationUs: number;
+    defaultAudioFadeDurationTicks: number;
     /** Default transition duration in canonical timeline ticks. */
-    defaultTransitionDurationUs: number;
+    defaultTransitionDurationTicks: number;
     /** Default duration for static clips (images, text, etc) in canonical timeline ticks. */
-    defaultStaticClipDurationUs: number;
+    defaultStaticClipDurationTicks: number;
     snapping: {
       timelineEdges: boolean;
       clips: boolean;
@@ -164,7 +164,7 @@ export interface FastCatUserSettings {
     aspectRatio: string;
     isCustomResolution: boolean;
     sampleRate: number;
-    audioDeclickDurationUs: number;
+    audioDeclickDurationTicks: number;
     defaultAudioFadeCurve: 'linear' | 'logarithmic';
     audioScrubbingEnabled: boolean;
   };
@@ -257,9 +257,9 @@ export const DEFAULT_USER_SETTINGS: FastCatUserSettings = {
   openLastProjectOnStart: false,
   timeline: {
     snapThresholdPx: 8,
-    defaultAudioFadeDurationUs: 1_000_000 * TICKS_PER_MICROSECOND,
-    defaultTransitionDurationUs: 2_000_000 * TICKS_PER_MICROSECOND,
-    defaultStaticClipDurationUs: 5_000_000 * TICKS_PER_MICROSECOND,
+    defaultAudioFadeDurationTicks: 1_000_000 * TICKS_PER_MICROSECOND,
+    defaultTransitionDurationTicks: 2_000_000 * TICKS_PER_MICROSECOND,
+    defaultStaticClipDurationTicks: 5_000_000 * TICKS_PER_MICROSECOND,
     snapping: {
       timelineEdges: true,
       clips: true,
@@ -315,7 +315,7 @@ export const DEFAULT_USER_SETTINGS: FastCatUserSettings = {
     aspectRatio: '16:9',
     isCustomResolution: false,
     sampleRate: 48000,
-    audioDeclickDurationUs: 5_000 * TICKS_PER_MICROSECOND,
+    audioDeclickDurationTicks: 5_000 * TICKS_PER_MICROSECOND,
     defaultAudioFadeCurve: 'linear',
     audioScrubbingEnabled: true,
   },

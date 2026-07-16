@@ -39,7 +39,7 @@ export function useMonitorRuntime() {
     workerTimelinePayload,
     rawWorkerTimelineClips,
     rawWorkerAudioClips,
-    safeDurationUs,
+    safeDurationTicks,
     clipSourceSignature,
     clipLayoutSignature,
     clipContentSignature,
@@ -111,7 +111,7 @@ export function useMonitorRuntime() {
       rawWorkerTimelineClips: rawWorkerTimelineClips as any,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       rawWorkerAudioClips: rawWorkerAudioClips as any,
-      safeDurationUs,
+      safeDurationTicks,
       clipSourceSignature,
       clipLayoutSignature,
       clipContentSignature,
@@ -133,13 +133,13 @@ export function useMonitorRuntime() {
   });
 
   const timecodeEl = ref<HTMLElement | null>(null);
-  const { uiCurrentTimeUs, getLocalCurrentTimeUs, setTimecodeEl } = useMonitorPlayback({
+  const { uiCurrentTimeTicks, getLocalCurrentTimeTicks, setTimecodeEl } = useMonitorPlayback({
     isLoading,
     loadError,
     isPlaying,
     currentTime,
     duration,
-    safeDurationUs,
+    safeDurationTicks,
     getFps: () => timelineStore.timelineFormat?.fps ?? timelineStore.fps,
     clampToTimeline,
     updateStoreTime,
@@ -149,7 +149,7 @@ export function useMonitorRuntime() {
     isMobile,
   });
 
-  setCurrentTimeProvider(getLocalCurrentTimeUs);
+  setCurrentTimeProvider(getLocalCurrentTimeTicks);
 
   onMounted(() => {
     setTimecodeEl(timecodeEl.value);
@@ -170,7 +170,7 @@ export function useMonitorRuntime() {
     workspaceStore,
     isLoading,
     loadError,
-    uiCurrentTimeUs,
+    uiCurrentTimeTicks,
   });
 
   return {
@@ -184,7 +184,7 @@ export function useMonitorRuntime() {
     workerAudioClips,
     rawWorkerTimelineClips,
     rawWorkerAudioClips,
-    safeDurationUs,
+    safeDurationTicks,
     selectedTimelineClip,
     isTextClipSelected,
     isAdjustmentClipSelected,
@@ -206,6 +206,6 @@ export function useMonitorRuntime() {
     isSavingStopFrame,
     createStopFrameSnapshot,
     timecodeEl,
-    uiCurrentTimeUs,
+    uiCurrentTimeTicks,
   };
 }

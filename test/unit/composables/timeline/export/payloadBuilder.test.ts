@@ -13,7 +13,7 @@ import {
 } from '~/composables/timeline/export/payloadBuilder';
 import { serializeTimelineToOtio } from '~/timeline/otio-serializer';
 import type { TimelineDocument, TimelineTrack, TimelineTrackItem } from '~/timeline/types';
-import { timelineUs } from '../../../utils/timeline-time';
+import { timelineTicks } from '../../../utils/timeline-time';
 import { TICKS_PER_SECOND } from '~/utils/time';
 
 function track(overrides: Record<string, unknown> = {}): any {
@@ -31,8 +31,8 @@ function track(overrides: Record<string, unknown> = {}): any {
 function workerClip(overrides: Record<string, unknown> = {}): any {
   return {
     id: 'c',
-    timelineRange: { startUs: 0, durationUs: timelineUs(10_000_000) },
-    sourceRange: { startUs: 0, durationUs: timelineUs(10_000_000) },
+    timelineRange: { startTicks: 0, durationTicks: timelineTicks(10_000_000) },
+    sourceRange: { startTicks: 0, durationTicks: timelineTicks(10_000_000) },
     speed: 1,
     ...overrides,
   };
@@ -81,8 +81,8 @@ describe('buildVideoWorkerPayloadFromTracks', () => {
               trackId: 'v1',
               text: 'Hello',
               style: { width: 720, fontSize: 96, color: '#ffffff' },
-              timelineRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
-              sourceRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
+              timelineRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
+              sourceRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
             },
           ],
         }),
@@ -93,7 +93,7 @@ describe('buildVideoWorkerPayloadFromTracks', () => {
             width: 1920,
             height: 1080,
             fps: 30,
-            audioDeclickDurationUs: 0,
+            audioDeclickDurationTicks: 0,
           },
         },
       } as never,
@@ -128,8 +128,8 @@ describe('buildVideoWorkerPayloadFromTracks', () => {
               clipType: 'media',
               trackId: 'v1',
               source: { path: '_video/source.mp4' },
-              timelineRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
-              sourceRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
+              timelineRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
+              sourceRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
               opacity: 0.8,
               blendMode: 'multiply',
             },
@@ -142,7 +142,7 @@ describe('buildVideoWorkerPayloadFromTracks', () => {
             width: 1920,
             height: 1080,
             fps: 30,
-            audioDeclickDurationUs: 0,
+            audioDeclickDurationTicks: 0,
           },
         },
       } as never,
@@ -179,8 +179,8 @@ describe('buildVideoWorkerPayloadFromTracks', () => {
               clipType: 'media',
               trackId: 'v1',
               source: { path: '_video/source.mp4' },
-              timelineRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
-              sourceRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
+              timelineRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
+              sourceRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
               opacity: 0.5,
               opacityActive: false,
               blendMode: 'multiply',
@@ -200,7 +200,7 @@ describe('buildVideoWorkerPayloadFromTracks', () => {
             width: 1920,
             height: 1080,
             fps: 30,
-            audioDeclickDurationUs: 0,
+            audioDeclickDurationTicks: 0,
           },
         },
       } as never,
@@ -226,69 +226,69 @@ describe('buildVideoWorkerPayloadFromTracks', () => {
 
 describe('trimWorkerClipToRange', () => {
   it('returns null when the clip is fully outside the range', () => {
-    const clip = workerClip({ timelineRange: { startUs: 0, durationUs: timelineUs(1_000_000) } });
+    const clip = workerClip({ timelineRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) } });
     expect(
-      trimWorkerClipToRange(clip, { startUs: timelineUs(5_000_000), endUs: timelineUs(8_000_000) }),
+      trimWorkerClipToRange(clip, { startTicks: timelineTicks(5_000_000), endTicks: timelineTicks(8_000_000) }),
     ).toBeNull();
   });
 
   it('rebases timelineRange to the range start and trims the source window', () => {
     const clip = workerClip({
-      timelineRange: { startUs: timelineUs(2_000_000), durationUs: timelineUs(6_000_000) },
-      sourceRange: { startUs: timelineUs(1_000_000), durationUs: timelineUs(6_000_000) },
+      timelineRange: { startTicks: timelineTicks(2_000_000), durationTicks: timelineTicks(6_000_000) },
+      sourceRange: { startTicks: timelineTicks(1_000_000), durationTicks: timelineTicks(6_000_000) },
     });
 
     const trimmed = trimWorkerClipToRange(clip, {
-      startUs: timelineUs(3_000_000),
-      endUs: timelineUs(5_000_000),
+      startTicks: timelineTicks(3_000_000),
+      endTicks: timelineTicks(5_000_000),
     })!;
 
     // Overlap is [3s, 5s]; relative to range start (3s) the clip starts at 0.
-    expect(trimmed.timelineRange).toEqual({ startUs: 0, durationUs: timelineUs(2_000_000) });
+    expect(trimmed.timelineRange).toEqual({ startTicks: 0, durationTicks: timelineTicks(2_000_000) });
     // The clip started 1s before the overlap, so source advances by 1s.
     expect(trimmed.sourceRange).toEqual({
-      startUs: timelineUs(2_000_000),
-      durationUs: timelineUs(2_000_000),
+      startTicks: timelineTicks(2_000_000),
+      durationTicks: timelineTicks(2_000_000),
     });
   });
 
   it('scales the source window by playback speed', () => {
     const clip = workerClip({
-      timelineRange: { startUs: 0, durationUs: timelineUs(4_000_000) },
-      sourceRange: { startUs: 0, durationUs: timelineUs(8_000_000) },
+      timelineRange: { startTicks: 0, durationTicks: timelineTicks(4_000_000) },
+      sourceRange: { startTicks: 0, durationTicks: timelineTicks(8_000_000) },
       speed: 2,
     });
 
     const trimmed = trimWorkerClipToRange(clip, {
-      startUs: timelineUs(1_000_000),
-      endUs: timelineUs(3_000_000),
+      startTicks: timelineTicks(1_000_000),
+      endTicks: timelineTicks(3_000_000),
     })!;
 
-    expect(trimmed.timelineRange).toEqual({ startUs: 0, durationUs: timelineUs(2_000_000) });
+    expect(trimmed.timelineRange).toEqual({ startTicks: 0, durationTicks: timelineTicks(2_000_000) });
     // 1s of trimmed timeline at 2x consumes 2s of source; 2s visible -> 4s source.
     expect(trimmed.sourceRange).toEqual({
-      startUs: timelineUs(2_000_000),
-      durationUs: timelineUs(4_000_000),
+      startTicks: timelineTicks(2_000_000),
+      durationTicks: timelineTicks(4_000_000),
     });
   });
 
   it('shifts audio fades to compensate for the trimmed-off head/tail', () => {
     const clip = workerClip({
-      timelineRange: { startUs: 0, durationUs: timelineUs(10_000_000) },
-      sourceRange: { startUs: 0, durationUs: timelineUs(10_000_000) },
-      audioFadeInUs: timelineUs(1_000_000),
-      audioFadeOutUs: timelineUs(1_000_000),
+      timelineRange: { startTicks: 0, durationTicks: timelineTicks(10_000_000) },
+      sourceRange: { startTicks: 0, durationTicks: timelineTicks(10_000_000) },
+      audioFadeInTicks: timelineTicks(1_000_000),
+      audioFadeOutTicks: timelineTicks(1_000_000),
     });
 
     const trimmed = trimWorkerClipToRange(clip, {
-      startUs: timelineUs(2_000_000),
-      endUs: timelineUs(8_000_000),
+      startTicks: timelineTicks(2_000_000),
+      endTicks: timelineTicks(8_000_000),
     })!;
 
     // 2s trimmed from the head fully eats the 1s fade-in (clamped to 0).
-    expect(trimmed.audioFadeInUs).toBe(0);
+    expect(trimmed.audioFadeInTicks).toBe(0);
     // 2s trimmed from the tail fully eats the 1s fade-out (clamped to 0).
-    expect(trimmed.audioFadeOutUs).toBe(0);
+    expect(trimmed.audioFadeOutTicks).toBe(0);
   });
 
   it('partially shifts audio fades that survive a narrower crop', () => {
@@ -296,21 +296,21 @@ describe('trimWorkerClipToRange', () => {
       workerClip({
         clipType: 'media',
         source: { path: '/audio.wav' },
-        audioFadeInUs: timelineUs(300_000),
-        audioFadeOutUs: timelineUs(400_000),
-        timelineRange: { startUs: timelineUs(1_000_000), durationUs: timelineUs(1_000_000) },
-        sourceRange: { startUs: timelineUs(2_000_000), durationUs: timelineUs(1_000_000) },
+        audioFadeInTicks: timelineTicks(300_000),
+        audioFadeOutTicks: timelineTicks(400_000),
+        timelineRange: { startTicks: timelineTicks(1_000_000), durationTicks: timelineTicks(1_000_000) },
+        sourceRange: { startTicks: timelineTicks(2_000_000), durationTicks: timelineTicks(1_000_000) },
       }),
-      { startUs: timelineUs(1_200_000), endUs: timelineUs(1_800_000) },
+      { startTicks: timelineTicks(1_200_000), endTicks: timelineTicks(1_800_000) },
     );
 
     // 200us trimmed off the head leaves 100us of the 300us fade-in; 200us off the
     // tail leaves 200us of the 400us fade-out.
     expect(clipped).toMatchObject({
-      audioFadeInUs: timelineUs(100_000),
-      audioFadeOutUs: timelineUs(200_000),
-      timelineRange: { startUs: 0, durationUs: timelineUs(600_000) },
-      sourceRange: { startUs: timelineUs(2_200_000), durationUs: timelineUs(600_000) },
+      audioFadeInTicks: timelineTicks(100_000),
+      audioFadeOutTicks: timelineTicks(200_000),
+      timelineRange: { startTicks: 0, durationTicks: timelineTicks(600_000) },
+      sourceRange: { startTicks: timelineTicks(2_200_000), durationTicks: timelineTicks(600_000) },
     });
   });
 
@@ -320,14 +320,14 @@ describe('trimWorkerClipToRange', () => {
         id: 'reverse',
         speed: -1,
         source: { path: '/video.mp4' },
-        timelineRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
-        sourceRange: { startUs: timelineUs(2_000_000), durationUs: timelineUs(1_000_000) },
+        timelineRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
+        sourceRange: { startTicks: timelineTicks(2_000_000), durationTicks: timelineTicks(1_000_000) },
       }),
-      { startUs: timelineUs(250_000), endUs: timelineUs(750_000) },
+      { startTicks: timelineTicks(250_000), endTicks: timelineTicks(750_000) },
     );
     expect(reversed?.sourceRange).toEqual({
-      startUs: timelineUs(2_250_000),
-      durationUs: timelineUs(500_000),
+      startTicks: timelineTicks(2_250_000),
+      durationTicks: timelineTicks(500_000),
     });
   });
 });
@@ -337,8 +337,8 @@ function parentTimelineItem(overrides: Record<string, unknown> = {}): any {
     id: 'parent',
     kind: 'clip',
     clipType: 'timeline',
-    timelineRange: { startUs: 0, durationUs: 1000 },
-    sourceRange: { startUs: 0, durationUs: 1000 },
+    timelineRange: { startTicks: 0, durationTicks: 1000 },
+    sourceRange: { startTicks: 0, durationTicks: 1000 },
     speed: 1,
     ...overrides,
   };
@@ -347,76 +347,76 @@ function parentTimelineItem(overrides: Record<string, unknown> = {}): any {
 describe('getNestedClipWindow', () => {
   it('maps a fully-visible nested clip into parent timeline space', () => {
     const window = getNestedClipWindow({
-      nestedClip: workerClip({ timelineRange: { startUs: 0, durationUs: 1000 } }),
-      parentItem: parentTimelineItem({ timelineRange: { startUs: 100, durationUs: 1000 } }),
+      nestedClip: workerClip({ timelineRange: { startTicks: 0, durationTicks: 1000 } }),
+      parentItem: parentTimelineItem({ timelineRange: { startTicks: 100, durationTicks: 1000 } }),
     })!;
 
     expect(window).toMatchObject({
-      overlapStartUs: 0,
-      overlapEndUs: 1000,
-      parentStartUs: 100,
-      parentDurationUs: 1000,
-      parentLocalStartUs: 0,
-      parentLocalEndUs: 1000,
+      overlapStartTicks: 0,
+      overlapEndTicks: 1000,
+      parentStartTicks: 100,
+      parentDurationTicks: 1000,
+      parentLocalStartTicks: 0,
+      parentLocalEndTicks: 1000,
     });
   });
 
   it('clips to the parent source window (the parent trims the nested timeline)', () => {
     const window = getNestedClipWindow({
-      nestedClip: workerClip({ timelineRange: { startUs: 300, durationUs: 1000 } }),
+      nestedClip: workerClip({ timelineRange: { startTicks: 300, durationTicks: 1000 } }),
       // Parent only exposes nested-local [200, 700).
       parentItem: parentTimelineItem({
-        timelineRange: { startUs: 100, durationUs: 500 },
-        sourceRange: { startUs: 200, durationUs: 500 },
+        timelineRange: { startTicks: 100, durationTicks: 500 },
+        sourceRange: { startTicks: 200, durationTicks: 500 },
       }),
     })!;
 
     // Visible overlap is [300, 700) → 400us, offset 100us into the window.
     expect(window).toMatchObject({
-      overlapStartUs: 300,
-      overlapEndUs: 700,
-      parentLocalStartUs: 100,
-      parentStartUs: 200,
-      parentDurationUs: 400,
+      overlapStartTicks: 300,
+      overlapEndTicks: 700,
+      parentLocalStartTicks: 100,
+      parentStartTicks: 200,
+      parentDurationTicks: 400,
     });
   });
 
   it('compresses the parent duration by the parent speed', () => {
     const window = getNestedClipWindow({
-      nestedClip: workerClip({ timelineRange: { startUs: 0, durationUs: 1000 } }),
+      nestedClip: workerClip({ timelineRange: { startTicks: 0, durationTicks: 1000 } }),
       parentItem: parentTimelineItem({
-        timelineRange: { startUs: 0, durationUs: 500 },
-        sourceRange: { startUs: 0, durationUs: 1000 },
+        timelineRange: { startTicks: 0, durationTicks: 500 },
+        sourceRange: { startTicks: 0, durationTicks: 1000 },
         speed: 2,
       }),
     })!;
 
     // 1000us of nested content played at 2x occupies 500us of parent timeline.
-    expect(window.parentDurationUs).toBe(500);
+    expect(window.parentDurationTicks).toBe(500);
   });
 
   it('places a head clip at the tail when the parent is reversed', () => {
     const window = getNestedClipWindow({
       // Only the first 400us of the nested timeline.
-      nestedClip: workerClip({ timelineRange: { startUs: 0, durationUs: 400 } }),
+      nestedClip: workerClip({ timelineRange: { startTicks: 0, durationTicks: 400 } }),
       parentItem: parentTimelineItem({
-        timelineRange: { startUs: 0, durationUs: 1000 },
-        sourceRange: { startUs: 0, durationUs: 1000 },
+        timelineRange: { startTicks: 0, durationTicks: 1000 },
+        sourceRange: { startTicks: 0, durationTicks: 1000 },
         speed: -1,
       }),
     })!;
 
     // Reversed: nested [0,400) shows up at the end of the parent.
     expect(window).toMatchObject({
-      parentStartUs: 600,
-      parentDurationUs: 400,
+      parentStartTicks: 600,
+      parentDurationTicks: 400,
     });
   });
 
   it('returns null when the nested clip is outside the parent window', () => {
     const window = getNestedClipWindow({
-      nestedClip: workerClip({ timelineRange: { startUs: 500, durationUs: 100 } }),
-      parentItem: parentTimelineItem({ sourceRange: { startUs: 0, durationUs: 100 } }),
+      nestedClip: workerClip({ timelineRange: { startTicks: 500, durationTicks: 100 } }),
+      parentItem: parentTimelineItem({ sourceRange: { startTicks: 0, durationTicks: 100 } }),
     });
     expect(window).toBeNull();
   });
@@ -456,20 +456,20 @@ describe('trimNestedClipToParentWindow', () => {
     const trimmed = trimNestedClipToParentWindow({
       nestedClip: workerClip({
         id: 'n',
-        timelineRange: { startUs: 0, durationUs: 2000 },
-        sourceRange: { startUs: 0, durationUs: 2000 },
+        timelineRange: { startTicks: 0, durationTicks: 2000 },
+        sourceRange: { startTicks: 0, durationTicks: 2000 },
         speed: 1,
       }),
       parentItem: parentTimelineItem({
-        timelineRange: { startUs: 1000, durationUs: 1000 },
-        sourceRange: { startUs: 0, durationUs: 1000 },
+        timelineRange: { startTicks: 1000, durationTicks: 1000 },
+        sourceRange: { startTicks: 0, durationTicks: 1000 },
         speed: 1,
       }),
     })!;
 
     // Parent exposes only the first half of the nested clip, shifted to +1000us.
-    expect(trimmed.timelineRange).toEqual({ startUs: 1000, durationUs: 1000 });
-    expect(trimmed.sourceRange).toEqual({ startUs: 0, durationUs: 1000 });
+    expect(trimmed.timelineRange).toEqual({ startTicks: 1000, durationTicks: 1000 });
+    expect(trimmed.sourceRange).toEqual({ startTicks: 0, durationTicks: 1000 });
     // Both sides play at 1x → merged speed stays 1.
     expect(trimmed.speed).toBe(1);
   });
@@ -477,8 +477,8 @@ describe('trimNestedClipToParentWindow', () => {
   it('returns null when there is no overlap', () => {
     expect(
       trimNestedClipToParentWindow({
-        nestedClip: workerClip({ timelineRange: { startUs: 5000, durationUs: 100 } }),
-        parentItem: parentTimelineItem({ sourceRange: { startUs: 0, durationUs: 100 } }),
+        nestedClip: workerClip({ timelineRange: { startTicks: 5000, durationTicks: 100 } }),
+        parentItem: parentTimelineItem({ sourceRange: { startTicks: 0, durationTicks: 100 } }),
       }),
     ).toBeNull();
   });
@@ -514,7 +514,7 @@ describe('assignLayerBands', () => {
 
 const PROJECT_STORE_BASE = {
   projectSettings: {
-    project: { width: 1920, height: 1080, fps: 30, audioDeclickDurationUs: 0 },
+    project: { width: 1920, height: 1080, fps: 30, audioDeclickDurationTicks: 0 },
   },
 };
 
@@ -535,8 +535,8 @@ function nestedVideoTrack(id: string, overrides: Record<string, unknown> = {}): 
         clipType: 'media',
         trackId: id,
         source: { path: `_video/${id}.mp4` },
-        timelineRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
-        sourceRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
+        timelineRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
+        sourceRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
       },
     ],
     ...overrides,
@@ -580,8 +580,8 @@ function parentTracksWithAdjustmentAboveNested(): TimelineTrack[] {
           clipType: 'adjustment',
           trackId: 'adjust-track',
           effects: [{ type: 'blur' }],
-          timelineRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
-          sourceRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
+          timelineRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
+          sourceRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
         },
       ],
     } as TimelineTrack,
@@ -598,8 +598,8 @@ function parentTracksWithAdjustmentAboveNested(): TimelineTrack[] {
           clipType: 'timeline',
           trackId: 'nest-track',
           source: { path: '_timelines/nested.otio' },
-          timelineRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
-          sourceRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
+          timelineRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
+          sourceRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
         },
       ],
     } as TimelineTrack,
@@ -716,8 +716,8 @@ describe('buildVideoWorkerPayload', () => {
           trackId: 'v1',
           layer: 2,
           source: { path: '/video.mp4' },
-          timelineRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
-          sourceRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
+          timelineRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
+          sourceRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
         },
       ],
     });
@@ -762,19 +762,19 @@ describe('toWorkerTimelineClips', () => {
         trackId: 't1',
         name: 'Clip 1',
         source: { path: '/video.mp4' },
-        sourceDurationUs: timelineUs(1_000_000),
-        timelineRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
-        sourceRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
+        sourceDurationTicks: timelineTicks(1_000_000),
+        timelineRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
+        sourceRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
         audioGain: 1.5,
         audioBalance: -0.25,
-        audioFadeInUs: timelineUs(120_000),
-        audioFadeOutUs: timelineUs(340_000),
+        audioFadeInTicks: timelineTicks(120_000),
+        audioFadeOutTicks: timelineTicks(340_000),
       } as any,
     ];
 
     const projectStoreMock = {
       getFileHandleByPath: async () => null,
-      projectSettings: { project: { audioDeclickDurationUs: 5000 } },
+      projectSettings: { project: { audioDeclickDurationTicks: 5000 } },
     } as any;
 
     expect(await toWorkerTimelineClips(items, projectStoreMock, wsMock)).toMatchObject([
@@ -784,12 +784,12 @@ describe('toWorkerTimelineClips', () => {
         id: 'c1',
         layer: 0,
         source: { path: '/video.mp4' },
-        timelineRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
-        sourceRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
+        timelineRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
+        sourceRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
         audioGain: 1.5,
         audioBalance: -0.25,
-        audioFadeInUs: timelineUs(120_000),
-        audioFadeOutUs: timelineUs(340_000),
+        audioFadeInTicks: timelineTicks(120_000),
+        audioFadeOutTicks: timelineTicks(340_000),
       },
     ]);
 
@@ -805,25 +805,25 @@ describe('toWorkerTimelineClips', () => {
       trackId: 't1',
       name: 'Clip 1',
       source: { path: '/video.mp4' },
-      sourceDurationUs: timelineUs(1_000_000),
-      timelineRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
-      sourceRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
+      sourceDurationTicks: timelineTicks(1_000_000),
+      timelineRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
+      sourceRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
       audioFadesActive: false,
       audioGain: 0.25,
       audioBalance: -0.5,
-      audioFadeInUs: timelineUs(120_000),
-      audioFadeOutUs: timelineUs(340_000),
+      audioFadeInTicks: timelineTicks(120_000),
+      audioFadeOutTicks: timelineTicks(340_000),
       audioFadeInCurve: 'logarithmic',
       audioFadeOutCurve: 'logarithmic',
       animations: {
-        'audio.volume': { keyframes: [{ timeUs: 0, value: 0.25 }] },
-        'audio.pan': { keyframes: [{ timeUs: 0, value: -0.5 }] },
-        opacity: { keyframes: [{ timeUs: 0, value: 0.75 }] },
+        'audio.volume': { keyframes: [{ timeTicks: 0, value: 0.25 }] },
+        'audio.pan': { keyframes: [{ timeTicks: 0, value: -0.5 }] },
+        opacity: { keyframes: [{ timeTicks: 0, value: 0.75 }] },
       },
     } as any;
     const projectStoreMock = {
       getFileHandleByPath: async () => null,
-      projectSettings: { project: { audioDeclickDurationUs: 5000 } },
+      projectSettings: { project: { audioDeclickDurationTicks: 5000 } },
     } as any;
 
     const clips = await toWorkerTimelineClips([item], projectStoreMock, wsMock);
@@ -834,15 +834,15 @@ describe('toWorkerTimelineClips', () => {
       originalAudioGain: 1,
       originalAudioBalance: 0,
     });
-    expect(clips[0]?.audioFadeInUs).toBeUndefined();
-    expect(clips[0]?.audioFadeOutUs).toBeUndefined();
+    expect(clips[0]?.audioFadeInTicks).toBeUndefined();
+    expect(clips[0]?.audioFadeOutTicks).toBeUndefined();
     expect(clips[0]?.audioFadeInCurve).toBeUndefined();
     expect(clips[0]?.audioFadeOutCurve).toBeUndefined();
     expect(clips[0]?.animations?.['audio.volume']).toBeUndefined();
     expect(clips[0]?.animations?.['audio.pan']).toBeUndefined();
-    expect(clips[0]?.animations?.opacity).toEqual({ keyframes: [{ timeUs: 0, value: 0.75 }] });
+    expect(clips[0]?.animations?.opacity).toEqual({ keyframes: [{ timeTicks: 0, value: 0.75 }] });
     expect(item.audioGain).toBe(0.25);
-    expect(item.audioFadeInUs).toBe(timelineUs(120_000));
+    expect(item.audioFadeInTicks).toBe(timelineTicks(120_000));
   });
 
   it('serializes HUD frame and masks into video worker payloads', async () => {
@@ -862,15 +862,15 @@ describe('toWorkerTimelineClips', () => {
             content: { source: { path: '/content.mp4' } },
             frame: { source: { path: '/frame.png' }, scaleX: 1.5 },
             mask: { source: { path: '/mask.png' }, mode: 'alpha' },
-            timelineRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
-            sourceRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
+            timelineRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
+            sourceRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
           },
         ],
       },
     ] as any;
     const projectStoreMock = {
       getFileByPath: async () => null,
-      projectSettings: { project: { audioDeclickDurationUs: 5000 } },
+      projectSettings: { project: { audioDeclickDurationTicks: 5000 } },
     } as any;
 
     const built = await buildVideoWorkerPayloadFromTracks({
@@ -902,9 +902,9 @@ describe('toWorkerTimelineClips', () => {
         trackId: 't1',
         name: 'Clip 1',
         source: { path: '/video.mp4' },
-        sourceDurationUs: timelineUs(1_000_000),
-        timelineRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
-        sourceRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
+        sourceDurationTicks: timelineTicks(1_000_000),
+        timelineRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
+        sourceRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
       } as any,
     ];
 
@@ -917,7 +917,7 @@ describe('toWorkerTimelineClips', () => {
 
     const projectStoreMock = {
       getFileHandleByPath: async () => null,
-      projectSettings: { project: { audioDeclickDurationUs: 5000 } },
+      projectSettings: { project: { audioDeclickDurationTicks: 5000 } },
     } as any;
     const clips = await toWorkerTimelineClips(items, projectStoreMock, wsMock);
 
@@ -933,9 +933,9 @@ describe('toWorkerTimelineClips', () => {
         trackId: 'v1',
         name: 'Clip 1',
         source: { path: '/video.mp4' },
-        sourceDurationUs: timelineUs(1_000_000),
-        timelineRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
-        sourceRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
+        sourceDurationTicks: timelineTicks(1_000_000),
+        timelineRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
+        sourceRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
         opacity: 0.5,
         blendMode: 'multiply',
         effects: [{ id: 'clip-1', type: 'blur', enabled: true, amount: 1 } as any],
@@ -944,7 +944,7 @@ describe('toWorkerTimelineClips', () => {
 
     const projectStoreMock = {
       getFileHandleByPath: async () => null,
-      projectSettings: { project: { audioDeclickDurationUs: 5000 } },
+      projectSettings: { project: { audioDeclickDurationTicks: 5000 } },
     } as any;
     const clips = await toWorkerTimelineClips(items, projectStoreMock, wsMock, {
       layer: 3,
@@ -971,14 +971,14 @@ describe('toWorkerTimelineClips', () => {
         trackId: 't1',
         name: 'Background',
         backgroundColor: 'abc',
-        timelineRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
-        sourceRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
+        timelineRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
+        sourceRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
       } as any,
     ];
 
     const projectStoreMock = {
       getFileHandleByPath: async () => null,
-      projectSettings: { project: { audioDeclickDurationUs: 5000 } },
+      projectSettings: { project: { audioDeclickDurationTicks: 5000 } },
     } as any;
 
     const clips = await toWorkerTimelineClips(items, projectStoreMock, wsMock);
@@ -1001,26 +1001,26 @@ describe('toWorkerTimelineClips', () => {
         backgroundColor: '#112233',
         transitionIn: {
           type: 'fade-to-black',
-          durationUs: timelineUs(250_000),
+          durationTicks: timelineTicks(250_000),
           mode: 'background',
           curve: 'linear',
           params: {},
         },
         transitionOut: {
           type: 'dissolve',
-          durationUs: timelineUs(250_000),
+          durationTicks: timelineTicks(250_000),
           mode: 'transparent',
           curve: 'linear',
           params: {},
         },
-        timelineRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
-        sourceRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
+        timelineRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
+        sourceRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
       } as any,
     ];
 
     const projectStoreMock = {
       getFileHandleByPath: async () => null,
-      projectSettings: { project: { audioDeclickDurationUs: 5000 } },
+      projectSettings: { project: { audioDeclickDurationTicks: 5000 } },
     } as any;
 
     const clips = await toWorkerTimelineClips(items, projectStoreMock, wsMock);
@@ -1029,12 +1029,12 @@ describe('toWorkerTimelineClips', () => {
       clipType: 'background',
       transitionIn: {
         type: 'fade-to-black',
-        durationUs: timelineUs(250_000),
+        durationTicks: timelineTicks(250_000),
         mode: 'background',
       },
       transitionOut: {
         type: 'dissolve',
-        durationUs: timelineUs(250_000),
+        durationTicks: timelineTicks(250_000),
         mode: 'transparent',
       },
     });
@@ -1049,9 +1049,9 @@ describe('toWorkerTimelineClips', () => {
         trackId: 't1',
         name: 'Clip 1',
         source: { path: '/video.mp4' },
-        sourceDurationUs: timelineUs(1_000_000),
-        timelineRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
-        sourceRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
+        sourceDurationTicks: timelineTicks(1_000_000),
+        timelineRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
+        sourceRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
       } as any,
     ];
 
@@ -1059,7 +1059,7 @@ describe('toWorkerTimelineClips', () => {
 
     const projectStoreMock = {
       getFileHandleByPath: async () => null,
-      projectSettings: { project: { audioDeclickDurationUs: 5000 } },
+      projectSettings: { project: { audioDeclickDurationTicks: 5000 } },
     } as any;
 
     const clips = await toWorkerTimelineClips(items, projectStoreMock, wsMock);
@@ -1078,16 +1078,16 @@ describe('toWorkerTimelineClips', () => {
         trackId: 't1',
         name: 'Clip 1',
         source: { path: '/video.mp4' },
-        sourceDurationUs: timelineUs(1_000_000),
-        timelineRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
-        sourceRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
+        sourceDurationTicks: timelineTicks(1_000_000),
+        timelineRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
+        sourceRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
         effects: [{ id: 'clip-fx', type: 'brightness', enabled: true, amount: 1.2 } as any],
       } as any,
     ];
 
     const projectStoreMock = {
       getFileHandleByPath: async () => null,
-      projectSettings: { project: { audioDeclickDurationUs: 5000 } },
+      projectSettings: { project: { audioDeclickDurationTicks: 5000 } },
     } as any;
 
     const trackFx = [{ id: 'track-fx', type: 'blur', enabled: true, amount: 2 } as any];
@@ -1130,7 +1130,7 @@ describe('toWorkerTimelineClips', () => {
                 metadata: {
                   fastcat: {
                     clipType: 'media',
-                    source: { durationUs: 1000000 },
+                    source: { durationTicks: 1000000 },
                   },
                 },
               },
@@ -1148,13 +1148,13 @@ describe('toWorkerTimelineClips', () => {
         trackId: 't1',
         name: 'Nested',
         source: { path: '_timelines/nested.otio' } as any,
-        timelineRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
-        sourceRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
+        timelineRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
+        sourceRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
       } as any,
     ];
 
     const projectStoreMock = {
-      projectSettings: { project: { audioDeclickDurationUs: 5000 } },
+      projectSettings: { project: { audioDeclickDurationTicks: 5000 } },
       getFileByPath: async (path: string) => {
         if (path !== '_timelines/nested.otio') return null;
         return {
@@ -1200,13 +1200,13 @@ describe('toWorkerTimelineClips', () => {
     const projectStoreMock = {
       projectSettings: {
         project: {
-          audioDeclickDurationUs: 5000,
+          audioDeclickDurationTicks: 5000,
           fps: 25,
         },
       },
       getFileByPath,
     } as any;
-    const createNestedItem = (id: string, startUs: number) =>
+    const createNestedItem = (id: string, startTicks: number) =>
       ({
         kind: 'clip',
         clipType: 'timeline',
@@ -1214,12 +1214,12 @@ describe('toWorkerTimelineClips', () => {
         trackId: 'track',
         name: id,
         source: { path: '_timelines/shared.otio' },
-        timelineRange: { startUs, durationUs: timelineUs(1_000_000) },
-        sourceRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
+        timelineRange: { startTicks, durationTicks: timelineTicks(1_000_000) },
+        sourceRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
       }) as TimelineTrackItem;
 
     await toWorkerTimelineClips(
-      [createNestedItem('nested-1', 0), createNestedItem('nested-2', timelineUs(1_000_000))],
+      [createNestedItem('nested-1', 0), createNestedItem('nested-2', timelineTicks(1_000_000))],
       projectStoreMock,
       wsMock,
       { trackKind: 'video' },
@@ -1257,7 +1257,7 @@ describe('toWorkerTimelineClips', () => {
                 metadata: {
                   fastcat: {
                     clipType: 'media',
-                    source: { durationUs: 2000000 },
+                    source: { durationTicks: 2000000 },
                   },
                 },
               },
@@ -1276,13 +1276,13 @@ describe('toWorkerTimelineClips', () => {
         name: 'Nested Fast',
         source: { path: '_timelines/nested.otio' } as any,
         speed: 2,
-        timelineRange: { startUs: timelineUs(5_000_000), durationUs: timelineUs(1_000_000) },
-        sourceRange: { startUs: 0, durationUs: timelineUs(2_000_000) },
+        timelineRange: { startTicks: timelineTicks(5_000_000), durationTicks: timelineTicks(1_000_000) },
+        sourceRange: { startTicks: 0, durationTicks: timelineTicks(2_000_000) },
       } as any,
     ];
 
     const projectStoreMock = {
-      projectSettings: { project: { audioDeclickDurationUs: 5000 } },
+      projectSettings: { project: { audioDeclickDurationTicks: 5000 } },
       getFileByPath: async (path: string) => {
         if (path !== '_timelines/nested.otio') return null;
         return {
@@ -1299,8 +1299,8 @@ describe('toWorkerTimelineClips', () => {
     expect(clips).toHaveLength(1);
     expect(clips[0]).toMatchObject({
       speed: 2,
-      timelineRange: { startUs: timelineUs(5_000_000), durationUs: timelineUs(1_000_000) },
-      sourceRange: { startUs: 0, durationUs: timelineUs(2_000_000) },
+      timelineRange: { startTicks: timelineTicks(5_000_000), durationTicks: timelineTicks(1_000_000) },
+      sourceRange: { startTicks: 0, durationTicks: timelineTicks(2_000_000) },
     });
   });
 
@@ -1334,7 +1334,7 @@ describe('toWorkerTimelineClips', () => {
                   metadata: {
                     fastcat: {
                       clipType: 'timeline',
-                      source: { durationUs: 1000000 },
+                      source: { durationTicks: 1000000 },
                     },
                   },
                 },
@@ -1346,7 +1346,7 @@ describe('toWorkerTimelineClips', () => {
 
     const requestedPaths: string[] = [];
     const projectStoreMock = {
-      projectSettings: { project: { audioDeclickDurationUs: 5000 } },
+      projectSettings: { project: { audioDeclickDurationTicks: 5000 } },
       getFileByPath: async (path: string) => {
         requestedPaths.push(path);
         if (path === '_timelines/sub/a.otio') {
@@ -1370,8 +1370,8 @@ describe('toWorkerTimelineClips', () => {
             trackId: 't1',
             name: 'Nested A',
             source: { path: '_timelines/sub/../sub/a.otio' },
-            timelineRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
-            sourceRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
+            timelineRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
+            sourceRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
           } as any,
         ],
         projectStoreMock,
@@ -1419,12 +1419,12 @@ describe('toWorkerTimelineClips', () => {
                 metadata: {
                   fastcat: {
                     clipType: 'media',
-                    source: { durationUs: 1000000 },
+                    source: { durationTicks: 1000000 },
                     audio: {
                       gain: 2,
                       balance: 0.1,
-                      fadeInUs: 100000,
-                      fadeOutUs: 100000,
+                      fadeInTicks: 100000,
+                      fadeOutTicks: 100000,
                     },
                   },
                 },
@@ -1443,17 +1443,17 @@ describe('toWorkerTimelineClips', () => {
         trackId: 't1',
         name: 'Nested',
         source: { path: '_timelines/nested.otio' } as any,
-        timelineRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
-        sourceRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
+        timelineRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
+        sourceRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
         audioGain: 0.5,
         audioBalance: -0.2,
-        audioFadeInUs: timelineUs(200_000),
-        audioFadeOutUs: timelineUs(300_000),
+        audioFadeInTicks: timelineTicks(200_000),
+        audioFadeOutTicks: timelineTicks(300_000),
       } as any,
     ];
 
     const projectStoreMock = {
-      projectSettings: { project: { audioDeclickDurationUs: 5000 } },
+      projectSettings: { project: { audioDeclickDurationTicks: 5000 } },
       getFileByPath: async (path: string) => {
         if (path !== '_timelines/nested.otio') return null;
         return {
@@ -1470,14 +1470,14 @@ describe('toWorkerTimelineClips', () => {
     expect(clips[0]?.source?.path).toBe('_timelines/audio.wav');
     expect(clips[0]?.audioGain).toBeCloseTo(1);
     expect(clips[0]?.audioBalance).toBeCloseTo(-0.1);
-    expect(clips[0]?.audioFadeInUs).toBe(timelineUs(200_000));
-    expect(clips[0]?.audioFadeOutUs).toBe(timelineUs(300_000));
+    expect(clips[0]?.audioFadeInTicks).toBe(timelineTicks(200_000));
+    expect(clips[0]?.audioFadeOutTicks).toBe(timelineTicks(300_000));
   });
 
   it('emits explicit nested track payload items with compounded opacity/blend', async () => {
     const workspaceStoreMock = {
       userSettings: {
-        projectDefaults: { audioDeclickDurationUs: 5000 },
+        projectDefaults: { audioDeclickDurationTicks: 5000 },
         optimization: { videoFrameCacheMb: 256 },
       },
     } as any;
@@ -1518,7 +1518,7 @@ describe('toWorkerTimelineClips', () => {
                 metadata: {
                   fastcat: {
                     clipType: 'media',
-                    source: { durationUs: 1000000 },
+                    source: { durationTicks: 1000000 },
                   },
                 },
               },
@@ -1529,7 +1529,7 @@ describe('toWorkerTimelineClips', () => {
     });
 
     const projectStoreMock = {
-      projectSettings: { project: { audioDeclickDurationUs: 5000 } },
+      projectSettings: { project: { audioDeclickDurationTicks: 5000 } },
       getFileByPath: async (path: string) => {
         if (path !== '_timelines/nested.otio') return null;
         return {
@@ -1554,8 +1554,8 @@ describe('toWorkerTimelineClips', () => {
               trackId: 'v1',
               name: 'Nested',
               source: { path: '_timelines/nested.otio' },
-              timelineRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
-              sourceRange: { startUs: 0, durationUs: timelineUs(1_000_000) },
+              timelineRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
+              sourceRange: { startTicks: 0, durationTicks: timelineTicks(1_000_000) },
             },
           ],
         } as any,

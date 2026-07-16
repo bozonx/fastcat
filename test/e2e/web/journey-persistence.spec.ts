@@ -47,9 +47,9 @@ test.describe('Persistence User Journey', () => {
     const trimmedDoc = await waitForTimelineDoc(
       page,
       e2eProject,
-      (d) => d.allClips[0].timelineDurationUs < doc0.allClips[0].timelineDurationUs,
+      (d) => d.allClips[0].timelineDurationTicks < doc0.allClips[0].timelineDurationTicks,
     );
-    const editedDurationUs = trimmedDoc.allClips[0].timelineDurationUs;
+    const editedDurationTicks = trimmedDoc.allClips[0].timelineDurationTicks;
 
     await selectClip(page, initialClipId);
     await page.getByRole('tab', { name: 'Video' }).click();
@@ -67,7 +67,7 @@ test.describe('Persistence User Journey', () => {
       const effect = d.allClips[0]?.effects.find((e) => e.type === 'color-adjustment');
       return effect?.params.brightness === 1.4;
     });
-    expect(docPhase1.allClips[0].timelineDurationUs).toBe(editedDurationUs);
+    expect(docPhase1.allClips[0].timelineDurationTicks).toBe(editedDurationTicks);
 
     // 2. Page Reload
     await page.goto(`/editor/${e2eProject.encodedName}`);
@@ -76,7 +76,7 @@ test.describe('Persistence User Journey', () => {
 
     // 3. Verify OTIO/OPFS persistence after reload
     const docReloaded = await waitForTimelineDoc(page, e2eProject, (d) => d.allClips.length === 1);
-    expect(docReloaded.allClips[0].timelineDurationUs).toBe(editedDurationUs);
+    expect(docReloaded.allClips[0].timelineDurationTicks).toBe(editedDurationTicks);
     expect(
       docReloaded.allClips[0].effects.some(
         (e) => e.type === 'color-adjustment' && e.params.brightness === 1.4,
@@ -96,7 +96,7 @@ test.describe('Persistence User Journey', () => {
     const allClipIds = await clipIds(page);
     const audioClipId = allClipIds[1];
     await dragClipBy(page, audioClipId, { x: 500_000 });
-    await waitForTimelineDoc(page, e2eProject, (d) => (d.allClips[1]?.timelineStartUs ?? 0) > 0);
+    await waitForTimelineDoc(page, e2eProject, (d) => (d.allClips[1]?.timelineStartTicks ?? 0) > 0);
 
     // 5. Export final result after post-reload editing
     await openExport(page);

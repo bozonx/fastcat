@@ -52,7 +52,7 @@ const {
   timelineStore,
   selectionStore,
   videoItems,
-  safeDurationUs,
+  safeDurationTicks,
   isTextClipSelected,
   isAdjustmentClipSelected,
   containerEl,
@@ -67,7 +67,7 @@ const {
   isSavingStopFrame,
   createStopFrameSnapshot,
   timecodeEl,
-  uiCurrentTimeUs,
+  uiCurrentTimeTicks,
 } = useMonitorRuntime();
 
 /** Typed accessor for the MonitorViewport instance, avoiding ad-hoc casts at call sites. */
@@ -76,7 +76,7 @@ function viewportApi(): MonitorViewportExposed | null {
 }
 
 const canInteractPlayback = computed(
-  () => !isLoading.value && (safeDurationUs.value > 0 || videoItems.value.length > 0),
+  () => !isLoading.value && (safeDurationTicks.value > 0 || videoItems.value.length > 0),
 );
 
 const statusText = computed(() => {
@@ -102,7 +102,7 @@ const { contextMenuItems, onPlaybackSpeedChange, selectedPlaybackSpeedOption, sp
     videoItems,
     isLoading,
     loadError,
-    safeDurationUs,
+    safeDurationTicks,
     previewEffectsEnabled,
     useProxyInMonitor,
     showGrid,
@@ -412,7 +412,7 @@ function togglePlayback() {
 }
 
 function rewindToStart() {
-  timelineStore.setCurrentTimeUs(0);
+  timelineStore.setCurrentTimeTicks(0);
   blurActiveElement();
 }
 
@@ -460,7 +460,7 @@ function onMonitorButtonPointerUp() {
         :render-width="renderWidth"
         :render-height="renderHeight"
         :effective-fullscreen="isFullscreen"
-        :ui-current-time-us="uiCurrentTimeUs"
+        :ui-current-time-us="uiCurrentTimeTicks"
         :is-mobile="true"
         class="bg-black/80"
         @click="handleViewportClick"

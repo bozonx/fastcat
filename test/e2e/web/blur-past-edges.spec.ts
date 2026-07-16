@@ -6,7 +6,7 @@ import {
   trackIds,
   clipIds,
   updateClipProperties,
-  setCurrentTimeUs,
+  setCurrentTimeTicks,
 } from '../../utils/e2e/timeline';
 import { waitForTimelineDoc } from '../../utils/e2e/otio';
 import { probeWebGpu } from '../../utils/e2e/webgpu';
@@ -176,7 +176,7 @@ async function runScenario(
 
   // The drag may land the clip a few seconds in — park the playhead inside it.
   const clipDoc = doc.allClips[0]!;
-  await setCurrentTimeUs(page, clipDoc.timelineStartUs + 500_000);
+  await setCurrentTimeTicks(page, clipDoc.timelineStartTicks + 500_000);
 
   const gpu = await probeWebGpu(page);
   test.skip(!gpu.available, `WebGPU unavailable: ${gpu.reason}`);

@@ -52,9 +52,9 @@ const baseClip: TimelineClipItem = {
   clipType: 'media',
   name: 'Clip',
   source: { path: '_video/clip.mp4' },
-  sourceRange: { startUs: 0, durationUs: 5_000_000 },
-  sourceDurationUs: 5_000_000,
-  timelineRange: { startUs: 0, durationUs: 5_000_000 },
+  sourceRange: { startTicks: 0, durationTicks: 5_000_000 },
+  sourceDurationTicks: 5_000_000,
+  timelineRange: { startTicks: 0, durationTicks: 5_000_000 },
 };
 
 const baseVideoTrack: TimelineTrack = {
@@ -93,7 +93,7 @@ function setupDropZone(options?: {
   track?: TimelineTrack;
   clip?: TimelineClipItem | null;
   canEdit?: boolean;
-  defaultTransitionDurationUs?: number;
+  defaultTransitionDurationTicks?: number;
 }) {
   const scope = effectScope();
   const updateClipProperties = vi.fn();
@@ -105,7 +105,7 @@ function setupDropZone(options?: {
   const track = ref(options?.track ?? baseVideoTrack);
   const clipItem = ref(options?.clip ?? baseClip);
   const canEditClipContent = ref(options?.canEdit ?? true);
-  const defaultTransitionDurationUs = ref(options?.defaultTransitionDurationUs ?? 1_000_000);
+  const defaultTransitionDurationTicks = ref(options?.defaultTransitionDurationTicks ?? 1_000_000);
 
   const api = scope.run(() =>
     useClipDrop({
@@ -117,7 +117,7 @@ function setupDropZone(options?: {
       selectTimelineItem,
       selectTimelineTransition,
       triggerScrollToEffects,
-      defaultTransitionDurationUs: computed(() => defaultTransitionDurationUs.value),
+      defaultTransitionDurationTicks: computed(() => defaultTransitionDurationTicks.value),
     }),
   );
 
@@ -247,7 +247,7 @@ describe('useClipDrop', () => {
   });
 
   it('adds a transition to the clip edge under the pointer', () => {
-    const drop = setupDropZone({ defaultTransitionDurationUs: 2_000_000 });
+    const drop = setupDropZone({ defaultTransitionDurationTicks: 2_000_000 });
     const payload: DndPayload = { source: 'transition', data: { type: 'dissolve' } };
     const clipEl = makeClipElement({ left: 10, width: 100 });
 
@@ -263,7 +263,7 @@ describe('useClipDrop', () => {
     expect(drop.updateClipTransition).toHaveBeenLastCalledWith('track-1', 'clip-1', {
       transitionIn: expect.objectContaining({
         type: 'dissolve',
-        durationUs: 1_500_000,
+        durationTicks: 1_500_000,
         mode: 'adjacent',
         curve: 'linear',
         params: {},
@@ -288,7 +288,7 @@ describe('useClipDrop', () => {
   });
 
   it('applies a custom transition preset drop as the base transition type', () => {
-    const drop = setupDropZone({ defaultTransitionDurationUs: 2_000_000 });
+    const drop = setupDropZone({ defaultTransitionDurationTicks: 2_000_000 });
     const payload: DndPayload = { source: 'transition', data: { type: 'custom_dissolve' } };
     const clipEl = makeClipElement({ left: 10, width: 100 });
 

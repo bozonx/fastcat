@@ -62,7 +62,7 @@ describe('serializeTimeEffects', () => {
   });
 
   it('serializes freeze frame effect', () => {
-    const result = serializeTimeEffects({ freezeFrameSourceUs: 500_000 });
+    const result = serializeTimeEffects({ freezeFrameSourceTicks: 500_000 });
     expect(result).toHaveLength(1);
     expect(result![0].OTIO_SCHEMA).toBe('FreezeFrame.1');
   });
@@ -83,16 +83,16 @@ describe('parseTimeEffects', () => {
     const result = parseTimeEffects([
       {
         OTIO_SCHEMA: 'FreezeFrame.1',
-        metadata: { fastcat: { effect: { params: { freezeFrameSourceUs: 500_000 } } } },
+        metadata: { fastcat: { effect: { params: { freezeFrameSourceTicks: 500_000 } } } },
       },
     ]);
-    expect(result.freezeFrameSourceUs).toBe(500_000);
+    expect(result.freezeFrameSourceTicks).toBe(500_000);
   });
 });
 
 describe('serializeMarker', () => {
   it('serializes marker to otio format', () => {
-    const marker = { id: 'm1', timeUs: 1_000_000, text: 'Marker', color: 'red' };
+    const marker = { id: 'm1', timeTicks: 1_000_000, text: 'Marker', color: 'red' };
     const result = serializeMarker(marker as any);
     expect(result.OTIO_SCHEMA).toBe('Marker.2');
     expect(result.color).toBe('RED');
@@ -123,11 +123,11 @@ describe('parseOtioMarkers', () => {
 
 describe('buildOtioTransition', () => {
   it('returns null for invalid transition', () => {
-    expect(buildOtioTransition({ type: '', durationUs: 0 } as any, 'name')).toBeNull();
+    expect(buildOtioTransition({ type: '', durationTicks: 0 } as any, 'name')).toBeNull();
   });
 
   it('builds otio transition', () => {
-    const result = buildOtioTransition({ type: 'dissolve', durationUs: 500_000 } as any, 'trans');
+    const result = buildOtioTransition({ type: 'dissolve', durationTicks: 500_000 } as any, 'trans');
     expect(result?.OTIO_SCHEMA).toBe('Transition.1');
     expect(result?.transition_type).toBe('SMPTE_Dissolve');
   });
@@ -145,11 +145,11 @@ describe('parseOtioTransition', () => {
       transition_type: 'SMPTE_Dissolve',
       in_offset: { value: 250_000, rate: 1_000_000 },
       out_offset: { value: 250_000, rate: 1_000_000 },
-      metadata: { fastcat: { transition: { type: 'dissolve', durationUs: 500_000 } } },
+      metadata: { fastcat: { transition: { type: 'dissolve', durationTicks: 500_000 } } },
     });
     expect(result).not.toBeNull();
     expect(result?.type).toBe('dissolve');
-    expect(result?.durationUs).toBe(500_000);
+    expect(result?.durationTicks).toBe(500_000);
   });
 });
 
@@ -160,7 +160,7 @@ describe('parseFastCatTransition', () => {
   });
 
   it('parses fastcat transition', () => {
-    const result = parseFastCatTransition({ type: 'dissolve', durationUs: 500_000 });
-    expect(result).toEqual(expect.objectContaining({ type: 'dissolve', durationUs: 500_000 }));
+    const result = parseFastCatTransition({ type: 'dissolve', durationTicks: 500_000 });
+    expect(result).toEqual(expect.objectContaining({ type: 'dissolve', durationTicks: 500_000 }));
   });
 });

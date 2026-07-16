@@ -12,9 +12,9 @@ const mockWorkspaceStore = reactive({
     openLastProjectOnStart: false,
     timeline: {
       snapThresholdPx: 8,
-      defaultAudioFadeDurationUs: 1000000,
-      defaultTransitionDurationUs: 2000000,
-      defaultStaticClipDurationUs: 5000000,
+      defaultAudioFadeDurationTicks: 1000000,
+      defaultTransitionDurationTicks: 2000000,
+      defaultStaticClipDurationTicks: 5000000,
       snapping: {
         timelineEdges: true,
         clips: true,
@@ -69,7 +69,7 @@ const mockWorkspaceStore = reactive({
       aspectRatio: '16:9',
       isCustomResolution: false,
       sampleRate: 48000,
-      audioDeclickDurationUs: 5000,
+      audioDeclickDurationTicks: 5000,
       defaultAudioFadeCurve: 'linear',
       audioScrubbingEnabled: true,
     },

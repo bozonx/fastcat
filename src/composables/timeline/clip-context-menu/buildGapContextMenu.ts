@@ -14,7 +14,7 @@ export function buildGapContextMenu(options: UseClipContextMenuOptions): Context
         disabled: !options.hasTimelineClipboard,
         kbds: options.getHotkeyKbds('general.paste'),
         onSelect: () => {
-          options.pasteClips(item.timelineRange.startUs);
+          options.pasteClips(item.timelineRange.startTicks);
         },
       },
       {

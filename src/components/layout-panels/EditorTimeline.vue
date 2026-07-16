@@ -26,7 +26,7 @@ import {
   computeTimelineScrollLeftForPlayhead,
   computeTimelinePlaybackAutoScrollLeft,
   timeUsToPx,
-  pxToTimeUs,
+  pxToTimeTicks,
 } from '~/utils/timeline/geometry';
 import { isLayer1Pressed } from '~/utils/hotkeys/layerUtils';
 import { useDndDropZone } from '~/composables/dnd/useDndDropZone';
@@ -159,8 +159,8 @@ const trackResetButtons = computed(() =>
 );
 
 const timelineWidthStyle = computed(() => {
-  const maxUs = timelineStore.duration + 30_000_000;
-  const widthPx = timeUsToPx(maxUs, timelineStore.timelineZoom);
+  const maxTicks = timelineStore.duration + 30_000_000;
+  const widthPx = timeUsToPx(maxTicks, timelineStore.timelineZoom);
   return { width: `${widthPx}px`, minWidth: '100%' };
 });
 
@@ -351,7 +351,7 @@ function getCachedPointerRect(el: HTMLElement): DOMRect {
 function getTimeUsFromPointerEvent(el: HTMLElement, event: PointerEvent): number {
   const rect = getCachedPointerRect(el);
   const x = event.clientX - rect.left + (masterScrollEl.value?.scrollLeft ?? 0);
-  return pxToTimeUs(x, timelineStore.timelineZoom);
+  return pxToTimeTicks(x, timelineStore.timelineZoom);
 }
 
 function getTimeUsFromRulerMiddlePointer(): number {
@@ -360,7 +360,7 @@ function getTimeUsFromRulerMiddlePointer(): number {
   if (!rect || !pointer) return timelineStore.currentTime;
 
   const x = pointer.clientX - rect.left + scrollLeftRef.value;
-  return pxToTimeUs(x, timelineStore.timelineZoom);
+  return pxToTimeTicks(x, timelineStore.timelineZoom);
 }
 
 function executeRulerMiddleClickFallback() {
@@ -368,7 +368,7 @@ function executeRulerMiddleClickFallback() {
   if (action === 'none') return;
 
   if (action === 'seek') {
-    timelineStore.setCurrentTimeUs(getTimeUsFromRulerMiddlePointer());
+    timelineStore.setCurrentTimeTicks(getTimeUsFromRulerMiddlePointer());
     return;
   }
 
@@ -399,7 +399,7 @@ function executeRulerMiddleClickFallback() {
     timelineStore.applyTimeline({
       type: 'add_marker',
       id: markerId,
-      timeUs: getTimeUsFromRulerMiddlePointer(),
+      timeTicks: getTimeUsFromRulerMiddlePointer(),
       text: '',
     });
     selectionStore.selectTimelineMarker(markerId);
@@ -418,7 +418,7 @@ function onTimelinePointerMove(e: PointerEvent) {
   ) {
     const el = getActiveScrollEl(e) || scrollEl.value;
     if (el) {
-      timelineStore.setCurrentTimeUs(getTimeUsFromPointerEvent(el, e));
+      timelineStore.setCurrentTimeTicks(getTimeUsFromPointerEvent(el, e));
     }
   }
 
@@ -452,7 +452,7 @@ function onTrackAreaPointerDownCapture(e: PointerEvent) {
     } else if (timelineMouseSettings.value.middleDrag === 'move_playhead') {
       const el = getActiveScrollEl(e) || scrollEl.value;
       if (!el) return;
-      timelineStore.setCurrentTimeUs(getTimeUsFromPointerEvent(el, e));
+      timelineStore.setCurrentTimeTicks(getTimeUsFromPointerEvent(el, e));
       startPlayheadDrag(e);
     }
   }
@@ -491,7 +491,7 @@ onBeforeUnmount(() => {
     delete e2eWindow.__fastcatE2eSelectTimelineItems;
     delete e2eWindow.__fastcatE2eDeleteSelectedItems;
     delete e2eWindow.__fastcatE2eUpdateClipProperties;
-    delete e2eWindow.__fastcatE2eSetCurrentTimeUs;
+    delete e2eWindow.__fastcatE2eSetCurrentTimeTicks;
     delete e2eWindow.__fastcatE2eGetSelectedItemIds;
     delete e2eWindow.__fastcatE2eSaveTimeline;
     delete e2eWindow.__fastcatE2eSetTimelineZoom;
@@ -577,8 +577,8 @@ onMounted(() => {
       await persistE2eTimelineEdit();
     };
 
-    e2eWindow.__fastcatE2eSetCurrentTimeUs = async ({ us }) => {
-      timelineStore.setCurrentTimeUs(Math.max(0, Math.round(us)));
+    e2eWindow.__fastcatE2eSetCurrentTimeTicks = async ({ us }) => {
+      timelineStore.setCurrentTimeTicks(Math.max(0, Math.round(us)));
     };
 
     e2eWindow.__fastcatE2eGetSelectedItemIds = async () => [...timelineStore.selectedItemIds];
@@ -591,8 +591,8 @@ onMounted(() => {
       timelineStore.setTimelineZoomExact(zoom);
     };
 
-    e2eWindow.__fastcatE2eAddTextClip = async ({ text, style, durationUs, trackId }) => {
-      const itemIds = timelineStore.addTextClipAtPlayhead({ text, style, durationUs, trackId });
+    e2eWindow.__fastcatE2eAddTextClip = async ({ text, style, durationTicks, trackId }) => {
+      const itemIds = timelineStore.addTextClipAtPlayhead({ text, style, durationTicks, trackId });
       await persistE2eTimelineEdit();
       return itemIds;
     };
@@ -603,7 +603,7 @@ onMounted(() => {
         path,
         trackId,
         name,
-        startUs: 0,
+        startTicks: 0,
       });
       await persistE2eTimelineEdit();
     };
@@ -625,15 +625,15 @@ onMounted(() => {
       };
     };
 
-    e2eWindow.__fastcatE2eAddMarker = async ({ timeUs, text, color, durationUs }) => {
+    e2eWindow.__fastcatE2eAddMarker = async ({ timeTicks, text, color, durationTicks }) => {
       const id = createMarkerId();
       timelineStore.applyTimeline({
         type: 'add_marker',
         id,
-        timeUs,
+        timeTicks,
         text,
         color,
-        ...(durationUs !== undefined ? { durationUs } : {}),
+        ...(durationTicks !== undefined ? { durationTicks } : {}),
       });
       await persistE2eTimelineEdit();
       return id;
@@ -645,10 +645,10 @@ onMounted(() => {
         entries.map((marker) => ({
           type: 'add_marker' as const,
           id: marker.id,
-          timeUs: marker.timeUs,
+          timeTicks: marker.timeTicks,
           text: marker.text,
           color: marker.color,
-          ...(marker.durationUs !== undefined ? { durationUs: marker.durationUs } : {}),
+          ...(marker.durationTicks !== undefined ? { durationTicks: marker.durationTicks } : {}),
         })),
       );
       await persistE2eTimelineEdit();
@@ -667,7 +667,7 @@ onMounted(() => {
 
     e2eWindow.__fastcatE2eGetMarkers = async () => timelineStore.getMarkers();
 
-    e2eWindow.__fastcatE2eTrimClip = async ({ itemId, edge, deltaUs }) => {
+    e2eWindow.__fastcatE2eTrimClip = async ({ itemId, edge, deltaTicks }) => {
       const track = findE2eClipTrack(itemId);
       if (!track) throw new Error(`Timeline clip track not found: ${itemId}`);
       timelineStore.applyTimeline({
@@ -675,23 +675,23 @@ onMounted(() => {
         trackId: track.id,
         itemId,
         edge,
-        deltaUs,
+        deltaTicks,
         quantizeToFrames: true,
       });
       await persistE2eTimelineEdit();
     };
 
-    e2eWindow.__fastcatE2eMoveClip = async ({ itemId, deltaUs }) => {
+    e2eWindow.__fastcatE2eMoveClip = async ({ itemId, deltaTicks }) => {
       const track = findE2eClipTrack(itemId);
       if (!track) throw new Error(`Timeline clip track not found: ${itemId}`);
       const item = track.items.find((it) => it.id === itemId);
       if (!item) throw new Error(`Timeline item not found: ${itemId}`);
-      const startUs = Math.max(0, item.timelineRange.startUs + deltaUs);
+      const startTicks = Math.max(0, item.timelineRange.startTicks + deltaTicks);
       timelineStore.applyTimeline({
         type: 'move_item',
         trackId: track.id,
         itemId,
-        startUs,
+        startTicks,
         quantizeToFrames: true,
       });
       await persistE2eTimelineEdit();
@@ -707,7 +707,7 @@ onMounted(() => {
         fromTrackId: fromTrack.id,
         toTrackId,
         itemId,
-        startUs: item.timelineRange.startUs,
+        startTicks: item.timelineRange.startTicks,
         quantizeToFrames: true,
       });
       await persistE2eTimelineEdit();
@@ -843,12 +843,12 @@ function updateTrackHeight(trackId: string, height: number) {
 
 async function onDrop(e: DragEvent, trackId: string) {
   if (timelineStore.previewMode) return;
-  const startUs =
-    dragPreview.value?.trackId === trackId ? dragPreview.value.startUs : getDropPosition(e);
-  if (startUs === null) return;
+  const startTicks =
+    dragPreview.value?.trackId === trackId ? dragPreview.value.startTicks : getDropPosition(e);
+  if (startTicks === null) return;
 
   const files = e.dataTransfer?.files ? Array.from(e.dataTransfer.files) : [];
-  if (files.length > 0) await handleFileDrop(files, trackId, startUs);
+  if (files.length > 0) await handleFileDrop(files, trackId, startTicks);
   clearDragPreview();
 }
 
@@ -874,12 +874,12 @@ async function dropInternalPayloadAtPoint(params: {
   const trackId = trackEl?.dataset.trackId;
   if (!trackEl || !trackId) return;
 
-  const startUs =
+  const startTicks =
     dragPreview.value?.trackId === trackId
-      ? dragPreview.value.startUs
-      : pxToTimeUs(clientX - trackEl.getBoundingClientRect().left, timelineStore.timelineZoom);
+      ? dragPreview.value.startTicks
+      : pxToTimeTicks(clientX - trackEl.getBoundingClientRect().left, timelineStore.timelineZoom);
 
-  await handleLibraryDrop(JSON.stringify(payload), trackId, startUs, params.options);
+  await handleLibraryDrop(JSON.stringify(payload), trackId, startTicks, params.options);
   clearDragPreview();
 }
 
@@ -895,31 +895,31 @@ type FastcatE2eUpdateClipTransition = (params: {
   edge: 'in' | 'out';
   transition: ClipTransition | null;
 }) => Promise<void>;
-type FastcatE2eSetCurrentTimeUs = (params: { us: number }) => Promise<void>;
+type FastcatE2eSetCurrentTimeTicks = (params: { us: number }) => Promise<void>;
 type FastcatE2eGetSelectedItemIds = () => Promise<string[]>;
 type FastcatE2eAddTextClip = (params: {
   text?: string;
   style?: TextClipStyle;
-  durationUs?: number;
+  durationTicks?: number;
   trackId?: string;
 }) => Promise<string[]>;
 type FastcatE2eAddMarker = (params: {
-  timeUs: number;
+  timeTicks: number;
   text?: string;
   color?: string;
-  durationUs?: number;
+  durationTicks?: number;
 }) => Promise<string | null>;
 type FastcatE2eAddMarkers = (params: {
   markers: Array<{
-    timeUs: number;
+    timeTicks: number;
     text?: string;
     color?: string;
-    durationUs?: number;
+    durationTicks?: number;
   }>;
 }) => Promise<string[]>;
 type FastcatE2eUpdateMarker = (params: {
   markerId: string;
-  patch: { timeUs?: number; durationUs?: number | null; text?: string; color?: string };
+  patch: { timeTicks?: number; durationTicks?: number | null; text?: string; color?: string };
 }) => Promise<void>;
 type FastcatE2eRemoveMarker = (params: { markerId: string }) => Promise<void>;
 type FastcatE2eGetMarkers = () => Promise<TimelineMarker[]>;
@@ -942,7 +942,7 @@ interface FastcatE2eTimelineWindow {
   __fastcatE2eDeleteSelectedItems?: FastcatE2eDeleteSelectedItems;
   __fastcatE2eUpdateClipProperties?: FastcatE2eUpdateClipProperties;
   __fastcatE2eUpdateClipTransition?: FastcatE2eUpdateClipTransition;
-  __fastcatE2eSetCurrentTimeUs?: FastcatE2eSetCurrentTimeUs;
+  __fastcatE2eSetCurrentTimeTicks?: FastcatE2eSetCurrentTimeTicks;
   __fastcatE2eGetSelectedItemIds?: FastcatE2eGetSelectedItemIds;
   __fastcatE2eSaveTimeline?: () => Promise<void>;
   __fastcatE2eSetTimelineZoom?: (params: { zoom: number }) => Promise<void>;
@@ -957,9 +957,9 @@ interface FastcatE2eTimelineWindow {
   __fastcatE2eTrimClip?: (params: {
     itemId: string;
     edge: 'start' | 'end';
-    deltaUs: number;
+    deltaTicks: number;
   }) => Promise<void>;
-  __fastcatE2eMoveClip?: (params: { itemId: string; deltaUs: number }) => Promise<void>;
+  __fastcatE2eMoveClip?: (params: { itemId: string; deltaTicks: number }) => Promise<void>;
   __fastcatE2eMoveClipToTrack?: (params: { itemId: string; toTrackId: string }) => Promise<void>;
 }
 
@@ -1293,7 +1293,7 @@ async function handleConfirmCreateVersion(newName: string) {
           :model-value="timelineStore.currentTime"
           :min="0"
           wheel-without-focus
-          @update:model-value="timelineStore.setCurrentTimeUs($event)"
+          @update:model-value="timelineStore.setCurrentTimeTicks($event)"
         />
 
         <div class="flex items-center gap-1">

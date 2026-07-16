@@ -4,7 +4,7 @@ import type { Ref } from 'vue';
 import type { TimelineDocument } from '~/timeline/types';
 import type { TimelineCommand } from '~/timeline/commands';
 import { applyTimelineCommand } from '~/timeline/commands';
-import { selectTimelineDurationUs } from '~/timeline/selectors';
+import { selectTimelineDurationTicks } from '~/timeline/selectors';
 import type {
   TimelineApplyOptions,
   TimelineApplyWithHistoryOptions,
@@ -107,7 +107,7 @@ export function createTimelineDispatcherModule(
     const tHistory = perfOn ? performance.now() : 0;
 
     deps.timelineDoc.value = next;
-    const nextDuration = selectTimelineDurationUs(next);
+    const nextDuration = selectTimelineDurationTicks(next);
     if (nextDuration !== deps.duration.value) {
       deps.duration.value = nextDuration;
     }
@@ -159,7 +159,7 @@ export function createTimelineDispatcherModule(
 
     for (const cmd of cmds) {
       // Per-command targeted hydration patches the clip this command operates on
-      // (sourceDurationUs/isImage) before applying. The broad `hydrateAllClips`
+      // (sourceDurationTicks/isImage) before applying. The broad `hydrateAllClips`
       // pass is hoisted out of the loop below — running it per command made a
       // batch O(commands × clips); positional move/trim/split/delete commands
       // don't depend on *other* clips' hydration state, so one pass at the end
@@ -213,7 +213,7 @@ export function createTimelineDispatcherModule(
     const tHistory = perfOn ? performance.now() : 0;
 
     deps.timelineDoc.value = current;
-    const nextDuration = selectTimelineDurationUs(current);
+    const nextDuration = selectTimelineDurationTicks(current);
     if (nextDuration !== deps.duration.value) {
       deps.duration.value = nextDuration;
     }
@@ -258,7 +258,7 @@ export function createTimelineDispatcherModule(
     if (!snapshot) return;
     if (snapshot === deps.timelineDoc.value) return;
     deps.timelineDoc.value = snapshot;
-    const nextDuration = selectTimelineDurationUs(snapshot);
+    const nextDuration = selectTimelineDurationTicks(snapshot);
     if (nextDuration !== deps.duration.value) {
       deps.duration.value = nextDuration;
     }

@@ -58,12 +58,12 @@ mod tests {
             "background_color": "#123456",
             "animations": {
                 "opacity": { "keyframes": [
-                    { "tUs": 0, "value": 0.0, "easing": "linear" },
-                    { "tUs": 254_016_000_000.0, "value": 1.0, "easing": "linear" }
+                    { "tTicks": 0, "value": 0.0, "easing": "linear" },
+                    { "tTicks": 254_016_000_000.0, "value": 1.0, "easing": "linear" }
                 ] },
                 "transform.rotationDeg": { "keyframes": [
-                    { "tUs": 0, "value": 0.0, "easing": "linear" },
-                    { "tUs": 254_016_000_000.0, "value": 90.0, "easing": "linear" }
+                    { "tTicks": 0, "value": 0.0, "easing": "linear" },
+                    { "tTicks": 254_016_000_000.0, "value": 90.0, "easing": "linear" }
                 ] }
             }
         }))
@@ -100,12 +100,12 @@ mod tests {
             "background_color": "#123456",
             "animations": {
                 "opacity": { "keyframes": [
-                    { "tUs": 1_270_080_000_000.0, "value": 0.0, "easing": "linear" },
-                    { "tUs": 2_286_144_000_000.0, "value": 1.0, "easing": "linear" }
+                    { "tTicks": 1_270_080_000_000.0, "value": 0.0, "easing": "linear" },
+                    { "tTicks": 2_286_144_000_000.0, "value": 1.0, "easing": "linear" }
                 ] },
                 "transform.rotationDeg": { "keyframes": [
-                    { "tUs": 1_270_080_000_000.0, "value": 0.0, "easing": "linear" },
-                    { "tUs": 2_286_144_000_000.0, "value": 180.0, "easing": "linear" }
+                    { "tTicks": 1_270_080_000_000.0, "value": 0.0, "easing": "linear" },
+                    { "tTicks": 2_286_144_000_000.0, "value": 180.0, "easing": "linear" }
                 ] }
             }
         }))
@@ -140,8 +140,8 @@ mod tests {
                     "field": "radius",
                     "kind": "number",
                     "keyframes": [
-                        { "tUs": 0, "value": 8, "easing": "linear" },
-                        { "tUs": 254_016_000_000.0, "value": 64, "easing": "linear" }
+                        { "tTicks": 0, "value": 8, "easing": "linear" },
+                        { "tTicks": 254_016_000_000.0, "value": 64, "easing": "linear" }
                     ]
                 }]
             }

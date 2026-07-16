@@ -82,7 +82,7 @@ registerHud({
       controls: [
         {
           kind: 'number',
-          key: 'background.transitionIn.durationUs',
+          key: 'background.transitionIn.durationTicks',
           labelKey: 'fastcat.properties.fadeIn',
           defaultValue: 0,
           min: 0,
@@ -91,7 +91,7 @@ registerHud({
         },
         {
           kind: 'number',
-          key: 'background.transitionOut.durationUs',
+          key: 'background.transitionOut.durationTicks',
           labelKey: 'fastcat.properties.fadeOut',
           defaultValue: 0,
           min: 0,
@@ -150,7 +150,7 @@ registerHud({
       controls: [
         {
           kind: 'number',
-          key: 'content.transitionIn.durationUs',
+          key: 'content.transitionIn.durationTicks',
           labelKey: 'fastcat.properties.fadeIn',
           defaultValue: 0,
           min: 0,
@@ -159,7 +159,7 @@ registerHud({
         },
         {
           kind: 'number',
-          key: 'content.transitionOut.durationUs',
+          key: 'content.transitionOut.durationTicks',
           labelKey: 'fastcat.properties.fadeOut',
           defaultValue: 0,
           min: 0,

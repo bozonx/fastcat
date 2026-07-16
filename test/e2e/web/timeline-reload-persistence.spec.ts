@@ -47,8 +47,8 @@ test.describe('Web timeline reload persistence', () => {
     await dragClipBy(page, ids[1], { x: 800_000 });
 
     const edited = await waitForTimelineDoc(page, e2eProject, (d) => d.allClips.length === 3);
-    const editedVideoDuration = edited.allClips[0].timelineDurationUs;
-    const editedImageStart = edited.allClips[1].timelineStartUs;
+    const editedVideoDuration = edited.allClips[0].timelineDurationTicks;
+    const editedImageStart = edited.allClips[1].timelineStartTicks;
 
     // Reload the editor and verify the same structure is restored.
     await page.goto(`/editor/${e2eProject.encodedName}`);
@@ -56,8 +56,8 @@ test.describe('Web timeline reload persistence', () => {
     await expect.poll(async () => (await clipIds(page)).length).toBe(3);
 
     const reloaded = await waitForTimelineDoc(page, e2eProject, (d) => d.allClips.length === 3);
-    expect(reloaded.allClips[0].timelineDurationUs).toBe(editedVideoDuration);
-    expect(reloaded.allClips[1].timelineStartUs).toBe(editedImageStart);
+    expect(reloaded.allClips[0].timelineDurationTicks).toBe(editedVideoDuration);
+    expect(reloaded.allClips[1].timelineStartTicks).toBe(editedImageStart);
     expect(reloaded.videoTracks.length).toBeGreaterThanOrEqual(1);
     expect(reloaded.audioTracks.length).toBeGreaterThanOrEqual(1);
   });

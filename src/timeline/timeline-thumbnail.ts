@@ -2,7 +2,7 @@ import { createDevLogger } from '~/utils/dev-logger';
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import type { TimelineDocument } from '~/timeline/types';
-import { selectTimelineDurationUs } from '~/timeline/selectors';
+import { selectTimelineDurationTicks } from '~/timeline/selectors';
 import { cloneValue } from '~/utils/clone';
 import { useMediaProcessor } from '~/composables/useMediaProcessor';
 import { fileThumbnailGenerator } from '~/utils/file-thumbnail-generator';
@@ -18,7 +18,7 @@ const log = createDevLogger('timeline-thumbnail');
  */
 export async function renderStopFrameWebp(params: {
   timelineDoc: TimelineDocument;
-  timeUs: number;
+  timeTicks: number;
   quality: number;
   isTransparent?: boolean;
 }): Promise<Blob | null> {
@@ -30,7 +30,7 @@ export async function renderStopFrameWebp(params: {
   );
   return await processor.extractTimelineFrameBlob({
     timelineDoc: params.timelineDoc,
-    timeUs: params.timeUs,
+    timeTicks: params.timeTicks,
     width: format.width,
     height: format.height,
     quality: params.quality,
@@ -56,18 +56,18 @@ export function generateTimelineThumbnail(params: {
 
   void (async () => {
     try {
-      const durationUs = selectTimelineDurationUs(timelineDoc);
+      const durationTicks = selectTimelineDurationTicks(timelineDoc);
       // Ensure the preview time is strictly inside [0, duration) so the
       // underlying decoder never has to resolve a frame exactly at EOF.
-      const previewTimeUs = Math.max(
+      const previewTimeTicks = Math.max(
         0,
-        Math.min(Math.round(durationUs / 2), Math.max(0, durationUs - 1)),
+        Math.min(Math.round(durationTicks / 2), Math.max(0, durationTicks - 1)),
       );
 
       const processor = useMediaProcessor();
       const blob = await processor.extractTimelineFrameBlob({
         timelineDoc,
-        timeUs: previewTimeUs,
+        timeTicks: previewTimeTicks,
         maxWidth: TIMELINE_MANAGER_THUMBNAILS.MAX_SIZE,
         maxHeight: TIMELINE_MANAGER_THUMBNAILS.MAX_SIZE,
         quality: TIMELINE_MANAGER_THUMBNAILS.QUALITY,

@@ -21,7 +21,7 @@ const mediaStore = useMediaStore();
 const workspaceStore = useWorkspaceStore();
 const { rawWorkerTimelineClips } = useMonitorTimeline();
 
-const currentTimeUs = computed(() => timelineStore.currentTime);
+const currentTimeTicks = computed(() => timelineStore.currentTime);
 
 const visibleClips = computed(() =>
   rawWorkerTimelineClips.value.filter((clip) => {
@@ -30,9 +30,9 @@ const visibleClips = computed(() =>
     // like a canvas render artifact.
     if (clip.clipType === 'adjustment') return false;
 
-    const startUs = clip.timelineRange.startUs;
-    const endUs = startUs + clip.timelineRange.durationUs;
-    return currentTimeUs.value >= startUs && currentTimeUs.value < endUs;
+    const startTicks = clip.timelineRange.startTicks;
+    const endTicks = startTicks + clip.timelineRange.durationTicks;
+    return currentTimeTicks.value >= startTicks && currentTimeTicks.value < endTicks;
   }),
 );
 

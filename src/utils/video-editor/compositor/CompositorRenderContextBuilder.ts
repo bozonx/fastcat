@@ -28,7 +28,7 @@ export interface CompositorRenderState {
   width: number;
   height: number;
   clips: CompositorClip[];
-  lastRenderedTimeUs: number;
+  lastRenderedTimeTicks: number;
   stageSortDirty: boolean;
   activeSortDirty: boolean;
   contextLost: boolean;
@@ -42,8 +42,8 @@ export interface CompositorRenderContextBuilderParams {
   canvas: OffscreenCanvas | HTMLCanvasElement;
   state: CompositorRenderState;
   activeTrackerUpdate: (
-    timeUs: number,
-    lastTimeUs: number,
+    timeTicks: number,
+    lastTimeTicks: number,
   ) => {
     activeClips: CompositorClip[];
     activeChanged: boolean;
@@ -53,7 +53,7 @@ export interface CompositorRenderContextBuilderParams {
   getVideoSampleForClip: (params: {
     clip: CompositorClip;
     sampleTimeS: number;
-    timelineTimeUs?: number;
+    timelineTimeTicks?: number;
     monitorSyncMode?: 'smooth' | 'balanced' | 'strict';
     abortSignal?: AbortSignal;
   }) => Promise<unknown | null>;
@@ -66,7 +66,7 @@ export interface CompositorRenderContextBuilderParams {
   setPreviewEffectQuality: (quality: PreviewEffectQuality) => void;
   setStageSortDirty: (value: boolean) => void;
   setActiveSortDirty: (value: boolean) => void;
-  setLastRenderedTimeUs: (value: number) => void;
+  setLastRenderedTimeTicks: (value: number) => void;
   resourceManager: ResourceManager;
   videoFrameCache: VideoFrameCache;
   effectManager: EffectManager;
@@ -96,7 +96,7 @@ export class CompositorRenderContextBuilder {
       height: state.height,
       clips: state.clips,
       tracks: params.trackRuntimeManager.all,
-      lastRenderedTimeUs: state.lastRenderedTimeUs,
+      lastRenderedTimeTicks: state.lastRenderedTimeTicks,
       stageSortDirty: state.stageSortDirty,
       activeSortDirty: state.activeSortDirty,
       contextLost: state.contextLost,
@@ -117,17 +117,17 @@ export class CompositorRenderContextBuilder {
           previewEffectsEnabled: params.getPreviewEffectsEnabled(),
         });
       },
-      processFrameSamples: ({ activeClips, timeUs: currentTimeUs, monitorSyncMode }) =>
+      processFrameSamples: ({ activeClips, timeTicks: currentTimeTicks, monitorSyncMode }) =>
         params.frameSampleOrchestrator.process({
           activeClips,
-          timeUs: currentTimeUs,
+          timeTicks: currentTimeTicks,
           monitorSyncMode,
           width: state.width,
           height: state.height,
           activeClipProcessor: params.timelineActiveClipProcessor,
-          resolveClipOverlays: (activeClips, clipTimeUs) => {
+          resolveClipOverlays: (activeClips, clipTimeTicks) => {
             for (const clip of activeClips) {
-              resolveClipAnimationOverlay(clip, clipTimeUs);
+              resolveClipAnimationOverlay(clip, clipTimeTicks);
               // Video clips re-apply layout when their next sample lands; other
               // kinds are laid out once, so re-run layout each frame when they
               // carry an animated transform.
@@ -136,16 +136,16 @@ export class CompositorRenderContextBuilder {
               }
             }
           },
-          syncTransitionFilter: (clip, clipTimeUs) =>
+          syncTransitionFilter: (clip, clipTimeTicks) =>
             params.transitionManager.syncTransitionFilter(
               clip,
-              clipTimeUs,
+              clipTimeTicks,
               params.getPreviewEffectsEnabled(),
             ),
-          computeTransitionOpacity: (clip, clipTimeUs) =>
+          computeTransitionOpacity: (clip, clipTimeTicks) =>
             params.transitionManager.computeTransitionOpacity(
               clip,
-              clipTimeUs,
+              clipTimeTicks,
               params.getPreviewEffectsEnabled(),
             ),
           applyClipEffects: (clip) => {
@@ -158,7 +158,7 @@ export class CompositorRenderContextBuilder {
               clip,
               params.getPreviewEffectsEnabled(),
             ),
-          drawHudClip: (clip, timeUs) => params.canvasFallbackRenderer.drawHudClip(clip, timeUs),
+          drawHudClip: (clip, timeTicks) => params.canvasFallbackRenderer.drawHudClip(clip, timeTicks),
           drawShapeClip: (clip, size) => {
             params.shapeRenderer.draw({
               graphics: clip.sprite as Graphics,
@@ -236,8 +236,8 @@ export class CompositorRenderContextBuilder {
           }
         }
       },
-      applyShaderTransitions: (activeClips, currentTimeUs) =>
-        params.transitionRenderer.applyShaderTransitions(activeClips, currentTimeUs, {
+      applyShaderTransitions: (activeClips, currentTimeTicks) =>
+        params.transitionRenderer.applyShaderTransitions(activeClips, currentTimeTicks, {
           app,
           clips: state.clips,
           width: state.width,
@@ -247,10 +247,10 @@ export class CompositorRenderContextBuilder {
           transitionManager: params.transitionManager,
           stageTextureRenderer: params.stageTextureRenderer,
           getTrackById: (trackId) => params.trackRuntimeManager.getById(trackId),
-          getActiveTransitionState: (clip, timeUs) =>
+          getActiveTransitionState: (clip, timeTicks) =>
             params.transitionManager.getActiveTransitionState(
               clip,
-              timeUs,
+              timeTicks,
               params.getPreviewEffectsEnabled(),
             ) as {
               opacity: number;
@@ -511,7 +511,7 @@ export class CompositorRenderContextBuilder {
       },
       setStageSortDirty: params.setStageSortDirty,
       setActiveSortDirty: params.setActiveSortDirty,
-      setLastRenderedTimeUs: params.setLastRenderedTimeUs,
+      setLastRenderedTimeTicks: params.setLastRenderedTimeTicks,
     };
   }
 }

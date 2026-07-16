@@ -21,22 +21,22 @@ const props = defineProps<{
   horizontalScrollEl: HTMLElement | null;
   dragPreview?: {
     trackId: string;
-    startUs: number;
+    startTicks: number;
     label: string;
-    durationUs: number;
+    durationTicks: number;
     kind: 'timeline-clip' | 'file';
     invalid?: boolean;
   } | null;
-  movePreview?: { itemId: string; trackId: string; startUs: number; isCollision?: boolean }[];
-  slipPreview?: { itemId: string; trackId: string; deltaUs: number; timecode: string } | null;
+  movePreview?: { itemId: string; trackId: string; startTicks: number; isCollision?: boolean }[];
+  slipPreview?: { itemId: string; trackId: string; deltaTicks: number; timecode: string } | null;
   trimPreview?:
     | {
         itemId: string;
         trackId: string;
-        startUs: number;
-        durationUs: number;
+        startTicks: number;
+        durationTicks: number;
         edge: 'start' | 'end';
-        deltaUs: number;
+        deltaTicks: number;
       }[]
     | null;
   draggingMode?: 'move' | 'slip' | 'trim_start' | 'trim_end' | null;

@@ -15,8 +15,8 @@ export function useMobileTimelineBatchActions(options: UseMobileTimelineBatchAct
   async function handlePasteClips() {
     const payload = clipboardStore.clipboardPayload;
     if (!payload || payload.source !== 'timeline' || payload.items.length === 0) return;
-    const playheadUs = timelineStore.currentTime;
-    const pasted = await timelineStore.pasteClips(payload.items, { insertStartUs: playheadUs });
+    const playheadTicks = timelineStore.currentTime;
+    const pasted = await timelineStore.pasteClips(payload.items, { insertStartTicks: playheadTicks });
     if (payload.operation === 'cut') {
       clipboardStore.setClipboardPayload(null);
     }

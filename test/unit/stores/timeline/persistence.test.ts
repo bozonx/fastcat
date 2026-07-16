@@ -14,7 +14,7 @@ const fallbackDoc = {
 
 const parseTimelineFromOtio = vi.fn();
 const serializeTimelineToOtio = vi.fn().mockReturnValue('{}');
-const selectTimelineDurationUs = vi.fn().mockReturnValue(0);
+const selectTimelineDurationTicks = vi.fn().mockReturnValue(0);
 const onSaveSuccess = vi.fn();
 const onSaveError = vi.fn();
 
@@ -94,7 +94,7 @@ function createMockDeps(
     getProjectSettings: () => ({}),
     parseTimelineFromOtio,
     serializeTimelineToOtio,
-    selectTimelineDurationUs,
+    selectTimelineDurationTicks,
     onSaveSuccess,
     onSaveError,
     ...overrides,
@@ -123,13 +123,13 @@ describe('TimelinePersistenceModule', () => {
       'timeline.otio': { text: JSON.stringify({ ...fallbackDoc, id: 'loaded' }), lastModified: 1 },
     };
     parseTimelineFromOtio.mockImplementationOnce((text: string) => JSON.parse(text));
-    selectTimelineDurationUs.mockReturnValueOnce(1_000);
+    selectTimelineDurationTicks.mockReturnValueOnce(1_000);
     const deps = createMockDeps({
       ...makeVfsMock(files),
       getProjectSettings: () => ({
         timelines: {
           sessions: {
-            'timeline.otio': { playheadUs: 2_000 },
+            'timeline.otio': { playheadTicks: 2_000 },
           },
         },
       }),
@@ -298,7 +298,7 @@ describe('TimelinePersistenceModule', () => {
       timelineDoc: ref(savedDoc),
     });
     parseTimelineFromOtio.mockReturnValue(normalizedDoc);
-    selectTimelineDurationUs.mockReturnValue(1_000_000);
+    selectTimelineDurationTicks.mockReturnValue(1_000_000);
 
     const mod = createTimelinePersistenceModule(deps);
     mod.markDirty();
@@ -383,7 +383,7 @@ describe('TimelinePersistenceModule', () => {
       }),
     });
     parseTimelineFromOtio.mockReturnValue(normalizedDoc);
-    selectTimelineDurationUs.mockReturnValue(1_000_000);
+    selectTimelineDurationTicks.mockReturnValue(1_000_000);
 
     const mod = createTimelinePersistenceModule(deps);
     mod.markDirty();

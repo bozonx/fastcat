@@ -23,7 +23,7 @@ export interface AudioEngineContractOptions {
 
 // AudioScheduler runs on wall-clock time; assertions about the transport clock
 // allow a little slack for the elapsed test wall-time between calls.
-const CLOCK_TOLERANCE_US = 100_000;
+const CLOCK_TOLERANCE_TICKS = 100_000;
 
 export function runAudioEngineContract(name: string, options: AudioEngineContractOptions) {
   const make = () => Promise.resolve(options.createEngine());
@@ -40,16 +40,16 @@ export function runAudioEngineContract(name: string, options: AudioEngineContrac
 
     it('starts at time zero', async () => {
       const engine = await make();
-      expect(engine.getCurrentTimeUs()).toBe(0);
+      expect(engine.getCurrentTimeTicks()).toBe(0);
       engine.destroy();
     });
 
     it('play anchors the transport clock near the requested start', async () => {
       const engine = await make();
       await engine.play(5_000_000);
-      const t = engine.getCurrentTimeUs();
-      expect(t).toBeGreaterThanOrEqual(5_000_000 - CLOCK_TOLERANCE_US);
-      expect(t).toBeLessThanOrEqual(5_000_000 + CLOCK_TOLERANCE_US);
+      const t = engine.getCurrentTimeTicks();
+      expect(t).toBeGreaterThanOrEqual(5_000_000 - CLOCK_TOLERANCE_TICKS);
+      expect(t).toBeLessThanOrEqual(5_000_000 + CLOCK_TOLERANCE_TICKS);
       engine.destroy();
     });
 
@@ -57,16 +57,16 @@ export function runAudioEngineContract(name: string, options: AudioEngineContrac
       const engine = await make();
       await engine.play(10_000_000);
       engine.stop();
-      const t = engine.getCurrentTimeUs();
-      expect(t).toBeGreaterThanOrEqual(10_000_000 - CLOCK_TOLERANCE_US);
-      expect(t).toBeLessThanOrEqual(10_000_000 + CLOCK_TOLERANCE_US);
+      const t = engine.getCurrentTimeTicks();
+      expect(t).toBeGreaterThanOrEqual(10_000_000 - CLOCK_TOLERANCE_TICKS);
+      expect(t).toBeLessThanOrEqual(10_000_000 + CLOCK_TOLERANCE_TICKS);
       engine.destroy();
     });
 
     it('ignores seek while stopped', async () => {
       const engine = await make();
       engine.seek(30_000_000);
-      expect(engine.getCurrentTimeUs()).toBe(0);
+      expect(engine.getCurrentTimeTicks()).toBe(0);
       engine.destroy();
     });
 
@@ -74,9 +74,9 @@ export function runAudioEngineContract(name: string, options: AudioEngineContrac
       const engine = await make();
       await engine.play(0);
       engine.seek(20_000_000);
-      const t = engine.getCurrentTimeUs();
-      expect(t).toBeGreaterThanOrEqual(20_000_000 - CLOCK_TOLERANCE_US);
-      expect(t).toBeLessThanOrEqual(20_000_000 + CLOCK_TOLERANCE_US);
+      const t = engine.getCurrentTimeTicks();
+      expect(t).toBeGreaterThanOrEqual(20_000_000 - CLOCK_TOLERANCE_TICKS);
+      expect(t).toBeLessThanOrEqual(20_000_000 + CLOCK_TOLERANCE_TICKS);
       engine.destroy();
     });
 

@@ -24,15 +24,15 @@ const MIN_DURATION_SEC = 0.1;
 
 const { clip } = useSelectedTimelineClip();
 
-const clipDurationUs = computed(() =>
-  Math.max(0, Math.round(Number(clip.value?.timelineRange?.durationUs ?? 0))),
+const clipDurationTicks = computed(() =>
+  Math.max(0, Math.round(Number(clip.value?.timelineRange?.durationTicks ?? 0))),
 );
 
-const defaultDurationUs = computed(() =>
+const defaultDurationTicks = computed(() =>
   Math.max(
     0,
     Math.round(
-      Number(workspaceStore.userSettings.timeline.defaultTransitionDurationUs ?? TICKS_PER_SECOND),
+      Number(workspaceStore.userSettings.timeline.defaultTransitionDurationTicks ?? TICKS_PER_SECOND),
     ),
   ),
 );
@@ -48,7 +48,7 @@ const {
   updateTransitionCurve,
 } = useClipTransitions({
   clip,
-  defaultDurationUs,
+  defaultDurationTicks,
   selectTransition: () => {},
   selectTimelineTransition: () => {},
   updateClipTransition: timelineStore.updateClipTransition,
@@ -71,8 +71,8 @@ const curveOptions = computed<{ label: string; value: TransitionCurve }[]>(() =>
 
 function maxDurationSec(edge: 'in' | 'out'): number {
   const other = edge === 'in' ? transitionOut.value : transitionIn.value;
-  const otherDurationUs = Math.max(0, Number(other?.durationUs ?? 0));
-  return Math.max(MIN_DURATION_SEC, (clipDurationUs.value - otherDurationUs) / TICKS_PER_SECOND);
+  const otherDurationTicks = Math.max(0, Number(other?.durationTicks ?? 0));
+  return Math.max(MIN_DURATION_SEC, (clipDurationTicks.value - otherDurationTicks) / TICKS_PER_SECOND);
 }
 
 function selectValue(value: unknown): string | undefined {
@@ -109,7 +109,7 @@ const drag = reactive<{
 function durationSec(edge: 'in' | 'out'): number {
   if (drag.edge === edge) return drag.previewSec;
   const transition = edge === 'in' ? transitionIn.value : transitionOut.value;
-  return Math.max(0, Number(transition?.durationUs ?? 0) / TICKS_PER_SECOND);
+  return Math.max(0, Number(transition?.durationTicks ?? 0) / TICKS_PER_SECOND);
 }
 
 function getTouchX(event: TouchEvent): number | null {
@@ -126,7 +126,7 @@ function onDurationStart(edge: 'in' | 'out', event: TouchEvent) {
   event.preventDefault();
   drag.edge = edge;
   drag.startX = x;
-  drag.startSec = Math.max(0, Number(transition.durationUs ?? 0) / TICKS_PER_SECOND);
+  drag.startSec = Math.max(0, Number(transition.durationTicks ?? 0) / TICKS_PER_SECOND);
   drag.previewSec = drag.startSec;
 }
 

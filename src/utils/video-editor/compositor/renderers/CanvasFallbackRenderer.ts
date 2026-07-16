@@ -144,7 +144,7 @@ export class CanvasFallbackRenderer {
     }
   }
 
-  public drawHudClip(clip: CompositorClip, timeUs: number) {
+  public drawHudClip(clip: CompositorClip, timeTicks: number) {
     if (clip.clipKind !== 'hud') return;
     if (!clip.canvas || !clip.ctx) return;
 
@@ -181,19 +181,19 @@ export class CanvasFallbackRenderer {
     const type = clip.hudType ?? 'media_frame';
     if (type !== 'media_frame') return;
 
-    const localTimeUs = timeUs - clip.startUs;
-    const clipEndUs = clip.endUs - clip.startUs;
+    const localTimeTicks = timeTicks - clip.startTicks;
+    const clipEndTicks = clip.endTicks - clip.startTicks;
 
     const getLayerOpacity = (params?: import('../../../../timeline/types').HudMediaParams) => {
       let opacity = 1;
       if (!params) return opacity;
-      if (params.transitionIn?.durationUs && localTimeUs < params.transitionIn.durationUs) {
-        opacity = Math.max(0, localTimeUs / params.transitionIn.durationUs);
+      if (params.transitionIn?.durationTicks && localTimeTicks < params.transitionIn.durationTicks) {
+        opacity = Math.max(0, localTimeTicks / params.transitionIn.durationTicks);
       } else if (
-        params.transitionOut?.durationUs &&
-        localTimeUs > clipEndUs - params.transitionOut.durationUs
+        params.transitionOut?.durationTicks &&
+        localTimeTicks > clipEndTicks - params.transitionOut.durationTicks
       ) {
-        opacity = Math.max(0, (clipEndUs - localTimeUs) / params.transitionOut.durationUs);
+        opacity = Math.max(0, (clipEndTicks - localTimeTicks) / params.transitionOut.durationTicks);
       }
       return opacity;
     };

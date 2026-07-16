@@ -11,8 +11,8 @@ function makeValidClip(): unknown {
     layer: 0,
     speed: 1,
     source: { path: '/media/test.mp4' },
-    timelineRange: { startUs: 0, durationUs: 1_000_000 },
-    sourceRange: { startUs: 0, durationUs: 1_000_000 },
+    timelineRange: { startTicks: 0, durationTicks: 1_000_000 },
+    sourceRange: { startTicks: 0, durationTicks: 1_000_000 },
   };
 }
 
@@ -45,8 +45,8 @@ describe('parseWorkerVideoPayload', () => {
       clipType: 'text',
       id: 'clip-2',
       layer: 0,
-      timelineRange: { startUs: 0, durationUs: 500_000 },
-      sourceRange: { startUs: 0, durationUs: 500_000 },
+      timelineRange: { startTicks: 0, durationTicks: 500_000 },
+      sourceRange: { startTicks: 0, durationTicks: 500_000 },
     };
     const result = parseWorkerVideoPayload([clip]);
     expect(result).toHaveLength(1);
@@ -59,19 +59,19 @@ describe('parseWorkerVideoPayload', () => {
       clipType: 'media',
       id: 'clip-3',
       layer: 0,
-      sourceRange: { startUs: 0, durationUs: 1_000_000 },
+      sourceRange: { startTicks: 0, durationTicks: 1_000_000 },
     };
     expect(() => parseWorkerVideoPayload([clip])).toThrow();
   });
 
-  it('throws on a clip with negative durationUs', () => {
+  it('throws on a clip with negative durationTicks', () => {
     const clip = {
       kind: 'clip',
       clipType: 'media',
       id: 'clip-4',
       layer: 0,
-      timelineRange: { startUs: 0, durationUs: -100 },
-      sourceRange: { startUs: 0, durationUs: 1_000_000 },
+      timelineRange: { startTicks: 0, durationTicks: -100 },
+      sourceRange: { startTicks: 0, durationTicks: 1_000_000 },
     };
     expect(() => parseWorkerVideoPayload([clip])).toThrow();
   });

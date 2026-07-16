@@ -202,13 +202,13 @@ describe('PropertiesPanel', () => {
               id: 'clip-1',
               kind: 'clip' as const,
               linkedGroupId: 'group-abc',
-              timelineRange: { startUs: 0, durationUs: 5_000_000 },
+              timelineRange: { startTicks: 0, durationTicks: 5_000_000 },
             },
             {
               id: 'clip-2',
               kind: 'clip' as const,
               linkedGroupId: 'group-abc',
-              timelineRange: { startUs: 5_000_000, durationUs: 5_000_000 },
+              timelineRange: { startTicks: 5_000_000, durationTicks: 5_000_000 },
             },
           ],
         },
@@ -271,7 +271,7 @@ describe('PropertiesPanel', () => {
       clipType: 'media' as const,
       name: 'Initial Clip',
       disabled: false,
-      timelineRange: { startUs: 0, durationUs: 5_000_000 },
+      timelineRange: { startTicks: 0, durationTicks: 5_000_000 },
     };
 
     timelineStore.timelineDoc = {

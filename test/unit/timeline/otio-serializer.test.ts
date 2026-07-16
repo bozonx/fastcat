@@ -43,14 +43,14 @@ vi.mock('~/timeline/otio/items', () => ({
   parseGapItem: vi.fn(() => ({
     id: 'gap-1',
     kind: 'gap',
-    timelineRange: { startUs: 0, durationUs: 1_000_000 },
+    timelineRange: { startTicks: 0, durationTicks: 1_000_000 },
   })),
   parseClipItem: vi.fn(() => ({
     id: 'clip-1',
     kind: 'clip',
-    timelineRange: { startUs: 0, durationUs: 1_000_000 },
+    timelineRange: { startTicks: 0, durationTicks: 1_000_000 },
   })),
-  parseItemSequenceDurationUs: vi.fn(() => 1_000_000),
+  parseItemSequenceDurationTicks: vi.fn(() => 1_000_000),
 }));
 
 vi.mock('~/timeline/otio/schemas', () => ({

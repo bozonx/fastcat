@@ -34,7 +34,7 @@ const emit = defineEmits<{
     event: PointerEvent,
     payload: { trackId: string; itemId: string; edge: 'in' | 'out' },
   ): void;
-  (e: 'resize', event: PointerEvent, payload: { edge: 'in' | 'out'; durationUs: number }): void;
+  (e: 'resize', event: PointerEvent, payload: { edge: 'in' | 'out'; durationTicks: number }): void;
 }>();
 
 function transitionUsToPx(us: number) {
@@ -150,7 +150,7 @@ function getTransitionSvgFill(edge: 'in' | 'out', hasProblem: boolean) {
       <div
         v-if="clip.transitionIn"
         class="absolute left-0 top-0 bottom-0 z-10"
-        :style="{ width: `${transitionUsToPx(clip.transitionIn.durationUs)}px` }"
+        :style="{ width: `${transitionUsToPx(clip.transitionIn.durationTicks)}px` }"
       >
         <UiTooltip
           :text="getTransitionButtonTitle('in')"
@@ -225,7 +225,7 @@ function getTransitionSvgFill(edge: 'in' | 'out', hasProblem: boolean) {
               v-if="!isMobile && canEdit && !clip.locked && !track.locked"
               class="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize bg-white/0 group-hover/trans:bg-white/20 hover:bg-white/40! transition-colors z-40 pointer-events-auto touch-none"
               @pointerdown.stop.prevent="
-                emit('resize', $event, { edge: 'in', durationUs: clip.transitionIn!.durationUs })
+                emit('resize', $event, { edge: 'in', durationTicks: clip.transitionIn!.durationTicks })
               "
             />
           </button>
@@ -236,7 +236,7 @@ function getTransitionSvgFill(edge: 'in' | 'out', hasProblem: boolean) {
       <div
         v-if="clip.transitionOut"
         class="absolute right-0 top-0 bottom-0 z-10"
-        :style="{ width: `${transitionUsToPx(clip.transitionOut.durationUs)}px` }"
+        :style="{ width: `${transitionUsToPx(clip.transitionOut.durationTicks)}px` }"
       >
         <UiTooltip
           :text="getTransitionButtonTitle('out')"
@@ -311,7 +311,7 @@ function getTransitionSvgFill(edge: 'in' | 'out', hasProblem: boolean) {
               v-if="!isMobile && canEdit && !clip.locked && !track.locked"
               class="absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize bg-white/0 group-hover/trans:bg-white/20 hover:bg-white/40! transition-colors z-40 pointer-events-auto touch-none"
               @pointerdown.stop.prevent="
-                emit('resize', $event, { edge: 'out', durationUs: clip.transitionOut!.durationUs })
+                emit('resize', $event, { edge: 'out', durationTicks: clip.transitionOut!.durationTicks })
               "
             />
           </button>

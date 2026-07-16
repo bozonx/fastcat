@@ -16,10 +16,10 @@ import { useTimelineRulerDraw } from '~/composables/timeline/useTimelineRulerDra
 import { useTimelineRulerInteractions } from '~/composables/timeline/useTimelineRulerInteractions';
 import { useExclusiveContextMenu } from '~/composables/ui/useExclusiveContextMenu';
 import {
-  computeSnapTargetsUs,
-  resolvePlayheadClickTimeUs,
+  computeSnapTargetsTicks,
+  resolvePlayheadClickTimeTicks,
 } from '~/composables/timeline/timeline-drag-domain';
-import { pxToTimeUs } from '~/utils/timeline/geometry';
+import { pxToTimeTicks } from '~/utils/timeline/geometry';
 
 const { t } = useI18n();
 
@@ -32,7 +32,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'pointerdown' | 'start-playhead-drag' | 'start-pan', event: PointerEvent): void;
   (e: 'wheel', event: WheelEvent): void;
-  (e: 'dblclick-ruler', timeUs: number): void;
+  (e: 'dblclick-ruler', timeTicks: number): void;
   (e: 'middleclick-ruler', event: MouseEvent): void;
 }>();
 
@@ -66,45 +66,45 @@ function getTimeUsFromRulerClientEvent(event: MouseEvent | PointerEvent): number
   const rect = containerRef.value?.getBoundingClientRect();
   if (!rect) return 0;
   const x = event.clientX - rect.left;
-  return pxToTimeUs(scrollLeft.value + x, zoom.value);
+  return pxToTimeTicks(scrollLeft.value + x, zoom.value);
 }
 
 const snapThresholdPx = computed(() => workspaceStore.userSettings.timeline.snapThresholdPx);
 
-function getSnappedPlayheadTimeUs(rawTimeUs: number) {
-  const timelineEndUs = Number.isFinite(timelineStore.duration)
+function getSnappedPlayheadTimeTicks(rawTimeTicks: number) {
+  const timelineEndTicks = Number.isFinite(timelineStore.duration)
     ? Math.max(0, Math.round(timelineStore.duration))
     : null;
 
-  return resolvePlayheadClickTimeUs({
-    rawTimeUs,
+  return resolvePlayheadClickTimeTicks({
+    rawTimeTicks,
     zoom: zoom.value,
     snapThresholdPx: snapThresholdPx.value,
     toolbarSnapMode: timelineSettingsStore.toolbarSnapMode,
     snapping: workspaceStore.userSettings.timeline.snapping,
     tracks: timelineStore.timelineDoc?.tracks ?? [],
     markers: timelineStore.markers,
-    durationUs: timelineEndUs,
-    selectionRangeUs: isDraggingSelectionRange.value ? null : timelineStore.selectionRange,
+    durationTicks: timelineEndTicks,
+    selectionRangeTicks: isDraggingSelectionRange.value ? null : timelineStore.selectionRange,
   });
 }
 
 function computeSnapTargets(excludeMarkerId?: string) {
   const snapSettings = workspaceStore.userSettings.timeline.snapping;
-  const timelineEndUs = Number.isFinite(timelineStore.duration)
+  const timelineEndTicks = Number.isFinite(timelineStore.duration)
     ? Math.max(0, Math.round(timelineStore.duration))
     : null;
 
-  return computeSnapTargetsUs({
+  return computeSnapTargetsTicks({
     tracks: timelineStore.timelineDoc?.tracks ?? [],
     excludeMarkerId,
     includeTimelineStart: snapSettings.timelineEdges,
-    includeTimelineEndUs: snapSettings.timelineEdges ? timelineEndUs : null,
-    includePlayheadUs: snapSettings.playhead ? timelineStore.currentTime : null,
+    includeTimelineEndTicks: snapSettings.timelineEdges ? timelineEndTicks : null,
+    includePlayheadTicks: snapSettings.playhead ? timelineStore.currentTime : null,
     includeMarkers: snapSettings.markers,
     markers: timelineStore.markers,
     includeClips: snapSettings.clips,
-    selectionRangeUs:
+    selectionRangeTicks:
       snapSettings.selection && !isDraggingSelectionRange.value
         ? timelineStore.selectionRange
         : null,
@@ -191,12 +191,12 @@ function seekToMarker(markerId: string, e?: MouseEvent, part?: 'left' | 'right')
   const marker = markers.value.find((m) => m.id === markerId);
   if (!marker) return;
 
-  const timeUs =
-    part === 'right' && marker.durationUs !== undefined
-      ? marker.timeUs + marker.durationUs
-      : marker.timeUs;
+  const timeTicks =
+    part === 'right' && marker.durationTicks !== undefined
+      ? marker.timeTicks + marker.durationTicks
+      : marker.timeTicks;
 
-  timelineStore.setCurrentTimeUs(timeUs);
+  timelineStore.setCurrentTimeTicks(timeTicks);
 
   // Don't override multi-selection when shift is held
   if (!e?.shiftKey) {
@@ -224,7 +224,7 @@ function selectSelectionRange(e?: MouseEvent) {
   e?.stopPropagation();
   selectionStore.selectTimelineSelectionRange();
   if (e) {
-    timelineStore.setCurrentTimeUs(getTimeUsFromRulerClientEvent(e));
+    timelineStore.setCurrentTimeTicks(getTimeUsFromRulerClientEvent(e));
   }
 }
 
@@ -307,7 +307,7 @@ const {
   onRulerPointerDown,
   onRulerPointerMove,
   onRulerPointerUp,
-  lastRightClickTimeUs,
+  lastRightClickTimeTicks,
 } = useTimelineRulerInteractions({
   containerRef,
   scrollLeft,
@@ -318,7 +318,7 @@ const {
   isDraggingSelectionRange,
   suppressNextRulerClick,
   startSelectionRangeCreate,
-  resolvePlayheadClickTimeUs: getSnappedPlayheadTimeUs,
+  resolvePlayheadClickTimeTicks: getSnappedPlayheadTimeTicks,
   emit,
 });
 
@@ -337,7 +337,7 @@ const {
   timelineStore,
   selectMarker,
   deleteMarker,
-  getRightClickTimeUs: () => lastRightClickTimeUs.value,
+  getRightClickTimeTicks: () => lastRightClickTimeTicks.value,
 });
 
 const isSelectionRangeSelected = computed(
@@ -401,12 +401,12 @@ function onMobilePointerDown(event: PointerEvent) {
 
   mobileScrubActive.value = true;
   containerRef.value?.setPointerCapture(event.pointerId);
-  timelineStore.setCurrentTimeUs(getSnappedPlayheadTimeUs(getTimeUsFromMouseEvent(event)));
+  timelineStore.setCurrentTimeTicks(getSnappedPlayheadTimeTicks(getTimeUsFromMouseEvent(event)));
 }
 
 function onMobilePointerMove(event: PointerEvent) {
   if (!mobileScrubActive.value) return;
-  timelineStore.setCurrentTimeUs(getTimeUsFromMouseEvent(event));
+  timelineStore.setCurrentTimeTicks(getTimeUsFromMouseEvent(event));
 }
 
 function onMobilePointerUp() {

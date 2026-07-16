@@ -71,7 +71,7 @@ export interface TimelineLifecycleModule {
   resetTimelineState: () => void;
   resetTimelineZoom: () => void;
   saveTimeline: () => Promise<void>;
-  setCurrentTimeUs: (nextTimeUs: number) => void;
+  setCurrentTimeTicks: (nextTimeTicks: number) => void;
 }
 
 export function createTimelineLifecycleModule(
@@ -107,9 +107,9 @@ export function createTimelineLifecycleModule(
     deps.timelineZoom.value = TIMELINE_DEFAULTS.ZOOM;
   }
 
-  function setCurrentTimeUs(nextTimeUs: number) {
+  function setCurrentTimeTicks(nextTimeTicks: number) {
     const fps = sanitizeFps(deps.timelineDoc.value?.timebase);
-    const quantized = quantizeTimeUsToFrames(nextTimeUs, fps, 'round');
+    const quantized = quantizeTimeUsToFrames(nextTimeTicks, fps, 'round');
     const max = Number.isFinite(deps.duration.value)
       ? Math.max(0, Math.round(deps.duration.value))
       : 0;
@@ -221,6 +221,6 @@ export function createTimelineLifecycleModule(
     resetTimelineState,
     resetTimelineZoom,
     saveTimeline,
-    setCurrentTimeUs,
+    setCurrentTimeTicks,
   };
 }

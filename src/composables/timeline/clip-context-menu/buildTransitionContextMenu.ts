@@ -15,15 +15,15 @@ export function buildTransitionContextMenu(
   const hasIn = Boolean(clipItem.transitionIn);
   const hasOut = Boolean(clipItem.transitionOut);
   const transitionGroup: ContextMenuGroup = [];
-  const defaultTransitionDurationUs = Math.max(
+  const defaultTransitionDurationTicks = Math.max(
     0,
-    Math.round(Number(options.defaultTransitionDurationUs.value ?? TICKS_PER_SECOND)),
+    Math.round(Number(options.defaultTransitionDurationTicks.value ?? TICKS_PER_SECOND)),
   );
-  const clipDurationUs = Math.max(0, Math.round(Number(clipItem.timelineRange?.durationUs ?? 0)));
-  const suggestedDurationUs =
-    clipDurationUs > 0 && clipDurationUs < defaultTransitionDurationUs
-      ? Math.round(clipDurationUs * 0.3)
-      : defaultTransitionDurationUs;
+  const clipDurationTicks = Math.max(0, Math.round(Number(clipItem.timelineRange?.durationTicks ?? 0)));
+  const suggestedDurationTicks =
+    clipDurationTicks > 0 && clipDurationTicks < defaultTransitionDurationTicks
+      ? Math.round(clipDurationTicks * 0.3)
+      : defaultTransitionDurationTicks;
 
   transitionGroup.push({
     label: hasIn
@@ -39,7 +39,7 @@ export function buildTransitionContextMenu(
 
       const transition = {
         type: 'dissolve' as const,
-        durationUs: suggestedDurationUs,
+        durationTicks: suggestedDurationTicks,
         mode: DEFAULT_TRANSITION_MODE,
         curve: DEFAULT_TRANSITION_CURVE,
       };
@@ -63,7 +63,7 @@ export function buildTransitionContextMenu(
 
       const transition = {
         type: 'dissolve' as const,
-        durationUs: suggestedDurationUs,
+        durationTicks: suggestedDurationTicks,
         mode: DEFAULT_TRANSITION_MODE,
         curve: DEFAULT_TRANSITION_CURVE,
       };

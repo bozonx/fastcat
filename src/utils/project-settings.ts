@@ -39,12 +39,12 @@ export interface ProjectMonitorSettings {
 export interface MonitorSettings extends MonitorViewSettings, ProjectMonitorSettings {}
 
 export interface TimelineSessionState {
-  playheadUs: number;
+  playheadTicks: number;
   masterGain: number;
   masterMuted: boolean;
   zoom: number;
   trackHeights: Record<string, number>;
-  selectionRange?: { startUs: number; endUs: number };
+  selectionRange?: { startTicks: number; endTicks: number };
   mobileTrackHeightsEnlarged: Record<string, boolean>;
 }
 
@@ -80,7 +80,7 @@ export interface FastCatProjectSettings {
     aspectRatio: string;
     isCustomResolution: boolean;
     sampleRate: number;
-    audioDeclickDurationUs: number;
+    audioDeclickDurationTicks: number;
     /**
      * Intent flag: `true` = the project is in "auto" mode (the user did not pin
      * explicit settings), so geometry/sample-rate are detected from the first
@@ -103,7 +103,7 @@ export interface FastCatProjectSettings {
     sessions: Record<string, TimelineSessionState>;
   };
   transitions: {
-    defaultDurationUs: number;
+    defaultDurationTicks: number;
   };
   ui: {
     activeTabId: string | null;
@@ -184,7 +184,7 @@ export const DEFAULT_PROJECT_SETTINGS: FastCatProjectSettings = {
     aspectRatio: '16:9',
     isCustomResolution: false,
     sampleRate: 48000,
-    audioDeclickDurationUs: 5_000 * TICKS_PER_MICROSECOND,
+    audioDeclickDurationTicks: 5_000 * TICKS_PER_MICROSECOND,
     isAutoSettings: true,
     geometryResolved: false,
     sampleRateResolved: false,
@@ -200,7 +200,7 @@ export const DEFAULT_PROJECT_SETTINGS: FastCatProjectSettings = {
     sessions: {},
   },
   transitions: {
-    defaultDurationUs: 2_000_000 * TICKS_PER_MICROSECOND,
+    defaultDurationTicks: 2_000_000 * TICKS_PER_MICROSECOND,
   },
   ui: {
     activeTabId: null,
@@ -235,8 +235,8 @@ function getProjectSettingsFromUserDefaults(
       aspectRatio: baseProject.aspectRatio,
       isCustomResolution: baseProject.isCustomResolution,
       sampleRate: baseProject.sampleRate,
-      audioDeclickDurationUs: (settings.projectDefaults || DEFAULT_USER_SETTINGS.projectDefaults)
-        .audioDeclickDurationUs,
+      audioDeclickDurationTicks: (settings.projectDefaults || DEFAULT_USER_SETTINGS.projectDefaults)
+        .audioDeclickDurationTicks,
       isAutoSettings: true,
       geometryResolved: false,
       sampleRateResolved: false,
@@ -291,7 +291,7 @@ export function createDefaultProjectSettings(
       sessions: {},
     },
     transitions: {
-      defaultDurationUs: DEFAULT_PROJECT_SETTINGS.transitions.defaultDurationUs,
+      defaultDurationTicks: DEFAULT_PROJECT_SETTINGS.transitions.defaultDurationTicks,
     },
     ui: {
       activeTabId: null,
@@ -340,12 +340,12 @@ function createProjectSettingsSchema(defaults: FastCatProjectSettings) {
   });
 
   const sessionSchema = z.object({
-    playheadUs: z.coerce.number().catch(0),
+    playheadTicks: z.coerce.number().catch(0),
     masterGain: z.coerce.number().catch(1),
     masterMuted: z.coerce.boolean().catch(false),
     zoom: z.coerce.number().catch(1),
     trackHeights: z.record(z.string(), z.coerce.number()).catch({}),
-    selectionRange: z.object({ startUs: z.number(), endUs: z.number() }).optional(),
+    selectionRange: z.object({ startTicks: z.number(), endTicks: z.number() }).optional(),
   });
 
   const dynamicPanelSchema = z
@@ -387,11 +387,11 @@ function createProjectSettingsSchema(defaults: FastCatProjectSettings) {
             aspectRatio: z.string().catch(defaults.project.aspectRatio),
             isCustomResolution: z.coerce.boolean().catch(defaults.project.isCustomResolution),
             sampleRate: z.coerce.number().min(8000).max(192000).catch(defaults.project.sampleRate),
-            audioDeclickDurationUs: z.coerce
+            audioDeclickDurationTicks: z.coerce
               .number()
               .min(0)
               .max(1_000 * TICKS_PER_MILLISECOND)
-              .catch(defaults.project.audioDeclickDurationUs),
+              .catch(defaults.project.audioDeclickDurationTicks),
             isAutoSettings: z.coerce.boolean().catch(defaults.project.isAutoSettings),
             geometryResolved: z.coerce.boolean().optional(),
             sampleRateResolved: z.coerce.boolean().optional(),
@@ -403,10 +403,10 @@ function createProjectSettingsSchema(defaults: FastCatProjectSettings) {
             const resolvedFallback = !val.isAutoSettings;
             const normalized = {
               ...val,
-              audioDeclickDurationUs:
-                val.audioDeclickDurationUs > 0 && val.audioDeclickDurationUs <= 1_000_000
-                  ? val.audioDeclickDurationUs * TICKS_PER_MICROSECOND
-                  : val.audioDeclickDurationUs,
+              audioDeclickDurationTicks:
+                val.audioDeclickDurationTicks > 0 && val.audioDeclickDurationTicks <= 1_000_000
+                  ? val.audioDeclickDurationTicks * TICKS_PER_MICROSECOND
+                  : val.audioDeclickDurationTicks,
               geometryResolved: val.geometryResolved ?? resolvedFallback,
               sampleRateResolved: val.sampleRateResolved ?? resolvedFallback,
             };
@@ -432,10 +432,10 @@ function createProjectSettingsSchema(defaults: FastCatProjectSettings) {
           .catch(defaults.timelines),
         transitions: z
           .object({
-            defaultDurationUs: z.coerce
+            defaultDurationTicks: z.coerce
               .number()
               .min(1)
-              .catch(defaults.transitions.defaultDurationUs),
+              .catch(defaults.transitions.defaultDurationTicks),
           })
           .catch(defaults.transitions),
         ui: z
@@ -529,12 +529,12 @@ export function normalizeProjectSettings(
     transitions: inputTransitions
       ? {
           ...inputTransitions,
-          defaultDurationUs:
-            typeof inputTransitions.defaultDurationUs === 'number' &&
-            inputTransitions.defaultDurationUs > 0 &&
-            inputTransitions.defaultDurationUs <= 10_000_000
-              ? inputTransitions.defaultDurationUs * TICKS_PER_MICROSECOND
-              : inputTransitions.defaultDurationUs,
+          defaultDurationTicks:
+            typeof inputTransitions.defaultDurationTicks === 'number' &&
+            inputTransitions.defaultDurationTicks > 0 &&
+            inputTransitions.defaultDurationTicks <= 10_000_000
+              ? inputTransitions.defaultDurationTicks * TICKS_PER_MICROSECOND
+              : inputTransitions.defaultDurationTicks,
         }
       : {},
   };

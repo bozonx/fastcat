@@ -3,7 +3,7 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import {
   computeAnchoredScrollLeft,
   timeUsToPx,
-  pxToTimeUs,
+  pxToTimeTicks,
   type TimelineZoomAnchor,
 } from '~/utils/timeline/geometry';
 import {
@@ -30,7 +30,7 @@ export function useMobileTimelineZoom(
     const playheadPx = timeUsToPx(timelineStore.currentTime, params.zoom);
     const isVisible = playheadPx >= prevScrollLeft && playheadPx <= prevScrollLeft + viewportWidth;
     return {
-      anchorTimeUs: timelineStore.currentTime,
+      anchorTimeTicks: timelineStore.currentTime,
       anchorViewportX: isVisible ? playheadPx - prevScrollLeft : viewportWidth / 2,
     };
   }
@@ -79,11 +79,11 @@ export function useMobileTimelineZoom(
         // starting zoom: after the first pinch step the watcher has already rewritten
         // el.scrollLeft into the new zoom's pixel space, so using initialZoomPosition
         // here makes the focal point drift out from under the fingers.
-        const anchorTimeUs = pxToTimeUs(anchorPx, timelineStore.timelineZoom);
+        const anchorTimeTicks = pxToTimeTicks(anchorPx, timelineStore.timelineZoom);
 
         applyZoomWithAnchor({
           nextZoom: nextZoomPosition,
-          anchor: { anchorTimeUs, anchorViewportX: viewportX },
+          anchor: { anchorTimeTicks, anchorViewportX: viewportX },
         });
       }
     }
@@ -100,7 +100,7 @@ export function useMobileTimelineZoom(
 
     const rect = getCachedScrollRect(el);
     const anchorViewportX = e.clientX - rect.left;
-    const anchorTimeUs = pxToTimeUs(el.scrollLeft + anchorViewportX, timelineStore.timelineZoom);
+    const anchorTimeTicks = pxToTimeTicks(el.scrollLeft + anchorViewportX, timelineStore.timelineZoom);
 
     const step = e.deltaY > 0 ? -5 : 5;
     const nextZoom = Math.min(
@@ -108,7 +108,7 @@ export function useMobileTimelineZoom(
       Math.max(MIN_TIMELINE_ZOOM_POSITION, timelineStore.timelineZoom + step),
     );
 
-    applyZoomWithAnchor({ nextZoom, anchor: { anchorTimeUs, anchorViewportX } });
+    applyZoomWithAnchor({ nextZoom, anchor: { anchorTimeTicks, anchorViewportX } });
   }
 
   // Ensure the playhead starts in view if zooming happens from other causes

@@ -81,10 +81,10 @@ export function isAnimatableParamPath(key: string): key is AnimatableParamPath {
 }
 
 export interface ResolveClipAnimationTimeUsParams {
-  timelineTimeUs: number;
-  timelineStartUs: number;
-  sourceStartUs?: number;
-  sourceRangeDurationUs?: number;
+  timelineTimeTicks: number;
+  timelineStartTicks: number;
+  sourceStartTicks?: number;
+  sourceRangeDurationTicks?: number;
   speed?: number;
 }
 
@@ -163,62 +163,62 @@ function normalizeAnimationSpeed(speed: unknown): number {
  * keyframes. Unlike video sampling, this intentionally has no end-frame guard:
  * animation curves are not constrained by decoder readability.
  */
-export function resolveClipAnimationTimeUs(params: ResolveClipAnimationTimeUsParams): number {
-  const timelineTimeUs = Math.round(clampFinite(params.timelineTimeUs, 0));
-  const timelineStartUs = Math.round(clampFinite(params.timelineStartUs, 0));
-  const localTimelineUs = Math.max(0, timelineTimeUs - timelineStartUs);
-  const sourceStartUs = Math.max(0, Math.round(clampFinite(params.sourceStartUs, 0)));
-  const sourceRangeDurationUs = Math.max(
+export function resolveClipAnimationTimeTicks(params: ResolveClipAnimationTimeUsParams): number {
+  const timelineTimeTicks = Math.round(clampFinite(params.timelineTimeTicks, 0));
+  const timelineStartTicks = Math.round(clampFinite(params.timelineStartTicks, 0));
+  const localTimelineTicks = Math.max(0, timelineTimeTicks - timelineStartTicks);
+  const sourceStartTicks = Math.max(0, Math.round(clampFinite(params.sourceStartTicks, 0)));
+  const sourceRangeDurationTicks = Math.max(
     0,
-    Math.round(clampFinite(params.sourceRangeDurationUs, 0)),
+    Math.round(clampFinite(params.sourceRangeDurationTicks, 0)),
   );
   const speed = normalizeAnimationSpeed(params.speed);
-  const sourceDeltaUs = Math.round(localTimelineUs * Math.abs(speed));
+  const sourceDeltaTicks = Math.round(localTimelineTicks * Math.abs(speed));
 
-  if (sourceRangeDurationUs <= 0) {
-    return sourceStartUs + sourceDeltaUs;
+  if (sourceRangeDurationTicks <= 0) {
+    return sourceStartTicks + sourceDeltaTicks;
   }
 
-  const sourceOffsetUs =
+  const sourceOffsetTicks =
     speed < 0
-      ? Math.max(0, sourceRangeDurationUs - sourceDeltaUs)
-      : Math.min(sourceRangeDurationUs, sourceDeltaUs);
+      ? Math.max(0, sourceRangeDurationTicks - sourceDeltaTicks)
+      : Math.min(sourceRangeDurationTicks, sourceDeltaTicks);
 
-  return sourceStartUs + sourceOffsetUs;
+  return sourceStartTicks + sourceOffsetTicks;
 }
 
 /**
- * Inverse of {@link resolveClipAnimationTimeUs}: given a keyframe's
+ * Inverse of {@link resolveClipAnimationTimeTicks}: given a keyframe's
  * source-relative time, return the timeline-absolute time at which the clip
  * samples that source time. Used by keyframe navigation (seeking the playhead
  * to a keyframe) and by the lane's click-to-add (mapping a clicked timeline
  * pixel back to source time). The result is unclamped to the clip's timeline
  * range; callers clamp as needed.
  */
-export function resolveKeyframeTimelineTimeUs(
-  params: Omit<ResolveClipAnimationTimeUsParams, 'timelineTimeUs'> & { sourceTimeUs: number },
+export function resolveKeyframeTimelineTimeTicks(
+  params: Omit<ResolveClipAnimationTimeUsParams, 'timelineTimeTicks'> & { sourceTimeTicks: number },
 ): number {
-  const timelineStartUs = Math.round(clampFinite(params.timelineStartUs, 0));
-  const sourceStartUs = Math.max(0, Math.round(clampFinite(params.sourceStartUs, 0)));
-  const sourceRangeDurationUs = Math.max(
+  const timelineStartTicks = Math.round(clampFinite(params.timelineStartTicks, 0));
+  const sourceStartTicks = Math.max(0, Math.round(clampFinite(params.sourceStartTicks, 0)));
+  const sourceRangeDurationTicks = Math.max(
     0,
-    Math.round(clampFinite(params.sourceRangeDurationUs, 0)),
+    Math.round(clampFinite(params.sourceRangeDurationTicks, 0)),
   );
   const speed = normalizeAnimationSpeed(params.speed);
   const absSpeed = Math.abs(speed) || 1;
 
-  const sourceOffsetUs = clampFinite(params.sourceTimeUs, 0) - sourceStartUs;
-  const sourceDeltaUs =
-    speed < 0 && sourceRangeDurationUs > 0
-      ? sourceRangeDurationUs - sourceOffsetUs
-      : sourceOffsetUs;
+  const sourceOffsetTicks = clampFinite(params.sourceTimeTicks, 0) - sourceStartTicks;
+  const sourceDeltaTicks =
+    speed < 0 && sourceRangeDurationTicks > 0
+      ? sourceRangeDurationTicks - sourceOffsetTicks
+      : sourceOffsetTicks;
 
-  const localTimelineUs = Math.max(0, Math.round(sourceDeltaUs / absSpeed));
-  return timelineStartUs + localTimelineUs;
+  const localTimelineTicks = Math.max(0, Math.round(sourceDeltaTicks / absSpeed));
+  return timelineStartTicks + localTimelineTicks;
 }
 
 /**
- * Return a keyframe track with its keyframes sorted ascending by `tUs`, times
+ * Return a keyframe track with its keyframes sorted ascending by `tTicks`, times
  * clamped to `>= 0`, and duplicate times collapsed (last write wins). This is
  * the canonical shape evaluators assume; the schema and command layer route
  * every mutation through it.
@@ -226,14 +226,14 @@ export function resolveKeyframeTimelineTimeUs(
 export function normalizeKeyframeTrack(track: KeyframeTrack): KeyframeTrack {
   const byTime = new Map<number, Keyframe>();
   for (const kf of track.keyframes) {
-    const tUs = Math.max(0, Math.round(clampFinite(kf.tUs, 0)));
-    byTime.set(tUs, {
-      tUs,
+    const tTicks = Math.max(0, Math.round(clampFinite(kf.tTicks, 0)));
+    byTime.set(tTicks, {
+      tTicks,
       value: clampFinite(kf.value, 0),
       easing: isKeyframeEasing(kf.easing) ? kf.easing : 'linear',
     });
   }
-  const keyframes = Array.from(byTime.values()).sort((a, b) => a.tUs - b.tUs);
+  const keyframes = Array.from(byTime.values()).sort((a, b) => a.tTicks - b.tTicks);
   return { keyframes };
 }
 
@@ -243,7 +243,7 @@ export function hasKeyframes(track: KeyframeTrack | undefined): track is Keyfram
 }
 
 /**
- * Evaluate a keyframe track at `clipLocalUs` (canonical timeline ticks from the clip
+ * Evaluate a keyframe track at `clipLocalTicks` (canonical timeline ticks from the clip
  * start).
  *
  * Returns `undefined` for an empty track so callers fall back to the clip's
@@ -252,31 +252,31 @@ export function hasKeyframes(track: KeyframeTrack | undefined): track is Keyfram
  */
 export function evalTrackAt(
   track: KeyframeTrack | undefined,
-  clipLocalUs: number,
+  clipLocalTicks: number,
 ): number | undefined {
   if (!hasKeyframes(track)) {
     return undefined;
   }
 
   const kfs = track.keyframes;
-  const t = clampFinite(clipLocalUs, 0);
+  const t = clampFinite(clipLocalTicks, 0);
 
   const first = kfs[0]!;
   const last = kfs[kfs.length - 1]!;
-  if (kfs.length === 1 || t <= first.tUs) {
+  if (kfs.length === 1 || t <= first.tTicks) {
     return first.value;
   }
-  if (t >= last.tUs) {
+  if (t >= last.tTicks) {
     return last.value;
   }
 
-  // Find the segment [left, right] with left.tUs <= t < right.tUs. Guaranteed to
-  // exist here since first.tUs < t < last.tUs.
+  // Find the segment [left, right] with left.tTicks <= t < right.tTicks. Guaranteed to
+  // exist here since first.tTicks < t < last.tTicks.
   let left = first;
   let right = last;
   for (let i = 1; i < kfs.length; i++) {
     const kf = kfs[i]!;
-    if (kf.tUs > t) {
+    if (kf.tTicks > t) {
       left = kfs[i - 1]!;
       right = kf;
       break;
@@ -287,32 +287,32 @@ export function evalTrackAt(
     return left.value;
   }
 
-  const span = right.tUs - left.tUs;
+  const span = right.tTicks - left.tTicks;
   if (span <= 0) {
     // Coincident keyframes: jump to the right value.
     return right.value;
   }
 
-  const frac = (t - left.tUs) / span;
+  const frac = (t - left.tTicks) / span;
   const eased = applyEasing(left.easing, frac);
   return left.value + (right.value - left.value) * eased;
 }
 
 /**
- * Sample every animated parameter of a clip at `clipLocalUs`, returning a map of
+ * Sample every animated parameter of a clip at `clipLocalTicks`, returning a map of
  * path → clamped value for the tracks that have keyframes. Paths without an
  * animation are omitted so the render layer keeps the clip's static value.
  */
 export function sampleClipAnimations(
   animations: ClipAnimations | undefined,
-  clipLocalUs: number,
+  clipLocalTicks: number,
 ): Partial<Record<AnimatableParamPath, number>> {
   const out: Partial<Record<AnimatableParamPath, number>> = {};
   if (!animations) {
     return out;
   }
   for (const path of ANIMATABLE_PARAM_PATHS) {
-    const value = evalTrackAt(animations[path], clipLocalUs);
+    const value = evalTrackAt(animations[path], clipLocalTicks);
     if (value !== undefined) {
       out[path] = clampAnimatedValue(path, value);
     }

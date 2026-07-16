@@ -10,9 +10,9 @@ export const MIN_WAVEFORM_PEAK_LENGTH = 8_000;
 export const WAVEFORM_PEAKS_PER_SECOND = 48_000;
 
 export interface WaveformWindowMetricsParams {
-  sourceStartUs: number;
-  sourceDurationUs: number;
-  timelineDurationUs: number;
+  sourceStartTicks: number;
+  sourceDurationTicks: number;
+  timelineDurationTicks: number;
   speed?: number;
   zoom: number;
 }
@@ -26,11 +26,11 @@ export interface WaveformWindowMetrics {
 }
 
 export interface WaveformSourceTimeParams {
-  absoluteUs: number;
-  clipStartUs: number;
-  clipDurationUs: number;
-  sourceStartUs: number;
-  sourceRangeDurationUs: number;
+  absoluteTicks: number;
+  clipStartTicks: number;
+  clipDurationTicks: number;
+  sourceStartTicks: number;
+  sourceRangeDurationTicks: number;
   speed?: number;
 }
 
@@ -73,14 +73,14 @@ export function computeWaveformWindowMetrics(
   params: WaveformWindowMetricsParams,
 ): WaveformWindowMetrics {
   const speed = normalizeWaveformSpeed(params.speed);
-  const sourceStartUs = Math.max(0, Math.round(params.sourceStartUs));
-  const sourceDurationUs = Math.max(0, Math.round(params.sourceDurationUs));
-  const timelineDurationUs = Math.max(0, Math.round(params.timelineDurationUs));
-  const clipWidthPx = Math.round(timeUsToPx(timelineDurationUs, params.zoom));
+  const sourceStartTicks = Math.max(0, Math.round(params.sourceStartTicks));
+  const sourceDurationTicks = Math.max(0, Math.round(params.sourceDurationTicks));
+  const timelineDurationTicks = Math.max(0, Math.round(params.timelineDurationTicks));
+  const clipWidthPx = Math.round(timeUsToPx(timelineDurationTicks, params.zoom));
   // `speed` is already normalized to a positive magnitude; direction is handled
   // separately via `reversed`, so both metrics divide by the same positive speed.
-  const totalWidthPx = Math.round(timeUsToPx(sourceDurationUs / speed, params.zoom));
-  const trimOffsetPx = Math.round(timeUsToPx(sourceStartUs / speed, params.zoom));
+  const totalWidthPx = Math.round(timeUsToPx(sourceDurationTicks / speed, params.zoom));
+  const trimOffsetPx = Math.round(timeUsToPx(sourceStartTicks / speed, params.zoom));
   const reversed =
     typeof params.speed === 'number' && Number.isFinite(params.speed) && params.speed < 0;
   const leftPx = reversed ? trimOffsetPx + clipWidthPx - totalWidthPx : -trimOffsetPx;
@@ -94,23 +94,23 @@ export function computeWaveformWindowMetrics(
   };
 }
 
-export function resolveWaveformSourceUs(params: WaveformSourceTimeParams): number | null {
-  const clipStartUs = Math.max(0, Math.round(params.clipStartUs));
-  const clipDurationUs = Math.max(0, Math.round(params.clipDurationUs));
-  const localUs = Math.round(params.absoluteUs) - clipStartUs;
-  if (localUs < 0 || localUs > clipDurationUs) return null;
+export function resolveWaveformSourceTicks(params: WaveformSourceTimeParams): number | null {
+  const clipStartTicks = Math.max(0, Math.round(params.clipStartTicks));
+  const clipDurationTicks = Math.max(0, Math.round(params.clipDurationTicks));
+  const localTicks = Math.round(params.absoluteTicks) - clipStartTicks;
+  if (localTicks < 0 || localTicks > clipDurationTicks) return null;
 
-  const sourceStartUs = Math.max(0, Math.round(params.sourceStartUs));
-  const sourceRangeDurationUs = Math.max(0, Math.round(params.sourceRangeDurationUs));
+  const sourceStartTicks = Math.max(0, Math.round(params.sourceStartTicks));
+  const sourceRangeDurationTicks = Math.max(0, Math.round(params.sourceRangeDurationTicks));
   const speed = normalizeWaveformSpeed(params.speed);
   const signedSpeed =
     typeof params.speed === 'number' && Number.isFinite(params.speed) ? params.speed : 1;
-  const sourceOffsetUs =
+  const sourceOffsetTicks =
     signedSpeed < 0
-      ? sourceRangeDurationUs + Math.round(localUs * signedSpeed)
-      : Math.round(localUs * speed);
+      ? sourceRangeDurationTicks + Math.round(localTicks * signedSpeed)
+      : Math.round(localTicks * speed);
 
-  return sourceStartUs + Math.min(sourceRangeDurationUs, Math.max(0, sourceOffsetUs));
+  return sourceStartTicks + Math.min(sourceRangeDurationTicks, Math.max(0, sourceOffsetTicks));
 }
 
 export function computeWaveformPeakBins(params: WaveformPeakBinsParams): Float32Array {

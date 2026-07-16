@@ -29,9 +29,9 @@ export interface TimelineFormat {
 
 export interface TimelineRange {
   /** Start time in canonical timeline ticks (TICKS_PER_SECOND per second). */
-  startUs: number;
+  startTicks: number;
   /** Duration in canonical timeline ticks (TICKS_PER_SECOND per second). */
-  durationUs: number;
+  durationTicks: number;
 }
 
 export interface TimelineSourceRef {
@@ -173,7 +173,7 @@ export type ClipSourceOrientation = 'auto' | '0' | '90' | '180' | '270';
 /**
  * Keyframe animation.
  *
- * Keyframe times are **source-relative**: `tUs` is measured in canonical timeline
+ * Keyframe times are **source-relative**: `tTicks` is measured in canonical timeline
  * ticks (`TICKS_PER_SECOND` per second) from the source media/timeline start.
  * Moving/rippling a clip keeps its animation intact, while trim and speed change
  * which part of the source-time animation is sampled. The mapping from the
@@ -189,8 +189,8 @@ export type KeyframeEasing =
 
 export interface Keyframe {
   /** Time in canonical timeline ticks from the source media/timeline start (always >= 0). */
-  tUs: number;
-  /** The animated parameter's value at `tUs`. */
+  tTicks: number;
+  /** The animated parameter's value at `tTicks`. */
   value: number;
   /**
    * Interpolation from THIS keyframe to the next one. Ignored on the last
@@ -201,7 +201,7 @@ export interface Keyframe {
 
 export interface KeyframeTrack {
   /**
-   * Keyframes sorted ascending by `tUs` with unique times. This invariant is
+   * Keyframes sorted ascending by `tTicks` with unique times. This invariant is
    * enforced by the schema (`ClipAnimationsSchema`) and the command layer
    * (`normalizeKeyframeTrack`); evaluators rely on it.
    */
@@ -248,7 +248,7 @@ export type ClipAnimations = Partial<Record<AnimatableParamPath, KeyframeTrack>>
 
 export interface ClipTransition {
   type: string;
-  durationUs: number;
+  durationTicks: number;
   mode?: TransitionMode;
   /** True if the user manually changed the transition mode */
   isOverridden?: boolean;
@@ -291,22 +291,22 @@ interface TimelineClipBase {
   timelineRange: TimelineRange;
   sourceRange: TimelineRange;
   source?: TimelineSourceRef;
-  sourceDurationUs?: number;
+  sourceDurationTicks?: number;
   speed?: number;
 
   audioGain?: number;
   audioBalance?: number;
   originalAudioGain?: number;
   originalAudioBalance?: number;
-  audioFadeInUs?: number;
-  audioFadeOutUs?: number;
+  audioFadeInTicks?: number;
+  audioFadeOutTicks?: number;
   audioFadeInCurve?: AudioFadeCurve;
   audioFadeOutCurve?: AudioFadeCurve;
   audioMuted?: boolean;
   audioWaveformMode?: 'half' | 'full';
   showWaveform?: boolean;
   showThumbnails?: boolean;
-  freezeFrameSourceUs?: number;
+  freezeFrameSourceTicks?: number;
   isImage?: boolean;
 
   opacity?: number;
@@ -350,13 +350,13 @@ interface TimelineClipBase {
 export interface TimelineMediaClipItem extends TimelineClipBase {
   clipType: 'media';
   source: TimelineSourceRef;
-  sourceDurationUs: number;
+  sourceDurationTicks: number;
 }
 
 export interface TimelineTimelineClipItem extends TimelineClipBase {
   clipType: 'timeline';
   source: TimelineSourceRef;
-  sourceDurationUs: number;
+  sourceDurationTicks: number;
 }
 
 export interface TimelineAdjustmentClipItem extends TimelineClipBase {
@@ -464,7 +464,7 @@ export type TimelineClipPropertiesPatch = Partial<
     | 'opacity'
     | 'blendMode'
     | 'effects'
-    | 'freezeFrameSourceUs'
+    | 'freezeFrameSourceTicks'
     | 'speed'
     | 'speedActive'
     | 'transform'
@@ -473,8 +473,8 @@ export type TimelineClipPropertiesPatch = Partial<
     | 'sourceOrientation'
     | 'audioGain'
     | 'audioBalance'
-    | 'audioFadeInUs'
-    | 'audioFadeOutUs'
+    | 'audioFadeInTicks'
+    | 'audioFadeOutTicks'
     | 'audioFadeInCurve'
     | 'audioFadeOutCurve'
     | 'audioFadesActive'
@@ -483,7 +483,7 @@ export type TimelineClipPropertiesPatch = Partial<
     | 'showWaveform'
     | 'showThumbnails'
     | 'sourceRange'
-    | 'sourceDurationUs'
+    | 'sourceDurationTicks'
     | 'source'
     | 'opacityActive'
     | 'blendModeActive'
@@ -542,7 +542,7 @@ export interface TimelineClipActionPayload {
   trackId: string;
   itemId: string;
   edge?: 'in' | 'out' | 'end';
-  deltaUs?: number;
+  deltaTicks?: number;
   quantizeToFrames?: boolean;
 }
 
@@ -559,7 +559,7 @@ export interface TimelineOpenSpeedModalPayload {
 export interface TimelineMoveItemPayload {
   trackId: string;
   itemId: string;
-  startUs: number;
+  startTicks: number;
   mode?: 'move' | 'slip';
 }
 
@@ -567,7 +567,7 @@ export interface TimelineTrimItemPayload {
   trackId: string;
   itemId: string;
   edge: 'start' | 'end';
-  startUs: number;
+  startTicks: number;
 }
 
 export interface TimelineResizeVolumePayload {
@@ -581,7 +581,7 @@ export interface TimelineResizeFadePayload {
   trackId: string;
   itemId: string;
   edge: 'in' | 'out';
-  durationUs: number;
+  durationTicks: number;
   /** Pointer X where the gesture started. Used when resize starts after a drag threshold. */
   pointerStartClientX?: number;
   /** Pre-drag document snapshot for correct undo history. Pass when creation and drag start together. */
@@ -608,15 +608,15 @@ export interface TimelineTrack {
 
 export interface TimelineMarker {
   id: string;
-  timeUs: number;
-  durationUs?: number;
+  timeTicks: number;
+  durationTicks?: number;
   text: string;
   color?: string;
 }
 
 export interface TimelineSelectionRange {
-  startUs: number;
-  endUs: number;
+  startTicks: number;
+  endTicks: number;
 }
 
 export interface TimelineFastCatMetadata {

@@ -8,8 +8,8 @@ import {
   type ItemGeometry,
 } from '~/utils/timeline/track-virtualization';
 
-function item(id: string, startUs: number, durationUs: number, kind = 'clip'): any {
-  return { id, kind, timelineRange: { startUs, durationUs } };
+function item(id: string, startTicks: number, durationTicks: number, kind = 'clip'): any {
+  return { id, kind, timelineRange: { startTicks, durationTicks } };
 }
 
 function geo(startPx: number, widthPx: number): ItemGeometry {

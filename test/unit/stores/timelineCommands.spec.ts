@@ -34,7 +34,7 @@ describe('timelineCommands', () => {
     getOrFetchMetadataByPath = vi.fn().mockResolvedValue({});
     getUserSettings = vi
       .fn()
-      .mockReturnValue({ timeline: { defaultStaticClipDurationUs: 5000000 } });
+      .mockReturnValue({ timeline: { defaultStaticClipDurationTicks: 5000000 } });
     getProjectSettings = vi.fn().mockReturnValue({});
     updateTimelineFormat = vi.fn().mockResolvedValue(undefined);
     updateProjectFormat = vi.fn();

@@ -19,7 +19,7 @@ const mockTimelineStore = reactive({
         id: 'track-1',
         kind: 'video',
         name: 'Video 1',
-        items: [{ id: 'gap-1', kind: 'gap', timelineRange: { startUs: 0, durationUs: 1_000_000 } }],
+        items: [{ id: 'gap-1', kind: 'gap', timelineRange: { startTicks: 0, durationTicks: 1_000_000 } }],
         locked: false,
         videoHidden: false,
         audioMuted: false,

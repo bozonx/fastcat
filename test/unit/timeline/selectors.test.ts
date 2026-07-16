@@ -4,7 +4,7 @@ import {
   selectTrack,
   selectTracksByKind,
   selectAllItems,
-  selectTimelineDurationUs,
+  selectTimelineDurationTicks,
 } from '~/timeline/selectors';
 
 const mockDoc: any = {
@@ -14,14 +14,14 @@ const mockDoc: any = {
       id: 'track-1',
       kind: 'video',
       items: [
-        { id: 'clip-1', kind: 'clip', timelineRange: { startUs: 0, durationUs: 1_000_000 } },
-        { id: 'gap-1', kind: 'gap', timelineRange: { startUs: 1_000_000, durationUs: 500_000 } },
+        { id: 'clip-1', kind: 'clip', timelineRange: { startTicks: 0, durationTicks: 1_000_000 } },
+        { id: 'gap-1', kind: 'gap', timelineRange: { startTicks: 1_000_000, durationTicks: 500_000 } },
       ],
     },
     {
       id: 'track-2',
       kind: 'audio',
-      items: [{ id: 'clip-2', kind: 'clip', timelineRange: { startUs: 0, durationUs: 2_000_000 } }],
+      items: [{ id: 'clip-2', kind: 'clip', timelineRange: { startTicks: 0, durationTicks: 2_000_000 } }],
     },
   ],
 };
@@ -51,12 +51,12 @@ describe('selectAllItems', () => {
   });
 });
 
-describe('selectTimelineDurationUs', () => {
+describe('selectTimelineDurationTicks', () => {
   it('returns max end time across all items', () => {
-    expect(selectTimelineDurationUs(mockDoc)).toBe(2_000_000);
+    expect(selectTimelineDurationTicks(mockDoc)).toBe(2_000_000);
   });
 
   it('returns 0 for empty timeline', () => {
-    expect(selectTimelineDurationUs({ id: 'empty', tracks: [] } as any)).toBe(0);
+    expect(selectTimelineDurationTicks({ id: 'empty', tracks: [] } as any)).toBe(0);
   });
 });

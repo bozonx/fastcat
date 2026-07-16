@@ -27,7 +27,7 @@ const clipItem = computed(() =>
 const centeredOverlayStyle = computed(() => {
   if (!timelineContext || !clipItem.value) return undefined;
   const left = computeClipCenteredOverlayLeftPx({
-    clipStartPx: timeUsToPx(props.item.timelineRange.startUs, timelineContext.zoom.value),
+    clipStartPx: timeUsToPx(props.item.timelineRange.startTicks, timelineContext.zoom.value),
     clipWidthPx: props.clipWidthPx,
     scrollLeft: props.scrollLeft,
     viewportWidth: props.viewportWidth,

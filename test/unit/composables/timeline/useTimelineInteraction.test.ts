@@ -6,14 +6,14 @@ import { createPinia, setActivePinia } from 'pinia';
 import { useTimelineInteraction } from '~/composables/timeline/useTimelineInteraction';
 import {
   timeUsToPx,
-  pxToTimeUs,
-  pxToDeltaUs,
+  pxToTimeTicks,
+  pxToDeltaTicks,
   BASE_PX_PER_SECOND,
   computeAnchoredScrollLeft,
   computeTimelinePlaybackAutoScrollLeft,
-  computeSnappedStartUs,
+  computeSnappedStartTicks,
   quantizeStartUsToFrames,
-  pickBestSnapCandidateUs,
+  pickBestSnapCandidateTicks,
 } from '~/utils/timeline/geometry';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useSelectionStore } from '~/stores/selection.store';
@@ -31,17 +31,17 @@ describe('useTimelineInteraction', () => {
     expect(timeUsToPx(TICKS_PER_SECOND / 2, 50)).toBe(BASE_PX_PER_SECOND / 2);
   });
 
-  it('pxToTimeUs should convert pixels to microseconds correctly', () => {
-    expect(pxToTimeUs(BASE_PX_PER_SECOND, 50)).toBe(TICKS_PER_SECOND);
-    expect(pxToTimeUs(BASE_PX_PER_SECOND / 2, 50)).toBe(TICKS_PER_SECOND / 2);
+  it('pxToTimeTicks should convert pixels to microseconds correctly', () => {
+    expect(pxToTimeTicks(BASE_PX_PER_SECOND, 50)).toBe(TICKS_PER_SECOND);
+    expect(pxToTimeTicks(BASE_PX_PER_SECOND / 2, 50)).toBe(TICKS_PER_SECOND / 2);
     // Should never return negative
-    expect(pxToTimeUs(-10, 50)).toBe(0);
+    expect(pxToTimeTicks(-10, 50)).toBe(0);
   });
 
-  it('pxToDeltaUs should convert pixels to delta microseconds correctly', () => {
-    expect(pxToDeltaUs(BASE_PX_PER_SECOND, 50)).toBe(TICKS_PER_SECOND);
+  it('pxToDeltaTicks should convert pixels to delta microseconds correctly', () => {
+    expect(pxToDeltaTicks(BASE_PX_PER_SECOND, 50)).toBe(TICKS_PER_SECOND);
     // Delta CAN be negative
-    expect(pxToDeltaUs(-BASE_PX_PER_SECOND, 50)).toBe(-TICKS_PER_SECOND);
+    expect(pxToDeltaTicks(-BASE_PX_PER_SECOND, 50)).toBe(-TICKS_PER_SECOND);
   });
 
   it('computeAnchoredScrollLeft should keep anchor time at same viewport position', () => {
@@ -51,10 +51,10 @@ describe('useTimelineInteraction', () => {
     const nextZoom = 60;
     const viewportWidth = 300;
 
-    const anchorTimeUs = 10 * TICKS_PER_SECOND;
+    const anchorTimeTicks = 10 * TICKS_PER_SECOND;
     const anchorViewportX = 100;
 
-    const anchorPxAtPrevZoom = timeUsToPx(anchorTimeUs, prevZoom);
+    const anchorPxAtPrevZoom = timeUsToPx(anchorTimeTicks, prevZoom);
     const prevScrollLeft = Math.max(0, anchorPxAtPrevZoom - anchorViewportX);
 
     const nextScrollLeft = computeAnchoredScrollLeft({
@@ -62,10 +62,10 @@ describe('useTimelineInteraction', () => {
       nextZoom,
       prevScrollLeft,
       viewportWidth,
-      anchor: { anchorTimeUs, anchorViewportX },
+      anchor: { anchorTimeTicks, anchorViewportX },
     });
 
-    const anchorPxAtNextZoom = timeUsToPx(anchorTimeUs, nextZoom);
+    const anchorPxAtNextZoom = timeUsToPx(anchorTimeTicks, nextZoom);
     expect(anchorPxAtNextZoom - nextScrollLeft).toBeCloseTo(anchorViewportX, 6);
   });
 
@@ -75,7 +75,7 @@ describe('useTimelineInteraction', () => {
       nextZoom: 0,
       prevScrollLeft: 0,
       viewportWidth: 300,
-      anchor: { anchorTimeUs: 0, anchorViewportX: 200 },
+      anchor: { anchorTimeTicks: 0, anchorViewportX: 200 },
     });
 
     expect(nextScrollLeft).toBe(0);
@@ -114,70 +114,70 @@ describe('useTimelineInteraction', () => {
     expect(nextScrollLeft).toBe(4200);
   });
 
-  it('computeSnappedStartUs preserves an exact clip boundary over frame snapping', () => {
+  it('computeSnappedStartTicks preserves an exact clip boundary over frame snapping', () => {
     const fps = 30;
 
     // Pick a target that is not on a frame boundary.
-    const targetUs = TICKS_PER_SECOND + 1;
-    expect(targetUs).not.toBe(quantizeStartUsToFrames(targetUs, fps));
+    const targetTicks = TICKS_PER_SECOND + 1;
+    expect(targetTicks).not.toBe(quantizeStartUsToFrames(targetTicks, fps));
 
-    const snapped = computeSnappedStartUs({
-      rawStartUs: targetUs + 100,
-      draggingItemDurationUs: TICKS_PER_SECOND,
+    const snapped = computeSnappedStartTicks({
+      rawStartTicks: targetTicks + 100,
+      draggingItemDurationTicks: TICKS_PER_SECOND,
       fps,
       zoom: 50,
       snapThresholdPx: 10,
-      snapTargetsUs: [targetUs],
+      snapTargetsTicks: [targetTicks],
       enableFrameSnap: true,
       enableClipSnap: true,
-      frameOffsetUs: 0,
+      frameOffsetTicks: 0,
     });
 
-    expect(snapped).toBe(targetUs);
+    expect(snapped).toBe(targetTicks);
   });
 
-  it('computeSnappedStartUs should preserve frame offset when snapping (free clip offset is kept)', () => {
+  it('computeSnappedStartTicks should preserve frame offset when snapping (free clip offset is kept)', () => {
     const fps = 30;
-    const frameUs = Math.round(TICKS_PER_SECOND / fps);
+    const frameTicks = Math.round(TICKS_PER_SECOND / fps);
 
     // Simulate a clip that initially sits between frames (has offset).
-    const frameOffsetUs = 7_000;
-    expect(frameOffsetUs).toBeGreaterThan(0);
+    const frameOffsetTicks = 7_000;
+    expect(frameOffsetTicks).toBeGreaterThan(0);
 
-    const rawStartUs = frameUs * 10 + 12_345;
+    const rawStartTicks = frameTicks * 10 + 12_345;
 
-    const snapped = computeSnappedStartUs({
-      rawStartUs,
-      draggingItemDurationUs: TICKS_PER_SECOND,
+    const snapped = computeSnappedStartTicks({
+      rawStartTicks,
+      draggingItemDurationTicks: TICKS_PER_SECOND,
       fps,
       zoom: 50,
       snapThresholdPx: 10,
-      snapTargetsUs: [],
+      snapTargetsTicks: [],
       enableFrameSnap: true,
       enableClipSnap: false,
-      frameOffsetUs,
+      frameOffsetTicks,
     });
 
     // When offset snapping is used, result should keep the same offset relative to frame grid.
-    const base = Math.max(0, snapped - frameOffsetUs);
+    const base = Math.max(0, snapped - frameOffsetTicks);
     expect(base).toBe(quantizeStartUsToFrames(base, fps));
-    expect(snapped).toBe(base + frameOffsetUs);
+    expect(snapped).toBe(base + frameOffsetTicks);
   });
 
-  it('pickBestSnapCandidateUs should snap to nearest marker edge within threshold', () => {
-    const thresholdUs = 10_000;
-    const zoneStartUs = 1_000_000;
-    const zoneEndUs = zoneStartUs + 500_000;
+  it('pickBestSnapCandidateTicks should snap to nearest marker edge within threshold', () => {
+    const thresholdTicks = 10_000;
+    const zoneStartTicks = 1_000_000;
+    const zoneEndTicks = zoneStartTicks + 500_000;
 
-    const rawUs = zoneEndUs + 2_000;
-    const res = pickBestSnapCandidateUs({
-      rawUs,
-      thresholdUs,
-      targetsUs: [zoneStartUs, zoneEndUs],
+    const rawTicks = zoneEndTicks + 2_000;
+    const res = pickBestSnapCandidateTicks({
+      rawTicks,
+      thresholdTicks,
+      targetsTicks: [zoneStartTicks, zoneEndTicks],
     });
 
-    expect(res.snappedUs).toBe(zoneEndUs);
-    expect(res.distUs).toBe(2_000);
+    expect(res.snappedTicks).toBe(zoneEndTicks);
+    expect(res.distTicks).toBe(2_000);
   });
 
   it('selectItem should sync selectionStore with the current click immediately', async () => {
@@ -195,14 +195,14 @@ describe('useTimelineInteraction', () => {
             {
               kind: 'clip',
               id: 'clip-1',
-              timelineRange: { startUs: 0, durationUs: 1_000_000 },
-              sourceRange: { startUs: 0, durationUs: 1_000_000 },
+              timelineRange: { startTicks: 0, durationTicks: 1_000_000 },
+              sourceRange: { startTicks: 0, durationTicks: 1_000_000 },
             },
             {
               kind: 'clip',
               id: 'clip-2',
-              timelineRange: { startUs: 1_000_000, durationUs: 1_000_000 },
-              sourceRange: { startUs: 0, durationUs: 1_000_000 },
+              timelineRange: { startTicks: 1_000_000, durationTicks: 1_000_000 },
+              sourceRange: { startTicks: 0, durationTicks: 1_000_000 },
             },
           ],
         },
@@ -261,8 +261,8 @@ describe('useTimelineInteraction', () => {
             {
               kind: 'clip',
               id: 'clip-1',
-              timelineRange: { startUs: 0, durationUs: 1_000_000 },
-              sourceRange: { startUs: 0, durationUs: 1_000_000 },
+              timelineRange: { startTicks: 0, durationTicks: 1_000_000 },
+              sourceRange: { startTicks: 0, durationTicks: 1_000_000 },
             },
           ],
         },
@@ -325,8 +325,8 @@ describe('useTimelineInteraction', () => {
             {
               kind: 'clip',
               id: 'clip-1',
-              timelineRange: { startUs: 0, durationUs: 1_000_000 },
-              sourceRange: { startUs: 0, durationUs: 1_000_000 },
+              timelineRange: { startTicks: 0, durationTicks: 1_000_000 },
+              sourceRange: { startTicks: 0, durationTicks: 1_000_000 },
             },
           ],
         },
@@ -389,14 +389,14 @@ describe('useTimelineInteraction', () => {
             {
               kind: 'clip',
               id: 'clip-1',
-              timelineRange: { startUs: 0, durationUs: 1_000_000 },
-              sourceRange: { startUs: 0, durationUs: 1_000_000 },
+              timelineRange: { startTicks: 0, durationTicks: 1_000_000 },
+              sourceRange: { startTicks: 0, durationTicks: 1_000_000 },
             },
             {
               kind: 'clip',
               id: 'clip-2',
-              timelineRange: { startUs: 1_000_000, durationUs: 1_000_000 },
-              sourceRange: { startUs: 0, durationUs: 1_000_000 },
+              timelineRange: { startTicks: 1_000_000, durationTicks: 1_000_000 },
+              sourceRange: { startTicks: 0, durationTicks: 1_000_000 },
             },
           ],
         },
@@ -450,7 +450,7 @@ describe('useTimelineInteraction', () => {
 
     timelineStore.timelineZoom = 50;
     timelineStore.isTrimModeActive = true;
-    timelineStore.setCurrentTimeUs = vi.fn();
+    timelineStore.setCurrentTimeTicks = vi.fn();
     timelineStore.timelineDoc = {
       timebase: { fps: 25 },
       tracks: [],
@@ -494,18 +494,18 @@ describe('useTimelineInteraction', () => {
 
     pointerMoveHandler({ clientX: 70 } as PointerEvent);
 
-    expect(timelineStore.setCurrentTimeUs).toHaveBeenCalledWith(pxToTimeUs(170, 50));
+    expect(timelineStore.setCurrentTimeTicks).toHaveBeenCalledWith(pxToTimeTicks(170, 50));
     expect(scroller.getBoundingClientRect).toHaveBeenCalledTimes(1);
 
     pointerMoveHandler({ clientX: 90 } as PointerEvent);
 
-    expect(timelineStore.setCurrentTimeUs).toHaveBeenLastCalledWith(pxToTimeUs(190, 50));
+    expect(timelineStore.setCurrentTimeTicks).toHaveBeenLastCalledWith(pxToTimeTicks(190, 50));
     expect(scroller.getBoundingClientRect).toHaveBeenCalledTimes(1);
 
     pointerUpHandler();
     pointerMoveHandler({ clientX: 110 } as PointerEvent);
 
-    expect(timelineStore.setCurrentTimeUs).toHaveBeenLastCalledWith(pxToTimeUs(210, 50));
+    expect(timelineStore.setCurrentTimeTicks).toHaveBeenLastCalledWith(pxToTimeTicks(210, 50));
     expect(scroller.getBoundingClientRect).toHaveBeenCalledTimes(2);
 
     wrapper.unmount();

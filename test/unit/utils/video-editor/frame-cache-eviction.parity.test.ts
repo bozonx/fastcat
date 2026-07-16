@@ -41,7 +41,7 @@ describe('chooseEvictionVictimTime core', () => {
   });
 
   it('normalizes negative / fractional inputs the way the cache stores them', () => {
-    // Times are rounded and floored at 0, matching CachedVideoFrameEntry.timelineTimeUs.
+    // Times are rounded and floored at 0, matching CachedVideoFrameEntry.timelineTimeTicks.
     expect(chooseEvictionVictimTime([-5, 1000.4], 0)).toBe(1000);
     expect(chooseEvictionVictimTime([0, 10], -100)).toBe(10);
   });

@@ -2,7 +2,7 @@
 import { ref, watch, computed, onMounted, onUnmounted } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
-import { pxToTimeUs, zoomToPxPerSecond } from '~/utils/timeline/geometry';
+import { pxToTimeTicks, zoomToPxPerSecond } from '~/utils/timeline/geometry';
 import { ticksToFrame } from '~/timeline/commands/utils';
 import {
   getFirstTimelineRulerMajorFrame,
@@ -155,8 +155,8 @@ function draw() {
 
   const startPx = nextRenderStartPx;
   const endPx = startPx + nextRenderWidthPx;
-  const startUs = pxToTimeUs(startPx, currentZoom);
-  const endUs = pxToTimeUs(endPx, currentZoom);
+  const startTicks = pxToTimeTicks(startPx, currentZoom);
+  const endTicks = pxToTimeTicks(endPx, currentZoom);
 
   const scale = interfaceScale.value / 14;
   const mainStepS = getTimelineRulerMainStepS({
@@ -165,8 +165,8 @@ function draw() {
   });
 
   const mainStepFrames = Math.max(1, Math.round(mainStepS * currentFps));
-  const startFrame = ticksToFrame(startUs, currentFps, 'floor');
-  const endFrame = ticksToFrame(endUs, currentFps, 'ceil');
+  const startFrame = ticksToFrame(startTicks, currentFps, 'floor');
+  const endFrame = ticksToFrame(endTicks, currentFps, 'ceil');
   const firstMajorFrame = getFirstTimelineRulerMajorFrame({
     startFrame,
     endFrame,

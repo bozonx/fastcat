@@ -248,55 +248,55 @@ export function getNextClipForItem(
   return clips[idx + 1] ?? null;
 }
 
-export function getClipHeadHandleUs(clip: TimelineClipItem): number {
+export function getClipHeadHandleTicks(clip: TimelineClipItem): number {
   if (clip.clipType !== 'media' && clip.clipType !== 'timeline') return Number.POSITIVE_INFINITY;
   if (clip.isImage) return Number.POSITIVE_INFINITY;
-  return Math.max(0, Math.round(clip.sourceRange?.startUs ?? 0));
+  return Math.max(0, Math.round(clip.sourceRange?.startTicks ?? 0));
 }
 
-export function getClipTailHandleUs(clip: TimelineClipItem): number {
+export function getClipTailHandleTicks(clip: TimelineClipItem): number {
   if (clip.clipType !== 'media' && clip.clipType !== 'timeline') return Number.POSITIVE_INFINITY;
   if (clip.isImage) return Number.POSITIVE_INFINITY;
-  const sourceDurationUs = Math.max(0, Math.round(Number(clip.sourceDurationUs ?? 0)));
-  const sourceEndUs = Math.max(
+  const sourceDurationTicks = Math.max(0, Math.round(Number(clip.sourceDurationTicks ?? 0)));
+  const sourceEndTicks = Math.max(
     0,
-    Math.round(Number(clip.sourceRange?.startUs ?? 0) + Number(clip.sourceRange?.durationUs ?? 0)),
+    Math.round(Number(clip.sourceRange?.startTicks ?? 0) + Number(clip.sourceRange?.durationTicks ?? 0)),
   );
-  return Math.max(0, sourceDurationUs - sourceEndUs);
+  return Math.max(0, sourceDurationTicks - sourceEndTicks);
 }
 
-export function getClipHeadTimelineHandleUs(clip: TimelineClipItem): number {
+export function getClipHeadTimelineHandleTicks(clip: TimelineClipItem): number {
   const speed = clip.speed ?? 1;
   if (speed === 0) return Number.POSITIVE_INFINITY;
   const absSpeed = Math.abs(speed);
-  const sourceHandleUs = speed >= 0 ? getClipHeadHandleUs(clip) : getClipTailHandleUs(clip);
-  return sourceHandleUs / absSpeed;
+  const sourceHandleTicks = speed >= 0 ? getClipHeadHandleTicks(clip) : getClipTailHandleTicks(clip);
+  return sourceHandleTicks / absSpeed;
 }
 
-export function getClipTailTimelineHandleUs(clip: TimelineClipItem): number {
+export function getClipTailTimelineHandleTicks(clip: TimelineClipItem): number {
   const speed = clip.speed ?? 1;
   if (speed === 0) return Number.POSITIVE_INFINITY;
   const absSpeed = Math.abs(speed);
-  const sourceHandleUs = speed >= 0 ? getClipTailHandleUs(clip) : getClipHeadHandleUs(clip);
-  return sourceHandleUs / absSpeed;
+  const sourceHandleTicks = speed >= 0 ? getClipTailHandleTicks(clip) : getClipHeadHandleTicks(clip);
+  return sourceHandleTicks / absSpeed;
 }
 
 /**
  * Maximum timeline duration a clip may grow to, given its source material.
  * Material-backed clips (media non-image, nested timelines) are bounded by
- * `sourceDurationUs / abs(speed)`. Images and virtual clips (text/shape/...)
+ * `sourceDurationTicks / abs(speed)`. Images and virtual clips (text/shape/...)
  * have no source limit and may be extended freely (returns Infinity).
  */
-export function getClipMaxTimelineDurationUs(clip: TimelineClipItem): number {
+export function getClipMaxTimelineDurationTicks(clip: TimelineClipItem): number {
   if (clip.clipType !== 'media' && clip.clipType !== 'timeline') return Number.POSITIVE_INFINITY;
   if (clip.isImage) return Number.POSITIVE_INFINITY;
   const speed = clip.speed ?? 1;
   const absSpeed = Math.abs(speed) || 1;
-  const rawSourceDurationUs = Number(clip.sourceDurationUs);
-  if (!Number.isFinite(rawSourceDurationUs) || rawSourceDurationUs <= 0) {
+  const rawSourceDurationTicks = Number(clip.sourceDurationTicks);
+  if (!Number.isFinite(rawSourceDurationTicks) || rawSourceDurationTicks <= 0) {
     return Number.POSITIVE_INFINITY;
   }
-  return Math.round(rawSourceDurationUs / absSpeed);
+  return Math.round(rawSourceDurationTicks / absSpeed);
 }
 
 export function getOverlayGuideOffsetPx(
@@ -316,11 +316,11 @@ export function getOverlayGuideOffsetPx(
     edge === 'in' ? getPrevClipForItem(track, clipItem) : getNextClipForItem(track, clipItem);
   if (!adjacent) return null;
 
-  const timelineHandleUs =
-    edge === 'in' ? getClipTailTimelineHandleUs(adjacent) : getClipHeadTimelineHandleUs(adjacent);
-  if (!Number.isFinite(timelineHandleUs) || timelineHandleUs <= 0) return null;
+  const timelineHandleTicks =
+    edge === 'in' ? getClipTailTimelineHandleTicks(adjacent) : getClipHeadTimelineHandleTicks(adjacent);
+  if (!Number.isFinite(timelineHandleTicks) || timelineHandleTicks <= 0) return null;
 
-  return Math.max(0, Math.min(clipWidthPx, transitionUsToPxFn(timelineHandleUs)));
+  return Math.max(0, Math.min(clipWidthPx, transitionUsToPxFn(timelineHandleTicks)));
 }
 
 export function isVideo(item: TimelineTrackItem, track: TimelineTrack): item is TimelineClipItem {

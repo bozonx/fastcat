@@ -73,7 +73,7 @@ describe('VideoCompositor op queue (render↔mutation serialization)', () => {
     const compositor = new VideoCompositor() as any;
     compositor.app = null;
     compositor.canvas = null;
-    compositor.videoFrameCache = { clear: vi.fn(), setPriorityTimeUs: vi.fn() };
+    compositor.videoFrameCache = { clear: vi.fn(), setPriorityTimeTicks: vi.fn() };
     compositor.transitionRenderer = { destroy: vi.fn() };
     compositor.stageTextureRenderer = null;
     compositor.clearClipsLocked = vi.fn();
@@ -111,7 +111,7 @@ describe('VideoCompositor op queue (render↔mutation serialization)', () => {
     compositor.clearClipsLocked = vi.fn();
     compositor.renderingEngine = { renderFrame: vi.fn(() => Promise.resolve(null)) };
     compositor.updateTimelineLayoutLocked = vi.fn(() => 3);
-    compositor.maxDurationUs = 42;
+    compositor.maxDurationTicks = 42;
 
     compositor.app = null;
     compositor.canvas = null;

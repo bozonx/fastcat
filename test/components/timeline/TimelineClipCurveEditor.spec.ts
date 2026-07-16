@@ -9,17 +9,17 @@ const clip = {
   trackId: 'track-1',
   clipType: 'media',
   name: 'Clip',
-  timelineRange: { startUs: 0, durationUs: 1000 },
-  sourceRange: { startUs: 0, durationUs: 1000 },
+  timelineRange: { startTicks: 0, durationTicks: 1000 },
+  sourceRange: { startTicks: 0, durationTicks: 1000 },
   animations: {
     opacity: {
       keyframes: [
-        { tUs: 0, value: 0, easing: 'linear' },
-        { tUs: 1000, value: 1, easing: 'linear' },
+        { tTicks: 0, value: 0, easing: 'linear' },
+        { tTicks: 1000, value: 1, easing: 'linear' },
       ],
     },
     'transform.rotationDeg': {
-      keyframes: [{ tUs: 0, value: 45, easing: 'linear' }],
+      keyframes: [{ tTicks: 0, value: 45, easing: 'linear' }],
     },
   },
 };
@@ -51,12 +51,12 @@ describe('TimelineClipCurveEditor', () => {
       animations: {
         opacity: {
           keyframes: [
-            { tUs: 0, value: 0, easing: 'ease' },
-            { tUs: 1000, value: 1, easing: 'linear' },
+            { tTicks: 0, value: 0, easing: 'ease' },
+            { tTicks: 1000, value: 1, easing: 'linear' },
           ],
         },
         'transform.rotationDeg': {
-          keyframes: [{ tUs: 0, value: 45, easing: 'linear' }],
+          keyframes: [{ tTicks: 0, value: 45, easing: 'linear' }],
         },
       },
     });
