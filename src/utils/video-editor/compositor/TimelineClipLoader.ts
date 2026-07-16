@@ -112,10 +112,10 @@ export class TimelineClipLoader {
       0,
       Math.round(Number((clipData.sourceRange as Record<string, unknown>)?.startTicks ?? 0)),
     );
-    const freezeFrameSourceUsRaw = clipData.freezeFrameSourceTicks;
+    const freezeFrameSourceTicksRaw = clipData.freezeFrameSourceTicks;
     const freezeFrameSourceTicks =
-      typeof freezeFrameSourceUsRaw === 'number' && Number.isFinite(freezeFrameSourceUsRaw)
-        ? Math.max(0, Math.round(freezeFrameSourceUsRaw))
+      typeof freezeFrameSourceTicksRaw === 'number' && Number.isFinite(freezeFrameSourceTicksRaw)
+        ? Math.max(0, Math.round(freezeFrameSourceTicksRaw))
         : undefined;
     const layer = Math.round(Number(clipData.layer ?? 0));
     const trackId =

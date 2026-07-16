@@ -24,8 +24,8 @@ import { useTimelinePointerSession } from '~/composables/timeline/useTimelinePoi
 import { useEffectiveHotkeys } from '~/composables/editor/hotkeys/useEffectiveHotkeys';
 import { isCommandMatched } from '~/utils/hotkeys/runtime';
 import {
-  computeMaxResizableTransitionDurationTicks as computeMaxResizableTransitionDurationUsPure,
-  computeTransitionHandleSnapDurationTicks as computeTransitionHandleSnapDurationUsPure,
+  computeMaxResizableTransitionDurationTicks as computeMaxResizableTransitionDurationTicksPure,
+  computeTransitionHandleSnapDurationTicks as computeTransitionHandleSnapDurationTicksPure,
 } from '~/composables/timeline/transitionResizeGeometry';
 
 interface ClipResizeFields {
@@ -369,7 +369,7 @@ export function useTimelineClipHandleResize(
     edge: 'in' | 'out';
     currentTransition: ClipTransition;
   }): number {
-    return computeMaxResizableTransitionDurationUsPure({ tracks: tracksRef(), ...input });
+    return computeMaxResizableTransitionDurationTicksPure({ tracks: tracksRef(), ...input });
   }
 
   function computeTransitionHandleSnapDurationTicks(input: {
@@ -379,7 +379,7 @@ export function useTimelineClipHandleResize(
     currentTransition: ClipTransition;
     rawDurationTicks: number;
   }): number | null {
-    return computeTransitionHandleSnapDurationUsPure({ tracks: tracksRef(), ...input });
+    return computeTransitionHandleSnapDurationTicksPure({ tracks: tracksRef(), ...input });
   }
 
   function startResizeTransition(e: PointerEvent, payload: TimelineResizeFadePayload) {
@@ -431,7 +431,7 @@ export function useTimelineClipHandleResize(
       const current = payload.edge === 'in' ? item.transitionIn : item.transitionOut;
       if (!current) return;
 
-      const maxUsRaw = computeMaxResizableTransitionDurationTicks({
+      const maxTicksRaw = computeMaxResizableTransitionDurationTicks({
         trackId: payload.trackId,
         itemId: payload.itemId,
         edge: payload.edge,
@@ -452,7 +452,7 @@ export function useTimelineClipHandleResize(
       let newDurationTicks = Math.min(
         Math.max(0, resizeTransition.value.startDurationTicks + deltaTicks),
         hardMaxTicks,
-        maxUsRaw,
+        maxTicksRaw,
       );
 
       if (timelineSettingsStore.toolbarSnapMode === 'snap') {
@@ -502,7 +502,7 @@ export function useTimelineClipHandleResize(
               item.timelineRange.startTicks + item.timelineRange.durationTicks - snap.snappedTicks,
             );
           }
-          newDurationTicks = Math.min(hardMaxTicks, maxUsRaw, newDurationTicks);
+          newDurationTicks = Math.min(hardMaxTicks, maxTicksRaw, newDurationTicks);
         }
       }
 
@@ -515,7 +515,7 @@ export function useTimelineClipHandleResize(
       resizeTransition.value.shouldDelete = newDurationTicks < currentDeleteThresholdTicks;
       resizeTransition.value.hasMoved = true;
 
-      if (maxUsRaw <= 0 && newDurationTicks <= 0) {
+      if (maxTicksRaw <= 0 && newDurationTicks <= 0) {
         resizeTransition.value.shouldDelete = true;
         return;
       }

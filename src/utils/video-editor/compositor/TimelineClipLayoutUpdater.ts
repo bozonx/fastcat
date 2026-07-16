@@ -71,10 +71,10 @@ export class TimelineClipLayoutUpdater {
         ? Math.max(-10, Math.min(10, speedRaw))
         : undefined;
 
-    const freezeFrameSourceUsRaw = n['freezeFrameSourceTicks'];
+    const freezeFrameSourceTicksRaw = n['freezeFrameSourceTicks'];
     const freezeFrameSourceTicks =
-      typeof freezeFrameSourceUsRaw === 'number' && Number.isFinite(freezeFrameSourceUsRaw)
-        ? Math.max(0, Math.round(freezeFrameSourceUsRaw))
+      typeof freezeFrameSourceTicksRaw === 'number' && Number.isFinite(freezeFrameSourceTicksRaw)
+        ? Math.max(0, Math.round(freezeFrameSourceTicksRaw))
         : undefined;
 
     clip.startTicks = startTicks;

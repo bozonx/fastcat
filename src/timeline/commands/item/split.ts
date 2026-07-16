@@ -49,8 +49,10 @@ export function splitItem(doc: TimelineDocument, cmd: SplitItemCommand): Timelin
   const startTicks = Math.max(0, Math.round(item.timelineRange.startTicks));
   const endTicks = startTicks + Math.max(0, Math.round(item.timelineRange.durationTicks));
 
-  const atUsRaw = Math.max(0, Math.round(Number(cmd.atTicks)));
-  const atTicks = shouldQuantizeToFrames ? quantizeTicksToFrames(atUsRaw, fps, 'round') : atUsRaw;
+  const atTicksRaw = Math.max(0, Math.round(Number(cmd.atTicks)));
+  const atTicks = shouldQuantizeToFrames
+    ? quantizeTicksToFrames(atTicksRaw, fps, 'round')
+    : atTicksRaw;
 
   if (!(atTicks > startTicks && atTicks < endTicks)) {
     return { next: doc };

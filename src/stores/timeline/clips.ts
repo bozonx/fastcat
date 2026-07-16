@@ -1101,14 +1101,14 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
     if (!usePlayhead) return;
 
     const localTicks = playheadTicks - clipStartTicks;
-    const sourceUsRaw = resolveClipSourceTimeTicks({
+    const sourceTicksRaw = resolveClipSourceTimeTicks({
       localTimeTicks: localTicks,
       sourceStartTicks: item.sourceRange.startTicks,
       sourceRangeDurationTicks: item.sourceRange.durationTicks,
       speed: item.speed,
       frameRate: fps,
     });
-    const sourceTicks = quantizeTicksToFrames(sourceUsRaw, fps, 'floor');
+    const sourceTicks = quantizeTicksToFrames(sourceTicksRaw, fps, 'floor');
 
     updateClipProperties(input.trackId, input.itemId, { freezeFrameSourceTicks: sourceTicks });
   }
