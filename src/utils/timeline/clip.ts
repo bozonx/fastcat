@@ -308,7 +308,7 @@ export function getOverlayGuideOffsetPx(
   clipItem: TimelineClipItem | null,
   edge: 'in' | 'out',
   clipWidthPx: number,
-  transitionUsToPxFn: (us: number) => number,
+  transitionTicksToPxFn: (ticks: number) => number,
 ): number | null {
   if (!clipItem) return null;
 
@@ -326,7 +326,7 @@ export function getOverlayGuideOffsetPx(
       : getClipHeadTimelineHandleTicks(adjacent);
   if (!Number.isFinite(timelineHandleTicks) || timelineHandleTicks <= 0) return null;
 
-  return Math.max(0, Math.min(clipWidthPx, transitionUsToPxFn(timelineHandleTicks)));
+  return Math.max(0, Math.min(clipWidthPx, transitionTicksToPxFn(timelineHandleTicks)));
 }
 
 export function isVideo(item: TimelineTrackItem, track: TimelineTrack): item is TimelineClipItem {

@@ -114,7 +114,7 @@ describe('absolutePxToViewportPx / ticksToViewportPx', () => {
 });
 
 describe('pxToDeltaTicks', () => {
-  it('converts pixel delta to microseconds', () => {
+  it('converts pixel delta to ticks', () => {
     expect(pxToDeltaTicks(10, 50)).toBe(timelineTicks(1_000_000));
   });
 });

@@ -577,8 +577,8 @@ onMounted(() => {
       await persistE2eTimelineEdit();
     };
 
-    e2eWindow.__fastcatE2eSetCurrentTimeTicks = async ({ us }) => {
-      timelineStore.setCurrentTimeTicks(Math.max(0, Math.round(us)));
+    e2eWindow.__fastcatE2eSetCurrentTimeTicks = async ({ ticks }) => {
+      timelineStore.setCurrentTimeTicks(Math.max(0, Math.round(ticks)));
     };
 
     e2eWindow.__fastcatE2eGetSelectedItemIds = async () => [...timelineStore.selectedItemIds];
@@ -895,7 +895,7 @@ type FastcatE2eUpdateClipTransition = (params: {
   edge: 'in' | 'out';
   transition: ClipTransition | null;
 }) => Promise<void>;
-type FastcatE2eSetCurrentTimeTicks = (params: { us: number }) => Promise<void>;
+type FastcatE2eSetCurrentTimeTicks = (params: { ticks: number }) => Promise<void>;
 type FastcatE2eGetSelectedItemIds = () => Promise<string[]>;
 type FastcatE2eAddTextClip = (params: {
   text?: string;

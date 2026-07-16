@@ -10,7 +10,7 @@ import type {
   TimelineTrackItem,
 } from '~/timeline/types';
 
-const S = timelineTicks(1_000_000); // 1 second in microseconds
+const S = timelineTicks(1_000_000); // 1 second in ticks
 
 function mediaClip(
   id: string,

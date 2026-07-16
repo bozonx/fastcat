@@ -141,7 +141,7 @@ describe('EditorTimeline — E2E bridge', () => {
     const timelineStore = setupTimelineStore();
     await mountSuspended(EditorTimeline);
 
-    await (window as any).__fastcatE2eSetCurrentTimeTicks({ us: -100 });
+    await (window as any).__fastcatE2eSetCurrentTimeTicks({ ticks: -100 });
 
     expect(timelineStore.setCurrentTimeTicks).toHaveBeenCalledWith(0);
   });

@@ -187,7 +187,7 @@ export class VideoFrameCache {
   }
 }
 
-// Scrub-locality eviction pick: among cached frame times (us), the victim is the
+// Scrub-locality eviction pick: among cached frame times (ticks), the victim is the
 // one FARTHEST from the priority/playhead time; ties resolve toward the LARGER
 // time. This is the web twin of the native `choose_eviction_victim`
 // (src-tauri/src/monitor/frame_cache.rs) and is pinned to it by the shared

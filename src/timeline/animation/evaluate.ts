@@ -80,7 +80,7 @@ export function isAnimatableParamPath(key: string): key is AnimatableParamPath {
   );
 }
 
-export interface ResolveClipAnimationTimeUsParams {
+export interface ResolveClipAnimationTimeTicksParams {
   timelineTimeTicks: number;
   timelineStartTicks: number;
   sourceStartTicks?: number;
@@ -163,7 +163,7 @@ function normalizeAnimationSpeed(speed: unknown): number {
  * keyframes. Unlike video sampling, this intentionally has no end-frame guard:
  * animation curves are not constrained by decoder readability.
  */
-export function resolveClipAnimationTimeTicks(params: ResolveClipAnimationTimeUsParams): number {
+export function resolveClipAnimationTimeTicks(params: ResolveClipAnimationTimeTicksParams): number {
   const timelineTimeTicks = Math.round(clampFinite(params.timelineTimeTicks, 0));
   const timelineStartTicks = Math.round(clampFinite(params.timelineStartTicks, 0));
   const localTimelineTicks = Math.max(0, timelineTimeTicks - timelineStartTicks);
@@ -196,7 +196,9 @@ export function resolveClipAnimationTimeTicks(params: ResolveClipAnimationTimeUs
  * range; callers clamp as needed.
  */
 export function resolveKeyframeTimelineTimeTicks(
-  params: Omit<ResolveClipAnimationTimeUsParams, 'timelineTimeTicks'> & { sourceTimeTicks: number },
+  params: Omit<ResolveClipAnimationTimeTicksParams, 'timelineTimeTicks'> & {
+    sourceTimeTicks: number;
+  },
 ): number {
   const timelineStartTicks = Math.round(clampFinite(params.timelineStartTicks, 0));
   const sourceStartTicks = Math.max(0, Math.round(clampFinite(params.sourceStartTicks, 0)));

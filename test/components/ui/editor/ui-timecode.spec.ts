@@ -46,7 +46,7 @@ describe('UiTimecode', () => {
     expect((input.element as HTMLInputElement).value).toBe('00:00:00:05');
   });
 
-  it('emits update:modelValue with parsed microseconds on Enter', async () => {
+  it('emits update:modelValue with parsed ticks on Enter', async () => {
     const component = await mountSuspended(UiTimecode, {
       props: {
         modelValue: 0,

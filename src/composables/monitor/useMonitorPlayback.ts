@@ -602,7 +602,7 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
           if (!isMobile.value && hiddenAtMs > 0 && isPlaying.value) {
             const elapsedMs = performance.now() - hiddenAtMs;
             const audioDeltaTicks = timeTicks - hiddenAtAudioTicks;
-            const audioDeltaMs = audioDeltaTicks / 1000;
+            const audioDeltaMs = audioDeltaTicks / TICKS_PER_MILLISECOND;
 
             // If audio delta is significantly less than real elapsed time, browser throttled us.
             // Check for at least 300ms gap to avoid false positives on short task switches.

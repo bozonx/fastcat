@@ -171,9 +171,9 @@ export function parseTimeEffects(raw: unknown[]): {
         effectMeta.params && typeof effectMeta.params === 'object'
           ? (effectMeta.params as Record<string, unknown>)
           : {};
-      const us = Number(params.freezeFrameSourceTicks);
-      if (Number.isFinite(us) && us >= 0) {
-        freezeFrameSourceTicks = Math.round(us);
+      const ticks = Number(params.freezeFrameSourceTicks);
+      if (Number.isFinite(ticks) && ticks >= 0) {
+        freezeFrameSourceTicks = Math.round(ticks);
       }
       continue;
     }

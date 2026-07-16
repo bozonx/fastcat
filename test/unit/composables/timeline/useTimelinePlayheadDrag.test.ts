@@ -4,14 +4,14 @@ import { mount, type VueWrapper } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useTimelinePlayheadDrag } from '~/composables/timeline/useTimelinePlayheadDrag';
 
-const setCurrentTimeUsMock = vi.fn((us: number) => {
-  timelineStoreMock.currentTime = us;
+const setCurrentTimeTicksMock = vi.fn((ticks: number) => {
+  timelineStoreMock.currentTime = ticks;
 });
 
 const timelineStoreMock = {
   currentTime: 0,
   timelineZoom: 50,
-  setCurrentTimeTicks: setCurrentTimeUsMock,
+  setCurrentTimeTicks: setCurrentTimeTicksMock,
 };
 
 const workspaceStoreMock = {
@@ -110,7 +110,7 @@ describe('useTimelinePlayheadDrag', () => {
     api.onTimeRulerPointerDown(pointerDownEvent(el, 200, 2));
 
     expect(api.isDraggingPlayhead.value).toBe(false);
-    expect(setCurrentTimeUsMock).not.toHaveBeenCalled();
+    expect(setCurrentTimeTicksMock).not.toHaveBeenCalled();
     expect(el.setPointerCapture).not.toHaveBeenCalled();
   });
 
@@ -122,8 +122,8 @@ describe('useTimelinePlayheadDrag', () => {
 
     expect(api.isDraggingPlayhead.value).toBe(true);
     expect(api.hasPlayheadMoved.value).toBe(false);
-    expect(setCurrentTimeUsMock).toHaveBeenCalledTimes(1);
-    expect(setCurrentTimeUsMock.mock.calls[0]![0]).toBeGreaterThan(0);
+    expect(setCurrentTimeTicksMock).toHaveBeenCalledTimes(1);
+    expect(setCurrentTimeTicksMock.mock.calls[0]![0]).toBeGreaterThan(0);
     expect(el.setPointerCapture).toHaveBeenCalledWith(7);
   });
 
@@ -145,13 +145,13 @@ describe('useTimelinePlayheadDrag', () => {
     const { api } = setup();
     const el = makeRulerEl();
     api.onTimeRulerPointerDown(pointerDownEvent(el, 100));
-    setCurrentTimeUsMock.mockClear();
+    setCurrentTimeTicksMock.mockClear();
 
     api.onGlobalPointerMove(movePointerEvent(400));
-    const forward = setCurrentTimeUsMock.mock.calls.at(-1)![0];
+    const forward = setCurrentTimeTicksMock.mock.calls.at(-1)![0];
 
     api.onGlobalPointerMove(movePointerEvent(200));
-    const back = setCurrentTimeUsMock.mock.calls.at(-1)![0];
+    const back = setCurrentTimeTicksMock.mock.calls.at(-1)![0];
 
     expect(forward).toBeGreaterThan(back);
   });
@@ -159,7 +159,7 @@ describe('useTimelinePlayheadDrag', () => {
   it('returns false from move handlers when no drag is active', () => {
     const { api } = setup();
     expect(api.onGlobalPointerMove(movePointerEvent(400))).toBe(false);
-    expect(setCurrentTimeUsMock).not.toHaveBeenCalled();
+    expect(setCurrentTimeTicksMock).not.toHaveBeenCalled();
   });
 
   it('ends the drag (via pointerup) when buttons are released mid-move', () => {
@@ -193,12 +193,12 @@ describe('useTimelinePlayheadDrag', () => {
     api.onTimeRulerPointerDown(pointerDownEvent(el, 500));
     // Drag elsewhere so the live time diverges from the pre-drag anchor.
     api.onGlobalPointerMove(movePointerEvent(50));
-    setCurrentTimeUsMock.mockClear();
+    setCurrentTimeTicksMock.mockClear();
 
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
 
     expect(api.isDraggingPlayhead.value).toBe(false);
-    expect(setCurrentTimeUsMock).toHaveBeenCalledWith(1_234_567);
+    expect(setCurrentTimeTicksMock).toHaveBeenCalledWith(1_234_567);
     expect(el.releasePointerCapture).toHaveBeenCalledWith(7);
   });
 
@@ -209,10 +209,10 @@ describe('useTimelinePlayheadDrag', () => {
 
     activeWrapper?.unmount();
     activeWrapper = null;
-    setCurrentTimeUsMock.mockClear();
+    setCurrentTimeTicksMock.mockClear();
 
     // The keydown listener must have been torn down on unmount.
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
-    expect(setCurrentTimeUsMock).not.toHaveBeenCalled();
+    expect(setCurrentTimeTicksMock).not.toHaveBeenCalled();
   });
 });

@@ -91,7 +91,7 @@ describe('ticksToFrame', () => {
 });
 
 describe('frameToTicks', () => {
-  it('converts frames to microseconds', () => {
+  it('converts frames to ticks', () => {
     expect(frameToTicks(30, 30)).toBe(timelineTicks(1_000_000));
   });
 });

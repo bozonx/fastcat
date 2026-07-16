@@ -31,14 +31,14 @@ describe('useTimelineInteraction', () => {
     expect(ticksToPx(TICKS_PER_SECOND / 2, 50)).toBe(BASE_PX_PER_SECOND / 2);
   });
 
-  it('pxToTimeTicks should convert pixels to microseconds correctly', () => {
+  it('pxToTimeTicks should convert pixels to ticks correctly', () => {
     expect(pxToTimeTicks(BASE_PX_PER_SECOND, 50)).toBe(TICKS_PER_SECOND);
     expect(pxToTimeTicks(BASE_PX_PER_SECOND / 2, 50)).toBe(TICKS_PER_SECOND / 2);
     // Should never return negative
     expect(pxToTimeTicks(-10, 50)).toBe(0);
   });
 
-  it('pxToDeltaTicks should convert pixels to delta microseconds correctly', () => {
+  it('pxToDeltaTicks should convert pixels to delta ticks correctly', () => {
     expect(pxToDeltaTicks(BASE_PX_PER_SECOND, 50)).toBe(TICKS_PER_SECOND);
     // Delta CAN be negative
     expect(pxToDeltaTicks(-BASE_PX_PER_SECOND, 50)).toBe(-TICKS_PER_SECOND);

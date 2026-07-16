@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import {
   TICKS_PER_SECOND,
-  TICKS_PER_MICROSECOND,
+  TICKS_PER_MILLISECOND,
   formatTimecode,
   formatHms,
   formatMsOrHms,
@@ -127,7 +127,7 @@ function formatMarkerLine(marker: TimelineMarker): string {
 }
 
 function formatVttTime(ticks: number): string {
-  const totalMs = Math.floor(ticks / TICKS_PER_MICROSECOND / 1000);
+  const totalMs = Math.floor(ticks / TICKS_PER_MILLISECOND);
   const ms = totalMs % 1000;
   const totalSeconds = Math.floor(totalMs / 1000);
   const ss = totalSeconds % 60;

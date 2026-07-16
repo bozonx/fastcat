@@ -93,7 +93,7 @@ export async function clipBox(page: Page, clipId: string): Promise<Box> {
 }
 
 /**
- * Moves a clip horizontally by `deltaTicks` microseconds on its own track.
+ * Moves a clip horizontally by `deltaTicks` ticks on its own track.
  * Uses a direct e2e hook (applyTimeline + saveTimeline) instead of mouse-based
  * dragging, which is unreliable for small clips.
  */
@@ -147,7 +147,7 @@ export async function deleteClip(page: Page, clipId: string): Promise<void> {
 }
 
 /**
- * Trims a clip edge by `deltaTicks` microseconds. Uses a direct e2e hook
+ * Trims a clip edge by `deltaTicks` ticks. Uses a direct e2e hook
  * (applyTimeline + saveTimeline) instead of mouse-based trim handle dragging,
  * which is unreliable for small clips (10px wide at default zoom).
  */
@@ -215,19 +215,19 @@ export async function redoTimeline(page: Page): Promise<void> {
   await page.keyboard.press('Control+y');
 }
 
-export async function setCurrentTimeTicks(page: Page, us: number): Promise<void> {
+export async function setCurrentTimeTicks(page: Page, ticks: number): Promise<void> {
   await waitForTimelineHook(page, '__fastcatE2eSetCurrentTimeTicks');
   await page.evaluate(
-    async ({ us: targetTicks }) => {
+    async ({ ticks: targetTicks }) => {
       const setTime = (
         window as Window & {
-          __fastcatE2eSetCurrentTimeTicks?: (params: { us: number }) => Promise<void>;
+          __fastcatE2eSetCurrentTimeTicks?: (params: { ticks: number }) => Promise<void>;
         }
       ).__fastcatE2eSetCurrentTimeTicks;
       if (!setTime) throw new Error('E2E timeline set-current-time hook is not registered');
-      await setTime({ us: targetTicks });
+      await setTime({ ticks: targetTicks });
     },
-    { us: Math.max(0, Math.round(us)) },
+    { ticks: Math.max(0, Math.round(ticks)) },
   );
 }
 

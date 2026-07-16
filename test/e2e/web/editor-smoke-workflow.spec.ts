@@ -37,7 +37,7 @@ test.describe('Web editor smoke workflow', () => {
     // Play briefly, then it auto-pauses inside the helper.
     await expectPlayheadAdvances(page, { forMs: 500 });
 
-    // Trim one edge shorter (in microseconds).
+    // Trim one edge shorter (in ticks).
     await trimClipEdge(page, clipId, 'end', -200_000);
     await waitForTimelineDoc(
       page,
@@ -45,7 +45,7 @@ test.describe('Web editor smoke workflow', () => {
       (d) => d.allClips[0].timelineDurationTicks < baseDuration,
     );
 
-    // Move it later on the same track (in microseconds).
+    // Move it later on the same track (in ticks).
     await dragClipBy(page, clipId, { x: 1_000_000 });
     const edited = await waitForTimelineDoc(
       page,
