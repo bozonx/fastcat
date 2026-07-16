@@ -496,15 +496,16 @@ describe('FrameSampleOrchestrator shadow sampling during adjacent transition', (
       prevFrameRate: frameRate,
     });
 
-    const lastReadableUs = clampToLastReadableSourceUs(5_000_000, frameRate);
+    const lastReadableUs = clampToLastReadableSourceUs(timelineUs(5_000_000), frameRate);
     // 4× speed × 250ms = 1s past sourceRangeEnd → would land at 2s; the
     // sample must instead be clamped to lastReadableUs (~4.979s).
-    const candidate = (1_000_000 + Math.round(250_000 * 4)) / 1_000_000;
+    const candidate =
+      (timelineUs(1_000_000) + Math.round(timelineUs(250_000) * 4)) / TICKS_PER_SECOND;
     expect(candidate).toBeGreaterThan(0);
-    expect(calls).toContain(Math.min(candidate, lastReadableUs / 1_000_000));
+    expect(calls).toContain(Math.min(candidate, lastReadableUs / TICKS_PER_SECOND));
     // Sanity: the actual call should not exceed the last readable frame.
     for (const sampleS of calls) {
-      expect(sampleS).toBeLessThanOrEqual(lastReadableUs / 1_000_000);
+      expect(sampleS).toBeLessThanOrEqual(lastReadableUs / TICKS_PER_SECOND);
     }
   });
 
@@ -527,7 +528,10 @@ describe('FrameSampleOrchestrator shadow sampling during adjacent transition', (
     // The "small handle" path uses (sourceRangeEnd - 1ms) but clamped to the
     // last readable source position; with frameRate=30 the half-frame guard
     // is larger than 1ms so we use the lastReadableUs path.
-    const sampleUs = Math.max(0, Math.min(lastReadableUs, timelineUs(5_000_000) - 1_000));
+    const sampleUs = Math.max(
+      0,
+      Math.min(lastReadableUs, timelineUs(5_000_000) - timelineUs(1_000)),
+    );
     expect(calls).toContain(sampleUs / TICKS_PER_SECOND);
   });
 });

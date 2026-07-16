@@ -1,5 +1,5 @@
 import { createDevLogger } from '~/utils/dev-logger';
-import { TICKS_PER_SECOND } from '~/utils/time';
+import { TICKS_PER_MICROSECOND, TICKS_PER_SECOND } from '~/utils/time';
 import {
   DEFAULT_TRANSITION_CURVE,
   DEFAULT_TRANSITION_MODE,
@@ -12,6 +12,9 @@ import {
   type TimelineActiveClipProcessor,
 } from './TimelineActiveClipProcessor';
 const log = createDevLogger('FrameSampleOrchestrator');
+
+/** Minimum usable handle in canonical timeline ticks (~1 ms). */
+const MIN_SOURCE_HANDLE_US = 1_000 * TICKS_PER_MICROSECOND;
 
 export interface FrameSampleOrchestratorParams {
   activeClips: CompositorClip[];
@@ -229,11 +232,11 @@ export class FrameSampleOrchestrator {
         prevClip.frameRate,
       );
 
-      if (handleUs < 1_000) {
+      if (handleUs < MIN_SOURCE_HANDLE_US) {
         const sourceRangeEndUs = prevClip.sourceStartUs + prevClip.sourceRangeDurationUs;
         const lastUs = reversed
-          ? Math.max(0, Math.min(sourceRangeEndUs, prevClip.sourceStartUs + 1_000))
-          : Math.max(0, Math.min(lastReadableSourceUs, sourceRangeEndUs - 1_000));
+          ? Math.max(0, Math.min(sourceRangeEndUs, prevClip.sourceStartUs + MIN_SOURCE_HANDLE_US))
+          : Math.max(0, Math.min(lastReadableSourceUs, sourceRangeEndUs - MIN_SOURCE_HANDLE_US));
         requests.push(
           this.createSampleRequest({
             clip: prevClip,

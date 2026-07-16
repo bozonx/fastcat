@@ -504,7 +504,10 @@ describe('clip parameters clipboard helpers', () => {
       groups: ['transitions:out'],
     });
     expect(transitionPatch.transitionIn).toBeUndefined();
-    expect(transitionPatch.transitionOut).toEqual({ type: 'slide', durationUs: timelineUs(300_000) });
+    expect(transitionPatch.transitionOut).toEqual({
+      type: 'slide',
+      durationUs: timelineUs(300_000),
+    });
 
     const textSnapshot = createClipParametersSnapshot({
       trackKind: 'video',

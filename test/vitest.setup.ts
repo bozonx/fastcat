@@ -105,6 +105,7 @@ vi.mock('#i18n', () => ({
 const mockWorkspaceStore = vi.hoisted(() => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { reactive } = require('vue');
+  const TICKS_PER_MICROSECOND = 254_016;
   return reactive({
     isEphemeral: false,
     workspaceHandle: null,
@@ -114,10 +115,9 @@ const mockWorkspaceStore = vi.hoisted(() => {
     isFeatureEnabled: vi.fn(() => false),
     userSettings: {
       timeline: {
-        // TICKS_PER_MICROSECOND = 254_016 (254_016_000_000 / 1_000_000)
-        defaultAudioFadeDurationUs: 1_000_000 * 254_016,
-        defaultStaticClipDurationUs: 5_000_000 * 254_016,
-        defaultTransitionDurationUs: 2_000_000 * 254_016,
+        defaultAudioFadeDurationUs: 1_000_000 * TICKS_PER_MICROSECOND,
+        defaultStaticClipDurationUs: 5_000_000 * TICKS_PER_MICROSECOND,
+        defaultTransitionDurationUs: 2_000_000 * TICKS_PER_MICROSECOND,
         snapThresholdPx: 10,
         snapping: {
           timelineEdges: true,

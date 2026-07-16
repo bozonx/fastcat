@@ -1,3 +1,5 @@
+import { TICKS_PER_MICROSECOND, TICKS_PER_SECOND } from '~/utils/time';
+
 export interface ResolveClipSourceTimeUsParams {
   localTimeUs: number;
   sourceStartUs: number;
@@ -6,7 +8,8 @@ export interface ResolveClipSourceTimeUsParams {
   frameRate?: number;
 }
 
-export const MIN_SOURCE_TIME_END_GUARD_US = 1_000;
+/** 1 ms guard expressed in canonical timeline ticks. */
+export const MIN_SOURCE_TIME_END_GUARD_US = 1_000 * TICKS_PER_MICROSECOND;
 
 export function normalizeClipSpeed(speed: unknown): number {
   return typeof speed === 'number' && Number.isFinite(speed) && speed !== 0
@@ -17,7 +20,7 @@ export function normalizeClipSpeed(speed: unknown): number {
 export function clampToLastReadableSourceUs(durationUs: number, frameRate?: number): number {
   const halfFrameUs =
     typeof frameRate === 'number' && Number.isFinite(frameRate) && frameRate > 0
-      ? Math.round(500_000 / frameRate)
+      ? Math.round(TICKS_PER_SECOND / (2 * frameRate))
       : 0;
   const guard = Math.max(MIN_SOURCE_TIME_END_GUARD_US, halfFrameUs);
   return Math.max(0, Math.round(durationUs) - guard);

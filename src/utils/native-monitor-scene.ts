@@ -1,4 +1,4 @@
-import { ticksToSeconds } from '~/utils/time';
+import { TICKS_PER_MICROSECOND, ticksToSeconds } from '~/utils/time';
 import {
   buildVideoWorkerPayloadFromTracks,
   toWorkerTimelineClips,
@@ -182,7 +182,7 @@ function findPreviousAdjacentClip(
       const candidateEndUs = candidate.timelineRange.startUs + candidate.timelineRange.durationUs;
       return (
         candidate.timelineRange.startUs < clip.timelineRange.startUs &&
-        candidateEndUs >= clip.timelineRange.startUs - 1_000
+        candidateEndUs >= clip.timelineRange.startUs - 1_000 * TICKS_PER_MICROSECOND
       );
     })
     .sort((a, b) => {
@@ -204,7 +204,7 @@ function findNextAdjacentClip(
       }
       return (
         candidate.timelineRange.startUs > clip.timelineRange.startUs &&
-        candidate.timelineRange.startUs <= clipEndUs + 1_000
+        candidate.timelineRange.startUs <= clipEndUs + 1_000 * TICKS_PER_MICROSECOND
       );
     })
     .sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs)[0];

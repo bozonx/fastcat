@@ -1,4 +1,4 @@
-import { ticksToSeconds } from '~/utils/time';
+import { TICKS_PER_MICROSECOND, ticksToSeconds } from '~/utils/time';
 import { createDevLogger } from '~/utils/dev-logger';
 import type { WorkerVideoPayloadItem } from '~/types/worker-payload';
 import { getBunnyVideoCodec } from './utils';
@@ -26,8 +26,8 @@ const log = createDevLogger('ExportVideoPassthrough');
  *   never a whole GOP.
  */
 
-/** Frame-ish tolerance for duration comparisons (one 24fps frame). */
-const DURATION_EPSILON_US = 42_000;
+/** Frame-ish tolerance for duration comparisons (~one 24fps frame, in ticks). */
+const DURATION_EPSILON_US = 42_000 * TICKS_PER_MICROSECOND;
 
 /** How far the source bitrate may exceed the requested one before passthrough
  * would violate the user's compression intent and we re-encode instead. */

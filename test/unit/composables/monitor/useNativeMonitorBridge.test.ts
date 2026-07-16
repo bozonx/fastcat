@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { reactive, effectScope } from 'vue';
+import { TICKS_PER_MICROSECOND } from '~/utils/time';
 
 import {
   useNativeMonitorBridge,
@@ -160,16 +161,30 @@ describe('resolveNativeAudioTrackSelection', () => {
 describe('shouldSyncNativeMonitorTime', () => {
   it('throttles small native time updates', () => {
     expect(shouldSyncNativeMonitorTime({ diffUs: 300, nowMs: 100, lastSyncMs: 0 })).toBe(false);
-    expect(shouldSyncNativeMonitorTime({ diffUs: 10_000, nowMs: 120, lastSyncMs: 100 })).toBe(
-      false,
-    );
-    expect(shouldSyncNativeMonitorTime({ diffUs: 10_000, nowMs: 160, lastSyncMs: 100 })).toBe(true);
+    expect(
+      shouldSyncNativeMonitorTime({
+        diffUs: 10_000 * TICKS_PER_MICROSECOND,
+        nowMs: 120,
+        lastSyncMs: 100,
+      }),
+    ).toBe(false);
+    expect(
+      shouldSyncNativeMonitorTime({
+        diffUs: 10_000 * TICKS_PER_MICROSECOND,
+        nowMs: 160,
+        lastSyncMs: 100,
+      }),
+    ).toBe(true);
   });
 
   it('forces large native time jumps through the throttle', () => {
-    expect(shouldSyncNativeMonitorTime({ diffUs: 120_000, nowMs: 120, lastSyncMs: 100 })).toBe(
-      true,
-    );
+    expect(
+      shouldSyncNativeMonitorTime({
+        diffUs: 120_000 * TICKS_PER_MICROSECOND,
+        nowMs: 120,
+        lastSyncMs: 100,
+      }),
+    ).toBe(true);
   });
 });
 

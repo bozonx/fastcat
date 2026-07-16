@@ -2,6 +2,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { TICKS_PER_SECOND } from '~/utils/time';
 import {
   resolveClipSourceTimeUs,
   clampToLastReadableSourceUs,
@@ -32,16 +33,16 @@ const fixture = JSON.parse(
 describe('clip source-PTS parity (shared fixture)', () => {
   for (const c of fixture.cases) {
     it(`matches native for "${c.name}"`, () => {
-      const localTimeUs = (c.timelineSec - c.timelineStartSec) * 1_000_000;
+      const localTimeUs = (c.timelineSec - c.timelineStartSec) * TICKS_PER_SECOND;
       const sourceUs = resolveClipSourceTimeUs({
         localTimeUs,
-        sourceStartUs: c.sourceStartSec * 1_000_000,
-        sourceRangeDurationUs: c.sourceRangeDurationSec * 1_000_000,
+        sourceStartUs: c.sourceStartSec * TICKS_PER_SECOND,
+        sourceRangeDurationUs: c.sourceRangeDurationSec * TICKS_PER_SECOND,
         speed: c.speed,
         // No frameRate: this is the frame-rate-independent region where the two
         // engines agree exactly (the guard is the flat fixture.guardSec).
       });
-      expect(sourceUs / 1_000_000).toBeCloseTo(c.expectedSourceSec, 5);
+      expect(sourceUs / TICKS_PER_SECOND).toBeCloseTo(c.expectedSourceSec, 5);
     });
   }
 });
@@ -59,12 +60,12 @@ describe('source-time core', () => {
   it('returns source start when the source range is empty', () => {
     expect(
       resolveClipSourceTimeUs({
-        localTimeUs: 5_000_000,
-        sourceStartUs: 2_000_000,
+        localTimeUs: 5 * TICKS_PER_SECOND,
+        sourceStartUs: 2 * TICKS_PER_SECOND,
         sourceRangeDurationUs: 0,
         speed: 1,
       }),
-    ).toBe(2_000_000);
+    ).toBe(2 * TICKS_PER_SECOND);
   });
 
   // KNOWN INTENTIONAL DIVERGENCE FROM THE NATIVE ENGINE.
@@ -73,34 +74,39 @@ describe('source-time core', () => {
   // guard and snaps to the nearest decoded frame. This case is therefore web-only
   // and deliberately excluded from the shared parity fixture.
   it('web-only half-frame guard pulls the readable tail back for 30fps', () => {
-    const flatGuard = clampToLastReadableSourceUs(5_000_000);
-    const halfFrameGuard = clampToLastReadableSourceUs(5_000_000, 30);
-    expect(flatGuard).toBe(4_999_000); // guardSec === 0.001
-    expect(halfFrameGuard).toBe(5_000_000 - Math.round(500_000 / 30));
+    const flatGuard = clampToLastReadableSourceUs(5 * TICKS_PER_SECOND);
+    const halfFrameGuard = clampToLastReadableSourceUs(5 * TICKS_PER_SECOND, 30);
+    expect(flatGuard).toBe(5 * TICKS_PER_SECOND - TICKS_PER_SECOND / 1_000); // guardSec === 0.001
+    expect(halfFrameGuard).toBe(5 * TICKS_PER_SECOND - Math.round(TICKS_PER_SECOND / (2 * 30)));
     expect(halfFrameGuard).toBeLessThan(flatGuard);
   });
 
   it('maps source time from clip speed and source fps, independent of timeline fps', () => {
     const sourceUs = resolveClipSourceTimeUs({
-      localTimeUs: 1_000_000,
-      sourceStartUs: 2_000_000,
-      sourceRangeDurationUs: 5_000_000,
+      localTimeUs: 1 * TICKS_PER_SECOND,
+      sourceStartUs: 2 * TICKS_PER_SECOND,
+      sourceRangeDurationUs: 5 * TICKS_PER_SECOND,
       speed: 2,
       frameRate: 24,
     });
 
-    expect(sourceUs).toBe(4_000_000);
+    expect(sourceUs).toBe(4 * TICKS_PER_SECOND);
   });
 
   it('maps negative-speed video from the readable tail backwards', () => {
     const sourceUs = resolveClipSourceTimeUs({
-      localTimeUs: 500_000,
-      sourceStartUs: 10_000_000,
-      sourceRangeDurationUs: 5_000_000,
+      localTimeUs: TICKS_PER_SECOND / 2,
+      sourceStartUs: 10 * TICKS_PER_SECOND,
+      sourceRangeDurationUs: 5 * TICKS_PER_SECOND,
       speed: -2,
       frameRate: 25,
     });
 
-    expect(sourceUs).toBe(10_000_000 + 5_000_000 - Math.round(500_000 / 25) - 1_000_000);
+    expect(sourceUs).toBe(
+      10 * TICKS_PER_SECOND +
+        5 * TICKS_PER_SECOND -
+        Math.round(TICKS_PER_SECOND / (2 * 25)) -
+        1 * TICKS_PER_SECOND,
+    );
   });
 });

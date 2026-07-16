@@ -336,10 +336,7 @@ export function createTimelineCaptionsModule(params: TimelineCaptionsDeps): Time
     let lastEndUs = 0;
 
     for (const chunk of chunks) {
-      const rawStartUs = Math.max(
-        lastEndUs,
-        Math.round(chunk.startMs * TICKS_PER_MILLISECOND),
-      );
+      const rawStartUs = Math.max(lastEndUs, Math.round(chunk.startMs * TICKS_PER_MILLISECOND));
       const rawDurationUs = Math.max(
         TICKS_PER_MILLISECOND,
         Math.round((chunk.endMs - chunk.startMs) * TICKS_PER_MILLISECOND),

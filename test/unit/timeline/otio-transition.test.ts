@@ -368,8 +368,16 @@ describe('timeline/otio-serializer: transitions', () => {
               sourceDurationUs: 10 * TICKS_PER_SECOND,
               timelineRange: { startUs: 0, durationUs: 5 * TICKS_PER_SECOND },
               sourceRange: { startUs: 0, durationUs: 5 * TICKS_PER_SECOND },
-              transitionIn: { type: 'clock', durationUs: 300_000 * TICKS_PER_MICROSECOND, mode: 'background' as const },
-              transitionOut: { type: 'wipe', durationUs: 500_000 * TICKS_PER_MICROSECOND, mode: 'adjacent' as const },
+              transitionIn: {
+                type: 'clock',
+                durationUs: 300_000 * TICKS_PER_MICROSECOND,
+                mode: 'background' as const,
+              },
+              transitionOut: {
+                type: 'wipe',
+                durationUs: 500_000 * TICKS_PER_MICROSECOND,
+                mode: 'adjacent' as const,
+              },
             },
           ],
         },
@@ -811,7 +819,10 @@ describe('timeline/otio-serializer: transitions', () => {
     expect(clip.clipType).toBe('timeline');
     expect(clip.source?.path).toBe('_timelines/sequence.otio');
     expect(clip.sourceDurationUs).toBe(12 * TICKS_PER_SECOND);
-    expect(clip.sourceRange).toEqual({ startUs: 2 * TICKS_PER_SECOND, durationUs: 5 * TICKS_PER_SECOND });
+    expect(clip.sourceRange).toEqual({
+      startUs: 2 * TICKS_PER_SECOND,
+      durationUs: 5 * TICKS_PER_SECOND,
+    });
     expect(clip.audioGain).toBe(0.75);
     expect(clip.audioFadeInUs).toBe(150_000 * TICKS_PER_MICROSECOND);
     expect(clip.audioFadeOutUs).toBe(250_000 * TICKS_PER_MICROSECOND);
@@ -941,7 +952,10 @@ describe('timeline/otio-serializer: transitions', () => {
               name: 'Shape clip',
               clipType: 'shape',
               sourceDurationUs: 4 * TICKS_PER_SECOND,
-              timelineRange: { startUs: 500_000 * TICKS_PER_MICROSECOND, durationUs: 2 * TICKS_PER_SECOND },
+              timelineRange: {
+                startUs: 500_000 * TICKS_PER_MICROSECOND,
+                durationUs: 2 * TICKS_PER_SECOND,
+              },
               sourceRange: { startUs: 0, durationUs: 2 * TICKS_PER_SECOND },
               shapeType: 'cloud',
               fillColor: '#ff00aa',
@@ -986,7 +1000,10 @@ describe('timeline/otio-serializer: transitions', () => {
               name: 'HUD frame',
               clipType: 'hud',
               hudType: 'media_frame',
-              timelineRange: { startUs: 250_000 * TICKS_PER_MICROSECOND, durationUs: 3 * TICKS_PER_SECOND },
+              timelineRange: {
+                startUs: 250_000 * TICKS_PER_MICROSECOND,
+                durationUs: 3 * TICKS_PER_SECOND,
+              },
               sourceRange: { startUs: 0, durationUs: 3 * TICKS_PER_SECOND },
               background: { source: { path: 'assets/background.png' } },
               content: { source: { path: 'assets/content.png' } },

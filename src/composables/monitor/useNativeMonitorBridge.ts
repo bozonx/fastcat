@@ -1,4 +1,4 @@
-import { secondsToTicks, ticksToSeconds } from '~/utils/time';
+import { secondsToTicks, TICKS_PER_MICROSECOND, ticksToSeconds } from '~/utils/time';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { computed, onScopeDispose, watch } from 'vue';
 import {
@@ -38,7 +38,7 @@ const NATIVE_TIME_STORE_SYNC_MS = 50;
 // During playback, small currentTime adjustments (within this window) are treated as
 // local-tick noise rather than a real seek — otherwise the native side would jump on every
 // master-clock tick. Large jumps (playhead drag) are treated as a real seek.
-const PLAYING_SEEK_IGNORE_US = 200_000;
+const PLAYING_SEEK_IGNORE_US = 200_000 * TICKS_PER_MICROSECOND;
 // After any interactive action while paused (scrubbing, dragging clip parameters —
 // transforms/effects/transitions, the moment playback stops), the frame is first rendered
 // in the user-selected quality (cheap, no lag), and only rebuilt in ultra once activity has
@@ -60,8 +60,8 @@ export function shouldSyncNativeMonitorTime(params: {
   nowMs: number;
   lastSyncMs: number;
 }): boolean {
-  if (params.diffUs < 500) return false;
-  if (params.diffUs > 100_000) return true;
+  if (params.diffUs < 500 * TICKS_PER_MICROSECOND) return false;
+  if (params.diffUs > 100_000 * TICKS_PER_MICROSECOND) return true;
   return params.nowMs - params.lastSyncMs >= NATIVE_TIME_STORE_SYNC_MS;
 }
 

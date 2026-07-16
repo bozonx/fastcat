@@ -1,4 +1,10 @@
-import { TICKS_PER_SECOND, formatTimecode, normalizeTicks, sanitizeFps } from '~/utils/time';
+import {
+  TICKS_PER_MICROSECOND,
+  TICKS_PER_SECOND,
+  formatTimecode,
+  normalizeTicks,
+  sanitizeFps,
+} from '~/utils/time';
 import { createDevLogger } from '~/utils/dev-logger';
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
@@ -254,8 +260,8 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
   const STORE_TIME_SYNC_MS = 100;
   const AUDIO_LEVELS_SYNC_MS = 120; // Avoid excessive store churn (can stress DevTools)
   const PLAYBACK_SEEK_EPSILON_US = TICKS_PER_SECOND / 40;
-  const SCRUB_PREVIEW_MIN_DELTA_US = 1_000;
-  const SCRUB_PREVIEW_MAX_DELTA_US = 250_000;
+  const SCRUB_PREVIEW_MIN_DELTA_US = 1_000 * TICKS_PER_MICROSECOND;
+  const SCRUB_PREVIEW_MAX_DELTA_US = 250_000 * TICKS_PER_MICROSECOND;
   const SCRUB_PREVIEW_THROTTLE_MS = 35;
   const SCRUB_PREVIEW_DURATION_US = (TICKS_PER_SECOND * 3) / 40;
 

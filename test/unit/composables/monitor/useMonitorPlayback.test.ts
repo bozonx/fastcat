@@ -73,8 +73,8 @@ describe('useMonitorPlayback', () => {
   it('pauses playback when document becomes hidden', async () => {
     const isPlaying = ref(false);
     const currentTime = ref(0);
-    const duration = ref(1_000_000);
-    const safeDurationUs = ref(1_000_000);
+    const duration = ref(timelineUs(1_000_000));
+    const safeDurationUs = ref(timelineUs(1_000_000));
     const audioEngine = createAudioEngineMock();
 
     const TestComp = defineComponent({
@@ -119,7 +119,7 @@ describe('useMonitorPlayback', () => {
   it('plays scrub preview when current time moves forward while paused', async () => {
     const isPlaying = ref(false);
     const currentTime = ref(0);
-    const safeDurationUs = ref(1_000_000);
+    const safeDurationUs = ref(timelineUs(1_000_000));
     const audioEngine = createAudioEngineMock();
     const scheduleRender = vi.fn();
 
@@ -130,7 +130,7 @@ describe('useMonitorPlayback', () => {
           loadError: ref(null),
           isPlaying,
           currentTime,
-          duration: ref(1_000_000),
+          duration: ref(timelineUs(1_000_000)),
           safeDurationUs,
           getFps: () => 30,
           clampToTimeline: (t: number) => Math.max(0, Math.min(t, safeDurationUs.value)),
@@ -144,15 +144,16 @@ describe('useMonitorPlayback', () => {
 
     const wrapper = mount(TestComp, { global: { plugins: [pinia] } });
 
-    currentTime.value = 50_000;
+    const scrubDeltaUs = timelineUs(50_000);
+    currentTime.value = scrubDeltaUs;
     await nextTick();
 
     expect(audioEngine.previewScrubForward).toHaveBeenCalledWith(
       0,
-      50_000,
+      scrubDeltaUs,
       (TICKS_PER_SECOND * 3) / 40,
     );
-    expect(scheduleRender).toHaveBeenCalledWith(50_000);
+    expect(scheduleRender).toHaveBeenCalledWith(scrubDeltaUs);
     wrapper.unmount();
   });
 
@@ -168,8 +169,8 @@ describe('useMonitorPlayback', () => {
           loadError: ref(null),
           isPlaying,
           currentTime: ref(0),
-          duration: ref(1_000_000),
-          safeDurationUs: ref(1_000_000),
+          duration: ref(timelineUs(1_000_000)),
+          safeDurationUs: ref(timelineUs(1_000_000)),
           getFps: () => 30,
           clampToTimeline: (t: number) => t,
           updateStoreTime: vi.fn(),
@@ -195,9 +196,9 @@ describe('useMonitorPlayback', () => {
   it('stops playback when reaching safeDurationUs', async () => {
     const isPlaying = ref(false);
     const currentTime = ref(0);
-    const safeDurationUs = ref(500_000);
+    const safeDurationUs = ref(timelineUs(500_000));
     const audioEngine = createAudioEngineMock();
-    audioEngine.getCurrentTimeUs.mockReturnValue(600_000);
+    audioEngine.getCurrentTimeUs.mockReturnValue(timelineUs(600_000));
 
     // We need to control RAF precisely
     let rafCb: any;
