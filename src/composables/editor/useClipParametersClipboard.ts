@@ -3,6 +3,7 @@ import { useAppClipboard } from '~/composables/useAppClipboard';
 import {
   buildClipParametersPatch,
   createClipParametersSnapshot,
+  filterDevOnlyGroups,
   getApplicableClipParameterGroups,
   getApplicableClipParameterGroupsForTargets,
   hasClipParametersPatch,
@@ -26,6 +27,7 @@ export interface UseClipParametersClipboardOptions {
 
 export function useClipParametersClipboard(options: UseClipParametersClipboardOptions) {
   const clipboardStore = useAppClipboard();
+  const workspaceStore = useWorkspaceStore();
 
   const isPasteParametersModalOpen = ref(false);
   const selectedParameterGroups = ref<string[]>([]);
@@ -64,21 +66,27 @@ export function useClipParametersClipboard(options: UseClipParametersClipboardOp
     if (targets.length === 0) return [];
     // Offer every group applicable to at least one clip in the paste fan-out, so
     // a mixed selection isn't limited to the primary clip's groups.
-    return getApplicableClipParameterGroupsForTargets({
-      snapshot: payload.snapshot,
-      targets,
-    });
+    return filterDevOnlyGroups(
+      getApplicableClipParameterGroupsForTargets({
+        snapshot: payload.snapshot,
+        targets,
+      }),
+      workspaceStore.inDevelopmentFeaturesEnabled,
+    );
   });
 
   const hasApplicableClipParameters = computed(() => {
     const payload = clipboardStore.clipboardPayload;
     if (!payload || payload.source !== 'clipParameters') return false;
     return (
-      getApplicableClipParameterGroups({
-        snapshot: payload.snapshot,
-        targetClip: options.clip.value,
-        targetTrackKind: options.trackKind.value,
-      }).length > 0
+      filterDevOnlyGroups(
+        getApplicableClipParameterGroups({
+          snapshot: payload.snapshot,
+          targetClip: options.clip.value,
+          targetTrackKind: options.trackKind.value,
+        }),
+        workspaceStore.inDevelopmentFeaturesEnabled,
+      ).length > 0
     );
   });
 
@@ -105,10 +113,13 @@ export function useClipParametersClipboard(options: UseClipParametersClipboardOp
     const targets = options.resolveApplyTargets({ trackId: c.trackId, trackKind: tk, clip: c });
     if (targets.length === 0) return;
 
-    const groups = getApplicableClipParameterGroupsForTargets({
-      snapshot: payload.snapshot,
-      targets,
-    });
+    const groups = filterDevOnlyGroups(
+      getApplicableClipParameterGroupsForTargets({
+        snapshot: payload.snapshot,
+        targets,
+      }),
+      workspaceStore.inDevelopmentFeaturesEnabled,
+    );
     if (groups.length === 0) return;
 
     pasteParametersTarget.value = { clip: c, trackKind: tk };

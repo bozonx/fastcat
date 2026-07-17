@@ -30,7 +30,6 @@ export function useMobileTimelineDrawers() {
   const isMarkersDrawerOpen = ref(false);
   const isTrackManagerDrawerOpen = ref(false);
   const virtualClipPresetType = ref<'text' | 'shape' | 'hud'>('text');
-  const drawerActiveSnapPoint = ref<string | number | null>(null);
 
   const isLongPress = ref(false);
   const suppressDrawerSelectionClear = ref(false);
@@ -138,7 +137,9 @@ export function useMobileTimelineDrawers() {
 
       if (entity?.kind === 'timeline-properties' && entity.source === 'timeline') {
         closeAllDrawers();
-        drawerActiveSnapPoint.value = 0.92;
+        // The settings drawer has a single full snap point, so it opens expanded
+        // on its own via MobileTimelineDrawer's initial-snap logic — no need to
+        // pre-seed a shared snap point here.
         isSettingsDrawerOpen.value = true;
         return;
       }
@@ -374,7 +375,6 @@ export function useMobileTimelineDrawers() {
     isMarkersDrawerOpen,
     isTrackManagerDrawerOpen,
     virtualClipPresetType,
-    drawerActiveSnapPoint,
     isLongPress,
     isMultiSelectionMode,
     isAnyDrawerOpen,

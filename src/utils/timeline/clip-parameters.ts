@@ -25,6 +25,13 @@ export type ClipParameterGroup =
   | 'shape'
   | 'hud';
 
+export const DEV_ONLY_PARAMETER_GROUPS: ReadonlySet<ClipParameterGroup> = new Set([
+  'transform',
+  'blend',
+  'opacity',
+  'audio',
+]);
+
 export interface ClipParametersSnapshot {
   clipType: TimelineClipItem['clipType'];
   trackKind: TrackKind;
@@ -735,6 +742,14 @@ export function getApplicableClipParameterGroupsForTargets(input: {
   }
 
   return order.map((id) => byId.get(id)!);
+}
+
+export function filterDevOnlyGroups(
+  groups: ClipParameterGroupOption[],
+  devFeaturesEnabled: boolean,
+): ClipParameterGroupOption[] {
+  if (devFeaturesEnabled) return groups;
+  return groups.filter((g) => !DEV_ONLY_PARAMETER_GROUPS.has(g.id));
 }
 
 export function hasClipParametersPatch(patch: ClipParametersPatch) {

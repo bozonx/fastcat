@@ -64,7 +64,6 @@ function createOptions() {
   const scrollEl = ref(document.createElement('div'));
   const isLongPress = ref(false);
   const isToolbarTrimActive = ref(false);
-  const drawerActiveSnapPoint = ref<string | number | null>(null);
   const isMultiSelectionMode = computed(() => false);
   const trackHeights = computed(() => ({}) as Record<string, number>);
   const draggingMode = ref<string | null>(null);
@@ -93,7 +92,6 @@ function createOptions() {
     scrollEl,
     isLongPress,
     isToolbarTrimActive,
-    drawerActiveSnapPoint,
     isMultiSelectionMode,
     trackHeights,
     draggingMode,
@@ -172,7 +170,6 @@ describe('useMobileTimelineGestures', () => {
     handleMobileTimelineItemLongPress('item-1');
 
     expect(options.isLongPress.value).toBe(true);
-    expect(options.drawerActiveSnapPoint.value).toBeNull();
     expect(options.enterMobileMultiSelection).toHaveBeenCalledWith('item-1');
   });
 

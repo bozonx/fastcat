@@ -20,7 +20,6 @@ export interface UseMobileTimelineGesturesOptions {
   scrollEl: Ref<HTMLElement | null>;
   isLongPress: Ref<boolean>;
   isToolbarTrimActive: Ref<boolean>;
-  drawerActiveSnapPoint: Ref<string | number | null>;
   isMultiSelectionMode: Ref<boolean>;
   trackHeights: ComputedRef<Record<string, number>>;
   suppressDrawerSelectionClearTemporarily: (callback?: () => void) => Promise<void>;
@@ -44,7 +43,6 @@ export function useMobileTimelineGestures(options: UseMobileTimelineGesturesOpti
     scrollEl,
     isLongPress,
     isToolbarTrimActive,
-    drawerActiveSnapPoint,
     isMultiSelectionMode,
     trackHeights,
     draggingMode,
@@ -110,7 +108,6 @@ export function useMobileTimelineGestures(options: UseMobileTimelineGesturesOpti
   function handleMobileTimelineItemLongPress(id: string) {
     suppressDrawerSelectionClearTemporarily(() => {
       isLongPress.value = true;
-      drawerActiveSnapPoint.value = null;
       enterMobileMultiSelection(id);
     });
   }

@@ -99,7 +99,6 @@ const {
   isMarkersDrawerOpen,
   isTrackManagerDrawerOpen,
   virtualClipPresetType,
-  drawerActiveSnapPoint,
   isLongPress,
   isMultiSelectionMode,
   isAnyDrawerOpen,
@@ -248,7 +247,6 @@ const {
   scrollEl,
   isLongPress,
   isToolbarTrimActive,
-  drawerActiveSnapPoint,
   isMultiSelectionMode,
   trackHeights,
   draggingMode,
@@ -461,7 +459,6 @@ watch(
     </div>
 
     <MobileClipPropertiesDrawer
-      v-model:active-snap-point="drawerActiveSnapPoint"
       :is-open="isClipPropertiesDrawerOpen"
       @close="onClipPropertiesDrawerClose"
       @open-delete-drawer="openClipDeleteDrawer"
@@ -470,8 +467,6 @@ watch(
     />
 
     <MobileClipDeleteDrawer
-      v-if="isDeleteDrawerOpen"
-      v-model:active-snap-point="drawerActiveSnapPoint"
       :is-open="isDeleteDrawerOpen"
       @back="backToClipProperties"
       @close="onClipDeleteDrawerClose"
@@ -496,7 +491,6 @@ watch(
 
     <MobileTimelineDrawer
       v-model:open="isTransitionPropertiesDrawerOpen"
-      v-model:active-snap-point="drawerActiveSnapPoint"
       @update:open="(value) => !value && onTransitionPropertiesDrawerClose()"
     >
       <div
@@ -515,7 +509,6 @@ watch(
     <!-- Multi Selection Drawer -->
     <MobileTimelineDrawer
       v-model:open="isMultiSelectionDrawerOpen"
-      v-model:active-snap-point="drawerActiveSnapPoint"
       with-toolbar-snap
       @update:open="(value) => !value && onMultiSelectionDrawerClose()"
     >
@@ -596,7 +589,6 @@ watch(
 
     <!-- Track Properties Drawer -->
     <MobileTrackPropertiesDrawer
-      v-model:active-snap-point="drawerActiveSnapPoint"
       :is-open="isTrackPropertiesDrawerOpen"
       :track-id="selectedGap?.trackId ?? null"
       :gap-item-id="selectedGap?.itemId ?? null"
@@ -621,7 +613,6 @@ watch(
     <!-- Marker Properties Drawer -->
     <MobileMarkerPropertiesDrawer
       v-if="selectedMarkerId"
-      v-model:active-snap-point="drawerActiveSnapPoint"
       :is-open="isMarkerPropertiesDrawerOpen"
       :marker-id="selectedMarkerId"
       @close="onMarkerPropertiesDrawerClose"
@@ -629,14 +620,12 @@ watch(
 
     <!-- Selection Range Properties Drawer -->
     <MobileSelectionRangePropertiesDrawer
-      v-model:active-snap-point="drawerActiveSnapPoint"
       :is-open="isSelectionRangeDrawerOpen"
       @close="onSelectionRangeDrawerClose"
     />
 
     <!-- Timeline Settings Drawer -->
     <MobileTimelineSettingsDrawer
-      v-model:active-snap-point="drawerActiveSnapPoint"
       :is-open="isSettingsDrawerOpen"
       @close="
         () => {

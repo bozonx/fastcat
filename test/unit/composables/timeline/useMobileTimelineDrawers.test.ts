@@ -120,13 +120,15 @@ describe('useMobileTimelineDrawers', () => {
     unmount();
   });
 
-  it('opens the settings drawer with a high snap point for timeline properties', async () => {
+  it('opens the settings drawer for timeline properties', async () => {
     mockSelectionStore.selectedEntity = { source: 'timeline', kind: 'timeline-properties' };
     const { api, unmount } = mountDrawers();
     await nextTick();
 
+    // The settings drawer opens expanded on its own via MobileTimelineDrawer's
+    // single full snap point — the composable no longer pre-seeds a shared snap
+    // point (that shared ref caused a cross-drawer backdrop/close race).
     expect(api.isSettingsDrawerOpen.value).toBe(true);
-    expect(api.drawerActiveSnapPoint.value).toBe(0.92);
     unmount();
   });
 
