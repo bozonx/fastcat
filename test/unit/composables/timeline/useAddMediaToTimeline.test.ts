@@ -21,7 +21,9 @@ const { timelineStoreMock, mediaStoreMock, vfsGetFileMock } = vi.hoisted(() => (
       ],
     },
     addClipToTimelineFromPath: vi.fn(),
+    addTimelineClipToTimelineFromPath: vi.fn(),
     addVirtualClipToTrack: vi.fn(),
+    getMobileSelectionKind: vi.fn(() => null),
     requestTimelineSave: vi.fn(),
   },
   mediaStoreMock: {
@@ -76,7 +78,10 @@ describe('useAddMediaToTimeline', () => {
       ],
     };
     timelineStoreMock.addClipToTimelineFromPath.mockReset();
+    timelineStoreMock.addTimelineClipToTimelineFromPath.mockReset();
     timelineStoreMock.addVirtualClipToTrack.mockReset();
+    timelineStoreMock.getMobileSelectionKind.mockReset();
+    timelineStoreMock.getMobileSelectionKind.mockReturnValue(null);
     timelineStoreMock.requestTimelineSave.mockReset();
     mediaStoreMock.getOrFetchMetadataByPath.mockReset();
     vfsGetFileMock.mockReset();
@@ -106,6 +111,14 @@ describe('useAddMediaToTimeline', () => {
       2,
       expect.objectContaining({ path: '_video/two.mp4', startTicks: 2_000_000 }),
     );
+    expect(timelineStoreMock.resolveMobileTargetTrackId).toHaveBeenNthCalledWith(1, 'video', {
+      durationTicks: 508_032_000_000,
+      startTicks: 0,
+    });
+    expect(timelineStoreMock.resolveMobileTargetTrackId).toHaveBeenNthCalledWith(2, 'video', {
+      durationTicks: 762_048_000_000,
+      startTicks: 2_000_000,
+    });
     expect(timelineStoreMock.requestTimelineSave).toHaveBeenCalledWith({ immediate: true });
   });
 
@@ -132,5 +145,58 @@ describe('useAddMediaToTimeline', () => {
     expect(timelineStoreMock.addClipToTimelineFromPath).toHaveBeenCalledWith(
       expect.objectContaining({ startTicks: 500_000 }),
     );
+  });
+
+  it('uses an explicit target track without resolving a mobile fallback track', async () => {
+    timelineStoreMock.addClipToTimelineFromPath.mockResolvedValueOnce({ durationTicks: 1_000_000 });
+    mediaStoreMock.getOrFetchMetadataByPath.mockResolvedValueOnce({ duration: 1 });
+
+    const { addMediaToTimeline } = useAddMediaToTimeline();
+
+    await addMediaToTimeline([{ name: 'voice.wav', path: '_audio/voice.wav' }], {
+      targetTrackId: 'a1',
+    });
+
+    expect(timelineStoreMock.resolveMobileTargetTrackId).not.toHaveBeenCalled();
+    expect(timelineStoreMock.addClipToTimelineFromPath).toHaveBeenCalledWith(
+      expect.objectContaining({
+        trackId: 'a1',
+        path: '_audio/voice.wav',
+      }),
+    );
+  });
+
+  it('skips text files instead of creating text clips on mobile', async () => {
+    const { addMediaToTimeline } = useAddMediaToTimeline();
+
+    const added = await addMediaToTimeline([{ name: 'notes.txt', path: 'notes.txt' }]);
+
+    expect(added).toBe(false);
+    expect(vfsGetFileMock).not.toHaveBeenCalled();
+    expect(timelineStoreMock.addVirtualClipToTrack).not.toHaveBeenCalled();
+    expect(timelineStoreMock.addClipToTimelineFromPath).not.toHaveBeenCalled();
+    expect(timelineStoreMock.requestTimelineSave).not.toHaveBeenCalled();
+  });
+
+  it('adds nested timelines with the static mobile duration', async () => {
+    timelineStoreMock.addTimelineClipToTimelineFromPath.mockResolvedValueOnce({
+      durationTicks: 5_000_000,
+    });
+
+    const { addMediaToTimeline } = useAddMediaToTimeline();
+
+    const added = await addMediaToTimeline([{ name: 'nested.otio', path: 'nested.otio' }]);
+
+    expect(added).toBe(true);
+    expect(timelineStoreMock.addTimelineClipToTimelineFromPath).toHaveBeenCalledWith(
+      expect.objectContaining({
+        trackId: 'v1',
+        name: 'nested.otio',
+        path: 'nested.otio',
+        startTicks: 0,
+      }),
+    );
+    expect(timelineStoreMock.addClipToTimelineFromPath).not.toHaveBeenCalled();
+    expect(timelineStoreMock.requestTimelineSave).toHaveBeenCalledWith({ immediate: true });
   });
 });

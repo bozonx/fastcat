@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, nextTick, onMounted } from 'vue';
-import UiModal from '~/components/ui/UiModal.vue';
+import UiAdaptiveDialog from '~/components/ui/UiAdaptiveDialog.vue';
 import UiFormField from '~/components/ui/UiFormField.vue';
 
 const props = defineProps<{
@@ -163,7 +163,7 @@ function handleCancel() {
 </script>
 
 <template>
-  <UiModal
+  <UiAdaptiveDialog
     v-model:open="isOpen"
     :title="title"
     @close="handleCancel"
@@ -207,5 +207,5 @@ function handleCancel() {
         </UButton>
       </div>
     </template>
-  </UiModal>
+  </UiAdaptiveDialog>
 </template>

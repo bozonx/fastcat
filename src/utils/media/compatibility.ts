@@ -137,6 +137,7 @@ export function checkFileTimelineCompatibility(
     mediaType !== 'video' &&
     mediaType !== 'audio' &&
     mediaType !== 'image' &&
+    mediaType !== 'timeline' &&
     mediaType !== 'text'
   ) {
     return {

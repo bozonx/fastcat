@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { TICKS_PER_SECOND, secondsToTicksClamped } from '~/utils/time';
+import { TICKS_PER_SECOND } from '~/utils/time';
 import { computed, provide, ref, watch } from 'vue';
 import {
   FILE_MANAGER_INJECTION_KEY,
@@ -7,16 +7,15 @@ import {
 } from '~/composables/file-manager/useFileManager';
 import { useMobileAssetCategories } from '~/composables/file-manager/useMobileAssetCategories';
 import { usePullToRefresh } from '~/composables/file-manager/usePullToRefresh';
-import { useMediaTrackRedirectToast } from '~/composables/timeline/useMediaTrackRedirectToast';
+import { useAddMediaToTimeline } from '~/composables/timeline/useAddMediaToTimeline';
 import { useMediaStore } from '~/stores/media.store';
 import { useMobileMediaPickerStore } from '~/stores/file-manager.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useUiStore } from '~/stores/ui.store';
-import { useWorkspaceStore } from '~/stores/workspace.store';
 import type { FsEntry } from '~/types/fs';
 import { createDevLogger } from '~/utils/dev-logger';
-import { getMediaTypeFromFilename, validateMediaTrackCompatibility } from '~/utils/media-types';
+import { getMediaTypeFromFilename } from '~/utils/media-types';
 import { buildReplaceMediaPatch } from '~/utils/timeline/replace-media';
 import MobileAssetCategoryList from '~/components/file-manager/MobileAssetCategoryList.vue';
 import UiButtonGroup from '~/components/ui/UiButtonGroup.vue';
@@ -36,9 +35,8 @@ const uiStore = useUiStore();
 const timelineStore = useTimelineStore();
 const projectStore = useProjectStore();
 const mediaStore = useMediaStore();
-const workspaceStore = useWorkspaceStore();
 const assetStore = useMobileMediaPickerStore();
-const { captureSelectionKind, notifyRedirect } = useMediaTrackRedirectToast();
+const { addMediaToTimeline } = useAddMediaToTimeline();
 
 const fileManager = useFileManager({ shouldRecordFileManagerHistory: () => false });
 provide(FILE_MANAGER_INJECTION_KEY, fileManager);
@@ -137,20 +135,6 @@ function handleToggleSelection(entry: FsEntry) {
   }
 }
 
-async function resolveInsertDurationTicks(
-  entry: FsEntry,
-  mediaType: string,
-): Promise<number | undefined> {
-  if (!entry.path) return undefined;
-  if (mediaType === 'image' || mediaType === 'timeline') {
-    return workspaceStore.userSettings.timeline.defaultStaticClipDurationTicks;
-  }
-
-  const metadata = await mediaStore.getOrFetchMetadataByPath(entry.path);
-  const duration = Number(metadata?.duration);
-  return Number.isFinite(duration) && duration > 0 ? secondsToTicksClamped(duration) : undefined;
-}
-
 async function addToTimeline() {
   if (!selectedFiles.value.length || isAdding.value) return;
   isAdding.value = true;
@@ -197,84 +181,7 @@ async function addToTimeline() {
         uiStore.isMediaReplaceModalOpen = false;
       }
     } else {
-      const selectionKind = captureSelectionKind();
-      const addedKinds: ('video' | 'audio')[] = [];
-
-      // The selection is single-type (see isSelectableEntry), so resolve the target track once and
-      // lay the clips back-to-back starting at the playhead, advancing by each clip's duration.
-      let targetTrackId: string | null = null;
-      let cursorTicks = timelineStore.currentTime;
-
-      for (const entry of selectedFiles.value) {
-        if (!entry.path) continue;
-        const mediaType = getMediaTypeFromFilename(entry.name);
-        const durationTicks = await resolveInsertDurationTicks(entry, mediaType);
-        const kind = mediaType === 'audio' ? 'audio' : 'video';
-
-        if (targetTrackId === null) {
-          targetTrackId = timelineStore.resolveMobileTargetTrackId(kind, { durationTicks });
-        }
-
-        if (mediaType === 'timeline') {
-          await timelineStore.addTimelineClipToTimelineFromPath({
-            trackId: targetTrackId,
-            name: entry.name,
-            path: entry.path,
-            startTicks: cursorTicks,
-            pseudo: true,
-          });
-          cursorTicks += durationTicks ?? 0;
-          continue;
-        }
-
-        const targetTrack = timelineStore.timelineDoc?.tracks.find(
-          (track) => track.id === targetTrackId,
-        );
-
-        if (!targetTrack || !validateMediaTrackCompatibility(mediaType, targetTrack.kind)) {
-          toast.add({
-            title: t('videoEditor.timeline.mediaTypeNotSupportedOnTrack'),
-            color: 'warning',
-          });
-          continue;
-        }
-
-        try {
-          const result = await timelineStore.addClipToTimelineFromPath({
-            trackId: targetTrackId,
-            name: entry.name,
-            path: entry.path,
-            startTicks: cursorTicks,
-            pseudo: true,
-          });
-          if (result.warnings?.some((w) => w.type === 'clipTrimmed')) {
-            toast.add({
-              title: t('fastcat.timeline.clipTrimmedToFitGap'),
-              color: 'warning',
-              icon: 'i-heroicons-exclamation-triangle',
-            });
-          }
-          cursorTicks += result.durationTicks ?? durationTicks ?? 0;
-          addedKinds.push(kind);
-        } catch (err: unknown) {
-          const message = err instanceof Error ? err.message : String(err);
-          if (message === 'cannot_insert_on_clip') {
-            toast.add({
-              title: t('fastcat.timeline.cannotInsertPlayheadOnClip'),
-              color: 'error',
-              icon: 'i-heroicons-x-circle',
-            });
-          } else {
-            toast.add({
-              title: t('common.error'),
-              description: message,
-              color: 'error',
-            });
-          }
-        }
-      }
-
-      notifyRedirect(selectionKind, addedKinds);
+      await addMediaToTimeline(selectedFiles.value);
     }
 
     selectedFiles.value = [];

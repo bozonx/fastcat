@@ -3,7 +3,7 @@ import type { Ref, ComputedRef } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useAddMediaToTimeline } from '~/composables/timeline/useAddMediaToTimeline';
-import { isOpenableProjectFileName } from '~/utils/media-types';
+import { isMobileTimelineAddableProjectFileName } from '~/utils/media-types';
 import type { FsEntry } from '~/types/fs';
 import type { MobileDrawerAction } from '~/types/file-manager';
 import type { FileCompatibility } from '~/composables/file-manager/useFileManagerCompatibility';
@@ -50,7 +50,7 @@ export function useMobileFileBrowserModals(options: UseMobileFileBrowserModalsOp
   function isAddableEntry(entry: FsEntry): boolean {
     if (entry.kind !== 'file' || !entry.path) return false;
     if (options.compatibility.value[entry.path]?.status === 'fully_unsupported') return false;
-    return isOpenableProjectFileName(entry.name);
+    return isMobileTimelineAddableProjectFileName(entry.name);
   }
 
   async function addEntriesToTimeline(entries: FsEntry[]) {

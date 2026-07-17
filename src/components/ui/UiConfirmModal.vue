@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import UiModal from '~/components/ui/UiModal.vue';
+import UiAdaptiveDialog from '~/components/ui/UiAdaptiveDialog.vue';
 
 // We define the specific colors supported by UButton to ensure type safety
 type ButtonColor = 'primary' | 'secondary' | 'neutral' | 'error' | 'warning' | 'success' | 'info';
@@ -64,7 +64,7 @@ const handleClose = () => {
 </script>
 
 <template>
-  <UiModal v-model:open="isOpen" :title="props.title" :ui="{ content: 'sm:max-w-lg' }">
+  <UiAdaptiveDialog v-model:open="isOpen" :title="props.title" :ui="{ content: 'sm:max-w-lg' }">
     <div class="flex flex-col gap-4">
       <div v-if="props.icon || props.description" class="flex gap-4">
         <div v-if="props.icon" class="shrink-0">
@@ -104,5 +104,5 @@ const handleClose = () => {
         {{ props.confirmText || t('common.confirm') }}
       </UButton>
     </template>
-  </UiModal>
+  </UiAdaptiveDialog>
 </template>

@@ -297,4 +297,39 @@ describe('MobileFileBrowserDrawer', () => {
     expect(wrapper.find('[data-icon="i-heroicons-scissors"]').exists()).toBe(false);
     expect(wrapper.find('[data-icon="i-heroicons-trash"]').exists()).toBe(true);
   });
+
+  it('keeps text files viewable without showing the add-to-timeline action', async () => {
+    const entry = { kind: 'file', name: 'notes.txt', path: 'notes.txt' };
+    mockSelectionStore.selectedEntity = {
+      source: 'fileManager',
+      kind: 'file',
+      name: entry.name,
+      path: entry.path,
+      entry,
+    };
+
+    const wrapper = await mountSuspended(MobileFileBrowserDrawer, {
+      props: {
+        isOpen: true,
+        isSelectionMode: false,
+      },
+      global: {
+        stubs: {
+          UiMobileDrawer: { template: '<div><slot /></div>' },
+          MobileDrawerToolbar: { template: '<div><slot /></div>' },
+          MobileDrawerToolbarButton: {
+            props: ['icon'],
+            template: '<button :data-icon="icon" />',
+          },
+          MultiFileProperties: true,
+        },
+      },
+    });
+
+    const fileProps = wrapper.findComponent({ name: 'FileProperties' });
+    expect(fileProps.exists()).toBe(true);
+    expect(fileProps.props('selectedFsEntry')).toEqual(entry);
+    expect(fileProps.props('mobileTextMode')).toBe(true);
+    expect(wrapper.find('[data-icon="lucide:plus"]').exists()).toBe(false);
+  });
 });

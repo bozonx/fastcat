@@ -156,6 +156,15 @@ describe('useMobileFileBrowserModals', () => {
     expect(canAddSelectionToTimeline.value).toBe(false);
   });
 
+  it('does not expose text files as addable to timeline in selection mode', () => {
+    isSelectionMode.value = true;
+    selectedEntries.value = [createEntry('notes.txt', 'notes.txt')];
+
+    const { canAddSelectionToTimeline } = getComposable();
+
+    expect(canAddSelectionToTimeline.value).toBe(false);
+  });
+
   it('opens rename modal and validates names', async () => {
     entries.value = [createEntry('foo.mp4', 'a/foo.mp4'), createEntry('bar.mp4', 'a/bar.mp4')];
 

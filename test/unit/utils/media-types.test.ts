@@ -7,6 +7,7 @@ import {
   getIconForMediaType,
   isImageMimeType,
   isImagePath,
+  isMobileTimelineAddableProjectFileName,
   isOpenableProjectFileName,
   isOpenableProjectTextFilename,
   validateMediaTrackCompatibility,
@@ -69,6 +70,15 @@ describe('media-types', () => {
   it('allows text files to open as project files', () => {
     expect(isOpenableProjectFileName('notes.txt')).toBe(true);
     expect(isOpenableProjectFileName('config.yml')).toBe(true);
+  });
+
+  it('excludes text files from mobile timeline addable project files', () => {
+    expect(isMobileTimelineAddableProjectFileName('clip.mp4')).toBe(true);
+    expect(isMobileTimelineAddableProjectFileName('sound.wav')).toBe(true);
+    expect(isMobileTimelineAddableProjectFileName('cover.png')).toBe(true);
+    expect(isMobileTimelineAddableProjectFileName('nested.otio')).toBe(true);
+    expect(isMobileTimelineAddableProjectFileName('notes.txt')).toBe(false);
+    expect(isMobileTimelineAddableProjectFileName('subs.vtt')).toBe(false);
   });
 
   it('extracts MIME type ignoring query and hash', () => {

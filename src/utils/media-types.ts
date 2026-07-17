@@ -131,6 +131,11 @@ export function isOpenableProjectFileName(filename: string): boolean {
   return isOpenableProjectTextFilename(filename);
 }
 
+export function isMobileTimelineAddableProjectFileName(filename: string): boolean {
+  const type = getMediaTypeFromFilename(filename);
+  return type === 'video' || type === 'audio' || type === 'image' || type === 'timeline';
+}
+
 /**
  * Checks whether a media file of the given type can be placed on a track of the given kind.
  */

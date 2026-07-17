@@ -3,7 +3,10 @@ import { computed, toRefs } from 'vue';
 import { useSelectionStore } from '~/stores/selection.store';
 import FileProperties from '~/components/properties/FileProperties.vue';
 import MultiFileProperties from '~/components/properties/MultiFileProperties.vue';
-import { isOpenableProjectFileName, getMediaTypeFromFilename } from '~/utils/media-types';
+import {
+  getMediaTypeFromFilename,
+  isMobileTimelineAddableProjectFileName,
+} from '~/utils/media-types';
 import type { FileAction as FileManagerAction } from '~/composables/file-manager/useFileManagerActions';
 import type { SelectedFsEntry, SelectedFsEntries } from '~/stores/selection.store';
 import type { FsEntry } from '~/types/fs';
@@ -179,7 +182,7 @@ const canAddToTimeline = computed(() => {
   if (!selectedEntity.value || selectedEntity.value.kind !== 'file') return false;
   if (selectedEntity.value.entry.source === 'remote') return false;
   if (isFullyUnsupported.value) return false;
-  return isOpenableProjectFileName(selectedEntity.value.name);
+  return isMobileTimelineAddableProjectFileName(selectedEntity.value.name);
 });
 
 const hasExistingProxy = computed(() => {

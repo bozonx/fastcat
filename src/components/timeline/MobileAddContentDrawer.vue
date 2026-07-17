@@ -3,13 +3,10 @@ import { ref, computed, nextTick } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 import MobileMediaPickerDrawer from './MobileMediaPickerDrawer.vue';
-import { getMediaTypeFromFilename } from '~/utils/media-types';
-import { useMediaStore } from '~/stores/media.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
-import { secondsToTicksClamped } from '~/utils/time';
 
 import { useAppClipboard } from '~/composables/useAppClipboard';
-import { useMediaTrackRedirectToast } from '~/composables/timeline/useMediaTrackRedirectToast';
+import { useAddMediaToTimeline } from '~/composables/timeline/useAddMediaToTimeline';
 import { useCloseModel } from '~/composables/ui/useCloseModel';
 import { isInDevelopmentFeaturesEnabled } from '~/utils/features';
 
@@ -24,11 +21,10 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
-const mediaStore = useMediaStore();
 const workspaceStore = useWorkspaceStore();
 const { handleFiles } = useFileManager();
 const clipboardStore = useAppClipboard();
-const { captureSelectionKind, notifyRedirect } = useMediaTrackRedirectToast();
+const { addMediaToTimeline } = useAddMediaToTimeline();
 const toast = useToast();
 
 const isOpenLocal = useCloseModel(
@@ -43,19 +39,6 @@ const runtimeConfig = useRuntimeConfig();
 const isDev = isInDevelopmentFeaturesEnabled(runtimeConfig);
 
 const hasClipboard = computed(() => clipboardStore.hasTimelinePayload);
-
-async function resolveInsertDurationTicks(
-  path: string,
-  mediaType: string,
-): Promise<number | undefined> {
-  if (mediaType === 'image' || mediaType === 'timeline') {
-    return workspaceStore.userSettings.timeline.defaultStaticClipDurationTicks;
-  }
-
-  const meta = await mediaStore.getOrFetchMetadataByPath(path);
-  const duration = Number(meta?.duration);
-  return Number.isFinite(duration) && duration > 0 ? secondsToTicksClamped(duration) : undefined;
-}
 
 async function handlePaste() {
   const payload = clipboardStore.clipboardPayload;
@@ -159,83 +142,13 @@ async function onFilesSelected(e: Event) {
   emit('close');
   const results = await handleFiles(files);
   if (results && results.length > 0) {
-    const selectionKind = captureSelectionKind();
-    const addedKinds: ('video' | 'audio')[] = [];
-    for (const r of results) {
-      const mediaType = getMediaTypeFromFilename(r.fileName);
-      if (mediaType === 'timeline') {
-        try {
-          const durationTicks = await resolveInsertDurationTicks(r.targetPath, mediaType);
-          await timelineStore.addTimelineClipToTimelineFromPath({
-            trackId: timelineStore.resolveMobileTargetTrackId('video', { durationTicks }),
-            name: r.fileName,
-            path: r.targetPath,
-            startTicks: timelineStore.currentTime,
-            pseudo: true,
-          });
-        } catch (err: unknown) {
-          const message = err instanceof Error ? err.message : String(err);
-          if (message === 'cannot_insert_on_clip') {
-            toast.add({
-              title: t('fastcat.timeline.cannotInsertPlayheadOnClip'),
-              color: 'error',
-              icon: 'i-heroicons-x-circle',
-            });
-          } else {
-            toast.add({
-              title: t('common.error'),
-              description: message,
-              color: 'error',
-            });
-          }
-        }
-      } else if (['video', 'audio', 'image'].includes(mediaType)) {
-        const kind = mediaType === 'audio' ? 'audio' : 'video';
-        const durationTicks = await resolveInsertDurationTicks(r.targetPath, mediaType);
-        const trackId =
-          props.targetTrackId ?? timelineStore.resolveMobileTargetTrackId(kind, { durationTicks });
-
-        try {
-          const result = await timelineStore.addClipToTimelineFromPath({
-            trackId,
-            name: r.fileName,
-            path: r.targetPath,
-            startTicks: timelineStore.currentTime,
-            pseudo: true,
-          });
-          if (result.warnings?.some((w) => w.type === 'clipTrimmed')) {
-            toast.add({
-              title: t('fastcat.timeline.clipTrimmedToFitGap'),
-              color: 'warning',
-              icon: 'i-heroicons-exclamation-triangle',
-            });
-          }
-          // Use the resolved track's actual kind: props.targetTrackId can override the
-          // media-derived kind, so the clip may not land on a track of `kind`.
-          const placedKind =
-            timelineStore.timelineDoc?.tracks.find((t) => t.id === trackId)?.kind ?? kind;
-          addedKinds.push(placedKind);
-        } catch (err: unknown) {
-          const message = err instanceof Error ? err.message : String(err);
-          if (message === 'cannot_insert_on_clip') {
-            toast.add({
-              title: t('fastcat.timeline.cannotInsertPlayheadOnClip'),
-              color: 'error',
-              icon: 'i-heroicons-x-circle',
-            });
-          } else {
-            toast.add({
-              title: t('common.error'),
-              description: message,
-              color: 'error',
-            });
-          }
-        }
-      }
-    }
-    if (addedKinds.length > 0) {
-      notifyRedirect(selectionKind, addedKinds);
-    }
+    await addMediaToTimeline(
+      results.map((result) => ({
+        name: result.fileName,
+        path: result.targetPath,
+      })),
+      { targetTrackId: props.targetTrackId },
+    );
   }
 }
 
