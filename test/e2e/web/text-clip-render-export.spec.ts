@@ -5,6 +5,12 @@ import { MEDIA_FIXTURES } from '../../fixtures/media';
 import { seedProjectMedia } from '../../utils/e2e/file-manager';
 import { openExport, startExport, waitForExportSuccess } from '../../utils/e2e/transport';
 import { listOpfsDirectory, readFileFromOpfs } from '../../utils/e2e/virtual-fs';
+import { probeWebGpu } from '../../utils/e2e/webgpu';
+import { secondsToTicks } from '~/utils/time';
+
+// Text-clip durations must be whole-frame tick magnitudes under the new
+// timebase; 2s keeps the clip comfortably longer than one frame.
+const TEXT_CLIP_DURATION_TICKS = secondsToTicks({ seconds: 2 });
 
 test.describe('Web text clip render/export', () => {
   test.slow();
@@ -13,7 +19,7 @@ test.describe('Web text clip render/export', () => {
     const [videoTrackId] = await trackIds(page);
     const [clipId] = await addTextClipAtPlayhead(page, {
       trackId: videoTrackId,
-      durationTicks: 1_000_000,
+      durationTicks: TEXT_CLIP_DURATION_TICKS,
       text: 'Styled\nText',
       style: {
         width: 720,
@@ -45,6 +51,11 @@ test.describe('Web text clip render/export', () => {
       timeout: 20_000,
     });
 
+    // Export composites through the GPU renderer; skip cleanly when WebGPU is
+    // unavailable instead of false-failing in a GPU-less environment.
+    const gpu = await probeWebGpu(page);
+    test.skip(!gpu.available, `WebGPU unavailable for export: ${gpu.reason}`);
+
     await openExport(page);
     await startExport(page);
     await waitForExportSuccess(page, { timeout: 90_000 });
@@ -71,7 +82,7 @@ test.describe('Web text clip render/export', () => {
 
     const [clipId] = await addTextClipAtPlayhead(page, {
       trackId: textTrackId,
-      durationTicks: 1_000_000,
+      durationTicks: TEXT_CLIP_DURATION_TICKS,
       text: 'Overlay',
       style: {
         width: 720,
@@ -102,6 +113,11 @@ test.describe('Web text clip render/export', () => {
     await expect(page.getByRole('button', { name: 'Fullscreen' })).toBeVisible({
       timeout: 20_000,
     });
+
+    // Export composites through the GPU renderer; skip cleanly when WebGPU is
+    // unavailable instead of false-failing in a GPU-less environment.
+    const gpu = await probeWebGpu(page);
+    test.skip(!gpu.available, `WebGPU unavailable for export: ${gpu.reason}`);
 
     await openExport(page);
     await startExport(page);

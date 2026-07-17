@@ -1,21 +1,30 @@
 import { test, expect, waitForEditorReady } from '../fixtures/workspace';
 import { addMarkers, markerIds, removeMarker, updateMarker } from '../../utils/e2e/timeline';
 import { waitForTimelineDoc } from '../../utils/e2e/otio';
+import { secondsToTicks } from '~/utils/time';
 
 test.describe('Web timeline markers', () => {
   test('creates, lists, filters, updates, removes and reloads markers', async ({
     page,
     e2eProject,
   }) => {
+    // Marker positions are absolute timeline ticks; under the new timebase
+    // (TICKS_PER_SECOND = 254_016_000_000) whole-second positions keep them
+    // visibly separated on the ruler. audio-sine.wav is ~1s, so keep markers
+    // inside the clip extent so they show in the markers table.
+    const introTicks = secondsToTicks({ seconds: 0.3 });
+    const chapterTicks = secondsToTicks({ seconds: 0.6 });
+    const chapterDurationTicks = secondsToTicks({ seconds: 0.2 });
+
     const [introId, chapterId] = await addMarkers(page, [
       {
-        timeTicks: 1_000_000,
+        timeTicks: introTicks,
         text: 'Intro marker',
         color: '#d0021b',
       },
       {
-        timeTicks: 2_000_000,
-        durationTicks: 3_000_000,
+        timeTicks: chapterTicks,
+        durationTicks: chapterDurationTicks,
         text: 'Chapter zone',
         color: '#4a90e2',
       },
@@ -33,7 +42,7 @@ test.describe('Web timeline markers', () => {
           (marker) =>
             marker.id === chapterId! &&
             marker.text === 'Chapter zone' &&
-            marker.durationTicks === 3_000_000,
+            marker.durationTicks === chapterDurationTicks,
         ),
     );
 

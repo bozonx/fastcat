@@ -10,6 +10,7 @@ import {
 } from '../../utils/e2e/timeline';
 import { waitForTimelineDoc } from '../../utils/e2e/otio';
 import { expectPlayheadAdvances } from '../../utils/e2e/transport';
+import { secondsToTicks } from '~/utils/time';
 
 /**
  * The single long happy-path. Its job is to prove the main editor workflow stays
@@ -38,7 +39,7 @@ test.describe('Web editor smoke workflow', () => {
     await expectPlayheadAdvances(page, { forMs: 500 });
 
     // Trim one edge shorter (in ticks).
-    await trimClipEdge(page, clipId, 'end', -200_000);
+    await trimClipEdge(page, clipId, 'end', -secondsToTicks({ seconds: 0.2 }));
     await waitForTimelineDoc(
       page,
       e2eProject,
@@ -46,7 +47,7 @@ test.describe('Web editor smoke workflow', () => {
     );
 
     // Move it later on the same track (in ticks).
-    await dragClipBy(page, clipId, { x: 1_000_000 });
+    await dragClipBy(page, clipId, { x: secondsToTicks({ seconds: 1 }) });
     const edited = await waitForTimelineDoc(
       page,
       e2eProject,

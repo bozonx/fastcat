@@ -9,6 +9,7 @@ import {
   trimClipEdge,
 } from '../../utils/e2e/timeline';
 import { waitForTimelineDoc } from '../../utils/e2e/otio';
+import { secondsToTicks } from '~/utils/time';
 
 /**
  * Persistence / reload with a complex timeline containing multiple media kinds
@@ -43,8 +44,8 @@ test.describe('Web timeline reload persistence', () => {
     expect(ids.length).toBe(3);
 
     // Trim the first clip (video) and move the second (image) later.
-    await trimClipEdge(page, ids[0], 'end', -400_000);
-    await dragClipBy(page, ids[1], { x: 800_000 });
+    await trimClipEdge(page, ids[0], 'end', -secondsToTicks({ seconds: 0.4 }));
+    await dragClipBy(page, ids[1], { x: secondsToTicks({ seconds: 0.8 }) });
 
     const edited = await waitForTimelineDoc(page, e2eProject, (d) => d.allClips.length === 3);
     const editedVideoDuration = edited.allClips[0].timelineDurationTicks;

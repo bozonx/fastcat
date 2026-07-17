@@ -11,6 +11,11 @@ import {
   trackIds,
 } from '../../utils/e2e/timeline';
 import { readTimelineDoc, waitForTimelineDoc } from '../../utils/e2e/otio';
+import { secondsToTicks } from '~/utils/time';
+
+// Deltas must be whole-frame tick magnitudes (TICKS_PER_SECOND = 254_016_000_000);
+// the old microsecond-scale literals quantized to a no-op under the new timebase.
+const MOVE_LATER_TICKS = secondsToTicks({ seconds: 1.2 });
 
 /**
  * Repositioning clips on the timeline. Verifies both DOM placement and persisted
@@ -31,7 +36,7 @@ test.describe('Web timeline move', () => {
     const clipId = await projectWithOneVideoClip(page, e2eProject);
     const before = (await readTimelineDoc(page, e2eProject)).allClips[0];
 
-    await dragClipBy(page, clipId, { x: 1_200_000 });
+    await dragClipBy(page, clipId, { x: MOVE_LATER_TICKS });
 
     // A later start manifests as a leading gap in the sequential OTIO track.
     const doc = await waitForTimelineDoc(
@@ -44,7 +49,7 @@ test.describe('Web timeline move', () => {
 
   test('moved clip persists across reload', async ({ page, e2eProject }) => {
     const clipId = await projectWithOneVideoClip(page, e2eProject);
-    await dragClipBy(page, clipId, { x: 1_200_000 });
+    await dragClipBy(page, clipId, { x: MOVE_LATER_TICKS });
     const moved = (
       await waitForTimelineDoc(page, e2eProject, (d) => d.allClips[0].timelineStartTicks > 0)
     ).allClips[0].timelineStartTicks;

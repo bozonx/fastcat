@@ -3,7 +3,14 @@ import { MEDIA_FIXTURES } from '../../fixtures/media';
 import { seedProjectMedia } from '../../utils/e2e/file-manager';
 import { addFileToTrack, clipIds, trackIds, updateClipProperties } from '../../utils/e2e/timeline';
 import { waitForTimelineDoc } from '../../utils/e2e/otio';
-import { TICKS_PER_MILLISECOND } from '~/utils/time';
+import { secondsToTicks } from '~/utils/time';
+
+// audio-sine.wav is ~1s. Fade durations must each fit within the clip and not
+// overlap each other, otherwise the clip-duration clamp / opposing-edge
+// normalization in updateClipProperties rescales them — so pick values well
+// under the clip length.
+const FADE_IN_TICKS = secondsToTicks({ seconds: 0.3 });
+const FADE_OUT_TICKS = secondsToTicks({ seconds: 0.3 });
 
 /**
  * Clip-level audio properties: gain, balance (pan), and fade in/out. Tests
@@ -24,8 +31,8 @@ test.describe('Web clip audio properties', () => {
       properties: {
         audioGain: 0.5,
         audioBalance: -0.5,
-        audioFadeInTicks: 100_000 * TICKS_PER_MILLISECOND,
-        audioFadeOutTicks: 100_000 * TICKS_PER_MILLISECOND,
+        audioFadeInTicks: FADE_IN_TICKS,
+        audioFadeOutTicks: FADE_OUT_TICKS,
         audioFadeInCurve: 'logarithmic',
         audioFadeOutCurve: 'logarithmic',
         audioMuted: true,
@@ -40,8 +47,8 @@ test.describe('Web clip audio properties', () => {
     const clip = updated.allClips[0];
     expect(clip.audioGain).toBe(0.5);
     expect(clip.audioBalance).toBe(-0.5);
-    expect(clip.audioFadeInTicks).toBe(100_000 * TICKS_PER_MILLISECOND);
-    expect(clip.audioFadeOutTicks).toBe(100_000 * TICKS_PER_MILLISECOND);
+    expect(clip.audioFadeInTicks).toBe(FADE_IN_TICKS);
+    expect(clip.audioFadeOutTicks).toBe(FADE_OUT_TICKS);
     expect(clip.audioFadeInCurve).toBe('logarithmic');
     expect(clip.audioFadeOutCurve).toBe('logarithmic');
     expect(clip.audioMuted).toBe(true);
@@ -53,7 +60,7 @@ test.describe('Web clip audio properties', () => {
     const reloadedClip = reloaded.allClips[0];
     expect(reloadedClip.audioGain).toBe(0.5);
     expect(reloadedClip.audioBalance).toBe(-0.5);
-    expect(reloadedClip.audioFadeInTicks).toBe(100_000 * TICKS_PER_MILLISECOND);
+    expect(reloadedClip.audioFadeInTicks).toBe(FADE_IN_TICKS);
     expect(reloadedClip.audioMuted).toBe(true);
   });
 });

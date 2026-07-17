@@ -29,7 +29,13 @@ test.describe('Web clip effects workflow', () => {
     const videoTrackId = (await trackIds(page))[0];
     await addFileToTrack(page, uiPath, videoTrackId);
 
-    const clipId = (await clipIds(page))[0];
+    // Wait for the clip to settle in the timeline before selecting it: the
+    // properties panel renders its "Video" tab off the resolved selection, and
+    // reading clipIds() immediately after the async add can race the DOM update
+    // (leaving the panel on its empty state with no tabs).
+    const clipId = (await waitForTimelineDoc(page, e2eProject, (d) => d.allClips.length === 1))
+      .allClips[0]!.id;
+    await expect.poll(async () => (await clipIds(page)).length).toBe(1);
     await selectClip(page, clipId);
     await page.getByRole('tab', { name: 'Video' }).click();
 

@@ -12,6 +12,8 @@ import {
 import { waitForTimelineDoc } from '../../utils/e2e/otio';
 import { openExport, startExport, waitForExportSuccess } from '../../utils/e2e/transport';
 import { listOpfsDirectory, readFileFromOpfs } from '../../utils/e2e/virtual-fs';
+import { probeWebGpu } from '../../utils/e2e/webgpu';
+import { secondsToTicks } from '~/utils/time';
 
 /**
  * Main Editing User Journey E2E Test:
@@ -60,7 +62,7 @@ test.describe('Main Editing User Journey', () => {
     const videoClipId = currentClipIds[0];
 
     // Trim video clip slightly to verify edit operation
-    await trimClipEdge(page, videoClipId, 'end', -200_000);
+    await trimClipEdge(page, videoClipId, 'end', -secondsToTicks({ seconds: 0.2 }));
     await waitForTimelineDoc(
       page,
       e2eProject,
@@ -88,7 +90,13 @@ test.describe('Main Editing User Journey', () => {
     });
     expect(docWithEffect.allClips[0].effects).toHaveLength(1);
 
-    // 4. Export: Trigger export flow and verify generated output
+    // 4. Export: Trigger export flow and verify generated output. The export
+    // pipeline composites through the GPU renderer, so it needs a working GPU
+    // rasteriser — skip cleanly when WebGPU is unavailable (e.g. SwiftShader in
+    // a headless GPU-less environment) rather than false-failing.
+    const gpu = await probeWebGpu(page);
+    test.skip(!gpu.available, `WebGPU unavailable for export: ${gpu.reason}`);
+
     await openExport(page);
     await startExport(page);
     await waitForExportSuccess(page, { timeout: 90_000 });

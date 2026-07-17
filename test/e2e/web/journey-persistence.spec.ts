@@ -13,6 +13,8 @@ import {
 import { waitForTimelineDoc } from '../../utils/e2e/otio';
 import { openExport, startExport, waitForExportSuccess } from '../../utils/e2e/transport';
 import { listOpfsDirectory, readFileFromOpfs } from '../../utils/e2e/virtual-fs';
+import { probeWebGpu } from '../../utils/e2e/webgpu';
+import { secondsToTicks } from '~/utils/time';
 
 /**
  * Persistence User Journey E2E Test:
@@ -43,7 +45,7 @@ test.describe('Persistence User Journey', () => {
     const initialClipId = (await clipIds(page))[0];
 
     // Perform edits: trim video clip and apply effect
-    await trimClipEdge(page, initialClipId, 'end', -300_000);
+    await trimClipEdge(page, initialClipId, 'end', -secondsToTicks({ seconds: 0.3 }));
     const trimmedDoc = await waitForTimelineDoc(
       page,
       e2eProject,
@@ -95,10 +97,15 @@ test.describe('Persistence User Journey', () => {
 
     const allClipIds = await clipIds(page);
     const audioClipId = allClipIds[1];
-    await dragClipBy(page, audioClipId, { x: 500_000 });
+    await dragClipBy(page, audioClipId, { x: secondsToTicks({ seconds: 0.5 }) });
     await waitForTimelineDoc(page, e2eProject, (d) => (d.allClips[1]?.timelineStartTicks ?? 0) > 0);
 
-    // 5. Export final result after post-reload editing
+    // 5. Export final result after post-reload editing. The export composites
+    // through the GPU renderer; skip cleanly when WebGPU is unavailable instead
+    // of false-failing in a GPU-less environment.
+    const gpu = await probeWebGpu(page);
+    test.skip(!gpu.available, `WebGPU unavailable for export: ${gpu.reason}`);
+
     await openExport(page);
     await startExport(page);
     await waitForExportSuccess(page, { timeout: 90_000 });

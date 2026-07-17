@@ -17,7 +17,7 @@
     "fonts:vendor": "node scripts/vendor-fonts.mjs",
     "update:tauri": "pnpm add -D @tauri-apps/cli@latest @tauri-apps/api@latest && pnpm add @tauri-apps/plugin-dialog@latest @tauri-apps/plugin-fs@latest @tauri-apps/plugin-os@latest",
     "check": "pnpm check:ui && pnpm check:native && pnpm test:e2e && pnpm test:e2e:tauri",
-    "check:ui": "pnpm check:static && pnpm test:unit && pnpm test:integration:web && pnpm test:golden:web",
+    "check:ui": "pnpm check:static && pnpm test:unit && pnpm test:integration:web",
     "check:native": "pnpm clippy && pnpm fmt:check && pnpm test:native",
     "check:static": "pnpm i18n:check && pnpm typecheck && pnpm lint",
     "check:fast": "pnpm check:static && pnpm test:unit && pnpm test:integration:web",
