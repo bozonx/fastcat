@@ -415,6 +415,108 @@ describe('Thumbnail Generators', () => {
       expect(URL.revokeObjectURL).toHaveBeenCalledWith('url-b');
     });
 
+    it('isPinned reflects whether a mounted consumer is retaining the entry', () => {
+      const generator = thumbnailGenerator as unknown as {
+        isPinned: (id: string) => boolean;
+        retain: (id: string, key: string) => void;
+        releaseConsumer: (id: string, key: string) => void;
+      };
+
+      expect(generator.isPinned('pin-test')).toBe(false);
+      generator.retain('pin-test', 'clip-a');
+      expect(generator.isPinned('pin-test')).toBe(true);
+      generator.releaseConsumer('pin-test', 'clip-a');
+      expect(generator.isPinned('pin-test')).toBe(false);
+    });
+
+    it('does not evict or revoke a pinned entry, evicting the oldest unpinned one instead', () => {
+      const generator = thumbnailGenerator as unknown as {
+        cache: Map<string, Map<number, string>>;
+        retain: (id: string, key: string) => void;
+        evictCacheIfNeeded: () => void;
+        maxCacheEntries: number;
+      };
+
+      const cap = generator.maxCacheEntries;
+      // One over the entry cap so exactly one entry must be evicted.
+      for (let i = 0; i <= cap; i++) {
+        generator.cache.set(`hash-${i}`, new Map([[0, `blob-${i}`]]));
+      }
+
+      // A mounted clip is displaying the oldest entry (hash-0).
+      generator.retain('hash-0', 'clip-a');
+
+      generator.evictCacheIfNeeded();
+
+      // The pinned oldest entry survives; the next-oldest unpinned one is evicted.
+      expect(generator.cache.has('hash-0')).toBe(true);
+      expect(generator.cache.has('hash-1')).toBe(false);
+      expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob-1');
+      // The blob URL a live <img> still points at is never revoked.
+      expect(URL.revokeObjectURL).not.toHaveBeenCalledWith('blob-0');
+    });
+
+    it('stops shrinking when every remaining entry over the url cap is pinned', () => {
+      const generator = thumbnailGenerator as unknown as {
+        cache: Map<string, Map<number, string>>;
+        retain: (id: string, key: string) => void;
+        evictCacheIfNeeded: () => void;
+        maxTotalCachedUrls: number;
+      };
+
+      // Two pinned entries whose combined url count exceeds the total-url cap.
+      const perEntry = generator.maxTotalCachedUrls;
+      const bigMap = (offset: number) =>
+        new Map(Array.from({ length: perEntry }, (_, i) => [i, `blob-${offset}-${i}`]));
+      generator.cache.set('pinned-a', bigMap(0));
+      generator.cache.set('pinned-b', bigMap(1));
+      generator.retain('pinned-a', 'clip-a');
+      generator.retain('pinned-b', 'clip-b');
+      // Ignore revokes from prior-test cache teardown in beforeEach's reset().
+      vi.mocked(URL.revokeObjectURL).mockClear();
+
+      generator.evictCacheIfNeeded();
+
+      // Over the cap, but both entries are in use — nothing may be revoked.
+      expect(generator.cache.has('pinned-a')).toBe(true);
+      expect(generator.cache.has('pinned-b')).toBe(true);
+      expect(URL.revokeObjectURL).not.toHaveBeenCalled();
+    });
+
+    it('releaseConsumer keeps sibling clips of the same source working', () => {
+      const generator = thumbnailGenerator as unknown as {
+        listeners: Map<string, Map<string, unknown>>;
+        consumers: Map<string, Set<string>>;
+        retain: (id: string, key: string) => void;
+        releaseConsumer: (id: string, key: string) => void;
+      };
+
+      // Two clips of the same source file share one cache entry / listener map.
+      generator.retain('shared', 'clip-a');
+      generator.retain('shared', 'clip-b');
+      generator.listeners.set(
+        'shared',
+        new Map<string, unknown>([
+          ['clip-a', {}],
+          ['clip-b', {}],
+        ]),
+      );
+
+      generator.releaseConsumer('shared', 'clip-a');
+
+      // clip-b is still mounted: entry stays pinned and its listener is intact.
+      expect(generator.consumers.get('shared')?.has('clip-b')).toBe(true);
+      expect(generator.listeners.get('shared')?.has('clip-b')).toBe(true);
+      // Only the unmounted clip's own listener is dropped.
+      expect(generator.listeners.get('shared')?.has('clip-a')).toBe(false);
+
+      generator.releaseConsumer('shared', 'clip-b');
+
+      // Last consumer gone → fully released.
+      expect(generator.consumers.has('shared')).toBe(false);
+      expect(generator.listeners.has('shared')).toBe(false);
+    });
+
     it('should clearThumbnails remove listeners along with cache and pending state', async () => {
       const generator = thumbnailGenerator as unknown as {
         cache: Map<string, unknown>;
@@ -501,6 +603,46 @@ describe('Thumbnail Generators', () => {
           timesSec: requestedTimesS.slice(128),
         },
       );
+    });
+
+    it('keeps native-generated thumbnails pinned so eviction never revokes on-screen clips', async () => {
+      // Generate real (native) thumbnails into the cache for a mounted clip.
+      thumbnailGenerator.addTask({
+        id: 'tauri-pinned-hash',
+        projectId: 'p1',
+        projectRelativePath: 'v1.mp4',
+        duration: 8,
+        requestedTimesS: [0, 4],
+      });
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      const generator = thumbnailGenerator as unknown as {
+        cache: Map<string, Map<number, string>>;
+        retain: (id: string, key: string) => void;
+        evictCacheIfNeeded: () => void;
+        maxCacheEntries: number;
+      };
+
+      expect(generator.cache.has('tauri-pinned-hash')).toBe(true);
+      const pinnedUrls = Array.from(generator.cache.get('tauri-pinned-hash')!.values());
+      expect(pinnedUrls.length).toBeGreaterThan(0);
+
+      // A native clip component mounts and retains the entry.
+      generator.retain('tauri-pinned-hash', 'native-clip');
+
+      // Pile on enough other sources to exceed the entry cap and force eviction.
+      for (let i = 0; i < generator.maxCacheEntries; i++) {
+        generator.cache.set(`filler-${i}`, new Map([[0, `filler-blob-${i}`]]));
+      }
+      vi.mocked(URL.revokeObjectURL).mockClear();
+
+      generator.evictCacheIfNeeded();
+
+      // The mounted native clip's entry and its blob URLs survive untouched.
+      expect(generator.cache.has('tauri-pinned-hash')).toBe(true);
+      for (const url of pinnedUrls) {
+        expect(URL.revokeObjectURL).not.toHaveBeenCalledWith(url);
+      }
     });
 
     it('should generate file thumbnails successfully when workspaceHandle is null in Tauri', async () => {

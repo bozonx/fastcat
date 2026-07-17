@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { watch } from 'vue';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
-import UiFpsInputWithPresets from '~/components/ui/editor/UiFpsInputWithPresets.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
 import UiFormField from '~/components/ui/UiFormField.vue';
 import { STANDARD_FRAME_RATES, frameRateToNumber } from '~/utils/time/ticks';
@@ -20,13 +19,11 @@ const props = withDefaults(
     disabled?: boolean;
     showAudioSettings?: boolean;
     disableAspectRatio?: boolean;
-    standardFpsOnly?: boolean;
   }>(),
   {
     disabled: false,
     showAudioSettings: true,
     disableAspectRatio: false,
-    standardFpsOnly: false,
   },
 );
 
@@ -230,7 +227,6 @@ watch([localWidth, localHeight, localIsCustom], ([w, h, isCustom]) => {
     >
       <UiFormField :label="t('videoEditor.export.fps')">
         <UiSelect
-          v-if="props.standardFpsOnly"
           v-model="localFps"
           :items="standardFpsOptions"
           :disabled="disabled"
@@ -240,7 +236,6 @@ watch([localWidth, localHeight, localIsCustom], ([w, h, isCustom]) => {
           label-key="label"
           :search-input="false"
         />
-        <UiFpsInputWithPresets v-else v-model="localFps" :disabled="disabled" />
       </UiFormField>
 
       <template v-if="props.showAudioSettings">

@@ -85,12 +85,60 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
   private pendingRequestedTimes = new Map<string, Set<number>>();
   private opfsCheckedTimes = new Map<string, Set<number>>();
   private opfsExistingFiles = new Map<string, Set<string>>();
+  /**
+   * clipHash → set of mounted consumer ids (timeline clip ids) currently
+   * displaying this source's thumbnails. While non-empty the entry is "pinned"
+   * and never evicted, so we never `URL.revokeObjectURL` a blob that a live
+   * `<img>` still points at. Keyed by source (multiple clips of the same file
+   * share one entry), so a clip unmounting does not break its siblings.
+   */
+  private consumers = new Map<string, Set<string>>();
+
+  /** Register a mounted clip as a consumer of `id`'s thumbnails (pins the entry). */
+  retain(id: string, consumerKey: string): void {
+    if (!id || !consumerKey) return;
+    const set = this.consumers.get(id) ?? new Set<string>();
+    set.add(consumerKey);
+    this.consumers.set(id, set);
+  }
+
+  /**
+   * A mounted clip is going away (unmount / clip-hash change). Drops just this
+   * clip's listener and pin — siblings sharing the source keep theirs. Cancels
+   * in-flight extraction only once the last consumer is gone.
+   */
+  releaseConsumer(id: string, consumerKey: string): void {
+    if (!id || !consumerKey) return;
+    const set = this.consumers.get(id);
+    if (set) {
+      set.delete(consumerKey);
+      if (set.size === 0) this.consumers.delete(id);
+    }
+    this.removeListenerByKey(id, consumerKey);
+    if (!this.consumers.has(id)) {
+      this.cancelTask(id);
+    }
+  }
+
+  private removeListenerByKey(id: string, listenerKey: string): void {
+    const listeners = this.listeners.get(id);
+    if (!listeners) return;
+    listeners.delete(listenerKey);
+    if (listeners.size === 0) this.listeners.delete(id);
+  }
+
+  protected override isPinned(id: string): boolean {
+    const set = this.consumers.get(id);
+    return set !== undefined && set.size > 0;
+  }
 
   protected override evictCacheIfNeeded() {
     super.evictCacheIfNeeded();
     while (this.cache.size > 0 && this.totalCachedUrlCount() > this.maxTotalCachedUrls) {
-      const oldestKey = this.cache.keys().next().value as string | undefined;
-      if (!oldestKey) break;
+      const oldestKey = this.findOldestEvictableKey();
+      // All remaining entries are pinned by mounted clips — stop rather than
+      // revoke blob URLs that are still on screen.
+      if (oldestKey === undefined) break;
       const value = this.cache.get(oldestKey);
       if (value) this.revokeCacheValue(value);
       this.cache.delete(oldestKey);
@@ -120,6 +168,7 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
     this.pendingRequestedTimes.clear();
     this.opfsCheckedTimes.clear();
     this.opfsExistingFiles.clear();
+    this.consumers.clear();
   }
 
   protected onCacheHit(task: ThumbnailTask, urls: Map<number, string>): void {
@@ -603,6 +652,7 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
     this.pendingRequestedTimes.delete(input.hash);
     this.opfsCheckedTimes.delete(input.hash);
     this.opfsExistingFiles.delete(input.hash);
+    this.consumers.delete(input.hash);
 
     const workspaceStore = useWorkspaceStore();
     if (!workspaceStore.workspaceHandle) return;

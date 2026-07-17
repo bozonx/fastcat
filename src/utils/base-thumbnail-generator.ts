@@ -33,8 +33,11 @@ export abstract class BaseThumbnailGenerator<TTask extends BaseThumbnailTask, TC
 
   protected evictCacheIfNeeded() {
     while (this.cache.size > this.maxCacheEntries) {
-      const oldestKey = this.cache.keys().next().value as string | undefined;
-      if (!oldestKey) return;
+      const oldestKey = this.findOldestEvictableKey();
+      // Every remaining entry is pinned (in use by a mounted consumer); we must
+      // not revoke its blob URLs out from under the live <img> elements, so we
+      // stop shrinking even though we are over the soft cap.
+      if (oldestKey === undefined) return;
       const value = this.cache.get(oldestKey);
       if (value) {
         this.revokeCacheValue(value);
@@ -42,6 +45,27 @@ export abstract class BaseThumbnailGenerator<TTask extends BaseThumbnailTask, TC
       this.cache.delete(oldestKey);
       this.onCacheEntryEvicted(oldestKey);
     }
+  }
+
+  /**
+   * Oldest (LRU) cache key that is safe to evict, i.e. not pinned by an active
+   * consumer. Returns `undefined` when every entry is pinned. Base generators
+   * pin nothing (see {@link isPinned}); subclasses that hand cached blob URLs to
+   * long-lived UI override it so those URLs are never revoked while displayed.
+   */
+  protected findOldestEvictableKey(): string | undefined {
+    for (const key of this.cache.keys()) {
+      if (!this.isPinned(key)) return key;
+    }
+    return undefined;
+  }
+
+  /**
+   * Whether a cache entry is currently in use and therefore must not be evicted
+   * (its blob URLs would be revoked while still rendered). False by default.
+   */
+  protected isPinned(_id: string): boolean {
+    return false;
   }
 
   protected abstract revokeCacheValue(value: TCache): void;

@@ -447,6 +447,11 @@ export function useTimelineClipThumbnails(options: UseTimelineClipThumbnailsOpti
 
   onMounted(() => {
     isUnmounted = false;
+    // Pin the cache entry so the generator never revokes blob URLs this clip is
+    // still rendering (see `retain`/`isPinned` in the thumbnail generator).
+    if (clipHash.value) {
+      thumbnailGenerator.retain(clipHash.value, options.item.value.id);
+    }
     if (
       (options.item.value.clipType === 'media' || options.item.value.clipType === 'timeline') &&
       !isImage.value
@@ -459,17 +464,20 @@ export function useTimelineClipThumbnails(options: UseTimelineClipThumbnailsOpti
     isUnmounted = true;
     revokeImageUrl();
     if (clipHash.value) {
-      thumbnailGenerator.cancelTask(clipHash.value);
+      thumbnailGenerator.releaseConsumer(clipHash.value, options.item.value.id);
     }
   });
 
   watch(clipHash, (newHash, oldHash) => {
     if (oldHash) {
-      thumbnailGenerator.cancelTask(oldHash);
+      thumbnailGenerator.releaseConsumer(oldHash, options.item.value.id);
     }
     thumbnailsBySecond.value = new Map();
-    if (newHash && !isImage.value) {
-      generate();
+    if (newHash) {
+      thumbnailGenerator.retain(newHash, options.item.value.id);
+      if (!isImage.value) {
+        generate();
+      }
     }
   });
 
