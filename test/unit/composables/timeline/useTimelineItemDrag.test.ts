@@ -853,6 +853,49 @@ describe('useTimelineItemDrag', () => {
       expect(getScrollLeft()).toBeGreaterThan(100);
     });
 
+    it('follows a shrinking toolbar trim edge instead of the toolbar touch position', () => {
+      const { el, getScrollLeft } = createScrollEl();
+      el.scrollLeft = 550;
+      const clip = timelineStoreMock.timelineDoc.tracks[0].items[0];
+      clip.sourceDurationTicks = 20_000_000_000_000;
+      const nextClip = timelineStoreMock.timelineDoc.tracks[0].items[1];
+      nextClip.timelineRange.startTicks = 20_000_000_000_000;
+      const tracks = computed(() => timelineStoreMock.timelineDoc.tracks);
+      const { startTrimItem } = useTimelineItemDrag(ref(el), tracks);
+
+      startTrimItem(
+        {
+          button: 0,
+          buttons: 1,
+          clientX: 100,
+          clientY: 20,
+          pointerId: 5,
+          pointerType: 'touch',
+          currentTarget: null,
+          preventDefault: vi.fn(),
+          stopPropagation: vi.fn(),
+        } as unknown as PointerEvent,
+        {
+          trackId: 'track-1',
+          itemId: 'clip-1',
+          edge: 'end',
+          startTicks: 254_016_000_000,
+          followTrimEdge: true,
+        },
+      );
+
+      const handlers = bindSessionMock.mock.calls[0]?.[0];
+      handlers.onPointerMove({
+        buttons: 1,
+        button: 0,
+        clientX: 90,
+        clientY: 20,
+      } as PointerEvent);
+
+      vi.advanceTimersByTime(100);
+      expect(getScrollLeft()).toBeLessThan(550);
+    });
+
     it('does not start edge scrolling when trim end is blocked by the next clip', () => {
       const { el, getScrollLeft } = createScrollEl();
       const tracks = computed(() => timelineStoreMock.timelineDoc.tracks);

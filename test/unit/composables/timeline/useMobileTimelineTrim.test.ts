@@ -46,6 +46,7 @@ describe('useMobileTimelineTrim', () => {
       itemId: 'c1',
       edge: 'start',
       startTicks: 1_000_000,
+      followTrimEdge: true,
     });
   });
 

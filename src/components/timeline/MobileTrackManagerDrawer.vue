@@ -153,7 +153,12 @@ function handleDragEnd(event: TrackDragEndEvent) {
 </script>
 
 <template>
-  <UiMobileDrawer v-model:open="isOpenLocal" :show-close="false" :ui="{ body: 'no-scrollbar' }">
+  <UiMobileDrawer
+    v-model:open="isOpenLocal"
+    :show-close="false"
+    side-width-class="w-[82vw] sm:w-[72vw] md:w-[64vw]"
+    :ui="{ body: 'no-scrollbar' }"
+  >
     <div class="px-4 py-4 flex flex-col h-full overflow-hidden">
       <!-- Empty State -->
       <div v-if="localTracks.length === 0" class="flex-1 flex items-center justify-center py-8">

@@ -87,6 +87,8 @@ describe('MobileTrackManagerDrawer', () => {
       global: {
         stubs: {
           UiMobileDrawer: {
+            name: 'UiMobileDrawer',
+            props: ['sideWidthClass'],
             template: '<div class="drawer-stub"><slot /></div>',
           },
           UiConfirmModal: true,
@@ -105,6 +107,29 @@ describe('MobileTrackManagerDrawer', () => {
 
     expect(addVideoBtn).toBeDefined();
     expect(addAudioBtn).toBeDefined();
+  });
+
+  it('uses a wider side drawer in mobile landscape', async () => {
+    const wrapper = await mountSuspended(MobileTrackManagerDrawer, {
+      props: {
+        isOpen: true,
+      },
+      global: {
+        stubs: {
+          UiMobileDrawer: {
+            name: 'UiMobileDrawer',
+            props: ['sideWidthClass'],
+            template: '<div class="drawer-stub"><slot /></div>',
+          },
+          UiConfirmModal: true,
+          UiRenameModal: true,
+        },
+      },
+    });
+
+    const drawer = wrapper.findComponent({ name: 'UiMobileDrawer' });
+
+    expect(drawer.props('sideWidthClass')).toBe('w-[82vw] sm:w-[72vw] md:w-[64vw]');
   });
 
   it('handles toggle visibility, mute, solo, and lock', async () => {

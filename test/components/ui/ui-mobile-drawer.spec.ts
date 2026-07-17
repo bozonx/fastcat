@@ -275,6 +275,23 @@ describe('UiMobileDrawer', () => {
     expect(landscape.findComponent(drawerStub).props('direction')).toBe('right');
   });
 
+  it('uses a custom side width class for plain landscape drawers', async () => {
+    mockWidth.value = 844;
+    mockHeight.value = 390;
+
+    const wrapper = await mountSuspended(UiMobileDrawer, {
+      props: { open: true, sideWidthClass: 'w-[82vw] sm:w-[72vw]' },
+      slots: { default: '<div>Body</div>' },
+      global: { stubs: { UDrawer: drawerStub } },
+    });
+
+    const containerClasses = wrapper.find('.pointer-events-auto').classes();
+
+    expect(containerClasses).toContain('w-[82vw]');
+    expect(containerClasses).toContain('sm:w-[72vw]');
+    expect(containerClasses).not.toContain('w-[55vw]');
+  });
+
   it('renders side handle for right direction and hides vertical handle', async () => {
     const wrapper = await mountSuspended(UiMobileDrawer, {
       props: { open: true, direction: 'right' },

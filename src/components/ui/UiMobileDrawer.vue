@@ -33,6 +33,8 @@ interface Props {
     toolbar?: string;
     close?: string;
   };
+  /** Width classes for side drawers without snap points */
+  sideWidthClass?: string;
   /** Custom z-index class override, defaults to 'z-[var(--z-fixed)]' */
   zIndex?: string;
 }
@@ -49,6 +51,7 @@ const props = withDefaults(defineProps<Props>(), {
   withHandle: true,
   showClose: true,
   ui: () => ({}),
+  sideWidthClass: 'w-[55vw] sm:w-[45vw]',
   zIndex: 'z-[var(--z-fixed)]',
 });
 const isOpen = defineModel<boolean>('open', { default: false });
@@ -223,7 +226,7 @@ const containerClasses = computed(() => {
     // the snap (containerStyle), so no fixed width class. A plain side drawer keeps
     // its responsive width.
     const flow = isSideToolbar.value ? 'flex flex-row' : 'flex flex-col';
-    const widthClass = props.snapPoints?.length ? '' : 'w-[55vw] sm:w-[45vw]';
+    const widthClass = props.snapPoints?.length ? '' : props.sideWidthClass;
     return `${base} ${flow} max-h-dvh h-screen ${widthClass} ml-auto ${sideBorder} border-ui-border/80 ${bgColor} ${props.ui.container || ''}`.replace(
       /  +/g,
       ' ',

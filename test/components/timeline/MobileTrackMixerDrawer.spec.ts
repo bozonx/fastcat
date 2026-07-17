@@ -55,7 +55,8 @@ vi.mock('~/stores/workspace.store', () => ({ useWorkspaceStore: () => mockWorksp
 const globalOptions = {
   stubs: {
     UiMobileDrawer: {
-      props: ['open', 'title'],
+      name: 'UiMobileDrawer',
+      props: ['open', 'title', 'sideWidthClass'],
       emits: ['update:open'],
       template: '<div class="drawer"><slot /></div>',
     },
@@ -98,6 +99,17 @@ describe('MobileTrackMixerDrawer', () => {
       global: globalOptions,
     });
     expect(wrapper.find('.drawer').exists()).toBe(true);
+  });
+
+  it('uses a wider side drawer in mobile landscape', async () => {
+    const wrapper = await mountSuspended(MobileTrackMixerDrawer, {
+      props: { isOpen: true },
+      global: globalOptions,
+    });
+
+    const drawer = wrapper.findComponent({ name: 'UiMobileDrawer' });
+
+    expect(drawer.props('sideWidthClass')).toBe('w-[82vw] sm:w-[72vw] md:w-[64vw]');
   });
 
   it('filters out tracks that have no audio', async () => {

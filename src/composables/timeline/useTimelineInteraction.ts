@@ -88,7 +88,13 @@ export function useTimelineInteraction(
 
   function startTrimItem(
     e: PointerEvent,
-    input: { trackId: string; itemId: string; edge: 'start' | 'end'; startTicks: number },
+    input: {
+      trackId: string;
+      itemId: string;
+      edge: 'start' | 'end';
+      startTicks: number;
+      followTrimEdge?: boolean;
+    },
   ) {
     if (!canEditClipContent.value) return;
     if (isReadOnly.value) return;

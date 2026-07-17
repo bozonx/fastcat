@@ -22,7 +22,13 @@ export interface UseMobileTimelineTrimOptions {
   selectedClipContext: ComputedRef<SelectedClipContext | null>;
   startTrimItem: (
     e: PointerEvent,
-    input: { trackId: string; itemId: string; edge: 'start' | 'end'; startTicks: number },
+    input: {
+      trackId: string;
+      itemId: string;
+      edge: 'start' | 'end';
+      startTicks: number;
+      followTrimEdge?: boolean;
+    },
   ) => void;
   onGlobalPointerMove: (e: PointerEvent) => void;
   onGlobalPointerUp: (e?: PointerEvent) => void;
@@ -77,6 +83,7 @@ export function useMobileTimelineTrim(options: UseMobileTimelineTrimOptions) {
         itemId: payload.itemId,
         edge: payload.edge,
         startTicks: clipContext.clip.timelineRange.startTicks,
+        followTrimEdge: true,
       },
     );
   }

@@ -26,6 +26,7 @@ import { isCommandMatched } from '~/utils/hotkeys/runtime';
 
 import {
   zoomToPxPerSecond,
+  ticksToPx,
   pxToDeltaTicks,
   quantizeDeltaTicksToFrames,
   quantizeStartTicksToFrames,
@@ -144,6 +145,7 @@ export function useTimelineItemDrag(
   const dragToggleSnapOverride = ref(false);
   const dragPointerButton = ref<0 | 2>(0);
   const dragIsMobileTouch = ref(false);
+  const dragFollowsTrimEdge = ref(false);
   const isTrimEdgeBlocked = ref(false);
 
   function getToolbarSnapAction(): 'snap' | 'no_snap' {
@@ -248,6 +250,31 @@ export function useTimelineItemDrag(
     return true;
   }
 
+  function updateTrimEdgeScroll(e: PointerEvent) {
+    const el = scrollEl.value;
+    const itemId = draggingItemId.value;
+    const mode = draggingMode.value;
+    if (!el || !itemId || (mode !== 'trim_start' && mode !== 'trim_end')) {
+      updateEdgeScroll(e);
+      return;
+    }
+
+    const preview = trimPreview.value.find((item) => item.itemId === itemId);
+    if (!preview) {
+      updateEdgeScroll(e);
+      return;
+    }
+
+    const edgeTicks =
+      mode === 'trim_start'
+        ? preview.startTicks
+        : preview.startTicks + preview.durationTicks;
+    const rect = el.getBoundingClientRect();
+    const clientX = rect.left + ticksToPx(edgeTicks, timelineStore.timelineZoom) - el.scrollLeft;
+
+    updateEdgeScroll({ clientX, clientY: e.clientY } as PointerEvent);
+  }
+
   const { updateEdgeScroll, stopEdgeScroll } = useTimelineEdgeScroll({
     scrollEl,
     isActive: computed(() => draggingMode.value !== null),
@@ -307,6 +334,7 @@ export function useTimelineItemDrag(
 
     dragAnchorStartTicks.value = startTicks;
     dragIsMobileTouch.value = e.pointerType === 'touch';
+    dragFollowsTrimEdge.value = false;
     isTrimEdgeBlocked.value = false;
     dragAnchorDurationTicks.value =
       tracks.value.find((t) => t.id === trackId)?.items.find((it) => it.id === itemId)
@@ -356,7 +384,13 @@ export function useTimelineItemDrag(
 
   function startTrimItem(
     e: PointerEvent,
-    input: { trackId: string; itemId: string; edge: 'start' | 'end'; startTicks: number },
+    input: {
+      trackId: string;
+      itemId: string;
+      edge: 'start' | 'end';
+      startTicks: number;
+      followTrimEdge?: boolean;
+    },
   ) {
     if (e.button !== 0 && e.button !== 2) return;
     e.preventDefault();
@@ -382,6 +416,7 @@ export function useTimelineItemDrag(
     lastDragClientY.value = e.clientY;
     dragPointerButton.value = e.button as 0 | 2;
     applyDragAction(resolveDragAction(e, dragPointerButton.value));
+    dragFollowsTrimEdge.value = input.followTrimEdge === true;
 
     dragAnchorStartTicks.value = input.startTicks;
     dragLastAppliedQuantizedDeltaTicks.value = 0;
@@ -972,10 +1007,17 @@ export function useTimelineItemDrag(
     lastDragClientY.value = e.clientY;
     applyDragAction(resolveDragAction(e, dragPointerButton.value));
 
-    scheduleDragApply();
-    // Apply the pointer position before the edge-scroll frame. A trim that has
-    // just reached its neighbour then marks itself blocked before any scroll.
-    updateEdgeScroll(e);
+    if (dragFollowsTrimEdge.value) {
+      scheduleUpdate(() => {
+        applyDragFromPendingClientX();
+        updateTrimEdgeScroll(e);
+      });
+    } else {
+      scheduleDragApply();
+      // Apply the pointer position before the edge-scroll frame. A trim that has
+      // just reached its neighbour then marks itself blocked before any scroll.
+      updateEdgeScroll(e);
+    }
     return true;
   }
 
@@ -1235,6 +1277,7 @@ export function useTimelineItemDrag(
     dragIsCopyOverride.value = false;
     dragToggleSnapOverride.value = false;
     dragIsMobileTouch.value = false;
+    dragFollowsTrimEdge.value = false;
     isTrimEdgeBlocked.value = false;
 
     if (shouldPersistTimeline) {
