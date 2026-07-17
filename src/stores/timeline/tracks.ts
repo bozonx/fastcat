@@ -112,9 +112,23 @@ export function createTimelineTracksModule(deps: TimelineTracksDeps): TimelineTr
     return createdTrack?.id ?? (kind === 'video' ? `v${count}` : `a${count}`);
   }
 
+  function canFitMobileInsert(track: TimelineTrack, durationTicks?: number): boolean {
+    if (durationTicks === undefined) return true;
+
+    const startTicks = Math.max(0, Math.round(deps.currentTime.value));
+    const endTicks = startTicks + Math.max(0, Math.round(durationTicks));
+
+    return !track.items.some((item) => {
+      if (item.kind !== 'clip') return false;
+      const itemStartTicks = item.timelineRange.startTicks;
+      const itemEndTicks = itemStartTicks + item.timelineRange.durationTicks;
+      return startTicks < itemEndTicks && endTicks > itemStartTicks;
+    });
+  }
+
   function resolveMobileTargetTrackId(
     kind: 'video' | 'audio',
-    _options?: { durationTicks?: number },
+    options?: { durationTicks?: number },
   ): string {
     const doc = deps.timelineDoc.value;
     if (!doc) return kind === 'video' ? 'v1' : 'a1';
@@ -123,7 +137,7 @@ export function createTimelineTracksModule(deps: TimelineTracksDeps): TimelineTr
     if (deps.selectedItemIds.value.length > 0) {
       const selectedId = deps.selectedItemIds.value[0]!;
       const track = doc.tracks.find((t) => t.items.some((it) => it.id === selectedId));
-      if (track?.kind === kind) {
+      if (track?.kind === kind && canFitMobileInsert(track, options?.durationTicks)) {
         return track.id;
       }
     }
@@ -131,13 +145,18 @@ export function createTimelineTracksModule(deps: TimelineTracksDeps): TimelineTr
     // 2. If a track is selected and its type matches, use it.
     if (deps.selectedTrackId.value) {
       const selectedTrack = doc.tracks.find((t) => t.id === deps.selectedTrackId.value);
-      if (selectedTrack?.kind === kind) {
+      if (
+        selectedTrack?.kind === kind &&
+        canFitMobileInsert(selectedTrack, options?.durationTicks)
+      ) {
         return selectedTrack.id;
       }
     }
 
-    // 3. With no selected track, try the top track of the requested kind.
-    const topTrack = doc.tracks.find((t) => t.kind === kind);
+    // 3. Try the first track of the requested kind that can accept the full insert range.
+    const topTrack = doc.tracks.find(
+      (t) => t.kind === kind && canFitMobileInsert(t, options?.durationTicks),
+    );
     if (topTrack) return topTrack.id;
 
     // 4. Otherwise create a new track.

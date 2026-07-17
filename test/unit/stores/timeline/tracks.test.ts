@@ -97,12 +97,12 @@ describe('TimelineTracksModule', () => {
     expect(mod.resolveTargetVideoTrackIdForInsert()).toBe('v1');
   });
 
-  it('resolveMobileTargetTrackId uses selected item track when kind matches', () => {
+  it('resolveMobileTargetTrackId uses selected item track when kind matches and has room', () => {
     const deps = createMockDeps();
-    deps.currentTime.value = 2_000_000;
+    deps.currentTime.value = 1_000_000;
     deps.selectedItemIds.value = ['c2'];
     const mod = createTimelineTracksModule(deps);
-    expect(mod.resolveMobileTargetTrackId('audio')).toBe('a2');
+    expect(mod.resolveMobileTargetTrackId('audio', { durationTicks: 500_000 })).toBe('a2');
   });
 
   it('resolveMobileTargetTrackId uses selected track when the full insertion range fits', () => {
@@ -116,13 +116,13 @@ describe('TimelineTracksModule', () => {
     );
   });
 
-  it('resolveMobileTargetTrackId uses selected track even when it has no room', () => {
+  it('resolveMobileTargetTrackId falls back from a selected occupied track to a free same-kind track', () => {
     const deps = createMockDeps();
     deps.currentTime.value = 500_000;
     deps.selectedTrackId.value = 'v1';
     const mod = createTimelineTracksModule(deps);
 
-    expect(mod.resolveMobileTargetTrackId('video', { durationTicks: 500_000 })).toBe('v1');
+    expect(mod.resolveMobileTargetTrackId('video', { durationTicks: 500_000 })).toBe('v2');
     expect(deps.applyTimeline).not.toHaveBeenCalledWith(
       expect.objectContaining({ type: 'add_track' }),
     );
@@ -136,15 +136,47 @@ describe('TimelineTracksModule', () => {
     expect(mod.resolveMobileTargetTrackId('video', { durationTicks: 500_000 })).toBe('v1');
   });
 
-  it('resolveMobileTargetTrackId uses top track even when no track is selected and top track has no room', () => {
+  it('resolveMobileTargetTrackId uses the next free track when no track is selected and top track has no room', () => {
     const deps = createMockDeps();
     deps.currentTime.value = 500_000;
     const mod = createTimelineTracksModule(deps);
 
-    expect(mod.resolveMobileTargetTrackId('video', { durationTicks: 500_000 })).toBe('v1');
+    expect(mod.resolveMobileTargetTrackId('video', { durationTicks: 500_000 })).toBe('v2');
     expect(deps.applyTimeline).not.toHaveBeenCalledWith(
       expect.objectContaining({ type: 'add_track' }),
     );
+  });
+
+  it('resolveMobileTargetTrackId creates a track when every same-kind track is occupied', () => {
+    const deps = createMockDeps();
+    deps.currentTime.value = 500_000;
+    deps.timelineDoc.value = {
+      ...mockDoc,
+      tracks: mockDoc.tracks.map((track) =>
+        track.kind === 'video'
+          ? {
+              ...track,
+              items: [
+                {
+                  id: `${track.id}-clip`,
+                  kind: 'clip',
+                  timelineRange: { startTicks: 0, durationTicks: 1_000_000 },
+                },
+              ],
+            }
+          : track,
+      ),
+    };
+    const mod = createTimelineTracksModule(deps);
+
+    expect(mod.resolveMobileTargetTrackId('video', { durationTicks: 500_000 })).toBe('v3');
+    expect(deps.applyTimeline).toHaveBeenCalledWith({
+      type: 'add_track',
+      kind: 'video',
+      name: 'Video 3',
+      insertBeforeId: undefined,
+      insertAfterId: undefined,
+    });
   });
 
   it('renameTrack delegates to applyTimeline', () => {
