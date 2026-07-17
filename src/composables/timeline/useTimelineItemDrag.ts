@@ -972,8 +972,10 @@ export function useTimelineItemDrag(
     lastDragClientY.value = e.clientY;
     applyDragAction(resolveDragAction(e, dragPointerButton.value));
 
-    updateEdgeScroll(e);
     scheduleDragApply();
+    // Apply the pointer position before the edge-scroll frame. A trim that has
+    // just reached its neighbour then marks itself blocked before any scroll.
+    updateEdgeScroll(e);
     return true;
   }
 

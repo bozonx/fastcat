@@ -808,6 +808,10 @@ describe('useTimelineItemDrag', () => {
 
     it('scrolls right when pointer is near the right edge during trim', () => {
       const { el, getScrollLeft } = createScrollEl();
+      const clip = timelineStoreMock.timelineDoc.tracks[0].items[0];
+      clip.sourceDurationTicks = 20_000_000_000_000;
+      const nextClip = timelineStoreMock.timelineDoc.tracks[0].items[1];
+      nextClip.timelineRange.startTicks = 20_000_000_000_000;
       const tracks = computed(() => timelineStoreMock.timelineDoc.tracks);
       const { startTrimItem } = useTimelineItemDrag(ref(el), tracks);
 
@@ -849,7 +853,7 @@ describe('useTimelineItemDrag', () => {
       expect(getScrollLeft()).toBeGreaterThan(100);
     });
 
-    it('stops edge scrolling when trim end is blocked by the next clip', () => {
+    it('does not start edge scrolling when trim end is blocked by the next clip', () => {
       const { el, getScrollLeft } = createScrollEl();
       const tracks = computed(() => timelineStoreMock.timelineDoc.tracks);
       const { startTrimItem } = useTimelineItemDrag(ref(el), tracks);
@@ -892,7 +896,7 @@ describe('useTimelineItemDrag', () => {
       const scrollAfterBlockedFrame = getScrollLeft();
       vi.advanceTimersByTime(100);
 
-      expect(scrollAfterBlockedFrame).toBeGreaterThan(100);
+      expect(scrollAfterBlockedFrame).toBe(100);
       expect(getScrollLeft()).toBe(scrollAfterBlockedFrame);
     });
 

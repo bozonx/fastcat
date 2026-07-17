@@ -150,7 +150,7 @@ describe('useTimelineEdgeScroll (mobile axes)', () => {
     wrapper.unmount();
   });
 
-  it('stops scrolling when the scroll step callback returns false', () => {
+  it('does not scroll when the drag can no longer continue', () => {
     const { el, getScrollLeft } = createScrollEl();
     const getCachedScrollRect = (e: HTMLElement) => e.getBoundingClientRect();
     const draggingMode = ref<'move' | null>('move');
@@ -181,11 +181,10 @@ describe('useTimelineEdgeScroll (mobile axes)', () => {
     vm.updateEdgeScroll(new PointerEvent('pointermove', { clientX: 10, clientY: 150 }));
 
     vi.advanceTimersByTime(16);
-    const scrollAfterStop = getScrollLeft();
     vi.advanceTimersByTime(100);
 
-    expect(reapplyCount).toBe(1);
-    expect(getScrollLeft()).toBe(scrollAfterStop);
+    expect(reapplyCount).toBe(0);
+    expect(getScrollLeft()).toBe(0);
     wrapper.unmount();
   });
 

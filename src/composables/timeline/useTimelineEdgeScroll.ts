@@ -48,7 +48,7 @@ export function useTimelineEdgeScroll(options: UseTimelineEdgeScrollOptions) {
 
   function edgeScrollStep() {
     const el = scrollEl.value;
-    if (!el || !isActive.value) {
+    if (!el || !isActive.value || !shouldContinue()) {
       edgeScrollRafId = 0;
       return;
     }
@@ -84,7 +84,7 @@ export function useTimelineEdgeScroll(options: UseTimelineEdgeScrollOptions) {
 
   function updateEdgeScroll(e: PointerEvent) {
     const el = scrollEl.value;
-    if (!el || !isActive.value) {
+    if (!el || !isActive.value || !shouldContinue()) {
       stopEdgeScroll();
       return;
     }
