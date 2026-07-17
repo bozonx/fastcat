@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { onBeforeUnmount, ref } from 'vue';
 import { useSelectedTimelineClip } from '~/composables/timeline/useSelectedTimelineClip';
 
 defineProps<{
@@ -34,11 +34,17 @@ const emit = defineEmits<{
 const { t } = useI18n();
 
 const activeEdge = ref<'start' | 'end' | null>(null);
+const activeTouchId = ref<number | null>(null);
 
 const { clipAndTrack: currentClipAndTrack } = useSelectedTimelineClip();
 
-function getTouchPoint(event: TouchEvent): { clientX: number; clientY: number } | null {
-  const touch = event.touches[0] ?? event.changedTouches[0];
+function getTouchPoint(
+  event: TouchEvent,
+  touchId = activeTouchId.value,
+): { clientX: number; clientY: number } | null {
+  const touches = [...event.touches, ...event.changedTouches];
+  const touch =
+    touchId === null ? touches[0] : touches.find((candidate) => candidate.identifier === touchId);
   if (!touch) return null;
   return { clientX: touch.clientX, clientY: touch.clientY };
 }
@@ -50,6 +56,10 @@ function onStart(edge: 'start' | 'end', event: TouchEvent) {
 
   event.preventDefault();
   activeEdge.value = edge;
+  activeTouchId.value = event.touches[0]?.identifier ?? null;
+  window.addEventListener('touchmove', onWindowMove, { passive: false });
+  window.addEventListener('touchend', onWindowEnd, { passive: false });
+  window.addEventListener('touchcancel', onWindowEnd, { passive: false });
   emit('trim-start', {
     trackId: clipContext.track.id,
     itemId: clipContext.item.id,
@@ -71,12 +81,35 @@ function onMove(event: TouchEvent) {
 function onEnd(event: TouchEvent) {
   if (!activeEdge.value) return;
   const touch = getTouchPoint(event);
-  activeEdge.value = null;
-  if (!touch) return;
+  if (!touch) {
+    stopTouchTracking();
+    return;
+  }
 
   event.preventDefault();
   emit('trim-end', touch);
+  stopTouchTracking();
 }
+
+function stopTouchTracking() {
+  activeEdge.value = null;
+  activeTouchId.value = null;
+  window.removeEventListener('touchmove', onWindowMove);
+  window.removeEventListener('touchend', onWindowEnd);
+  window.removeEventListener('touchcancel', onWindowEnd);
+}
+
+function onWindowMove(event: TouchEvent) {
+  onMove(event);
+}
+
+function onWindowEnd(event: TouchEvent) {
+  onEnd(event);
+}
+
+onBeforeUnmount(() => {
+  stopTouchTracking();
+});
 </script>
 
 <template>
@@ -115,9 +148,6 @@ function onEnd(event: TouchEvent) {
       <div
         class="flex-1 flex flex-col items-center justify-center touch-none active:bg-blue-500/10 transition-colors"
         @touchstart="onStart('start', $event)"
-        @touchmove="onMove"
-        @touchend="onEnd"
-        @touchcancel="onEnd"
       >
         <span class="text-[9px] uppercase font-black text-ui-text-muted mb-1 leading-none">
           {{ t('fastcat.timeline.trimStart') }}
@@ -136,9 +166,6 @@ function onEnd(event: TouchEvent) {
       <div
         class="flex-1 flex flex-col items-center justify-center touch-none active:bg-blue-500/10 transition-colors"
         @touchstart="onStart('end', $event)"
-        @touchmove="onMove"
-        @touchend="onEnd"
-        @touchcancel="onEnd"
       >
         <span class="text-[9px] uppercase font-black text-ui-text-muted mb-1 leading-none">
           {{ t('fastcat.timeline.trimEnd') }}

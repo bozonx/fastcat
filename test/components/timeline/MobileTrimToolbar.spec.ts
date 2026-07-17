@@ -46,6 +46,19 @@ const mockSelectionStore = reactive({
   },
 });
 
+function dispatchWindowTouch(
+  type: 'touchmove' | 'touchend',
+  point: { clientX: number; clientY: number; identifier?: number },
+) {
+  const event = new Event(type, { cancelable: true });
+  const touch = { ...point, identifier: point.identifier ?? 1 } as Touch;
+  Object.defineProperties(event, {
+    touches: { value: type === 'touchmove' ? [touch] : [] },
+    changedTouches: { value: type === 'touchend' ? [touch] : [] },
+  });
+  window.dispatchEvent(event);
+}
+
 vi.mock('~/stores/timeline.store', () => ({
   useTimelineStore: () => mockTimelineStore,
 }));
@@ -114,6 +127,30 @@ describe('MobileTrimToolbar', () => {
       clientX: 300,
       clientY: 200,
     });
+
+    dispatchWindowTouch('touchend', { clientX: 300, clientY: 200 });
+  });
+
+  it('keeps tracking a trim swipe after it leaves the toolbar area', async () => {
+    const wrapper = await mountSuspended(MobileTrimToolbar, {
+      global: {
+        stubs: {
+          UButton: { template: '<button><slot /></button>' },
+          UIcon: { template: '<span />' },
+        },
+      },
+    });
+
+    const startArea = wrapper.findAll('.touch-none')[0]!;
+    await startArea.trigger('touchstart', {
+      touches: [{ clientX: 100, clientY: 700, identifier: 1 }],
+    });
+
+    dispatchWindowTouch('touchmove', { clientX: 5, clientY: 100, identifier: 1 });
+    dispatchWindowTouch('touchend', { clientX: 5, clientY: 100, identifier: 1 });
+
+    expect(wrapper.emitted('trim-move')?.[0][0]).toMatchObject({ clientX: 5, clientY: 100 });
+    expect(wrapper.emitted('trim-end')?.[0][0]).toMatchObject({ clientX: 5, clientY: 100 });
   });
 
   it('emits back and close events', async () => {
