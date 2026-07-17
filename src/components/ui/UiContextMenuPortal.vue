@@ -111,6 +111,7 @@ defineExpose({ open, close });
   <Teleport v-if="targetEl && isContextMenuOpen" :to="targetEl">
     <div
       ref="menuEl"
+      role="menu"
       class="absolute z-99999 min-w-40 rounded-md border border-ui-border bg-ui-bg shadow-lg py-1 select-none"
       :style="{ left: `${menuX}px`, top: `${menuY}px` }"
     >

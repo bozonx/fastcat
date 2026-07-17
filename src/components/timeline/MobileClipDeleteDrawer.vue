@@ -73,12 +73,6 @@ function requestExtractTimeline() {
   timelineStore.rippleDeleteSelectedClipRangeAllTracks();
   emit('close');
 }
-
-async function runTrim(action: () => void | Promise<void>) {
-  if (!clip.value || isLocked.value) return;
-  await action();
-  emit('back');
-}
 </script>
 
 <template>
@@ -109,107 +103,54 @@ async function runTrim(action: () => void | Promise<void>) {
       </div>
     </template>
 
-    <div class="flex flex-col gap-3 px-4 pb-8 pt-3">
-      <div class="grid grid-cols-3 gap-2">
-        <UButton
-          size="sm"
-          color="gray"
-          variant="soft"
-          class="cursor-pointer justify-center"
-          :disabled="isLocked"
-          @click="requestDelete"
-        >
-          {{ t('fastcat.timeline.deleteLift') }}
-        </UButton>
-        <UButton
-          size="sm"
-          color="red"
-          variant="soft"
-          class="cursor-pointer justify-center"
-          :disabled="isLocked"
-          @click="requestRippleDelete"
-        >
-          {{ t('fastcat.timeline.rippleDelete') }}
-        </UButton>
-        <UButton
-          size="sm"
-          color="red"
-          variant="soft"
-          class="cursor-pointer justify-center"
-          :disabled="isLocked"
-          @click="requestExtractTimeline"
-        >
-          {{ t('fastcat.timeline.extractRange') }}
-        </UButton>
-      </div>
+    <div class="flex flex-col gap-2 px-4 pb-8 pt-3">
+      <button
+        class="flex items-center gap-3 rounded-xl border border-ui-border/80 bg-ui-bg px-3 py-3 text-left active:bg-red-500/10 transition-colors disabled:opacity-40 disabled:pointer-events-none"
+        :disabled="isLocked"
+        @click="requestRippleDelete"
+      >
+        <UIcon name="i-heroicons-backspace" class="w-5 h-5 shrink-0 text-red-400" />
+        <span class="min-w-0">
+          <span class="block text-sm font-semibold text-ui-text">
+            {{ t('fastcat.timeline.rippleDelete') }}
+          </span>
+          <span class="block text-xs text-ui-text-muted">
+            {{ t('fastcat.timeline.rippleDeleteHint') }}
+          </span>
+        </span>
+      </button>
 
-      <div class="bg-ui-bg rounded-xl border border-ui-border/80 overflow-hidden shadow-inner">
-        <div class="grid grid-cols-2 divide-x divide-ui-border/80">
-          <div class="py-2 text-center">
-            <span class="text-[10px] uppercase font-black text-ui-text-muted tracking-wider">
-              {{ t('fastcat.timeline.leftTail') }}
-            </span>
-          </div>
-          <div class="py-2 text-center">
-            <span class="text-[10px] uppercase font-black text-ui-text-muted tracking-wider">
-              {{ t('fastcat.timeline.rightTail') }}
-            </span>
-          </div>
-        </div>
+      <button
+        class="flex items-center gap-3 rounded-xl border border-ui-border/80 bg-ui-bg px-3 py-3 text-left active:bg-blue-500/10 transition-colors disabled:opacity-40 disabled:pointer-events-none"
+        :disabled="isLocked"
+        @click="requestDelete"
+      >
+        <UIcon name="i-heroicons-trash" class="w-5 h-5 shrink-0 text-ui-text-muted" />
+        <span class="min-w-0">
+          <span class="block text-sm font-semibold text-ui-text">
+            {{ t('fastcat.timeline.deleteLift') }}
+          </span>
+          <span class="block text-xs text-ui-text-muted">
+            {{ t('fastcat.timeline.deleteLiftHint') }}
+          </span>
+        </span>
+      </button>
 
-        <div class="border-t border-ui-border/80 divide-y divide-ui-border/80">
-          <div class="grid grid-cols-2 divide-x divide-ui-border/80">
-            <button
-              class="py-2.5 text-center text-xs font-semibold text-ui-text active:bg-blue-500/10 transition-colors disabled:opacity-40 disabled:pointer-events-none"
-              :disabled="isLocked"
-              @click="runTrim(timelineStore.trimToPlayheadLeftNoRipple)"
-            >
-              {{ t('fastcat.timeline.trim') }}
-            </button>
-            <button
-              class="py-2.5 text-center text-xs font-semibold text-ui-text active:bg-blue-500/10 transition-colors disabled:opacity-40 disabled:pointer-events-none"
-              :disabled="isLocked"
-              @click="runTrim(timelineStore.trimToPlayheadRightNoRipple)"
-            >
-              {{ t('fastcat.timeline.trim') }}
-            </button>
-          </div>
-
-          <div class="grid grid-cols-2 divide-x divide-ui-border/80">
-            <button
-              class="py-2.5 text-center text-xs font-semibold text-ui-text active:bg-blue-500/10 transition-colors disabled:opacity-40 disabled:pointer-events-none"
-              :disabled="isLocked"
-              @click="runTrim(timelineStore.rippleTrimLeft)"
-            >
-              {{ t('fastcat.timeline.trimWithOffset') }}
-            </button>
-            <button
-              class="py-2.5 text-center text-xs font-semibold text-ui-text active:bg-blue-500/10 transition-colors disabled:opacity-40 disabled:pointer-events-none"
-              :disabled="isLocked"
-              @click="runTrim(timelineStore.rippleTrimRight)"
-            >
-              {{ t('fastcat.timeline.trimWithOffset') }}
-            </button>
-          </div>
-
-          <div class="grid grid-cols-2 divide-x divide-ui-border/80">
-            <button
-              class="py-2.5 text-center text-xs font-semibold text-ui-text active:bg-blue-500/10 transition-colors disabled:opacity-40 disabled:pointer-events-none"
-              :disabled="isLocked"
-              @click="runTrim(timelineStore.advancedRippleTrimLeft)"
-            >
-              {{ t('fastcat.timeline.trimWithTimelineCut') }}
-            </button>
-            <button
-              class="py-2.5 text-center text-xs font-semibold text-ui-text active:bg-blue-500/10 transition-colors disabled:opacity-40 disabled:pointer-events-none"
-              :disabled="isLocked"
-              @click="runTrim(timelineStore.advancedRippleTrimRight)"
-            >
-              {{ t('fastcat.timeline.trimWithTimelineCut') }}
-            </button>
-          </div>
-        </div>
-      </div>
+      <button
+        class="flex items-center gap-3 rounded-xl border border-ui-border/80 bg-ui-bg px-3 py-3 text-left active:bg-blue-500/10 transition-colors disabled:opacity-40 disabled:pointer-events-none"
+        :disabled="isLocked"
+        @click="requestExtractTimeline"
+      >
+        <UIcon name="i-heroicons-scissors" class="w-5 h-5 shrink-0 text-ui-text-muted" />
+        <span class="min-w-0">
+          <span class="block text-sm font-semibold text-ui-text">
+            {{ t('fastcat.timeline.extractRange') }}
+          </span>
+          <span class="block text-xs text-ui-text-muted">
+            {{ t('fastcat.timeline.extractRangeHint') }}
+          </span>
+        </span>
+      </button>
     </div>
   </MobileTimelineDrawer>
 </template>

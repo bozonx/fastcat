@@ -28,7 +28,14 @@ const props = defineProps<{
 const activeSnapPoint = defineModel<string | number | null>('activeSnapPoint', { default: null });
 
 const emit = defineEmits<{
-  (e: 'close' | 'open-delete-drawer' | 'open-trim-drawer' | 'open-transitions-drawer'): void;
+  (
+    e:
+      | 'close'
+      | 'open-delete-drawer'
+      | 'open-trim-drawer'
+      | 'open-trim-options-drawer'
+      | 'open-transitions-drawer',
+  ): void;
 }>();
 
 /** Landscape renders the drawer as a side panel, so the toolbar is a vertical rail. */
@@ -107,8 +114,20 @@ function handleOpenTrimPanel() {
   emit('open-trim-drawer');
 }
 
+function handleOpenTrimOptions() {
+  if (isLocked.value) return;
+  emit('open-trim-options-drawer');
+}
+
 function handleOpenTransitionsPanel() {
   emit('open-transitions-drawer');
+}
+
+/** Primary delete action: ripple delete (closes the gap). Variants live under the chevron. */
+function handleRippleDelete() {
+  if (!clip.value || isLocked.value) return;
+  timelineStore.rippleDeleteFirstSelectedItem();
+  emit('close');
 }
 
 function handleOpenDeleteDrawer() {
@@ -144,7 +163,9 @@ const hasAudio = computed(() => {
             icon="i-heroicons-trash"
             :label="t('common.delete')"
             :disabled="isLocked"
-            @click="handleOpenDeleteDrawer"
+            with-chevron
+            @click="handleRippleDelete"
+            @chevron="handleOpenDeleteDrawer"
           />
 
           <!-- 2. Copy -->
@@ -162,12 +183,14 @@ const hasAudio = computed(() => {
             @click="handleCut"
           />
 
-          <!-- 4. Open Trim Panel -->
+          <!-- 4. Open Trim Panel (tap = manual trim, chevron = trim-by-playhead options) -->
           <MobileDrawerToolbarButton
             icon="i-heroicons-arrows-right-left"
             :label="t('fastcat.timeline.trim')"
             :disabled="isLocked"
+            with-chevron
             @click="handleOpenTrimPanel"
+            @chevron="handleOpenTrimOptions"
           />
 
           <!-- 5. Split -->

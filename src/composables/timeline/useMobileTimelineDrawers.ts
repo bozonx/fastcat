@@ -20,6 +20,7 @@ export function useMobileTimelineDrawers() {
   const isMultiSelectionDrawerOpen = ref(false);
   const isAddContentDrawerOpen = ref(false);
   const isTrimDrawerOpen = ref(false);
+  const isTrimOptionsDrawerOpen = ref(false);
   const isTransitionsPanelOpen = ref(false);
   const isTransitionPropertiesDrawerOpen = ref(false);
   const isDeleteDrawerOpen = ref(false);
@@ -58,6 +59,7 @@ export function useMobileTimelineDrawers() {
     isSelectionRangeDrawerOpen,
     isMultiSelectionDrawerOpen,
     isTrimDrawerOpen,
+    isTrimOptionsDrawerOpen,
     isTransitionsPanelOpen,
     isTransitionPropertiesDrawerOpen,
     isDeleteDrawerOpen,
@@ -120,7 +122,12 @@ export function useMobileTimelineDrawers() {
       gap: selectedGap.value,
     }),
     (state) => {
-      if (isTrimDrawerOpen.value || isTransitionsPanelOpen.value || isDeleteDrawerOpen.value)
+      if (
+        isTrimDrawerOpen.value ||
+        isTrimOptionsDrawerOpen.value ||
+        isTransitionsPanelOpen.value ||
+        isDeleteDrawerOpen.value
+      )
         return;
       if (suppressDrawerSelectionClear.value) return;
 
@@ -254,6 +261,12 @@ export function useMobileTimelineDrawers() {
     isClipPropertiesDrawerOpen.value = false;
   }
 
+  function openClipTrimOptionsDrawer() {
+    suppressDrawerSelectionClearForNextTick();
+    isTrimOptionsDrawerOpen.value = true;
+    isClipPropertiesDrawerOpen.value = false;
+  }
+
   function openClipTransitionsPanel() {
     suppressDrawerSelectionClearForNextTick();
     isTransitionsPanelOpen.value = true;
@@ -269,6 +282,7 @@ export function useMobileTimelineDrawers() {
   function backToClipProperties() {
     isDeleteDrawerOpen.value = false;
     isTrimDrawerOpen.value = false;
+    isTrimOptionsDrawerOpen.value = false;
     isTransitionsPanelOpen.value = false;
     isTransitionPropertiesDrawerOpen.value = false;
     isClipPropertiesDrawerOpen.value = true;
@@ -281,6 +295,7 @@ export function useMobileTimelineDrawers() {
     if (
       suppressDrawerSelectionClear.value ||
       isTrimDrawerOpen.value ||
+      isTrimOptionsDrawerOpen.value ||
       isTransitionsPanelOpen.value ||
       isDeleteDrawerOpen.value
     ) {
@@ -292,6 +307,11 @@ export function useMobileTimelineDrawers() {
 
   function onClipTrimDrawerClose() {
     isTrimDrawerOpen.value = false;
+    clearClipSelectionIfActive();
+  }
+
+  function onClipTrimOptionsDrawerClose() {
+    isTrimOptionsDrawerOpen.value = false;
     clearClipSelectionIfActive();
   }
 
@@ -370,6 +390,7 @@ export function useMobileTimelineDrawers() {
     isMultiSelectionDrawerOpen,
     isAddContentDrawerOpen,
     isTrimDrawerOpen,
+    isTrimOptionsDrawerOpen,
     isTransitionsPanelOpen,
     isTransitionPropertiesDrawerOpen,
     isDeleteDrawerOpen,
@@ -392,12 +413,14 @@ export function useMobileTimelineDrawers() {
     openMarkersDrawer,
     openClipDeleteDrawer,
     openClipTrimDrawer,
+    openClipTrimOptionsDrawer,
     openClipTransitionsPanel,
     openTransitionPropertiesDrawer,
     backToClipProperties,
     onUpdateDrawerOpen,
     onClipPropertiesDrawerClose,
     onClipTrimDrawerClose,
+    onClipTrimOptionsDrawerClose,
     onTransitionsPanelClose,
     onTransitionPropertiesDrawerClose,
     onClipDeleteDrawerClose,

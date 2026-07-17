@@ -49,14 +49,31 @@ export function useExclusiveContextMenu() {
     }
   }
 
+  /**
+   * Close on any pointerdown that lands outside the open menu's content. Runs on
+   * `window` in the capture phase so it fires even when Reka's `UContextMenu`
+   * teleports a full-screen overlay that swallows the tap (its own touch
+   * outside-dismiss is unreliable, unlike a button-triggered `UDropdownMenu`).
+   * Taps on the menu itself (Reka content carries `role="menu"`) are ignored so
+   * item selection still runs before the menu closes through its normal flow.
+   */
+  function onGlobalPointerDownCapture(event: PointerEvent) {
+    if (!isContextMenuOpen.value) return;
+    const target = event.target as HTMLElement | null;
+    if (target?.closest('[role="menu"]')) return;
+    closeContextMenu();
+  }
+
   onMounted(() => {
     window.addEventListener(CONTEXT_MENU_OPEN_EVENT, onContextMenuOpen);
     window.addEventListener(CONTEXT_MENU_CLOSE_ALL_EVENT, closeContextMenu);
+    window.addEventListener('pointerdown', onGlobalPointerDownCapture, { capture: true });
   });
 
   onScopeDispose(() => {
     window.removeEventListener(CONTEXT_MENU_OPEN_EVENT, onContextMenuOpen);
     window.removeEventListener(CONTEXT_MENU_CLOSE_ALL_EVENT, closeContextMenu);
+    window.removeEventListener('pointerdown', onGlobalPointerDownCapture, { capture: true });
   });
 
   return {

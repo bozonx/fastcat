@@ -30,6 +30,7 @@ import MobileDrawerToolbarButton from './MobileDrawerToolbarButton.vue';
 import MobileTrimToolbar from './MobileTrimToolbar.vue';
 import MobileTransitionToolbar from './MobileTransitionToolbar.vue';
 import MobileClipDeleteDrawer from './MobileClipDeleteDrawer.vue';
+import MobileClipTrimOptionsDrawer from './MobileClipTrimOptionsDrawer.vue';
 import MobileClipboardPasteToolbar from './MobileClipboardPasteToolbar.vue';
 import MobileTimelineSettingsDrawer from './MobileTimelineSettingsDrawer.vue';
 import MobileTrackMixerDrawer from './MobileTrackMixerDrawer.vue';
@@ -89,6 +90,7 @@ const {
   isMultiSelectionDrawerOpen,
   isAddContentDrawerOpen,
   isTrimDrawerOpen,
+  isTrimOptionsDrawerOpen,
   isTransitionsPanelOpen,
   isTransitionPropertiesDrawerOpen,
   isDeleteDrawerOpen,
@@ -110,12 +112,14 @@ const {
   openMarkersDrawer,
   openClipDeleteDrawer,
   openClipTrimDrawer,
+  openClipTrimOptionsDrawer,
   openClipTransitionsPanel,
   openTransitionPropertiesDrawer,
   backToClipProperties,
   onUpdateDrawerOpen,
   onClipPropertiesDrawerClose,
   onClipTrimDrawerClose,
+  onClipTrimOptionsDrawerClose,
   onTransitionsPanelClose,
   onTransitionPropertiesDrawerClose,
   onClipDeleteDrawerClose,
@@ -463,6 +467,7 @@ watch(
       @close="onClipPropertiesDrawerClose"
       @open-delete-drawer="openClipDeleteDrawer"
       @open-trim-drawer="openClipTrimDrawer"
+      @open-trim-options-drawer="openClipTrimOptionsDrawer"
       @open-transitions-drawer="openClipTransitionsPanel"
     />
 
@@ -470,6 +475,12 @@ watch(
       :is-open="isDeleteDrawerOpen"
       @back="backToClipProperties"
       @close="onClipDeleteDrawerClose"
+    />
+
+    <MobileClipTrimOptionsDrawer
+      :is-open="isTrimOptionsDrawerOpen"
+      @back="backToClipProperties"
+      @close="onClipTrimOptionsDrawerClose"
     />
 
     <MobileTrimToolbar
