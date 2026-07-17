@@ -7,7 +7,27 @@ import type { TimelineCommand } from '~/timeline/commands';
 
 function makeDoc(): TimelineDocument {
   return {
-    tracks: [],
+    tracks: [
+      {
+        id: 't1',
+        items: [
+          {
+            id: 'c1',
+            kind: 'clip',
+            style: { fontSize: 12, color: '#ffffff' },
+            transform: { position: { x: 0, y: 0 } },
+            effects: [{ id: 'effect-1', type: 'blur', radius: 2, enabled: true }],
+            transitionOut: {
+              type: 'dissolve',
+              durationTicks: 1_000,
+              mode: 'adjacent',
+              curve: 'linear',
+              params: {},
+            },
+          },
+        ],
+      },
+    ],
     timebase: { fps: 30 },
     durationTicks: 0,
   } as unknown as TimelineDocument;
@@ -78,19 +98,134 @@ describe('createTimelineHistoryDebounceModule', () => {
     expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 500);
   });
 
-  it('pushHistory debounced replaces pending and keeps original snapshot', () => {
+  it('pushHistory debounced replaces pending and keeps original snapshot for the same group', () => {
     const mod = createTimelineHistoryDebounceModule({ historyStore: { push: historyPush } });
     const doc1 = makeDoc();
     const cmd1 = makeCmd('trim_item');
     mod.pushHistory(cmd1, doc1, { historyMode: 'debounced', historyDebounceMs: 300 });
     const firstSnapshot = mod.pendingDebouncedHistory.value!.snapshot;
     // Push a second debounced command
-    const cmd2 = makeCmd('split_item');
+    const cmd2 = makeCmd('trim_item');
     mod.pushHistory(cmd2, makeDoc(), { historyMode: 'debounced', historyDebounceMs: 300 });
     // Snapshot should be preserved from the first pending
     expect(mod.pendingDebouncedHistory.value!.snapshot).toBe(firstSnapshot);
     // Command should be the new one
     expect(mod.pendingDebouncedHistory.value!.cmd).toStrictEqual(cmd2);
+  });
+
+  it('pushHistory debounced flushes pending history when the group changes', () => {
+    const mod = createTimelineHistoryDebounceModule({ historyStore: { push: historyPush } });
+    const doc1 = makeDoc();
+    const doc2 = makeDoc();
+    const cmd1 = makeCmd('trim_item');
+    const cmd2 = makeCmd('split_item');
+
+    mod.pushHistory(cmd1, doc1, { historyMode: 'debounced', historyDebounceMs: 300 });
+    mod.pushHistory(cmd2, doc2, { historyMode: 'debounced', historyDebounceMs: 300 });
+
+    expect(historyPush).toHaveBeenCalledWith(
+      'timeline',
+      'trim_item',
+      doc1,
+      'videoEditor.fileManager.history.entries.trimClip',
+    );
+    expect(mod.pendingDebouncedHistory.value?.snapshot).toStrictEqual(doc2);
+    expect(mod.pendingDebouncedHistory.value?.cmd).toStrictEqual(cmd2);
+  });
+
+  it('pushHistory keeps different clip style fields in separate debounced groups', () => {
+    const mod = createTimelineHistoryDebounceModule({ historyStore: { push: historyPush } });
+    const doc = makeDoc();
+    const docAfterFontSize = makeDoc();
+    ((docAfterFontSize.tracks[0]!.items[0] as any).style as Record<string, unknown>).fontSize = 24;
+    const fontSizeCmd = {
+      type: 'update_clip_properties',
+      trackId: 't1',
+      itemId: 'c1',
+      properties: { style: { fontSize: 24, color: '#ffffff' } },
+    } as unknown as TimelineCommand;
+    const colorCmd = {
+      type: 'update_clip_properties',
+      trackId: 't1',
+      itemId: 'c1',
+      properties: { style: { fontSize: 24, color: '#000000' } },
+    } as unknown as TimelineCommand;
+
+    mod.pushHistory(fontSizeCmd, doc, { historyMode: 'debounced' });
+    mod.pushHistory(colorCmd, docAfterFontSize, { historyMode: 'debounced' });
+
+    expect(historyPush).toHaveBeenCalledTimes(1);
+    expect(historyPush).toHaveBeenCalledWith(
+      'timeline',
+      'update_clip_properties',
+      doc,
+      'videoEditor.fileManager.history.entries.updateClipProperties',
+    );
+    expect(mod.pendingDebouncedHistory.value?.cmd).toStrictEqual(colorCmd);
+  });
+
+  it('pushHistory keeps different transition fields in separate debounced groups', () => {
+    const mod = createTimelineHistoryDebounceModule({ historyStore: { push: historyPush } });
+    const doc = makeDoc();
+    const docAfterDuration = makeDoc();
+    (docAfterDuration.tracks[0]!.items[0] as any).transitionOut.durationTicks = 2_000;
+    const durationCmd = {
+      type: 'update_clip_transition',
+      trackId: 't1',
+      itemId: 'c1',
+      transitionOut: {
+        type: 'dissolve',
+        durationTicks: 2_000,
+        mode: 'adjacent',
+        curve: 'linear',
+        params: {},
+      },
+    } as unknown as TimelineCommand;
+    const modeCmd = {
+      type: 'update_clip_transition',
+      trackId: 't1',
+      itemId: 'c1',
+      transitionOut: {
+        type: 'dissolve',
+        durationTicks: 2_000,
+        mode: 'background',
+        curve: 'linear',
+        params: {},
+      },
+    } as unknown as TimelineCommand;
+
+    mod.pushHistory(durationCmd, doc, { historyMode: 'debounced' });
+    mod.pushHistory(modeCmd, docAfterDuration, { historyMode: 'debounced' });
+
+    expect(historyPush).toHaveBeenCalledTimes(1);
+    expect(mod.pendingDebouncedHistory.value?.cmd).toStrictEqual(modeCmd);
+  });
+
+  it('pushHistory keeps different effect params in separate debounced groups', () => {
+    const mod = createTimelineHistoryDebounceModule({ historyStore: { push: historyPush } });
+    const doc = makeDoc();
+    const radiusCmd = {
+      type: 'update_clip_properties',
+      trackId: 't1',
+      itemId: 'c1',
+      properties: {
+        effects: [{ id: 'effect-1', type: 'blur', radius: 4, enabled: true }],
+      },
+    } as unknown as TimelineCommand;
+    const enabledCmd = {
+      type: 'update_clip_properties',
+      trackId: 't1',
+      itemId: 'c1',
+      properties: {
+        effects: [{ id: 'effect-1', type: 'blur', radius: 4, enabled: false }],
+      },
+    } as unknown as TimelineCommand;
+
+    mod.pushHistory(radiusCmd, doc, { historyMode: 'debounced' });
+    mod.pushHistory(enabledCmd, doc, { historyMode: 'debounced' });
+
+    expect(historyPush).toHaveBeenCalledTimes(1);
+    expect(mod.pendingDebouncedHistory.value?.cmd).toStrictEqual(enabledCmd);
   });
 
   it('clearPendingDebouncedHistory clears pending and timer', () => {

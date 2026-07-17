@@ -9,6 +9,7 @@ export interface TimelineApplyOptions {
   labelKey?: string;
   historyMode?: 'immediate' | 'debounced';
   historyDebounceMs?: number;
+  historyGroupKey?: string;
 }
 
 /**

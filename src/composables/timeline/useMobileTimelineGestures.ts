@@ -10,6 +10,7 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useAppClipboard } from '~/composables/useAppClipboard';
+import { closeAllContextMenus } from '~/composables/ui/useExclusiveContextMenu';
 import type {
   TimelineClipActionPayload,
   TimelineMoveItemPayload,
@@ -158,6 +159,11 @@ export function useMobileTimelineGestures(options: UseMobileTimelineGesturesOpti
   }
 
   function onTimelinePointerDownCapture(e: PointerEvent) {
+    // Dismiss any open context/dropdown menu (ruler menu, monitor menu, …). This
+    // runs in the capture phase so it fires even though descendant pointerdown
+    // handlers below stopPropagation — which otherwise swallows the taps those
+    // menus' own outside-dismiss layers listen for on `document`.
+    closeAllContextMenus();
     if (e.button === 0) {
       clickStartX.value = e.clientX;
       clickStartY.value = e.clientY;

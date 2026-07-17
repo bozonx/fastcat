@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, ref, nextTick, watch, onBeforeUnmount, onMounted } from 'vue';
 import { dropdownNoReturnFocus } from '~/composables/useDropdownMenuFocus';
-import { useMediaQuery } from '@vueuse/core';
+import { useMediaQuery, useEventListener } from '@vueuse/core';
+import { CONTEXT_MENU_CLOSE_ALL_EVENT_NAME } from '~/composables/ui/useExclusiveContextMenu';
 import { useAppFullscreen } from '~/composables/useAppFullscreen';
 import { isTauriRuntime } from '~/utils/runtime';
 import { useMonitorGrid } from '~/composables/monitor/useMonitorGrid';
@@ -146,6 +147,12 @@ function onMobileMonitorKeyDown(event: KeyboardEvent) {
     closeMobileDropdownMenus();
   }
 }
+
+// The mobile speed/more menus are Reka dropdowns that dismiss on an outside
+// `document` pointerdown. Taps inside the timeline panel stopPropagation before
+// reaching there, so the menus would stay open — honour the global close-all
+// broadcast fired from those taps' capture-phase handler instead.
+useEventListener(window, CONTEXT_MENU_CLOSE_ALL_EVENT_NAME, closeMobileDropdownMenus);
 
 const containerRef = ref<HTMLElement | null>(null);
 const { isFullscreen, toggle: toggleFullscreen } = useAppFullscreen(containerRef);

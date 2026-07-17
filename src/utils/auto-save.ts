@@ -4,7 +4,6 @@ const log = createDevLogger('auto-save');
 
 export interface AutoSaveOptions {
   /**
-  /**
    * The actual save function.
    * Return `false` to indicate that the save was skipped (e.g. preconditions not met),
    * so the revision is not marked as saved.
