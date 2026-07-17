@@ -539,6 +539,23 @@ button.ui-select-trigger,
   color: var(--ui-text) !important;
 }
 
+.ui-select-menu [data-slot='value'],
+.ui-select-menu [data-slot='placeholder'],
+button.ui-select-menu [data-slot='value'],
+button.ui-select-menu [data-slot='placeholder'],
+button[role='combobox'] [data-slot='value'],
+button[role='combobox'] [data-slot='placeholder'] {
+  min-width: 0;
+  flex: 1 1 auto;
+  text-align: left;
+}
+
+.ui-select-menu:has([data-slot='leading']),
+button.ui-select-menu:has([data-slot='leading']),
+button[role='combobox']:has([data-slot='leading']) {
+  padding-left: 2rem !important;
+}
+
 /* Hover state */
 .ui-select-menu button:hover,
 button.ui-select-menu:hover,
@@ -647,9 +664,18 @@ button.ui-select-trigger[data-state="open"]:hover {
     padding-right: 2rem !important;
     display: inline-flex !important;
     align-items: center !important;
-    justify-content: space-between !important;
+    justify-content: flex-start !important;
     text-align: left !important;
     width: 100% !important;
+  }
+
+  .ui-select-menu button:has([data-slot='leading']),
+  button.ui-select-menu:has([data-slot='leading']),
+  .ui-select-menu:has([data-slot='leading']),
+  button[role="combobox"]:has([data-slot='leading']),
+  button.ui-select-trigger:has([data-slot='leading']),
+  .ui-select-menu-trigger:has([data-slot='leading']) {
+    padding-left: 2rem !important;
   }
 
   /* Focus state for select buttons */

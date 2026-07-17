@@ -102,7 +102,7 @@ const stopFramesQualityOptions = [
     </UiFormField>
 
     <UiFormField
-      v-if="workspaceStore.inDevelopmentFeaturesEnabled"
+      v-if="workspaceStore.inDevelopmentFeaturesEnabled && !isMobileLayout"
       :label="t('videoEditor.settings.uiInterfaceScale')"
     >
       <UiScaleSlider

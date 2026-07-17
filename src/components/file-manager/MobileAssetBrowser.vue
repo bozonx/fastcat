@@ -19,7 +19,6 @@ import MobileAssetCategoryList from './MobileAssetCategoryList.vue';
 import FileDeleteConfirmModal from './modals/FileDeleteConfirmModal.vue';
 import FileSttTranscriptionModal from './modals/FileTranscriptionModal.vue';
 import UiRenameModal from '~/components/ui/UiRenameModal.vue';
-import MobileAddToTimelineModal from '~/components/timeline/MobileAddToTimelineModal.vue';
 import UiButtonGroup from '~/components/ui/UiButtonGroup.vue';
 
 const selectionStore = useSelectionStore();
@@ -94,12 +93,9 @@ const {
   isModelReady,
   transcriptionEntry,
   submitTranscription,
-  isAddToTimelineModalOpen,
-  addToTimelineEntries,
   canAddSelectionToTimeline,
   handleAddToProject,
   handleAddSelectionToTimeline,
-  onAddedToTimeline,
   isRenameModalOpen,
   entryToRename,
   validateRename,
@@ -250,13 +246,6 @@ const selectedEntryPath = computed<string | null>(() => {
       select-without-extension
       :validate="validateRename"
       @rename="onRenameConfirm"
-    />
-
-    <!-- Add to Timeline Modal -->
-    <MobileAddToTimelineModal
-      v-model:open="isAddToTimelineModalOpen"
-      :entries="addToTimelineEntries"
-      @added="onAddedToTimeline"
     />
   </div>
 </template>

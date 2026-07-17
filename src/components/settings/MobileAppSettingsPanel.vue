@@ -3,7 +3,6 @@ import { computed, watch, onBeforeUnmount } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import SettingsGeneral from './SettingsGeneral.vue';
 import SettingsOptimization from './SettingsOptimization.vue';
-import SettingsExportDefaults from './SettingsExportDefaults.vue';
 import SettingsVideo from './SettingsVideo.vue';
 import SettingsAudio from './SettingsAudio.vue';
 import SettingsAudioPlugins from './SettingsAudioPlugins.vue';
@@ -16,7 +15,6 @@ import { getPlatformCapabilities } from '~/utils/capabilities';
 type SettingsSection =
   | 'user.general'
   | 'user.proxy'
-  | 'user.export'
   | 'user.video'
   | 'user.audio'
   | 'user.audioPlugins'
@@ -33,7 +31,6 @@ const SETTINGS_SECTIONS: readonly SettingsSection[] = [
   'user.general',
   'user.ui',
   'user.proxy',
-  'user.export',
   'user.video',
   'user.audio',
   ...(isNativeAudioPluginsAvailable ? (['user.audioPlugins'] as const) : []),
@@ -60,7 +57,6 @@ const sections = computed(() => [
   { value: 'user.general', label: t('videoEditor.settings.userGeneral') },
   { value: 'user.ui', label: t('videoEditor.settings.userUi') },
   { value: 'user.proxy', label: t('videoEditor.settings.userProxy') },
-  { value: 'user.export', label: t('videoEditor.settings.userExport') },
   { value: 'user.video', label: t('videoEditor.settings.userVideo') },
   { value: 'user.audio', label: t('videoEditor.settings.userAudio') },
   ...(isNativeAudioPluginsAvailable
@@ -94,10 +90,6 @@ onBeforeUnmount(() => {
     <div class="flex-1 overflow-y-auto p-4 custom-scrollbar">
       <SettingsGeneral v-if="activeSection === 'user.general'" />
       <SettingsOptimization v-else-if="activeSection === 'user.proxy'" />
-      <SettingsExportDefaults
-        v-else-if="activeSection === 'user.export'"
-        :is-active="activeSection === 'user.export'"
-      />
       <SettingsVideo v-else-if="activeSection === 'user.video'" />
       <SettingsAudio v-else-if="activeSection === 'user.audio'" />
       <SettingsAudioPlugins v-else-if="activeSection === 'user.audioPlugins'" />

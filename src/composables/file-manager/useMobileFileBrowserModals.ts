@@ -2,6 +2,7 @@ import { ref, computed } from 'vue';
 import type { Ref, ComputedRef } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
 import { useSelectionStore } from '~/stores/selection.store';
+import { useAddMediaToTimeline } from '~/composables/timeline/useAddMediaToTimeline';
 import { isOpenableProjectFileName } from '~/utils/media-types';
 import type { FsEntry } from '~/types/fs';
 import type { MobileDrawerAction } from '~/types/file-manager';
@@ -41,9 +42,7 @@ export function useMobileFileBrowserModals(options: UseMobileFileBrowserModalsOp
   const selectionStore = useSelectionStore();
   const toast = useToast();
   const { t } = useI18n();
-
-  const isAddToTimelineModalOpen = ref(false);
-  const addToTimelineEntries = ref<FsEntry[]>([]);
+  const { addMediaToTimeline } = useAddMediaToTimeline();
 
   const isRenameModalOpen = ref(false);
   const entryToRename = ref<FsEntry | null>(null);
@@ -52,6 +51,26 @@ export function useMobileFileBrowserModals(options: UseMobileFileBrowserModalsOp
     if (entry.kind !== 'file' || !entry.path) return false;
     if (options.compatibility.value[entry.path]?.status === 'fully_unsupported') return false;
     return isOpenableProjectFileName(entry.name);
+  }
+
+  async function addEntriesToTimeline(entries: FsEntry[]) {
+    const timelineEntries: { name: string; path: string }[] = [];
+    for (const entry of entries) {
+      if (entry.path) timelineEntries.push({ name: entry.name, path: entry.path });
+    }
+
+    if (timelineEntries.length === 0) return;
+
+    const added = await addMediaToTimeline(timelineEntries);
+    if (!added) return;
+
+    toast.add({
+      title: t('common.success'),
+      description: t('common.addedToTimeline'),
+      color: 'success',
+    });
+    options.closeAllUI();
+    projectStore.setView('cut');
   }
 
   const canAddSelectionToTimeline = computed(
@@ -64,28 +83,16 @@ export function useMobileFileBrowserModals(options: UseMobileFileBrowserModalsOp
       return;
     }
 
-    addToTimelineEntries.value = [entity.entry];
     options.isDrawerOpen.value = false;
-    isAddToTimelineModalOpen.value = true;
+    await addEntriesToTimeline([entity.entry]);
   }
 
   async function handleAddSelectionToTimeline() {
     const supportedEntries = options.selectedEntries.value.filter(isAddableEntry);
     if (supportedEntries.length === 0) return;
 
-    addToTimelineEntries.value = supportedEntries;
     options.isDrawerOpen.value = false;
-    isAddToTimelineModalOpen.value = true;
-  }
-
-  function onAddedToTimeline() {
-    toast.add({
-      title: t('common.success'),
-      description: t('common.addedToTimeline'),
-      color: 'success',
-    });
-    options.closeAllUI();
-    projectStore.setView('cut');
+    await addEntriesToTimeline(supportedEntries);
   }
 
   async function handleRename(entry: FsEntry) {
@@ -178,12 +185,9 @@ export function useMobileFileBrowserModals(options: UseMobileFileBrowserModalsOp
   }
 
   return {
-    isAddToTimelineModalOpen,
-    addToTimelineEntries,
     canAddSelectionToTimeline,
     handleAddToProject,
     handleAddSelectionToTimeline,
-    onAddedToTimeline,
     isRenameModalOpen,
     entryToRename,
     handleRename,

@@ -11,7 +11,12 @@ const mockToast = vi.hoisted(() => ({
   remove: vi.fn(),
 }));
 
+const addMediaToTimelineMock = vi.hoisted(() => vi.fn());
+
 vi.mock('#ui/composables/useToast', () => ({ useToast: () => mockToast }));
+vi.mock('~/composables/timeline/useAddMediaToTimeline', () => ({
+  useAddMediaToTimeline: () => ({ addMediaToTimeline: addMediaToTimelineMock }),
+}));
 
 const mockProjectStore = reactive({
   setView: vi.fn(),
@@ -74,10 +79,11 @@ describe('useMobileFileBrowserModals', () => {
     selectedEntries.value = [];
     isDrawerOpen.value = false;
     mockSelectionStore.selectedEntity = null;
+    addMediaToTimelineMock.mockResolvedValue(true);
     vi.clearAllMocks();
   });
 
-  it('opens add-to-timeline modal for selected entity', async () => {
+  it('adds selected entity to timeline directly', async () => {
     const entry = createEntry('clip.mp4', 'clip.mp4');
     mockSelectionStore.selectedEntity = {
       source: 'fileManager',
@@ -86,40 +92,45 @@ describe('useMobileFileBrowserModals', () => {
       entry,
     };
 
-    const { handleAddToProject, isAddToTimelineModalOpen, addToTimelineEntries } = getComposable();
+    const { handleAddToProject } = getComposable();
     isDrawerOpen.value = true;
 
     await handleAddToProject();
 
-    expect(isAddToTimelineModalOpen.value).toBe(true);
-    expect(addToTimelineEntries.value).toEqual([entry]);
+    expect(addMediaToTimelineMock).toHaveBeenCalledWith([{ name: 'clip.mp4', path: 'clip.mp4' }]);
     expect(isDrawerOpen.value).toBe(false);
+    expect(mockToast.add).toHaveBeenCalledWith({
+      title: 'common.success',
+      description: 'common.addedToTimeline',
+      color: 'success',
+    });
+    expect(closeAllUI).toHaveBeenCalled();
+    expect(mockProjectStore.setView).toHaveBeenCalledWith('cut');
   });
 
-  it('does not open add-to-timeline modal when selected entity is not a file-manager file', async () => {
+  it('does not add to timeline when selected entity is not a file-manager file', async () => {
     mockSelectionStore.selectedEntity = { source: 'timeline', kind: 'clip' };
 
-    const { handleAddToProject, isAddToTimelineModalOpen } = getComposable();
+    const { handleAddToProject } = getComposable();
     await handleAddToProject();
 
-    expect(isAddToTimelineModalOpen.value).toBe(false);
+    expect(addMediaToTimelineMock).not.toHaveBeenCalled();
   });
 
-  it('adds only supported entries to timeline in selection mode', async () => {
+  it('adds only supported selection entries to timeline directly', async () => {
     const supported = createEntry('clip.mp4', 'clip.mp4');
     const unsupported = createEntry('clip.mp4', 'unsupported.mp4');
     isSelectionMode.value = true;
     selectedEntries.value = [supported, unsupported];
     compatibility.value = { 'unsupported.mp4': createCompat('fully_unsupported') };
 
-    const { handleAddSelectionToTimeline, isAddToTimelineModalOpen, addToTimelineEntries } =
-      getComposable();
+    const { handleAddSelectionToTimeline } = getComposable();
     isDrawerOpen.value = true;
 
     await handleAddSelectionToTimeline();
 
-    expect(isAddToTimelineModalOpen.value).toBe(true);
-    expect(addToTimelineEntries.value).toEqual([supported]);
+    expect(addMediaToTimelineMock).toHaveBeenCalledWith([{ name: 'clip.mp4', path: 'clip.mp4' }]);
+    expect(isDrawerOpen.value).toBe(false);
   });
 
   it('does not add selection to timeline when no supported entries', async () => {
@@ -127,10 +138,10 @@ describe('useMobileFileBrowserModals', () => {
     isSelectionMode.value = true;
     selectedEntries.value = [unsupported];
 
-    const { handleAddSelectionToTimeline, isAddToTimelineModalOpen } = getComposable();
+    const { handleAddSelectionToTimeline } = getComposable();
     await handleAddSelectionToTimeline();
 
-    expect(isAddToTimelineModalOpen.value).toBe(false);
+    expect(addMediaToTimelineMock).not.toHaveBeenCalled();
   });
 
   it('computes canAddSelectionToTimeline correctly', () => {
@@ -143,19 +154,6 @@ describe('useMobileFileBrowserModals', () => {
 
     selectedEntries.value = [createEntry('file.bin', 'file.bin')];
     expect(canAddSelectionToTimeline.value).toBe(false);
-  });
-
-  it('handles successful timeline addition', () => {
-    const { onAddedToTimeline } = getComposable();
-    onAddedToTimeline();
-
-    expect(mockToast.add).toHaveBeenCalledWith({
-      title: 'common.success',
-      description: 'common.addedToTimeline',
-      color: 'success',
-    });
-    expect(closeAllUI).toHaveBeenCalled();
-    expect(mockProjectStore.setView).toHaveBeenCalledWith('cut');
   });
 
   it('opens rename modal and validates names', async () => {

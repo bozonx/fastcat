@@ -112,6 +112,12 @@ function updateCurveFromSelect(edge: 'in' | 'out', value: unknown) {
   }
 }
 
+function selectedTransitionIcon(edge: 'in' | 'out'): string | undefined {
+  const transition = edge === 'in' ? transitionIn.value : transitionOut.value;
+  if (!transition?.type) return undefined;
+  return transitionOptions.value.find((option) => option.value === transition.type)?.icon;
+}
+
 // --- Swipe-to-adjust duration --------------------------------------------
 const drag = reactive<{
   edge: 'in' | 'out' | null;
@@ -273,7 +279,18 @@ function formatSeconds(value: number): string {
                 full-width
                 class="flex-1 min-w-0"
                 @update:model-value="(v: unknown) => updateTypeFromSelect(edge, v)"
-              />
+              >
+                <template #leading>
+                  <UIcon
+                    v-if="selectedTransitionIcon(edge)"
+                    :name="selectedTransitionIcon(edge)"
+                    class="w-4 h-4 shrink-0"
+                  />
+                </template>
+                <template #item-leading="{ item }">
+                  <UIcon v-if="item.icon" :name="item.icon" class="w-4 h-4 shrink-0" />
+                </template>
+              </UiSelect>
               <UButton
                 size="xs"
                 color="gray"

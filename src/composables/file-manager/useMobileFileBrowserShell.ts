@@ -125,12 +125,9 @@ export function useMobileFileBrowserShell(options: UseMobileFileBrowserShellOpti
   });
 
   const {
-    isAddToTimelineModalOpen,
-    addToTimelineEntries,
     canAddSelectionToTimeline,
     handleAddToProject,
     handleAddSelectionToTimeline,
-    onAddedToTimeline,
     isRenameModalOpen,
     entryToRename,
     validateRename,
@@ -201,12 +198,9 @@ export function useMobileFileBrowserShell(options: UseMobileFileBrowserShellOpti
     transcriptionEntry,
     openTranscriptionModal,
     submitTranscription,
-    isAddToTimelineModalOpen,
-    addToTimelineEntries,
     canAddSelectionToTimeline,
     handleAddToProject,
     handleAddSelectionToTimeline,
-    onAddedToTimeline,
     isRenameModalOpen,
     entryToRename,
     validateRename,

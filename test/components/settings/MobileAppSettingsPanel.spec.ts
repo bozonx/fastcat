@@ -34,7 +34,6 @@ const globalOptions = {
     },
     SettingsGeneral: { template: '<div class="settings-general" />' },
     SettingsOptimization: { template: '<div class="settings-optimization" />' },
-    SettingsExportDefaults: { props: ['isActive'], template: '<div class="settings-export" />' },
     SettingsVideo: { template: '<div class="settings-video" />' },
     SettingsAudio: { template: '<div class="settings-audio" />' },
     SettingsIntegrations: { template: '<div class="settings-integrations" />' },
@@ -66,5 +65,10 @@ describe('MobileAppSettingsPanel', () => {
     const wrapper = await mountSuspended(MobileAppSettingsPanel, { global: globalOptions });
     await wrapper.find('[data-value="user.ui"]').trigger('click');
     expect(mockUiStore.editorSettingsActiveSection).toBe('user.ui');
+  });
+
+  it('does not show export presets as a mobile settings tab', async () => {
+    const wrapper = await mountSuspended(MobileAppSettingsPanel, { global: globalOptions });
+    expect(wrapper.find('[data-value="user.export"]').exists()).toBe(false);
   });
 });

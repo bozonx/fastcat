@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import { useSelectBlurUpdate } from '~/composables/ui/useSelectBlurUpdate';
 
 defineOptions({ inheritAttrs: false });
@@ -32,6 +33,20 @@ const props = withDefaults(defineProps<UiSelectProps>(), {
 
 const emit = defineEmits<{ (e: 'update:modelValue', value: unknown): void }>();
 
+const ui = computed(() => ({
+  content: 'min-w-48 z-[calc(var(--z-fixed)+20)]',
+  base: 'justify-start! text-left! gap-1.5 min-w-0',
+  leading: 'ps-2.5 pointer-events-none',
+  leadingIcon: 'size-4 shrink-0',
+  value: 'min-w-0 flex-1 truncate text-left',
+  placeholder: 'min-w-0 flex-1 truncate text-left',
+  trailing: 'pe-2.5',
+  trailingIcon: 'size-4 shrink-0',
+  itemWrapper: 'min-w-0 flex-1',
+  itemLabel: 'truncate text-left',
+  itemLeadingIcon: 'size-4 shrink-0',
+}));
+
 const onUpdate = useSelectBlurUpdate(emit);
 </script>
 
@@ -49,7 +64,7 @@ const onUpdate = useSelectBlurUpdate(emit);
     :multiple="props.multiple"
     :search-input="props.searchable ? (props.searchInput ?? true) : false"
     :class="props.fullWidth ? 'w-full' : 'w-auto min-w-20'"
-    :ui="{ content: 'min-w-48 z-[calc(var(--z-fixed)+20)]' }"
+    :ui="ui"
     @update:model-value="onUpdate"
   >
     <template v-for="(_, slot) in $slots" #[slot]="slotProps">

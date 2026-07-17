@@ -1258,13 +1258,6 @@
       "openWebWorkspace": "FastCat хранит веб-проекты в приватной рабочей области браузера."
     }
   },
-  "mobileFiles": {
-    "addToTimelineDisclaimer": "Добавление на таймлайн из мобильных файлов",
-    "chooseTargetTrack": "Выберите целевую дорожку",
-    "createNewTrack": "Создать новую дорожку",
-    "insertAfter": "Вставить после",
-    "newTrackHint": "Будет создана новая дорожка"
-  },
   "timelineCreation": {
     "errorTitle": "Ошибка создания таймлайна",
     "failed": "Не удалось создать таймлайн",

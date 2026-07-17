@@ -28,7 +28,6 @@ import FileDeleteConfirmModal from './modals/FileDeleteConfirmModal.vue';
 import FileSttTranscriptionModal from './modals/FileTranscriptionModal.vue';
 import UiRenameModal from '~/components/ui/UiRenameModal.vue';
 import UiEntityCreationModal from '~/components/ui/UiEntityCreationModal.vue';
-import MobileAddToTimelineModal from '~/components/timeline/MobileAddToTimelineModal.vue';
 import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useHotkeyLabel } from '~/composables/useHotkeyLabel';
@@ -105,12 +104,9 @@ const {
   isModelReady,
   transcriptionEntry,
   submitTranscription,
-  isAddToTimelineModalOpen,
-  addToTimelineEntries,
   canAddSelectionToTimeline,
   handleAddToProject,
   handleAddSelectionToTimeline,
-  onAddedToTimeline,
   isRenameModalOpen,
   entryToRename,
   validateRename,
@@ -514,13 +510,6 @@ const menuItems = computed<ContextMenuItem[][]>(() => [
       :title="createFolderTitle"
       :validate="validateNewFolderName"
       @confirm="onCreateFolderConfirm"
-    />
-
-    <!-- Add to Timeline Modal (Global) -->
-    <MobileAddToTimelineModal
-      v-model:open="isAddToTimelineModalOpen"
-      :entries="addToTimelineEntries"
-      @added="onAddedToTimeline"
     />
   </div>
 </template>

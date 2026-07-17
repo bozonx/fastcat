@@ -98,4 +98,12 @@ describe('SettingsGeneral', () => {
 
     expect(wrapper.text()).not.toContain('videoEditor.settings.autosaveInterval');
   });
+
+  it('hides interface scale setting in mobile layout', async () => {
+    isMobileLayout.value = true;
+
+    const wrapper = await mountSuspended(SettingsGeneral);
+
+    expect(wrapper.text()).not.toContain('videoEditor.settings.uiInterfaceScale');
+  });
 });

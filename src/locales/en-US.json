@@ -1258,13 +1258,6 @@
       "openWebWorkspace": "FastCat stores web projects in a private browser workspace."
     }
   },
-  "mobileFiles": {
-    "addToTimelineDisclaimer": "Adding to timeline from mobile files",
-    "chooseTargetTrack": "Choose target track",
-    "createNewTrack": "Create new track",
-    "insertAfter": "Insert after",
-    "newTrackHint": "New track will be created"
-  },
   "timelineCreation": {
     "errorTitle": "Error Creating Timeline",
     "failed": "Timeline creation failed",

@@ -114,7 +114,7 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
   }
 
   // Always return a usable, unlocked track of the given kind. If none exists,
-  // auto-create one — mirroring the behavior of MobileAddToTimelineModal. The
+  // auto-create one — mirroring the behavior of mobile add-to-timeline actions. The
   // caller never has to fall back to a possibly invalid `baseTrackId`.
   function ensureDroppableTrackId(params: { baseTrackId: string; kind: 'video' | 'audio' }) {
     const existing = getCompatibleTrackId(params.baseTrackId, params.kind);
