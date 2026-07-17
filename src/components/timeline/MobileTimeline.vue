@@ -497,36 +497,8 @@ watch(
     <MobileTimelineDrawer
       v-model:open="isTransitionPropertiesDrawerOpen"
       v-model:active-snap-point="drawerActiveSnapPoint"
-      with-toolbar-snap
       @update:open="(value) => !value && onTransitionPropertiesDrawerClose()"
     >
-      <template #toolbar>
-        <MobileDrawerToolbar
-          :orientation="drawerToolbarOrientation"
-          :class="
-            drawerToolbarOrientation === 'vertical'
-              ? 'border-r border-ui-border'
-              : 'border-b border-ui-border'
-          "
-        >
-          <MobileDrawerToolbarButton
-            icon="i-heroicons-chevron-left"
-            :label="t('common.back')"
-            @click="
-              () => {
-                onTransitionPropertiesDrawerClose();
-                backToClipProperties();
-              }
-            "
-          />
-          <MobileDrawerToolbarButton
-            icon="i-heroicons-x-mark"
-            :label="t('common.close')"
-            @click="onTransitionPropertiesDrawerClose"
-          />
-        </MobileDrawerToolbar>
-      </template>
-
       <div
         v-if="selectedTransitionContext && timelineStore.selectedTransition"
         class="px-4 pb-8 pt-4"
