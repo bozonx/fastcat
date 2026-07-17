@@ -76,6 +76,15 @@ describe('preview effect quality', () => {
         fps: 30,
       }),
     ).toBe('high');
+    expect(
+      resolvePreviewEffectQuality({
+        setting: 'auto',
+        isPlaying: true,
+        width: 960,
+        height: 540,
+        fps: 60,
+      }),
+    ).toBe('medium');
   });
 
   it('maps quality levels to bounded compute blur budgets', () => {
@@ -84,15 +93,11 @@ describe('preview effect quality', () => {
     ]);
   });
 
-  it('maps quality levels to monotonic render scales', () => {
+  it('keeps render scale at full resolution for every effect-quality tier', () => {
     const scales = (['low', 'medium', 'high', 'ultra'] as const).map(
       previewEffectQualityRenderScale,
     );
-    expect(scales).toEqual([0.5, 0.67, 0.85, 1]);
-    // strictly increasing — higher quality never downscales more
-    for (let i = 1; i < scales.length; i += 1) {
-      expect(scales[i]).toBeGreaterThan(scales[i - 1]);
-    }
+    expect(scales).toEqual([1, 1, 1, 1]);
   });
 
   describe('resolvePreviewQualityOverride', () => {
@@ -123,9 +128,9 @@ describe('preview effect quality', () => {
   });
 
   describe('resolvePreviewRenderScale', () => {
-    it('derives the scale from the quality tier in auto mode', () => {
-      expect(resolvePreviewRenderScale({ quality: 'low' })).toBe(0.5);
-      expect(resolvePreviewRenderScale({ quality: 'high' })).toBe(0.85);
+    it('uses full resolution when no manual scale is selected', () => {
+      expect(resolvePreviewRenderScale({ quality: 'low' })).toBe(1);
+      expect(resolvePreviewRenderScale({ quality: 'high' })).toBe(1);
     });
 
     it('pins a manual scale (clamped to full)', () => {
@@ -133,8 +138,8 @@ describe('preview effect quality', () => {
       expect(resolvePreviewRenderScale({ quality: 'low', manualScale: 2 })).toBe(1);
     });
 
-    it('treats a non-positive manual scale as auto', () => {
-      expect(resolvePreviewRenderScale({ quality: 'medium', manualScale: 0 })).toBe(0.67);
+    it('treats a non-positive manual scale as full resolution', () => {
+      expect(resolvePreviewRenderScale({ quality: 'medium', manualScale: 0 })).toBe(1);
     });
 
     it('renders at full resolution for export', () => {

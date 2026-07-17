@@ -111,6 +111,8 @@ interface TrimOverlayView {
 
 const props = defineProps<Props>();
 
+const timelineContext = inject<TimelineContext>('timelineContext')!;
+
 // --- Clip vertical layout bands ---------------------------------------------
 // The header sits at the top; the keyframes lane (placeholder) sits at the
 // bottom when expanded. Fades are constrained to the content band between them
@@ -118,16 +120,27 @@ const props = defineProps<Props>();
 // the keyframes editor. Transitions cover the whole main clip area below the
 // header. Trim handles intentionally cover the full clip height so the clip
 // edges remain easy to grab.
-const CLIP_HEADER_HEIGHT_PX = 20; // h-5
-const CLIP_KEYFRAMES_HEIGHT_PX = 76; // h-5 lane + h-14 curve editor
+//
+// These bands mirror Tailwind rem-based sizes (h-5, h-14), which scale with the
+// document root font-size. app.vue pins that root size to the user's
+// `interfaceScale` (default 14px, not the browser's nominal 16px), so the
+// px sizes below — authored against 16px — must be scaled by interfaceScale/16
+// to line up with the actually-rendered header/lane. Without this the
+// transition/fade overlays sat ~2.5px below the header at the default scale.
+const CLIP_HEADER_HEIGHT_PX = 20; // h-5 @ 16px root
+const CLIP_KEYFRAMES_HEIGHT_PX = 76; // h-5 lane + h-14 curve editor @ 16px root
 const CLIP_MIN_CONTENT_BAND_PX = 16; // below this we collapse to header-only
+
+const remScale = computed(() => (timelineContext.userSettings.value.ui?.interfaceScale || 16) / 16);
+const clipHeaderHeightPx = computed(() => CLIP_HEADER_HEIGHT_PX * remScale.value);
+const clipKeyframesHeightPx = computed(() => CLIP_KEYFRAMES_HEIGHT_PX * remScale.value);
 
 // Persisted per instance only; virtualization remount resets it (placeholder feature).
 const isKeyframesExpanded = ref(false);
 
 // Too short to fit the header AND a usable content band: show only the header.
 const isClipHeaderOnly = computed(
-  () => props.trackHeight < CLIP_HEADER_HEIGHT_PX + CLIP_MIN_CONTENT_BAND_PX,
+  () => props.trackHeight < clipHeaderHeightPx.value + CLIP_MIN_CONTENT_BAND_PX,
 );
 
 const isKeyframesLaneVisible = computed(() => isKeyframesExpanded.value && !isClipHeaderOnly.value);
@@ -138,15 +151,15 @@ const isKeyframesLaneVisible = computed(() => isKeyframesExpanded.value && !isCl
 const clipContentInset = computed(() => {
   if (isClipHeaderOnly.value) return { top: 0, bottom: 0 };
   return {
-    top: CLIP_HEADER_HEIGHT_PX,
-    bottom: isKeyframesLaneVisible.value ? CLIP_KEYFRAMES_HEIGHT_PX : 0,
+    top: clipHeaderHeightPx.value,
+    bottom: isKeyframesLaneVisible.value ? clipKeyframesHeightPx.value : 0,
   };
 });
 
 const clipTransitionInset = computed(() => {
   if (isClipHeaderOnly.value) return { top: 0, bottom: 0 };
   return {
-    top: CLIP_HEADER_HEIGHT_PX,
+    top: clipHeaderHeightPx.value,
     bottom: 0,
   };
 });
@@ -169,7 +182,6 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
-const timelineContext = inject<TimelineContext>('timelineContext')!;
 
 const isHovered = ref(false);
 const clipContainerRef = ref<HTMLElement | null>(null);

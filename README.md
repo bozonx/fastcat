@@ -137,7 +137,7 @@ The application will be available at `http://localhost:3008`.
 - The Rust desktop crate targets Rust `1.87.0` because the native video rendering engine foundation uses `wgpu` 29.
 - The `webgpu_render_engine_status` Tauri command probes native `wgpu` adapter/device availability and is the entry point for the upcoming Rust WebGPU renderer.
 - The native Tauri monitor renders media, SVG, background, text, and shape timeline layers through the Rust video core. Preview video frames use a YUV fast-path where supported: FFmpeg frames are kept as NV12-style Y/UV planes, uploaded as `R8Unorm`/`Rg8Unorm`, and converted to RGBA by a small GPU pass before entering the existing Vello texture path. SVG files are rasterized with `resvg` at the target preview/export resolution, while text/shapes/blend modes and shader transitions are composed in the Vello scene used by the monitor preview and native video export. Transition sources support an adjacent clip, the composite of lower layers, or transparency in both preview and export. The web editor fonts loaded from Google Fonts are not bundled into Rust yet; to make them deterministic in native text rendering, bundle the matching `.ttf`/`.otf` files with the app and load them into the native font database before creating text layouts.
-- Preview effect quality can be set to Auto, Low, Medium, High, or Ultra in both web and native monitors. Manual levels are respected during playback and scrubbing; export always uses Ultra. Auto uses the rendered resolution, timeline FPS, and mobile mode to choose a sampling budget, and uses Ultra for paused frames. The budget applies to blur-heavy transitions, Blur, Blur Fill, Bloom, and internal compositor blur passes.
+- Preview effect quality can be set to Auto, Low, Medium, High, or Ultra in both web and native monitors. Manual levels are respected during playback and scrubbing; export always uses Ultra. Auto uses the project resolution, timeline FPS, and mobile mode to choose a sampling budget, and uses Ultra for paused frames. It never lowers preview resolution; that remains a separate monitor setting. The budget applies to blur-heavy transitions, Blur, Blur Fill, Bloom, and internal compositor blur passes. Disabling preview effects keeps transition timing but renders every transition as a simple dissolve.
 - Video effects use the shared WGSL compute shader in `shared/effects/effect.wgsl` for both web preview and Tauri native rendering/export. Effect manifests expose `paramRanges` with separate UI, animation, and renderer hard-cap ranges so future keyframe controls can allow larger artistic values without removing GPU safety limits.
 - The web compositor and native Tauri compositor support the same multi-pass effects, including `blur-fill`, `bloom`, and `gaussian-blur`. Clip, video-track, master, and adjustment-layer effects use the shared WebGPU/WGPU pipeline. Adjustment layers process the project-sized scene without effect padding, matching native rendering and preventing full-frame blur from shifting when edge bleed is enabled. Web adjustment capture also excludes the browser renderer's one-pixel boundary fringe so large blur radii do not turn it into a dark frame. Track opacity and blend are applied once to the composited track result rather than being duplicated onto every clip. Web track, adjustment, shape-effect, and shader-transition processing captures the renderer canvas directly instead of performing a Pixi `extract.pixels()` readback through `ImageData`.
 - Web export waits for WebGPU initialization and fails explicitly when a timeline requires video effects or shader transitions but WebGPU is unavailable. Its browser pipeline probes the exact WebCodecs encoder profile before the first full hardware attempt, writes audio and video sources concurrently after muxer start, coalesces progress callbacks so the worker render loop does not wait on the main thread, reports determinate progress from rendered video frames and mixed audio chunks, and uses short adaptive encoder-backpressure waits to reduce CPU/GPU idle gaps. Native export aborts on a source-frame decode failure instead of silently producing blank frames.
@@ -364,15 +364,15 @@ the GPU-fragile ones stay out of the merge gate. Two things used to both be call
 - **golden** = cross-engine _rendered-frame_ comparison against
   `shared/golden/frames.json` (GPU-dependent).
 
-| Tier | Location | Command | CI |
-| --- | --- | --- | --- |
-| Unit | `test/unit/`, `test/components/` (incl. `*.parity.test.ts`) | `pnpm test:unit` | gate |
-| Integration (web) | `test/integration/`, `test/golden-helpers/` | `pnpm test:integration:web` | gate |
-| Integration/unit (native) | `src-tauri/tests/`, Rust `#[test]`s (incl. logic parity) | `pnpm test:native` | gate |
-| E2E — smoke | `test/e2e/smoke/` | `pnpm test:e2e:smoke` | gate |
-| E2E — full | `test/e2e/web/` | `pnpm test:e2e` | gate |
-| Golden (web) | `test/golden/` + `test/golden-helpers/` | `pnpm test:golden:web` | manual (GPU) |
-| Golden (native) | `src-tauri/tests/engine_parity.rs` | `pnpm test:golden:native` | manual (GPU) |
+| Tier                      | Location                                                    | Command                     | CI           |
+| ------------------------- | ----------------------------------------------------------- | --------------------------- | ------------ |
+| Unit                      | `test/unit/`, `test/components/` (incl. `*.parity.test.ts`) | `pnpm test:unit`            | gate         |
+| Integration (web)         | `test/integration/`, `test/golden-helpers/`                 | `pnpm test:integration:web` | gate         |
+| Integration/unit (native) | `src-tauri/tests/`, Rust `#[test]`s (incl. logic parity)    | `pnpm test:native`          | gate         |
+| E2E — smoke               | `test/e2e/smoke/`                                           | `pnpm test:e2e:smoke`       | gate         |
+| E2E — full                | `test/e2e/web/`                                             | `pnpm test:e2e`             | gate         |
+| Golden (web)              | `test/golden/` + `test/golden-helpers/`                     | `pnpm test:golden:web`      | manual (GPU) |
+| Golden (native)           | `src-tauri/tests/engine_parity.rs`                          | `pnpm test:golden:native`   | manual (GPU) |
 
 `test/integration/golden-registry/` holds CPU vitest checks that validate the
 golden registry integrity and scene coverage (no GPU), and runs with the web

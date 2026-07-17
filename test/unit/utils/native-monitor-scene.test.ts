@@ -1117,10 +1117,9 @@ describe('buildNativeMonitorScene', () => {
     expect(pausedLayer?.transition_in?.spec?.params).toMatchObject({
       p3: 25,
     });
-    // ...but the render SCALE does NOT bump to full res on pause: preview_scale is a pure
-    // function of the resolution setting / quality tier and must stay constant across play/pause
-    // (a scale flip drops native video decoders). With 'low' + auto resolution it stays 0.5.
-    expect(pausedScene.preview_scale).toBe(0.5);
+    // Quality affects sampling only: auto preview resolution remains full size and never flips
+    // between playback and pause (a scale flip would drop native video decoders).
+    expect(pausedScene.preview_scale).toBe(1);
 
     // Same scene while playing resolves to the identical scale — proving no play/pause flip.
     const playingScaleScene = await buildNativeMonitorScene({
@@ -1142,5 +1141,76 @@ describe('buildNativeMonitorScene', () => {
     expect(exportToLayer?.transition_in?.spec?.params).toMatchObject({
       p3: 25,
     });
+  });
+
+  it('uses crossfade transitions and skips visual effects when preview effects are disabled', async () => {
+    const timelineDoc = {
+      version: 1,
+      timebase: { fps: 30 },
+      metadata: { fastcat: { masterEffects: [{ type: 'bloom', radius: 24 }] } },
+      tracks: [
+        {
+          id: 'v-track',
+          kind: 'video',
+          videoHidden: false,
+          effects: [{ type: 'gaussian-blur', radius: 10 }],
+          items: [
+            {
+              id: 'clip-a',
+              kind: 'clip',
+              type: 'media',
+              trackId: 'v-track',
+              source: { path: '_video/source.mp4' },
+              timelineRange: { startTicks: 0, durationTicks: 1_000_000 },
+              sourceRange: { startTicks: 0, durationTicks: 1_000_000 },
+              effects: [{ type: 'gaussian-blur', radius: 20 }],
+            },
+            {
+              id: 'clip-b',
+              kind: 'clip',
+              type: 'media',
+              trackId: 'v-track',
+              source: { path: '_video/source.mp4' },
+              timelineRange: { startTicks: 1_000_000, durationTicks: 1_000_000 },
+              sourceRange: { startTicks: 0, durationTicks: 1_000_000 },
+              transitionIn: { type: 'motion-blur', durationTicks: 250_000, mode: 'adjacent' },
+              effects: [{ type: 'bloom', radius: 20 }],
+            },
+          ],
+        },
+      ],
+    };
+    const projectStore = {
+      projectSettings: {
+        project: { width: 1920, height: 1080, fps: 30, audioDeclickDurationTicks: 0 },
+      },
+      getProjectDirHandle: vi.fn(async () => ({ path: '/workspace/project' })),
+      getFileByPath: vi.fn(),
+    };
+    const workspaceStore = {
+      userSettings: {
+        projectDefaults: { defaultAudioFadeCurve: 'linear' },
+        optimization: { nativeMonitorSyncMode: 'balanced' },
+      },
+      activeMonitor: { useProxy: false },
+      lastProjectPath: null,
+      recentProjects: [],
+    };
+
+    const scene = await buildNativeMonitorScene({
+      timelineDoc: timelineDoc as never,
+      projectStore: projectStore as never,
+      workspaceStore: workspaceStore as never,
+      previewEffectsEnabled: false,
+    });
+    const incoming = scene.layers.find((layer) => layer.id === 'clip-b');
+
+    expect(incoming?.transition_in).toMatchObject({
+      type: 'dissolve',
+      spec: { type: 'crossfade' },
+    });
+    expect(scene.layers.every((layer) => layer.effects.length === 0)).toBe(true);
+    expect(scene.video_tracks.every((track) => track.effects.length === 0)).toBe(true);
+    expect(scene.master_effects).toEqual([]);
   });
 });

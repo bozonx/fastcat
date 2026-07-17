@@ -26,6 +26,7 @@ pub(super) fn prepare_vello_scene(
     let device = device_handle.device.clone();
     let queue = device_handle.queue.clone();
     let materialize_started = Instant::now();
+    compositor.begin_transition_frame(dev_id);
     let effective_scene =
         compositor.materialize_transitions_and_effects(dev_id, scene, &device, &queue)?;
     let effective_scene =

@@ -1,12 +1,8 @@
 import { ref, computed, type Ref } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
-import {
-  resolvePreviewEffectQuality,
-  previewEffectQualityRenderScale,
-} from '~/utils/preview-effect-quality';
 
-export function useMonitorDisplay(options?: { isMobile?: Ref<boolean> }) {
+export function useMonitorDisplay(_options?: { isMobile?: Ref<boolean> }) {
   const timelineStore = useTimelineStore();
   const projectStore = useProjectStore();
 
@@ -42,23 +38,7 @@ export function useMonitorDisplay(options?: { isMobile?: Ref<boolean> }) {
   const renderHeight = computed(() => {
     const value = Number(projectStore.activeMonitor?.previewResolution);
     if (!Number.isFinite(value) || value <= 0) {
-      // Auto: size the canvas for the motion tier derived from the quality dial. The
-      // still-frame full-res bump is handled by the native engine's preview_scale, so the
-      // DOM canvas stays stable across play/pause (no resize thrash).
-      const quality = resolvePreviewEffectQuality({
-        setting: projectStore.activeMonitor?.previewBlurQuality ?? 'auto',
-        isPlaying: true,
-        // Must mirror the native render-scale tier (native-monitor-scene.ts scaleQuality),
-        // which passes isMobile — otherwise the DOM canvas is sized from the desktop tier
-        // while native renders at the mobile (low) scale, leaving the texture smaller than
-        // the canvas (extra upscale / blur).
-        isMobile: options?.isMobile?.value,
-        width: exportWidth.value,
-        height: exportHeight.value,
-        fps: timelineStore.timelineFormat?.fps,
-      });
-      const scale = previewEffectQualityRenderScale(quality);
-      return Math.round((exportHeight.value * scale) / 2) * 2;
+      return Math.round(exportHeight.value / 2) * 2;
     }
 
     // Interpret values <= 1 as scale factor relative to project height

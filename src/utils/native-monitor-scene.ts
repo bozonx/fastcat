@@ -121,6 +121,8 @@ export interface BuildNativeMonitorSceneParams {
   idleSettled?: boolean;
   /** User-selected preview effect quality. Defaults to 'auto'. */
   previewBlurQuality?: PreviewEffectQualitySetting;
+  /** Disables visual effects while retaining transitions as inexpensive crossfades. */
+  previewEffectsEnabled?: boolean;
   /** Whether the preview is rendered in the mobile editor. Used by auto quality. */
   isMobile?: boolean;
 }
@@ -398,6 +400,7 @@ function buildBaseLayer(params: {
   isPlaying?: boolean;
   idleSettled?: boolean;
   previewBlurQuality?: string;
+  previewEffectsEnabled?: boolean;
 }): Omit<NativeSceneLayer, 'kind'> {
   const {
     clip,
@@ -410,6 +413,7 @@ function buildBaseLayer(params: {
     isPlaying,
     idleSettled,
     previewBlurQuality,
+    previewEffectsEnabled,
   } = params;
   const startTicks = clip.timelineRange.startTicks;
   const durationTicks = clip.timelineRange.durationTicks;
@@ -419,7 +423,7 @@ function buildBaseLayer(params: {
   const transition_in = (() => {
     const effectiveTransitionIn = getEffectiveTransitionIn(clip);
     if (effectiveTransitionIn && effectiveTransitionIn.durationTicks > 0) {
-      const type = effectiveTransitionIn.type;
+      const type = previewEffectsEnabled === false ? 'dissolve' : effectiveTransitionIn.type;
       const mode = getTransitionMode(effectiveTransitionIn);
       const fromClip = mode === 'adjacent' ? findPreviousAdjacentClip(clip, allClips) : undefined;
       if (
@@ -437,7 +441,7 @@ function buildBaseLayer(params: {
       const manifest = getTransitionManifest(type);
       const spec = manifest?.toTransitionSpec
         ? manifest.toTransitionSpec(
-            effectiveTransitionIn.params ?? {},
+            previewEffectsEnabled === false ? {} : (effectiveTransitionIn.params ?? {}),
             ticksToSeconds(effectiveTransitionIn.durationTicks),
             { isExport, isPlaying, idleSettled, previewBlurQuality },
           )
@@ -457,7 +461,7 @@ function buildBaseLayer(params: {
 
   const transition_out = (() => {
     if (clip.transitionOut && clip.transitionOut.durationTicks > 0) {
-      const type = clip.transitionOut.type;
+      const type = previewEffectsEnabled === false ? 'dissolve' : clip.transitionOut.type;
       const mode = getTransitionMode(clip.transitionOut);
       const toClip = mode === 'adjacent' ? findNextAdjacentClip(clip, allClips) : undefined;
       if (
@@ -475,7 +479,7 @@ function buildBaseLayer(params: {
       const manifest = getTransitionManifest(type);
       const spec = manifest?.toTransitionSpec
         ? manifest.toTransitionSpec(
-            clip.transitionOut.params ?? {},
+            previewEffectsEnabled === false ? {} : (clip.transitionOut.params ?? {}),
             ticksToSeconds(clip.transitionOut.durationTicks),
             { isExport, isPlaying, idleSettled, previewBlurQuality },
           )
@@ -518,10 +522,13 @@ function buildBaseLayer(params: {
     z,
     opacity: Math.max(0, Math.min(1, clampFinite(clip.opacity, 1))),
     blend_mode: mapTimelineBlendModeToNative(clip.blendMode),
-    effects: buildEffectSpecs(clip.effects) ?? [],
+    effects: previewEffectsEnabled === false ? [] : (buildEffectSpecs(clip.effects) ?? []),
     transform: buildNativeTransform(clip.transform, sceneWidth, sceneHeight),
     animations: clip.animations,
-    baked_effects: bakeClipEffectAnimations(clip.effects, clip.animations),
+    baked_effects:
+      previewEffectsEnabled === false
+        ? []
+        : bakeClipEffectAnimations(clip.effects, clip.animations),
     transition_in,
     transition_out,
     // Only text/shape layers snap; other kinds override this below.
@@ -660,25 +667,11 @@ export async function buildNativeMonitorScene(
     height: sceneHeight,
     fps: fallbackFormat.fps,
   });
-  // Render scale = the user's "Preview Resolution" menu choice (`previewScale` > 0 pins it),
-  // or, in Auto mode, the scale derived from the steady MOTION quality tier. It MUST be
-  // independent of play/pause and of the effect-quality settle window: the native monitor
-  // drops & re-decodes every video runtime whenever `preview_scale` changes
-  // (monitor/runtime.rs ~289), so a play/pause or scrub-driven scale flip would black-frame
-  // the preview and stall playback start. The "still frame ⇒ full res" bump was removed for
-  // exactly this reason — pick "1/1" in the menu for a crisp paused frame. Only the (cheap)
-  // effect/transition sample budgets vary dynamically; geometric scale stays constant.
-  const scaleQuality = resolvePreviewEffectQuality({
-    setting: params.previewBlurQuality ?? params.projectStore.activeMonitor?.previewBlurQuality,
-    isPlaying: true, // force the steady motion tier so the scale never flips on pause
-    isMobile: params.isMobile,
-    width: sceneWidth,
-    height: sceneHeight,
-    fps: fallbackFormat.fps,
-  });
+  // Render scale follows only the explicit Preview Resolution setting. Effect quality never
+  // changes it, avoiding both quality-driven downscaling and decoder churn on state changes.
   const previewScale = resolvePreviewRenderScale({
     manualScale: params.previewScale,
-    quality: scaleQuality,
+    quality: previewBlurQuality,
     isExport: params.isExport,
   });
   const builtVideo = await buildVideoWorkerPayloadFromTracks({
@@ -712,6 +705,7 @@ export async function buildNativeMonitorScene(
       isPlaying: params.isPlaying,
       idleSettled: params.idleSettled,
       previewBlurQuality,
+      previewEffectsEnabled: params.previewEffectsEnabled,
     });
 
     if (clip.clipType === 'adjustment') {
@@ -817,7 +811,8 @@ export async function buildNativeMonitorScene(
         .map((clip) => clip.id),
       opacity: Math.max(0, Math.min(1, clampFinite(track.opacity, 1))),
       blend_mode: mapTimelineBlendModeToNative(track.blendMode),
-      effects: buildEffectSpecs(track.effects) ?? [],
+      effects:
+        params.previewEffectsEnabled === false ? [] : (buildEffectSpecs(track.effects) ?? []),
     })),
     audio_layers:
       params.includeAudio === false
@@ -844,6 +839,9 @@ export async function buildNativeMonitorScene(
     preview_effect_quality: previewBlurQuality,
     frame_cache_mode: optimization.nativeFrameCacheMode ?? 'auto',
     frame_cache_custom_mb: Math.max(0, Math.round(optimization.nativeFrameCacheCustomMb ?? 0)),
-    master_effects: buildEffectSpecs(params.timelineDoc.metadata?.fastcat?.masterEffects) ?? [],
+    master_effects:
+      params.previewEffectsEnabled === false
+        ? []
+        : (buildEffectSpecs(params.timelineDoc.metadata?.fastcat?.masterEffects) ?? []),
   };
 }

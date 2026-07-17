@@ -296,6 +296,12 @@ impl Compositor {
         Ok(scene.with_layers(final_layers))
     }
 
+    pub(super) fn begin_transition_frame(&mut self, dev_id: usize) {
+        if let Some(pipeline) = self.transition_pipelines.get_mut(&dev_id) {
+            pipeline.begin_frame();
+        }
+    }
+
     /// Renders the transition's *source* side (the other clip / background / transparency)
     /// into an `EffectSource`. `None` means the named source layer no longer exists, so the
     /// caller skips this transition.

@@ -86,6 +86,10 @@ pub struct TransitionPipeline {
     /// Bilinear blit pass: brings transition inputs to the output size.
     blit_layout: wgpu::BindGroupLayout,
     blit_pipeline: wgpu::ComputePipeline,
+    /// Per-frame outputs. A transition result must remain valid until Vello has consumed the
+    /// materialized scene, so each transition gets a distinct slot; slots are reused next frame.
+    output_pool: Vec<wgpu::Texture>,
+    output_cursor: usize,
 }
 
 #[repr(C)]
@@ -242,7 +246,40 @@ impl TransitionPipeline {
             pipeline_cache: cache.cloned(),
             blit_layout,
             blit_pipeline,
+            output_pool: Vec::new(),
+            output_cursor: 0,
         }
+    }
+
+    pub fn begin_frame(&mut self) {
+        self.output_cursor = 0;
+    }
+
+    fn acquire_output(&mut self, device: &wgpu::Device, width: u32, height: u32) -> wgpu::Texture {
+        let slot = self.output_cursor;
+        self.output_cursor += 1;
+
+        if let Some(texture) = self.output_pool.get(slot) {
+            if texture.width() == width && texture.height() == height {
+                return texture.clone();
+            }
+        }
+
+        let output = create_rgba8_texture(
+            device,
+            "native-transition-output",
+            width,
+            height,
+            wgpu::TextureUsages::COPY_SRC
+                | wgpu::TextureUsages::TEXTURE_BINDING
+                | wgpu::TextureUsages::STORAGE_BINDING,
+        );
+        if slot == self.output_pool.len() {
+            self.output_pool.push(output.clone());
+        } else {
+            self.output_pool[slot] = output.clone();
+        }
+        output
     }
 
     /// Prepares a transition input as a texture of EXACTLY `width×height`. If the
@@ -416,21 +453,9 @@ impl TransitionPipeline {
             self.prepare_input(device, queue, &mut encoder, from_source, width, height)?;
         let to_tex = self.prepare_input(device, queue, &mut encoder, to_source, width, height)?;
 
-        // Render the transition straight into an owned result texture. Previously we
-        // wrote into a cached `resources.output` and copied it out — an extra full-frame
-        // GPU→GPU copy per transition per frame. The result goes up the scene as an
-        // owned Arc anyway, so the final texture IS the compute pass target. No cache
-        // needed: allocating exactly one output texture per call — the same as the old
-        // `copy_texture_owned` did.
-        let output = create_rgba8_texture(
-            device,
-            "native-transition-owned-output",
-            width,
-            height,
-            wgpu::TextureUsages::COPY_SRC
-                | wgpu::TextureUsages::TEXTURE_BINDING
-                | wgpu::TextureUsages::STORAGE_BINDING,
-        );
+        // Each active transition receives a distinct output slot for this frame. The pool is
+        // reused on the next frame, eliminating repeated full-resolution texture allocation.
+        let output = self.acquire_output(device, width, height);
         let output_view = output.create_view(&wgpu::TextureViewDescriptor::default());
 
         let from_texture = from_tex.create_view(&wgpu::TextureViewDescriptor::default());

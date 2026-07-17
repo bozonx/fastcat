@@ -141,7 +141,7 @@ const titleStyle = computed(() => {
          only the keyframes toggle re-enables pointer events. -->
     <div
       v-if="clipItem"
-      class="flex items-center justify-between px-1.5 bg-black/25 border-b border-white/10 text-2xs select-none shrink-0 pointer-events-none rounded-t overflow-hidden"
+      class="flex items-center justify-between px-1.5 bg-black/25 text-2xs select-none shrink-0 pointer-events-none rounded-t overflow-hidden"
       :class="isHeaderOnly ? 'flex-1 min-h-0' : 'h-5'"
       :style="{ zIndex: 'var(--z-clip-name)' }"
     >

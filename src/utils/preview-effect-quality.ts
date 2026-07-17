@@ -31,17 +31,6 @@ const QUALITY_TAP_BUDGETS: Record<PreviewEffectQuality, number> = {
   ultra: 48,
 };
 
-// Render-resolution multiplier derived from the quality tier. The quality dial is the
-// single user-facing knob: it picks the effect sample budget *and* (in auto-resolution
-// mode) the preview render scale. A still frame ignores this and renders at full res
-// (see `resolvePreviewRenderScale`).
-const QUALITY_RENDER_SCALES: Record<PreviewEffectQuality, number> = {
-  low: 0.5,
-  medium: 0.67,
-  high: 0.85,
-  ultra: 1,
-};
-
 export function resolvePreviewQualityOverride(
   params: Pick<
     ResolvePreviewEffectQualityParams,
@@ -70,7 +59,11 @@ export function resolvePreviewEffectQuality(
   const width = Math.max(1, Number(params.width) || 1920);
   const height = Math.max(1, Number(params.height) || 1080);
   const fps = Math.max(1, Number(params.fps) || 30);
-  const megapixelsPerSecond = (width * height * fps) / 1_000_000;
+  // High frame rates also shorten the CPU/GPU scheduling window, so treat the part above
+  // 30 FPS as 2x pixel work. This only moves borderline 50/60-FPS previews down one tier;
+  // it avoids a feedback loop and never changes geometric preview resolution.
+  const effectiveFps = fps > 30 ? 30 + (fps - 30) * 2 : fps;
+  const megapixelsPerSecond = (width * height * effectiveFps) / 1_000_000;
 
   if (megapixelsPerSecond >= 110) return 'low';
   if (megapixelsPerSecond >= 45) return 'medium';
@@ -82,27 +75,28 @@ export function previewEffectQualityTapBudget(quality: PreviewEffectQuality): nu
 }
 
 export function previewEffectQualityRenderScale(quality: PreviewEffectQuality): number {
-  return QUALITY_RENDER_SCALES[quality];
+  // Preview effect quality deliberately never lowers geometric resolution. Users can select a
+  // separate preview resolution; this dial only changes sampling work inside effects.
+  void quality;
+  return 1;
 }
 
 export interface ResolvePreviewRenderScaleParams {
   /** Manual `previewResolution` override. A finite value > 0 pins the scale; omit or
-   * pass <= 0 to derive the scale from the quality tier (auto-resolution mode). */
+   * pass <= 0 for full project resolution. */
   manualScale?: number;
   /** Already-resolved effect quality tier (output of `resolvePreviewEffectQuality`). */
   quality: PreviewEffectQuality;
   isExport?: boolean;
 }
 
-// Geometric render scale for the preview. Deliberately independent of play/pause and of the
-// effect-quality settle window: the native monitor drops & re-decodes every video runtime
-// whenever `preview_scale` changes (monitor/runtime.rs), so any dynamic scale flip black-frames
-// the preview and stalls playback start. The scale is therefore a pure function of the user's
-// "Preview Resolution" choice (`manualScale` > 0) or the Auto quality tier. There is no
-// "still frame ⇒ full res" bump — choose "1/1" in the menu for a crisp paused frame.
+// Geometric render scale is independent of effect quality, play/pause, and the settle window.
+// The native monitor drops & re-decodes video runtimes whenever `preview_scale` changes, so it
+// must only follow the explicit Preview Resolution setting.
 export function resolvePreviewRenderScale(params: ResolvePreviewRenderScaleParams): number {
   if (params.isExport) return 1;
   const manual = Number(params.manualScale);
   if (Number.isFinite(manual) && manual > 0) return Math.min(1, manual);
-  return previewEffectQualityRenderScale(params.quality);
+  void params.quality;
+  return 1;
 }

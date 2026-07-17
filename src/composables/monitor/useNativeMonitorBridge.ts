@@ -268,6 +268,7 @@ export function useNativeMonitorBridge(): void {
       isPlaying: timelineStore.isPlaying,
       idleSettled,
       previewBlurQuality: projectStore.activeMonitor?.previewBlurQuality ?? 'auto',
+      previewEffectsEnabled: projectStore.activeMonitor?.previewEffectsEnabled !== false,
       isMobile: isMobile.value,
     });
   }
@@ -370,6 +371,7 @@ export function useNativeMonitorBridge(): void {
       () => workspaceStore.userSettings.optimization.nativeMonitorSyncMode,
       nativeMonitorMasterEffects,
       () => projectStore.activeMonitor?.previewBlurQuality,
+      () => projectStore.activeMonitor?.previewEffectsEnabled,
     ],
     () => {
       // Clip edits (transforms/effects/transitions) etc. are interactive: rebuild the
