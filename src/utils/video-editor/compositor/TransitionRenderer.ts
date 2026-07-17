@@ -354,51 +354,65 @@ export class TransitionRenderer {
       0,
       Math.round((params.transitionOffsetTicks ?? 0) * speed),
     );
+    const sourceRangeEndTicks = clip.sourceStartTicks + clip.sourceRangeDurationTicks;
+    const isReverse = (clip.speed || 1) < 0;
+    // Reading toward media end (forward trailing / reverse leading handle) needs a
+    // known media duration; without it we cannot prove there is material past the
+    // trim and must hold the last frame — mirrors the native `source_duration_sec:
+    // None => hold` branch and avoids seeking to NaN/past-EOF.
+    const hasKnownDuration =
+      Number.isFinite(clip.sourceDurationTicks) && clip.sourceDurationTicks > 0;
     let sampleTicks: number;
 
     if (params.isNextClip) {
-      const handleTicks = Math.max(0, clip.sourceStartTicks);
-      if ((clip.speed || 1) < 0) {
+      // Incoming (`to`) peer, composited before its own start → leading handle.
+      if (isReverse) {
+        // Reverse: the visible in-point sits at `sourceStart + range`; the leading
+        // handle continues *forward* toward the media end. The available handle is
+        // measured from the range end to EOF — not from the trim-in point.
+        const handleTicks = hasKnownDuration
+          ? Math.max(0, clip.sourceDurationTicks - sourceRangeEndTicks)
+          : 0;
         sampleTicks =
           handleTicks < MIN_SOURCE_HANDLE_TICKS
-            ? Math.max(
-                0,
-                clip.sourceStartTicks + clip.sourceRangeDurationTicks - MIN_SOURCE_HANDLE_TICKS,
-              )
+            ? Math.max(0, sourceRangeEndTicks - MIN_SOURCE_HANDLE_TICKS)
             : Math.min(
-                clip.sourceStartTicks + clip.sourceRangeDurationTicks + transitionOffsetTicks,
+                sourceRangeEndTicks + transitionOffsetTicks,
                 clip.sourceDurationTicks - MIN_SOURCE_HANDLE_TICKS,
               );
       } else {
+        // Forward: the visible in-point sits at `sourceStart`; the leading handle
+        // reads *backward* toward media start. Available handle = frames before trim-in.
+        const handleTicks = Math.max(0, clip.sourceStartTicks);
         sampleTicks =
           handleTicks < MIN_SOURCE_HANDLE_TICKS
             ? Math.max(0, clip.sourceStartTicks + MIN_SOURCE_HANDLE_TICKS)
             : Math.max(0, clip.sourceStartTicks - transitionOffsetTicks);
       }
     } else {
-      const handleTicks = Math.max(
-        0,
-        clip.sourceDurationTicks - clip.sourceStartTicks - clip.sourceRangeDurationTicks,
-      );
-      const sourceRangeEndTicks = clip.sourceStartTicks + clip.sourceRangeDurationTicks;
-
-      if ((clip.speed || 1) < 0) {
+      // Outgoing (`from`) peer, composited past its own end → trailing handle.
+      if (isReverse) {
+        // Reverse: the visible out-point sits at `sourceStart`; the trailing handle
+        // continues *backward* toward media start. Available handle = frames before it.
+        const handleTicks = Math.max(0, clip.sourceStartTicks);
         sampleTicks =
           handleTicks < MIN_SOURCE_HANDLE_TICKS
             ? Math.max(0, clip.sourceStartTicks + MIN_SOURCE_HANDLE_TICKS)
             : Math.max(0, clip.sourceStartTicks - transitionOffsetTicks);
       } else {
+        // Forward: the visible out-point sits at `sourceStart + range`; the trailing
+        // handle reads *forward* toward the media end. Available handle = range end to EOF.
+        const handleTicks = hasKnownDuration
+          ? Math.max(0, clip.sourceDurationTicks - sourceRangeEndTicks)
+          : 0;
         sampleTicks =
           handleTicks < MIN_SOURCE_HANDLE_TICKS
-            ? Math.max(
-                0,
-                clip.sourceStartTicks + clip.sourceRangeDurationTicks - MIN_SOURCE_HANDLE_TICKS,
-              )
+            ? Math.max(0, sourceRangeEndTicks - MIN_SOURCE_HANDLE_TICKS)
             : Math.min(
                 sourceRangeEndTicks + transitionOffsetTicks,
                 // Upper bound is the end of the *source*, not offset by the trim-in
-                // point — mirrors the reversed `isNextClip` branch above. Adding
-                // sourceStartTicks let this request a timestamp past EOF for trimmed clips.
+                // point — adding sourceStartTicks let this request a timestamp past
+                // EOF for trimmed clips.
                 clip.sourceDurationTicks - MIN_SOURCE_HANDLE_TICKS,
               );
       }

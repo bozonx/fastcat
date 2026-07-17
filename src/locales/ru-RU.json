@@ -1036,6 +1036,7 @@
         "errorClipHeadHandleTooShort": "Начало клипа слишком короткое для перехода (нужно {needSeconds}с, есть {haveSeconds}с)",
         "errorClipTailHandleTooShort": "Хвост клипа слишком короткий для перехода (нужно {needSeconds}с, есть {haveSeconds}с)",
         "errorClipTooShort": "Клип слишком короткий для перехода (нужно {need}с, есть {have}с)",
+        "errorClipTooShortForBoth": "Клип слишком короткий для обоих переходов (нужно {need}с, есть {have}с)",
         "errorGapBetweenClips": "Зазор между клипами ({gapSeconds}с) мешает смешиванию",
         "errorNextHandleTooShort": "Начало следующего клипа слишком короткое (нужно {needSeconds}с, есть {haveSeconds}с)",
         "errorNoNextClip": "Нет следующего клипа для перехода",

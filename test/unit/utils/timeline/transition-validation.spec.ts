@@ -160,6 +160,26 @@ describe('transition-validation', () => {
       const track = createTrack([prev, curr]);
       expect(validateTransitionIn(track, track.items[1] as TimelineMediaClipItem)).toBeNull();
     });
+
+    it('returns error when transitionIn and transitionOut together exceed the clip', () => {
+      const prev = createClip({
+        id: 'prev',
+        timelineRange: { startTicks: 0, durationTicks: 5_000_000 },
+        sourceDurationTicks: 20_000_000,
+        sourceRange: { startTicks: 0, durationTicks: 5_000_000 },
+      });
+      const curr = createClip({
+        id: 'curr',
+        timelineRange: { startTicks: 5_000_000, durationTicks: 4_000_000 },
+        transitionIn: { durationTicks: 3_000_000, mode: 'adjacent' },
+        transitionOut: { durationTicks: 3_000_000, mode: 'background' },
+      });
+      const track = createTrack([prev, curr]);
+      const result = validateTransitionIn(track, track.items[1] as TimelineMediaClipItem);
+      expect(result).not.toBeNull();
+      expect(result!.key).toBe('fastcat.timeline.transition.errorClipTooShortForBoth');
+      expect(result!.params).toEqual({ need: '6.00', have: '4.00' });
+    });
   });
 
   describe('validateTransitionOut', () => {
@@ -252,6 +272,26 @@ describe('transition-validation', () => {
       });
       const track = createTrack([curr, next]);
       expect(validateTransitionOut(track, track.items[0] as TimelineMediaClipItem)).toBeNull();
+    });
+
+    it('returns error when transitionOut and transitionIn together exceed the clip', () => {
+      const curr = createClip({
+        id: 'curr',
+        timelineRange: { startTicks: 0, durationTicks: 4_000_000 },
+        transitionIn: { durationTicks: 3_000_000, mode: 'background' },
+        transitionOut: { durationTicks: 3_000_000, mode: 'adjacent' },
+      });
+      const next = createClip({
+        id: 'next',
+        timelineRange: { startTicks: 4_000_000, durationTicks: 5_000_000 },
+        sourceDurationTicks: 20_000_000,
+        sourceRange: { startTicks: 5_000_000, durationTicks: 5_000_000 },
+      });
+      const track = createTrack([curr, next]);
+      const result = validateTransitionOut(track, track.items[0] as TimelineMediaClipItem);
+      expect(result).not.toBeNull();
+      expect(result!.key).toBe('fastcat.timeline.transition.errorClipTooShortForBoth');
+      expect(result!.params).toEqual({ need: '6.00', have: '4.00' });
     });
   });
 });

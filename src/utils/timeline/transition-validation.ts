@@ -33,6 +33,19 @@ export function validateTransitionIn(
     };
   }
 
+  // Both edges consume the clip's own visible material; when their windows would
+  // overlap the render only shows the nearer edge, so the other is effectively cut.
+  const oppTicks = item.transitionOut?.durationTicks ?? 0;
+  if (oppTicks > 0 && item.timelineRange.durationTicks < tr.durationTicks + oppTicks) {
+    return {
+      key: 'fastcat.timeline.transition.errorClipTooShortForBoth',
+      params: {
+        need: ((tr.durationTicks + oppTicks) / TICKS_PER_SECOND).toFixed(2),
+        have: clipDurS,
+      },
+    };
+  }
+
   if (mode === 'adjacent') {
     const prev = getPrevClipForItem(track, item);
     if (!prev) {
@@ -81,6 +94,19 @@ export function validateTransitionOut(
     return {
       key: 'fastcat.timeline.transition.errorClipTooShort',
       params: { need: needS, have: clipDurS },
+    };
+  }
+
+  // Both edges consume the clip's own visible material; when their windows would
+  // overlap the render only shows the nearer edge, so the other is effectively cut.
+  const oppTicks = item.transitionIn?.durationTicks ?? 0;
+  if (oppTicks > 0 && item.timelineRange.durationTicks < tr.durationTicks + oppTicks) {
+    return {
+      key: 'fastcat.timeline.transition.errorClipTooShortForBoth',
+      params: {
+        need: ((tr.durationTicks + oppTicks) / TICKS_PER_SECOND).toFixed(2),
+        have: clipDurS,
+      },
     };
   }
 
