@@ -151,6 +151,13 @@ const containerRef = ref<HTMLElement | null>(null);
 const { isFullscreen, toggle: toggleFullscreen } = useAppFullscreen(containerRef);
 const shouldTeleport = computed(() => isTauriRuntime() && isFullscreen.value);
 
+// In native (web) fullscreen only the container subtree renders, so popovers/menus
+// teleported to <body> escape the fullscreen and never appear. Portal them into the
+// container element instead while fullscreen. Mirrors MonitorContainer's desktop pattern.
+const monitorMenuPortal = computed<boolean | HTMLElement>(() =>
+  isFullscreen.value ? (containerRef.value ?? false) : true,
+);
+
 let longPressTimer: ReturnType<typeof setTimeout> | null = null;
 let longPressStartX = 0;
 let longPressStartY = 0;
@@ -577,7 +584,7 @@ function onMonitorButtonPointerUp() {
           </div>
 
           <div class="flex items-center gap-4" :class="[showSideControls ? 'flex-col' : 'h-full']">
-            <MobileMonitorAudioControl />
+            <MobileMonitorAudioControl :portal="monitorMenuPortal" />
 
             <UButton
               size="md"
@@ -619,6 +626,7 @@ function onMonitorButtonPointerUp() {
               :items="mobileSpeedMenuItems"
               :ui="{ content: 'min-w-20' }"
               :content="dropdownNoReturnFocus"
+              :portal="monitorMenuPortal"
               @update:open="setMobileSpeedMenuOpen"
             >
               <UButton
@@ -641,6 +649,7 @@ function onMonitorButtonPointerUp() {
               :open="isMobileMoreMenuOpen"
               :items="contextMenuItems"
               :content="dropdownNoReturnFocus"
+              :portal="monitorMenuPortal"
               @update:open="setMobileMoreMenuOpen"
             >
               <UButton

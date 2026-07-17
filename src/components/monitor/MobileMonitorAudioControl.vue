@@ -4,6 +4,17 @@ import UiWheelSlider from '~/components/ui/UiWheelSlider.vue';
 import { useUiStore } from '~/stores/ui.store';
 import { storeToRefs } from 'pinia';
 
+const props = withDefaults(
+  defineProps<{
+    /** Teleport target for the popover content. Point at the fullscreen container so
+     * the panel stays visible while the monitor is in native fullscreen. */
+    portal?: boolean | string | HTMLElement;
+  }>(),
+  {
+    portal: true,
+  },
+);
+
 const uiStore = useUiStore();
 const { monitorVolume, monitorMuted } = storeToRefs(uiStore);
 const { t } = useI18n();
@@ -42,7 +53,7 @@ function onVolumeUpdate(v: number | undefined) {
 
 <template>
   <div class="relative flex items-center shrink-0">
-    <UPopover :content="{ side: 'top', sideOffset: 12 }">
+    <UPopover :content="{ side: 'top', sideOffset: 12 }" :portal="props.portal">
       <UButton
         size="md"
         variant="ghost"
@@ -59,7 +70,7 @@ function onVolumeUpdate(v: number | undefined) {
           class="bg-ui-bg-elevated border border-ui-border rounded-xl shadow-2xl px-5 py-4 flex items-center gap-4 w-[85vw] max-w-[340px]"
           @click.stop
         >
-          <div class="flex-1 w-full flex items-center justify-center">
+          <div class="flex-1 min-w-0">
             <UiWheelSlider
               :min="0"
               :max="2"

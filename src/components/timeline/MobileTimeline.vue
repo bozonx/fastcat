@@ -36,6 +36,7 @@ import MobileTrackMixerDrawer from './MobileTrackMixerDrawer.vue';
 import MobileTrackManagerDrawer from './MobileTrackManagerDrawer.vue';
 import MobileHistoryDrawer from './MobileHistoryDrawer.vue';
 import MobileMarkersDrawer from './MobileMarkersDrawer.vue';
+import TransitionProperties from '~/components/properties/TransitionProperties.vue';
 
 // Composables
 import { useMobileTimelineDrawers } from '~/composables/timeline/useMobileTimelineDrawers';
@@ -89,6 +90,7 @@ const {
   isAddContentDrawerOpen,
   isTrimDrawerOpen,
   isTransitionsPanelOpen,
+  isTransitionPropertiesDrawerOpen,
   isDeleteDrawerOpen,
   isVirtualClipPresetDrawerOpen,
   isSettingsDrawerOpen,
@@ -110,11 +112,13 @@ const {
   openClipDeleteDrawer,
   openClipTrimDrawer,
   openClipTransitionsPanel,
+  openTransitionPropertiesDrawer,
   backToClipProperties,
   onUpdateDrawerOpen,
   onClipPropertiesDrawerClose,
   onClipTrimDrawerClose,
   onTransitionsPanelClose,
+  onTransitionPropertiesDrawerClose,
   onClipDeleteDrawerClose,
   onMultiSelectionDrawerClose,
   onMarkerPropertiesDrawerClose,
@@ -133,7 +137,7 @@ watch(
 
 const {
   selectedMarkerId,
-  selectedTransitionContext: _selectedTransitionContext,
+  selectedTransitionContext,
   selectedGap,
   selectedClipContext,
   selectedClips,
@@ -487,7 +491,54 @@ watch(
       v-if="isTransitionsPanelOpen"
       @back="backToClipProperties"
       @close="onTransitionsPanelClose"
+      @open-settings="openTransitionPropertiesDrawer"
     />
+
+    <MobileTimelineDrawer
+      v-model:open="isTransitionPropertiesDrawerOpen"
+      v-model:active-snap-point="drawerActiveSnapPoint"
+      with-toolbar-snap
+      @update:open="(value) => !value && onTransitionPropertiesDrawerClose()"
+    >
+      <template #toolbar>
+        <MobileDrawerToolbar
+          :orientation="drawerToolbarOrientation"
+          :class="
+            drawerToolbarOrientation === 'vertical'
+              ? 'border-r border-ui-border'
+              : 'border-b border-ui-border'
+          "
+        >
+          <MobileDrawerToolbarButton
+            icon="i-heroicons-chevron-left"
+            :label="t('common.back')"
+            @click="
+              () => {
+                onTransitionPropertiesDrawerClose();
+                backToClipProperties();
+              }
+            "
+          />
+          <MobileDrawerToolbarButton
+            icon="i-heroicons-x-mark"
+            :label="t('common.close')"
+            @click="onTransitionPropertiesDrawerClose"
+          />
+        </MobileDrawerToolbar>
+      </template>
+
+      <div
+        v-if="selectedTransitionContext && timelineStore.selectedTransition"
+        class="px-4 pb-8 pt-4"
+      >
+        <TransitionProperties
+          :transition-selection="timelineStore.selectedTransition"
+          :clip="selectedTransitionContext.clip"
+          :track="selectedTransitionContext.track"
+          hide-actions
+        />
+      </div>
+    </MobileTimelineDrawer>
 
     <!-- Multi Selection Drawer -->
     <MobileTimelineDrawer

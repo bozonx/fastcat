@@ -12,6 +12,7 @@ import UiSelect from '~/components/ui/UiSelect.vue';
 const emit = defineEmits<{
   (e: 'close'): void;
   (e: 'back'): void;
+  (e: 'open-settings'): void;
 }>();
 
 const { t } = useI18n();
@@ -22,7 +23,15 @@ const workspaceStore = useWorkspaceStore();
 const PX_PER_SECOND = 100;
 const MIN_DURATION_SEC = 0.1;
 
-const { clip } = useSelectedTimelineClip();
+const { clip, track } = useSelectedTimelineClip();
+
+const clipWithTrackId = computed(() => {
+  if (!clip.value || !track.value) return null;
+  return {
+    ...clip.value,
+    trackId: track.value.id,
+  };
+});
 
 const clipDurationTicks = computed(() =>
   Math.max(0, Math.round(Number(clip.value?.timelineRange?.durationTicks ?? 0))),
@@ -49,7 +58,7 @@ const {
   updateTransitionType,
   updateTransitionCurve,
 } = useClipTransitions({
-  clip,
+  clip: clipWithTrackId,
   defaultDurationTicks,
   selectTransition: () => {},
   selectTimelineTransition: () => {},
@@ -109,7 +118,8 @@ const drag = reactive<{
   startX: number;
   startSec: number;
   previewSec: number;
-}>({ edge: null, startX: 0, startSec: 0, previewSec: 0 });
+  lastCommittedTicks: number;
+}>({ edge: null, startX: 0, startSec: 0, previewSec: 0, lastCommittedTicks: 0 });
 
 function durationSec(edge: 'in' | 'out'): number {
   if (drag.edge === edge) return drag.previewSec;
@@ -133,6 +143,7 @@ function onDurationStart(edge: 'in' | 'out', event: TouchEvent) {
   drag.startX = x;
   drag.startSec = Math.max(0, Number(transition.durationTicks ?? 0) / TICKS_PER_SECOND);
   drag.previewSec = drag.startSec;
+  drag.lastCommittedTicks = Math.round(drag.previewSec * TICKS_PER_SECOND);
 }
 
 function onDurationMove(event: TouchEvent) {
@@ -144,14 +155,32 @@ function onDurationMove(event: TouchEvent) {
   const deltaSec = (x - drag.startX) / PX_PER_SECOND;
   const next = drag.startSec + deltaSec;
   drag.previewSec = Math.min(maxDurationSec(drag.edge), Math.max(MIN_DURATION_SEC, next));
+  commitDraggedDuration();
 }
 
 function onDurationEnd() {
   if (!drag.edge) return;
-  const edge = drag.edge;
-  const finalSec = drag.previewSec;
+  commitDraggedDuration();
   drag.edge = null;
-  updateTransitionDuration(edge, finalSec);
+  drag.lastCommittedTicks = 0;
+}
+
+function commitDraggedDuration() {
+  if (!drag.edge) return;
+  const nextTicks = Math.round(drag.previewSec * TICKS_PER_SECOND);
+  if (nextTicks === drag.lastCommittedTicks) return;
+
+  drag.lastCommittedTicks = nextTicks;
+  updateTransitionDuration(drag.edge, drag.previewSec);
+}
+
+function openTransitionSettings(edge: 'in' | 'out') {
+  const currentClip = clip.value;
+  const currentTrack = track.value;
+  if (!currentClip || !currentTrack) return;
+
+  timelineStore.selectTransition({ trackId: currentTrack.id, itemId: currentClip.id, edge });
+  emit('open-settings');
 }
 
 function formatSeconds(value: number): string {
@@ -234,15 +263,26 @@ function formatSeconds(value: number): string {
 
           <!-- Present: type, curve, duration swipe -->
           <template v-else>
-            <UiSelect
-              :model-value="(edge === 'in' ? transitionIn : transitionOut)?.type"
-              :items="transitionOptions"
-              value-key="value"
-              label-key="label"
-              size="xs"
-              full-width
-              @update:model-value="(v: unknown) => updateTypeFromSelect(edge, v)"
-            />
+            <div class="flex items-center gap-1.5">
+              <UiSelect
+                :model-value="(edge === 'in' ? transitionIn : transitionOut)?.type"
+                :items="transitionOptions"
+                value-key="value"
+                label-key="label"
+                size="xs"
+                full-width
+                class="flex-1 min-w-0"
+                @update:model-value="(v: unknown) => updateTypeFromSelect(edge, v)"
+              />
+              <UButton
+                size="xs"
+                color="gray"
+                variant="ghost"
+                icon="i-heroicons-adjustments-horizontal"
+                class="shrink-0 bg-white/5 active:bg-white/10"
+                @click="openTransitionSettings(edge)"
+              />
+            </div>
 
             <UiSelect
               :model-value="(edge === 'in' ? transitionIn : transitionOut)?.curve ?? 'linear'"
@@ -256,6 +296,7 @@ function formatSeconds(value: number): string {
 
             <!-- Swipe to adjust duration -->
             <div
+              :data-testid="`mobile-transition-duration-${edge}`"
               class="mt-auto flex items-center justify-between gap-1.5 h-10 px-2 rounded-lg bg-ui-bg-muted border border-ui-border/60 touch-none active:bg-blue-500/10 transition-colors"
               :class="{ 'ring-1 ring-blue-400/60': drag.edge === edge }"
               @touchstart="onDurationStart(edge, $event)"

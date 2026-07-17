@@ -21,6 +21,7 @@ export function useMobileTimelineDrawers() {
   const isAddContentDrawerOpen = ref(false);
   const isTrimDrawerOpen = ref(false);
   const isTransitionsPanelOpen = ref(false);
+  const isTransitionPropertiesDrawerOpen = ref(false);
   const isDeleteDrawerOpen = ref(false);
   const isVirtualClipPresetDrawerOpen = ref(false);
   const isSettingsDrawerOpen = ref(false);
@@ -59,6 +60,7 @@ export function useMobileTimelineDrawers() {
     isMultiSelectionDrawerOpen,
     isTrimDrawerOpen,
     isTransitionsPanelOpen,
+    isTransitionPropertiesDrawerOpen,
     isDeleteDrawerOpen,
     isAddContentDrawerOpen,
     isVirtualClipPresetDrawerOpen,
@@ -128,7 +130,7 @@ export function useMobileTimelineDrawers() {
         return;
       }
 
-      const { trackId, itemIds, entity, transition: _transition, markerId, gap } = state;
+      const { trackId, itemIds, entity, transition, markerId, gap } = state;
 
       if (isLongPress.value) return;
 
@@ -144,6 +146,12 @@ export function useMobileTimelineDrawers() {
       if (markerId) {
         closeAllDrawers();
         isMarkerPropertiesDrawerOpen.value = true;
+        return;
+      }
+
+      if (transition) {
+        closeAllDrawers();
+        isTransitionPropertiesDrawerOpen.value = true;
         return;
       }
 
@@ -246,10 +254,17 @@ export function useMobileTimelineDrawers() {
     isClipPropertiesDrawerOpen.value = false;
   }
 
+  function openTransitionPropertiesDrawer() {
+    suppressDrawerSelectionClearForNextTick();
+    closeAllDrawers();
+    isTransitionPropertiesDrawerOpen.value = true;
+  }
+
   function backToClipProperties() {
     isDeleteDrawerOpen.value = false;
     isTrimDrawerOpen.value = false;
     isTransitionsPanelOpen.value = false;
+    isTransitionPropertiesDrawerOpen.value = false;
     isClipPropertiesDrawerOpen.value = true;
   }
 
@@ -277,6 +292,15 @@ export function useMobileTimelineDrawers() {
   function onTransitionsPanelClose() {
     isTransitionsPanelOpen.value = false;
     clearClipSelectionIfActive();
+  }
+
+  function onTransitionPropertiesDrawerClose() {
+    isTransitionPropertiesDrawerOpen.value = false;
+    timelineStore.selectTransition(null);
+
+    if (selectionStore.selectedEntity?.kind === 'transition') {
+      selectionStore.clearSelection();
+    }
   }
 
   function onClipDeleteDrawerClose() {
@@ -341,6 +365,7 @@ export function useMobileTimelineDrawers() {
     isAddContentDrawerOpen,
     isTrimDrawerOpen,
     isTransitionsPanelOpen,
+    isTransitionPropertiesDrawerOpen,
     isDeleteDrawerOpen,
     isVirtualClipPresetDrawerOpen,
     isSettingsDrawerOpen,
@@ -363,11 +388,13 @@ export function useMobileTimelineDrawers() {
     openClipDeleteDrawer,
     openClipTrimDrawer,
     openClipTransitionsPanel,
+    openTransitionPropertiesDrawer,
     backToClipProperties,
     onUpdateDrawerOpen,
     onClipPropertiesDrawerClose,
     onClipTrimDrawerClose,
     onTransitionsPanelClose,
+    onTransitionPropertiesDrawerClose,
     onClipDeleteDrawerClose,
     onMultiSelectionDrawerClose,
     onMarkerPropertiesDrawerClose,
