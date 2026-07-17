@@ -7,8 +7,12 @@ import {
   clipSupportsSpeedControls,
   clipSupportsThumbnailControls,
 } from '~/utils/timeline/clip-capabilities';
-import { getApplicableClipParameterGroups } from '~/utils/timeline/clip-parameters';
+import {
+  filterDevOnlyGroups,
+  getApplicableClipParameterGroups,
+} from '~/utils/timeline/clip-parameters';
 import { useMediaStore, resolveMediaMetadata } from '~/stores/media.store';
+import { useWorkspaceStore } from '~/stores/workspace.store';
 
 export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): ContextMenuGroup[] {
   const track = options.track.value;
@@ -243,14 +247,18 @@ export function buildSingleItemActionGroup(options: UseClipContextMenuOptions): 
   const isLocked = item.kind === 'clip' && Boolean(item.locked);
   const clip = item.kind === 'clip' ? item : null;
   const clipParametersSnapshot = options.getClipParametersSnapshot();
+  const workspaceStore = useWorkspaceStore();
   const hasApplicableClipParameters =
     clip !== null &&
     clipParametersSnapshot !== null &&
-    getApplicableClipParameterGroups({
-      snapshot: clipParametersSnapshot,
-      targetClip: clip,
-      targetTrackKind: track.kind,
-    }).length > 0;
+    filterDevOnlyGroups(
+      getApplicableClipParameterGroups({
+        snapshot: clipParametersSnapshot,
+        targetClip: clip,
+        targetTrackKind: track.kind,
+      }),
+      workspaceStore.inDevelopmentFeaturesEnabled,
+    ).length > 0;
 
   const actions: ContextMenuGroup = [];
 

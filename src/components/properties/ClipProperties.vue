@@ -955,7 +955,10 @@ defineExpose({
 
     <!-- Tab: Video -->
     <div v-else-if="activeTab === 'video'" class="flex flex-col gap-2">
-      <div class="flex items-center justify-between px-1 py-1 rounded bg-ui-bg-elevated/30">
+      <div
+        v-if="workspaceStore.inDevelopmentFeaturesEnabled"
+        class="flex items-center justify-between px-1 py-1 rounded bg-ui-bg-elevated/30"
+      >
         <span class="text-2xs text-ui-text-muted uppercase tracking-wide">{{
           t('fastcat.clip.animation.presetsTitle')
         }}</span>

@@ -12,6 +12,7 @@ export function useConfirmClose() {
   const timelineStore = useTimelineStore();
   const uiStore = useUiStore();
   const { loadTimeline } = useProjectActions();
+  const { isMobileLayout } = useMobileLayout();
   const toast = useToast();
   const { t } = useI18n();
 
@@ -71,9 +72,24 @@ export function useConfirmClose() {
   // Autosave is periodic, but when the app is backgrounded we flush immediately.
   // This is especially important on mobile where autosave writes the canonical
   // timeline file and the OS may kill the page without a full beforeunload flow.
+  //
+  // Uses the *synchronous* flush: serialization runs on the main thread (no
+  // worker round-trip that a freezing/dying page would never complete), and the
+  // write is initiated synchronously so the I/O is already in flight when the OS
+  // suspends the page.
   function flushTimelineAutosaveForLifecycle() {
     if (!timelineStore.isTimelineDirty) return;
-    void timelineStore.flushTimelineAutosave();
+    timelineStore.flushTimelineAutosaveSync();
+  }
+
+  // `blur` fires constantly on mobile (opening a drawer, focusing an input that
+  // raises the keyboard, etc.), so it's a poor autosave trigger there — the
+  // mobile lifecycle is already covered by visibilitychange/pagehide/freeze.
+  // Keep it only for desktop web, where losing window focus is a meaningful hint
+  // the user may be about to leave.
+  function onWindowBlur() {
+    if (isMobileLayout.value) return;
+    flushTimelineAutosaveForLifecycle();
   }
 
   function onBeforeUnload(e: BeforeUnloadEvent) {
@@ -154,7 +170,7 @@ export function useConfirmClose() {
 
   onMounted(() => {
     window.addEventListener('beforeunload', onBeforeUnload);
-    window.addEventListener('blur', flushTimelineAutosaveForLifecycle);
+    window.addEventListener('blur', onWindowBlur);
     window.addEventListener('pagehide', flushTimelineAutosaveForLifecycle);
     document.addEventListener('freeze', flushTimelineAutosaveForLifecycle);
     document.addEventListener('visibilitychange', onVisibilityChange);
@@ -165,7 +181,7 @@ export function useConfirmClose() {
 
   onUnmounted(() => {
     window.removeEventListener('beforeunload', onBeforeUnload);
-    window.removeEventListener('blur', flushTimelineAutosaveForLifecycle);
+    window.removeEventListener('blur', onWindowBlur);
     window.removeEventListener('pagehide', flushTimelineAutosaveForLifecycle);
     document.removeEventListener('freeze', flushTimelineAutosaveForLifecycle);
     document.removeEventListener('visibilitychange', onVisibilityChange);

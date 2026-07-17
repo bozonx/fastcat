@@ -202,6 +202,7 @@ const titleStyle = computed(() => {
         <!-- Sits above the trim handles (z > --z-clip-trim) so it stays clickable
              even where a handle overlaps it. -->
         <button
+          v-if="workspaceStore.inDevelopmentFeaturesEnabled"
           type="button"
           class="size-4 rounded transition-colors flex items-center justify-center shrink-0"
           :class="

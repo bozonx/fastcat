@@ -371,7 +371,7 @@ const tauriVideoCodecs = computed(() => {
       </div>
 
       <!-- Web Diagnostics -->
-      <template v-if="!isTauri">
+      <template v-if="!isTauri && workspaceStore.inDevelopmentFeaturesEnabled">
         <div
           v-if="diagnostics"
           class="rounded-lg border border-ui-border-muted bg-ui-bg-muted/30 p-4 flex flex-col gap-2"
@@ -438,7 +438,7 @@ const tauriVideoCodecs = computed(() => {
       </template>
 
       <!-- Tauri Diagnostics -->
-      <template v-else>
+      <template v-if="isTauri && workspaceStore.inDevelopmentFeaturesEnabled">
         <div
           v-if="tauriDiagnostics"
           class="rounded-lg border border-ui-border-muted bg-ui-bg-muted/30 p-4 flex flex-col gap-2"

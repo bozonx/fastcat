@@ -512,7 +512,7 @@ describe('TimelinePersistenceModule', () => {
     expect(deleteAutosaveFile).toHaveBeenCalledWith('timeline.otio');
   });
 
-  it('on mobile writes autosave to the main file and clears dirty', async () => {
+  it('on mobile flushTimelineAutosave writes to the main file and clears dirty', async () => {
     const files: FileStore = {};
     const vfsMock = makeVfsMock(files);
     const onMobileBackup = vi.fn().mockResolvedValue(undefined);
@@ -525,9 +525,75 @@ describe('TimelinePersistenceModule', () => {
     const mod = createTimelinePersistenceModule(deps);
 
     mod.markDirty();
-    await mod.requestTimelineSave({ immediate: true });
+    await mod.flushTimelineAutosave();
 
     expect(vfsMock.writeTimelineText).toHaveBeenCalledWith('timeline.otio', expect.any(String));
+    expect(deps.isTimelineDirty.value).toBe(false);
+  });
+
+  it('on mobile coalesces edit-driven saves through the debounce (no synchronous write)', async () => {
+    vi.useFakeTimers();
+    try {
+      const files: FileStore = {};
+      const vfsMock = makeVfsMock(files);
+      const deps = createMockDeps({
+        timelineDoc: ref({ ...fallbackDoc }),
+        ...vfsMock,
+        isMobile: ref(true),
+        autosaveDebounceMs: () => 800,
+      });
+      const mod = createTimelinePersistenceModule(deps);
+
+      mod.markDirty();
+      // Even with `immediate: true`, the mobile path defers to the debounce.
+      await mod.requestTimelineSave({ immediate: true });
+      expect(vfsMock.writeTimelineText).not.toHaveBeenCalled();
+
+      // A burst of edits within the window collapses into a single write.
+      mod.markDirty();
+      await mod.requestTimelineSave({ immediate: true });
+      expect(vfsMock.writeTimelineText).not.toHaveBeenCalled();
+
+      await vi.advanceTimersByTimeAsync(800);
+      // Drain the async serialize (worker mock) + write.
+      await vi.runAllTimersAsync();
+
+      expect(vfsMock.writeTimelineText).toHaveBeenCalledTimes(1);
+      expect(vfsMock.writeTimelineText).toHaveBeenCalledWith('timeline.otio', expect.any(String));
+      expect(deps.isTimelineDirty.value).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('on mobile flushTimelineAutosaveSync serializes on the main thread and writes the main file', async () => {
+    const files: FileStore = {};
+    const vfsMock = makeVfsMock(files);
+    // Distinct return so we can confirm the *synchronous* serializer (not the
+    // worker) produced the written bytes.
+    const syncSerialize = vi
+      .fn()
+      .mockReturnValue(JSON.stringify({ ...fallbackDoc, via: 'sync' }));
+    const deps = createMockDeps({
+      timelineDoc: ref({ ...fallbackDoc }),
+      ...vfsMock,
+      isMobile: ref(true),
+      serializeTimelineToOtio: syncSerialize,
+    });
+    const mod = createTimelinePersistenceModule(deps);
+
+    mod.markDirty();
+    mod.flushTimelineAutosaveSync();
+
+    expect(syncSerialize).toHaveBeenCalledTimes(1);
+    // Write is initiated synchronously; let its promise settle.
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(vfsMock.writeTimelineText).toHaveBeenCalledWith(
+      'timeline.otio',
+      JSON.stringify({ ...fallbackDoc, via: 'sync' }),
+    );
     expect(deps.isTimelineDirty.value).toBe(false);
   });
 

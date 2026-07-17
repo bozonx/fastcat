@@ -360,17 +360,17 @@ defineExpose({
       value-key="value"
       label-key="label"
       size="xs"
-    full-width
-    :searchable="false"
-    @update:model-value="updateTypeFromSelect"
-  >
-    <template #leading>
-      <UIcon v-if="selectedManifest" :name="selectedManifest.icon" class="w-4 h-4 shrink-0" />
-    </template>
-    <template #item-leading="{ item }">
-      <UIcon v-if="item.icon" :name="item.icon" class="w-4 h-4 shrink-0" />
-    </template>
-  </UiSelect>
+      full-width
+      :searchable="false"
+      @update:model-value="updateTypeFromSelect"
+    >
+      <template #leading>
+        <UIcon v-if="selectedManifest" :name="selectedManifest.icon" class="w-4 h-4 shrink-0" />
+      </template>
+      <template #item-leading="{ item }">
+        <UIcon v-if="item.icon" :name="item.icon" class="w-4 h-4 shrink-0" />
+      </template>
+    </UiSelect>
 
     <UiFormField :label="t('fastcat.timeline.transition.duration')">
       <UiSliderInput

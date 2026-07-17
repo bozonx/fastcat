@@ -4,6 +4,7 @@ import TimelineClipContent from '~/components/timeline/TimelineClipContent.vue';
 
 vi.mock('~/stores/workspace.store', () => ({
   useWorkspaceStore: () => ({
+    inDevelopmentFeaturesEnabled: true,
     userSettings: {
       ui: {
         clipThumbnailMode: 'all',

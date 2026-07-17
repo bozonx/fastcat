@@ -133,6 +133,14 @@ export interface TimelinePersistenceModule {
 
   requestTimelineSave: (options?: { immediate?: boolean }) => Promise<void>;
   flushTimelineAutosave: () => Promise<void>;
+  /**
+   * Best-effort, fully synchronous flush for page-lifecycle events
+   * (`pagehide` / `freeze` / `visibilitychange`→hidden). Serializes on the main
+   * thread (no worker round-trip) and initiates the write synchronously, so the
+   * I/O is already in flight when the OS suspends/kills the page. Critical on
+   * mobile, where the autosave writes the canonical timeline file.
+   */
+  flushTimelineAutosaveSync: () => void;
   loadTimeline: () => Promise<void>;
   saveTimeline: () => Promise<void>;
 }
@@ -389,6 +397,20 @@ export function createTimelinePersistenceModule(
     return serialized;
   }
 
+  // Synchronous counterpart to `serializeValidatedTimeline`. Runs the exact same
+  // serializer the worker uses (`serializeTimelineToOtio`), on the main thread,
+  // so a page-lifecycle flush produces the bytes without an async worker
+  // round-trip that a freezing page would never complete.
+  function serializeValidatedTimelineSync(doc: TimelineDocument): string {
+    const serialized = deps.serializeTimelineToOtio(toRaw(doc));
+
+    if (!serialized || serialized.length < 10) {
+      throw new Error('Refusing to save: Serialized timeline data is suspiciously small or empty');
+    }
+
+    return serialized;
+  }
+
   function getRestoreFallbackFormat(doc: TimelineDocument): TimelineFormatInput {
     return (
       doc.metadata?.fastcat?.format ?? { fps: getTimelineFps(doc.timebase, { num: 25, den: 1 }) }
@@ -468,6 +490,55 @@ export function createTimelinePersistenceModule(
     await autoSave.requestSave({ immediate: true });
   }
 
+  function flushTimelineAutosaveSync() {
+    const doc = deps.timelineDoc.value;
+    if (!doc || !isDirty()) return;
+    if (deps.isReadOnly?.value) return;
+
+    const currentProjectId = deps.currentProjectName.value;
+    const currentTimelinePath = deps.currentTimelinePath.value;
+    if (!currentProjectId || !currentTimelinePath) return;
+
+    // Cancel the pending periodic timer; we're writing the same (or newer) state
+    // right now. A still-armed debounced autosave firing afterwards is harmless
+    // (it no-ops once the write below marks the revision clean).
+    clearAutosaveTimer();
+
+    const isMobile = deps.isMobile?.value ?? false;
+    const targetPath = isMobile ? currentTimelinePath : getAutosavePath(currentTimelinePath);
+    const revisionToSave = currentRevision;
+
+    let serialized: string;
+    try {
+      serialized = serializeValidatedTimelineSync(doc);
+    } catch (e) {
+      // Serialization is the only synchronous step; if it throws there is
+      // nothing safe to write. Leave the dirty state intact.
+      log.warn('Synchronous autosave serialization failed', e);
+      return;
+    }
+
+    // Fire the write without awaiting — during `freeze`/`pagehide` there is no
+    // opportunity to await, but an already-initiated I/O has the best chance of
+    // completing. Dirty bookkeeping is advanced only on confirmed success (which
+    // matters only when the page survives, e.g. a visibilitychange→hidden that
+    // later returns): if the write fails, the edit stays dirty and a later edit
+    // or flush re-saves it.
+    void writeSerializedToPath(targetPath, serialized)
+      .then(() => {
+        if (
+          currentProjectId === deps.currentProjectName.value &&
+          currentTimelinePath === deps.currentTimelinePath.value &&
+          currentRevision === revisionToSave
+        ) {
+          markCleanForCurrentRevision();
+        }
+      })
+      .catch((e) => {
+        log.warn('Synchronous autosave write failed', e);
+      });
+  }
+
   const autoSave = createAutoSave({
     debounceMs: deps.autosaveDebounceMs?.() ?? 500,
     doSave: async () => {
@@ -502,7 +573,13 @@ export function createTimelinePersistenceModule(
           return false;
         }
 
+        // Reconcile the live doc with its on-disk (re-parsed) form so the running
+        // session matches a fresh load. Skipped on mobile: there the autosave runs
+        // on *every* edit, and a per-edit full re-parse + reactive doc replacement
+        // is a needless main-thread cost (the live doc is already the source of
+        // truth and is what produced this exact serialization).
         if (
+          !isMobile &&
           currentProjectId === deps.currentProjectName.value &&
           currentTimelinePath === deps.currentTimelinePath.value &&
           currentRevision === revisionToSave
@@ -564,7 +641,13 @@ export function createTimelinePersistenceModule(
   async function requestTimelineSave(options?: { immediate?: boolean }) {
     if (!deps.timelineDoc.value) return;
     if (deps.isMobile?.value) {
-      await autoSave.requestSave(options);
+      // On mobile the autosave writes the whole canonical file, so edit-driven
+      // saves are always coalesced through the debounce — even when the caller
+      // asks for `immediate`. Discrete edits arrive in bursts (rapid taps), and
+      // a full serialize + file write per edit is wasteful. True immediacy
+      // (project leave/switch, page-lifecycle) goes through `flushTimelineAutosave`
+      // / `flushTimelineAutosaveSync`, which bypass this path.
+      await autoSave.requestSave();
       return;
     }
     if (options?.immediate) {
@@ -864,6 +947,7 @@ export function createTimelinePersistenceModule(
     markCleanForCurrentRevision,
     requestTimelineSave,
     flushTimelineAutosave,
+    flushTimelineAutosaveSync,
     loadTimeline,
     saveTimeline,
   };

@@ -562,7 +562,11 @@ export const useTimelineStore = defineStore('timeline', () => {
       const minutes = workspaceStore.userSettings.autosave?.intervalMinutes ?? 2;
       return Math.max(1, minutes) * 60_000;
     },
-    autosaveDebounceMs: () => (isMobileLayout.value ? 1_500 : 500),
+    // On mobile every edit-driven save is coalesced through this debounce (see
+    // persistence.requestTimelineSave), so keep it short enough to bound the
+    // data-loss window on an abrupt exit while still batching bursts of taps.
+    // Project leave/switch and page-lifecycle events flush immediately anyway.
+    autosaveDebounceMs: () => (isMobileLayout.value ? 800 : 500),
     isMobile: isMobileLayout,
     onMobileBackup: (serialized) => backup.handleBackup(serialized, { force: true }),
     deleteAutosaveFile: (timelinePath) => deleteTimelineAutosaveFile(timelinePath),
@@ -1077,6 +1081,12 @@ export const useTimelineStore = defineStore('timeline', () => {
     await persistence.flushTimelineAutosave();
   }
 
+  // Synchronous best-effort flush for page-lifecycle events; see
+  // persistence.flushTimelineAutosaveSync.
+  function flushTimelineAutosaveSync() {
+    persistence.flushTimelineAutosaveSync();
+  }
+
   // True when `path` has a crash-recovery sidecar that is both newer than and
   // genuinely different from the saved file (mtime first, content-confirmed only
   // when sizes match; see the equality guard in persistence.loadTimeline).
@@ -1140,6 +1150,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     hasAnyDirtyTimeline,
     isPathDirty,
     flushTimelineAutosave,
+    flushTimelineAutosaveSync,
     deleteAllOpenAutosaves,
     deleteTimelineAutosaveFile,
     scanOpenPathsForRecovery,

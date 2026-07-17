@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
     currentTimelinePath: null as string | null,
     saveTimeline: vi.fn(),
     flushTimelineAutosave: vi.fn(),
+    flushTimelineAutosaveSync: vi.fn(),
     deleteAllOpenAutosaves: vi.fn(),
     scanOpenPathsForRecovery: vi.fn(),
     isTimelineDirty: false,

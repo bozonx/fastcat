@@ -585,7 +585,7 @@ const fontWeightOptions = ['100', '200', '300', '400', '500', '600', '700', '800
     </PropertySection>
 
     <PropertySection
-      v-if="backgroundEnabled"
+      v-if="backgroundEnabled && workspaceStore.inDevelopmentFeaturesEnabled"
       v-model:enabled="backgroundShadowEnabled"
       :title="t('fastcat.textClip.backgroundShadow')"
       has-toggle
