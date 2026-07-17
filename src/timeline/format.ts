@@ -1,6 +1,7 @@
 import type { TimelineDocument, TimelineFormat } from './types';
 import { createTimelineTimebaseFromFps, getTimelineFps } from './timebase';
 import { getResolutionPreset } from '~/utils/settings/helpers';
+import { frameRateToNumber, sanitizeFrameRate } from '~/utils/time/ticks';
 
 export const DEFAULT_TIMELINE_FORMAT: TimelineFormat = {
   width: 1920,
@@ -44,6 +45,11 @@ function toInt(value: unknown, fallback: number, min: number, max: number): numb
   return Math.round(toNumber(value, fallback, min, max));
 }
 
+function normalizeFps(value: unknown, fallback: number): number {
+  const clamped = toNumber(value, fallback, 1, 240);
+  return Number(frameRateToNumber(sanitizeFrameRate(clamped)).toFixed(3));
+}
+
 function toString(value: unknown, fallback: string): string {
   return typeof value === 'string' && value.trim() ? value.trim() : fallback;
 }
@@ -55,7 +61,7 @@ export function normalizeTimelineFormat(
   const width = toInt(input?.width, fallback.width, 1, 7680);
   const height = toInt(input?.height, fallback.height, 1, 7680);
   const preset = getResolutionPreset(width, height);
-  const fps = Math.round(toNumber(input?.fps, fallback.fps, 1, 240) * 1000) / 1000;
+  const fps = normalizeFps(input?.fps, fallback.fps);
   const orientation =
     input?.orientation === 'portrait' || input?.orientation === 'landscape'
       ? input.orientation
@@ -181,6 +187,26 @@ export function setTimelineFormat(
         ...(doc.metadata?.fastcat ?? {}),
         timebase,
         format,
+      },
+    },
+  };
+}
+
+export function setTimelineTimebaseFps(doc: TimelineDocument, fps: number): TimelineDocument {
+  const timebase = createTimelineTimebaseFromFps(fps);
+
+  if (doc.timebase?.num === timebase.num && doc.timebase?.den === timebase.den) {
+    return doc;
+  }
+
+  return {
+    ...doc,
+    timebase,
+    metadata: {
+      ...(doc.metadata ?? {}),
+      fastcat: {
+        ...(doc.metadata?.fastcat ?? {}),
+        timebase,
       },
     },
   };

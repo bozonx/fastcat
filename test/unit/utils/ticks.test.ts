@@ -8,6 +8,7 @@ import {
   TICKS_PER_SECOND,
   TICKS_PER_MILLISECOND,
   formatTicksAsTimecode,
+  frameRateToStandardFpsValue,
   framesToTicks,
   isTickRateFrameCompatible,
   isTickRateSampleCompatible,
@@ -54,6 +55,12 @@ describe('canonical tick-rate compatibility', () => {
         isTickRateSampleCompatible({ ticksPerSecond: CANONICAL_TICKS_PER_SECOND, sampleRate }),
       ).toBe(true);
     }
+  });
+
+  it('uses explicit display values for standard frame-rate selections', () => {
+    expect(STANDARD_FRAME_RATES.map(frameRateToStandardFpsValue)).toEqual([
+      23.976, 24, 25, 29.97, 30, 47.952, 48, 50, 59.94, 60, 95.904, 96, 100, 119.88, 120,
+    ]);
   });
 
   it('represents an NTSC frame as an exact integer tick count', () => {

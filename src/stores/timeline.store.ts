@@ -1,7 +1,7 @@
 import { TICKS_PER_SECOND } from '~/utils/time';
 import { createDevLogger } from '~/utils/dev-logger';
 import { defineStore } from 'pinia';
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { getNextIncrementName } from '~/utils/filename-increment';
 
 import type { TimelineDocument, TimelineSelectionRange } from '~/timeline/types';
@@ -36,10 +36,10 @@ import { createTimelineBackupModule } from '~/stores/timeline/backup';
 import type { TimelinePreviewBackupInfo } from '~/stores/timeline/backup';
 import { clampGain } from '~/utils/audio/clamp';
 
-import { getDocFps } from '~/timeline/commands/utils';
 import {
   getTimelineFormat,
   setTimelineFormat,
+  setTimelineTimebaseFps,
   resolveEffectiveTimelineFormat,
   type TimelineFormatInput,
 } from '~/timeline/format';
@@ -150,8 +150,7 @@ export const useTimelineStore = defineStore('timeline', () => {
   const lastClipTrimmed = ref(false);
 
   const fps = computed(() => {
-    if (timelineDoc.value) return getDocFps(timelineDoc.value);
-    return TIMELINE_DEFAULTS.FPS;
+    return timelineFormat.value.fps || TIMELINE_DEFAULTS.FPS;
   });
   const timelineFormat = computed(() =>
     resolveEffectiveTimelineFormat(
@@ -168,6 +167,25 @@ export const useTimelineStore = defineStore('timeline', () => {
     timelineDoc.value = setTimelineFormat(timelineDoc.value, settings);
     lifecycle.markTimelineAsDirty();
     await requestTimelineSave();
+  }
+
+  function syncTimelineTimebaseToEffectiveFps() {
+    const doc = timelineDoc.value;
+    if (!doc) return;
+
+    const storedFormat = getTimelineFormat(doc);
+    if (!(storedFormat.useProjectSettings ?? true)) return;
+
+    const effectiveFormat = resolveEffectiveTimelineFormat(
+      storedFormat,
+      projectStore.projectSettings?.project,
+    );
+    const nextDoc = setTimelineTimebaseFps(doc, effectiveFormat.fps);
+    if (nextDoc === doc) return;
+
+    timelineDoc.value = nextDoc;
+    lifecycle.markTimelineAsDirty();
+    void requestTimelineSave();
   }
 
   const selectedItemIds = ref<string[]>([]);
@@ -242,7 +260,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     audioMuted,
     duration,
     playbackGestureHandler,
-    getDocFps: () => (timelineDoc.value ? getDocFps(timelineDoc.value) : TIMELINE_DEFAULTS.FPS),
+    getDocFps: () => fps.value,
     setCurrentTimeTicks: (nextTimeTicks) => lifecycle.setCurrentTimeTicks(nextTimeTicks),
     onPlayheadJump: () => {
       scrollToPlayheadRequest.value++;
@@ -417,6 +435,11 @@ export const useTimelineStore = defineStore('timeline', () => {
       }
     },
     { deep: true, immediate: true },
+  );
+
+  watch(
+    () => [projectStore.projectSettings?.project?.fps, timelineDoc.value] as const,
+    () => syncTimelineTimebaseToEffectiveFps(),
   );
 
   async function requestTimelineSave(options?: { immediate?: boolean }) {
@@ -763,6 +786,7 @@ export const useTimelineStore = defineStore('timeline', () => {
         proj.sampleRate = settings.sampleRate;
         proj.sampleRateResolved = true;
       }
+      syncTimelineTimebaseToEffectiveFps();
     },
     hasProxy: (path: string) => proxyStore.existingProxies.has(normalizeMediaCachePath(path)),
     ensureProxy: async (options: {

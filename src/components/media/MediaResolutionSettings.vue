@@ -3,7 +3,7 @@ import { watch } from 'vue';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
 import UiFormField from '~/components/ui/UiFormField.vue';
-import { STANDARD_FRAME_RATES, frameRateToNumber } from '~/utils/time/ticks';
+import { STANDARD_FRAME_RATES, frameRateToStandardFpsValue } from '~/utils/time/ticks';
 
 const localWidth = defineModel<number>('width', { required: true });
 const localHeight = defineModel<number>('height', { required: true });
@@ -45,7 +45,7 @@ const sampleRateOptions = [
 
 const standardFpsOptions = STANDARD_FRAME_RATES.map((frameRate) => ({
   label: frameRate.label,
-  value: Number(frameRateToNumber(frameRate).toFixed(3)),
+  value: frameRateToStandardFpsValue(frameRate),
 }));
 
 const orientationOptions = [

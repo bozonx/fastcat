@@ -6,6 +6,7 @@ import {
   createTimelineFormatFromProjectDefaults,
   getTimelineFormat,
   setTimelineFormat,
+  setTimelineTimebaseFps,
 } from '~/timeline/format';
 import { getResolutionPreset } from '~/utils/settings/helpers';
 
@@ -44,9 +45,16 @@ describe('normalizeTimelineFormat', () => {
     expect(result.isCustomResolution).toBe(true);
   });
 
-  it('rounds fps to 3 decimal places', () => {
+  it('normalizes fps through the shared frame-rate rules', () => {
     const result = normalizeTimelineFormat({ fps: 29.970001 });
     expect(result.fps).toBe(29.97);
+  });
+
+  it('normalizes standard NTSC display values', () => {
+    expect(normalizeTimelineFormat({ fps: 23.976 }).fps).toBe(23.976);
+    expect(normalizeTimelineFormat({ fps: 29.97 }).fps).toBe(29.97);
+    expect(normalizeTimelineFormat({ fps: 59.94 }).fps).toBe(59.94);
+    expect(normalizeTimelineFormat({ fps: 119.88 }).fps).toBe(119.88);
   });
 
   it('keeps timelines independent from project settings by default', () => {
@@ -155,5 +163,26 @@ describe('setTimelineFormat', () => {
     const doc: any = { id: 'doc-1', timebase: { fps: 25 }, metadata: { fastcat: {} } };
     const result = setTimelineFormat(doc, { fps: 29.97 });
     expect(result.timebase).toEqual({ num: 30_000, den: 1_001 });
+  });
+});
+
+describe('setTimelineTimebaseFps', () => {
+  it('updates only the document timebase snapshot', () => {
+    const doc: any = {
+      id: 'doc-1',
+      timebase: { num: 25, den: 1 },
+      metadata: { fastcat: { format: { fps: 25, useProjectSettings: true } } },
+    };
+
+    const result = setTimelineTimebaseFps(doc, 23.976);
+
+    expect(result.timebase).toEqual({ num: 24_000, den: 1_001 });
+    expect(result.metadata.fastcat.timebase).toEqual({ num: 24_000, den: 1_001 });
+    expect(result.metadata.fastcat.format.fps).toBe(25);
+  });
+
+  it('returns the same document when the timebase is already current', () => {
+    const doc: any = { id: 'doc-1', timebase: { num: 30_000, den: 1_001 } };
+    expect(setTimelineTimebaseFps(doc, 29.97)).toBe(doc);
   });
 });

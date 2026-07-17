@@ -63,6 +63,10 @@ export function frameRateToNumber(frameRate: FrameRate): number {
   return frameRate.num / frameRate.den;
 }
 
+export function frameRateToStandardFpsValue(frameRate: StandardFrameRate): number {
+  return Number(frameRate.label);
+}
+
 export function sanitizeFrameRate(
   value: unknown,
   fallback: FrameRate = DEFAULT_FRAME_RATE,
