@@ -796,10 +796,8 @@ describe('TimelineTracks', () => {
         trackKind: 'video',
         clipType: 'media',
         groups: {
-          transform: {
-            transform: {
-              position: [0, 0],
-            },
+          speed: {
+            speed: 1.0,
           },
         },
       },

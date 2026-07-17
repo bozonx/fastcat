@@ -210,6 +210,7 @@ describe('SettingsVideo', () => {
 
   it('renders Web settings when isTauriRuntime is false', async () => {
     mockIsTauriRuntime.mockReturnValue(false);
+    mockWorkspaceStore.inDevelopmentFeaturesEnabled = true;
 
     const wrapper = await mountSuspended(SettingsVideo);
 

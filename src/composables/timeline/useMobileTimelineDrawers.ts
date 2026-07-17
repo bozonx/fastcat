@@ -173,7 +173,12 @@ export function useMobileTimelineDrawers() {
       }
 
       if (itemIds.length > 0 && !gap) {
-        if (isMultiSelectionMode.value) {
+        // A plain tap on a clip in a linked group selects the whole group
+        // (kind 'clips', >1 items) without entering multi-selection mode. That
+        // selection resolves to no single clip, so route it to the multi-clip
+        // drawer — matching `toggleMobileClipSelection`'s `count > 1` branch —
+        // otherwise the single-clip drawer opens empty.
+        if (isMultiSelectionMode.value || itemIds.length > 1) {
           if (!isMultiSelectionDrawerOpen.value) {
             closeAllDrawers();
             isMultiSelectionDrawerOpen.value = true;

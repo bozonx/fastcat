@@ -86,14 +86,18 @@ describe('useMobileTimelineDrawers', () => {
     unmount();
   });
 
-  it('keeps the clip drawer for linked clip selection until multi-selection mode is active', async () => {
+  it('opens the multi-selection drawer for a linked clip group (>1 items), not the empty single-clip drawer', async () => {
+    // A plain tap on a clip in a linked group selects the whole group ('clips',
+    // >1 items) without entering multi-selection mode. The single-clip drawer
+    // cannot resolve a clip from a 'clips' entity and would render empty, so the
+    // group must route to the multi-clip drawer.
     mockTimelineStore.selectedItemIds = ['clip-1', 'clip-2'];
     mockSelectionStore.selectedEntity = { source: 'timeline', kind: 'clips' };
     const { api, unmount } = mountDrawers();
     await nextTick();
 
-    expect(api.isMultiSelectionDrawerOpen.value).toBe(false);
-    expect(api.isClipPropertiesDrawerOpen.value).toBe(true);
+    expect(api.isMultiSelectionDrawerOpen.value).toBe(true);
+    expect(api.isClipPropertiesDrawerOpen.value).toBe(false);
     unmount();
   });
 
