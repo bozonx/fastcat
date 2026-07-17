@@ -113,10 +113,11 @@ const props = defineProps<Props>();
 
 // --- Clip vertical layout bands ---------------------------------------------
 // The header sits at the top; the keyframes lane (placeholder) sits at the
-// bottom when expanded. Fades and transitions are constrained to the content
-// band between them so they never sit under the header controls (e.g. the
-// keyframes toggle) or the keyframes editor. Trim handles intentionally cover
-// the full clip height so the clip edges remain easy to grab.
+// bottom when expanded. Fades are constrained to the content band between them
+// so they never sit under the header controls (e.g. the keyframes toggle) or
+// the keyframes editor. Transitions cover the whole main clip area below the
+// header. Trim handles intentionally cover the full clip height so the clip
+// edges remain easy to grab.
 const CLIP_HEADER_HEIGHT_PX = 20; // h-5
 const CLIP_KEYFRAMES_HEIGHT_PX = 76; // h-5 lane + h-14 curve editor
 const CLIP_MIN_CONTENT_BAND_PX = 16; // below this we collapse to header-only
@@ -139,6 +140,14 @@ const clipContentInset = computed(() => {
   return {
     top: CLIP_HEADER_HEIGHT_PX,
     bottom: isKeyframesLaneVisible.value ? CLIP_KEYFRAMES_HEIGHT_PX : 0,
+  };
+});
+
+const clipTransitionInset = computed(() => {
+  if (isClipHeaderOnly.value) return { top: 0, bottom: 0 };
+  return {
+    top: CLIP_HEADER_HEIGHT_PX,
+    bottom: 0,
   };
 });
 
@@ -1041,8 +1050,8 @@ function addTransition(edge: 'in' | 'out') {
           :selected-transition="selectedTransition"
           :can-edit="canEditClipContent"
           :is-mobile="isMobile"
-          :top-inset-px="clipContentInset.top"
-          :bottom-inset-px="clipContentInset.bottom"
+          :top-inset-px="clipTransitionInset.top"
+          :bottom-inset-px="clipTransitionInset.bottom"
           @select="(e, payload) => emit('selectTransition', e, payload)"
           @resize="
             (e, payload) =>

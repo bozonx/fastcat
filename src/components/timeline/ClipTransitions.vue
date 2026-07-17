@@ -23,7 +23,7 @@ const props = defineProps<{
   canEdit: boolean;
   trackHeight: number;
   isMobile?: boolean;
-  /** Vertical insets (px) so transitions cover only the content band, not the header/keyframes lane. */
+  /** Vertical insets (px) that keep transitions below the clip header. */
   topInsetPx?: number;
   bottomInsetPx?: number;
 }>();

@@ -85,6 +85,7 @@ defineExpose({
   <div
     class="flex min-h-[60px] relative"
     :class="kind === 'video' ? 'shrink-0 border-b border-ui-border' : 'flex-1'"
+    :data-section-kind="kind"
     @dragleave.prevent="onSectionDragLeave"
   >
     <TimelineTrackLabels

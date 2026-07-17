@@ -220,7 +220,21 @@ export function useTimelineWheelHandler({
     if (action === 'zoom_vertical') {
       e.preventDefault();
       const factor = delta > 0 ? 0.9 : 1.1;
+      const target = e.target as HTMLElement;
+      const isAudioArea =
+        !!target.closest('.audio-tracks-scroll') ||
+        !!target.closest('[data-section-kind="audio"]');
+      const isVideoArea =
+        !isAudioArea &&
+        (!!target.closest('.video-tracks-scroll') ||
+          !!target.closest('[data-section-kind="video"]'));
+      const targetKind: 'video' | 'audio' | null = isAudioArea
+        ? 'audio'
+        : isVideoArea
+          ? 'video'
+          : null;
       tracks.value.forEach((track: TimelineTrack) => {
+        if (targetKind && track.kind !== targetKind) return;
         const currentHeight = trackHeights.value[track.id] ?? 40;
         trackHeights.value[track.id] = Math.max(32, Math.min(300, currentHeight * factor));
       });

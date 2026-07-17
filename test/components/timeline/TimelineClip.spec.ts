@@ -3,6 +3,7 @@ import { mountSuspended, mockComponent } from '@nuxt/test-utils/runtime';
 import { reactive, computed, ref } from 'vue';
 import TimelineClip from '~/components/timeline/TimelineClip.vue';
 import { ticksToPx } from '~/utils/timeline/geometry';
+import { useWorkspaceStore } from '~/stores/workspace.store';
 
 mockComponent('UContextMenu', {
   template: '<div><slot /></div>',
@@ -257,6 +258,7 @@ describe('TimelineClip', () => {
     mockTimelineStore.timelineZoom = 1;
     mockTimelineStore.isTrimModeActive = false;
     mockMediaStore.mediaMetadata = {};
+    useWorkspaceStore().inDevelopmentFeaturesEnabled = false;
   });
 
   it('calculates position and width correctly based on time and zoom', async () => {
@@ -397,7 +399,7 @@ describe('TimelineClip', () => {
     expect(audioFades.dataset.defaultFadeCurve).toBe('linear');
   });
 
-  it('renders transition overlays in the content band above trim handles', async () => {
+  it('renders transition overlays in the main clip area above trim handles', async () => {
     const component = await mountClip({
       ...defaultProps,
       item: {
@@ -426,6 +428,34 @@ describe('TimelineClip', () => {
     expect((transitionOverlay as HTMLElement).style.top).toBe('20px');
     expect((transitionOverlay as HTMLElement).style.bottom).toBe('0px');
     expect((transitionOverlay as HTMLElement).style.zIndex).toBe('calc(var(--z-clip-handles) + 1)');
+  });
+
+  it('keeps transitions full-height below the header when the keyframes lane is expanded', async () => {
+    useWorkspaceStore().inDevelopmentFeaturesEnabled = true;
+    mockMediaStore.mediaMetadata = { 'file.mp4': { audio: {} } };
+
+    const component = await mountClip({
+      ...defaultProps,
+      trackHeight: 120,
+      item: {
+        ...baseItem,
+        transitionOut: {
+          type: 'dissolve',
+          durationTicks: 254_016_000_000,
+          mode: 'adjacent',
+        },
+      },
+    });
+
+    await component.get('button[aria-label="fastcat.timeline.keyframesTitle"]').trigger('click');
+
+    const transitionOverlay = component.get('[data-testid="clip-transitions"]').element;
+    const audioFades = component.get('.clip-audio-fades').element;
+
+    expect((transitionOverlay as HTMLElement).style.top).toBe('20px');
+    expect((transitionOverlay as HTMLElement).style.bottom).toBe('0px');
+    expect((audioFades as HTMLElement).style.top).toBe('20px');
+    expect((audioFades as HTMLElement).style.bottom).toBe('76px');
   });
 
   it('creates a transition from the clip header button with the default duration', async () => {
