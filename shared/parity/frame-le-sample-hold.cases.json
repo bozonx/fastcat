@@ -1,0 +1,68 @@
+{
+  "description": "Cross-engine parity for the playback frame-cache SAMPLE-AND-HOLD lookup. The native cache (src-tauri/src/monitor/frame_cache.rs `VideoFrameCache::frame_le_with_max_lag`) and the web cache (src/utils/video-editor/compositor/VideoFrameCache.ts `VideoFrameCache.frameLe`) both return the cached frame with the GREATEST PTS <= target, unless it lags the target by more than max_lag (then it is a miss so the caller decodes the true frame). Both key frames on a MILLISECOND grid (round(pts*1000)) so adjacent frames on a VFR source never collapse to one bucket the way a round(pts*avg_fps) key would. Cases are expressed in integer milliseconds and are fed to `frame_le_with_max_lag` (native) / `frameLe` (web) verbatim after converting ms->seconds. `framePtsMs` is the set of cached frame PTS; `expectedPtsMs` is the served frame's PTS, or null for a miss.",
+  "cases": [
+    {
+      "name": "cfr floor: held frame is the greatest pts <= target",
+      "framePtsMs": [0, 1000, 2000],
+      "targetMs": 1400,
+      "maxLagMs": 1000,
+      "expectedPtsMs": 1000
+    },
+    {
+      "name": "before the first frame is a miss",
+      "framePtsMs": [1000, 2000],
+      "targetMs": 500,
+      "maxLagMs": 1000,
+      "expectedPtsMs": null
+    },
+    {
+      "name": "exact hit on a frame boundary",
+      "framePtsMs": [0, 1000, 2000],
+      "targetMs": 2000,
+      "maxLagMs": 1000,
+      "expectedPtsMs": 2000
+    },
+    {
+      "name": "vfr frames 10ms apart do NOT collapse (sub-avg-interval)",
+      "framePtsMs": [1000, 1010],
+      "targetMs": 1005,
+      "maxLagMs": 100,
+      "expectedPtsMs": 1000
+    },
+    {
+      "name": "vfr: the later of two close frames is served past it",
+      "framePtsMs": [1000, 1010],
+      "targetMs": 1020,
+      "maxLagMs": 100,
+      "expectedPtsMs": 1010
+    },
+    {
+      "name": "hold within the lag guard is served",
+      "framePtsMs": [1000],
+      "targetMs": 1050,
+      "maxLagMs": 100,
+      "expectedPtsMs": 1000
+    },
+    {
+      "name": "stale beyond the lag guard is a miss",
+      "framePtsMs": [1000],
+      "targetMs": 1500,
+      "maxLagMs": 100,
+      "expectedPtsMs": null
+    },
+    {
+      "name": "sparse cache: floor across a large gap still holds within lag",
+      "framePtsMs": [500, 4000],
+      "targetMs": 4200,
+      "maxLagMs": 300,
+      "expectedPtsMs": 4000
+    },
+    {
+      "name": "empty cache is a miss",
+      "framePtsMs": [],
+      "targetMs": 1000,
+      "maxLagMs": 1000,
+      "expectedPtsMs": null
+    }
+  ]
+}

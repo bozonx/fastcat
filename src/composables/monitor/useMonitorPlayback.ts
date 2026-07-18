@@ -55,9 +55,9 @@ function advanceMonitorPlaybackLoop(params: {
 // >= one frame interval accumulated): that gate was sampled on the 60Hz rAF grid,
 // so its firing beat against the frame interval and — because 'balanced'/'smooth'
 // clamped/reset the carryover — its phase drifted frame to frame, which is exactly
-// the judder we saw versus the native monitor. Mirrors the worker-side
-// `computeFrameIndex` floor+epsilon so the main thread and the compositor agree on
-// where a frame boundary falls.
+// the judder we saw versus the native monitor. This gate is a COMPOSITION-cadence
+// index at the (CFR) project frame rate — distinct from the per-clip source frame
+// cache, which keys decoded frames by their own PTS (VFR-safe) in VideoFrameCache.
 export function computeMonitorFrameIndex(params: { timeTicks: number; fps: number }): number {
   const fps = Number.isFinite(params.fps) && params.fps > 0 ? params.fps : 30;
   const timeS = Number.isFinite(params.timeTicks)

@@ -11,8 +11,9 @@ import { getVideoSampleWithZeroFallback } from './ResourceManager';
 import type { VideoFrameCache } from './VideoFrameCache';
 import {
   buildVideoFrameCacheKey,
-  computeFrameIndex,
+  computeFrameKeyMs,
   estimateVideoFrameSizeBytes,
+  resolveFrameLeMaxLagS,
 } from './VideoFrameCache';
 import type { CanvasFallbackRenderer } from './renderers/CanvasFallbackRenderer';
 import { resolveEffectTextureSize, type WebGpuComputeRunner } from './WebGpuComputeRunner';
@@ -670,10 +671,16 @@ export class ClipResourceManager {
     abortSignal?: AbortSignal;
   }): Promise<unknown | null> {
     const { clip, sampleTimeS, abortSignal } = params;
-    const frameIndex = computeFrameIndex(clip, sampleTimeS);
-    const cacheKey = buildVideoFrameCacheKey(clip, frameIndex);
 
-    const cached = this.context.videoFrameCache.get(cacheKey);
+    // Look up by PTS ordering (`frameLe`), NOT by an avg-fps bucket: the sink returns
+    // a sample-and-hold frame whose PTS ≤ request time, so the cache must be keyed and
+    // queried the same way to stay correct on VFR sources. The max-lag guard forces a
+    // fresh decode when the nearest cached frame is stale (see resolveFrameLeMaxLagS).
+    const cached = this.context.videoFrameCache.frameLe(
+      clip.itemId,
+      sampleTimeS,
+      resolveFrameLeMaxLagS(clip.frameRate),
+    );
     if (cached) {
       compositorPerfStats.onCacheHit();
       return {
@@ -686,7 +693,11 @@ export class ClipResourceManager {
       };
     }
 
-    const inFlight = this.inFlightSamples.get(cacheKey);
+    // Coalesce concurrent decodes of the same request moment. The dedup key is the
+    // REQUEST time (the decoded frame's own PTS is unknown until it returns), which is
+    // enough to fold duplicate in-flight reads for the same on-screen frame.
+    const inflightKey = buildVideoFrameCacheKey(clip, computeFrameKeyMs(sampleTimeS));
+    const inFlight = this.inFlightSamples.get(inflightKey);
     if (inFlight) {
       return inFlight;
     }
@@ -697,16 +708,14 @@ export class ClipResourceManager {
       sampleTimeS,
       params.timelineTimeTicks,
       params.monitorSyncMode,
-      frameIndex,
-      cacheKey,
       abortSignal,
     );
-    this.inFlightSamples.set(cacheKey, promise);
+    this.inFlightSamples.set(inflightKey, promise);
 
     try {
       return await promise;
     } finally {
-      this.inFlightSamples.delete(cacheKey);
+      this.inFlightSamples.delete(inflightKey);
       compositorPerfStats.onDecode(performance.now() - decodeStartMs);
     }
   }
@@ -716,8 +725,6 @@ export class ClipResourceManager {
     sampleTimeS: number,
     timelineTimeTicks: number | undefined,
     monitorSyncMode: WebMonitorSyncMode | undefined,
-    frameIndex: number,
-    cacheKey: string,
     abortSignal?: AbortSignal,
   ): Promise<unknown | null> {
     let sample = await this.context.resourceManager.withVideoSampleSlot(
@@ -767,7 +774,13 @@ export class ClipResourceManager {
 
     try {
       const frame = sampleObj2.toVideoFrame() as VideoFrame;
-      this.storeDecodedFrame({ clip, frameIndex, cacheKey, timelineTimeTicks, frame });
+      // Key by the DECODED sample's own PTS, not the request time: on VFR the held
+      // frame's timestamp can sit well before the requested moment, and keying by
+      // request time would both mis-place the frame and diverge from the prewarm path.
+      const sampleTs = Number((sampleValue as { timestamp?: unknown }).timestamp);
+      const keyMs = computeFrameKeyMs(Number.isFinite(sampleTs) ? sampleTs : sampleTimeS);
+      const cacheKey = buildVideoFrameCacheKey(clip, keyMs);
+      this.storeDecodedFrame({ clip, keyMs, cacheKey, timelineTimeTicks, frame });
 
       return {
         toVideoFrame: () => {
@@ -794,7 +807,7 @@ export class ClipResourceManager {
   // both produce byte-identical cache entries.
   private storeDecodedFrame(params: {
     clip: CompositorClip;
-    frameIndex: number;
+    keyMs: number;
     cacheKey: string;
     timelineTimeTicks: number | undefined;
     frame: VideoFrame;
@@ -823,7 +836,7 @@ export class ClipResourceManager {
     this.context.videoFrameCache.set({
       key: params.cacheKey,
       clipId: clip.itemId,
-      frameIndex: params.frameIndex,
+      keyMs: params.keyMs,
       timelineTimeTicks: Math.max(
         0,
         Math.round(Number(params.timelineTimeTicks) || Number(clip.startTicks) || 0),
@@ -915,10 +928,10 @@ export class ClipResourceManager {
 
       try {
         if (typeof sample.toVideoFrame !== 'function') continue;
-        // Key by the sample's own PTS — the exact index the render path computes
-        // for any playback time that sample-and-holds this frame.
-        const frameIndex = computeFrameIndex(clip, sampleTimeS);
-        const cacheKey = buildVideoFrameCacheKey(clip, frameIndex);
+        // Key by the sample's own PTS (ms grid) — the exact bucket the render path's
+        // `frameLe` resolves for any playback time that sample-and-holds this frame.
+        const keyMs = computeFrameKeyMs(sampleTimeS);
+        const cacheKey = buildVideoFrameCacheKey(clip, keyMs);
         if (this.context.videoFrameCache.get(cacheKey)) continue;
 
         // Timeline slot of this source frame (for scrub-locality eviction).
@@ -934,7 +947,7 @@ export class ClipResourceManager {
 
         this.storeDecodedFrame({
           clip,
-          frameIndex,
+          keyMs,
           cacheKey,
           timelineTimeTicks,
           frame: sample.toVideoFrame() as VideoFrame,

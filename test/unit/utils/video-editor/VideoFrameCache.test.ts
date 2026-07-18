@@ -1,12 +1,13 @@
 /** @vitest-environment node */
 import { describe, it, expect, vi } from 'vitest';
-import { TICKS_PER_MILLISECOND } from '~/utils/time';
 
 import {
   VideoFrameCache,
-  computeFrameIndex,
+  computeFrameKeyMs,
   buildVideoFrameCacheKey,
+  resolveFrameLeMaxLagS,
   estimateVideoFrameSizeBytes,
+  type CachedVideoFrameEntry,
 } from '~/utils/video-editor/compositor/VideoFrameCache';
 
 function makeFrame(overrides: Record<string, unknown> = {}): VideoFrame {
@@ -25,17 +26,38 @@ function makeEntry(
   frame: VideoFrame,
   sizeBytes: number,
   timelineTimeTicks = 0,
-): import('~/utils/video-editor/compositor/VideoFrameCache').CachedVideoFrameEntry {
+  keyMs = 0,
+): CachedVideoFrameEntry {
   return {
     key,
     clipId,
-    frameIndex: 0,
+    keyMs,
     timelineTimeTicks,
     frame,
     sizeBytes,
     width: 1920,
     height: 1080,
   };
+}
+
+// A cached entry whose store key matches its `keyMs` (as the runtime always builds
+// them), so the per-clip `frameLe` index and the map key stay consistent.
+function makePtsEntry(
+  clipId: string,
+  ptsS: number,
+  frame: VideoFrame,
+  sizeBytes = 1000,
+  timelineTimeTicks = 0,
+): CachedVideoFrameEntry {
+  const keyMs = computeFrameKeyMs(ptsS);
+  return makeEntry(
+    buildVideoFrameCacheKey({ itemId: clipId }, keyMs),
+    clipId,
+    frame,
+    sizeBytes,
+    timelineTimeTicks,
+    keyMs,
+  );
 }
 
 describe('VideoFrameCache', () => {
@@ -256,42 +278,98 @@ describe('VideoFrameCache', () => {
   });
 });
 
-describe('computeFrameIndex', () => {
-  it('uses frame rate to compute index when available', () => {
-    const clip = { itemId: 'clip', frameRate: 30, firstTimestampS: 0 };
-    expect(computeFrameIndex(clip, 1.0)).toBe(30);
-    expect(computeFrameIndex(clip, 2.5)).toBe(75);
+describe('frameLe (PTS-ordered lookup)', () => {
+  it('returns the frame with the greatest PTS <= target (sample-and-hold)', () => {
+    const cache = new VideoFrameCache(100 * 1024 * 1024);
+    const f0 = makeFrame();
+    const f1 = makeFrame();
+    const f2 = makeFrame();
+    cache.set(makePtsEntry('clip', 0.0, f0));
+    cache.set(makePtsEntry('clip', 1.0, f1));
+    cache.set(makePtsEntry('clip', 2.0, f2));
+
+    // Held frame at 1.4s is the one at 1.0s. Generous lag so it is not rejected.
+    expect(cache.frameLe('clip', 1.4, 1)!.frame).toBe(f1);
+    // Before the first frame -> miss.
+    expect(cache.frameLe('clip', -1, 1)).toBeNull();
+    // Unknown clip -> miss.
+    expect(cache.frameLe('other', 1.4, 1)).toBeNull();
   });
 
-  it('subtracts firstTimestampS origin', () => {
-    const clip = { itemId: 'clip', frameRate: 25, firstTimestampS: 1.0 };
-    expect(computeFrameIndex(clip, 1.0)).toBe(0);
-    expect(computeFrameIndex(clip, 2.0)).toBe(25);
+  it('rejects a floor frame staler than the max-lag guard', () => {
+    const cache = new VideoFrameCache(100 * 1024 * 1024);
+    cache.set(makePtsEntry('clip', 1.0, makeFrame()));
+    expect(cache.frameLe('clip', 1.05, 0.1)!.frame).toBeDefined();
+    // 0.5s behind with a 0.1s guard -> treated as a miss so the caller decodes.
+    expect(cache.frameLe('clip', 1.5, 0.1)).toBeNull();
   });
 
-  it('falls back to tick key when no frame rate', () => {
-    const clip = { itemId: 'clip' };
-    expect(computeFrameIndex(clip, 0.5)).toBe(500 * TICKS_PER_MILLISECOND);
+  it('does NOT collapse VFR frames closer than the avg interval', () => {
+    // avg fps 30 => 33ms interval. Two frames 10ms apart (typical for VFR) collapse
+    // to one bucket under the old floor(t*avgFps) key; the ms grid keeps them apart.
+    const cache = new VideoFrameCache(100 * 1024 * 1024);
+    const a = makeFrame();
+    const b = makeFrame();
+    cache.set(makePtsEntry('clip', 1.0, a));
+    cache.set(makePtsEntry('clip', 1.01, b));
+    // Both are distinct, retrievable frames — no aliasing.
+    expect(cache.frameLe('clip', 1.005, 0.1)!.frame).toBe(a);
+    expect(cache.frameLe('clip', 1.02, 0.1)!.frame).toBe(b);
   });
 
-  it('keys cached frames by source fps, not timeline cadence', () => {
-    const clip = { itemId: 'clip', frameRate: 24, firstTimestampS: 0 };
-
-    expect(computeFrameIndex(clip, 0)).toBe(0);
-    expect(computeFrameIndex(clip, 1 / 30)).toBe(0);
-    expect(computeFrameIndex(clip, 2 / 30)).toBe(1);
-    expect(computeFrameIndex(clip, 3 / 30)).toBe(2);
+  it('drops a clip from the index once its last frame is evicted', () => {
+    const cache = new VideoFrameCache(2 * 1024 * 1024);
+    cache.set(makePtsEntry('clipA', 1.0, makeFrame(), 1024 * 1024));
+    cache.set(makePtsEntry('clipB', 1.0, makeFrame(), 1024 * 1024));
+    // Adding a third 1MB frame evicts clipA's only frame.
+    cache.set(makePtsEntry('clipB', 2.0, makeFrame(), 1024 * 1024));
+    expect(cache.frameLe('clipA', 1.0, 1)).toBeNull();
+    expect(cache.frameLe('clipB', 2.0, 1)).not.toBeNull();
   });
 
-  it('clamps negative times to 0', () => {
-    const clip = { itemId: 'clip', frameRate: 30 };
-    expect(computeFrameIndex(clip, -1)).toBe(0);
+  it('stops serving a deleted / cleared frame via frameLe', () => {
+    const cache = new VideoFrameCache(100 * 1024 * 1024);
+    const key = buildVideoFrameCacheKey({ itemId: 'clip' }, computeFrameKeyMs(1.0));
+    cache.set(makePtsEntry('clip', 1.0, makeFrame()));
+    cache.delete(key);
+    expect(cache.frameLe('clip', 1.2, 1)).toBeNull();
+
+    cache.set(makePtsEntry('clip', 1.0, makeFrame()));
+    cache.clearForClip('clip');
+    expect(cache.frameLe('clip', 1.2, 1)).toBeNull();
+  });
+});
+
+describe('computeFrameKeyMs', () => {
+  it('quantizes a source PTS to a millisecond grid', () => {
+    expect(computeFrameKeyMs(0)).toBe(0);
+    expect(computeFrameKeyMs(1.0)).toBe(1000);
+    expect(computeFrameKeyMs(1.2345)).toBe(1235);
+  });
+
+  it('clamps negative / non-finite times to 0', () => {
+    expect(computeFrameKeyMs(-1)).toBe(0);
+    expect(computeFrameKeyMs(NaN)).toBe(0);
+  });
+
+  it('keeps sub-avg-interval VFR frames on distinct keys', () => {
+    expect(computeFrameKeyMs(1.0)).not.toBe(computeFrameKeyMs(1.01));
+  });
+});
+
+describe('resolveFrameLeMaxLagS', () => {
+  it('scales with the frame interval and floors for unknown rates', () => {
+    expect(resolveFrameLeMaxLagS(10)).toBeCloseTo(1.5 / 10, 6);
+    // Fast rates fall back to the floor (1/30) so short holds still hit.
+    expect(resolveFrameLeMaxLagS(120)).toBeCloseTo(1 / 30, 6);
+    expect(resolveFrameLeMaxLagS(undefined)).toBeCloseTo(1 / 30, 6);
+    expect(resolveFrameLeMaxLagS(0)).toBeCloseTo(1 / 30, 6);
   });
 });
 
 describe('buildVideoFrameCacheKey', () => {
-  it('builds key from itemId and frameIndex', () => {
-    expect(buildVideoFrameCacheKey({ itemId: 'clip1' }, 42)).toBe('clip1:42');
+  it('builds key from itemId and ms key', () => {
+    expect(buildVideoFrameCacheKey({ itemId: 'clip1' }, 1235)).toBe('clip1:1235');
   });
 });
 

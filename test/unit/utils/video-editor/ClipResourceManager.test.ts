@@ -157,7 +157,7 @@ describe('ClipResourceManager.warmClipFrameWindow', () => {
     } as unknown as CompositorClip;
   }
 
-  it('warms the look-ahead window through a sequential iterator, keyed by PTS frame index', async () => {
+  it('warms the look-ahead window through a sequential iterator, keyed by PTS (ms grid)', async () => {
     const videoFrameCache = createCacheMock();
     const sink = createSinkMock();
     const manager = createManager({ videoFrameCache: videoFrameCache as any });
@@ -173,11 +173,11 @@ describe('ClipResourceManager.warmClipFrameWindow', () => {
     // One sequential stream, opened once at the playhead source time.
     expect(sink.samples).toHaveBeenCalledTimes(1);
     expect(sink.opens[0]).toEqual({ startS: 0, endS: 10 });
-    // Frames at t=0, 0.04, 0.08, 0.12 → indices 0..3 (the pull stops once the
-    // frontier reaches aheadSourceTimeS).
+    // Frames at t=0, 0.04, 0.08, 0.12 → ms keys 0, 40, 80, 120 (the pull stops once
+    // the frontier reaches aheadSourceTimeS).
     expect(videoFrameCache.store.has('clip-1:0')).toBe(true);
-    expect(videoFrameCache.store.has('clip-1:1')).toBe(true);
-    expect(videoFrameCache.store.has('clip-1:2')).toBe(true);
+    expect(videoFrameCache.store.has('clip-1:40')).toBe(true);
+    expect(videoFrameCache.store.has('clip-1:80')).toBe(true);
   });
 
   it('reuses the same iterator across ticks, decoding only new frames', async () => {
@@ -207,7 +207,8 @@ describe('ClipResourceManager.warmClipFrameWindow', () => {
     expect(sink.samples).toHaveBeenCalledTimes(1);
     // Only the newly-entered frames were decoded and stored.
     expect(videoFrameCache.set.mock.calls.length).toBeGreaterThan(storedAfterFirst);
-    expect(videoFrameCache.store.has('clip-1:4')).toBe(true);
+    // Frame at t=0.16 → ms key 160.
+    expect(videoFrameCache.store.has('clip-1:160')).toBe(true);
   });
 
   it('reopens the stream after a backward seek', async () => {

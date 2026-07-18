@@ -100,15 +100,13 @@ export class MediaClipLoader {
         // mediabunny's InputVideoTrack exposes no direct frame-rate accessor; the
         // sanctioned way is packet stats, whose averagePacketRate "will equal the
         // average frame rate (FPS)" for video tracks. A small packet prefix gives a
-        // solid estimate without scanning the file. Without this every clip loaded
-        // with frameRate: undefined, which made computeFrameIndex fall back to
-        // exact-tick cache keys — so the frame cache/prewarm NEVER produced a
-        // cross-timestamp hit and playback paid a cold from-keyframe getSample
-        // decode per displayed frame (the low-fps web playback bug).
+        // solid estimate without scanning the file. The frame cache keys by PTS (not
+        // fps), so this no longer affects cache correctness; it sizes the `frameLe`
+        // AV-sync guard (resolveFrameLeMaxLagS) and other frame-interval heuristics.
         try {
           frameRateRaw = (await trackAny.computePacketStats(60)).averagePacketRate;
         } catch {
-          // keep undefined: exact-tick cache keying still works for repeat renders
+          // keep undefined: the ms-grid cache key still works, guard falls to its floor
         }
       }
       const frameRate = Number(frameRateRaw);

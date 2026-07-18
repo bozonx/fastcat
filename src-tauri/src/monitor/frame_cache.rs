@@ -469,6 +469,37 @@ mod tests {
         }
     }
 
+    /// Cross-engine parity contract. This test and the web test
+    /// `test/unit/utils/video-editor/frame-le-sample-hold.parity.test.ts` read the
+    /// SAME fixture, so the native `frame_le_with_max_lag` and the web `frameLe` stay
+    /// pinned on the VFR-safe sample-and-hold lookup (greatest PTS <= target, rejected
+    /// past the max-lag guard).
+    #[test]
+    fn frame_le_matches_shared_parity_fixture() {
+        const FIXTURE: &str =
+            include_str!("../../../shared/parity/frame-le-sample-hold.cases.json");
+        let parsed: serde_json::Value =
+            serde_json::from_str(FIXTURE).expect("valid parity fixture json");
+        let cases = parsed["cases"].as_array().expect("cases array");
+        assert!(!cases.is_empty(), "fixture has cases");
+        for c in cases {
+            let name = c["name"].as_str().unwrap_or("?");
+            // A generous byte budget so no eviction interferes with the lookup.
+            let mut cache = VideoFrameCache::new(30.0, 4, usize::MAX);
+            for pts_ms in c["framePtsMs"].as_array().expect("framePtsMs array") {
+                let ms = pts_ms.as_f64().expect("integer ms");
+                cache.insert(frame(ms / 1000.0));
+            }
+            let target = c["targetMs"].as_f64().expect("targetMs") / 1000.0;
+            let max_lag = c["maxLagMs"].as_f64().expect("maxLagMs") / 1000.0;
+            let got = cache
+                .frame_le_with_max_lag(target, max_lag)
+                .map(|f| (f.pts_sec * 1000.0).round() as i64);
+            let want = c["expectedPtsMs"].as_i64();
+            assert_eq!(got, want, "case `{name}`");
+        }
+    }
+
     #[test]
     fn has_near_within_tolerance() {
         let mut c = cache();

@@ -1,8 +1,8 @@
-import { TICKS_PER_SECOND } from '~/utils/time';
 export interface CachedVideoFrameEntry {
   key: string;
   clipId: string;
-  frameIndex: number;
+  /** Source PTS of this frame quantized to milliseconds (`round(pts * 1000)`). */
+  keyMs: number;
   timelineTimeTicks: number;
   frame: VideoFrame;
   sizeBytes: number;
@@ -10,15 +10,19 @@ export interface CachedVideoFrameEntry {
   height: number;
 }
 
-export interface VideoFrameCacheClipLike {
-  itemId: string;
-  frameRate?: number;
-  firstTimestampS?: number;
-}
+/** Quantization of a source PTS (seconds) into the cache key domain — milliseconds. */
+export const CACHE_KEY_HZ = 1000;
 
 export class VideoFrameCache {
   private maxVideoFrameCacheBytes: number;
   private videoFrameCache = new Map<string, CachedVideoFrameEntry>();
+  // Per-clip ASCENDING list of cached `keyMs` values. This is the web twin of the
+  // native BTreeMap in `src-tauri/src/monitor/frame_cache.rs`: it lets `frameLe`
+  // resolve "the frame with the greatest PTS ≤ target" without scanning the whole
+  // cache, which is what makes the ms-grid key VFR-correct (the sink returns a
+  // sample-and-hold frame by PTS, so the cache must be queried by PTS ordering, not
+  // by an `floor(t * avg_fps)` bucket that collapses/splits frames on VFR sources).
+  private clipKeys = new Map<string, number[]>();
   private videoFrameCacheSizeBytes = 0;
   private priorityTimeTicks = 0;
 
@@ -47,17 +51,40 @@ export class VideoFrameCache {
 
     const closed = !!(entry.frame as { closed?: boolean }).closed;
     if (closed) {
-      this.videoFrameCache.delete(key);
-      this.videoFrameCacheSizeBytes -= entry.sizeBytes;
-      if (this.videoFrameCacheSizeBytes < 0) {
-        this.videoFrameCacheSizeBytes = 0;
-      }
+      this.dropEntry(entry);
       return null;
     }
 
     this.videoFrameCache.delete(key);
     this.videoFrameCache.set(key, entry);
     return entry;
+  }
+
+  /**
+   * The cached frame with the greatest source PTS ≤ `targetTimeS` (the sample-and-hold
+   * frame the sink would return for that time), provided it has not fallen further
+   * behind the target than `maxLagS`. Returns `null` on an empty clip, an le-miss, or
+   * when the nearest floor is staler than the guard allows — in which case the caller
+   * decodes the true frame. Mirrors the native `frame_le_with_max_lag`.
+   */
+  public frameLe(
+    itemId: string,
+    targetTimeS: number,
+    maxLagS: number,
+  ): CachedVideoFrameEntry | null {
+    const keys = this.clipKeys.get(itemId);
+    if (!keys || keys.length === 0) return null;
+
+    // The query key is NOT clamped to 0 (unlike a stored frame's key): a target before
+    // the first frame must floor-miss so the caller decodes, matching native `index_of`.
+    const targetMs = Number.isFinite(targetTimeS) ? Math.round(targetTimeS * CACHE_KEY_HZ) : 0;
+    const floorMs = this.floorKey(keys, targetMs);
+    if (floorMs === null) return null;
+
+    const maxLagMs = Math.max(0, Math.round((Number(maxLagS) || 0) * CACHE_KEY_HZ));
+    if (targetMs - floorMs > maxLagMs) return null;
+
+    return this.get(buildVideoFrameCacheKey({ itemId }, floorMs));
   }
 
   public setPriorityTimeTicks(timeTicks: number) {
@@ -73,11 +100,7 @@ export class VideoFrameCache {
   public delete(key: string): boolean {
     const entry = this.videoFrameCache.get(key);
     if (!entry) return false;
-    this.videoFrameCache.delete(key);
-    this.videoFrameCacheSizeBytes -= entry.sizeBytes;
-    if (this.videoFrameCacheSizeBytes < 0) {
-      this.videoFrameCacheSizeBytes = 0;
-    }
+    this.dropEntry(entry);
     try {
       entry.frame.close();
     } catch {
@@ -100,11 +123,14 @@ export class VideoFrameCache {
     if (existing) {
       this.videoFrameCache.delete(entry.key);
       this.videoFrameCacheSizeBytes -= existing.sizeBytes;
+      // Same key ⇒ same clipId+keyMs, so the sorted index already contains it.
       try {
         existing.frame.close();
       } catch {
         // ignore
       }
+    } else {
+      this.indexAdd(entry.clipId, entry.keyMs);
     }
 
     this.videoFrameCache.set(entry.key, entry);
@@ -123,6 +149,7 @@ export class VideoFrameCache {
         // ignore
       }
     }
+    this.clipKeys.delete(clipId);
 
     if (this.videoFrameCacheSizeBytes < 0) {
       this.videoFrameCacheSizeBytes = 0;
@@ -138,7 +165,60 @@ export class VideoFrameCache {
       }
     }
     this.videoFrameCache.clear();
+    this.clipKeys.clear();
     this.videoFrameCacheSizeBytes = 0;
+  }
+
+  /** Removes an entry from both the store and the per-clip sorted index. */
+  private dropEntry(entry: CachedVideoFrameEntry) {
+    this.videoFrameCache.delete(entry.key);
+    this.videoFrameCacheSizeBytes -= entry.sizeBytes;
+    if (this.videoFrameCacheSizeBytes < 0) {
+      this.videoFrameCacheSizeBytes = 0;
+    }
+    this.indexRemove(entry.clipId, entry.keyMs);
+  }
+
+  /** First index in ascending `keys` whose value is ≥ `value` (lower bound). */
+  private lowerBound(keys: number[], value: number): number {
+    let lo = 0;
+    let hi = keys.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >>> 1;
+      if ((keys[mid] as number) < value) lo = mid + 1;
+      else hi = mid;
+    }
+    return lo;
+  }
+
+  /** Greatest cached key ≤ `targetMs` in ascending `keys`, or null when none. */
+  private floorKey(keys: number[], targetMs: number): number | null {
+    const idx = this.lowerBound(keys, targetMs + 1);
+    return idx > 0 ? (keys[idx - 1] as number) : null;
+  }
+
+  private indexAdd(clipId: string, keyMs: number) {
+    const keys = this.clipKeys.get(clipId);
+    if (!keys) {
+      this.clipKeys.set(clipId, [keyMs]);
+      return;
+    }
+    const idx = this.lowerBound(keys, keyMs);
+    if (keys[idx] !== keyMs) {
+      keys.splice(idx, 0, keyMs);
+    }
+  }
+
+  private indexRemove(clipId: string, keyMs: number) {
+    const keys = this.clipKeys.get(clipId);
+    if (!keys) return;
+    const idx = this.lowerBound(keys, keyMs);
+    if (keys[idx] === keyMs) {
+      keys.splice(idx, 1);
+      if (keys.length === 0) {
+        this.clipKeys.delete(clipId);
+      }
+    }
   }
 
   private evictIfNeeded() {
@@ -152,8 +232,7 @@ export class VideoFrameCache {
       // times the earliest-inserted entry) without re-scanning the whole map per
       // evicted frame — the old loop was O(n²) when the limit shrank sharply.
       const priority = this.priorityTimeTicks;
-      const ranked = Array.from(this.videoFrameCache.entries(), ([key, entry], index) => ({
-        key,
+      const ranked = Array.from(this.videoFrameCache.values(), (entry, index) => ({
         entry,
         index,
         time: Math.max(0, Math.round(Number(entry.timelineTimeTicks) || 0)),
@@ -167,8 +246,7 @@ export class VideoFrameCache {
 
       for (const victim of ranked) {
         if (this.videoFrameCacheSizeBytes <= this.maxVideoFrameCacheBytes) break;
-        this.videoFrameCache.delete(victim.key);
-        this.videoFrameCacheSizeBytes -= victim.entry.sizeBytes;
+        this.dropEntry(victim.entry);
         // Skip close() for already-closed frames (they don't hold GPU memory).
         const closed = !!(victim.entry.frame as { closed?: boolean }).closed;
         if (!closed) {
@@ -206,45 +284,33 @@ export function chooseEvictionVictimTime(times: number[], priorityTime: number):
   return best ? best.time : null;
 }
 
-export function resolveClipFrameRate(clip: VideoFrameCacheClipLike): number | null {
-  const clipFrameRate = Number(clip.frameRate);
-  if (Number.isFinite(clipFrameRate) && clipFrameRate > 0) {
-    return clipFrameRate;
-  }
-  return null;
+// Cache-key domain: a source PTS (seconds) quantized to a MILLISECOND grid
+// (`round(pts * 1000)`), an absolute position in the source. This is the web twin of
+// the native cache key (src-tauri/src/monitor/frame_cache.rs): a millisecond grid
+// (rather than `round(pts * avg_fps)`) never collapses adjacent frames on VFR
+// sources, where the real inter-frame interval is not `1 / avg_fps`. Both the render
+// path and the decode-ahead prewarm key by the DECODED sample's own PTS, so the two
+// always agree on which bucket a frame lands in.
+export function computeFrameKeyMs(ptsS: number): number {
+  const safeS = Number.isFinite(ptsS) ? Math.max(0, ptsS) : 0;
+  return Math.round(safeS * CACHE_KEY_HZ);
 }
 
-// Without a known frame rate, key the cache by exact sampleTime in canonical timeline
-// ticks (TICKS_PER_SECOND): distinct sampleTimeS values never collide. With a known frame
-// rate we map the
-// time to the SOURCE FRAME displayed at it — `floor(t * fps)` — so the key matches
-// the sample-and-hold frame the sink actually returns for that time. (Rounding to
-// the *nearest* frame instead put the bucket boundary at the half-frame mark, where
-// float noise flips it: two adjacent output times could collide on one key and the
-// later one would get a cache hit returning the earlier frame — a duplicate — while
-// the skipped frame never showed. That surfaced as a periodic fps dip on export at
-// non-frame-aligned phases, the web twin of the native `frame_at` boundary bug.)
-// The small epsilon keeps a time landing exactly on a frame boundary from floating
-// just under it and bucketing into the previous frame.
-export function computeFrameIndex(clip: VideoFrameCacheClipLike, sampleTimeS: number): number {
-  const safeTimeS = Number.isFinite(sampleTimeS) ? Math.max(0, sampleTimeS) : 0;
-  const originS =
-    typeof clip.firstTimestampS === 'number' && Number.isFinite(clip.firstTimestampS)
-      ? Math.max(0, clip.firstTimestampS)
-      : 0;
-  const frameRate = resolveClipFrameRate(clip);
-  if (frameRate === null) {
-    return Math.max(0, Math.round(safeTimeS * TICKS_PER_SECOND));
-  }
-  const relativeTimeS = Math.max(0, safeTimeS - originS);
-  return Math.max(0, Math.floor(relativeTimeS * frameRate + 1e-6));
+export function buildVideoFrameCacheKey(clip: { itemId: string }, keyMs: number): string {
+  return `${clip.itemId}:${keyMs}`;
 }
 
-export function buildVideoFrameCacheKey(
-  clip: Pick<VideoFrameCacheClipLike, 'itemId'>,
-  frameIndex: number,
-): string {
-  return `${clip.itemId}:${frameIndex}`;
+// AV-sync guard for `frameLe` (seconds): the cached floor frame is only trusted when
+// it lags the target by no more than this. During dense forward playback / export the
+// decode-ahead keeps the floor within ~one source interval, so it always passes; a
+// scrub into an un-decoded region exceeds it and forces a fresh decode (which yields
+// the exact sample-and-hold frame) instead of showing a stale one. Sized to the
+// clip's average interval — `1.5 / fps` covers holds up to ~1.5 source frames — with
+// a floor for unknown/near-zero rates. Mirrors the native monitor's max-lag policy.
+export function resolveFrameLeMaxLagS(frameRate?: number): number {
+  const fps = Number(frameRate);
+  const perFrame = Number.isFinite(fps) && fps > 0 ? 1.5 / fps : 0;
+  return Math.max(1 / 30, perFrame);
 }
 
 export function estimateVideoFrameSizeBytes(
