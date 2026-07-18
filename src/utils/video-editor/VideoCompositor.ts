@@ -960,12 +960,26 @@ export class VideoCompositor {
             Math.max(0, sourceDurationTicks - TICKS_PER_MILLISECOND),
             sourceRangeEndTicks + Math.round((transitionTimeTicks - owner.startTicks) * speed),
           );
+          // Warm the ENTIRE trailing handle the transition will read — from the
+          // range end forward to the frame shown at the transition's last tick —
+          // not just the default 16-frame look-ahead. A cross-cut reads a fresh
+          // handle frame every rendered frame; if a slow transition render starves
+          // the next 250 ms prewarm tick, the read overtakes a 16-frame frontier
+          // and pays a from-keyframe random decode (measured ~0.5 s on long-GOP
+          // sources) mid-transition. The handle is bounded by the transition
+          // length, so decoding it whole up-front is cheap and sequential.
+          const handleEndTicks = Math.min(
+            Math.max(0, sourceDurationTicks - TICKS_PER_MILLISECOND),
+            sourceRangeEndTicks + Math.round(transitionIn.durationTicks * speed),
+          );
           addPlan({
             clip: peer,
             nowSourceTimeS: sourceTicks / TICKS_PER_SECOND,
             aheadSourceTimeS:
-              Math.min(getAheadSourceTicks(peer, sourceTicks, speed), sourceDurationTicks) /
-              TICKS_PER_SECOND,
+              Math.min(
+                Math.max(getAheadSourceTicks(peer, sourceTicks, speed), handleEndTicks),
+                sourceDurationTicks,
+              ) / TICKS_PER_SECOND,
             rangeEndSourceTimeS: sourceDurationTicks / TICKS_PER_SECOND,
             timelineNowTicks: transitionTimeTicks,
             speed,
@@ -992,12 +1006,24 @@ export class VideoCompositor {
             peer.sourceStartTicks - Math.round(remainingTicks * speed),
           );
           const sourceRangeEndTicks = peer.sourceStartTicks + peer.sourceRangeDurationTicks;
+          // Warm the ENTIRE leading handle the transition will read — from the
+          // current handle position forward to the clip's in-point reached at the
+          // transition's last tick, plus a short in-clip lead for the crossover —
+          // not just the default 16-frame look-ahead. See the transitionIn note:
+          // a starved prewarm tick otherwise lets the per-frame handle read
+          // overtake the frontier into a ~0.5 s random decode mid-transition.
+          const handleEndTicks = Math.min(
+            sourceRangeEndTicks,
+            getAheadSourceTicks(peer, peer.sourceStartTicks, speed),
+          );
           addPlan({
             clip: peer,
             nowSourceTimeS: sourceTicks / TICKS_PER_SECOND,
             aheadSourceTimeS:
-              Math.min(getAheadSourceTicks(peer, sourceTicks, speed), sourceRangeEndTicks) /
-              TICKS_PER_SECOND,
+              Math.min(
+                Math.max(getAheadSourceTicks(peer, sourceTicks, speed), handleEndTicks),
+                sourceRangeEndTicks,
+              ) / TICKS_PER_SECOND,
             rangeEndSourceTimeS: sourceRangeEndTicks / TICKS_PER_SECOND,
             timelineNowTicks: transitionTimeTicks,
             speed,

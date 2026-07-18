@@ -95,7 +95,11 @@ describe('VideoCompositor decode-ahead prewarm', () => {
       const plan = plans.find((candidate: any) => candidate.clip.itemId === 'prev');
 
       expect(plan.nowSourceTimeS).toBeCloseTo(5.25, 3);
-      expect(plan.aheadSourceTimeS).toBeGreaterThan(plan.nowSourceTimeS);
+      // The whole trailing handle the transition will read must be warmed, not
+      // just the 16-frame default: rangeEnd (5s) + transitionIn duration (1s) ×
+      // speed (1) = 6s. A 16-frame frontier (~5.78s) would leave the tail of the
+      // handle cold, forcing a ~0.5s random decode mid-transition.
+      expect(plan.aheadSourceTimeS).toBeCloseTo(6, 3);
       expect(plan.rangeEndSourceTimeS).toBe(10);
     });
 

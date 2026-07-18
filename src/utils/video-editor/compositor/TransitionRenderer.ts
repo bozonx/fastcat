@@ -433,25 +433,23 @@ export class TransitionRenderer {
     }
 
     if (!sample) {
+      // Transient decode miss: hold the peer's last good frame instead of a hard
+      // cut. It is still bound to `clip.imageSource.resource` / `clip.sprite.texture`
+      // from the previous frame, so we only need to re-render the sprite — no
+      // re-upload. (The old path wrapped the frame as `{ frame, close }`, a shape
+      // `updateClipTextureFromSample` can't consume, so it fell through to the
+      // canvas fallback and threw on `drawImage`/`createImageBitmap` every miss —
+      // pure wasted work in the transition hot path.)
       if (clip.lastVideoFrame) {
-        // Check if the cached frame is still usable (not closed).
         const closed = !!(clip.lastVideoFrame as { closed?: boolean }).closed;
         if (closed) {
           clip.lastVideoFrame = null;
           return false;
         }
-        try {
-          await params.updateClipTextureFromSample(
-            { frame: clip.lastVideoFrame, close: () => {} } as unknown,
-            clip,
-          );
-          if (clip.sprite) {
-            clip.sprite.visible = true;
-          }
+        if (clip.sprite) {
+          clip.sprite.visible = true;
           params.stageTextureRenderer.renderSingleClipToTexture(clip, texture);
           return true;
-        } catch {
-          return false;
         }
       }
 
