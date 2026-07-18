@@ -149,7 +149,10 @@ export function applyClipGainEnvelope(params: ClipGainEnvelopeParams) {
 
   const gainAtClipTime = (tClipS: number): number =>
     getGainAtClipTime({
-      clipDurationS: window.clipDurationS,
+      // Adjacent transitions add source handles to the playback window. Fade
+      // out must end at that extended tail; using the nominal clip duration
+      // faded out before the transition and left its remainder silent.
+      clipDurationS: window.effectivePlayDurationS,
       fadeInS: window.fadeInS,
       fadeOutS: window.fadeOutS,
       fadeInCurve: window.fadeInCurve,
@@ -201,7 +204,7 @@ export function applyClipGainEnvelope(params: ClipGainEnvelopeParams) {
     });
   }
 
-  const outStartClipS = window.clipDurationS - window.fadeOutS;
+  const outStartClipS = window.effectivePlayDurationS - window.fadeOutS;
   if (window.fadeOutS > 0 && t1 > outStartClipS) {
     const rampStartClipS = Math.max(outStartClipS, t0);
     const rampStartAtS = clipLocalToCtxS(rampStartClipS);

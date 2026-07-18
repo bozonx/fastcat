@@ -183,6 +183,7 @@ describe('applyClipGainEnvelope', () => {
       effectiveStartS: 0,
       effectiveSourceStartS: 0,
       effectiveSourceEndS: 2,
+      effectivePlayDurationS: 2,
       clipDurationS: 2,
       clipSpeed: 1,
       reversed: false,
@@ -293,6 +294,32 @@ describe('applyClipGainEnvelope', () => {
     // Should have a fade-out curve
     const curveCalls = calls.filter((c) => c.method === 'setValueCurveAtTime');
     expect(curveCalls.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('fades out across an adjacent transition tail instead of silencing it early', () => {
+    const { node, calls } = createMockGainNode();
+
+    applyClipGainEnvelope({
+      window: makeWindow({
+        currentClipLocalS: 0,
+        clipDurationS: 2,
+        effectivePlayDurationS: 2.5,
+        remainingInClipS: 2.5,
+        fadeInS: 0,
+        fadeOutS: 0.5,
+      }),
+      clipGain: node,
+      startAtS: 10,
+      ctxCurrentTime: 9,
+    });
+
+    const curveCalls = calls.filter((call) => call.method === 'setValueCurveAtTime');
+    expect(curveCalls).toHaveLength(1);
+    const [curve, startAtS, durationS] = curveCalls[0]!.args as [number[], number, number];
+    expect(startAtS).toBeCloseTo(12);
+    expect(durationS).toBeCloseTo(0.5);
+    expect(curve[0]).toBeCloseTo(1);
+    expect(curve[curve.length - 1]).toBeCloseTo(0);
   });
 
   it('does not schedule fade-out when clip has not reached fadeOut region', () => {

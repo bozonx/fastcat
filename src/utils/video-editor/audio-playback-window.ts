@@ -137,6 +137,7 @@ export function buildClipPlaybackWindow(
     effectiveStartS,
     effectiveSourceStartS,
     effectiveSourceEndS,
+    effectivePlayDurationS,
     clipDurationS,
     clipSpeed,
     fadeInS,

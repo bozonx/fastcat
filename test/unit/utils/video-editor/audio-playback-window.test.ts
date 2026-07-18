@@ -61,6 +61,7 @@ describe('audio playback window', () => {
     expect(window).not.toBeNull();
     expect(window?.effectiveStartS).toBeCloseTo(0.5);
     expect(window?.effectiveSourceStartS).toBeCloseTo(4);
+    expect(window?.effectivePlayDurationS).toBeCloseTo(2.5);
     expect(window?.remainingInClipS).toBeCloseTo(2.5);
     expect(window?.effectiveSourceEndS).toBeCloseTo(9.5);
   });
@@ -97,6 +98,7 @@ function windowWith(overrides: Partial<ClipPlaybackWindow>): ClipPlaybackWindow 
     effectiveStartS: 0,
     effectiveSourceStartS: 5, // source starts at 5s
     effectiveSourceEndS: 7,
+    effectivePlayDurationS: 2,
     clipDurationS: 2,
     clipSpeed: 1,
     fadeInS: 0,

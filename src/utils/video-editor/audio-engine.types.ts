@@ -9,6 +9,9 @@ export interface ClipPlaybackWindow {
   effectiveStartS: number;
   effectiveSourceStartS: number;
   effectiveSourceEndS: number;
+  // The actual timeline duration being played. For adjacent transitions this
+  // includes source handles before/after the nominal clip range.
+  effectivePlayDurationS: number;
   clipDurationS: number;
   clipSpeed: number;
   fadeInS: number;
