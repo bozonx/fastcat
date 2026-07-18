@@ -1,4 +1,4 @@
-import { TICKS_PER_SECOND } from '~/utils/time';
+import { TICKS_PER_MILLISECOND, TICKS_PER_SECOND } from '~/utils/time';
 import { createDevLogger } from '~/utils/dev-logger';
 import { TimelineActiveTracker } from './TimelineActiveTracker';
 import { Sprite, Texture, ImageSource } from 'pixi.js';
@@ -50,12 +50,22 @@ import { buildEffectSpecs } from '~/effects';
 import { normalizeClipSpeed, resolveClipSourceTimeTicks } from './source-time';
 import { TRANSFORM_DESIGN_BASE } from './clip-layout';
 import type { PreviewEffectQuality } from '~/utils/preview-effect-quality';
+import { DEFAULT_TRANSITION_MODE } from '~/transitions';
 const log = createDevLogger('VideoCompositor');
 
 export interface VideoCompositorInitOptions {
   rendererPreference?: 'webgl' | 'webgpu';
   designWidth?: number;
   designHeight?: number;
+}
+
+interface ClipWarmPlan {
+  clip: CompositorClip;
+  nowSourceTimeS: number;
+  aheadSourceTimeS: number;
+  rangeEndSourceTimeS?: number;
+  timelineNowTicks: number;
+  speed: number;
 }
 
 export class VideoCompositor {
@@ -848,31 +858,42 @@ export class VideoCompositor {
     );
   }
 
-  // Build the decode-ahead windows for the currently-playing video clips: from
-  // the source time under the playhead to MAX_ACTIVE_PREWARM_FRAMES ahead at the
-  // clip's frame rate. Reverse and freeze-frame clips are skipped — the sequential
-  // forward decoder does not model them. Runs inside the exclusive prewarm op, so
-  // the sequential sink read it feeds can never race the render path's sink reads.
-  private buildActiveClipWarmPlans(timeTicks: number): Array<{
-    clip: CompositorClip;
-    nowSourceTimeS: number;
-    aheadSourceTimeS: number;
-    timelineNowTicks: number;
-    speed: number;
-  }> {
+  // Build sequential decode-ahead windows for visible clips and the source handles
+  // consumed by adjacent transitions. Reverse and freeze-frame clips are skipped:
+  // their source time moves backward and cannot reuse the forward-only iterator.
+  private buildActiveClipWarmPlans(timeTicks: number): ClipWarmPlan[] {
     const nowTicks = Math.max(0, Math.round(timeTicks));
     const maxFrames = Math.max(0, Math.round(VIDEO_CORE_LIMITS.MAX_ACTIVE_PREWARM_FRAMES));
     if (maxFrames === 0) return [];
 
-    const plans: Array<{
-      clip: CompositorClip;
-      nowSourceTimeS: number;
-      aheadSourceTimeS: number;
-      timelineNowTicks: number;
-      speed: number;
-    }> = [];
-
+    const plansByClipId = new Map<string, ClipWarmPlan>();
     const headHorizonTicks = Math.max(0, Math.round(VIDEO_CORE_LIMITS.PREWARM_HEAD_HORIZON_TICKS));
+
+    const addPlan = (plan: ClipWarmPlan) => {
+      const current = plansByClipId.get(plan.clip.itemId);
+      if (!current) {
+        plansByClipId.set(plan.clip.itemId, plan);
+        return;
+      }
+
+      current.nowSourceTimeS = Math.min(current.nowSourceTimeS, plan.nowSourceTimeS);
+      current.aheadSourceTimeS = Math.max(current.aheadSourceTimeS, plan.aheadSourceTimeS);
+      current.timelineNowTicks = Math.min(current.timelineNowTicks, plan.timelineNowTicks);
+      if (plan.rangeEndSourceTimeS !== undefined) {
+        current.rangeEndSourceTimeS = Math.max(
+          current.rangeEndSourceTimeS ?? plan.rangeEndSourceTimeS,
+          plan.rangeEndSourceTimeS,
+        );
+      }
+    };
+
+    const getFrameRate = (clip: CompositorClip) =>
+      typeof clip.frameRate === 'number' && Number.isFinite(clip.frameRate) && clip.frameRate > 0
+        ? clip.frameRate
+        : 30;
+
+    const getAheadSourceTicks = (clip: CompositorClip, sourceTicks: number, speed: number) =>
+      sourceTicks + Math.round((maxFrames / getFrameRate(clip)) * TICKS_PER_SECOND * speed);
 
     for (const clip of this.clips) {
       if (
@@ -891,10 +912,6 @@ export class VideoCompositor {
       const speed = normalizeClipSpeed(clip.speed);
       if (speed < 0) continue; // sequential decode-ahead is forward-only
 
-      const frameRate =
-        typeof clip.frameRate === 'number' && Number.isFinite(clip.frameRate) && clip.frameRate > 0
-          ? clip.frameRate
-          : 30;
       // For a not-yet-entered clip the playhead is before it, so warm from its
       // first source frame (localTime 0). Clamping unifies both cases; when the
       // playhead later crosses in, `warmClipFrameWindow` sees `nowSourceTime`
@@ -909,13 +926,14 @@ export class VideoCompositor {
       });
       // Source-domain look-ahead; scaled by |speed| so fast playback still covers
       // the same wall-clock horizon.
-      const aheadSourceTicks =
-        nowSourceTicks + Math.round((maxFrames / frameRate) * TICKS_PER_SECOND * speed);
-
-      plans.push({
+      const sourceRangeEndTicks = clip.sourceStartTicks + clip.sourceRangeDurationTicks;
+      addPlan({
         clip,
         nowSourceTimeS: nowSourceTicks / TICKS_PER_SECOND,
-        aheadSourceTimeS: aheadSourceTicks / TICKS_PER_SECOND,
+        aheadSourceTimeS:
+          Math.min(getAheadSourceTicks(clip, nowSourceTicks, speed), sourceRangeEndTicks) /
+          TICKS_PER_SECOND,
+        rangeEndSourceTimeS: sourceRangeEndTicks / TICKS_PER_SECOND,
         // Timeline slot of `nowSourceTicks` (for scrub-locality eviction): the
         // playhead for active clips, the clip start for not-yet-entered ones.
         timelineNowTicks: Math.max(nowTicks, clip.startTicks),
@@ -923,9 +941,75 @@ export class VideoCompositor {
       });
     }
 
+    for (const owner of this.clips) {
+      const transitionIn = owner.transitionIn;
+      if (
+        transitionIn &&
+        (transitionIn.mode ?? DEFAULT_TRANSITION_MODE) === 'adjacent' &&
+        transitionIn.durationTicks > 0 &&
+        owner.startTicks <= nowTicks + headHorizonTicks &&
+        owner.startTicks + transitionIn.durationTicks > nowTicks
+      ) {
+        const peer = this.findPrevClipOnLayer(owner);
+        const speed = peer ? normalizeClipSpeed(peer.speed) : -1;
+        if (peer?.sink && peer.clipKind === 'video' && speed > 0) {
+          const transitionTimeTicks = Math.max(nowTicks, owner.startTicks);
+          const sourceRangeEndTicks = peer.sourceStartTicks + peer.sourceRangeDurationTicks;
+          const sourceDurationTicks = Math.max(sourceRangeEndTicks, peer.sourceDurationTicks || 0);
+          const sourceTicks = Math.min(
+            Math.max(0, sourceDurationTicks - TICKS_PER_MILLISECOND),
+            sourceRangeEndTicks + Math.round((transitionTimeTicks - owner.startTicks) * speed),
+          );
+          addPlan({
+            clip: peer,
+            nowSourceTimeS: sourceTicks / TICKS_PER_SECOND,
+            aheadSourceTimeS:
+              Math.min(getAheadSourceTicks(peer, sourceTicks, speed), sourceDurationTicks) /
+              TICKS_PER_SECOND,
+            rangeEndSourceTimeS: sourceDurationTicks / TICKS_PER_SECOND,
+            timelineNowTicks: transitionTimeTicks,
+            speed,
+          });
+        }
+      }
+
+      const transitionOut = owner.transitionOut;
+      const transitionOutStartTicks = owner.endTicks - (transitionOut?.durationTicks ?? 0);
+      if (
+        transitionOut &&
+        (transitionOut.mode ?? DEFAULT_TRANSITION_MODE) === 'adjacent' &&
+        transitionOut.durationTicks > 0 &&
+        transitionOutStartTicks <= nowTicks + headHorizonTicks &&
+        owner.endTicks > nowTicks
+      ) {
+        const peer = this.findNextClipOnLayer(owner);
+        const speed = peer ? normalizeClipSpeed(peer.speed) : -1;
+        if (peer?.sink && peer.clipKind === 'video' && speed > 0) {
+          const transitionTimeTicks = Math.max(nowTicks, transitionOutStartTicks);
+          const remainingTicks = Math.max(0, owner.endTicks - transitionTimeTicks);
+          const sourceTicks = Math.max(
+            0,
+            peer.sourceStartTicks - Math.round(remainingTicks * speed),
+          );
+          const sourceRangeEndTicks = peer.sourceStartTicks + peer.sourceRangeDurationTicks;
+          addPlan({
+            clip: peer,
+            nowSourceTimeS: sourceTicks / TICKS_PER_SECOND,
+            aheadSourceTimeS:
+              Math.min(getAheadSourceTicks(peer, sourceTicks, speed), sourceRangeEndTicks) /
+              TICKS_PER_SECOND,
+            rangeEndSourceTimeS: sourceRangeEndTicks / TICKS_PER_SECOND,
+            timelineNowTicks: transitionTimeTicks,
+            speed,
+          });
+        }
+      }
+    }
+
     // Nearest-first (active clips share the smallest key) then bound concurrent
     // decoders when a dense cut cluster — e.g. a flattened nested timeline — packs
     // many short clips into the head horizon.
+    const plans = [...plansByClipId.values()];
     plans.sort((a, b) => a.timelineNowTicks - b.timelineNowTicks);
     return plans.slice(0, Math.max(1, Math.round(VIDEO_CORE_LIMITS.MAX_PREWARM_CLIPS)));
   }

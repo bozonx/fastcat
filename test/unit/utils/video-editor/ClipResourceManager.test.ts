@@ -91,6 +91,125 @@ describe('resolveMonitorSampleFallbackTimeS', () => {
   });
 });
 
+describe('ClipResourceManager.getVideoSampleForClip', () => {
+  it('keeps the current render frame alive when the cache rejects the decoded frame', async () => {
+    const renderFrame = { closed: false, close: vi.fn() };
+    const sharedFrame = {
+      closed: false,
+      clone: vi.fn(() => renderFrame),
+      close: vi.fn(function (this: { closed: boolean }) {
+        this.closed = true;
+      }),
+    };
+    const decodedFrame = {
+      codedWidth: 128,
+      codedHeight: 72,
+      closed: false,
+      clone: vi.fn(() => sharedFrame),
+      close: vi.fn(function (this: { closed: boolean }) {
+        this.closed = true;
+      }),
+    };
+    const decodedSample = {
+      timestamp: 1,
+      toVideoFrame: vi.fn(() => decodedFrame),
+      close: vi.fn(),
+    };
+    const videoFrameCache = {
+      frameLe: vi.fn(() => null),
+      set: vi.fn((entry: { frame: typeof decodedFrame }) => entry.frame.close()),
+    };
+    const manager = createManager({
+      resourceManager: {
+        withVideoSampleSlot: (task: () => Promise<unknown>) => task(),
+      },
+      videoFrameCache,
+    });
+    const clip = {
+      itemId: 'clip',
+      clipKind: 'video',
+      frameRate: 30,
+      startTicks: 0,
+      sink: { getSample: vi.fn().mockResolvedValue(decodedSample) },
+    } as unknown as CompositorClip;
+
+    const sample = (await manager.getVideoSampleForClip({ clip, sampleTimeS: 1 })) as {
+      toVideoFrame: () => typeof renderFrame;
+      close: () => void;
+    };
+
+    expect(decodedFrame.closed).toBe(true);
+    expect(sample.toVideoFrame()).toBe(renderFrame);
+    expect(renderFrame.closed).toBe(false);
+    expect(sharedFrame.closed).toBe(true);
+    sample.close();
+    expect(renderFrame.close).not.toHaveBeenCalled();
+  });
+
+  it('clones a cache hit before it can be evicted', async () => {
+    const renderFrame = { closed: false, close: vi.fn() };
+    const cachedFrame = { closed: false, clone: vi.fn(() => renderFrame) };
+    const manager = createManager({
+      videoFrameCache: {
+        frameLe: vi.fn(() => ({ frame: cachedFrame })),
+      },
+    });
+    const clip = { itemId: 'clip', frameRate: 30 } as CompositorClip;
+
+    const sample = (await manager.getVideoSampleForClip({ clip, sampleTimeS: 1 })) as {
+      toVideoFrame: () => typeof renderFrame;
+    };
+    cachedFrame.closed = true;
+
+    expect(sample.toVideoFrame()).toBe(renderFrame);
+  });
+
+  it('coalesces concurrent decodes while giving each consumer its own frame', async () => {
+    const consumerFrames = [
+      { id: 'first', close: vi.fn() },
+      { id: 'second', close: vi.fn() },
+    ];
+    const sharedFrame = {
+      clone: vi.fn(() => consumerFrames.shift()),
+      close: vi.fn(),
+    };
+    const decodedFrame = {
+      codedWidth: 128,
+      codedHeight: 72,
+      clone: vi.fn(() => sharedFrame),
+      close: vi.fn(),
+    };
+    const sink = {
+      getSample: vi.fn().mockResolvedValue({
+        timestamp: 1,
+        toVideoFrame: () => decodedFrame,
+        close: vi.fn(),
+      }),
+    };
+    const manager = createManager({
+      resourceManager: { withVideoSampleSlot: (task: () => Promise<unknown>) => task() },
+      videoFrameCache: { frameLe: vi.fn(() => null), set: vi.fn() },
+    });
+    const clip = {
+      itemId: 'clip',
+      clipKind: 'video',
+      frameRate: 30,
+      startTicks: 0,
+      sink,
+    } as unknown as CompositorClip;
+
+    const [first, second] = (await Promise.all([
+      manager.getVideoSampleForClip({ clip, sampleTimeS: 1 }),
+      manager.getVideoSampleForClip({ clip, sampleTimeS: 1 }),
+    ])) as Array<{ toVideoFrame: () => { id: string } }>;
+
+    expect(sink.getSample).toHaveBeenCalledTimes(1);
+    expect(first?.toVideoFrame().id).toBe('first');
+    expect(second?.toVideoFrame().id).toBe('second');
+    expect(sharedFrame.close).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe('ClipResourceManager.warmClipFrameWindow', () => {
   function createCacheMock(preCached: string[] = []) {
     const store = new Map<string, unknown>();
@@ -209,6 +328,51 @@ describe('ClipResourceManager.warmClipFrameWindow', () => {
     expect(videoFrameCache.set.mock.calls.length).toBeGreaterThan(storedAfterFirst);
     // Frame at t=0.16 → ms key 160.
     expect(videoFrameCache.store.has('clip-1:160')).toBe(true);
+  });
+
+  it('can warm transition handles beyond the visible source range', async () => {
+    const videoFrameCache = createCacheMock();
+    const sink = createSinkMock();
+    const manager = createManager({ videoFrameCache: videoFrameCache as any });
+
+    await manager.warmClipFrameWindow({
+      clip: createVideoClip(sink),
+      nowSourceTimeS: 10,
+      aheadSourceTimeS: 10.12,
+      rangeEndSourceTimeS: 12,
+      timelineNowTicks: 0,
+      speed: 1,
+    });
+
+    expect(sink.opens[0]).toEqual({ startS: 10, endS: 12 });
+    expect(videoFrameCache.store.has('clip-1:10000')).toBe(true);
+  });
+
+  it('reopens an existing iterator when a transition extends its source range', async () => {
+    const videoFrameCache = createCacheMock();
+    const sink = createSinkMock();
+    const manager = createManager({ videoFrameCache: videoFrameCache as any });
+    const clip = createVideoClip(sink);
+
+    await manager.warmClipFrameWindow({
+      clip,
+      nowSourceTimeS: 9.8,
+      aheadSourceTimeS: 9.92,
+      timelineNowTicks: 0,
+      speed: 1,
+    });
+    await manager.warmClipFrameWindow({
+      clip,
+      nowSourceTimeS: 10,
+      aheadSourceTimeS: 10.12,
+      rangeEndSourceTimeS: 12,
+      timelineNowTicks: 10_000_000,
+      speed: 1,
+    });
+
+    expect(sink.samples).toHaveBeenCalledTimes(2);
+    expect(sink.finalized).toContain(0);
+    expect(sink.opens[1]).toEqual({ startS: 10, endS: 12 });
   });
 
   it('reopens the stream after a backward seek', async () => {

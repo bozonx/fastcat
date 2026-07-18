@@ -71,6 +71,60 @@ describe('VideoCompositor decode-ahead prewarm', () => {
       const plans = compositor.buildActiveClipWarmPlans(nowTicks);
       expect(plans.length).toBeLessThanOrEqual(8);
     });
+
+    it('warms the outgoing source handle used by an active transitionIn', () => {
+      const compositor = new VideoCompositor() as any;
+      const prev = videoClip({
+        itemId: 'prev',
+        startTicks: 0,
+        endTicks: 5 * S,
+        sourceStartTicks: 2 * S,
+        sourceRangeDurationTicks: 3 * S,
+        sourceDurationTicks: 10 * S,
+      });
+      const current = videoClip({
+        itemId: 'current',
+        startTicks: 5 * S,
+        endTicks: 10 * S,
+        transitionIn: { type: 'dissolve', mode: 'adjacent', durationTicks: S },
+      });
+      compositor.clips = [prev, current];
+      compositor.prevClipById = new Map([['current', prev]]);
+
+      const plans = compositor.buildActiveClipWarmPlans(5.25 * S);
+      const plan = plans.find((candidate: any) => candidate.clip.itemId === 'prev');
+
+      expect(plan.nowSourceTimeS).toBeCloseTo(5.25, 3);
+      expect(plan.aheadSourceTimeS).toBeGreaterThan(plan.nowSourceTimeS);
+      expect(plan.rangeEndSourceTimeS).toBe(10);
+    });
+
+    it('warms the incoming leading handle before an active transitionOut', () => {
+      const compositor = new VideoCompositor() as any;
+      const current = videoClip({
+        itemId: 'current',
+        startTicks: 5 * S,
+        endTicks: 10 * S,
+        transitionOut: { type: 'dissolve', mode: 'adjacent', durationTicks: S },
+      });
+      const next = videoClip({
+        itemId: 'next',
+        startTicks: 10 * S,
+        endTicks: 15 * S,
+        sourceStartTicks: 2 * S,
+        sourceRangeDurationTicks: 5 * S,
+        sourceDurationTicks: 12 * S,
+      });
+      compositor.clips = [current, next];
+      compositor.nextClipById = new Map([['current', next]]);
+
+      const plans = compositor.buildActiveClipWarmPlans(9.25 * S);
+      const plan = plans.find((candidate: any) => candidate.clip.itemId === 'next');
+
+      expect(plan.nowSourceTimeS).toBeCloseTo(1.25, 3);
+      expect(plan.aheadSourceTimeS).toBeGreaterThan(2);
+      expect(plan.rangeEndSourceTimeS).toBe(7);
+    });
   });
 
   describe('maybeProactivePrewarmOnClipEntry (B)', () => {

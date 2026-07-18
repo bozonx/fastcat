@@ -55,11 +55,20 @@ interface ClipWarmStream {
   lastTimeS: number;
   /** Playhead source time (s) of the previous warm tick — for seek detection. */
   lastNowS: number;
+  /** Fixed end timestamp passed to the iterator when it was opened. */
+  rangeEndS?: number;
   done: boolean;
 }
 
+interface InFlightVideoFrameRequest {
+  promise: Promise<VideoFrame | null>;
+  frame: VideoFrame | null;
+  consumers: number;
+  settled: boolean;
+}
+
 export class ClipResourceManager {
-  private readonly inFlightSamples = new Map<string, Promise<unknown | null>>();
+  private readonly inFlightSamples = new Map<string, InFlightVideoFrameRequest>();
   private readonly clipWarmStreams = new Map<string, ClipWarmStream>();
 
   constructor(private readonly context: ClipResourceManagerContext) {}
@@ -683,50 +692,90 @@ export class ClipResourceManager {
     );
     if (cached) {
       compositorPerfStats.onCacheHit();
-      return {
-        toVideoFrame: () => {
-          if ((cached.frame as { closed?: boolean }).closed) {
-            throw new Error('Cached VideoFrame is closed');
-          }
-          return cached.frame.clone();
-        },
-      };
+      return this.createOwnedVideoFrameSample(cached.frame.clone());
     }
 
-    // Coalesce concurrent decodes of the same request moment. The dedup key is the
-    // REQUEST time (the decoded frame's own PTS is unknown until it returns), which is
-    // enough to fold duplicate in-flight reads for the same on-screen frame.
     const inflightKey = buildVideoFrameCacheKey(clip, computeFrameKeyMs(sampleTimeS));
-    const inFlight = this.inFlightSamples.get(inflightKey);
-    if (inFlight) {
-      return inFlight;
+    let request = this.inFlightSamples.get(inflightKey);
+    if (!request) {
+      const decodeStartMs = performance.now();
+      request = {
+        promise: Promise.resolve(null),
+        frame: null,
+        consumers: 0,
+        settled: false,
+      };
+      request.promise = this.fetchVideoFrameForClip(
+        clip,
+        sampleTimeS,
+        params.timelineTimeTicks,
+        params.monitorSyncMode,
+        abortSignal,
+      );
+      this.inFlightSamples.set(inflightKey, request);
+      void request.promise
+        .then(
+          (frame) => {
+            request!.frame = frame;
+          },
+          () => undefined,
+        )
+        .finally(() => {
+          request!.settled = true;
+          compositorPerfStats.onDecode(performance.now() - decodeStartMs);
+          this.releaseInFlightSample(inflightKey, request!);
+        });
     }
 
-    const decodeStartMs = performance.now();
-    const promise = this.fetchVideoSampleForClip(
-      clip,
-      sampleTimeS,
-      params.timelineTimeTicks,
-      params.monitorSyncMode,
-      abortSignal,
-    );
-    this.inFlightSamples.set(inflightKey, promise);
-
+    request.consumers += 1;
     try {
-      return await promise;
+      const frame = await request.promise;
+      return frame ? this.createOwnedVideoFrameSample(frame.clone()) : null;
     } finally {
-      this.inFlightSamples.delete(inflightKey);
-      compositorPerfStats.onDecode(performance.now() - decodeStartMs);
+      request.consumers -= 1;
+      this.releaseInFlightSample(inflightKey, request);
     }
   }
 
-  private async fetchVideoSampleForClip(
+  private releaseInFlightSample(key: string, request: InFlightVideoFrameRequest): void {
+    if (!request.settled || request.consumers > 0) return;
+    if (this.inFlightSamples.get(key) === request) {
+      this.inFlightSamples.delete(key);
+    }
+    request.frame?.close();
+    request.frame = null;
+  }
+
+  private createOwnedVideoFrameSample(frame: VideoFrame): unknown {
+    let ownedFrame: VideoFrame | null = frame;
+
+    return {
+      toVideoFrame: () => {
+        if (!ownedFrame || (ownedFrame as { closed?: boolean }).closed) {
+          throw new Error('VideoFrame sample is closed');
+        }
+        const result = ownedFrame;
+        ownedFrame = null;
+        return result;
+      },
+      close: () => {
+        if (!ownedFrame) return;
+        try {
+          ownedFrame.close();
+        } finally {
+          ownedFrame = null;
+        }
+      },
+    };
+  }
+
+  private async fetchVideoFrameForClip(
     clip: CompositorClip,
     sampleTimeS: number,
     timelineTimeTicks: number | undefined,
     monitorSyncMode: WebMonitorSyncMode | undefined,
     abortSignal?: AbortSignal,
-  ): Promise<unknown | null> {
+  ): Promise<VideoFrame | null> {
     let sample = await this.context.resourceManager.withVideoSampleSlot(
       () =>
         getVideoSampleWithZeroFallback(
@@ -769,11 +818,15 @@ export class ClipResourceManager {
 
     const sampleObj2 = sampleValue as { toVideoFrame?: () => VideoFrame };
     if (!sampleValue || typeof sampleObj2.toVideoFrame !== 'function') {
-      return sample;
+      return null;
     }
 
     try {
       const frame = sampleObj2.toVideoFrame() as VideoFrame;
+      // Keep the frame used by this render independent from the cache entry.
+      // Eviction, concurrent layer decodes, or a 0 MB limit may close the cached
+      // frame before Pixi uploads the current sample.
+      const renderFrame = frame.clone();
       // Key by the DECODED sample's own PTS, not the request time: on VFR the held
       // frame's timestamp can sit well before the requested moment, and keying by
       // request time would both mis-place the frame and diverge from the prewarm path.
@@ -782,14 +835,7 @@ export class ClipResourceManager {
       const cacheKey = buildVideoFrameCacheKey(clip, keyMs);
       this.storeDecodedFrame({ clip, keyMs, cacheKey, timelineTimeTicks, frame });
 
-      return {
-        toVideoFrame: () => {
-          if ((frame as { closed?: boolean }).closed) {
-            throw new Error('VideoFrame is closed');
-          }
-          return frame.clone();
-        },
-      };
+      return renderFrame;
     } finally {
       const closer = sampleValue as { close?: () => void };
       if (typeof closer?.close === 'function') {
@@ -862,6 +908,7 @@ export class ClipResourceManager {
     clip: CompositorClip;
     nowSourceTimeS: number;
     aheadSourceTimeS: number;
+    rangeEndSourceTimeS?: number;
     timelineNowTicks: number;
     speed: number;
   }): Promise<void> {
@@ -879,6 +926,12 @@ export class ClipResourceManager {
     if (!sink || typeof sink.samples !== 'function') return;
 
     const warmStartMs = performance.now();
+    const rangeEndS =
+      typeof params.rangeEndSourceTimeS === 'number' && Number.isFinite(params.rangeEndSourceTimeS)
+        ? Math.max(params.nowSourceTimeS, params.rangeEndSourceTimeS)
+        : clip.sourceRangeDurationTicks > 0
+          ? (clip.sourceStartTicks + clip.sourceRangeDurationTicks) / TICKS_PER_SECOND
+          : undefined;
     let stream = this.clipWarmStreams.get(clip.itemId);
 
     // Reopen when the playhead left the stream's coverage: moved backward since
@@ -892,21 +945,20 @@ export class ClipResourceManager {
     if (
       stream &&
       (params.nowSourceTimeS < stream.lastNowS - STALE_BACK_S ||
-        params.nowSourceTimeS > stream.lastTimeS + STALE_FORWARD_GAP_S)
+        params.nowSourceTimeS > stream.lastTimeS + STALE_FORWARD_GAP_S ||
+        (rangeEndS !== undefined &&
+          (stream.rangeEndS === undefined || rangeEndS > stream.rangeEndS)))
     ) {
       this.disposeWarmStream(clip.itemId);
       stream = undefined;
     }
 
     if (!stream) {
-      const rangeEndS =
-        clip.sourceRangeDurationTicks > 0
-          ? (clip.sourceStartTicks + clip.sourceRangeDurationTicks) / TICKS_PER_SECOND
-          : undefined;
       stream = {
         iterator: sink.samples(params.nowSourceTimeS, rangeEndS),
         lastTimeS: params.nowSourceTimeS,
         lastNowS: params.nowSourceTimeS,
+        rangeEndS,
         done: false,
       };
       this.clipWarmStreams.set(clip.itemId, stream);
@@ -1342,9 +1394,6 @@ export class ClipResourceManager {
 
   public destroyClip(clip: CompositorClip, deps: { transitionManager: TransitionManager }) {
     this.disposeWarmStream(clip.itemId);
-    // Primary samples are keyed `${itemId}:idx`; HUD/mask mock clips use the
-    // suffixed ids `${itemId}_bg:`, `_ct:`, `_fr:` and `_mask:`. Drop in-flight
-    // tracking for all of them so a destroyed clip leaves nothing behind.
     const inFlightPrefixes = [
       `${clip.itemId}:`,
       `${clip.itemId}_bg:`,
@@ -1352,12 +1401,14 @@ export class ClipResourceManager {
       `${clip.itemId}_fr:`,
       `${clip.itemId}_mask:`,
     ];
-    for (const key of this.inFlightSamples.keys()) {
-      if (inFlightPrefixes.some((prefix) => key.startsWith(prefix))) {
+    for (const [key, request] of this.inFlightSamples) {
+      if (!inFlightPrefixes.some((prefix) => key.startsWith(prefix))) continue;
+      if (request.consumers === 0) {
+        request.frame?.close();
+        request.frame = null;
         this.inFlightSamples.delete(key);
       }
     }
-
     this.context.videoFrameCache.clearForClip(clip.itemId);
     safeDispose(clip.sink);
     safeDispose(clip.input);
