@@ -6,7 +6,6 @@ import type { WorkerTimelineClip } from '~/composables/monitor/types';
 
 import { useMonitorCore } from '~/composables/monitor/useMonitorCore';
 import { workerClipToAudioEngineClip } from '~/composables/monitor/useMonitorCore.audio';
-import { WEB_VIDEO_FRAME_CACHE_MB } from '~/composables/monitor/useMonitorCore.helpers';
 import { computeMonitorTimelineDuration } from '~/composables/monitor/useMonitorCore.timeline';
 
 const mockClient = {
@@ -643,7 +642,7 @@ describe('useMonitorCore', () => {
       1250,
       expect.objectContaining({
         previewEffectsEnabled: false,
-        videoFrameCacheMb: WEB_VIDEO_FRAME_CACHE_MB,
+        videoFrameCacheMb: 1024,
       }),
     );
 
