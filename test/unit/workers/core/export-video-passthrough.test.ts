@@ -5,6 +5,7 @@ import {
   findVideoPassthroughCandidate,
   buildPassthroughVideoTrack,
   writeVideoPassthrough,
+  isSourceFrameIntervalUniform,
   type PassthroughPacketSink,
 } from '~/workers/core/export-video-passthrough';
 import type { WorkerVideoPayloadItem } from '~/types/worker-payload';
@@ -433,6 +434,79 @@ describe('buildPassthroughVideoTrack', () => {
     const params = { ...buildParams(bundle), openInput };
     const state = await buildPassthroughVideoTrack(params);
     expect(state).toBeNull();
+  });
+
+  // A real (dense, per-frame) 30fps CFR packet stream, unlike the sparse
+  // GOP-boundary fixtures above which have too few packets to judge uniformity.
+  function densePackets(count: number, intervalS: number, keyEvery = 30): MockPacket[] {
+    return Array.from({ length: count }, (_, i) =>
+      makePacket(i * intervalS, i % keyEvery === 0 ? 'key' : 'delta', intervalS),
+    );
+  }
+
+  it('accepts a real dense CFR source (uniform 1/30s packet intervals)', async () => {
+    const packets = densePackets(60, 1 / 30);
+    const bundle = makeOpenInput({}, packets);
+    const state = await buildPassthroughVideoTrack(buildParams(bundle));
+    expect(state).not.toBeNull();
+  });
+
+  it('rejects a VFR source whose average packet rate coincidentally matches the requested fps', async () => {
+    // Alternating 20ms/47ms gaps average to ~29.9fps (passes the 0.5% average-rate
+    // gate) but no two consecutive frames are 1/30s apart — the exact case that
+    // slipped through the average-only check and shipped VFR into a "CFR" export.
+    const gaps = [0.02, 0.047];
+    let t = 0;
+    const packets: MockPacket[] = [];
+    for (let i = 0; i < 40; i++) {
+      packets.push(makePacket(t, i % 30 === 0 ? 'key' : 'delta', gaps[i % 2]));
+      t += gaps[i % 2]!;
+    }
+    const bundle = makeOpenInput(
+      {
+        computePacketStats: vi
+          .fn()
+          .mockResolvedValue({ averagePacketRate: 30, averageBitrate: 4_000_000 }),
+      },
+      packets,
+    );
+    const state = await buildPassthroughVideoTrack(buildParams(bundle));
+    expect(state).toBeNull();
+    expect(bundle.dispose).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('isSourceFrameIntervalUniform', () => {
+  it('returns true (trusts the average gate) when too few packets to judge', async () => {
+    const sink = makeSink([makePacket(0, 'key'), makePacket(5, 'delta')]);
+    expect(await isSourceFrameIntervalUniform({ packetSink: sink, requestedFps: 30 })).toBe(true);
+  });
+
+  it('returns true for a dense uniform-interval stream', async () => {
+    const packets = Array.from({ length: 30 }, (_, i) => makePacket(i / 30, 'delta'));
+    const sink = makeSink(packets);
+    expect(await isSourceFrameIntervalUniform({ packetSink: sink, requestedFps: 30 })).toBe(true);
+  });
+
+  it('returns false for a dense jittery-interval stream', async () => {
+    const gaps = [0.02, 0.047];
+    let t = 0;
+    const packets: MockPacket[] = [];
+    for (let i = 0; i < 30; i++) {
+      packets.push(makePacket(t, 'delta'));
+      t += gaps[i % 2]!;
+    }
+    const sink = makeSink(packets);
+    expect(await isSourceFrameIntervalUniform({ packetSink: sink, requestedFps: 30 })).toBe(false);
+  });
+
+  it('tolerates small container/timebase rounding noise', async () => {
+    // Sub-millisecond jitter typical of rational timebases (e.g. 1001/30000).
+    const packets = Array.from({ length: 30 }, (_, i) =>
+      makePacket(i / 30 + (i % 2 === 0 ? 0.0001 : -0.0001), 'delta'),
+    );
+    const sink = makeSink(packets);
+    expect(await isSourceFrameIntervalUniform({ packetSink: sink, requestedFps: 30 })).toBe(true);
   });
 });
 

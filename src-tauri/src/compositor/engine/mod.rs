@@ -405,6 +405,15 @@ impl Compositor {
                     .entry(dev_id)
                     .or_insert_with(|| TransitionPipeline::new(device, cache));
 
+                // Logical full size the transition would occupy at scale 1.0 (mirrors the
+                // pipeline's `max(from, to)`). When a lower tier renders the transition
+                // smaller, the raster carries a scale-up transform so it still fills exactly
+                // this rectangle instead of drawing at its reduced pixel size in a corner.
+                let (fw_a, fh_a) = from_source.size();
+                let (fw_b, fh_b) = to_source.size();
+                let full_w = fw_a.max(fw_b).max(1) as f64;
+                let full_h = fh_a.max(fh_b).max(1) as f64;
+
                 match pipeline.apply_transition(
                     device,
                     queue,
@@ -414,11 +423,13 @@ impl Compositor {
                         spec: &trans_info.spec,
                         progress: trans_info.progress,
                         speed: trans_info.speed_multiplier,
+                        render_scale: scene.effect_quality.transition_render_scale(),
                     },
                 ) {
                     Ok(processed) => {
+                        let (pw, ph) = (processed.width().max(1), processed.height().max(1));
                         layers[i].kind = LayerKind::Raster {
-                            natural_size: (processed.width(), processed.height()),
+                            natural_size: (pw, ph),
                             source: RasterSource::GpuTexture(std::sync::Arc::new(
                                 crate::media::SharedTexture::new_shared(std::sync::Arc::new(
                                     processed,
@@ -426,7 +437,12 @@ impl Compositor {
                             )),
                             padding: None,
                         };
-                        layers[i].transform = Transform::identity();
+                        // Upscale the (possibly reduced-resolution) transition output back to the
+                        // full transition rectangle; identity when rendered at full scale.
+                        let mut fill = Transform::identity();
+                        fill.scale_x = full_w / pw as f64;
+                        fill.scale_y = full_h / ph as f64;
+                        layers[i].transform = fill;
                         layers[i].opacity = 1.0;
                         layers[i].transition = None;
                         layers[i].effects.clear();

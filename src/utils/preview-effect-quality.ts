@@ -31,6 +31,20 @@ const QUALITY_TAP_BUDGETS: Record<PreviewEffectQuality, number> = {
   ultra: 48,
 };
 
+// Internal render scale for the transition compute pass. Transitions are often blur- or
+// perspective-heavy full-frame shader passes whose dominant cost at 4K is the pixel count,
+// not just the per-pixel tap budget. Lower tiers therefore run the transition at reduced
+// resolution and let the compositor (Pixi/vello) upscale the transient result — the inputs
+// and output are transient and decoder-independent, so this never churns video runtimes the
+// way a geometric preview-scale change would. Pinned cross-engine by
+// `shared/parity/transition-render-scale.cases.json` (native `EffectQuality::transition_render_scale`).
+const QUALITY_TRANSITION_SCALES: Record<PreviewEffectQuality, number> = {
+  low: 0.5,
+  medium: 0.75,
+  high: 1,
+  ultra: 1,
+};
+
 export function resolvePreviewQualityOverride(
   params: Pick<
     ResolvePreviewEffectQualityParams,
@@ -72,6 +86,10 @@ export function resolvePreviewEffectQuality(
 
 export function previewEffectQualityTapBudget(quality: PreviewEffectQuality): number {
   return QUALITY_TAP_BUDGETS[quality];
+}
+
+export function previewEffectQualityTransitionScale(quality: PreviewEffectQuality): number {
+  return QUALITY_TRANSITION_SCALES[quality];
 }
 
 export function previewEffectQualityRenderScale(quality: PreviewEffectQuality): number {

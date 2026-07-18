@@ -40,6 +40,22 @@ impl EffectQuality {
             Self::Ultra => 48.0,
         }
     }
+
+    /// Internal render scale for the transition compute pass. Transitions are often
+    /// blur- or perspective-heavy full-frame shader passes whose dominant cost at 4K is
+    /// the pixel count, not just the per-pixel tap budget. Lower tiers run the transition
+    /// at reduced resolution and let vello upscale the transient result. The inputs and
+    /// output are transient and decoder-independent, so this never churns video runtimes
+    /// the way a geometric preview-scale change would. Pinned cross-engine by
+    /// `shared/parity/transition-render-scale.cases.json` (web
+    /// `previewEffectQualityTransitionScale`).
+    pub fn transition_render_scale(self) -> f32 {
+        match self {
+            Self::Low => 0.5,
+            Self::Medium => 0.75,
+            Self::High | Self::Ultra => 1.0,
+        }
+    }
 }
 
 // ts-rs mirrors this tagged enum to the frontend as `VideoEffectSpec`
@@ -237,6 +253,14 @@ impl EffectSource {
         EffectSource::Gpu(Arc::new(crate::media::SharedTexture::new_shared(Arc::new(
             texture,
         ))))
+    }
+
+    /// Pixel dimensions of the source (CPU image or GPU texture).
+    pub fn size(&self) -> (u32, u32) {
+        match self {
+            EffectSource::Cpu(img) => (img.width, img.height),
+            EffectSource::Gpu(tex) => (tex.width(), tex.height()),
+        }
     }
 }
 

@@ -23,6 +23,10 @@ pub struct TransitionRequest<'a> {
     pub progress: f32,
     /// Playback speed multiplier (used by motion-aware transitions).
     pub speed: f32,
+    /// Internal render scale for the compute pass, derived from the effect-quality tier
+    /// (see `EffectQuality::transition_render_scale`). `1.0` renders at full input size;
+    /// lower tiers run the transition at reduced resolution and let vello upscale.
+    pub render_scale: f32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -90,6 +94,15 @@ pub struct TransitionPipeline {
     /// materialized scene, so each transition gets a distinct slot; slots are reused next frame.
     output_pool: Vec<wgpu::Texture>,
     output_cursor: usize,
+    /// Per-frame scaled-input textures (from/to brought to the compute size). Distinct slots so
+    /// both inputs of every active transition stay valid until submit; reused next frame instead
+    /// of reallocating a full-frame texture per input per frame.
+    scaled_pool: Vec<wgpu::Texture>,
+    scaled_cursor: usize,
+    /// Per-frame uniform buffers (transition + blit uniforms). Persistent GPU buffers written via
+    /// `queue.write_buffer` instead of allocating a fresh 64/16-byte buffer per pass per frame.
+    uniform_pool: Vec<wgpu::Buffer>,
+    uniform_cursor: usize,
 }
 
 #[repr(C)]
@@ -248,11 +261,87 @@ impl TransitionPipeline {
             blit_pipeline,
             output_pool: Vec::new(),
             output_cursor: 0,
+            scaled_pool: Vec::new(),
+            scaled_cursor: 0,
+            uniform_pool: Vec::new(),
+            uniform_cursor: 0,
         }
     }
 
     pub fn begin_frame(&mut self) {
         self.output_cursor = 0;
+        self.scaled_cursor = 0;
+        self.uniform_cursor = 0;
+    }
+
+    /// Acquires a scaled-input texture slot of exactly `width×height`, reusing the pooled
+    /// texture when the size matches. Advances the per-frame cursor so concurrent transitions
+    /// get distinct slots.
+    fn acquire_scaled_input(
+        &mut self,
+        device: &wgpu::Device,
+        width: u32,
+        height: u32,
+    ) -> wgpu::Texture {
+        let slot = self.scaled_cursor;
+        self.scaled_cursor += 1;
+
+        if let Some(texture) = self.scaled_pool.get(slot) {
+            if texture.width() == width && texture.height() == height {
+                return texture.clone();
+            }
+        }
+
+        let texture = create_rgba8_texture(
+            device,
+            "native-transition-scaled-input",
+            width,
+            height,
+            wgpu::TextureUsages::COPY_SRC
+                | wgpu::TextureUsages::TEXTURE_BINDING
+                | wgpu::TextureUsages::STORAGE_BINDING,
+        );
+        if slot == self.scaled_pool.len() {
+            self.scaled_pool.push(texture.clone());
+        } else {
+            self.scaled_pool[slot] = texture.clone();
+        }
+        texture
+    }
+
+    /// Acquires a pooled uniform buffer of `size` bytes and fills it with `contents` via
+    /// `queue.write_buffer`. Queue writes are ordered with submits, so a slot reused across the
+    /// sequential per-transition submits of one frame is safe.
+    fn acquire_uniform(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        contents: &[u8],
+    ) -> wgpu::Buffer {
+        let slot = self.uniform_cursor;
+        self.uniform_cursor += 1;
+
+        let size = contents.len() as u64;
+        let reusable = self
+            .uniform_pool
+            .get(slot)
+            .is_some_and(|buffer| buffer.size() >= size);
+        if !reusable {
+            let buffer = device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("native-transition-uniform"),
+                size: size.max(16),
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            });
+            if slot == self.uniform_pool.len() {
+                self.uniform_pool.push(buffer);
+            } else {
+                self.uniform_pool[slot] = buffer;
+            }
+        }
+        let buffer = self.uniform_pool[slot].clone();
+        queue.write_buffer(&buffer, 0, contents);
+        buffer
     }
 
     fn acquire_output(&mut self, device: &wgpu::Device, width: u32, height: u32) -> wgpu::Texture {
@@ -289,7 +378,7 @@ impl TransitionPipeline {
     /// caller submits once together with the transition itself, with no separate
     /// `queue.submit` per input.
     fn prepare_input(
-        &self,
+        &mut self,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         encoder: &mut wgpu::CommandEncoder,
@@ -315,27 +404,19 @@ impl TransitionPipeline {
             }
         };
 
-        let dst = create_rgba8_texture(
+        let dst = self.acquire_scaled_input(device, width, height);
+        let uniform = self.acquire_uniform(
             device,
-            "native-transition-scaled-input",
-            width,
-            height,
-            wgpu::TextureUsages::COPY_SRC
-                | wgpu::TextureUsages::TEXTURE_BINDING
-                | wgpu::TextureUsages::STORAGE_BINDING,
-        );
-        let src_view = src_tex.create_view(&wgpu::TextureViewDescriptor::default());
-        let dst_view = dst.create_view(&wgpu::TextureViewDescriptor::default());
-        let uniform = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("native-transition-blit-uniform"),
-            contents: bytemuck::bytes_of(&BlitUniform {
+            queue,
+            bytemuck::bytes_of(&BlitUniform {
                 out_w: width,
                 out_h: height,
                 src_w,
                 src_h,
             }),
-            usage: wgpu::BufferUsages::UNIFORM,
-        });
+        );
+        let src_view = src_tex.create_view(&wgpu::TextureViewDescriptor::default());
+        let dst_view = dst.create_view(&wgpu::TextureViewDescriptor::default());
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("native-transition-blit-bind-group"),
             layout: &self.blit_layout,
@@ -412,6 +493,7 @@ impl TransitionPipeline {
             spec,
             progress,
             speed,
+            render_scale,
         } = request;
         let (w_from, h_from) = match from_source {
             EffectSource::Cpu(img) => (img.width, img.height),
@@ -429,11 +511,19 @@ impl TransitionPipeline {
         // (see `WebGpuComputeRunner` runTransition). The blend result matches:
         // every transition shader samples with normalized UVs, so only the
         // sampling resolution differs.
-        let width = w_from.max(w_to);
-        let height = h_from.max(h_to);
-        if width == 0 || height == 0 {
+        let full_width = w_from.max(w_to);
+        let full_height = h_from.max(h_to);
+        if full_width == 0 || full_height == 0 {
             return Err(anyhow!("Invalid texture size for transition: 0x0"));
         }
+
+        // Lower effect-quality tiers run the (often blur/perspective-heavy) transition at a
+        // reduced internal resolution; vello upscales the resulting raster layer on composite.
+        // The shaders sample with normalized UVs and read `uni.width/height`, so running every
+        // input + the output at this common scaled size stays fully self-consistent.
+        let scale = render_scale.clamp(0.05, 1.0);
+        let width = ((full_width as f32 * scale).round() as u32).max(1);
+        let height = ((full_height as f32 * scale).round() as u32).max(1);
 
         // Select/compile the shader (done before borrowing resources, since it needs &mut self)
         let shader_source = get_shader_source(spec);
@@ -461,13 +551,10 @@ impl TransitionPipeline {
         let from_texture = from_tex.create_view(&wgpu::TextureViewDescriptor::default());
         let to_texture = to_tex.create_view(&wgpu::TextureViewDescriptor::default());
 
-        // Fill the uniform buffer
+        // Fill the uniform buffer (pooled + written via queue, no per-frame allocation).
         let uniform_data = build_uniform(spec, progress, speed, width, height);
-        let uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("native-transition-uniform"),
-            contents: bytemuck::bytes_of(&uniform_data),
-            usage: wgpu::BufferUsages::UNIFORM,
-        });
+        let uniform_buffer =
+            self.acquire_uniform(device, queue, bytemuck::bytes_of(&uniform_data));
 
         // Create the bind group
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {

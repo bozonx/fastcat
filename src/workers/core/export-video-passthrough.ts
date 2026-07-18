@@ -33,6 +33,20 @@ const DURATION_EPSILON_TICKS = 42 * TICKS_PER_MILLISECOND;
  * would violate the user's compression intent and we re-encode instead. */
 const BITRATE_TOLERANCE = 1.25;
 
+/** Minimum leading packets needed to judge frame-interval uniformity. Fewer than
+ * this (short clip / thin GOP structure) can't reliably distinguish real VFR
+ * jitter from noise, so the average-rate gate above is trusted alone. */
+const CFR_CHECK_MIN_SAMPLES = 20;
+
+/** How many leading packets (decode order) to sample for the uniformity check —
+ * enough for a solid read without walking the whole track. */
+const CFR_CHECK_SAMPLE_PACKETS = 60;
+
+/** Deviation from the nominal frame interval (1/requestedFps) tolerated before a
+ * packet gap is treated as VFR jitter rather than container/timebase rounding. */
+const CFR_CHECK_TOLERANCE_FRACTION = 0.15;
+const CFR_CHECK_TOLERANCE_FLOOR_S = 0.002;
+
 /**
  * How far (s) past the trim end the metadata prescan keeps scanning for
  * late-decode-order packets that still display inside the range. Frame
@@ -258,10 +272,50 @@ interface HostClientLike {
 }
 
 /**
+ * The `averagePacketRate` gate only catches a source whose MEAN packet rate
+ * differs from the requested fps — a VFR source whose jittery per-frame intervals
+ * happen to average out to the requested rate slips through it, and a stream-copy
+ * would then carry the source's original (non-uniform) timestamps into an export
+ * the user asked to be CFR. This walks a leading sample of packets and checks
+ * that PRESENTATION timestamps (sorted here — `packets()` yields decode order,
+ * which B-frame reordering can jumble relative to presentation order) are evenly
+ * spaced. `metadataOnly` keeps this to an index walk, no frame decode.
+ */
+export async function isSourceFrameIntervalUniform(params: {
+  packetSink: PassthroughPacketSink;
+  requestedFps: number;
+}): Promise<boolean> {
+  const { packetSink, requestedFps } = params;
+  const timestamps: number[] = [];
+  for await (const packet of packetSink.packets(undefined, undefined, { metadataOnly: true })) {
+    timestamps.push(packet.timestamp);
+    if (timestamps.length >= CFR_CHECK_SAMPLE_PACKETS) break;
+  }
+  // Too few packets to establish periodicity reliably — defer to the average-rate
+  // gate instead of guessing (also keeps thin GOP-boundary fixtures unaffected).
+  if (timestamps.length < CFR_CHECK_MIN_SAMPLES) return true;
+
+  timestamps.sort((a, b) => a - b);
+  const nominalIntervalS = 1 / requestedFps;
+  const toleranceS = Math.max(
+    CFR_CHECK_TOLERANCE_FLOOR_S,
+    nominalIntervalS * CFR_CHECK_TOLERANCE_FRACTION,
+  );
+  for (let i = 1; i < timestamps.length; i++) {
+    const delta = timestamps[i]! - timestamps[i - 1]!;
+    if (Math.abs(delta - nominalIntervalS) > toleranceS) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
  * Opens the source and validates the source-level passthrough gates: codec
  * family must match the requested output codec, resolution/rotation/fps must
  * match the requested output, the source bitrate must not exceed the requested
- * one beyond {@link BITRATE_TOLERANCE}, and a head trim must land on a
+ * one beyond {@link BITRATE_TOLERANCE}, packet intervals must be uniform (not
+ * VFR with a coincidentally matching average), and a head trim must land on a
  * keyframe. Returns `null` (with a logged reason) to fall back to re-encode.
  */
 export async function buildPassthroughVideoTrack(params: {
@@ -320,11 +374,18 @@ export async function buildPassthroughVideoTrack(params: {
       );
     }
 
+    const packetSink = makePacketSink(videoTrack);
+
     const stats = await videoTrack.computePacketStats(100);
     const sourceFps = stats.averagePacketRate;
     const requestedFps = Math.max(1, Number(options.fps) || 30);
     if (!(sourceFps > 0) || Math.abs(sourceFps - requestedFps) / requestedFps > 0.005) {
       return bail(`source fps ${sourceFps?.toFixed(3)} != requested ${requestedFps}`);
+    }
+    if (!(await isSourceFrameIntervalUniform({ packetSink, requestedFps }))) {
+      return bail(
+        `source packet intervals are not uniform despite matching average fps ${sourceFps.toFixed(3)} (likely VFR)`,
+      );
     }
     const requestedBitrate = Number(options.bitrate);
     if (
@@ -342,7 +403,6 @@ export async function buildPassthroughVideoTrack(params: {
       return bail('source decoder config unavailable');
     }
 
-    const packetSink = makePacketSink(videoTrack);
     const sourceStartS = Math.max(0, ticksToSeconds(Number(clip.sourceRange?.startTicks ?? 0)));
     const requestedEndS =
       sourceStartS + Math.max(0, ticksToSeconds(Number(clip.sourceRange?.durationTicks ?? 0)));

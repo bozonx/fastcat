@@ -1,0 +1,17 @@
+{
+  "_comment": [
+    "Cross-engine parity contract for the transition compute-pass render scale per",
+    "effect-quality tier. Lower tiers run the (often blur/perspective-heavy) transition",
+    "shader at reduced resolution; the compositor upscales the transient result.",
+    "  - web:    previewEffectQualityTransitionScale() in src/utils/preview-effect-quality.ts",
+    "  - native: EffectQuality::transition_render_scale() in src-tauri/src/compositor/effects/mod.rs",
+    "The output/inputs are transient and decoder-independent, so this never changes the",
+    "geometric preview resolution (which would churn video runtimes)."
+  ],
+  "cases": [
+    { "quality": "low", "expected": 0.5 },
+    { "quality": "medium", "expected": 0.75 },
+    { "quality": "high", "expected": 1.0 },
+    { "quality": "ultra", "expected": 1.0 }
+  ]
+}
