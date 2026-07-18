@@ -18,6 +18,9 @@ export interface NativeMediaMetadata {
     rotation: number;
     /** Whether ffmpeg decoded the first frame. Absent on non-validating probes. */
     canDecode?: boolean;
+    /** True when the source's per-frame timing is not constant (VFR). Absent when
+     * ffprobe didn't report both `avg_frame_rate` and `r_frame_rate`. */
+    isVariableFrameRate?: boolean;
   } | null;
   audio?: {
     codec: string;

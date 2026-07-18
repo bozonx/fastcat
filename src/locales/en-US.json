@@ -2179,6 +2179,8 @@
       "trackKindVideo": "video",
       "fpsMismatch": "FPS Mismatch",
       "fpsMismatchDesc": "File FPS does not match timeline settings.",
+      "sourceIsVfr": "Variable frame rate source",
+      "sourceIsVfrDesc": "This file's frame timing isn't constant — {fileFps} FPS is only the average. Pick the timeline FPS deliberately; playback may look uneven regardless.",
       "autoSettingsApplied": "Timeline settings updated",
       "autoSettingsAppliedDesc": "Resolution {width}x{height}, {fps} FPS",
       "format": "Timeline Format",

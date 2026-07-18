@@ -22,6 +22,10 @@ import {
 } from './export-video-passthrough';
 import { ticksToSecondsClamped } from './time';
 import { yieldToEventLoop } from './yield-scheduler';
+import {
+  checkFrameIntervalUniformity,
+  FRAME_INTERVAL_CHECK_SAMPLE_PACKETS,
+} from '~/utils/video-editor/vfr-detect';
 import { initEffects } from '../../effects';
 import { initTransitions } from '../../transitions';
 import {
@@ -88,7 +92,7 @@ export async function extractMetadata(
   }
 
   try {
-    const { Input, BlobSource, ALL_FORMATS, VideoSampleSink, AudioSampleSink } =
+    const { Input, BlobSource, ALL_FORMATS, VideoSampleSink, AudioSampleSink, EncodedPacketSink } =
       await import('mediabunny');
     const source = new BlobSource(governedBlobWorker(file));
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -118,6 +122,27 @@ export async function extractMetadata(
         const colorSpace =
           typeof vTrack.getColorSpace === 'function' ? await vTrack.getColorSpace() : undefined;
         let canDecodeVideo = await vTrack.canDecode();
+
+        // `stats.averagePacketRate` is just the stream MEAN — a VFR source whose
+        // jittery per-frame intervals happen to average to a plausible fps looks
+        // identical to genuine CFR at that gate. Walk a leading packet sample and
+        // check the intervals themselves (metadata-only, no frame decode) so the
+        // UI can warn the user instead of silently treating the average as exact.
+        let isVariableFrameRate: boolean | undefined;
+        try {
+          const packetSink = new EncodedPacketSink(vTrack);
+          const timestamps: number[] = [];
+          for await (const packet of packetSink.packets(undefined, undefined, {
+            metadataOnly: true,
+          })) {
+            timestamps.push(packet.timestamp);
+            if (timestamps.length >= FRAME_INTERVAL_CHECK_SAMPLE_PACKETS) break;
+          }
+          const uniform = checkFrameIntervalUniformity(timestamps, stats.averagePacketRate);
+          isVariableFrameRate = uniform === null ? undefined : !uniform;
+        } catch (e) {
+          log.warn('[Worker Export] VFR detection failed:', (e as Error)?.message);
+        }
 
         if (canDecodeVideo) {
           try {
@@ -155,6 +180,7 @@ export async function extractMetadata(
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           colorSpace: colorSpace as any,
           canDecode: canDecodeVideo,
+          isVariableFrameRate,
         };
       }
 

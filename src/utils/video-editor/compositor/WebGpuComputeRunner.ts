@@ -10,6 +10,7 @@ import { createDevLogger } from '~/utils/dev-logger';
 import { compositorPerfStats } from '~/utils/video-editor/compositor/CompositorPerfStats';
 import {
   previewEffectQualityTapBudget,
+  previewEffectQualityTransitionScale,
   type PreviewEffectQuality,
 } from '~/utils/preview-effect-quality';
 import {
@@ -2309,43 +2310,80 @@ export class WebGpuComputeRunner {
       throw new Error('Transition inputs must have identical dimensions.');
     }
 
-    this.ensureTransitionResources(width, height);
+    // Lower effect-quality tiers run the (often blur/perspective-heavy) transition shader at a
+    // reduced internal resolution and let the final blit upscale it — the dominant 4K cost is
+    // the pixel count, not the tap budget. Mirrors the native
+    // `EffectQuality::transition_render_scale`. `scale >= 1` keeps the original full-res path.
+    const scale = previewEffectQualityTransitionScale(this.previewEffectQuality);
+    const computeW = Math.max(1, Math.round(width * scale));
+    const computeH = Math.max(1, Math.round(height * scale));
+    const useScaled = computeW < width || computeH < height;
+
+    this.ensureTransitionResources(computeW, computeH);
     const outputTexture = this.transOutputTexture!;
     const uniformBuffer = this.transUniformBuffer!;
 
     this.device.queue.writeBuffer(
       uniformBuffer,
       0,
-      packTransitionUniform(params.spec, params.progress, params.speed, width, height),
+      packTransitionUniform(params.spec, params.progress, params.speed, computeW, computeH),
     );
 
-    const bindGroup = this.device.createBindGroup({
-      label: 'web-transition-texture-bind-group',
-      layout: this.transitionBindLayout,
-      entries: [
-        {
-          binding: 0,
-          resource: this.sharedRendererTexture.getGpuSource(params.from.source).createView(),
-        },
-        {
-          binding: 1,
-          resource: this.sharedRendererTexture.getGpuSource(params.to.source).createView(),
-        },
-        { binding: 2, resource: outputTexture.createView() },
-        { binding: 3, resource: { buffer: uniformBuffer } },
-      ],
-    });
+    let bindGroup: GPUBindGroup;
+    if (useScaled) {
+      // Downscale both inputs to the compute size (the shader samples with normalized UVs and
+      // reads `uni.width/height`, so inputs, output and dispatch must share the scaled size).
+      // `premultiply: false` keeps the straight-alpha semantics of the direct-bind path.
+      this.blitTextureToRendererTarget({
+        source: this.sharedRendererTexture.getGpuSource(params.from.source),
+        target: this.transFromTexture!,
+        targetFormat: 'rgba8unorm',
+        width: computeW,
+        height: computeH,
+        premultiply: false,
+        label: 'web-transition-downscale-from',
+      });
+      this.blitTextureToRendererTarget({
+        source: this.sharedRendererTexture.getGpuSource(params.to.source),
+        target: this.transToTexture!,
+        targetFormat: 'rgba8unorm',
+        width: computeW,
+        height: computeH,
+        premultiply: false,
+        label: 'web-transition-downscale-to',
+      });
+      // transBindGroup already binds transFromTexture/transToTexture/transOutputTexture + uniform.
+      bindGroup = this.transBindGroup!;
+    } else {
+      bindGroup = this.device.createBindGroup({
+        label: 'web-transition-texture-bind-group',
+        layout: this.transitionBindLayout,
+        entries: [
+          {
+            binding: 0,
+            resource: this.sharedRendererTexture.getGpuSource(params.from.source).createView(),
+          },
+          {
+            binding: 1,
+            resource: this.sharedRendererTexture.getGpuSource(params.to.source).createView(),
+          },
+          { binding: 2, resource: outputTexture.createView() },
+          { binding: 3, resource: { buffer: uniformBuffer } },
+        ],
+      });
+    }
     const pipeline = this.getOrCreateTransitionPipeline(resolveTransitionShaderSource(params.spec));
     const encoder = this.device.createCommandEncoder({ label: 'web-transition-texture-encoder' });
     const pass = encoder.beginComputePass({ label: 'web-transition-texture-pass' });
     pass.setPipeline(pipeline);
     pass.setBindGroup(0, bindGroup);
-    pass.dispatchWorkgroups(Math.ceil(width / 8), Math.ceil(height / 8), 1);
+    pass.dispatchWorkgroups(Math.ceil(computeW / 8), Math.ceil(computeH / 8), 1);
     pass.end();
 
     this.device.queue.submit([encoder.finish()]);
     this.sampleGpuChainTiming();
     const targetTexture = this.sharedRendererTexture.getGpuSource(params.output.source);
+    // Final blit resamples the (possibly reduced-resolution) output up to the full frame.
     return this.blitTextureToRendererTarget({
       source: outputTexture,
       target: targetTexture,

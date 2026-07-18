@@ -312,9 +312,15 @@ impl Compositor {
         source_kind: &TransitionSource,
         layers: &[super::scene::Layer],
         i: usize,
+        // Target size for the (recursive) background/transparent sub-render. Lower effect-quality
+        // tiers render it at reduced resolution — the transition then runs at that scale and the
+        // result is upscaled on composite, so the expensive recursive lower-layer render shrinks
+        // too, not just the transition shader itself.
+        sub_size: (u32, u32),
         ctx: GpuCtx<'_>,
     ) -> Result<Option<EffectSource>> {
         let GpuCtx { device, queue } = ctx;
+        let (sub_w, sub_h) = sub_size;
         let source = match source_kind {
             TransitionSource::Layer(id) => {
                 let Some(layer) = layers.iter().find(|layer| &layer.id == id).cloned() else {
@@ -340,8 +346,8 @@ impl Compositor {
                 let texture = self.render_domain_scene_to_owned_texture(
                     dev_id,
                     &background_scene,
-                    scene.width,
-                    scene.height,
+                    sub_w,
+                    sub_h,
                     Color::TRANSPARENT,
                 )?;
                 EffectSource::from_texture(texture)
@@ -351,8 +357,8 @@ impl Compositor {
                 let texture = self.render_domain_scene_to_owned_texture(
                     dev_id,
                     &transparent_scene,
-                    scene.width,
-                    scene.height,
+                    sub_w,
+                    sub_h,
                     Color::TRANSPARENT,
                 )?;
                 EffectSource::from_texture(texture)
@@ -373,6 +379,12 @@ impl Compositor {
     ) -> Result<()> {
         let mut to_remove = std::collections::HashSet::new();
 
+        let render_scale = scene.effect_quality.transition_render_scale();
+        let sub_size = (
+            ((scene.width as f32 * render_scale).round() as u32).max(1),
+            ((scene.height as f32 * render_scale).round() as u32).max(1),
+        );
+
         for i in 0..layers.len() {
             if let Some(trans_info) = layers[i].transition.clone() {
                 let source_kind = trans_info.source.clone();
@@ -386,6 +398,7 @@ impl Compositor {
                     &source_kind,
                     layers,
                     i,
+                    sub_size,
                     GpuCtx { device, queue },
                 )?
                 else {
@@ -423,7 +436,7 @@ impl Compositor {
                         spec: &trans_info.spec,
                         progress: trans_info.progress,
                         speed: trans_info.speed_multiplier,
-                        render_scale: scene.effect_quality.transition_render_scale(),
+                        render_scale,
                     },
                 ) {
                     Ok(processed) => {

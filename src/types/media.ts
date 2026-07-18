@@ -25,6 +25,11 @@ export interface MediaMetadata {
     bitrate?: number;
     colorSpace?: VideoColorSpaceInit;
     canDecode?: boolean;
+    /** True when the source's per-frame timing is not constant (VFR): `fps` is
+     * just the stream average, so any single-fps timebase choice for it is a
+     * heuristic, not an exact match. `undefined` when this could not be judged
+     * (too few packets sampled). */
+    isVariableFrameRate?: boolean;
   };
   audio?: {
     codec: string;

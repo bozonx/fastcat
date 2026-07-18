@@ -462,6 +462,7 @@ export const useMediaStore = defineStore('media', () => {
                   // flag (non-validating probe) is treated as decodable so we never
                   // regress a healthy file to "unsupported".
                   canDecode: nativeMeta.video.canDecode ?? true,
+                  isVariableFrameRate: nativeMeta.video.isVariableFrameRate,
                 };
               }
               if (nativeMeta.audio) {

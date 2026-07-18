@@ -1,6 +1,10 @@
 import { TICKS_PER_MILLISECOND, ticksToSeconds } from '~/utils/time';
 import { createDevLogger } from '~/utils/dev-logger';
 import type { WorkerVideoPayloadItem } from '~/types/worker-payload';
+import {
+  checkFrameIntervalUniformity,
+  FRAME_INTERVAL_CHECK_SAMPLE_PACKETS,
+} from '~/utils/video-editor/vfr-detect';
 import { getBunnyVideoCodec } from './utils';
 
 const log = createDevLogger('ExportVideoPassthrough');
@@ -32,20 +36,6 @@ const DURATION_EPSILON_TICKS = 42 * TICKS_PER_MILLISECOND;
 /** How far the source bitrate may exceed the requested one before passthrough
  * would violate the user's compression intent and we re-encode instead. */
 const BITRATE_TOLERANCE = 1.25;
-
-/** Minimum leading packets needed to judge frame-interval uniformity. Fewer than
- * this (short clip / thin GOP structure) can't reliably distinguish real VFR
- * jitter from noise, so the average-rate gate above is trusted alone. */
-const CFR_CHECK_MIN_SAMPLES = 20;
-
-/** How many leading packets (decode order) to sample for the uniformity check —
- * enough for a solid read without walking the whole track. */
-const CFR_CHECK_SAMPLE_PACKETS = 60;
-
-/** Deviation from the nominal frame interval (1/requestedFps) tolerated before a
- * packet gap is treated as VFR jitter rather than container/timebase rounding. */
-const CFR_CHECK_TOLERANCE_FRACTION = 0.15;
-const CFR_CHECK_TOLERANCE_FLOOR_S = 0.002;
 
 /**
  * How far (s) past the trim end the metadata prescan keeps scanning for
@@ -289,25 +279,12 @@ export async function isSourceFrameIntervalUniform(params: {
   const timestamps: number[] = [];
   for await (const packet of packetSink.packets(undefined, undefined, { metadataOnly: true })) {
     timestamps.push(packet.timestamp);
-    if (timestamps.length >= CFR_CHECK_SAMPLE_PACKETS) break;
+    if (timestamps.length >= FRAME_INTERVAL_CHECK_SAMPLE_PACKETS) break;
   }
   // Too few packets to establish periodicity reliably — defer to the average-rate
   // gate instead of guessing (also keeps thin GOP-boundary fixtures unaffected).
-  if (timestamps.length < CFR_CHECK_MIN_SAMPLES) return true;
-
-  timestamps.sort((a, b) => a - b);
-  const nominalIntervalS = 1 / requestedFps;
-  const toleranceS = Math.max(
-    CFR_CHECK_TOLERANCE_FLOOR_S,
-    nominalIntervalS * CFR_CHECK_TOLERANCE_FRACTION,
-  );
-  for (let i = 1; i < timestamps.length; i++) {
-    const delta = timestamps[i]! - timestamps[i - 1]!;
-    if (Math.abs(delta - nominalIntervalS) > toleranceS) {
-      return false;
-    }
-  }
-  return true;
+  const uniform = checkFrameIntervalUniformity(timestamps, requestedFps);
+  return uniform ?? true;
 }
 
 /**

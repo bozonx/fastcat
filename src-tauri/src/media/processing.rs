@@ -49,6 +49,32 @@ pub struct NativeVideoMetadata {
     /// truncated/partially-corrupt sources the same way the browser build does.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub can_decode: Option<bool>,
+    /// True when the source's per-frame timing is not constant (VFR): `fps` is
+    /// just the stream average, so any single-fps timebase choice for it is a
+    /// heuristic, not an exact match. `None` when this could not be judged
+    /// (ffprobe didn't report both `avg_frame_rate` and `r_frame_rate`).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub is_variable_frame_rate: Option<bool>,
+}
+
+/// How far `avg_frame_rate` (the true measured average) may diverge from
+/// `r_frame_rate` (ffprobe's nominal/timebase-derived rate) before the source is
+/// flagged as VFR. Genuine CFR sources report near-identical values here (the
+/// small residual is container/timebase rounding); a real VFR source's average
+/// almost always diverges from the nominal rate by well more than this. This is
+/// metadata-only (no packet scan) — the export-time passthrough gate additionally
+/// checks actual packet-interval uniformity (`isSourceFrameIntervalUniform` in
+/// `export-video-passthrough.ts`) for a stricter, scan-based signal.
+const VFR_RATE_DIVERGENCE_TOLERANCE: f64 = 0.01;
+
+fn detect_variable_frame_rate(avg_frame_rate: Option<f64>, r_frame_rate: Option<f64>) -> Option<bool> {
+    match (avg_frame_rate, r_frame_rate) {
+        (Some(avg), Some(r)) if avg > 0.0 && r > 0.0 => {
+            let ratio = if avg >= r { avg / r } else { r / avg };
+            Some(ratio - 1.0 > VFR_RATE_DIVERGENCE_TOLERANCE)
+        }
+        _ => None,
+    }
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -158,31 +184,32 @@ fn metadata_from_ffprobe(json: Value) -> Result<NativeMediaMetadata> {
     let video = streams
         .iter()
         .find(|s| s.get("codec_type").and_then(|v| v.as_str()) == Some("video"))
-        .map(|stream| NativeVideoMetadata {
-            width: stream.get("width").and_then(|v| v.as_u64()).unwrap_or(0) as u32,
-            height: stream.get("height").and_then(|v| v.as_u64()).unwrap_or(0) as u32,
-            fps: stream
+        .map(|stream| {
+            let avg_frame_rate = stream
                 .get("avg_frame_rate")
                 .and_then(|v| v.as_str())
-                .and_then(parse_rational)
-                .or_else(|| {
-                    stream
-                        .get("r_frame_rate")
-                        .and_then(|v| v.as_str())
-                        .and_then(parse_rational)
-                })
-                .unwrap_or(0.0),
-            codec: stream
-                .get("codec_name")
+                .and_then(parse_rational);
+            let r_frame_rate = stream
+                .get("r_frame_rate")
                 .and_then(|v| v.as_str())
-                .unwrap_or("")
-                .to_string(),
-            bitrate: stream
-                .get("bit_rate")
-                .and_then(|v| v.as_str())
-                .and_then(|s| s.parse::<u64>().ok()),
-            rotation: probe_rotation(stream),
-            can_decode: None,
+                .and_then(parse_rational);
+            NativeVideoMetadata {
+                width: stream.get("width").and_then(|v| v.as_u64()).unwrap_or(0) as u32,
+                height: stream.get("height").and_then(|v| v.as_u64()).unwrap_or(0) as u32,
+                fps: avg_frame_rate.or(r_frame_rate).unwrap_or(0.0),
+                codec: stream
+                    .get("codec_name")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string(),
+                bitrate: stream
+                    .get("bit_rate")
+                    .and_then(|v| v.as_str())
+                    .and_then(|s| s.parse::<u64>().ok()),
+                rotation: probe_rotation(stream),
+                can_decode: None,
+                is_variable_frame_rate: detect_variable_frame_rate(avg_frame_rate, r_frame_rate),
+            }
         });
 
     let audio = streams
@@ -1078,6 +1105,7 @@ mod tests {
             bitrate: None,
             rotation: 90,
             can_decode: None,
+            is_variable_frame_rate: None,
         };
 
         assert_eq!(video_frame_thumbnail_size(&video, 320, 320), (180, 320));
@@ -1167,6 +1195,7 @@ mod tests {
                 bitrate: None,
                 rotation: 0,
                 can_decode: None,
+                is_variable_frame_rate: None,
             }),
             audio: Some(NativeAudioMetadata {
                 codec: "aac".into(),
@@ -1219,6 +1248,7 @@ mod tests {
                 bitrate: None,
                 rotation: 0,
                 can_decode: None,
+                is_variable_frame_rate: None,
             }),
             audio: Some(NativeAudioMetadata {
                 codec: "opus".into(),
@@ -1267,6 +1297,7 @@ mod tests {
                 bitrate: None,
                 rotation: 0,
                 can_decode: None,
+                is_variable_frame_rate: None,
             }),
             audio: Some(NativeAudioMetadata {
                 codec: "aac".into(),
@@ -1319,6 +1350,7 @@ mod tests {
                 bitrate: None,
                 rotation: 0,
                 can_decode: None,
+                is_variable_frame_rate: None,
             }),
             audio: Some(NativeAudioMetadata {
                 codec: "opus".into(),
@@ -1363,6 +1395,7 @@ mod tests {
                 bitrate: None,
                 rotation: 90,
                 can_decode: None,
+                is_variable_frame_rate: None,
             }),
             audio: None,
         };
@@ -1541,5 +1574,24 @@ mod tests {
         assert_eq!(parse_rational("30000/1001"), Some(30000.0 / 1001.0));
         assert_eq!(parse_rational("25"), Some(25.0));
         assert_eq!(parse_rational("0/0"), None);
+    }
+
+    #[test]
+    fn detect_variable_frame_rate_flags_diverging_rates() {
+        // CFR: avg == nominal (or within timebase rounding) → not VFR.
+        assert_eq!(detect_variable_frame_rate(Some(30.0), Some(30.0)), Some(false));
+        assert_eq!(
+            detect_variable_frame_rate(Some(30000.0 / 1001.0), Some(30000.0 / 1001.0)),
+            Some(false)
+        );
+        // A tiny residual (well under 1%) stays CFR.
+        assert_eq!(detect_variable_frame_rate(Some(29.97), Some(30.0)), Some(false));
+        // VFR: measured average sits far from the nominal/timebase rate.
+        assert_eq!(detect_variable_frame_rate(Some(22.0), Some(30.0)), Some(true));
+        assert_eq!(detect_variable_frame_rate(Some(30.0), Some(24.0)), Some(true));
+        // Undetermined when either rate is missing or non-positive.
+        assert_eq!(detect_variable_frame_rate(Some(30.0), None), None);
+        assert_eq!(detect_variable_frame_rate(None, Some(30.0)), None);
+        assert_eq!(detect_variable_frame_rate(Some(0.0), Some(30.0)), None);
     }
 }

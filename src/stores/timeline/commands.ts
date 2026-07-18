@@ -205,6 +205,14 @@ export function createTimelineCommandsModule(params: TimelineCommandsDeps): Time
             }),
             color: 'warning',
           });
+        } else if (w.type === 'sourceIsVfr') {
+          toast.add({
+            title: t('videoEditor.timeline.sourceIsVfr'),
+            description: t('videoEditor.timeline.sourceIsVfrDesc', {
+              fileFps: w.fileFps,
+            }),
+            color: 'warning',
+          });
         }
       }
     }

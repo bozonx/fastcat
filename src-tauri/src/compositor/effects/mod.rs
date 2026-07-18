@@ -1728,6 +1728,36 @@ mod tests {
     }
 
     #[test]
+    fn transition_render_scale_matches_shared_parity_fixture() {
+        #[derive(serde::Deserialize)]
+        struct ScaleCase {
+            quality: String,
+            expected: f64,
+        }
+        #[derive(serde::Deserialize)]
+        struct ScaleFixture {
+            cases: Vec<ScaleCase>,
+        }
+
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../shared/parity/transition-render-scale.cases.json");
+        let raw =
+            std::fs::read_to_string(&path).expect("transition-render-scale.cases.json must exist");
+        let fixture: ScaleFixture =
+            serde_json::from_str(&raw).expect("transition-render-scale.cases.json must be valid");
+
+        assert!(!fixture.cases.is_empty());
+        for case in &fixture.cases {
+            let quality = quality_from_str(&case.quality);
+            approx_eq(
+                quality.transition_render_scale(),
+                case.expected,
+                &case.quality,
+            );
+        }
+    }
+
+    #[test]
     fn build_passes_match_shared_parity_fixture() {
         let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("../shared/parity/build-passes.cases.json");

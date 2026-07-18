@@ -8,7 +8,6 @@ use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use std::sync::Arc;
 use vello::peniko::ImageData;
-use wgpu::util::DeviceExt;
 
 use crate::compositor::effects::EffectSource;
 use crate::compositor::gpu_utils::{create_rgba8_texture, image_pixels_rgba8};

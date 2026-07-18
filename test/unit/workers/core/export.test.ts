@@ -14,6 +14,20 @@ function createEmptyAsyncIterable<T>(): AsyncIterable<T> {
   };
 }
 
+function createAsyncIterableFrom<T>(items: T[]): AsyncIterable<T> {
+  return {
+    [Symbol.asyncIterator]() {
+      let i = 0;
+      return {
+        async next() {
+          if (i >= items.length) return { done: true, value: undefined as T | undefined };
+          return { done: false, value: items[i++]! };
+        },
+      };
+    },
+  };
+}
+
 function createThrowingAsyncIterable<T>(error: Error): AsyncIterable<T> {
   return {
     [Symbol.asyncIterator]() {
@@ -32,6 +46,7 @@ const mockFunctions = {
   computeDuration: vi.fn(),
   videoGetSample: vi.fn(),
   videoGetFirstTimestamp: vi.fn(),
+  videoPackets: vi.fn(),
   audioSamples: vi.fn(),
   audioGetFirstTimestamp: vi.fn(),
 };
@@ -68,6 +83,10 @@ vi.mock('mediabunny', () => ({
     dispose = vi.fn();
     close = vi.fn();
   },
+  EncodedPacketSink: class {
+    constructor(public track: any) {}
+    packets = (...args: any[]) => mockFunctions.videoPackets(...args);
+  },
 }));
 
 describe('extractMetadata', () => {
@@ -80,6 +99,9 @@ describe('extractMetadata', () => {
     });
     mockFunctions.audioGetFirstTimestamp.mockResolvedValue(0);
     mockFunctions.videoGetFirstTimestamp.mockResolvedValue(0);
+    // Default: no packets sampled -> too few to judge -> isVariableFrameRate stays
+    // undefined, leaving unrelated tests' `toMatchObject` assertions unaffected.
+    mockFunctions.videoPackets.mockImplementation(() => createEmptyAsyncIterable());
     mockFunctions.getPrimaryVideoTrack.mockResolvedValue({
       codedWidth: 1920,
       codedHeight: 1080,
@@ -121,6 +143,47 @@ describe('extractMetadata', () => {
       sampleRate: 48000,
       channels: 2,
     });
+  });
+
+  it('leaves isVariableFrameRate undefined when too few packets were sampled', async () => {
+    const file = new File([], 'test.mp4');
+    const meta = await extractMetadata(file);
+    expect(meta.video?.isVariableFrameRate).toBeUndefined();
+  });
+
+  it('marks isVariableFrameRate false for a dense uniform-interval (CFR) source', async () => {
+    const file = new File([], 'test.mp4');
+    const packets = Array.from({ length: 40 }, (_, i) => ({ timestamp: i / 30 }));
+    mockFunctions.videoPackets.mockImplementation(() => createAsyncIterableFrom(packets));
+
+    const meta = await extractMetadata(file);
+    expect(meta.video?.isVariableFrameRate).toBe(false);
+  });
+
+  it('marks isVariableFrameRate true for a dense jittery-interval (VFR) source', async () => {
+    const file = new File([], 'test.mp4');
+    const gaps = [0.02, 0.047];
+    let t = 0;
+    const packets = Array.from({ length: 40 }, (_, i) => {
+      const packet = { timestamp: t };
+      t += gaps[i % 2]!;
+      return packet;
+    });
+    mockFunctions.videoPackets.mockImplementation(() => createAsyncIterableFrom(packets));
+
+    const meta = await extractMetadata(file);
+    expect(meta.video?.isVariableFrameRate).toBe(true);
+  });
+
+  it('does not fail metadata extraction when packet sampling throws', async () => {
+    const file = new File([], 'test.mp4');
+    mockFunctions.videoPackets.mockImplementation(() =>
+      createThrowingAsyncIterable(new Error('packets unavailable')),
+    );
+
+    const meta = await extractMetadata(file);
+    expect(meta.video).toBeDefined();
+    expect(meta.video?.isVariableFrameRate).toBeUndefined();
   });
 
   it('extracts metadata for audio-only file', async () => {

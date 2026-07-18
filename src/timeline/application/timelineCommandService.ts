@@ -32,6 +32,9 @@ export interface TimelineMediaMetadata {
     fps: number;
     rotation?: number;
     canDecode?: boolean;
+    /** True when the source's per-frame timing is not constant (VFR): `fps` is
+     * just the stream average. `undefined` when this could not be judged. */
+    isVariableFrameRate?: boolean;
   };
   audio?: {
     sampleRate: number;
@@ -94,7 +97,7 @@ export interface TimelineCommandServiceDeps {
 }
 
 export interface AddClipWarning {
-  type: 'autoSettingsApplied' | 'fpsMismatch' | 'clipTrimmed';
+  type: 'autoSettingsApplied' | 'fpsMismatch' | 'clipTrimmed' | 'sourceIsVfr';
   width?: number;
   height?: number;
   fps?: number;
@@ -502,6 +505,18 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
             projectFps: effectiveFps,
           });
         }
+      }
+
+      // Independent of whether this clip set/matched the project fps: a VFR
+      // source's `fps` is just the stream average, not a real per-frame rate, so
+      // whatever timebase choice was made for it (auto or manual) is a heuristic.
+      // Surface that once per add so the user can knowingly pick a rate rather
+      // than assume the number they see is exact.
+      if (metadata.video?.isVariableFrameRate) {
+        warnings.push({
+          type: 'sourceIsVfr',
+          fileFps: metadata.video.fps,
+        });
       }
     }
 

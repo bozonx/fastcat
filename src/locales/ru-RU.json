@@ -2179,6 +2179,8 @@
       "trackKindVideo": "видео",
       "fpsMismatch": "Несоответствие FPS",
       "fpsMismatchDesc": "FPS файла не соответствует настройкам таймлайна.",
+      "sourceIsVfr": "Источник с переменным fps",
+      "sourceIsVfrDesc": "Тайминг кадров этого файла непостоянен — {fileFps} FPS это лишь среднее значение. Выбирайте FPS таймлайна осознанно; воспроизведение всё равно может выглядеть неравномерно.",
       "autoSettingsApplied": "Параметры таймлайна обновлены",
       "autoSettingsAppliedDesc": "Разрешение {width}x{height}, {fps} FPS",
       "format": "Формат таймлайна",
