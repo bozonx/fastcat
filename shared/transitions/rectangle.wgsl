@@ -56,10 +56,11 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     let dir_pos = uni.p2 > 0.0;
     let t = select(1.0 - progress, progress, dir_pos);
     let aa = 1.5 / dims().y;
-    let blur = max(aa, uni.p0 * select(1.0, t, uni.p1 > 0.5));
+    let blur = select(max(aa, uni.p0 * select(1.0, t, uni.p1 > 0.5)), aa, uni.p8 > 0.5);
     let center = vec2<f32>(uni.p4, uni.p5);
 
     var reveal = 0.0;
+    var edge_distance = 0.0;
     var uv_from = uv;
     var coord_to = uv;
 
@@ -75,6 +76,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         let box_center = (box_min + box_max) * 0.5;
         let box_size = (box_max - box_min) * 0.5;
         let d = rect_distance(pp, box_center, box_size);
+        edge_distance = d;
         reveal = 1.0 - smoothstep(-blur, blur, d);
         if (!dir_pos) { reveal = 1.0 - reveal; }
     } else {
@@ -83,11 +85,17 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         let max_y = max(center.y, 1.0 - center.y);
         let cur_size = vec2<f32>(max_x, max_y) * t;
         let d = rect_distance(centered, vec2<f32>(0.0), cur_size);
+        edge_distance = d;
         reveal = 1.0 - smoothstep(-blur, blur, d);
         if (!dir_pos) { reveal = 1.0 - reveal; }
     }
 
     let from_color = samp(from_tex, uv_from);
     let to_color = samp(to_tex, coord_to);
-    textureStore(output_tex, coord, mix(from_color, to_color, reveal));
+    var color = mix(from_color, to_color, reveal);
+    if (uni.p8 > 0.5 && uni.p9 > 0.0) {
+        let stroke_coverage = 1.0 - smoothstep(uni.p9 * 0.5 - aa, uni.p9 * 0.5 + aa, abs(edge_distance));
+        color = mix(color, vec4<f32>(uni.p10, uni.p11, uni.p0, 1.0), stroke_coverage);
+    }
+    textureStore(output_tex, coord, color);
 }

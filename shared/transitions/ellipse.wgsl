@@ -68,7 +68,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     let safe_dist = max(dist, 0.0001);
     let normal = abs(centered) / safe_dist;
     let aa = 1.5 * (normal.x / scale.x + normal.y / scale.y) / dims().y;
-    let blur = max(aa, uni.p0 * select(1.0, t, uni.p1 > 0.5));
+    let blur = select(max(aa, uni.p0 * select(1.0, t, uni.p1 > 0.5)), aa, uni.p8 > 0.5);
     var reveal = 1.0 - smoothstep(radius - blur, radius + blur, dist);
     if (!dir_pos) { reveal = 1.0 - reveal; }
 
@@ -82,5 +82,10 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
 
     let from_color = samp(from_tex, uv_from);
     let to_color = samp(to_tex, norm_to);
-    textureStore(output_tex, coord, mix(from_color, to_color, reveal));
+    var color = mix(from_color, to_color, reveal);
+    if (uni.p8 > 0.5 && uni.p9 > 0.0) {
+        let stroke_coverage = 1.0 - smoothstep(uni.p9 * 0.5 - aa, uni.p9 * 0.5 + aa, abs(dist - radius));
+        color = mix(color, vec4<f32>(uni.p10, uni.p11, uni.p0, 1.0), stroke_coverage);
+    }
+    textureStore(output_tex, coord, color);
 }

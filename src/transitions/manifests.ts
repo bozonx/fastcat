@@ -128,6 +128,7 @@ function normalizeAnchorBlurBase(params?: Record<string, unknown>): Record<strin
 function normalizeCircleParams(params?: Record<string, unknown>): Record<string, unknown> {
   return {
     ...normalizeAnchorBlurBase(params),
+    ...normalizeShapeEdgeParams(params),
     scaleX: clamp(clampFinite(params?.scaleX, 100), 1, 1000),
     scaleY: clamp(clampFinite(params?.scaleY, 100), 1, 1000),
     contentMode: params?.contentMode === 'zoom' || params?.followScale === true ? 'zoom' : 'reveal',
@@ -177,7 +178,16 @@ function normalizeMotionBlurParams(params?: Record<string, unknown>): Record<str
 function normalizeRectangleParams(params?: Record<string, unknown>): Record<string, unknown> {
   return {
     ...normalizeAnchorBlurBase(params),
+    ...normalizeShapeEdgeParams(params),
     contentMode: params?.contentMode === 'zoom' ? 'zoom' : 'reveal',
+  };
+}
+
+function normalizeShapeEdgeParams(params?: Record<string, unknown>): Record<string, unknown> {
+  return {
+    edgeMode: params?.edgeMode === 'stroke' ? 'stroke' : 'blur',
+    strokeColor: normalizeHexColor(params?.strokeColor, '#000000'),
+    strokeWidth: clamp(clampFinite(params?.strokeWidth, 2), 0, 20),
   };
 }
 
@@ -770,22 +780,51 @@ export const transitionManifests: TransitionManifest[] = [
       },
       ...offsetFields,
       {
+        kind: 'button-group',
+        key: 'edgeMode',
+        labelKey: 'fastcat.timeline.transition.paramShapeEdgeMode',
+        options: [
+          { value: 'stroke', labelKey: 'fastcat.timeline.transition.shapeEdgeModeStroke' },
+          { value: 'blur', labelKey: 'fastcat.timeline.transition.shapeEdgeModeBlur' },
+        ],
+      },
+      {
+        kind: 'color',
+        key: 'strokeColor',
+        labelKey: 'fastcat.timeline.transition.paramStrokeColor',
+        showIf: (params) => params.edgeMode === 'stroke',
+      },
+      {
+        kind: 'number',
+        key: 'strokeWidth',
+        labelKey: 'fastcat.timeline.transition.paramStrokeWidth',
+        min: 0,
+        max: 20,
+        step: 0.5,
+        showIf: (params) => params.edgeMode === 'stroke',
+      },
+      {
         kind: 'number',
         key: 'blur',
         labelKey: 'fastcat.timeline.transition.paramCircleBlur',
         min: 0,
         max: 20,
         step: 0.5,
+        showIf: (params) => params.edgeMode !== 'stroke',
       },
-      blurModeField,
+      { ...blurModeField, showIf: (params) => params.edgeMode !== 'stroke' },
     ],
     toTransitionSpec: (params: Record<string, unknown>) => {
       const center = centerFromAnchor(params);
+      const [r, g, b] = hexToRgb01(params.strokeColor, '#000000');
       return {
         type: 'custom-wgsl',
         source: ellipseWgsl,
         params: {
-          p0: clamp(clampFinite(params.blur, 1.5) / 100, 0.0001, 0.2),
+          p0:
+            params.edgeMode === 'stroke'
+              ? b
+              : clamp(clampFinite(params.blur, 1.5) / 100, 0.0001, 0.2),
           p1: params.blurMode === 'scaled' ? 1 : 0,
           p2: params.direction === 'to-center' ? -1 : 1,
           p3: center[0],
@@ -793,6 +832,10 @@ export const transitionManifests: TransitionManifest[] = [
           p5: clamp(clampFinite(params.scaleX, 100), 1, 1000) / 100,
           p6: clamp(clampFinite(params.scaleY, 100), 1, 1000) / 100,
           p7: params.contentMode === 'zoom' ? 1 : 0,
+          p8: params.edgeMode === 'stroke' ? 1 : 0,
+          p9: clamp(clampFinite(params.strokeWidth, 2) / 100, 0, 0.2),
+          p10: r,
+          p11: g,
         },
       };
     },
@@ -816,27 +859,60 @@ export const transitionManifests: TransitionManifest[] = [
       contentModeField,
       ...offsetFields,
       {
+        kind: 'button-group',
+        key: 'edgeMode',
+        labelKey: 'fastcat.timeline.transition.paramShapeEdgeMode',
+        options: [
+          { value: 'stroke', labelKey: 'fastcat.timeline.transition.shapeEdgeModeStroke' },
+          { value: 'blur', labelKey: 'fastcat.timeline.transition.shapeEdgeModeBlur' },
+        ],
+      },
+      {
+        kind: 'color',
+        key: 'strokeColor',
+        labelKey: 'fastcat.timeline.transition.paramStrokeColor',
+        showIf: (params) => params.edgeMode === 'stroke',
+      },
+      {
+        kind: 'number',
+        key: 'strokeWidth',
+        labelKey: 'fastcat.timeline.transition.paramStrokeWidth',
+        min: 0,
+        max: 20,
+        step: 0.5,
+        showIf: (params) => params.edgeMode === 'stroke',
+      },
+      {
         kind: 'number',
         key: 'blur',
         labelKey: 'fastcat.timeline.transition.paramRectangleBlur',
         min: 0,
         max: 20,
         step: 0.5,
+        showIf: (params) => params.edgeMode !== 'stroke',
       },
-      blurModeField,
+      { ...blurModeField, showIf: (params) => params.edgeMode !== 'stroke' },
     ],
     toTransitionSpec: (params: Record<string, unknown>) => {
       const center = centerFromAnchor(params);
+      const [r, g, b] = hexToRgb01(params.strokeColor, '#000000');
       return {
         type: 'custom-wgsl',
         source: rectangleWgsl,
         params: {
-          p0: clamp(clampFinite(params.blur, 1.5) / 100, 0.0001, 0.2),
+          p0:
+            params.edgeMode === 'stroke'
+              ? b
+              : clamp(clampFinite(params.blur, 1.5) / 100, 0.0001, 0.2),
           p1: params.blurMode === 'scaled' ? 1 : 0,
           p2: params.direction === 'to-center' ? -1 : 1,
           p3: params.contentMode === 'zoom' ? 1 : 0,
           p4: center[0],
           p5: center[1],
+          p8: params.edgeMode === 'stroke' ? 1 : 0,
+          p9: clamp(clampFinite(params.strokeWidth, 2) / 100, 0, 0.2),
+          p10: r,
+          p11: g,
         },
       };
     },
