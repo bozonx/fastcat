@@ -154,6 +154,34 @@ describe('createMonitorCompositorRuntime', () => {
     );
   });
 
+  it('serializes simultaneous compositor initialization requests', async () => {
+    let resolveInit: (() => void) | undefined;
+    const mockClient = {
+      destroyCompositor: vi.fn().mockResolvedValue(undefined),
+      initCompositor: vi.fn().mockImplementation(
+        () =>
+          new Promise<void>((resolve) => {
+            resolveInit = resolve;
+          }),
+      ),
+    } as unknown as import('~/utils/video-editor/worker-rpc').VideoCoreWorkerAPI;
+    const options = makeOptions(mockClient);
+    options.containerEl.value = document.createElement('div');
+    HTMLCanvasElement.prototype.transferControlToOffscreen = vi
+      .fn()
+      .mockReturnValue({} as OffscreenCanvas);
+
+    const runtime = createMonitorCompositorRuntime(options);
+    const first = runtime.ensureReady();
+    const second = runtime.ensureReady();
+
+    await vi.waitFor(() => expect(mockClient.initCompositor).toHaveBeenCalledTimes(1));
+    resolveInit?.();
+    await Promise.all([first, second]);
+
+    expect(mockClient.destroyCompositor).toHaveBeenCalledTimes(1);
+  });
+
   it('throttles video prewarm by wall clock, surviving backward seeks', async () => {
     const mockClient = {
       renderFrame: vi.fn().mockResolvedValue({}),

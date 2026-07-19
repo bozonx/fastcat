@@ -27,6 +27,7 @@ export function createMonitorCompositorRuntime(options: CreateMonitorCompositorR
   let compositorReady = false;
   let compositorWidth = 0;
   let compositorHeight = 0;
+  let compositorInitialization: Promise<void> | null = null;
   let latestRenderRequest: { timeTicks: number; prewarm: boolean } | null = null;
   // Prewarm cadence is gated by WALL CLOCK, not timeline time. A timeline-time
   // gate ("fire when playhead moved ≥250ms past the last prewarm position") goes
@@ -82,6 +83,19 @@ export function createMonitorCompositorRuntime(options: CreateMonitorCompositorR
   }
 
   async function ensureReady(ensureOptions?: EnsureMonitorCompositorReadyOptions) {
+    if (compositorInitialization) {
+      return compositorInitialization;
+    }
+
+    compositorInitialization = ensureReadyLocked(ensureOptions);
+    try {
+      await compositorInitialization;
+    } finally {
+      compositorInitialization = null;
+    }
+  }
+
+  async function ensureReadyLocked(ensureOptions?: EnsureMonitorCompositorReadyOptions) {
     // No web compositor in Tauri mode (native monitor draws preview).
     if (!options.client) {
       compositorReady = false;
