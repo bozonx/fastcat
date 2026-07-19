@@ -9,6 +9,77 @@ import { TimelineBuilder } from '../utils/timeline-builder';
 vi.mock('~/services/app-notification.service', () => ({}));
 vi.mock('~/services/i18n.service', () => ({}));
 
+describe('TimelineStore Delete', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+
+    // @ts-expect-error -- mocking useNuxtApp for test environment
+    global.useNuxtApp = () => ({
+      $notificationService: {},
+      $i18nService: { t: (key: string) => key },
+    });
+  });
+
+  it('deletes all selected clips across multiple tracks', () => {
+    const store = useTimelineStore();
+    const builder = new TimelineBuilder();
+    store.timelineDoc = builder
+      .withTrack('v1', 'video', 'Video 1')
+      .withTrack('v2', 'video', 'Video 2')
+      .withClip('c1', 'v1', { startTicks: 0, durationTicks: 5_000_000 })
+      .withClip('c2', 'v2', { startTicks: 0, durationTicks: 5_000_000 })
+      .build() as any;
+
+    store.selectedItemIds = ['c1', 'c2'];
+    store.deleteFirstSelectedItem();
+
+    const track1 = store.timelineDoc!.tracks.find((t: any) => t.id === 'v1')!;
+    const track2 = store.timelineDoc!.tracks.find((t: any) => t.id === 'v2')!;
+    expect(track1.items.find((it: any) => it.id === 'c1')).toBeUndefined();
+    expect(track2.items.find((it: any) => it.id === 'c2')).toBeUndefined();
+    expect(store.selectedItemIds).toEqual([]);
+  });
+
+  it('deletes all selected clips on a single track', () => {
+    const store = useTimelineStore();
+    const builder = new TimelineBuilder();
+    store.timelineDoc = builder
+      .withTrack('v1', 'video', 'Video 1')
+      .withClip('c1', 'v1', { startTicks: 0, durationTicks: 5_000_000 })
+      .withClip('c2', 'v1', { startTicks: 6_000_000, durationTicks: 5_000_000 })
+      .build() as any;
+
+    store.selectedItemIds = ['c1', 'c2'];
+    store.deleteFirstSelectedItem();
+
+    const track = store.timelineDoc!.tracks.find((t: any) => t.id === 'v1')!;
+    expect(track.items.find((it: any) => it.id === 'c1')).toBeUndefined();
+    expect(track.items.find((it: any) => it.id === 'c2')).toBeUndefined();
+  });
+
+  it('skips locked clips when deleting multiple selection', () => {
+    const store = useTimelineStore();
+    const builder = new TimelineBuilder();
+    store.timelineDoc = builder
+      .withTrack('v1', 'video', 'Video 1')
+      .withClip('c1', 'v1', { startTicks: 0, durationTicks: 5_000_000 })
+      .withClip('c2', 'v1', { startTicks: 6_000_000, durationTicks: 5_000_000 })
+      .build() as any;
+
+    // Lock c2
+    const clip2 = store.timelineDoc!.tracks[0].items.find((it: any) => it.id === 'c2');
+    clip2.locked = true;
+
+    store.selectedItemIds = ['c1', 'c2'];
+    store.deleteFirstSelectedItem();
+
+    const track = store.timelineDoc!.tracks.find((t: any) => t.id === 'v1')!;
+    expect(track.items.find((it: any) => it.id === 'c1')).toBeUndefined();
+    // Locked clip survives
+    expect(track.items.find((it: any) => it.id === 'c2')).toBeDefined();
+  });
+});
+
 describe('TimelineStore Copy/Paste', () => {
   beforeEach(() => {
     setActivePinia(createPinia());

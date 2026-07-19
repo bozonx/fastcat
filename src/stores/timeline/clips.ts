@@ -511,16 +511,28 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
     }
 
     const selectedSet = new Set(deps.selectedItemIds.value);
+    const cmds: TimelineCommand[] = [];
+    const allDeletedIds: string[] = [];
+
     for (const track of doc.tracks) {
       if (track.locked) continue;
-      for (const item of track.items) {
-        if (item.kind === 'clip' && item.locked) continue;
-        if (selectedSet.has(item.id)) {
-          deleteSelectedItems(track.id);
-          return;
-        }
+      const itemIdsToDelete = track.items
+        .filter((item) => selectedSet.has(item.id))
+        .filter((item) => !(item.kind === 'clip' && item.locked))
+        .map((item) => item.id);
+
+      if (itemIdsToDelete.length > 0) {
+        cmds.push({ type: 'delete_items', trackId: track.id, itemIds: itemIdsToDelete });
+        allDeletedIds.push(...itemIdsToDelete);
       }
     }
+
+    if (cmds.length === 0) return;
+
+    deps.batchApplyTimeline(cmds, {
+      labelKey: 'videoEditor.fileManager.history.entries.deleteItems',
+    });
+    deps.removeFromSelection(allDeletedIds);
   }
 
   function copySelectedClips(): TimelineClipClipboardItem[] {
