@@ -84,7 +84,8 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     let to_color = samp(to_tex, norm_to);
     var color = mix(from_color, to_color, reveal);
     if (uni.p8 > 0.5 && uni.p9 > 0.0) {
-        let stroke_coverage = 1.0 - smoothstep(uni.p9 * 0.5 - aa, uni.p9 * 0.5 + aa, abs(dist - radius));
+        let stroke_width = uni.p9 * select(1.0, t, uni.p8 > 1.5);
+        let stroke_coverage = 1.0 - smoothstep(stroke_width * 0.5 - aa, stroke_width * 0.5 + aa, abs(dist - radius));
         color = mix(color, vec4<f32>(uni.p10, uni.p11, uni.p0, 1.0), stroke_coverage);
     }
     textureStore(output_tex, coord, color);

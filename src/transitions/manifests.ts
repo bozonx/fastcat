@@ -188,6 +188,7 @@ function normalizeShapeEdgeParams(params?: Record<string, unknown>): Record<stri
     edgeMode: params?.edgeMode === 'stroke' ? 'stroke' : 'blur',
     strokeColor: normalizeHexColor(params?.strokeColor, '#000000'),
     strokeWidth: clamp(clampFinite(params?.strokeWidth, 2), 0, 20),
+    strokeMode: params?.strokeMode === 'scaled' ? 'scaled' : 'fixed',
   };
 }
 
@@ -804,6 +805,16 @@ export const transitionManifests: TransitionManifest[] = [
         showIf: (params) => params.edgeMode === 'stroke',
       },
       {
+        kind: 'button-group',
+        key: 'strokeMode',
+        labelKey: 'fastcat.timeline.transition.paramStrokeMode',
+        options: [
+          { value: 'fixed', labelKey: 'fastcat.timeline.transition.blurModeFixed' },
+          { value: 'scaled', labelKey: 'fastcat.timeline.transition.blurModeScaled' },
+        ],
+        showIf: (params) => params.edgeMode === 'stroke',
+      },
+      {
         kind: 'number',
         key: 'blur',
         labelKey: 'fastcat.timeline.transition.paramCircleBlur',
@@ -832,7 +843,7 @@ export const transitionManifests: TransitionManifest[] = [
           p5: clamp(clampFinite(params.scaleX, 100), 1, 1000) / 100,
           p6: clamp(clampFinite(params.scaleY, 100), 1, 1000) / 100,
           p7: params.contentMode === 'zoom' ? 1 : 0,
-          p8: params.edgeMode === 'stroke' ? 1 : 0,
+          p8: params.edgeMode === 'stroke' ? (params.strokeMode === 'scaled' ? 2 : 1) : 0,
           p9: clamp(clampFinite(params.strokeWidth, 2) / 100, 0, 0.2),
           p10: r,
           p11: g,
@@ -883,6 +894,16 @@ export const transitionManifests: TransitionManifest[] = [
         showIf: (params) => params.edgeMode === 'stroke',
       },
       {
+        kind: 'button-group',
+        key: 'strokeMode',
+        labelKey: 'fastcat.timeline.transition.paramStrokeMode',
+        options: [
+          { value: 'fixed', labelKey: 'fastcat.timeline.transition.blurModeFixed' },
+          { value: 'scaled', labelKey: 'fastcat.timeline.transition.blurModeScaled' },
+        ],
+        showIf: (params) => params.edgeMode === 'stroke',
+      },
+      {
         kind: 'number',
         key: 'blur',
         labelKey: 'fastcat.timeline.transition.paramRectangleBlur',
@@ -909,7 +930,7 @@ export const transitionManifests: TransitionManifest[] = [
           p3: params.contentMode === 'zoom' ? 1 : 0,
           p4: center[0],
           p5: center[1],
-          p8: params.edgeMode === 'stroke' ? 1 : 0,
+          p8: params.edgeMode === 'stroke' ? (params.strokeMode === 'scaled' ? 2 : 1) : 0,
           p9: clamp(clampFinite(params.strokeWidth, 2) / 100, 0, 0.2),
           p10: r,
           p11: g,

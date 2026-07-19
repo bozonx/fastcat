@@ -1093,6 +1093,7 @@
         "paramShapeEdgeMode": "Edge mode",
         "paramSlideOrder": "Slide direction",
         "paramStrokeColor": "Stroke color",
+        "paramStrokeMode": "Stroke scaling",
         "paramStrokeWidth": "Stroke width",
         "paramStripCount": "Strip count",
         "paramToRotation": "Rotation (to clip, deg)",

@@ -1093,6 +1093,7 @@
         "paramShapeEdgeMode": "Режим края",
         "paramSlideOrder": "Направление сдвига",
         "paramStrokeColor": "Цвет обводки",
+        "paramStrokeMode": "Масштабирование обводки",
         "paramStrokeWidth": "Толщина обводки",
         "paramStripCount": "Количество полос",
         "paramToRotation": "Вращение (входящий, градусы)",
