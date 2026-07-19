@@ -13,10 +13,14 @@ struct TransitionUniform {
 };
 @group(0) @binding(3) var<uniform> uni: TransitionUniform;
 
+fn unit_interval_coverage(value: f32, pixel_size: f32) -> f32 {
+    return clamp(min(value, 1.0 - value) / pixel_size + 0.5, 0.0, 1.0);
+}
+
 fn get_in_weight(uv: vec2<f32>) -> f32 {
-    let aa = 1.5 / vec2<f32>(f32(uni.width), f32(uni.height));
-    let edge_x = smoothstep(0.0, aa.x, uv.x) * (1.0 - smoothstep(1.0 - aa.x, 1.0, uv.x));
-    let edge_y = smoothstep(0.0, aa.y, uv.y) * (1.0 - smoothstep(1.0 - aa.y, 1.0, uv.y));
+    let pixel_size = 1.0 / vec2<f32>(f32(uni.width), f32(uni.height));
+    let edge_x = unit_interval_coverage(uv.x, pixel_size.x);
+    let edge_y = unit_interval_coverage(uv.y, pixel_size.y);
     return edge_x * edge_y;
 }
 
@@ -26,7 +30,8 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         return;
     }
     let coord = vec2<i32>(i32(gid.x), i32(gid.y));
-    let uv = vec2<f32>(f32(gid.x) / f32(uni.width), f32(gid.y) / f32(uni.height));
+    let uv = (vec2<f32>(f32(gid.x), f32(gid.y)) + vec2<f32>(0.5, 0.5)) /
+        vec2<f32>(f32(uni.width), f32(uni.height));
     
     let dir = i32(round(uni.p0));
     var from_uv = uv;
@@ -79,8 +84,8 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         else if (dir == 1) { coord_a = uv.x; seam = uni.progress; }
         else if (dir == 2) { coord_a = uv.y; seam = 1.0 - uni.progress; }
         else { coord_a = uv.y; seam = uni.progress; }
-        let aa = select(1.5 / f32(uni.width), 1.5 / f32(uni.height), dir >= 2);
-        let band = 1.0 - smoothstep(gap_half - aa, gap_half + aa, abs(coord_a - seam));
+        let pixel_size = select(1.0 / f32(uni.width), 1.0 / f32(uni.height), dir >= 2);
+        let band = clamp((gap_half - abs(coord_a - seam)) / pixel_size + 0.5, 0.0, 1.0);
         let gap_color = vec4<f32>(uni.p2, uni.p3, uni.p4, 1.0);
         final_color = mix(final_color, gap_color, band);
     }

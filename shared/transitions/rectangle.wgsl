@@ -55,7 +55,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     let progress = clamp(uni.progress, 0.0, 1.0);
     let dir_pos = uni.p2 > 0.0;
     let t = select(1.0 - progress, progress, dir_pos);
-    let aa = 1.5 / dims().y;
+    let aa = 0.5 / dims().y;
     let blur = select(max(aa, uni.p0 * select(1.0, t, uni.p1 > 0.5)), aa, uni.p8 > 0.5);
     let center = vec2<f32>(uni.p4, uni.p5);
 

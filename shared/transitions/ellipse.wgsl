@@ -67,7 +67,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     // pixel footprint follows the local SDF normal, not just the output height.
     let safe_dist = max(dist, 0.0001);
     let normal = abs(centered) / safe_dist;
-    let aa = 1.5 * (normal.x / scale.x + normal.y / scale.y) / dims().y;
+    let aa = 0.5 * (normal.x / scale.x + normal.y / scale.y) / dims().y;
     let blur = select(max(aa, uni.p0 * select(1.0, t, uni.p1 > 0.5)), aa, uni.p8 > 0.5);
     var reveal = 1.0 - smoothstep(radius - blur, radius + blur, dist);
     if (!dir_pos) { reveal = 1.0 - reveal; }

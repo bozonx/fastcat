@@ -72,7 +72,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     let cut_end = threshold + gap_half;
     // `p` is aspect-corrected, so either screen axis advances by 1 / height.
     // Diagonal doors need the sum of both directional derivatives.
-    let aa = 1.5 * (abs(axis.x) + abs(axis.y)) / dims().y;
+    let aa = 0.5 * (abs(axis.x) + abs(axis.y)) / dims().y;
     let blur = max(cur_blur, aa);
     let blur_mix = smoothstep(threshold - blur, threshold + blur, dist);
 

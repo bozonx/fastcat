@@ -21,7 +21,7 @@ fn clock_aa(p: vec2<f32>, angle_range: f32) -> f32 {
     let r2 = max(dot(p, p), 0.00000001);
     // p is in display-space units, where one pixel on either axis is 1 / height.
     let angle_per_pixel = (abs(p.x) + abs(p.y)) / (dims().y * r2);
-    return clamp(1.5 * angle_per_pixel / angle_range, 0.0001, 0.5);
+    return clamp(0.5 * angle_per_pixel / angle_range, 0.0001, 0.5);
 }
 
 fn ld(tex: texture_2d<f32>, p: vec2<i32>) -> vec4<f32> {

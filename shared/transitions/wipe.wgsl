@@ -35,7 +35,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     let to_color = textureLoad(to_tex, coord, 0);
     // `d` is measured along an arbitrary UV direction. Compute its one-pixel
     // footprint explicitly: compute shaders cannot use fragment `fwidth`.
-    let aa = 1.5 * (abs(dir.x) / f32(uni.width) + abs(dir.y) / f32(uni.height));
+    let aa = 0.5 * (abs(dir.x) / f32(uni.width) + abs(dir.y) / f32(uni.height));
 
     var final_color: vec4<f32>;
     if (uni.p4 < 0.5) {

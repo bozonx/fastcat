@@ -41,16 +41,18 @@ fn pixel_uv(gid: vec3<u32>) -> vec2<f32> {
     return (vec2<f32>(f32(gid.x), f32(gid.y)) + vec2<f32>(0.5, 0.5)) / dims();
 }
 
+fn unit_interval_coverage(value: f32, pixel_size: f32) -> f32 {
+    return clamp(min(value, 1.0 - value) / pixel_size + 0.5, 0.0, 1.0);
+}
+
 fn get_in_weight(uv: vec2<f32>) -> f32 {
-    let aa = 1.5 / dims();
-    let edge_x = smoothstep(0.0, aa.x, uv.x) * (1.0 - smoothstep(1.0 - aa.x, 1.0, uv.x));
-    let edge_y = smoothstep(0.0, aa.y, uv.y) * (1.0 - smoothstep(1.0 - aa.y, 1.0, uv.y));
+    let pixel_size = 1.0 / dims();
+    let edge_x = unit_interval_coverage(uv.x, pixel_size.x);
+    let edge_y = unit_interval_coverage(uv.y, pixel_size.y);
     return edge_x * edge_y;
 }
 
-fn blinds_get(uv: vec2<f32>) -> vec4<f32> {
-    let strip_coord = dot(uv - vec2<f32>(0.5), vec2<f32>(uni.p2, uni.p3)) + 0.5;
-    let strip_index = floor(strip_coord * uni.p4);
+fn blinds_get_strip(uv: vec2<f32>, strip_index: f32) -> vec4<f32> {
     let dir = select(-1.0, 1.0, (strip_index % 2.0) == 0.0);
     let mv = vec2<f32>(uni.p0, uni.p1) * dir;
     let from_uv = uv - mv * uni.progress;
@@ -66,6 +68,29 @@ fn blinds_get(uv: vec2<f32>) -> vec4<f32> {
         return mix(vec4<f32>(0.0, 0.0, 0.0, 1.0), tex_color, min(total_w, 1.0));
     }
     return vec4<f32>(0.0, 0.0, 0.0, 1.0);
+}
+
+fn blinds_get(uv: vec2<f32>) -> vec4<f32> {
+    let strip_coord = dot(uv - vec2<f32>(0.5), vec2<f32>(uni.p2, uni.p3)) + 0.5;
+    let strip_position = strip_coord * uni.p4;
+    let strip_index = floor(strip_position);
+    let strip_fraction = fract(strip_position);
+    let center_color = blinds_get_strip(uv, strip_index);
+
+    // Box-filter the alternating strip selection over one output pixel. The
+    // projected footprint keeps diagonal edges one pixel wide at any angle.
+    let strip_footprint = uni.p4 * (
+        abs(uni.p2) / f32(uni.width) + abs(uni.p3) / f32(uni.height)
+    );
+    let edge_distance = min(strip_fraction, 1.0 - strip_fraction);
+    let center_coverage = clamp(edge_distance / max(strip_footprint, 0.000001) + 0.5, 0.0, 1.0);
+    if (center_coverage >= 1.0) {
+        return center_color;
+    }
+
+    let neighbor_index = strip_index + select(1.0, -1.0, strip_fraction < 0.5);
+    let neighbor_color = blinds_get_strip(uv, neighbor_index);
+    return mix(neighbor_color, center_color, center_coverage);
 }
 
 fn blinds_process(color: vec4<f32>) -> vec4<f32> {

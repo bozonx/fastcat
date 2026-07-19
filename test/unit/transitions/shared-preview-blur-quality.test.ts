@@ -159,10 +159,32 @@ describe('shared preview blur shader optimization', () => {
 
   it('uses aspect-aware analytic AA for hard-edge masks', () => {
     expect(getShaderSource('wipe')).toContain(
-      'abs(dir.x) / f32(uni.width) + abs(dir.y) / f32(uni.height)',
+      '0.5 * (abs(dir.x) / f32(uni.width) + abs(dir.y) / f32(uni.height))',
     );
-    expect(getShaderSource('barn-door')).toContain('abs(axis.x) + abs(axis.y)');
-    expect(getShaderSource('clock')).toContain('fn clock_aa');
-    expect(getShaderSource('circle')).toContain('let normal = abs(centered) / safe_dist;');
+    expect(getShaderSource('barn-door')).toContain('0.5 * (abs(axis.x) + abs(axis.y)) / dims().y');
+    expect(getShaderSource('clock')).toContain('0.5 * angle_per_pixel / angle_range');
+    expect(getShaderSource('circle')).toContain(
+      '0.5 * (normal.x / scale.x + normal.y / scale.y) / dims().y',
+    );
+    expect(getShaderSource('rectangle')).toContain('let aa = 0.5 / dims().y;');
+  });
+
+  it('uses one-pixel coverage instead of a wide smoothstep for slide edges', () => {
+    const source = getShaderSource('slide');
+
+    expect(source).toContain('fn unit_interval_coverage(value: f32, pixel_size: f32)');
+    expect(source).toContain('min(value, 1.0 - value) / pixel_size + 0.5');
+    expect(source).toContain('gap_half - abs(coord_a - seam)) / pixel_size + 0.5');
+    expect(source).toContain('+ vec2<f32>(0.5, 0.5)');
+    expect(source).not.toContain('let aa = 1.5 /');
+  });
+
+  it('box-filters the angled strip boundary in blinds', () => {
+    const source = getShaderSource('blinds');
+
+    expect(source).toContain('fn blinds_get_strip(uv: vec2<f32>, strip_index: f32)');
+    expect(source).toContain('let strip_footprint = uni.p4 * (');
+    expect(source).toContain('abs(uni.p2) / f32(uni.width) + abs(uni.p3) / f32(uni.height)');
+    expect(source).toContain('return mix(neighbor_color, center_color, center_coverage);');
   });
 });
