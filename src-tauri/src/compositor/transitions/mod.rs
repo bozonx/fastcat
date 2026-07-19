@@ -49,6 +49,45 @@ pub enum TransitionSpec {
     },
 }
 
+impl TransitionSpec {
+    /// Analytic masks are cheaper at native resolution than a downscale + upscale pair,
+    /// and their edge coverage must be evaluated at the final pixel grid.
+    pub fn requires_full_resolution(&self) -> bool {
+        match self {
+            Self::Crossfade
+            | Self::Wipe { .. }
+            | Self::Slide { .. }
+            | Self::FadeThroughColor { .. } => true,
+            Self::CustomWgsl { source, params } => {
+                let analytic_mask = [
+                    include_str!("../../../../shared/transitions/wipe.wgsl"),
+                    include_str!("../../../../shared/transitions/slide.wgsl"),
+                    include_str!("../../../../shared/transitions/barn_door.wgsl"),
+                    include_str!("../../../../shared/transitions/clock.wgsl"),
+                    include_str!("../../../../shared/transitions/ellipse.wgsl"),
+                    include_str!("../../../../shared/transitions/rectangle.wgsl"),
+                ]
+                .contains(&source.as_str());
+                if analytic_mask {
+                    return true;
+                }
+                if source != include_str!("../../../../shared/transitions/blinds.wgsl") {
+                    return false;
+                }
+                let blur = params
+                    .get("p5")
+                    .and_then(serde_json::Value::as_f64)
+                    .unwrap_or(0.0);
+                let motion = params
+                    .get("p7")
+                    .and_then(serde_json::Value::as_f64)
+                    .unwrap_or(0.0);
+                blur <= 0.0 && motion <= 0.0
+            }
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum SlideDirection {
@@ -552,8 +591,7 @@ impl TransitionPipeline {
 
         // Fill the uniform buffer (pooled + written via queue, no per-frame allocation).
         let uniform_data = build_uniform(spec, progress, speed, width, height);
-        let uniform_buffer =
-            self.acquire_uniform(device, queue, bytemuck::bytes_of(&uniform_data));
+        let uniform_buffer = self.acquire_uniform(device, queue, bytemuck::bytes_of(&uniform_data));
 
         // Create the bind group
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {

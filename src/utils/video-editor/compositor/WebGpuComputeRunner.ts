@@ -3,7 +3,12 @@ import type { TransitionSpec } from '~/transitions';
 import type { RenderTexture } from 'pixi.js';
 import effectWgsl from '~shared/effects/effect.wgsl?raw';
 import crossfadeWgsl from '~shared/transitions/crossfade.wgsl?raw';
+import barnDoorWgsl from '~shared/transitions/barn_door.wgsl?raw';
+import blindsWgsl from '~shared/transitions/blinds.wgsl?raw';
+import clockWgsl from '~shared/transitions/clock.wgsl?raw';
+import ellipseWgsl from '~shared/transitions/ellipse.wgsl?raw';
 import fadeThroughColorWgsl from '~shared/transitions/fade_through_color.wgsl?raw';
+import rectangleWgsl from '~shared/transitions/rectangle.wgsl?raw';
 import slideWgsl from '~shared/transitions/slide.wgsl?raw';
 import wipeWgsl from '~shared/transitions/wipe.wgsl?raw';
 import { createDevLogger } from '~/utils/dev-logger';
@@ -32,6 +37,28 @@ const GPU_TIMING_SAMPLE_EVERY = 30;
 
 const UNIFORM_SIZE = 48; // 12 * 4 bytes
 const TRANSITION_UNIFORM_SIZE = 64;
+// These transitions are a single analytic mask. Downscaling them adds two full-screen blits
+// and softens an otherwise crisp edge, while saving only a few arithmetic instructions.
+const FULL_RESOLUTION_TRANSITION_SHADERS = new Set([
+  wipeWgsl,
+  slideWgsl,
+  barnDoorWgsl,
+  clockWgsl,
+  ellipseWgsl,
+  rectangleWgsl,
+]);
+
+function transitionRenderScale(spec: TransitionSpec, quality: PreviewEffectQuality): number {
+  if (spec.type !== 'custom-wgsl' || FULL_RESOLUTION_TRANSITION_SHADERS.has(String(spec.source))) {
+    return 1;
+  }
+  // Blinds only becomes sample-heavy when motion or post blur is enabled.
+  if (String(spec.source) === blindsWgsl) {
+    const params = (spec.params ?? {}) as Record<string, unknown>;
+    if (!(Number(params.p5) > 0) && !(Number(params.p7) > 0)) return 1;
+  }
+  return previewEffectQualityTransitionScale(quality);
+}
 const textureBlitWgsl = `
 struct VertexOutput {
   @builtin(position) position: vec4<f32>,
@@ -1247,6 +1274,8 @@ export class WebGpuComputeRunner {
     height: number;
     premultiply: boolean;
     label: string;
+    /** Append to an existing GPU chain to avoid a driver submit between dependent passes. */
+    encoder?: GPUCommandEncoder;
   }): boolean {
     if (
       !this.device ||
@@ -1266,7 +1295,9 @@ export class WebGpuComputeRunner {
         { binding: 1, resource: this.sampler },
       ],
     });
-    const encoder = this.device.createCommandEncoder({ label: `${params.label}-encoder` });
+    const ownsEncoder = !params.encoder;
+    const encoder =
+      params.encoder ?? this.device.createCommandEncoder({ label: `${params.label}-encoder` });
     const pass = encoder.beginRenderPass({
       label: `${params.label}-pass`,
       colorAttachments: [
@@ -1283,7 +1314,7 @@ export class WebGpuComputeRunner {
     pass.setViewport(0, 0, params.width, params.height, 0, 1);
     pass.draw(3, 1, 0, 0);
     pass.end();
-    this.device.queue.submit([encoder.finish()]);
+    if (ownsEncoder) this.device.queue.submit([encoder.finish()]);
     return true;
   }
 
@@ -2314,7 +2345,7 @@ export class WebGpuComputeRunner {
     // reduced internal resolution and let the final blit upscale it — the dominant 4K cost is
     // the pixel count, not the tap budget. Mirrors the native
     // `EffectQuality::transition_render_scale`. `scale >= 1` keeps the original full-res path.
-    const scale = previewEffectQualityTransitionScale(this.previewEffectQuality);
+    const scale = transitionRenderScale(params.spec, this.previewEffectQuality);
     const computeW = Math.max(1, Math.round(width * scale));
     const computeH = Math.max(1, Math.round(height * scale));
     const useScaled = computeW < width || computeH < height;
@@ -2329,6 +2360,7 @@ export class WebGpuComputeRunner {
       packTransitionUniform(params.spec, params.progress, params.speed, computeW, computeH),
     );
 
+    const encoder = this.device.createCommandEncoder({ label: 'web-transition-texture-encoder' });
     let bindGroup: GPUBindGroup;
     if (useScaled) {
       // Downscale both inputs to the compute size (the shader samples with normalized UVs and
@@ -2342,6 +2374,7 @@ export class WebGpuComputeRunner {
         height: computeH,
         premultiply: false,
         label: 'web-transition-downscale-from',
+        encoder,
       });
       this.blitTextureToRendererTarget({
         source: this.sharedRendererTexture.getGpuSource(params.to.source),
@@ -2351,6 +2384,7 @@ export class WebGpuComputeRunner {
         height: computeH,
         premultiply: false,
         label: 'web-transition-downscale-to',
+        encoder,
       });
       // transBindGroup already binds transFromTexture/transToTexture/transOutputTexture + uniform.
       bindGroup = this.transBindGroup!;
@@ -2373,18 +2407,15 @@ export class WebGpuComputeRunner {
       });
     }
     const pipeline = this.getOrCreateTransitionPipeline(resolveTransitionShaderSource(params.spec));
-    const encoder = this.device.createCommandEncoder({ label: 'web-transition-texture-encoder' });
     const pass = encoder.beginComputePass({ label: 'web-transition-texture-pass' });
     pass.setPipeline(pipeline);
     pass.setBindGroup(0, bindGroup);
     pass.dispatchWorkgroups(Math.ceil(computeW / 8), Math.ceil(computeH / 8), 1);
     pass.end();
 
-    this.device.queue.submit([encoder.finish()]);
-    this.sampleGpuChainTiming();
     const targetTexture = this.sharedRendererTexture.getGpuSource(params.output.source);
     // Final blit resamples the (possibly reduced-resolution) output up to the full frame.
-    return this.blitTextureToRendererTarget({
+    const rendered = this.blitTextureToRendererTarget({
       source: outputTexture,
       target: targetTexture,
       targetFormat: outputFormat,
@@ -2392,7 +2423,11 @@ export class WebGpuComputeRunner {
       height,
       premultiply: false,
       label: 'web-transition-texture-blit',
+      encoder,
     });
+    this.device.queue.submit([encoder.finish()]);
+    this.sampleGpuChainTiming();
+    return rendered;
   }
 
   /**

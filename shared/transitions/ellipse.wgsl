@@ -63,7 +63,11 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     let dir_pos = uni.p2 > 0.0;
     let t = select(1.0 - progress, progress, dir_pos);
     let radius = t * max_radius;
-    let aa = 1.5 / dims().y;
+    // Distance is evaluated in aspect- and user-scale-corrected space. Its
+    // pixel footprint follows the local SDF normal, not just the output height.
+    let safe_dist = max(dist, 0.0001);
+    let normal = abs(centered) / safe_dist;
+    let aa = 1.5 * (normal.x / scale.x + normal.y / scale.y) / dims().y;
     let blur = max(aa, uni.p0 * select(1.0, t, uni.p1 > 0.5));
     var reveal = 1.0 - smoothstep(radius - blur, radius + blur, dist);
     if (!dir_pos) { reveal = 1.0 - reveal; }

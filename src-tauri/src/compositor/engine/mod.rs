@@ -379,14 +379,18 @@ impl Compositor {
     ) -> Result<()> {
         let mut to_remove = std::collections::HashSet::new();
 
-        let render_scale = scene.effect_quality.transition_render_scale();
-        let sub_size = (
-            ((scene.width as f32 * render_scale).round() as u32).max(1),
-            ((scene.height as f32 * render_scale).round() as u32).max(1),
-        );
-
+        let quality_render_scale = scene.effect_quality.transition_render_scale();
         for i in 0..layers.len() {
             if let Some(trans_info) = layers[i].transition.clone() {
+                let render_scale = if trans_info.spec.requires_full_resolution() {
+                    1.0
+                } else {
+                    quality_render_scale
+                };
+                let sub_size = (
+                    ((scene.width as f32 * render_scale).round() as u32).max(1),
+                    ((scene.height as f32 * render_scale).round() as u32).max(1),
+                );
                 let source_kind = trans_info.source.clone();
                 if matches!(&source_kind, TransitionSource::Layer(id) if id == &layers[i].id) {
                     continue;

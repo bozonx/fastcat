@@ -156,4 +156,13 @@ describe('shared preview blur shader optimization', () => {
       'fn layer_coverage(uv: vec2<f32>, angle: f32, scale: f32, aspect: f32, ss: i32)',
     );
   });
+
+  it('uses aspect-aware analytic AA for hard-edge masks', () => {
+    expect(getShaderSource('wipe')).toContain(
+      'abs(dir.x) / f32(uni.width) + abs(dir.y) / f32(uni.height)',
+    );
+    expect(getShaderSource('barn-door')).toContain('abs(axis.x) + abs(axis.y)');
+    expect(getShaderSource('clock')).toContain('fn clock_aa');
+    expect(getShaderSource('circle')).toContain('let normal = abs(centered) / safe_dist;');
+  });
 });
