@@ -37,11 +37,6 @@ fn samp(tex: texture_2d<f32>, uv: vec2<f32>) -> vec4<f32> {
     return mix(mix(c00, c10, f.x), mix(c01, c11, f.x), f.y);
 }
 
-fn unit_uv_coverage(uv: vec2<f32>, blur: f32, zoom_scale: f32) -> f32 {
-    let distance_to_edge = min(min(uv.x, 1.0 - uv.x), min(uv.y, 1.0 - uv.y));
-    return smoothstep(-blur / max(zoom_scale, 0.0001), 0.0, distance_to_edge);
-}
-
 fn pixel_uv(gid: vec3<u32>) -> vec2<f32> {
     return (vec2<f32>(f32(gid.x), f32(gid.y)) + vec2<f32>(0.5, 0.5)) / dims();
 }
@@ -77,30 +72,23 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     // A radial SDF has no space inside the contour when the circle is smaller
     // than its blur. Clamp only that side to avoid a flat, clipped center.
     let inner_blur = min(blur, radius);
-    var reveal = 1.0 - smoothstep(radius - inner_blur, radius + blur, dist);
+    // Zoomed content reaches its source texture edge at the circle boundary.
+    // Keep its soft edge inside that boundary so clamp-to-edge pixels cannot
+    // bleed into the outgoing frame.
+    let outer_blur = select(blur, 0.0, uni.p7 > 0.5);
+    var reveal = 1.0 - smoothstep(radius - inner_blur, radius + outer_blur, dist);
     if (!dir_pos) { reveal = 1.0 - reveal; }
 
     var uv_from = uv;
     var norm_to = uv;
-    var zoom_scale = 1.0;
     if (uni.p7 > 0.5) {
         let s = min(1.0, radius * 2.0);
-        zoom_scale = s;
         if (dir_pos) { norm_to = (norm_to - center) / max(0.0001, s) + center; }
         else { uv_from = (uv_from - center) / max(0.0001, s) + center; }
     }
 
     var from_color = samp(from_tex, uv_from);
     var to_color = samp(to_tex, norm_to);
-    // Fade the zoomed layer out as its UV leaves the texture. A hard fallback
-    // would turn this edge into a visible rectangular crop under a soft mask.
-    if (uni.p7 > 0.5) {
-        if (dir_pos) {
-            to_color = mix(from_color, to_color, unit_uv_coverage(norm_to, blur, zoom_scale));
-        } else {
-            from_color = mix(to_color, from_color, unit_uv_coverage(uv_from, blur, zoom_scale));
-        }
-    }
     var color = mix(from_color, to_color, reveal);
     if (uni.p8 > 0.5 && uni.p9 > 0.0) {
         let stroke_width = uni.p9 * select(1.0, t, uni.p8 > 1.5);

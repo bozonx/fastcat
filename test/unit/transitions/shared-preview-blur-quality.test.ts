@@ -169,12 +169,11 @@ describe('shared preview blur shader optimization', () => {
     expect(getShaderSource('rectangle')).toContain('let aa = 0.5 / dims().y;');
   });
 
-  it('fades zoomed circle content at the texture edge under a blurred mask', () => {
+  it('keeps zoomed circle blur inside the source texture boundary', () => {
     const circle = getShaderSource('circle');
 
-    expect(circle).toContain('fn unit_uv_coverage(uv: vec2<f32>, blur: f32, zoom_scale: f32)');
-    expect(circle).toContain('unit_uv_coverage(norm_to, blur, zoom_scale)');
-    expect(circle).toContain('unit_uv_coverage(uv_from, blur, zoom_scale)');
+    expect(circle).toContain('let outer_blur = select(blur, 0.0, uni.p7 > 0.5);');
+    expect(circle).toContain('smoothstep(radius - inner_blur, radius + outer_blur, dist)');
   });
 
   it('keeps a small circle from clipping the inner half of its edge blur', () => {
