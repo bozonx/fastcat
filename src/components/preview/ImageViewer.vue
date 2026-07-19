@@ -3,12 +3,10 @@ import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { useImagePanZoom } from '~/composables/preview/useImagePanZoom';
 import { useUiStore } from '~/stores/ui.store';
 import { useFocusStore, type PanelFocusId } from '~/stores/focus.store';
-import { useWorkspaceStore } from '~/stores/workspace.store';
 
 const { t } = useI18n();
 const uiStore = useUiStore();
 const focusStore = useFocusStore();
-const workspaceStore = useWorkspaceStore();
 
 const props = defineProps<{
   src: string;
@@ -42,10 +40,7 @@ const {
 const imageStyle = computed(() => ({
   transform: `translate(${translateX.value}px, ${translateY.value}px) scale(${scale.value})`,
   transformOrigin: 'center',
-  cursor:
-    workspaceStore.userSettings.mouse.monitor.leftDoubleClick === 'fullscreen'
-      ? 'zoom-in'
-      : 'default',
+  cursor: 'zoom-in',
 }));
 
 const contextMenuItems = computed(() => [
@@ -70,19 +65,9 @@ function toggleModalFullscreen() {
   else emit('open-modal');
 }
 
-function applyViewerAction(action: string) {
-  if (action === 'fullscreen') {
-    toggleModalFullscreen();
-  } else if (action === 'fit') {
-    fitToContainer();
-  } else if (action === 'reset_zoom' || action === 'reset_zoom_center') {
-    reset();
-  }
-}
-
-function onDblClick(e: MouseEvent) {
+function onClick(e: MouseEvent) {
   if (e.button !== 0) return;
-  applyViewerAction(workspaceStore.userSettings.mouse.monitor.leftDoubleClick);
+  toggleModalFullscreen();
 }
 
 function shouldHandlePreviewZoom() {
@@ -156,7 +141,7 @@ onUnmounted(() => {});
       @pointerup="onPointerUp"
       @pointerleave="onPointerUp"
       @auxclick="onAuxClick"
-      @dblclick.prevent="onDblClick"
+      @click="onClick"
     >
       <img
         :src="props.src"
