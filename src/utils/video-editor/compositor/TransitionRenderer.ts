@@ -67,6 +67,7 @@ export class TransitionRenderer {
   private blitSprite: Sprite | null = null;
   private blitSource: ImageSource | null = null;
   private blitTexture: Texture | null = null;
+  private renderedTransitionClips = new Set<CompositorClip>();
 
   public destroy() {
     this.blitSprite?.destroy();
@@ -74,6 +75,7 @@ export class TransitionRenderer {
     this.blitTexture?.destroy(true);
     this.blitTexture = null;
     this.blitSource = null;
+    this.renderedTransitionClips.clear();
   }
 
   public async applyShaderTransitions(
@@ -81,7 +83,12 @@ export class TransitionRenderer {
     timeTicks: number,
     params: TransitionRendererParams,
   ) {
-    for (const clip of params.clips) {
+    const renderedThisFrame = new Set<CompositorClip>();
+    // A newly created renderer can inherit sprites from a restored stage. Clear
+    // those once; afterwards only inspect clips this renderer has presented.
+    const clipsToHide =
+      this.renderedTransitionClips.size > 0 ? this.renderedTransitionClips : params.clips;
+    for (const clip of clipsToHide) {
       if (clip.transitionSprite) {
         clip.transitionSprite.visible = false;
         clip.transitionSprite.filters = null;
@@ -204,6 +211,7 @@ export class TransitionRenderer {
         if (renderedOnGpu) {
           compositorPerfStats.onGpuComputePath('transition', 'zero-copy');
           this.commitTransitionOutput(clip, params, prevClip, mode);
+          renderedThisFrame.add(clip);
           continue;
         }
       } catch (error) {
@@ -266,7 +274,15 @@ export class TransitionRenderer {
       }
 
       this.commitTransitionOutput(clip, params, prevClip, mode);
+      renderedThisFrame.add(clip);
     }
+
+    for (const clip of this.renderedTransitionClips) {
+      if (!renderedThisFrame.has(clip)) {
+        params.transitionManager.releaseTransitionRenderTextures(clip);
+      }
+    }
+    this.renderedTransitionClips = renderedThisFrame;
   }
 
   private commitTransitionOutput(

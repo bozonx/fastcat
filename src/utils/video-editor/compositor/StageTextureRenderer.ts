@@ -29,6 +29,8 @@ export class StageTextureRenderer {
   private transitionCombineSprite: Sprite | null = null;
   private bitmapCaptureSprite: Sprite | null = null;
   private captureTexture: RenderTexture | null = null;
+  private readbackBuffer: GPUBuffer | null = null;
+  private readbackBufferSize = 0;
 
   constructor(private readonly context: StageTextureRendererContext) {}
 
@@ -89,11 +91,17 @@ export class StageTextureRenderer {
     const rowSize = width * 4;
     const bytesPerRow = Math.ceil(rowSize / 256) * 256;
     const needed = bytesPerRow * height;
-    const buffer = device.createBuffer({
-      label: 'stage-texture-readback',
-      size: needed,
-      usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
-    });
+    let buffer = this.readbackBuffer;
+    if (!buffer || this.readbackBufferSize < needed) {
+      buffer?.destroy();
+      buffer = device.createBuffer({
+        label: 'stage-texture-readback',
+        size: needed,
+        usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
+      });
+      this.readbackBuffer = buffer;
+      this.readbackBufferSize = needed;
+    }
 
     try {
       const encoder = device.createCommandEncoder();
@@ -136,7 +144,6 @@ export class StageTextureRenderer {
       } catch {
         // The buffer may never be mapped if the copy or map failed.
       }
-      buffer.destroy();
     }
   }
 
@@ -189,6 +196,9 @@ export class StageTextureRenderer {
       this.captureTexture.destroy(true);
       this.captureTexture = null;
     }
+    this.readbackBuffer?.destroy();
+    this.readbackBuffer = null;
+    this.readbackBufferSize = 0;
   }
 
   public renderCombinedTransitionTexture(

@@ -188,8 +188,8 @@ export class ResourceManager {
     throw lastError;
   }
 
-  public async withVideoDecodeSlot<T>(task: () => Promise<T>): Promise<T> {
-    await this.acquireSlot();
+  public async withVideoDecodeSlot<T>(task: () => Promise<T>, signal?: AbortSignal): Promise<T> {
+    await this.acquireSlot(signal);
     try {
       return await task();
     } finally {

@@ -39,7 +39,10 @@ import { RenderingEngine } from './compositor/RenderingEngine';
 import type { FrameSampleOrchestrator } from './compositor/FrameSampleOrchestrator';
 import { StageManager } from './compositor/StageManager';
 import { TransitionRenderer } from './compositor/TransitionRenderer';
-import { CompositorOperationQueue } from './compositor/CompositorOperationQueue';
+import {
+  CompositorOperationQueue,
+  type CompositorOperationPriority,
+} from './compositor/CompositorOperationQueue';
 import { resetCompositorClipsAfterContextRestored } from './compositor/contextRestore';
 import { TrackRuntimeManager } from './compositor/TrackRuntimeManager';
 import { createCompositorRuntime } from './compositor/CompositorRuntimeFactory';
@@ -771,8 +774,12 @@ export class VideoCompositor {
    * op *actually* settles — the watchdog nudges settlement, it never runs the
    * next op concurrently, so the no-interleave invariant is preserved.
    */
-  private runExclusive<T>(fn: (signal: AbortSignal) => Promise<T> | T, label = 'op'): Promise<T> {
-    return this.opQueue.run(fn, label);
+  private runExclusive<T>(
+    fn: (signal: AbortSignal) => Promise<T> | T,
+    label = 'op',
+    priority: CompositorOperationPriority = 'interactive',
+  ): Promise<T> {
+    return this.opQueue.run(fn, label, priority);
   }
 
   private async loadTimelineLocked(
@@ -853,8 +860,9 @@ export class VideoCompositor {
   ): Promise<void> {
     if (this.disposed) return Promise.resolve();
     return this.runExclusive(
-      () => this.prewarmVideoFramesLocked(timeTicks, lookaheadTicks),
+      (signal) => this.prewarmVideoFramesLocked(timeTicks, lookaheadTicks, signal),
       'prewarmVideoFrames',
+      'background',
     );
   }
 
@@ -1073,7 +1081,12 @@ export class VideoCompositor {
     void this.prewarmVideoFrames(timeTicks).catch(() => undefined);
   }
 
-  private async prewarmVideoFramesLocked(timeTicks: number, lookaheadTicks: number): Promise<void> {
+  private async prewarmVideoFramesLocked(
+    timeTicks: number,
+    lookaheadTicks: number,
+    abortSignal?: AbortSignal,
+  ): Promise<void> {
+    if (abortSignal?.aborted) return;
     const startTicks = Math.max(0, Math.round(timeTicks));
     this.videoFrameCache.setPriorityTimeTicks(startTicks);
     const endTicks = startTicks + Math.max(0, Math.round(lookaheadTicks));
@@ -1109,6 +1122,7 @@ export class VideoCompositor {
 
     await Promise.all([
       ...upcoming.map(async (clip) => {
+        if (abortSignal?.aborted) return;
         const sampleTimeTicks =
           typeof clip.freezeFrameSourceTicks === 'number'
             ? Math.max(0, clip.freezeFrameSourceTicks)
@@ -1120,14 +1134,24 @@ export class VideoCompositor {
                 frameRate: clip.frameRate,
               });
 
-        await this.getVideoSampleForClip({
+        const sample = await this.getVideoSampleForClip({
           clip,
           sampleTimeS: sampleTimeTicks / TICKS_PER_SECOND,
           timelineTimeTicks: clip.startTicks,
+          abortSignal,
         });
+        // This warm request only populates the frame cache. Unlike a render
+        // request, no sprite consumes its owned clone.
+        try {
+          (sample as { close?: () => void } | null)?.close?.();
+        } catch {
+          // A failed cleanup must not cancel the rest of the prewarm batch.
+        }
       }),
       ...activeWarmPlans.map((plan) =>
-        this.clipResourceManager.warmClipFrameWindow(plan).catch(() => undefined),
+        this.clipResourceManager
+          .warmClipFrameWindow({ ...plan, abortSignal })
+          .catch(() => undefined),
       ),
     ]);
   }

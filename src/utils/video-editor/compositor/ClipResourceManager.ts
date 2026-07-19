@@ -911,6 +911,7 @@ export class ClipResourceManager {
     rangeEndSourceTimeS?: number;
     timelineNowTicks: number;
     speed: number;
+    abortSignal?: AbortSignal;
   }): Promise<void> {
     const { clip } = params;
     const sink = clip.sink as unknown as {
@@ -966,12 +967,20 @@ export class ClipResourceManager {
     stream.lastNowS = params.nowSourceTimeS;
 
     let framesStored = 0;
-    while (!stream.done && stream.lastTimeS < params.aheadSourceTimeS) {
+    while (
+      !params.abortSignal?.aborted &&
+      !stream.done &&
+      stream.lastTimeS < params.aheadSourceTimeS
+    ) {
       const next = () => stream!.iterator.next();
-      const decodeSlot = (this.context.resourceManager as {
-        withVideoDecodeSlot?: <T>(task: () => Promise<T>) => Promise<T>;
-      }).withVideoDecodeSlot;
-      const { value: sample, done } = await (decodeSlot ? decodeSlot(next) : next());
+      const decodeSlot = (
+        this.context.resourceManager as {
+          withVideoDecodeSlot?: <T>(task: () => Promise<T>, signal?: AbortSignal) => Promise<T>;
+        }
+      ).withVideoDecodeSlot;
+      const { value: sample, done } = await (decodeSlot
+        ? decodeSlot(next, params.abortSignal)
+        : next());
       if (done || !sample) {
         stream.done = true;
         break;

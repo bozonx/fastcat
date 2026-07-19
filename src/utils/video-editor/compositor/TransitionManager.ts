@@ -348,6 +348,15 @@ export class TransitionManager {
       clip.transitionFilterType = null;
     }
 
+    this.releaseTransitionRenderTextures(clip);
+  }
+
+  /**
+   * Transition render targets are needed only while a shader transition is active.
+   * Keeping one full-frame triple on every clip that has already played eventually
+   * exhausts GPU memory on long timelines.
+   */
+  public releaseTransitionRenderTextures(clip: CompositorClip) {
     safeDispose(clip.transitionFromTexture);
     safeDispose(clip.transitionToTexture);
     safeDispose(clip.transitionOutputTexture);

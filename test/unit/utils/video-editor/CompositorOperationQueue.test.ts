@@ -41,6 +41,43 @@ describe('CompositorOperationQueue', () => {
     expect(order).toEqual(['op1-start', 'op1-end', 'op2-start', 'op2-end']);
   });
 
+  it('runs an interactive operation before queued background work', async () => {
+    const queue = new CompositorOperationQueue();
+    const order: string[] = [];
+    const first = defer<void>();
+
+    const firstPromise = queue.run(async () => {
+      order.push('first');
+      await first.promise;
+    }, 'first');
+    const warmPromise = queue.run(() => order.push('prewarm'), 'prewarm', 'background');
+    const renderPromise = queue.run(() => order.push('render'), 'render');
+
+    first.resolve();
+    await Promise.all([firstPromise, warmPromise, renderPromise]);
+
+    expect(order).toEqual(['first', 'render', 'prewarm']);
+  });
+
+  it('aborts a running background operation when an interactive operation arrives', async () => {
+    const queue = new CompositorOperationQueue();
+    const backgroundStarted = defer<void>();
+    const background = queue.run(
+      async (signal) => {
+        backgroundStarted.resolve();
+        await new Promise<void>((resolve) => signal.addEventListener('abort', resolve, { once: true }));
+      },
+      'prewarm',
+      'background',
+    );
+
+    await backgroundStarted.promise;
+    const render = queue.run(() => 'rendered', 'render');
+
+    await expect(background).resolves.toBeUndefined();
+    await expect(render).resolves.toBe('rendered');
+  });
+
   it('passes an AbortSignal to the operation', async () => {
     const queue = new CompositorOperationQueue();
     const handler = vi.fn((signal: AbortSignal) => {

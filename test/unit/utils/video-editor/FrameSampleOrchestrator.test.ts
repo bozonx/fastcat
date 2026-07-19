@@ -24,6 +24,7 @@ interface ShadowSampleScenarioOptions {
   prevSourceRangeDurationTicks?: number;
   prevSourceDurationTicks?: number;
   prevFrameRate?: number;
+  transitionType?: string;
 }
 
 async function collectShadowSampleTimesS(options: ShadowSampleScenarioOptions): Promise<number[]> {
@@ -63,7 +64,7 @@ async function collectShadowSampleTimesS(options: ShadowSampleScenarioOptions): 
     transitionIn: {
       durationTicks: transitionDurationTicks,
       mode: 'adjacent',
-      type: 'fade',
+      type: options.transitionType ?? 'fade',
     },
     sink: {},
   } as unknown as CompositorClip;
@@ -437,6 +438,18 @@ describe('FrameSampleOrchestrator', () => {
 });
 
 describe('FrameSampleOrchestrator shadow sampling during adjacent transition', () => {
+  it('does not request a duplicate shadow sample for a shader transition', async () => {
+    const calls = await collectShadowSampleTimesS({
+      prevSpeed: 1,
+      localTimeTicks: 200_000,
+      transitionType: 'dissolve',
+    });
+
+    // Only the primary sample of the incoming clip remains. TransitionRenderer
+    // samples and composites the outgoing peer in the shader path.
+    expect(calls).toHaveLength(1);
+  });
+
   it('maps timeline delta to source delta via |speed| for forward prev clip', async () => {
     const localTimeTicks = 200_000;
     const prevSpeed = 2;

@@ -178,6 +178,12 @@ export class FrameSampleOrchestrator {
       }
 
       const manifest = getTransitionManifest(transition.type);
+      // Shader transitions render and sample the peer themselves in TransitionRenderer.
+      // Requesting a blend shadow here duplicates the VideoFrame clone, upload, layout,
+      // and any per-clip effects for every transition frame.
+      if (manifest?.renderMode === 'shader') {
+        continue;
+      }
       const rawProgress = Math.max(0, Math.min(1, localTimeTicks / transition.durationTicks));
       const shadowAlpha = manifest
         ? manifest.computeOutOpacity(

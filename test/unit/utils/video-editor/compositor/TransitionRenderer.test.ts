@@ -168,6 +168,47 @@ describe('TransitionRenderer.applyShaderTransitions', () => {
     });
     await renderer.applyShaderTransitions([clip], 500_000, params);
   });
+
+  it('releases transition render textures after the transition becomes inactive', async () => {
+    const renderer = new TransitionRenderer();
+    const clip = makeClip();
+    const releaseTransitionRenderTextures = vi.fn();
+    const transitionSprite = {
+      texture: null,
+      scale: { set: vi.fn() },
+      width: 0,
+      height: 0,
+      alpha: 1,
+      blendMode: 'normal',
+      filters: null,
+      visible: false,
+    } as any;
+    const params = makeParams({
+      clips: [clip],
+      computeRunner: {
+        isReady: () => true,
+        applyTransitionToTexture: vi.fn(() => true),
+      },
+      transitionManager: { releaseTransitionRenderTextures },
+      stageTextureRenderer: {
+        renderSingleClipToTexture: vi.fn(),
+        renderLowerLayersToTexture: vi.fn(),
+        ensureTransitionSprite: vi.fn(() => transitionSprite),
+      },
+      getActiveTransitionState: vi.fn().mockReturnValue({
+        manifest: { renderMode: 'shader', toTransitionSpec: vi.fn(() => ({ type: 'crossfade' })) },
+        progress: 0.5,
+        curve: 'linear',
+        edge: 'in',
+        transition: { type: 'dissolve', mode: 'background', durationTicks: 1_000 },
+      }),
+    });
+
+    await renderer.applyShaderTransitions([clip], 500, params);
+    await renderer.applyShaderTransitions([], 1_500, params);
+
+    expect(releaseTransitionRenderTextures).toHaveBeenCalledWith(clip);
+  });
 });
 
 describe('TransitionRenderer.renderTransitionClipToTexture', () => {
