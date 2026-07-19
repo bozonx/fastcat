@@ -967,7 +967,9 @@ export class ClipResourceManager {
 
     let framesStored = 0;
     while (!stream.done && stream.lastTimeS < params.aheadSourceTimeS) {
-      const { value: sample, done } = await stream.iterator.next();
+      const { value: sample, done } = await this.context.resourceManager.withVideoDecodeSlot(() =>
+        stream!.iterator.next(),
+      );
       if (done || !sample) {
         stream.done = true;
         break;

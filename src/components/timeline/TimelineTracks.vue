@@ -152,11 +152,16 @@ function shouldStartMarquee(e: PointerEvent): boolean {
   return action === 'move_clips' || action === 'select_area';
 }
 
-const { resizeVolume, startResizeVolume, startResizeFade, startResizeTransition } =
-  useTimelineClipHandleResize(
-    () => props.scrollLeft ?? 0,
-    () => props.tracks,
-  );
+const {
+  resizeTransition,
+  resizeVolume,
+  startResizeVolume,
+  startResizeFade,
+  startResizeTransition,
+} = useTimelineClipHandleResize(
+  () => props.scrollLeft ?? 0,
+  () => props.tracks,
+);
 
 const timelineWidthPx = computed(() => {
   const maxTicks = timelineStore.duration + 30_000_000;
@@ -614,6 +619,7 @@ watch(
         :is-move-preview-current-item="true"
         :is-move-preview-collision="preview.isCollision"
         :selected-transition="null"
+        :resize-transition="null"
         :resize-volume="null"
       />
 
@@ -636,6 +642,7 @@ watch(
           :is-move-preview-current-item="movePreviewIds.has(item.id)"
           :is-trim-preview-current-item="Boolean(trimPreviewByItemId[item.id])"
           :selected-transition="selectedTransition"
+          :resize-transition="resizeTransition"
           :resize-volume="resizeVolume"
           :scroll-left="scrollLeft"
           :viewport-width="viewportWidth"

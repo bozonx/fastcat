@@ -76,6 +76,7 @@ interface Props {
   } | null;
   trimPreview?: TimelineTrimPreview | null;
   selectedTransition: { trackId: string; itemId: string; edge: 'in' | 'out' } | null;
+  resizeTransition: { trackId: string; itemId: string; edge: 'in' | 'out' } | null;
   resizeVolume: {
     itemId: string;
     trackId: string;
@@ -773,7 +774,13 @@ const transitionInOverlayGuideStyle = computed<Record<string, string> | null>(()
       (prevClip &&
         props.selectedTransition?.itemId === prevClip.id &&
         props.selectedTransition?.edge === 'out'));
-  if (!isSelected) return null;
+  const isDragging =
+    props.resizeTransition?.trackId === props.track.id &&
+    ((props.resizeTransition?.itemId === props.item.id && props.resizeTransition?.edge === 'in') ||
+      (prevClip &&
+        props.resizeTransition?.itemId === prevClip.id &&
+        props.resizeTransition?.edge === 'out'));
+  if (!isSelected && !isDragging) return null;
 
   const hasAdjacent =
     clipItem.value?.transitionIn?.mode === 'adjacent' ||
@@ -801,7 +808,13 @@ const transitionOutOverlayGuideStyle = computed<Record<string, string> | null>((
       (nextClip &&
         props.selectedTransition?.itemId === nextClip.id &&
         props.selectedTransition?.edge === 'in'));
-  if (!isSelected) return null;
+  const isDragging =
+    props.resizeTransition?.trackId === props.track.id &&
+    ((props.resizeTransition?.itemId === props.item.id && props.resizeTransition?.edge === 'out') ||
+      (nextClip &&
+        props.resizeTransition?.itemId === nextClip.id &&
+        props.resizeTransition?.edge === 'in'));
+  if (!isSelected && !isDragging) return null;
 
   const hasAdjacent =
     clipItem.value?.transitionOut?.mode === 'adjacent' ||

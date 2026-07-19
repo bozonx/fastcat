@@ -31,6 +31,10 @@ export function useMonitorRuntime() {
   const { isPlaying, currentTime, duration } = storeToRefs(timelineStore);
 
   const isMobile = computed(() => route.path.startsWith('/m'));
+  const viewportRef = ref<MonitorViewportPublicApi | null>(null);
+  const viewportEl = computed(
+    () => (viewportRef.value?.viewportEl as HTMLDivElement | null) ?? null,
+  );
 
   const {
     videoItems,
@@ -72,12 +76,8 @@ export function useMonitorRuntime() {
     updateCanvasDisplaySize,
   } = useMonitorDisplay({
     isMobile,
+    viewportEl,
   });
-
-  const viewportRef = ref<MonitorViewportPublicApi | null>(null);
-  const viewportEl = computed(
-    () => (viewportRef.value?.viewportEl as HTMLDivElement | null) ?? null,
-  );
 
   const {
     isLoading,

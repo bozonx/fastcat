@@ -1,13 +1,15 @@
 import { ref, computed, type Ref } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
+import { resolveMonitorPreviewSize } from '~/utils/monitor-preview-resolution';
 
-export function useMonitorDisplay(_options?: { isMobile?: Ref<boolean> }) {
+export function useMonitorDisplay(options?: { isMobile?: Ref<boolean>; viewportEl?: Ref<HTMLElement | null> }) {
   const timelineStore = useTimelineStore();
   const projectStore = useProjectStore();
 
   const containerEl = ref<HTMLDivElement | null>(null);
   const viewportEl = ref<HTMLDivElement | null>(null);
+  const viewportSize = ref({ width: 0, height: 0 });
 
   const MIN_CANVAS_DIMENSION = 16;
   const MAX_CANVAS_DIMENSION = 7680;
@@ -35,23 +37,18 @@ export function useMonitorDisplay(_options?: { isMobile?: Ref<boolean> }) {
     return width / height;
   });
 
-  const renderHeight = computed(() => {
-    const value = Number(projectStore.activeMonitor?.previewResolution);
-    if (!Number.isFinite(value) || value <= 0) {
-      return Math.round(exportHeight.value / 2) * 2;
-    }
-
-    // Interpret values <= 1 as scale factor relative to project height
-    if (value <= 1) {
-      return Math.round((exportHeight.value * value) / 2) * 2; // Keep even dimensions
-    }
-
-    return Math.round(value / 2) * 2; // Always keep even dimensions
-  });
-
-  const renderWidth = computed(() => {
-    return Math.round(renderHeight.value * aspectRatio.value);
-  });
+  const previewSize = computed(() =>
+    resolveMonitorPreviewSize({
+      sceneWidth: exportWidth.value,
+      sceneHeight: exportHeight.value,
+      viewportWidth: viewportSize.value.width || exportWidth.value,
+      viewportHeight: viewportSize.value.height || exportHeight.value,
+      devicePixelRatio: typeof window === 'undefined' ? 1 : window.devicePixelRatio,
+      manualScale: projectStore.activeMonitor?.previewResolution,
+    }),
+  );
+  const renderWidth = computed(() => previewSize.value.width);
+  const renderHeight = computed(() => previewSize.value.height);
 
   function getCanvasWrapperStyle() {
     return {
@@ -69,8 +66,11 @@ export function useMonitorDisplay(_options?: { isMobile?: Ref<boolean> }) {
   }
 
   function updateCanvasDisplaySize() {
-    // Canvas display size is fixed to the selected preview resolution.
-    // Viewport clipping is handled by CSS overflow on the viewport container.
+    const viewport = options?.viewportEl?.value ?? viewportEl.value;
+    if (!viewport) return;
+    const width = viewport.clientWidth || viewport.getBoundingClientRect().width;
+    const height = viewport.clientHeight || viewport.getBoundingClientRect().height;
+    viewportSize.value = { width: Math.max(0, width), height: Math.max(0, height) };
   }
 
   return {

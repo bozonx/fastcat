@@ -39,7 +39,7 @@ describe('AudioLevelMeter', () => {
     expect(levels.peakDb).toBeGreaterThan(-10);
   });
 
-  it('allocates a fresh Float32Array per getLevels call', () => {
+  it('reuses the analyser buffer across getLevels calls', () => {
     const meter = new AudioLevelMeter();
     const getFloatFn = vi.fn((arr: Float32Array) => {
       for (let i = 0; i < arr.length; i++) arr[i] = 0.5;
@@ -55,12 +55,12 @@ describe('AudioLevelMeter', () => {
     meter.getLevels(undefined, true);
     meter.getLevels(undefined, true);
 
-    // getFloatTimeDomainData should be called with a new buffer each time
+    // Metering runs on the main thread during playback, so the scratch buffer
+    // must not create periodic garbage collection pressure.
     expect(getFloatFn).toHaveBeenCalledTimes(2);
     const call1Arg = getFloatFn.mock.calls[0][0] as Float32Array;
     const call2Arg = getFloatFn.mock.calls[1][0] as Float32Array;
-    // Each call should receive its own buffer (not a shared instance)
-    expect(call1Arg).not.toBe(call2Arg);
+    expect(call1Arg).toBe(call2Arg);
   });
 
   it('returns track levels when trackId is specified', () => {

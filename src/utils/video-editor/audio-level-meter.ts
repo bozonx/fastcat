@@ -11,6 +11,7 @@ import { LEVEL_DB_FLOOR, linearToLevelDb } from '~/utils/audio/level-db';
 export class AudioLevelMeter {
   // map keyed by trackId, plus the special 'master' bus
   readonly analyserNodes = new Map<string, AnalyserNode>();
+  private readonly buffers = new Map<string, Float32Array>();
 
   /**
    * Creates the master-bus analyser, registers it under the `'master'` key and
@@ -39,7 +40,11 @@ export class AudioLevelMeter {
       return { rmsDb: LEVEL_DB_FLOOR, peakDb: LEVEL_DB_FLOOR };
     }
 
-    const analyserData = new Float32Array(analyser.fftSize);
+    let analyserData = this.buffers.get(id);
+    if (!analyserData || analyserData.length !== analyser.fftSize) {
+      analyserData = new Float32Array(analyser.fftSize);
+      this.buffers.set(id, analyserData);
+    }
     analyser.getFloatTimeDomainData(analyserData);
 
     let sumSquares = 0;
@@ -76,11 +81,13 @@ export class AudioLevelMeter {
         /* no-op */
       }
       this.analyserNodes.delete(id);
+      this.buffers.delete(id);
     }
   }
 
   /** Drops all analyser references (engine teardown). */
   clear(): void {
     this.analyserNodes.clear();
+    this.buffers.clear();
   }
 }

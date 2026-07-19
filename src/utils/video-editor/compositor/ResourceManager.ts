@@ -188,6 +188,16 @@ export class ResourceManager {
     throw lastError;
   }
 
+  public async withVideoDecodeSlot<T>(task: () => Promise<T>): Promise<T> {
+    await this.acquireSlot();
+    try {
+      return await task();
+    } finally {
+      this.sampleRequestsInFlight -= 1;
+      this.processRequestQueue();
+    }
+  }
+
   /**
    * Acquires a concurrency slot, reserving it (incrementing the in-flight count)
    * the moment it becomes available. A waiter granted a slot from the queue is

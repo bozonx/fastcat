@@ -528,6 +528,15 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
     },
   );
 
+  watch(
+    () => `${renderWidth.value}x${renderHeight.value}`,
+    () => {
+      if (isUnmounted) return;
+      compositorRuntime.invalidate();
+      scheduleBuild();
+    },
+  );
+
   registerMonitorCoreWatchers({
     clipSourceSignature,
     audioClipSourceSignature,

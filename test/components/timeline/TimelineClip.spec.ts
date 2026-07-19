@@ -197,6 +197,7 @@ const defaultProps = {
   isDraggingCurrentItem: false,
   isMovePreviewCurrentItem: false,
   selectedTransition: null,
+  resizeTransition: null,
   resizeVolume: null,
   isMobile: false,
 };
@@ -903,6 +904,62 @@ describe('TimelineClip', () => {
     // Some other transition selection
     await component.setProps({
       selectedTransition: { trackId: 'track-1', itemId: 'clip-2', edge: 'out' },
+    });
+    expect(component.find('.border-yellow-400\\/95').exists()).toBe(false);
+  });
+
+  it('shows out transition overlay guide during drag without selection', async () => {
+    const component = await mountClip({
+      ...defaultProps,
+      track: trackWithAdjacentOut,
+      item: clipWithAdjacentOut,
+    });
+
+    expect(component.find('.border-cyan-400\\/95').exists()).toBe(false);
+
+    // Dragging transitionOut on clip-1 without selection
+    await component.setProps({
+      resizeTransition: { trackId: 'track-1', itemId: 'clip-1', edge: 'out' },
+    });
+    expect(component.find('.border-cyan-400\\/95').exists()).toBe(true);
+
+    // Adjacent drag: transitionIn on clip-2
+    await component.setProps({
+      resizeTransition: { trackId: 'track-1', itemId: 'clip-2', edge: 'in' },
+    });
+    expect(component.find('.border-cyan-400\\/95').exists()).toBe(true);
+
+    // Unrelated drag
+    await component.setProps({
+      resizeTransition: { trackId: 'track-1', itemId: 'clip-1', edge: 'in' },
+    });
+    expect(component.find('.border-cyan-400\\/95').exists()).toBe(false);
+  });
+
+  it('shows in transition overlay guide during drag without selection', async () => {
+    const component = await mountClip({
+      ...defaultProps,
+      track: trackWithAdjacentIn,
+      item: clipWithAdjacentIn,
+    });
+
+    expect(component.find('.border-yellow-400\\/95').exists()).toBe(false);
+
+    // Dragging transitionIn on clip-2 without selection
+    await component.setProps({
+      resizeTransition: { trackId: 'track-1', itemId: 'clip-2', edge: 'in' },
+    });
+    expect(component.find('.border-yellow-400\\/95').exists()).toBe(true);
+
+    // Adjacent drag: transitionOut on clip-1
+    await component.setProps({
+      resizeTransition: { trackId: 'track-1', itemId: 'clip-1', edge: 'out' },
+    });
+    expect(component.find('.border-yellow-400\\/95').exists()).toBe(true);
+
+    // Unrelated drag
+    await component.setProps({
+      resizeTransition: { trackId: 'track-1', itemId: 'clip-2', edge: 'out' },
     });
     expect(component.find('.border-yellow-400\\/95').exists()).toBe(false);
   });
