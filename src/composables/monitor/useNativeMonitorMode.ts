@@ -9,6 +9,8 @@ import {
   markNativeMonitorInitFailure,
 } from '~/composables/monitor/native-monitor-availability';
 import { useProjectStore } from '~/stores/project.store';
+import { useTimelineStore } from '~/stores/timeline.store';
+import { resolveMonitorPreviewSize } from '~/utils/monitor-preview-resolution';
 
 const log = createDevLogger('useNativeMonitorMode');
 
@@ -31,6 +33,7 @@ const MAX_STILL_RENDER_DIM = 3840;
 // set by the bridge (useNativeMonitorBridge) in sync with the same ultra debounce that raises
 // effect quality on a settled pause; reset during playback and interaction.
 export const stillFrameFullRes = ref(false);
+export const nativeMonitorPreviewScale = ref(1);
 
 /**
  * Global (module-level) reactive monitor mode. In the Tauri panel we default to canvas
@@ -102,6 +105,7 @@ export function useNativeMonitorCanvas(canvasRef: Ref<HTMLCanvasElement | null>)
   if (!isTauriRuntime()) return;
 
   const projectStore = useProjectStore();
+  const timelineStore = useTimelineStore();
 
   let unsubChannel: (() => void) | null = null;
   let disposed = false;
@@ -133,23 +137,17 @@ export function useNativeMonitorCanvas(canvasRef: Ref<HTMLCanvasElement | null>)
     const layoutWidth = el.offsetWidth || el.clientWidth || el.getBoundingClientRect().width;
     const layoutHeight = el.offsetHeight || el.clientHeight || el.getBoundingClientRect().height;
     const dpr = window.devicePixelRatio || 1;
-    // Settled still frame → full screen resolution; otherwise (playback/scrubbing) the
-    // ceiling from the user-selected "Preview resolution" (Auto → cheap default).
-    const maxRenderDim = stillFrameFullRes.value
-      ? MAX_STILL_RENDER_DIM
-      : resolvePlaybackMaxRenderDim({
-          displayLongEdgePx: Math.max(
-            Math.round(layoutWidth * dpr),
-            Math.round(layoutHeight * dpr),
-          ),
-          previewResolution: projectStore.activeMonitor?.previewResolution ?? 0,
-        });
-    const { width: w, height: h } = resolveNativeMonitorCanvasSize({
-      layoutWidth,
-      layoutHeight,
-      dpr,
-      maxRenderDim,
+    const format = timelineStore.timelineFormat;
+    const previewSize = resolveMonitorPreviewSize({
+      sceneWidth: format?.width ?? projectStore.projectSettings.project.width,
+      sceneHeight: format?.height ?? projectStore.projectSettings.project.height,
+      viewportWidth: layoutWidth,
+      viewportHeight: layoutHeight,
+      devicePixelRatio: dpr,
+      manualScale: projectStore.activeMonitor?.previewResolution,
     });
+    nativeMonitorPreviewScale.value = previewSize.scale;
+    const { width: w, height: h } = previewSize;
     if (el.width !== w || el.height !== h) {
       el.width = w;
       el.height = h;

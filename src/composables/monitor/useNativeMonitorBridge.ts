@@ -16,6 +16,7 @@ import { useProxyStore } from '~/stores/proxy.store';
 import type { TimelineDocument, TimelineTrack } from '~/timeline/types';
 import { createDevLogger } from '~/utils/dev-logger';
 import { isTauriRuntime } from '~/utils/runtime';
+import { nativeMonitorPreviewScale } from './useNativeMonitorMode';
 import { isTimelinePerfEnabled, markTimeline } from '~/utils/timeline/perf';
 import { buildNativeMonitorScene, type NativeMonitorScene } from '~/utils/native-monitor-scene';
 import { clampGain } from '~/utils/audio/clamp';
@@ -224,7 +225,8 @@ export function useNativeMonitorBridge(): void {
     const doc = timelineStore.timelineDoc;
     // Raw `previewResolution`: a value > 0 pins the scale, while 0 (or missing) means
     // "auto" — the scene builder then derives the render scale from the quality tier.
-    const previewScale = projectStore.activeMonitor?.previewResolution ?? 0;
+    const configuredPreviewScale = projectStore.activeMonitor?.previewResolution ?? 0;
+    const previewScale = configuredPreviewScale > 0 ? configuredPreviewScale : nativeMonitorPreviewScale.value;
     if (!doc?.tracks?.length) {
       const fmt = timelineStore.timelineFormat;
       return {
@@ -366,6 +368,7 @@ export function useNativeMonitorBridge(): void {
       nativeMonitorTracks,
       () => timelineStore.timelineFormat,
       () => projectStore.activeMonitor?.previewResolution,
+      nativeMonitorPreviewScale,
       () => projectStore.activeMonitor?.useProxy,
       () => proxyStore.existingProxies,
       () => workspaceStore.userSettings.optimization.nativeMonitorSyncMode,
