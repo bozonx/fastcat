@@ -37,8 +37,9 @@ fn samp(tex: texture_2d<f32>, uv: vec2<f32>) -> vec4<f32> {
     return mix(mix(c00, c10, f.x), mix(c01, c11, f.x), f.y);
 }
 
-fn is_unit_uv(uv: vec2<f32>) -> bool {
-    return all(uv >= vec2<f32>(0.0)) && all(uv <= vec2<f32>(1.0));
+fn unit_uv_coverage(uv: vec2<f32>, blur: f32, zoom_scale: f32) -> f32 {
+    let distance_to_edge = min(min(uv.x, 1.0 - uv.x), min(uv.y, 1.0 - uv.y));
+    return smoothstep(-blur / max(zoom_scale, 0.0001), 0.0, distance_to_edge);
 }
 
 fn pixel_uv(gid: vec3<u32>) -> vec2<f32> {
@@ -81,19 +82,24 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
 
     var uv_from = uv;
     var norm_to = uv;
+    var zoom_scale = 1.0;
     if (uni.p7 > 0.5) {
         let s = min(1.0, radius * 2.0);
+        zoom_scale = s;
         if (dir_pos) { norm_to = (norm_to - center) / max(0.0001, s) + center; }
         else { uv_from = (uv_from - center) / max(0.0001, s) + center; }
     }
 
     var from_color = samp(from_tex, uv_from);
     var to_color = samp(to_tex, norm_to);
-    // The blurred mask extends slightly beyond the zoomed content bounds. Do
-    // not expose clamp-to-edge texels there: use the opposite frame instead.
+    // Fade the zoomed layer out as its UV leaves the texture. A hard fallback
+    // would turn this edge into a visible rectangular crop under a soft mask.
     if (uni.p7 > 0.5) {
-        if (dir_pos && !is_unit_uv(norm_to)) { to_color = from_color; }
-        if (!dir_pos && !is_unit_uv(uv_from)) { from_color = to_color; }
+        if (dir_pos) {
+            to_color = mix(from_color, to_color, unit_uv_coverage(norm_to, blur, zoom_scale));
+        } else {
+            from_color = mix(to_color, from_color, unit_uv_coverage(uv_from, blur, zoom_scale));
+        }
     }
     var color = mix(from_color, to_color, reveal);
     if (uni.p8 > 0.5 && uni.p9 > 0.0) {
