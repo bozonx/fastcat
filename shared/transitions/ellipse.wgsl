@@ -37,6 +37,10 @@ fn samp(tex: texture_2d<f32>, uv: vec2<f32>) -> vec4<f32> {
     return mix(mix(c00, c10, f.x), mix(c01, c11, f.x), f.y);
 }
 
+fn is_unit_uv(uv: vec2<f32>) -> bool {
+    return all(uv >= vec2<f32>(0.0)) && all(uv <= vec2<f32>(1.0));
+}
+
 fn pixel_uv(gid: vec3<u32>) -> vec2<f32> {
     return (vec2<f32>(f32(gid.x), f32(gid.y)) + vec2<f32>(0.5, 0.5)) / dims();
 }
@@ -69,7 +73,10 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     let normal = abs(centered) / safe_dist;
     let aa = 0.5 * (normal.x / scale.x + normal.y / scale.y) / dims().y;
     let blur = select(max(aa, uni.p0 * select(1.0, t, uni.p1 > 0.5)), aa, uni.p8 > 0.5);
-    var reveal = 1.0 - smoothstep(radius - blur, radius + blur, dist);
+    // A radial SDF has no space inside the contour when the circle is smaller
+    // than its blur. Clamp only that side to avoid a flat, clipped center.
+    let inner_blur = min(blur, radius);
+    var reveal = 1.0 - smoothstep(radius - inner_blur, radius + blur, dist);
     if (!dir_pos) { reveal = 1.0 - reveal; }
 
     var uv_from = uv;
@@ -80,8 +87,14 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         else { uv_from = (uv_from - center) / max(0.0001, s) + center; }
     }
 
-    let from_color = samp(from_tex, uv_from);
-    let to_color = samp(to_tex, norm_to);
+    var from_color = samp(from_tex, uv_from);
+    var to_color = samp(to_tex, norm_to);
+    // The blurred mask extends slightly beyond the zoomed content bounds. Do
+    // not expose clamp-to-edge texels there: use the opposite frame instead.
+    if (uni.p7 > 0.5) {
+        if (dir_pos && !is_unit_uv(norm_to)) { to_color = from_color; }
+        if (!dir_pos && !is_unit_uv(uv_from)) { from_color = to_color; }
+    }
     var color = mix(from_color, to_color, reveal);
     if (uni.p8 > 0.5 && uni.p9 > 0.0) {
         let stroke_width = uni.p9 * select(1.0, t, uni.p8 > 1.5);
