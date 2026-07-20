@@ -113,6 +113,10 @@ describe('settings normalization', () => {
     expect(normalizeUserSettings({ locale: 'ru' }).locale).toBe('ru-RU');
     expect(normalizeUserSettings({ locale: 'en' }).locale).toBe('en-US');
     expect(normalizeUserSettings({ locale: 'en-US' }).locale).toBe('en-US');
+    expect(normalizeUserSettings({ locale: 'es-419' }).locale).toBe('es-419');
+    expect(normalizeUserSettings({ locale: 'es' }).locale).toBe('es-419');
+    expect(normalizeUserSettings({ locale: 'es-ES' }).locale).toBe('es-419');
+    expect(normalizeUserSettings({ locale: 'es-MX' }).locale).toBe('es-419');
     expect(normalizeUserSettings({ locale: 'fr' }).locale).toBe('en-US');
   });
 
@@ -120,11 +124,21 @@ describe('settings normalization', () => {
     it('maps short language codes to full BCP-47 tags used by i18n', () => {
       expect(normalizeLocale({ locale: 'en' })).toBe('en-US');
       expect(normalizeLocale({ locale: 'ru' })).toBe('ru-RU');
+      expect(normalizeLocale({ locale: 'es' })).toBe('es-419');
     });
 
     it('passes through already-tagged locales unchanged', () => {
       expect(normalizeLocale({ locale: 'en-US' })).toBe('en-US');
       expect(normalizeLocale({ locale: 'ru-RU' })).toBe('ru-RU');
+      expect(normalizeLocale({ locale: 'es-419' })).toBe('es-419');
+    });
+
+    it('collapses every regional Spanish variant into es-419', () => {
+      expect(normalizeLocale({ locale: 'es-ES' })).toBe('es-419');
+      expect(normalizeLocale({ locale: 'es-MX' })).toBe('es-419');
+      expect(normalizeLocale({ locale: 'es-AR' })).toBe('es-419');
+      expect(normalizeLocale({ locale: 'es-419' })).toBe('es-419');
+      expect(normalizeLocale({ locale: 'ES-MX' })).toBe('es-419');
     });
 
     it('falls back to the default locale for unsupported values', () => {
@@ -140,6 +154,7 @@ describe('settings normalization', () => {
     it('reads legacy "language" and "lang" keys when locale is missing', () => {
       expect(normalizeLocale({ language: 'ru' })).toBe('ru-RU');
       expect(normalizeLocale({ lang: 'en' })).toBe('en-US');
+      expect(normalizeLocale({ language: 'es' })).toBe('es-419');
     });
 
     it('prefers explicit "locale" over fallback aliases', () => {

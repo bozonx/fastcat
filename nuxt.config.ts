@@ -106,6 +106,7 @@ export default defineNuxtConfig({
     locales: [
       { code: 'en-US', file: 'en-US.json' },
       { code: 'ru-RU', file: 'ru-RU.json' },
+      { code: 'es-419', file: 'es-419.json' },
     ],
     restructureDir: 'src',
     langDir: 'locales',

@@ -61,6 +61,35 @@ describe('useClipTransitionPanel', () => {
     });
   });
 
+  it('persists a manually selected source mode', async () => {
+    const onUpdate = vi.fn();
+    const api = useClipTransitionPanel({
+      edge: ref<'in' | 'out'>('out'),
+      trackId: ref('v1'),
+      itemId: ref('c1'),
+      transition: ref<ClipTransition | undefined>({
+        type: 'dissolve',
+        durationTicks: 254_016_000_000,
+        mode: 'adjacent',
+        curve: 'linear',
+      }),
+      onUpdate,
+    });
+
+    api.selectedMode.value = 'background';
+    await Promise.resolve();
+
+    expect(onUpdate).toHaveBeenLastCalledWith({
+      trackId: 'v1',
+      itemId: 'c1',
+      edge: 'out',
+      transition: expect.objectContaining({
+        mode: 'background',
+        isOverridden: true,
+      }),
+    });
+  });
+
   it('emits normalized params for selected transition type', async () => {
     const onUpdate = vi.fn();
 

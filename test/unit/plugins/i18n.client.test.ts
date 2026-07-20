@@ -83,6 +83,22 @@ describe('i18n.client plugin', () => {
     expect(setLocale).toHaveBeenCalledWith('en-US');
   });
 
+  it('collapses any regional Spanish variant to "es-419" before calling setLocale', async () => {
+    const store = reactive<WorkspaceStoreMock>({
+      isInitializing: false,
+      userSettings: { locale: 'es-MX' },
+    });
+    setStoreMock(store);
+    const { nuxtApp, setLocale, i18nLocale } = createNuxtApp('en-US');
+
+    i18nClientPlugin(nuxtApp);
+    await nextTick();
+    await nextTick();
+
+    expect(setLocale).toHaveBeenCalledWith('es-419');
+    expect(i18nLocale.value).toBe('es-419');
+  });
+
   it('skips setLocale while the workspace is still initializing', async () => {
     const store = reactive<WorkspaceStoreMock>({
       isInitializing: true,

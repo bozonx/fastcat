@@ -65,7 +65,7 @@ export interface AudioPluginManagerSettings {
 }
 
 export interface FastCatUserSettings {
-  locale: 'en-US' | 'ru-RU';
+  locale: 'en-US' | 'ru-RU' | 'es-419';
   openLastProjectOnStart: boolean;
   timeline: {
     /** Snap threshold in pixels. Used as snapping area size for clips/playhead/markers. */

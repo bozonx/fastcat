@@ -62,7 +62,7 @@ const maxDurationSec = computed(() => {
           ? adjacent.timelineRange.startTicks + adjacent.timelineRange.durationTicks
           : adjacent.timelineRange.startTicks;
 
-      if (Math.abs(clipEdgeTicks - adjacentEdgeTicks) <= 1_000) {
+      if (clipEdgeTicks === adjacentEdgeTicks) {
         const handleTicks =
           edge === 'in'
             ? getClipTailTimelineHandleTicks(adjacent)

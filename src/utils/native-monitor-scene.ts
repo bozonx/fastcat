@@ -1,4 +1,4 @@
-import { TICKS_PER_MILLISECOND, ticksToSeconds } from '~/utils/time';
+import { ticksToSeconds } from '~/utils/time';
 import {
   buildVideoWorkerPayloadFromTracks,
   toWorkerTimelineClips,
@@ -44,8 +44,6 @@ import {
 } from '~/utils/preview-effect-quality';
 import { isImagePath } from '~/utils/media-types';
 import { clampFinite } from '~/utils/math';
-
-const MIN_ADJACENT_CLIP_SEARCH_TICKS = TICKS_PER_MILLISECOND;
 
 export { buildNativeAudioEffectSpecs };
 
@@ -187,7 +185,7 @@ function findPreviousAdjacentClip(
         candidate.timelineRange.startTicks + candidate.timelineRange.durationTicks;
       return (
         candidate.timelineRange.startTicks < clip.timelineRange.startTicks &&
-        candidateEndTicks >= clip.timelineRange.startTicks - MIN_ADJACENT_CLIP_SEARCH_TICKS
+        candidateEndTicks === clip.timelineRange.startTicks
       );
     })
     .sort((a, b) => {
@@ -209,7 +207,7 @@ function findNextAdjacentClip(
       }
       return (
         candidate.timelineRange.startTicks > clip.timelineRange.startTicks &&
-        candidate.timelineRange.startTicks <= clipEndTicks + MIN_ADJACENT_CLIP_SEARCH_TICKS
+        candidate.timelineRange.startTicks === clipEndTicks
       );
     })
     .sort((a, b) => a.timelineRange.startTicks - b.timelineRange.startTicks)[0];

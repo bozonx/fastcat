@@ -16,12 +16,22 @@ export function normalizeStoragePathValue(value: unknown): string {
 export function normalizeLocale(raw: Record<string, unknown>): FastCatUserSettings['locale'] {
   const localeRaw = raw.locale ?? raw.language ?? raw.lang;
 
-  if (localeRaw === 'ru-RU' || localeRaw === 'ru') {
-    return 'ru-RU';
-  }
+  if (typeof localeRaw === 'string') {
+    const normalized = localeRaw.toLowerCase();
 
-  if (localeRaw === 'en-US' || localeRaw === 'en') {
-    return 'en-US';
+    if (normalized === 'ru' || normalized === 'ru-ru') {
+      return 'ru-RU';
+    }
+
+    if (normalized === 'en' || normalized === 'en-us') {
+      return 'en-US';
+    }
+
+    // Collapse every regional variant of Spanish (es, es-ES, es-MX, es-AR, …)
+    // into the single Latin-American locale bundled with the editor.
+    if (normalized === 'es' || normalized.startsWith('es-')) {
+      return 'es-419';
+    }
   }
 
   return DEFAULT_USER_SETTINGS.locale;

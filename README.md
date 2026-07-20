@@ -516,7 +516,7 @@ Fastcat can be integrated into other web applications as a portable video editor
 
 - **Automatic Isolation**: Each editor instance uses a unique, isolated workspace folder (unless `workspaceId` is provided).
 - **Auto Cleanup**: Temporary files and folders are automatically deleted when the editor is unmounted.
-- **Multilingual Support**: Built-in support for multiple languages (`en-US`, `ru-RU`).
+- **Multilingual Support**: Built-in support for multiple languages (`en-US`, `ru-RU`, `es-419`).
 
 ### Build the Library
 
@@ -555,7 +555,7 @@ const assets = [
 // Start the editor
 const el = editor.init({
   assets,
-  locale: 'en-US', // Optional: 'en-US' (default) or 'ru-RU'.
+  locale: 'en-US', // Optional: 'en-US' (default), 'ru-RU' or 'es-419'.
   workspaceId: 'unique-session-id', // Optional: isolate storage. Auto-generated if omitted.
 });
 

@@ -142,4 +142,23 @@ describe('SettingsGeneral', () => {
 
     expect(wrapper.text()).toContain('videoEditor.settings.advancedSection');
   });
+
+  it('lists Spanish (Latin America) as a selectable interface language', async () => {
+    const wrapper = await mountSuspended(SettingsGeneral);
+
+    const select = wrapper.findComponent({ name: 'UiSelect' });
+    expect(select.exists()).toBe(true);
+    const items = select.props('items') as { label: string; value: string }[];
+    expect(items).toContainEqual({ label: 'Español (Latinoamérica)', value: 'es-419' });
+  });
+
+  it('persists es-419 when the language selector emits it', async () => {
+    const wrapper = await mountSuspended(SettingsGeneral);
+    const select = wrapper.findComponent({ name: 'UiSelect' });
+
+    await select.vm.$emit('update:modelValue', { label: 'Español (Latinoamérica)', value: 'es-419' });
+    await nextTick();
+
+    expect(mockWorkspaceStore.userSettings.locale).toBe('es-419');
+  });
 });

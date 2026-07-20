@@ -91,6 +91,7 @@ const stopFramesQualityOptions = [
         v-model="workspaceStore.userSettings.locale"
         :items="[
           { label: 'English (US)', value: 'en-US' },
+          { label: 'Español (Latinoamérica)', value: 'es-419' },
           { label: 'Русский (RU)', value: 'ru-RU' },
         ]"
         value-key="value"
@@ -100,7 +101,8 @@ const stopFramesQualityOptions = [
           (v: unknown) =>
             (workspaceStore.userSettings.locale = ((v as { value: string })?.value ?? v) as
               | 'en-US'
-              | 'ru-RU')
+              | 'ru-RU'
+              | 'es-419')
         "
       />
     </UiFormField>

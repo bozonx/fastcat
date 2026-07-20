@@ -8,6 +8,7 @@ import mainCss from '~/assets/css/main.css?inline';
 // Locales
 import enUS from './locales/en-US.json';
 import ruRU from './locales/ru-RU.json';
+import es419 from './locales/es-419.json';
 const log = createDevLogger('index.lib');
 
 const i18n = createI18n({
@@ -16,6 +17,7 @@ const i18n = createI18n({
   messages: {
     'en-US': enUS,
     'ru-RU': ruRU,
+    'es-419': es419,
   },
 });
 
