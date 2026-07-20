@@ -23,6 +23,7 @@ import {
 } from '~/utils/timeline/clip';
 import { usePresetsStore } from '~/stores/presets.store';
 import { useSelectionStore } from '~/stores/selection.store';
+import { useWorkspaceStore } from '~/stores/workspace.store';
 
 interface CurveOption {
   value: TransitionCurve;
@@ -58,10 +59,15 @@ const emit = defineEmits<{
 
 const presetsStore = usePresetsStore();
 const selectionStore = useSelectionStore();
+const workspaceStore = useWorkspaceStore();
 const isSaveModalOpen = ref(false);
 const newPresetName = ref('');
 
-const manifests = computed(() => getAllTransitionManifests());
+const manifests = computed(() =>
+  getAllTransitionManifests().filter(
+    (manifest) => !manifest.experimental || workspaceStore.inDevelopmentFeaturesEnabled,
+  ),
+);
 
 const {
   durationMax,
@@ -254,8 +260,12 @@ function handleCurveChange(curve: TransitionCurve) {
 
 const visibleParamFields = computed<TransitionParamField[]>(() => {
   const fields = selectedManifest.value?.paramFields ?? [];
+  const inDevelopment = workspaceStore.inDevelopmentFeaturesEnabled;
 
   const filtered = fields.filter((field) => {
+    if (field.experimental && !inDevelopment) {
+      return false;
+    }
     if (field.showIf && !field.showIf(selectedParams.value)) {
       return false;
     }

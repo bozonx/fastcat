@@ -443,6 +443,7 @@ export const transitionManifests: TransitionManifest[] = [
         min: 0,
         max: 10,
         step: 0.1,
+        experimental: true,
       },
       {
         kind: 'button-group',
@@ -452,6 +453,7 @@ export const transitionManifests: TransitionManifest[] = [
           { value: 'normal', labelKey: 'fastcat.timeline.transition.motionBlurModeNormal' },
           { value: 'bloom', labelKey: 'fastcat.timeline.transition.motionBlurModeBloom' },
         ],
+        experimental: true,
       },
       {
         kind: 'button-group',
@@ -461,6 +463,7 @@ export const transitionManifests: TransitionManifest[] = [
           { value: 'normal', labelKey: 'fastcat.timeline.transition.brightnessModeNormal' },
           { value: 'bloom', labelKey: 'fastcat.timeline.transition.brightnessModeBloom' },
         ],
+        experimental: true,
       },
       {
         kind: 'slider',
@@ -469,6 +472,7 @@ export const transitionManifests: TransitionManifest[] = [
         min: -10,
         max: 10,
         step: 0.1,
+        experimental: true,
       },
       {
         kind: 'number',
@@ -477,6 +481,7 @@ export const transitionManifests: TransitionManifest[] = [
         min: 0,
         max: 1,
         step: 0.01,
+        experimental: true,
       },
     ],
     toTransitionSpec: (params: Record<string, unknown>): TransitionSpec => {
@@ -560,6 +565,7 @@ export const transitionManifests: TransitionManifest[] = [
     renderMode: 'shader',
     renderer: 'wgpu',
     supportedModes: ['adjacent', 'background', 'transparent'],
+    experimental: true,
     paramFields: [
       {
         kind: 'number',
@@ -960,6 +966,7 @@ export const transitionManifests: TransitionManifest[] = [
     renderMode: 'shader',
     renderer: 'wgpu',
     supportedModes: ['adjacent', 'background', 'transparent'],
+    experimental: true,
     paramFields: [
       {
         kind: 'number',
@@ -984,6 +991,7 @@ export const transitionManifests: TransitionManifest[] = [
         min: 0,
         max: 100,
         step: 1,
+        experimental: true,
       },
       {
         kind: 'number',
@@ -992,6 +1000,7 @@ export const transitionManifests: TransitionManifest[] = [
         min: 0,
         max: 100,
         step: 1,
+        experimental: true,
       },
       {
         kind: 'button-group',
@@ -1001,6 +1010,7 @@ export const transitionManifests: TransitionManifest[] = [
           { value: 'normal', labelKey: 'fastcat.timeline.transition.motionBlurModeNormal' },
           { value: 'bloom', labelKey: 'fastcat.timeline.transition.motionBlurModeBloom' },
         ],
+        experimental: true,
       },
       {
         kind: 'button-group',
@@ -1010,6 +1020,7 @@ export const transitionManifests: TransitionManifest[] = [
           { value: 'normal', labelKey: 'fastcat.timeline.transition.brightnessModeNormal' },
           { value: 'bloom', labelKey: 'fastcat.timeline.transition.brightnessModeBloom' },
         ],
+        experimental: true,
       },
       {
         kind: 'slider',
@@ -1018,6 +1029,7 @@ export const transitionManifests: TransitionManifest[] = [
         min: -10,
         max: 10,
         step: 0.1,
+        experimental: true,
       },
       {
         kind: 'number',
@@ -1026,6 +1038,7 @@ export const transitionManifests: TransitionManifest[] = [
         min: 0,
         max: 1,
         step: 0.01,
+        experimental: true,
       },
     ],
     toTransitionSpec: (
@@ -1076,6 +1089,7 @@ export const transitionManifests: TransitionManifest[] = [
     renderMode: 'shader',
     renderer: 'wgpu',
     supportedModes: ['adjacent', 'background', 'transparent'],
+    experimental: true,
     paramFields: [
       {
         kind: 'number',
@@ -1163,6 +1177,7 @@ export const transitionManifests: TransitionManifest[] = [
     renderMode: 'shader',
     renderer: 'wgpu',
     supportedModes: ['adjacent', 'background', 'transparent'],
+    experimental: true,
     paramFields: [
       {
         kind: 'button-group',
@@ -1221,6 +1236,7 @@ export const transitionManifests: TransitionManifest[] = [
     renderMode: 'shader',
     renderer: 'wgpu',
     supportedModes: ['adjacent', 'background', 'transparent'],
+    experimental: true,
     paramFields: [
       {
         kind: 'button-group',
@@ -1316,6 +1332,7 @@ export const transitionManifests: TransitionManifest[] = [
     renderMode: 'shader',
     renderer: 'wgpu',
     supportedModes: ['adjacent', 'background', 'transparent'],
+    experimental: true,
     paramFields: [
       {
         kind: 'button-group',
@@ -1428,6 +1445,7 @@ export const transitionManifests: TransitionManifest[] = [
     renderMode: 'shader',
     renderer: 'wgpu',
     supportedModes: ['adjacent', 'background', 'transparent'],
+    experimental: true,
     paramFields: [
       {
         kind: 'button-group',

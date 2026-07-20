@@ -66,7 +66,11 @@ const customAudioEffects = computed(() => audioEffectGroups.value.custom);
 
 const basicAudioEffects = computed(() => audioEffectGroups.value.basic);
 const nonBasicAudioEffects = computed(() => audioEffectGroups.value.nonBasic);
-const transitions = computed(() => getAllTransitionManifests());
+const transitions = computed(() =>
+  getAllTransitionManifests().filter(
+    (t) => !t.experimental || workspaceStore.inDevelopmentFeaturesEnabled,
+  ),
+);
 
 const standardTransitions = computed(() => transitions.value.filter((t) => !t.isCustom));
 const customTransitions = computed(() => {

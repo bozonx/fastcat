@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
-import { ref } from 'vue';
+import { ref, reactive } from 'vue';
 import ClipTransitionPanel from '~/components/timeline/ClipTransitionPanel.vue';
 
 // Mock components
@@ -74,6 +74,13 @@ vi.mock('~/transitions', async (importOriginal) => {
         icon: 'i-heroicons-arrow-long-right',
         supportedModes: ['adjacent'],
       },
+      {
+        type: 'motion-blur',
+        name: 'Motion Blur',
+        icon: 'i-heroicons-forward',
+        supportedModes: ['adjacent', 'background', 'transparent'],
+        experimental: true,
+      },
     ],
   };
 });
@@ -107,9 +114,18 @@ vi.mock('~/stores/presets.store', () => ({
   usePresetsStore: () => mockPresetsStore,
 }));
 
+const mockWorkspaceStore = reactive({
+  inDevelopmentFeaturesEnabled: false,
+});
+
+vi.mock('~/stores/workspace.store', () => ({
+  useWorkspaceStore: () => mockWorkspaceStore,
+}));
+
 describe('ClipTransitionPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockWorkspaceStore.inDevelopmentFeaturesEnabled = false;
   });
 
   const defaultProps = {
@@ -125,6 +141,7 @@ describe('ClipTransitionPanel', () => {
   };
 
   it('renders correctly', async () => {
+    mockWorkspaceStore.inDevelopmentFeaturesEnabled = false;
     const component = await mountSuspended(ClipTransitionPanel, { props: defaultProps });
 
     expect(component.text()).toContain('IN');
@@ -165,6 +182,7 @@ describe('ClipTransitionPanel', () => {
   });
 
   it('renders transition type options as a dropdown with icons and disabled state', async () => {
+    mockWorkspaceStore.inDevelopmentFeaturesEnabled = false;
     const component = await mountSuspended(ClipTransitionPanel, { props: defaultProps });
 
     const options = component.findAll('.select-option');
@@ -177,5 +195,23 @@ describe('ClipTransitionPanel', () => {
     expect(options[1].find('.option-label').text()).toBe('Wipe');
     expect(options[1].find('.option-leading .icon-mock').exists()).toBe(true);
     expect(options[1].classes()).not.toContain('disabled');
+  });
+
+  it('hides experimental transitions when inDevelopmentFeaturesEnabled is false', async () => {
+    mockWorkspaceStore.inDevelopmentFeaturesEnabled = false;
+    const component = await mountSuspended(ClipTransitionPanel, { props: defaultProps });
+
+    const options = component.findAll('.select-option');
+    const labels = options.map((o) => o.find('.option-label').text());
+    expect(labels).not.toContain('Motion Blur');
+  });
+
+  it('shows experimental transitions when inDevelopmentFeaturesEnabled is true', async () => {
+    mockWorkspaceStore.inDevelopmentFeaturesEnabled = true;
+    const component = await mountSuspended(ClipTransitionPanel, { props: defaultProps });
+
+    const options = component.findAll('.select-option');
+    const labels = options.map((o) => o.find('.option-label').text());
+    expect(labels).toContain('Motion Blur');
   });
 });

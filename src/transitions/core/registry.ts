@@ -82,6 +82,7 @@ export interface TransitionManifest<T = Record<string, unknown>> {
   computeInOpacity: (progress: number, params: T, curve: TransitionCurve) => number;
   isCustom?: boolean;
   baseType?: string;
+  experimental?: boolean;
 }
 
 /** Cubic ease-in-out approximation for bezier transition curve */

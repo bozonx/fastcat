@@ -10,6 +10,7 @@ interface BaseParamControl {
   labelKey?: string;
   showIf?: (values: Record<string, unknown>) => boolean;
   disabled?: boolean;
+  experimental?: boolean;
 }
 
 export interface SliderParamControl extends BaseParamControl {
