@@ -474,17 +474,19 @@ function handleArrayItemUpdate(
           :model-value="entry.numberValue"
           :size="size"
           :min="
-            entry.control.min !== undefined
+            (props.numericInputRanges?.[entry.key]?.min ?? entry.control.min) !== undefined
               ? entry.control.displayMultiplier
-                ? entry.control.min * entry.control.displayMultiplier
-                : entry.control.min
+                ? (props.numericInputRanges?.[entry.key]?.min ?? entry.control.min) *
+                  entry.control.displayMultiplier
+                : (props.numericInputRanges?.[entry.key]?.min ?? entry.control.min)
               : undefined
           "
           :max="
-            entry.control.max !== undefined
+            (props.numericInputRanges?.[entry.key]?.max ?? entry.control.max) !== undefined
               ? entry.control.displayMultiplier
-                ? entry.control.max * entry.control.displayMultiplier
-                : entry.control.max
+                ? (props.numericInputRanges?.[entry.key]?.max ?? entry.control.max) *
+                  entry.control.displayMultiplier
+                : (props.numericInputRanges?.[entry.key]?.max ?? entry.control.max)
               : undefined
           "
           :step="

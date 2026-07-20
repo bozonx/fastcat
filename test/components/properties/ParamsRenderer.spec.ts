@@ -7,7 +7,7 @@ vi.mock('~/components/ui/UiWheelNumberInput.vue', () => ({
   default: {
     name: 'UiWheelNumberInput',
     template: '<div class="mock-wheel-number-input">{{ modelValue }}</div>',
-    props: ['modelValue'],
+    props: ['modelValue', 'min', 'max'],
   },
 }));
 
@@ -191,6 +191,29 @@ describe('ParamsRenderer', () => {
       max: 100,
       inputMin: 0,
       inputMax: 512,
+    });
+  });
+
+  it('passes expanded bounds to a standalone number input', async () => {
+    const component = await mountWithNuxt(ParamsRenderer, {
+      props: {
+        controls: [
+          {
+            kind: 'number',
+            key: 'seed',
+            min: 0,
+            max: 65535,
+            step: 1,
+          },
+        ],
+        values: { seed: 1 },
+        numericInputRanges: { seed: { min: 0, max: 4_294_967_295 } },
+      },
+    });
+
+    expect(component.findComponent({ name: 'UiWheelNumberInput' }).props()).toMatchObject({
+      min: 0,
+      max: 4_294_967_295,
     });
   });
 
