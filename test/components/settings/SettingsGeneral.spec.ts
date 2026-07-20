@@ -22,6 +22,7 @@ vi.mock('~/composables/useMobileLayout', () => ({
 describe('SettingsGeneral', () => {
   beforeEach(() => {
     isMobileLayout.value = false;
+    delete (window as Window & { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__;
   });
 
   it('preserves locale when resetting general defaults', async () => {
@@ -94,6 +95,12 @@ describe('SettingsGeneral', () => {
   it('hides autosave interval setting in mobile layout', async () => {
     isMobileLayout.value = true;
 
+    const wrapper = await mountSuspended(SettingsGeneral);
+
+    expect(wrapper.text()).not.toContain('videoEditor.settings.autosaveInterval');
+  });
+
+  it('hides autosave interval setting in desktop web', async () => {
     const wrapper = await mountSuspended(SettingsGeneral);
 
     expect(wrapper.text()).not.toContain('videoEditor.settings.autosaveInterval');

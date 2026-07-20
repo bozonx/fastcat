@@ -83,9 +83,11 @@ export interface TimelinePersistenceDeps {
   autosaveDebounceMs?: () => number;
   /**
    * When true the persistence module autosaves into the canonical timeline file
-   * instead of a crash-recovery sidecar. Used on mobile where explicit “Save”
-   * does not exist.
+   * instead of a crash-recovery sidecar. Used on web and mobile, where edits
+   * are persisted without an explicit Save action.
    */
+  writesAutosaveToMain?: Ref<boolean>;
+  /** True only for the mobile UI, which creates a backup before a tab switch. */
   isMobile?: Ref<boolean>;
   /**
    * Called before switching away from a dirty timeline on mobile so a backup
@@ -444,12 +446,12 @@ export function createTimelinePersistenceModule(
     }
   }
 
-  // Crash-recovery autosave has two paths. Discrete edits (trim commit, paste,
-  // context-menu ops, hotkeys, etc.) request an *immediate* sidecar write via
-  // `requestTimelineSave({ immediate: true })`. Continuous gestures (e.g. clip
-  // drags) instead use this periodic timer: the first change after a clean state
-  // arms a single timer; further edits within the window do not reset it; when
-  // it fires the accumulated state is written to the sidecar.
+  // Native desktop uses a crash-recovery sidecar. Discrete edits (trim commit,
+  // paste, context-menu ops, hotkeys, etc.) request an *immediate* sidecar
+  // write via `requestTimelineSave({ immediate: true })`. Continuous gestures
+  // (e.g. clip drags) instead use this periodic timer: the first change after a
+  // clean state arms a single timer; further edits within the window do not reset
+  // it; when it fires the accumulated state is written to the sidecar.
   let autosaveTimer: number | null = null;
   let autosaveGeneration = 0;
 
@@ -469,8 +471,8 @@ export function createTimelinePersistenceModule(
   function scheduleAutosave() {
     if (!deps.timelineDoc.value || !isDirty()) return;
     if (deps.isReadOnly?.value) return;
-    if (deps.isMobile?.value) {
-      // On mobile the debounced autoSave writes directly to the main file
+    if (deps.writesAutosaveToMain?.value) {
+      // Web and mobile debounce writes directly to the main file.
       void autoSave.requestSave();
       return;
     }
@@ -504,8 +506,10 @@ export function createTimelinePersistenceModule(
     // (it no-ops once the write below marks the revision clean).
     clearAutosaveTimer();
 
-    const isMobile = deps.isMobile?.value ?? false;
-    const targetPath = isMobile ? currentTimelinePath : getAutosavePath(currentTimelinePath);
+    const writesAutosaveToMain = deps.writesAutosaveToMain?.value ?? false;
+    const targetPath = writesAutosaveToMain
+      ? currentTimelinePath
+      : getAutosavePath(currentTimelinePath);
     const revisionToSave = currentRevision;
 
     let serialized: string;
@@ -563,8 +567,10 @@ export function createTimelinePersistenceModule(
           return false;
         }
 
-        const isMobile = deps.isMobile?.value ?? false;
-        const targetPath = isMobile ? currentTimelinePath : getAutosavePath(currentTimelinePath);
+        const writesAutosaveToMain = deps.writesAutosaveToMain?.value ?? false;
+        const targetPath = writesAutosaveToMain
+          ? currentTimelinePath
+          : getAutosavePath(currentTimelinePath);
         const serialized = await serializeValidatedTimeline(doc);
         if (generation !== autosaveGeneration || !isDirty()) return false;
 
@@ -574,12 +580,12 @@ export function createTimelinePersistenceModule(
         }
 
         // Reconcile the live doc with its on-disk (re-parsed) form so the running
-        // session matches a fresh load. Skipped on mobile: there the autosave runs
-        // on *every* edit, and a per-edit full re-parse + reactive doc replacement
-        // is a needless main-thread cost (the live doc is already the source of
-        // truth and is what produced this exact serialization).
+        // session matches a fresh load. Skipped when autosave writes the canonical
+        // file: it runs on every edit, and a per-edit full re-parse + reactive doc
+        // replacement is a needless main-thread cost (the live doc is already the
+        // source of truth and is what produced this exact serialization).
         if (
-          !isMobile &&
+          !writesAutosaveToMain &&
           currentProjectId === deps.currentProjectName.value &&
           currentTimelinePath === deps.currentTimelinePath.value &&
           currentRevision === revisionToSave
@@ -587,9 +593,9 @@ export function createTimelinePersistenceModule(
           restoreSavedTimelineSnapshot(serialized, doc);
         }
 
-        // On mobile the autosave IS the canonical save, so advance the main saved
-        // revision so the dirty indicator drops immediately.
-        if (isMobile) {
+        // On web and mobile the autosave IS the canonical save, so advance the
+        // main saved revision and drop the dirty indicator immediately.
+        if (writesAutosaveToMain) {
           if (mainSavedRevision < currentRevision) {
             mainSavedRevision = currentRevision;
             setDirtyState();
@@ -640,8 +646,8 @@ export function createTimelinePersistenceModule(
 
   async function requestTimelineSave(options?: { immediate?: boolean }) {
     if (!deps.timelineDoc.value) return;
-    if (deps.isMobile?.value) {
-      // On mobile the autosave writes the whole canonical file, so edit-driven
+    if (deps.writesAutosaveToMain?.value) {
+      // Web and mobile autosave writes the whole canonical file, so edit-driven
       // saves are always coalesced through the debounce — even when the caller
       // asks for `immediate`. Discrete edits arrive in bursts (rapid taps), and
       // a full serialize + file write per edit is wasteful. True immediacy
@@ -706,7 +712,7 @@ export function createTimelinePersistenceModule(
       let text = '';
       let mainMeta = null;
 
-      if (!deps.isMobile?.value) {
+      if (!deps.writesAutosaveToMain?.value) {
         const autosavePath = getAutosavePath(mainPath);
 
         // Independent stat calls — fetch them concurrently rather than chaining.

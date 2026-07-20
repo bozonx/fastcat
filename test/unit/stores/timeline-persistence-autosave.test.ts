@@ -134,10 +134,11 @@ describe('Timeline Persistence and AutoSave', () => {
   });
 
   afterEach(() => {
+    delete (window as Window & { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__;
     vi.useRealTimers();
   });
 
-  it('marks timeline as dirty and writes auto-save to the hidden file after debounce', async () => {
+  it('desktop web autosaves to the canonical file after debounce', async () => {
     const timelineStore = useTimelineStore();
     timelineStore.timelineDoc = {
       OTIO_SCHEMA: 'Timeline.1',
@@ -159,6 +160,27 @@ describe('Timeline Persistence and AutoSave', () => {
       await vi.runAllTimersAsync();
       await Promise.resolve();
     }
+
+    expect(mockProjectStore.writeTextByPath).toHaveBeenCalledWith(
+      'timelines/main.otio',
+      expect.any(String),
+    );
+    expect(timelineStore.isTimelineDirty).toBe(false);
+  });
+
+  it('native desktop keeps autosaving to the recovery sidecar', async () => {
+    (window as Window & { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__ = {};
+    const timelineStore = useTimelineStore();
+    timelineStore.timelineDoc = {
+      OTIO_SCHEMA: 'Timeline.1',
+      id: 'test',
+      name: 'test',
+      tracks: [],
+    } as any;
+
+    timelineStore.markTimelineAsDirty();
+    await timelineStore.requestTimelineSave({ immediate: true });
+    await vi.runAllTimersAsync();
 
     expect(mockProjectStore.writeTextByPath).toHaveBeenCalledWith(
       '.fastcat/autosave/timelines/main.otio',
@@ -207,14 +229,10 @@ describe('Timeline Persistence and AutoSave', () => {
     await Promise.resolve();
 
     expect(mockProjectStore.writeTextByPath).toHaveBeenCalledWith(
-      '.fastcat/autosave/timelines/main.otio',
-      expect.any(String),
-    );
-    expect(mockProjectStore.writeTextByPath).not.toHaveBeenCalledWith(
       'timelines/main.otio',
       expect.any(String),
     );
-    expect(timelineStore.isTimelineDirty).toBe(true);
+    expect(timelineStore.isTimelineDirty).toBe(false);
   });
 
   it('posts a serializable timeline document to the serializer worker', async () => {

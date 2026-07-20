@@ -167,7 +167,7 @@ const stopFramesQualityOptions = [
         </UiFormField>
 
         <UiFormField
-          v-if="!isMobileLayout"
+          v-if="isDesktop"
           :label="t('videoEditor.settings.autosaveInterval')"
           :help="t('videoEditor.settings.autosaveIntervalHelp')"
         >

@@ -512,14 +512,14 @@ describe('TimelinePersistenceModule', () => {
     expect(deleteAutosaveFile).toHaveBeenCalledWith('timeline.otio');
   });
 
-  it('on mobile flushTimelineAutosave writes to the main file and clears dirty', async () => {
+  it('canonical autosave writes to the main file and clears dirty', async () => {
     const files: FileStore = {};
     const vfsMock = makeVfsMock(files);
     const onMobileBackup = vi.fn().mockResolvedValue(undefined);
     const deps = createMockDeps({
       timelineDoc: ref({ ...fallbackDoc }),
       ...vfsMock,
-      isMobile: ref(true),
+      writesAutosaveToMain: ref(true),
       onMobileBackup,
     });
     const mod = createTimelinePersistenceModule(deps);
@@ -531,7 +531,7 @@ describe('TimelinePersistenceModule', () => {
     expect(deps.isTimelineDirty.value).toBe(false);
   });
 
-  it('on mobile coalesces edit-driven saves through the debounce (no synchronous write)', async () => {
+  it('canonical autosave coalesces edit-driven saves through the debounce', async () => {
     vi.useFakeTimers();
     try {
       const files: FileStore = {};
@@ -539,13 +539,13 @@ describe('TimelinePersistenceModule', () => {
       const deps = createMockDeps({
         timelineDoc: ref({ ...fallbackDoc }),
         ...vfsMock,
-        isMobile: ref(true),
+        writesAutosaveToMain: ref(true),
         autosaveDebounceMs: () => 800,
       });
       const mod = createTimelinePersistenceModule(deps);
 
       mod.markDirty();
-      // Even with `immediate: true`, the mobile path defers to the debounce.
+      // Even with `immediate: true`, canonical autosave defers to the debounce.
       await mod.requestTimelineSave({ immediate: true });
       expect(vfsMock.writeTimelineText).not.toHaveBeenCalled();
 
@@ -566,7 +566,7 @@ describe('TimelinePersistenceModule', () => {
     }
   });
 
-  it('on mobile flushTimelineAutosaveSync serializes on the main thread and writes the main file', async () => {
+  it('canonical autosave flushes synchronously into the main file', async () => {
     const files: FileStore = {};
     const vfsMock = makeVfsMock(files);
     // Distinct return so we can confirm the *synchronous* serializer (not the
@@ -577,7 +577,7 @@ describe('TimelinePersistenceModule', () => {
     const deps = createMockDeps({
       timelineDoc: ref({ ...fallbackDoc }),
       ...vfsMock,
-      isMobile: ref(true),
+      writesAutosaveToMain: ref(true),
       serializeTimelineToOtio: syncSerialize,
     });
     const mod = createTimelinePersistenceModule(deps);
@@ -597,7 +597,7 @@ describe('TimelinePersistenceModule', () => {
     expect(deps.isTimelineDirty.value).toBe(false);
   });
 
-  it('on mobile loadTimeline skips sidecar recovery and reads main file', async () => {
+  it('canonical autosave loads the main file without sidecar recovery', async () => {
     const files: FileStore = {
       'timeline.otio': { text: JSON.stringify({ ...fallbackDoc, id: 'main' }), lastModified: 100 },
       '.fastcat/autosave/timeline.otio': {
@@ -609,7 +609,7 @@ describe('TimelinePersistenceModule', () => {
     const onMobileBackup = vi.fn().mockResolvedValue(undefined);
     const deps = createMockDeps({
       ...makeVfsMock(files),
-      isMobile: ref(true),
+      writesAutosaveToMain: ref(true),
       onMobileBackup,
     });
     const mod = createTimelinePersistenceModule(deps);
@@ -627,6 +627,7 @@ describe('TimelinePersistenceModule', () => {
     const onMobileBackup = vi.fn().mockResolvedValue(undefined);
     const deps = createMockDeps({
       ...makeVfsMock(files),
+      writesAutosaveToMain: ref(true),
       isMobile: ref(true),
       onMobileBackup,
     });

@@ -62,6 +62,7 @@ import { normalizeMediaCachePath } from '~/utils/path';
 import { useNuxtApp } from 'nuxt/app';
 import { useTimelineMediaUsageStore } from './timeline-media-usage.store';
 import { useMobileLayout } from '~/composables/useMobileLayout';
+import { isTauriRuntime } from '~/utils/runtime';
 
 import type { AppNotificationService } from '~/services/app-notification.service';
 import type { I18nService } from '~/services/i18n.service';
@@ -85,6 +86,9 @@ export const useTimelineStore = defineStore('timeline', () => {
   const { t } = nuxtApp.$i18nService as I18nService;
   const timelineMediaUsageStore = useTimelineMediaUsageStore();
   const { isMobileLayout } = useMobileLayout();
+  // Browser projects use the same canonical autosave semantics as mobile. The
+  // native desktop keeps its explicit-save workflow with recovery sidecars.
+  const writesAutosaveToMain = computed(() => isMobileLayout.value || !isTauriRuntime());
 
   const historyDebounce = createTimelineHistoryDebounceModule({ historyStore });
 
@@ -562,11 +566,13 @@ export const useTimelineStore = defineStore('timeline', () => {
       const minutes = workspaceStore.userSettings.autosave?.intervalMinutes ?? 2;
       return Math.max(1, minutes) * 60_000;
     },
-    // On mobile every edit-driven save is coalesced through this debounce (see
+    // When autosave writes the canonical file, every edit-driven save is
+    // coalesced through this debounce (see
     // persistence.requestTimelineSave), so keep it short enough to bound the
     // data-loss window on an abrupt exit while still batching bursts of taps.
     // Project leave/switch and page-lifecycle events flush immediately anyway.
     autosaveDebounceMs: () => (isMobileLayout.value ? 800 : 500),
+    writesAutosaveToMain,
     isMobile: isMobileLayout,
     onMobileBackup: (serialized) => backup.handleBackup(serialized, { force: true }),
     deleteAutosaveFile: (timelinePath) => deleteTimelineAutosaveFile(timelinePath),
