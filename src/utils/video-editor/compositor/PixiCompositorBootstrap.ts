@@ -3,7 +3,7 @@ import { Application, DOMAdapter, WebWorkerAdapter } from 'pixi.js';
 import type { ICanvas } from 'pixi.js';
 const log = createDevLogger('PixiCompositorBootstrap');
 
-const PIXI_REQUIRED_SAMPLED_TEXTURES = 32;
+const PIXI_REQUIRED_FRAGMENT_BINDINGS = 32;
 
 interface PixiWebGpuContext {
   adapter: GPUAdapter;
@@ -44,16 +44,21 @@ async function createPixiWebGpuContext(): Promise<PixiWebGpuContext> {
   }
 
   const supportedTextures = adapter.limits.maxSampledTexturesPerShaderStage;
-  if (supportedTextures < PIXI_REQUIRED_SAMPLED_TEXTURES) {
+  const supportedSamplers = adapter.limits.maxSamplersPerShaderStage;
+  if (
+    supportedTextures < PIXI_REQUIRED_FRAGMENT_BINDINGS ||
+    supportedSamplers < PIXI_REQUIRED_FRAGMENT_BINDINGS
+  ) {
     throw new Error(
-      `WebGPU adapter supports ${supportedTextures} sampled fragment textures; ` +
-        `Pixi requires ${PIXI_REQUIRED_SAMPLED_TEXTURES}`,
+      `WebGPU adapter supports ${supportedTextures} sampled textures and ${supportedSamplers} samplers; ` +
+        `Pixi requires ${PIXI_REQUIRED_FRAGMENT_BINDINGS} of each`,
     );
   }
 
   const device = await adapter.requestDevice({
     requiredLimits: {
-      maxSampledTexturesPerShaderStage: PIXI_REQUIRED_SAMPLED_TEXTURES,
+      maxSampledTexturesPerShaderStage: PIXI_REQUIRED_FRAGMENT_BINDINGS,
+      maxSamplersPerShaderStage: PIXI_REQUIRED_FRAGMENT_BINDINGS,
     },
   });
   return { adapter, device };

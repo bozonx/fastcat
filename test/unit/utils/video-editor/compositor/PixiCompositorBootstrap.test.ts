@@ -98,7 +98,10 @@ describe('createPixiCompositorApplication', () => {
     vi.stubGlobal('navigator', {
       gpu: {
         requestAdapter: vi.fn().mockResolvedValue({
-          limits: { maxSampledTexturesPerShaderStage: 48 },
+          limits: {
+            maxSampledTexturesPerShaderStage: 48,
+            maxSamplersPerShaderStage: 48,
+          },
           requestDevice,
         }),
       },
@@ -116,7 +119,10 @@ describe('createPixiCompositorApplication', () => {
     });
 
     expect(requestDevice).toHaveBeenCalledWith({
-      requiredLimits: { maxSampledTexturesPerShaderStage: 32 },
+      requiredLimits: {
+        maxSampledTexturesPerShaderStage: 32,
+        maxSamplersPerShaderStage: 32,
+      },
     });
     expect(initMock).toHaveBeenCalledWith(
       expect.objectContaining({ gpu: expect.objectContaining({ device }) }),
