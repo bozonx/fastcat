@@ -13,6 +13,7 @@ interface UiScaleSliderProps {
   options?: ScaleSliderOption[];
   withInput?: boolean;
   defaultValue?: number | string;
+  overflowTail?: boolean;
 }
 
 const props = withDefaults(defineProps<UiScaleSliderProps>(), {
@@ -21,6 +22,7 @@ const props = withDefaults(defineProps<UiScaleSliderProps>(), {
   options: undefined,
   withInput: false,
   defaultValue: undefined,
+  overflowTail: undefined,
 });
 
 const modelValue = defineModel<number | string>({ required: true });
@@ -31,12 +33,33 @@ const isDragging = ref(false);
 
 const isDiscreteMode = computed(() => !!props.options);
 
+const hasOverflowTail = computed(() => props.overflowTail ?? props.withInput ?? false);
+
+const scaleEndPercent = computed(() => (hasOverflowTail.value ? 88 : 100));
+
 const clampedValue = computed(() => clamp(modelValue.value as number, props.min, props.max));
 
 const currentIndex = computed(() => {
   if (!props.options) return 0;
   const idx = props.options.findIndex((o) => o.value === modelValue.value);
   return idx < 0 ? 0 : idx;
+});
+
+const isOverflow = computed(() => {
+  const val = Number(modelValue.value);
+  if (isNaN(val)) return false;
+
+  if (isDiscreteMode.value) {
+    const opts = props.options!;
+    if (opts.length === 0) return false;
+    const optNums = opts.map((o) => Number(o.value));
+    if (optNums.every((n) => !isNaN(n))) {
+      const maxOpt = optNums[optNums.length - 1]!;
+      return val > maxOpt;
+    }
+    return false;
+  }
+  return val > props.max;
 });
 
 interface Tick {
@@ -48,6 +71,7 @@ interface Tick {
 }
 
 const ticks = computed<Tick[]>(() => {
+  const maxP = scaleEndPercent.value;
   if (isDiscreteMode.value) {
     const opts = props.options!;
     const count = opts.length;
@@ -65,7 +89,7 @@ const ticks = computed<Tick[]>(() => {
       return {
         key: opt.value,
         label: opt.label,
-        percent: count <= 1 ? 0 : (i / (count - 1)) * 100,
+        percent: count <= 1 ? 0 : (i / (count - 1)) * maxP,
         isActive,
         isEdge: i === 0 || i === count - 1,
       };
@@ -76,7 +100,7 @@ const ticks = computed<Tick[]>(() => {
     result.push({
       key: i,
       label: String(i),
-      percent: ((i - props.min) / (props.max - props.min)) * 100,
+      percent: ((i - props.min) / (props.max - props.min)) * maxP,
       isActive: i <= clampedValue.value,
       isEdge: i === props.min || i === props.max,
     });
@@ -85,46 +109,70 @@ const ticks = computed<Tick[]>(() => {
 });
 
 const thumbPercent = computed(() => {
+  const maxP = scaleEndPercent.value;
+
   if (isDiscreteMode.value) {
     const opts = props.options!;
     const count = opts.length;
     if (count <= 1) return 0;
 
-    // Try exact match first
-    const idx = opts.findIndex((o) => o.value === modelValue.value);
-    if (idx >= 0) {
-      return (idx / (count - 1)) * 100;
-    }
-
-    // Interpolate if numeric values
     const val = Number(modelValue.value);
-    if (!isNaN(val)) {
-      const optNums = opts.map((o) => Number(o.value));
-      const allValid = optNums.every((n) => !isNaN(n));
-      if (allValid) {
-        const minOpt = optNums[0]!;
-        const maxOpt = optNums[count - 1]!;
-        if (val <= minOpt) return 0;
-        if (val >= maxOpt) return 100;
+    const optNums = opts.map((o) => Number(o.value));
+    const allValid = !isNaN(val) && optNums.every((n) => !isNaN(n));
 
-        for (let i = 0; i < count - 1; i++) {
-          const low = optNums[i]!;
-          const high = optNums[i + 1]!;
-          if (val >= low && val <= high) {
-            const pLow = (i / (count - 1)) * 100;
-            const pHigh = ((i + 1) / (count - 1)) * 100;
-            const t = (val - low) / (high - low);
-            return pLow + t * (pHigh - pLow);
-          }
+    if (allValid) {
+      const minOpt = optNums[0]!;
+      const maxOpt = optNums[count - 1]!;
+
+      if (val <= minOpt) return 0;
+      if (val > maxOpt) {
+        if (!hasOverflowTail.value) return 100;
+        const delta = val - maxOpt;
+        const progress = clamp(delta / Math.max(1, (maxOpt - minOpt) * 0.2), 0.3, 1.0);
+        return maxP + progress * (98 - maxP);
+      }
+
+      // Try exact match first
+      const idx = opts.findIndex((o) => o.value === modelValue.value);
+      if (idx >= 0) {
+        return (idx / (count - 1)) * maxP;
+      }
+
+      // Interpolate if numeric values
+      for (let i = 0; i < count - 1; i++) {
+        const low = optNums[i]!;
+        const high = optNums[i + 1]!;
+        if (val >= low && val <= high) {
+          const pLow = (i / (count - 1)) * maxP;
+          const pHigh = ((i + 1) / (count - 1)) * maxP;
+          const t = (val - low) / (high - low);
+          return pLow + t * (pHigh - pLow);
         }
       }
+    } else {
+      const idx = opts.findIndex((o) => o.value === modelValue.value);
+      if (idx >= 0) {
+        return (idx / (count - 1)) * maxP;
+      }
+      return (currentIndex.value / (count - 1)) * maxP;
     }
 
-    return (currentIndex.value / (count - 1)) * 100;
+    return (currentIndex.value / (count - 1)) * maxP;
   }
+
+  // Numeric mode
+  const val = Number(modelValue.value);
+  if (!isNaN(val) && val > props.max) {
+    if (!hasOverflowTail.value) return 100;
+    const delta = val - props.max;
+    const range = props.max - props.min;
+    const progress = clamp(delta / Math.max(1, range * 0.2), 0.3, 1.0);
+    return maxP + progress * (98 - maxP);
+  }
+
   const range = props.max - props.min;
   if (range === 0) return 0;
-  return ((clampedValue.value - props.min) / range) * 100;
+  return ((clampedValue.value - props.min) / range) * maxP;
 });
 
 const thumbLabel = computed(() => {
@@ -144,7 +192,10 @@ const thumbLabel = computed(() => {
 function valueFromPointer(event: PointerEvent): number | string {
   if (!innerTrackRef.value) return modelValue.value;
   const rect = innerTrackRef.value.getBoundingClientRect();
-  const ratio = clamp((event.clientX - rect.left) / rect.width, 0, 1);
+  const maxP = scaleEndPercent.value;
+  const rawRatio = clamp((event.clientX - rect.left) / rect.width, 0, 1);
+  const ratio = clamp(rawRatio / (maxP / 100), 0, 1);
+
   if (isDiscreteMode.value) {
     const count = props.options!.length;
     const idx = Math.round(ratio * (count - 1));
@@ -199,14 +250,44 @@ function resetToDefault() {
     >
       <!-- Inner track wrapper to prevent clipping of the thumb and ticks at the edges -->
       <div ref="innerTrackRef" class="relative w-full h-full flex items-center">
-        <!-- Track line -->
-        <div class="absolute inset-x-0 top-1/2 -translate-y-1/2 h-0.5 rounded-full bg-ui-border" />
-
-        <!-- Filled range -->
+        <!-- Main track line -->
         <div
-          class="absolute left-0 top-1/2 -translate-y-1/2 h-0.5 rounded-full bg-primary-500 pointer-events-none transition-[width] duration-75"
-          :style="{ width: `${thumbPercent}%` }"
+          class="absolute top-1/2 -translate-y-1/2 h-0.5 rounded-l-full bg-ui-border"
+          :style="{ left: '0%', width: `${scaleEndPercent}%` }"
         />
+
+        <!-- Dashed Overflow Tail track line (Right extension) -->
+        <div
+          v-if="hasOverflowTail"
+          class="absolute top-1/2 -translate-y-1/2 h-0 border-b-2 border-dashed border-ui-border"
+          :style="{ left: `${scaleEndPercent}%`, width: `${100 - scaleEndPercent}%` }"
+        />
+
+        <!-- Filled range (Main solid track) -->
+        <div
+          class="absolute left-0 top-1/2 -translate-y-1/2 h-0.5 rounded-l-full bg-primary-500 pointer-events-none transition-[width] duration-75"
+          :style="{ width: `${Math.min(thumbPercent, scaleEndPercent)}%` }"
+        />
+
+        <!-- Filled range (Active overflow dashed tail highlight when value > max) -->
+        <div
+          v-if="hasOverflowTail && thumbPercent > scaleEndPercent"
+          class="absolute top-1/2 -translate-y-1/2 h-0 border-b-2 border-dashed border-primary-500 pointer-events-none transition-[width] duration-75"
+          :style="{
+            left: `${scaleEndPercent}%`,
+            width: `${thumbPercent - scaleEndPercent}%`,
+          }"
+        />
+
+        <!-- Plus / Overflow end indicator at 100% -->
+        <div
+          v-if="hasOverflowTail"
+          class="absolute flex flex-col items-center -translate-x-1/2 top-1/2 h-6"
+          style="left: 100%"
+        >
+          <div class="w-px h-2 bg-ui-border border-dashed" />
+          <span class="text-[9px] leading-none text-ui-text-muted mt-auto font-mono font-bold">+</span>
+        </div>
 
         <!-- Tick marks -->
         <div
@@ -248,12 +329,20 @@ function resetToDefault() {
               :class="[
                 isDragging ? 'scale-110 cursor-grabbing' : 'cursor-grab',
                 withInput ? 'w-6' : isDiscreteMode ? 'min-w-[3rem]' : 'w-6',
+                isOverflow ? 'ring-2 ring-primary-400/80' : '',
               ]"
               @dblclick="resetToDefault"
             >
-              <div v-if="withInput" class="flex flex-col gap-0.5 pointer-events-none">
-                <div class="w-2.5 h-[1.5px] bg-white/70 rounded-full" />
-                <div class="w-2.5 h-[1.5px] bg-white/70 rounded-full" />
+              <div v-if="withInput" class="flex items-center justify-center pointer-events-none">
+                <template v-if="isOverflow">
+                  <UIcon name="i-heroicons-chevron-right" class="w-3 h-3 text-white" />
+                </template>
+                <template v-else>
+                  <div class="flex flex-col gap-0.5">
+                    <div class="w-2.5 h-[1.5px] bg-white/70 rounded-full" />
+                    <div class="w-2.5 h-[1.5px] bg-white/70 rounded-full" />
+                  </div>
+                </template>
               </div>
               <span v-else class="text-[9px] font-bold text-white leading-none whitespace-nowrap">
                 {{ thumbLabel }}
@@ -275,3 +364,4 @@ function resetToDefault() {
     </div>
   </div>
 </template>
+

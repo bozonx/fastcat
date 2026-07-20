@@ -131,6 +131,28 @@ describe('UiScaleSlider', () => {
     });
   });
 
+  describe('overflow tail', () => {
+    it('renders dashed tail and positions thumb beyond scaleEndPercent when value exceeds max', async () => {
+      const options = [
+        { label: '1', value: '1' },
+        { label: '16', value: '16' },
+      ];
+      const component = await mountSuspended(UiScaleSlider, {
+        props: {
+          modelValue: 17,
+          options,
+          withInput: true,
+        },
+      });
+
+      expect(component.text()).toContain('+');
+      const thumb = component.find('.absolute.pointer-events-none[style*="left:"]');
+      const style = thumb.attributes('style') || '';
+      const leftVal = parseFloat(style.replace('left:', '').replace('%', '').trim());
+      expect(leftVal).toBeGreaterThan(88);
+    });
+  });
+
   describe('default value reset', () => {
     it('resets to default value on double click of the handle', async () => {
       const component = await mountSuspended(UiScaleSlider, {
@@ -151,3 +173,4 @@ describe('UiScaleSlider', () => {
     });
   });
 });
+
