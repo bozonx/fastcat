@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { onBeforeUnmount } from 'vue';
 import { useLongPressTooltip } from '~/composables/ui/useLongPressTooltip';
 
 interface Props {
@@ -10,7 +11,7 @@ interface Props {
   success?: boolean;
   primary?: boolean;
   status?: 'muted' | 'solo' | 'locked' | 'hidden' | 'disabled';
-  /** Show a corner chevron affordance that opens a variants sheet via `@chevron`. */
+  /** Show an integrated corner chevron affordance that opens a variants sheet via `@chevron` (or long press). */
   withChevron?: boolean;
 }
 
@@ -19,37 +20,90 @@ const emit = defineEmits<{ click: []; chevron: [] }>();
 
 const { t } = useI18n();
 
-function onChevron(e: Event) {
+const { tooltipText, tooltipVisible, tooltipX, tooltipY, startPress, movePress, hide } =
+  useLongPressTooltip();
+
+let longPressTimer: ReturnType<typeof setTimeout> | null = null;
+let isLongPressTriggered = false;
+let startX = 0;
+let startY = 0;
+
+function clearLongPress() {
+  if (longPressTimer !== null) {
+    clearTimeout(longPressTimer);
+    longPressTimer = null;
+  }
+}
+
+function onPointerDown(e: PointerEvent) {
+  isLongPressTriggered = false;
+  if (props.disabled) return;
+
+  startX = e.clientX;
+  startY = e.clientY;
+  clearLongPress();
+
+  if (props.withChevron) {
+    longPressTimer = setTimeout(() => {
+      isLongPressTriggered = true;
+      hide();
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        try {
+          navigator.vibrate(35);
+        } catch {
+          // Ignore vibration error
+        }
+      }
+      emit('chevron');
+    }, 350);
+  } else if (props.label) {
+    startPress(e, props.label);
+  }
+}
+
+function onPointerMove(e: PointerEvent) {
+  movePress(e);
+  if (longPressTimer !== null) {
+    const dx = Math.abs(e.clientX - startX);
+    const dy = Math.abs(e.clientY - startY);
+    if (dx > 10 || dy > 10) {
+      clearLongPress();
+    }
+  }
+}
+
+function onPointerUp() {
+  hide();
+  clearLongPress();
+}
+
+function onClick(e: MouseEvent) {
+  if (isLongPressTriggered) {
+    e.preventDefault();
+    e.stopPropagation();
+    isLongPressTriggered = false;
+    return;
+  }
+  if (props.disabled) return;
+  emit('click');
+}
+
+function onChevronClick(e: Event) {
   e.stopPropagation();
   if (props.disabled) return;
   emit('chevron');
 }
 
-const { tooltipText, tooltipVisible, tooltipX, tooltipY, startPress, movePress, hide } =
-  useLongPressTooltip();
-
-function onPointerDown(e: PointerEvent) {
-  startPress(e, props.label ?? '');
-}
-
-function onPointerUp() {
-  hide();
-}
-
-function onPointerMove(e: PointerEvent) {
-  movePress(e);
-}
-
-function onPointerLeave() {
-  hide();
-}
+onBeforeUnmount(() => {
+  clearLongPress();
+});
 </script>
 
 <template>
   <div class="relative shrink-0">
     <button
       data-vaul-no-drag
-      class="mobile-drawer-toolbar-button flex items-center justify-center rounded-xl w-11 h-11 shrink-0 transition-all outline-none"
+      class="mobile-drawer-toolbar-button relative flex items-center justify-center rounded-xl w-11 h-11 shrink-0 transition-all outline-none"
       :class="[
         danger
           ? 'text-red-400 bg-red-400/10'
@@ -73,29 +127,24 @@ function onPointerLeave() {
       :disabled="disabled"
       :title="label"
       :aria-label="label"
-      @click="$emit('click')"
+      @click="onClick"
       @pointerdown="onPointerDown"
       @pointerup="onPointerUp"
       @pointermove="onPointerMove"
-      @pointerleave="onPointerLeave"
+      @pointerleave="onPointerUp"
       @pointercancel="onPointerUp"
       @contextmenu.prevent
     >
       <UIcon :name="icon" class="w-5 h-5 shrink-0" />
-    </button>
 
-    <button
-      v-if="withChevron"
-      data-vaul-no-drag
-      type="button"
-      class="absolute -bottom-1 -right-1 flex items-center justify-center w-5 h-5 rounded-full bg-ui-bg-elevated border border-ui-border shadow-sm text-ui-text-muted active:scale-90 transition-transform"
-      :class="disabled ? 'opacity-40 pointer-events-none' : ''"
-      :aria-label="`${label ?? ''} — ${t('fastcat.timeline.trimOptions')}`"
-      @click="onChevron"
-      @pointerdown.stop
-      @contextmenu.prevent
-    >
-      <UIcon name="i-heroicons-chevron-up" class="w-3 h-3" />
+      <span
+        v-if="withChevron"
+        class="absolute bottom-1 right-1 flex items-center justify-center w-3.5 h-3.5 rounded-br-sm text-current opacity-70 transition-opacity"
+        :aria-label="`${label ?? ''} — ${t('fastcat.timeline.trimOptions')}`"
+        @click.stop="onChevronClick"
+      >
+        <UIcon name="i-heroicons-chevron-up" class="w-3 h-3" />
+      </span>
     </button>
   </div>
 

@@ -125,4 +125,17 @@ describe('MobileDrawerToolbarButton', () => {
     expect(button.attributes('disabled')).toBeDefined();
     expect(button.classes().join(' ')).toContain('pointer-events-none');
   });
+
+  it('renders chevron indicator and emits chevron on chevron click', async () => {
+    const wrapper = await mountSuspended(MobileDrawerToolbarButton, {
+      props: { icon: 'x', withChevron: true, label: 'Delete' },
+      global: globalOptions,
+    });
+
+    const chevronSpan = wrapper.find('span');
+    expect(chevronSpan.exists()).toBe(true);
+    await chevronSpan.trigger('click');
+    expect(wrapper.emitted('chevron')).toHaveLength(1);
+  });
 });
+

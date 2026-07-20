@@ -6,12 +6,6 @@ import MobileClipDeleteDrawer from '~/components/timeline/MobileClipDeleteDrawer
 const handleDeleteClip = vi.fn();
 const rippleDeleteFirstSelectedItem = vi.fn();
 const rippleDeleteSelectedClipRangeAllTracks = vi.fn();
-const trimToPlayheadLeftNoRipple = vi.fn();
-const trimToPlayheadRightNoRipple = vi.fn();
-const rippleTrimLeft = vi.fn();
-const rippleTrimRight = vi.fn();
-const advancedRippleTrimLeft = vi.fn();
-const advancedRippleTrimRight = vi.fn();
 
 const mockTimelineStore = reactive({
   timelineDoc: {
@@ -34,12 +28,6 @@ const mockTimelineStore = reactive({
   },
   rippleDeleteFirstSelectedItem,
   rippleDeleteSelectedClipRangeAllTracks,
-  trimToPlayheadLeftNoRipple,
-  trimToPlayheadRightNoRipple,
-  rippleTrimLeft,
-  rippleTrimRight,
-  advancedRippleTrimLeft,
-  advancedRippleTrimRight,
 });
 
 const mockSelectionStore = reactive({
@@ -132,32 +120,24 @@ describe('MobileClipDeleteDrawer', () => {
       global: globalOptions,
     });
 
-    const actionButtons = wrapper.findAll('.grid-cols-3 button');
-    expect(actionButtons).toHaveLength(3);
+    // Three action rows, each rendered as a plain button (not the legacy
+    // grid-cols-3 UButton layout). Find them by their leading icon.
+    const deleteLiftBtn = wrapper.find('div.flex.flex-col button.flex');
+    const buttons = wrapper.findAll('div.flex.flex-col button.flex');
+    expect(buttons).toHaveLength(3);
+    expect(deleteLiftBtn.exists()).toBe(true);
 
-    await actionButtons[0].trigger('click');
-    expect(handleDeleteClip).toHaveBeenCalledOnce();
-
-    await actionButtons[1].trigger('click');
+    // Order in the template: rippleDelete (backspace), deleteLift (trash),
+    // extractRange (scissors).
+    await buttons[0].trigger('click');
     expect(rippleDeleteFirstSelectedItem).toHaveBeenCalledOnce();
 
-    await actionButtons[2].trigger('click');
+    await buttons[1].trigger('click');
+    expect(handleDeleteClip).toHaveBeenCalledOnce();
+
+    await buttons[2].trigger('click');
     expect(rippleDeleteSelectedClipRangeAllTracks).toHaveBeenCalledOnce();
     expect(wrapper.emitted('close')).toHaveLength(3);
-  });
-
-  it('runs trim actions and returns to clip properties', async () => {
-    const wrapper = await mountSuspended(MobileClipDeleteDrawer, {
-      props: { isOpen: true },
-      global: globalOptions,
-    });
-
-    const trimButtons = wrapper.findAll('.grid-cols-2 button');
-    expect(trimButtons).toHaveLength(6);
-
-    await trimButtons[0].trigger('click');
-    expect(trimToPlayheadLeftNoRipple).toHaveBeenCalledOnce();
-    expect(wrapper.emitted('back')).toHaveLength(1);
   });
 
   it('disables all actions when the clip track is locked', async () => {
@@ -168,11 +148,8 @@ describe('MobileClipDeleteDrawer', () => {
       global: globalOptions,
     });
 
-    const actionButtons = [
-      ...wrapper.findAll('.grid-cols-3 button'),
-      ...wrapper.findAll('.grid-cols-2 button'),
-    ];
-    expect(actionButtons).toHaveLength(9);
+    const actionButtons = wrapper.findAll('div.flex.flex-col button.flex');
+    expect(actionButtons).toHaveLength(3);
     for (const button of actionButtons) {
       expect(button.attributes('disabled')).toBeDefined();
     }
