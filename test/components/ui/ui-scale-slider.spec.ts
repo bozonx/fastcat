@@ -146,8 +146,10 @@ describe('UiScaleSlider', () => {
       });
 
       expect(component.text()).toContain('+');
-      const thumb = component.find('.absolute.pointer-events-none[style*="left:"]');
-      const style = thumb.attributes('style') || '';
+      // Overflow fill div (left: 88%) precedes thumb wrapper in DOM — take the last match
+      const thumbEls = component.findAll('.absolute.pointer-events-none[style*="left:"]');
+      const thumbEl = thumbEls[thumbEls.length - 1];
+      const style = thumbEl?.attributes('style') || '';
       const leftVal = parseFloat(style.replace('left:', '').replace('%', '').trim());
       expect(leftVal).toBeGreaterThan(88);
     });
