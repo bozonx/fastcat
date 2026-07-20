@@ -60,7 +60,10 @@ vi.mock('~/stores/project.store', () => ({
 
 const commonStubs = {
   UIcon: true,
-  UButton: { template: '<button><slot /></button>' },
+  UButton: {
+    props: ['label', 'icon'],
+    template: '<button><slot />{{ label }}</button>',
+  },
   UiTooltip: true,
   ProjectThumbnail: true,
   FriendlyTime: true,

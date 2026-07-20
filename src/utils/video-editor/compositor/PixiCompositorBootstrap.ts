@@ -19,6 +19,11 @@ export interface PixiCompositorBootstrapOptions {
   rendererPreferences: readonly ('webgl' | 'webgpu')[];
 }
 
+/** Guard against a renderer init that never resolves (e.g. a stuck GPU adapter
+ * request). Without this the compositor blocks forever; the race rejects after
+ * the budget so callers can fall back to the alternate renderer or fail loudly. */
+const PIXI_RENDERER_INIT_TIMEOUT_MS = 5000;
+
 export interface PixiCompositorBootstrapResult {
   app: Application;
   canvas: OffscreenCanvas | HTMLCanvasElement;
@@ -103,7 +108,7 @@ export async function createPixiCompositorApplication(
         webGpuContext = await createPixiWebGpuContext();
       }
 
-      await app.init({
+      const initPromise = app.init({
         width: options.width,
         height: options.height,
         canvas: canvas as ICanvas,
@@ -113,6 +118,25 @@ export async function createPixiCompositorApplication(
         clearBeforeRender: true,
         ...(webGpuContext ? { gpu: webGpuContext } : {}),
       });
+      const timeoutMs = PIXI_RENDERER_INIT_TIMEOUT_MS;
+      let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        timeoutHandle = setTimeout(
+          () =>
+            reject(
+              new Error(
+                `Pixi ${rendererPreference} renderer init timed out after ${timeoutMs}ms`,
+              ),
+            ),
+          timeoutMs,
+        );
+      });
+
+      try {
+        await Promise.race([initPromise, timeoutPromise]);
+      } finally {
+        if (timeoutHandle) clearTimeout(timeoutHandle);
+      }
       return { app, canvas };
     } catch (error) {
       initError = error;

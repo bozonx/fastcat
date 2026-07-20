@@ -13,6 +13,14 @@ process.env.TEMP = vitestTmpDir;
 process.env.TMP = vitestTmpDir;
 
 export default defineVitestConfig({
+  // Vitest runs outside Nuxt's build pipeline, so the `import.meta.dev` define
+  // Nuxt injects during its own build is absent and resolves to `false`. Nuxt
+  // treats any non-production mode as dev, and tests run with MODE='test' — so
+  // mirror that here. Without this, dev-only UI (e.g. the mobile-mode toggle on
+  // the projects screen) and dev-only assertions are never exercised in tests.
+  define: {
+    'import.meta.dev': true,
+  },
   test: {
     environment: 'nuxt',
     globals: true,

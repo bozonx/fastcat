@@ -40,8 +40,13 @@ describe('VideoCompositor init timeout', () => {
       await vi.advanceTimersByTimeAsync(6000);
       await expect(initPromise).rejects.toThrow('timed out');
     } finally {
+      // Restore the real init before un-freezing the clock: the mocked init
+      // never resolves, so any pending renderer-init timeout callbacks would
+      // fire under real timers and surface as unhandled rejections. Clearing
+      // the fake-timer queue first drains them while they're still inert.
       Application.prototype.init = originalInit;
       (globalThis as any).OffscreenCanvas = originalOffscreenCanvas;
+      vi.clearAllTimers();
       vi.useRealTimers();
     }
   });
