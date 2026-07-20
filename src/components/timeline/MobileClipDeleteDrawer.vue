@@ -12,13 +12,11 @@ import { useProjectTabsStore } from '~/stores/project-tabs.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useUiStore } from '~/stores/ui.store';
-import MobileTimelineDrawer from './MobileTimelineDrawer.vue';
+import UiMobileDrawer from '~/components/ui/UiMobileDrawer.vue';
 
 const props = defineProps<{
   isOpen: boolean;
 }>();
-
-const activeSnapPoint = defineModel<string | number | null>('activeSnapPoint', { default: null });
 
 const emit = defineEmits<{
   (e: 'back' | 'close'): void;
@@ -76,13 +74,12 @@ function requestExtractTimeline() {
 </script>
 
 <template>
-  <MobileTimelineDrawer
+  <UiMobileDrawer
     v-model:open="isOpenLocal"
-    v-model:active-snap-point="activeSnapPoint"
-    initial-mode="full"
+    :show-close="false"
   >
     <template #header>
-      <div class="flex items-center justify-between px-3">
+      <div class="flex items-center justify-between px-3 w-full">
         <UButton
           icon="i-heroicons-chevron-left"
           variant="ghost"
@@ -152,5 +149,5 @@ function requestExtractTimeline() {
         </span>
       </button>
     </div>
-  </MobileTimelineDrawer>
+  </UiMobileDrawer>
 </template>

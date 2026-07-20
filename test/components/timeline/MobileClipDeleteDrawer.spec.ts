@@ -77,8 +77,8 @@ vi.mock('~/composables/file-manager/useFileManager', () => ({
 
 const globalOptions = {
   stubs: {
-    MobileTimelineDrawer: {
-      props: ['open', 'initialMode'],
+    UiMobileDrawer: {
+      props: ['open'],
       template: '<div><slot name="header" /><slot /></div>',
     },
     UButton: {

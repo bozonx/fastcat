@@ -2,13 +2,11 @@
 import { useSelectedTimelineClip } from '~/composables/timeline/useSelectedTimelineClip';
 import { useCloseModel } from '~/composables/ui/useCloseModel';
 import { useTimelineStore } from '~/stores/timeline.store';
-import MobileTimelineDrawer from './MobileTimelineDrawer.vue';
+import UiMobileDrawer from '~/components/ui/UiMobileDrawer.vue';
 
 const props = defineProps<{
   isOpen: boolean;
 }>();
-
-const activeSnapPoint = defineModel<string | number | null>('activeSnapPoint', { default: null });
 
 const emit = defineEmits<{
   (e: 'back' | 'close'): void;
@@ -32,13 +30,12 @@ async function runTrim(action: () => void | Promise<void>) {
 </script>
 
 <template>
-  <MobileTimelineDrawer
+  <UiMobileDrawer
     v-model:open="isOpenLocal"
-    v-model:active-snap-point="activeSnapPoint"
-    initial-mode="full"
+    :show-close="false"
   >
     <template #header>
-      <div class="flex items-center justify-between px-3">
+      <div class="flex items-center justify-between px-3 w-full">
         <UButton
           icon="i-heroicons-chevron-left"
           variant="ghost"
@@ -111,5 +108,5 @@ async function runTrim(action: () => void | Promise<void>) {
         </div>
       </div>
     </div>
-  </MobileTimelineDrawer>
+  </UiMobileDrawer>
 </template>
