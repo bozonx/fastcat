@@ -259,19 +259,25 @@ onBeforeUnmount(() => {
           >
             <div
               :data-path="path"
-              class="group relative flex h-[30px] min-w-[120px] max-w-[220px] cursor-pointer items-center gap-2 border-x border-b border-t-[3px] px-4 transition-all duration-200"
+              class="group relative flex h-[30px] min-w-[120px] max-w-[220px] cursor-pointer items-center gap-2 px-3 -mr-px border transition-colors duration-150 rounded-t-md select-none"
               :class="[
                 isActive(path)
-                  ? 'active-tab border-t-primary-500 border-x-ui-border border-b-transparent text-selection-accent-400'
-                  : 'border-t-transparent border-x-ui-border border-b-ui-border bg-black/10 text-ui-text-muted hover:bg-black/5 hover:text-ui-text',
+                  ? 'active-tab z-10 border-ui-border border-b-ui-bg-elevated bg-ui-bg-elevated text-selection-accent-400 font-medium'
+                  : 'border-ui-border/70 border-b-ui-border bg-black/25 text-ui-text-muted hover:bg-black/10 hover:text-ui-text',
               ]"
               @mousedown="onTabMouseDown($event)"
               @auxclick="onTabAuxClick($event, path)"
               @click="selectTab(path)"
             >
+              <!-- Top accent indicator for active tab -->
+              <span
+                v-if="isActive(path)"
+                class="absolute -top-[1px] inset-x-0 h-[2.5px] bg-primary-500 rounded-t-md"
+              />
+
               <UIcon
                 name="i-heroicons-film-20-solid"
-                class="w-4 h-4 shrink-0"
+                class="w-4 h-4 shrink-0 transition-colors"
                 :class="
                   isActive(path)
                     ? 'text-primary-500'
@@ -280,7 +286,7 @@ onBeforeUnmount(() => {
               />
 
               <span
-                class="text-2xs truncate flex-1 font-bold tracking-wide"
+                class="text-2xs truncate flex-1 font-semibold tracking-wide"
                 :aria-label="getFileName(path)"
               >
                 {{ getFileName(path) }}
@@ -293,10 +299,10 @@ onBeforeUnmount(() => {
               />
 
               <button
-                class="tab-close-btn text-ui-text-muted hover:bg-red-500/10 hover:text-red-500 p-0.5 rounded-md transition-all duration-200"
+                class="tab-close-btn text-ui-text-muted hover:bg-red-500/20 hover:text-red-400 p-0.5 rounded-md transition-all duration-150 opacity-70 group-hover:opacity-100"
                 @click="closeTab(path, $event)"
               >
-                <UIcon name="i-heroicons-x-mark-20-solid" class="w-4 h-4" />
+                <UIcon name="i-heroicons-x-mark-20-solid" class="w-3.5 h-3.5" />
               </button>
             </div>
           </UiTooltip>
@@ -334,11 +340,6 @@ onBeforeUnmount(() => {
 }
 
 .tab-close-btn {
-  margin-right: -4px;
-}
-
-/* Glassmorphism subtle effect for active tab */
-.active-tab {
-  background: linear-gradient(to bottom, var(--ui-bg-elevated), var(--ui-bg));
+  margin-right: -2px;
 }
 </style>
