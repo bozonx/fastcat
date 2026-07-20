@@ -1785,9 +1785,7 @@ describe('useEditorHotkeys', () => {
     const deleteSpy = vi.fn();
     timelineStore.deleteFirstSelectedItem = deleteSpy;
 
-    window.dispatchEvent(
-      new KeyboardEvent('keydown', { key: 'x', code: 'KeyX', bubbles: true }),
-    );
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'x', code: 'KeyX', bubbles: true }));
 
     expect(deleteSpy).toHaveBeenCalledOnce();
   });
@@ -1875,9 +1873,7 @@ describe('useEditorHotkeys', () => {
     timelineStore.addMarkerAtPlayhead = addMarkerSpy;
     timelineStore.getMarkers = vi.fn(() => []);
 
-    window.dispatchEvent(
-      new KeyboardEvent('keydown', { key: 'm', code: 'KeyM', bubbles: true }),
-    );
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'm', code: 'KeyM', bubbles: true }));
 
     expect(addMarkerSpy).toHaveBeenCalledOnce();
   });
@@ -1937,9 +1933,7 @@ describe('useEditorHotkeys', () => {
 
     projectStore.setView('cut');
 
-    window.dispatchEvent(
-      new KeyboardEvent('keydown', { key: '1', code: 'Digit1', bubbles: true }),
-    );
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: '1', code: 'Digit1', bubbles: true }));
 
     expect(projectStore.currentView).toBe('files');
   });
@@ -1950,9 +1944,7 @@ describe('useEditorHotkeys', () => {
 
     projectStore.setView('files');
 
-    window.dispatchEvent(
-      new KeyboardEvent('keydown', { key: '2', code: 'Digit2', bubbles: true }),
-    );
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: '2', code: 'Digit2', bubbles: true }));
 
     expect(projectStore.currentView).toBe('cut');
   });
@@ -1963,9 +1955,7 @@ describe('useEditorHotkeys', () => {
 
     projectStore.setView('cut');
 
-    window.dispatchEvent(
-      new KeyboardEvent('keydown', { key: '4', code: 'Digit4', bubbles: true }),
-    );
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: '4', code: 'Digit4', bubbles: true }));
 
     expect(projectStore.currentView).toBe('sound');
   });
@@ -1976,9 +1966,7 @@ describe('useEditorHotkeys', () => {
 
     projectStore.setView('cut');
 
-    window.dispatchEvent(
-      new KeyboardEvent('keydown', { key: '5', code: 'Digit5', bubbles: true }),
-    );
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: '5', code: 'Digit5', bubbles: true }));
 
     expect(projectStore.currentView).toBe('export');
   });
@@ -2057,7 +2045,7 @@ describe('useEditorHotkeys', () => {
     expect(projectTabsStore.activeTabId).toBe('markers');
   });
 
-  it('switches project tab to backups via Shift+\' (general.projectTabBackups)', async () => {
+  it("switches project tab to backups via Shift+' (general.projectTabBackups)", async () => {
     wrapper = mount(HotkeysHarness);
     const projectStore = useProjectStore();
     const projectTabsStore = useProjectTabsStore();
@@ -2192,7 +2180,12 @@ describe('useEditorHotkeys', () => {
     timelineStore.moveSelectedClips = moveSpy;
 
     window.dispatchEvent(
-      new KeyboardEvent('keydown', { key: 'ArrowLeft', code: 'ArrowLeft', ctrlKey: true, bubbles: true }),
+      new KeyboardEvent('keydown', {
+        key: 'ArrowLeft',
+        code: 'ArrowLeft',
+        ctrlKey: true,
+        bubbles: true,
+      }),
     );
 
     expect(moveSpy).toHaveBeenCalledWith(-1);
@@ -2211,7 +2204,12 @@ describe('useEditorHotkeys', () => {
     timelineStore.moveSelectedClips = moveSpy;
 
     window.dispatchEvent(
-      new KeyboardEvent('keydown', { key: 'ArrowRight', code: 'ArrowRight', ctrlKey: true, bubbles: true }),
+      new KeyboardEvent('keydown', {
+        key: 'ArrowRight',
+        code: 'ArrowRight',
+        ctrlKey: true,
+        bubbles: true,
+      }),
     );
 
     expect(moveSpy).toHaveBeenCalledWith(1);
@@ -2230,7 +2228,12 @@ describe('useEditorHotkeys', () => {
     timelineStore.moveSelectedClips = moveSpy;
 
     window.dispatchEvent(
-      new KeyboardEvent('keydown', { key: 'ArrowLeft', code: 'ArrowLeft', ctrlKey: true, bubbles: true }),
+      new KeyboardEvent('keydown', {
+        key: 'ArrowLeft',
+        code: 'ArrowLeft',
+        ctrlKey: true,
+        bubbles: true,
+      }),
     );
 
     expect(moveSpy).not.toHaveBeenCalled();
@@ -2251,7 +2254,12 @@ describe('useEditorHotkeys', () => {
     timelineStore.adjustSelectedClipsVolume = volSpy;
 
     window.dispatchEvent(
-      new KeyboardEvent('keydown', { key: 'ArrowUp', code: 'ArrowUp', ctrlKey: true, bubbles: true }),
+      new KeyboardEvent('keydown', {
+        key: 'ArrowUp',
+        code: 'ArrowUp',
+        ctrlKey: true,
+        bubbles: true,
+      }),
     );
 
     // The hold runner fires the action once on start
@@ -2271,7 +2279,12 @@ describe('useEditorHotkeys', () => {
     timelineStore.adjustSelectedClipsVolume = volSpy;
 
     window.dispatchEvent(
-      new KeyboardEvent('keydown', { key: 'ArrowDown', code: 'ArrowDown', ctrlKey: true, bubbles: true }),
+      new KeyboardEvent('keydown', {
+        key: 'ArrowDown',
+        code: 'ArrowDown',
+        ctrlKey: true,
+        bubbles: true,
+      }),
     );
 
     expect(volSpy).toHaveBeenCalledWith(-0.01);
@@ -2291,7 +2304,13 @@ describe('useEditorHotkeys', () => {
     timelineStore.duplicateCurrentTimeline = dupSpy;
 
     window.dispatchEvent(
-      new KeyboardEvent('keydown', { key: 's', code: 'KeyS', ctrlKey: true, shiftKey: true, bubbles: true }),
+      new KeyboardEvent('keydown', {
+        key: 's',
+        code: 'KeyS',
+        ctrlKey: true,
+        shiftKey: true,
+        bubbles: true,
+      }),
     );
 
     expect(dupSpy).toHaveBeenCalledOnce();
@@ -2365,9 +2384,7 @@ describe('useEditorHotkeys', () => {
     focusStore.setMainFocus('timeline');
     timelineStore.isTrimModeActive = false;
 
-    window.dispatchEvent(
-      new KeyboardEvent('keydown', { key: '/', code: 'Slash', bubbles: true }),
-    );
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: '/', code: 'Slash', bubbles: true }));
 
     expect(timelineStore.isTrimModeActive).toBe(true);
   });
@@ -2440,7 +2457,13 @@ describe('useEditorHotkeys', () => {
     focusStore.setMainFocus('timeline');
     timelineStore.selectedItemIds = ['clip-1'];
     timelineStore.timelineDoc = {
-      tracks: [{ id: 'track-1', kind: 'video', items: [{ id: 'clip-1', kind: 'clip', clipType: 'media', isImage: false, speed: 1 }] }],
+      tracks: [
+        {
+          id: 'track-1',
+          kind: 'video',
+          items: [{ id: 'clip-1', kind: 'clip', clipType: 'media', isImage: false, speed: 1 }],
+        },
+      ],
     };
     const batchSpy = vi.fn();
     timelineStore.batchApplyTimeline = batchSpy;
@@ -2462,7 +2485,13 @@ describe('useEditorHotkeys', () => {
     focusStore.setMainFocus('timeline');
     timelineStore.selectedItemIds = ['clip-1'];
     timelineStore.timelineDoc = {
-      tracks: [{ id: 'track-1', kind: 'video', items: [{ id: 'clip-1', kind: 'clip', clipType: 'media', isImage: false, speed: 1 }] }],
+      tracks: [
+        {
+          id: 'track-1',
+          kind: 'video',
+          items: [{ id: 'clip-1', kind: 'clip', clipType: 'media', isImage: false, speed: 1 }],
+        },
+      ],
     };
     const speedModalSpy = vi.fn();
     uiStore.triggerSpeedModal = speedModalSpy;
@@ -2525,9 +2554,7 @@ describe('useEditorHotkeys', () => {
     const jumpSpy = vi.fn();
     timelineStore.jumpToPrevClipBoundary = jumpSpy;
 
-    window.dispatchEvent(
-      new KeyboardEvent('keydown', { key: 'a', code: 'KeyA', bubbles: true }),
-    );
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', code: 'KeyA', bubbles: true }));
 
     expect(jumpSpy).toHaveBeenCalledOnce();
   });
@@ -2543,9 +2570,7 @@ describe('useEditorHotkeys', () => {
     const jumpSpy = vi.fn();
     timelineStore.jumpToNextClipBoundary = jumpSpy;
 
-    window.dispatchEvent(
-      new KeyboardEvent('keydown', { key: 'g', code: 'KeyG', bubbles: true }),
-    );
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'g', code: 'KeyG', bubbles: true }));
 
     expect(jumpSpy).toHaveBeenCalledOnce();
   });
@@ -2600,9 +2625,7 @@ describe('useEditorHotkeys', () => {
     timelineStore.togglePlayback = toggleSpy;
     timelineStore.setPlaybackSpeed = vi.fn();
 
-    window.dispatchEvent(
-      new KeyboardEvent('keydown', { key: ' ', code: 'Space', bubbles: true }),
-    );
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', code: 'Space', bubbles: true }));
 
     expect(toggleSpy).toHaveBeenCalledOnce();
   });
@@ -2642,9 +2665,7 @@ describe('useEditorHotkeys', () => {
     const toggleSpy = vi.fn();
     timelineStore.togglePlayback = toggleSpy;
 
-    window.dispatchEvent(
-      new KeyboardEvent('keydown', { key: 'f', code: 'KeyF', bubbles: true }),
-    );
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'f', code: 'KeyF', bubbles: true }));
 
     expect(speedSpy).toHaveBeenCalled();
   });
@@ -2664,9 +2685,7 @@ describe('useEditorHotkeys', () => {
     const toggleSpy = vi.fn();
     timelineStore.togglePlayback = toggleSpy;
 
-    window.dispatchEvent(
-      new KeyboardEvent('keydown', { key: 's', code: 'KeyS', bubbles: true }),
-    );
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 's', code: 'KeyS', bubbles: true }));
 
     expect(speedSpy).toHaveBeenCalled();
   });
@@ -2685,9 +2704,7 @@ describe('useEditorHotkeys', () => {
     const speedSpy = vi.fn();
     timelineStore.setPlaybackSpeed = speedSpy;
 
-    window.dispatchEvent(
-      new KeyboardEvent('keydown', { key: 'd', code: 'KeyD', bubbles: true }),
-    );
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'd', code: 'KeyD', bubbles: true }));
 
     expect(toggleSpy).toHaveBeenCalledOnce();
     expect(speedSpy).toHaveBeenCalledWith(1);
@@ -2713,9 +2730,7 @@ describe('useEditorHotkeys', () => {
     const toggleSpy = vi.fn();
     timelineStore.togglePlayback = toggleSpy;
 
-    window.dispatchEvent(
-      new KeyboardEvent('keydown', { key: '2', code: 'Digit2', bubbles: true }),
-    );
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: '2', code: 'Digit2', bubbles: true }));
 
     expect(speedSpy).toHaveBeenCalledWith(2);
     expect(toggleSpy).toHaveBeenCalledOnce();
@@ -2739,9 +2754,7 @@ describe('useEditorHotkeys', () => {
     const toggleSpy = vi.fn();
     timelineStore.togglePlayback = toggleSpy;
 
-    window.dispatchEvent(
-      new KeyboardEvent('keydown', { key: '2', code: 'Digit2', bubbles: true }),
-    );
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: '2', code: 'Digit2', bubbles: true }));
 
     expect(speedSpy).toHaveBeenCalledWith(-2);
     expect(toggleSpy).toHaveBeenCalledOnce();
@@ -2753,7 +2766,13 @@ describe('useEditorHotkeys', () => {
     const timelineStore = useTimelineStore() as any;
     timelineStore.selectedItemIds = ['clip-1'];
     timelineStore.timelineDoc = {
-      tracks: [{ id: 'track-1', kind: 'video', items: [{ id: 'clip-1', kind: 'clip', clipType: 'media' }] }],
+      tracks: [
+        {
+          id: 'track-1',
+          kind: 'video',
+          items: [{ id: 'clip-1', kind: 'clip', clipType: 'media' }],
+        },
+      ],
     };
 
     mockWorkspaceStore.inDevelopmentFeaturesEnabled = false;
@@ -2772,7 +2791,13 @@ describe('useEditorHotkeys', () => {
     const timelineStore = useTimelineStore() as any;
     timelineStore.selectedItemIds = ['clip-1'];
     timelineStore.timelineDoc = {
-      tracks: [{ id: 'track-1', kind: 'video', items: [{ id: 'clip-1', kind: 'clip', clipType: 'media' }] }],
+      tracks: [
+        {
+          id: 'track-1',
+          kind: 'video',
+          items: [{ id: 'clip-1', kind: 'clip', clipType: 'media' }],
+        },
+      ],
     };
     const clipboardStore = useClipboardStore();
     clipboardStore.setClipboardPayload({
@@ -2797,7 +2822,13 @@ describe('useEditorHotkeys', () => {
     const timelineStore = useTimelineStore() as any;
     timelineStore.selectedItemIds = ['clip-1'];
     timelineStore.timelineDoc = {
-      tracks: [{ id: 'track-1', kind: 'video', items: [{ id: 'clip-1', kind: 'clip', clipType: 'media' }] }],
+      tracks: [
+        {
+          id: 'track-1',
+          kind: 'video',
+          items: [{ id: 'clip-1', kind: 'clip', clipType: 'media' }],
+        },
+      ],
     };
 
     mockWorkspaceStore.inDevelopmentFeaturesEnabled = true;

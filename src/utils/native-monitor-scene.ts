@@ -525,7 +525,7 @@ function buildBaseLayer(params: {
     animations: clip.animations,
     baked_effects:
       previewEffectsEnabled === false
-        ? []
+        ? undefined
         : bakeClipEffectAnimations(clip.effects, clip.animations),
     transition_in,
     transition_out,

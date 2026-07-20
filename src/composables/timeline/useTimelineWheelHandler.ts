@@ -222,8 +222,7 @@ export function useTimelineWheelHandler({
       const factor = delta > 0 ? 0.9 : 1.1;
       const target = e.target as HTMLElement;
       const isAudioArea =
-        !!target.closest('.audio-tracks-scroll') ||
-        !!target.closest('[data-section-kind="audio"]');
+        !!target.closest('.audio-tracks-scroll') || !!target.closest('[data-section-kind="audio"]');
       const isVideoArea =
         !isAudioArea &&
         (!!target.closest('.video-tracks-scroll') ||

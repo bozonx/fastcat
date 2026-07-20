@@ -64,8 +64,10 @@ describe('useClipAudio', () => {
       tracks: tracksRef,
       mediaMetadataByPath: mediaMetadataRef,
       updateAudio: (patch) => emittedAudio.push(patch),
-      pushHistory: options.pushHistory ?? ((preState, commandType, labelKey) =>
-        pushHistoryCalls.push({ preState, commandType, labelKey })),
+      pushHistory:
+        options.pushHistory ??
+        ((preState, commandType, labelKey) =>
+          pushHistoryCalls.push({ preState, commandType, labelKey })),
       getTimelineDoc: options.getTimelineDoc,
       isParamAnimated: options.isParamAnimated,
       onAnimatedParamEdit: options.onAnimatedParamEdit,
@@ -176,34 +178,30 @@ describe('useClipAudio', () => {
   });
 
   it('canEditAudioGain is false when clip has no audio in metadata', () => {
-    const c = createComposable(
-      createClip({ source: { path: '/video.mp4' } }),
-      { mediaMetadataByPath: { '/video.mp4': { audio: false } } },
-    );
+    const c = createComposable(createClip({ source: { path: '/video.mp4' } }), {
+      mediaMetadataByPath: { '/video.mp4': { audio: false } },
+    });
     expect(c.canEditAudioGain.value).toBe(false);
   });
 
   it('canEditAudioGain is true when metadata has audio', () => {
-    const c = createComposable(
-      createClip({ source: { path: '/video.mp4' } }),
-      { mediaMetadataByPath: { '/video.mp4': { audio: true } } },
-    );
+    const c = createComposable(createClip({ source: { path: '/video.mp4' } }), {
+      mediaMetadataByPath: { '/video.mp4': { audio: true } },
+    });
     expect(c.canEditAudioGain.value).toBe(true);
   });
 
   it('canEditAudioGain is false for video track when audioMuted', () => {
-    const c = createComposable(
-      createClip({ audioMuted: true }),
-      { tracks: [createTrack({ kind: 'video' })] },
-    );
+    const c = createComposable(createClip({ audioMuted: true }), {
+      tracks: [createTrack({ kind: 'video' })],
+    });
     expect(c.canEditAudioGain.value).toBe(false);
   });
 
   it('canEditAudioGain is true for audio track even when audioMuted', () => {
-    const c = createComposable(
-      createClip({ audioMuted: true }),
-      { tracks: [createTrack({ kind: 'audio' })] },
-    );
+    const c = createComposable(createClip({ audioMuted: true }), {
+      tracks: [createTrack({ kind: 'audio' })],
+    });
     expect(c.canEditAudioGain.value).toBe(true);
   });
 
@@ -364,8 +362,7 @@ describe('useClipAudio', () => {
   it('getAnimatedDisplayValue overrides static balance', () => {
     const c = createComposable(createClip({ audioBalance: 0 }), {
       isParamAnimated: (path) => path === 'audio.pan',
-      getAnimatedDisplayValue: (_path, staticValue) =>
-        _path === 'audio.pan' ? 0.7 : staticValue,
+      getAnimatedDisplayValue: (_path, staticValue) => (_path === 'audio.pan' ? 0.7 : staticValue),
     });
     expect(c.audioBalance.value).toBe(0.7);
   });

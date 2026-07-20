@@ -11,7 +11,7 @@ import { LEVEL_DB_FLOOR, linearToLevelDb } from '~/utils/audio/level-db';
 export class AudioLevelMeter {
   // map keyed by trackId, plus the special 'master' bus
   readonly analyserNodes = new Map<string, AnalyserNode>();
-  private readonly buffers = new Map<string, Float32Array>();
+  private readonly buffers = new Map<string, Float32Array<ArrayBuffer>>();
 
   /**
    * Creates the master-bus analyser, registers it under the `'master'` key and

@@ -3,7 +3,10 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
 import { resolveMonitorPreviewSize } from '~/utils/monitor-preview-resolution';
 
-export function useMonitorDisplay(options?: { isMobile?: Ref<boolean>; viewportEl?: Ref<HTMLElement | null> }) {
+export function useMonitorDisplay(options?: {
+  isMobile?: Ref<boolean>;
+  viewportEl?: Ref<HTMLElement | null>;
+}) {
   const timelineStore = useTimelineStore();
   const projectStore = useProjectStore();
 

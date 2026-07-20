@@ -156,7 +156,10 @@ describe('SettingsGeneral', () => {
     const wrapper = await mountSuspended(SettingsGeneral);
     const select = wrapper.findComponent({ name: 'UiSelect' });
 
-    await select.vm.$emit('update:modelValue', { label: 'Español (Latinoamérica)', value: 'es-419' });
+    await select.vm.$emit('update:modelValue', {
+      label: 'Español (Latinoamérica)',
+      value: 'es-419',
+    });
     await nextTick();
 
     expect(mockWorkspaceStore.userSettings.locale).toBe('es-419');

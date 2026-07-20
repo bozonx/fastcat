@@ -28,7 +28,8 @@ vi.mock('~/components/ui/UiWheelNumberInput.vue', () => ({
       wheelStepMultiplier: Number,
     },
     emits: ['update:modelValue'],
-    template: '<input :value="modelValue" :disabled="disabled" @input="$emit(\'update:modelValue\', +$event.target.value)" />',
+    template:
+      '<input :value="modelValue" :disabled="disabled" @input="$emit(\'update:modelValue\', +$event.target.value)" />',
   },
 }));
 
@@ -37,7 +38,8 @@ vi.mock('~/components/ui/UiSelect.vue', () => ({
     name: 'UiSelect',
     props: ['modelValue', 'items', 'valueKey', 'labelKey', 'size', 'fullWidth', 'disabled'],
     emits: ['update:modelValue'],
-    template: '<select :disabled="disabled" @change="$emit(\'update:modelValue\', $event.target.value)"><option v-for="i in items" :key="i[valueKey]" :value="i[valueKey]">{{ i[labelKey] }}</option></select>',
+    template:
+      '<select :disabled="disabled" @change="$emit(\'update:modelValue\', $event.target.value)"><option v-for="i in items" :key="i[valueKey]" :value="i[valueKey]">{{ i[labelKey] }}</option></select>',
   },
 }));
 
@@ -160,13 +162,13 @@ describe('ClipTransformSection', () => {
     const wrapper = await mountComponent();
     const inputs = wrapper.findAllComponents({ name: 'UiWheelNumberInput' });
     // Find rotation input — it's after scale, before position
-    const rotationInput = inputs.find((i) => i.props('defaultValue') === 0 && i.props('step') === 1);
+    const rotationInput = inputs.find(
+      (i) => i.props('defaultValue') === 0 && i.props('step') === 1,
+    );
     await rotationInput!.vm.$emit('update:modelValue', 45);
     await nextTick();
 
-    expect(lastEmittedTransform.value).toEqual(
-      expect.objectContaining({ rotationDeg: 45 }),
-    );
+    expect(lastEmittedTransform.value).toEqual(expect.objectContaining({ rotationDeg: 45 }));
   });
 
   it('emits updateTransform when position X changes', async () => {
@@ -176,7 +178,9 @@ describe('ClipTransformSection', () => {
     // Scale X (defaultValue 100), scale Y (defaultValue 100, conditional),
     // rotation (defaultValue 0, step 1), posX (defaultValue 0, step 1), posY (defaultValue 0, step 1)
     // Find position inputs by their grid layout — they come after rotation
-    const rotationIndex = inputs.findIndex((i) => i.props('defaultValue') === 0 && i.props('step') === 1 && i.props('min') === undefined);
+    const rotationIndex = inputs.findIndex(
+      (i) => i.props('defaultValue') === 0 && i.props('step') === 1 && i.props('min') === undefined,
+    );
     // Position X is the next input after rotation
     const posXInput = inputs[rotationIndex + 1];
     await posXInput.vm.$emit('update:modelValue', 100);
@@ -193,7 +197,11 @@ describe('ClipTransformSection', () => {
     const wrapper = await mountComponent();
     const flipButtons = wrapper.findAllComponents({ name: 'UiActionButton' });
     // First UiActionButton is the reset-all button, then flip H, then flip V
-    const flipHButton = flipButtons.find((b) => b.attributes('title')?.includes('flipHorizontal') || b.props('title')?.includes('flipHorizontal'));
+    const flipHButton = flipButtons.find(
+      (b) =>
+        b.attributes('title')?.includes('flipHorizontal') ||
+        b.props('title')?.includes('flipHorizontal'),
+    );
     if (flipHButton) {
       await flipHButton.vm.$emit('click');
     } else {
@@ -203,9 +211,7 @@ describe('ClipTransformSection', () => {
     }
     await nextTick();
 
-    expect(lastEmittedTransform.value).toEqual(
-      expect.objectContaining({ flipHorizontal: true }),
-    );
+    expect(lastEmittedTransform.value).toEqual(expect.objectContaining({ flipHorizontal: true }));
   });
 
   it('emits updateSourceOrientation when source orientation changes', async () => {
@@ -290,7 +296,7 @@ describe('ClipTransformSection', () => {
     expect(lastEmittedTransform.value).toEqual(
       expect.objectContaining({
         crop: expect.objectContaining({
-          top: expect.closeTo(10 / 1080 * 100, 1),
+          top: expect.closeTo((10 / 1080) * 100, 1),
         }),
       }),
     );

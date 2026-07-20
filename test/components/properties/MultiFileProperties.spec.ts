@@ -81,13 +81,9 @@ describe('MultiFileProperties.vue', () => {
     { kind: 'file', name: 'v2.mov', path: '/p/v2.mov' },
   ];
 
-  const audioEntries = [
-    { kind: 'file', name: 'a1.mp3', path: '/p/a1.mp3' },
-  ];
+  const audioEntries = [{ kind: 'file', name: 'a1.mp3', path: '/p/a1.mp3' }];
 
-  const imageEntries = [
-    { kind: 'file', name: 'i1.png', path: '/p/i1.png' },
-  ];
+  const imageEntries = [{ kind: 'file', name: 'i1.png', path: '/p/i1.png' }];
 
   beforeEach(() => {
     vi.clearAllMocks();

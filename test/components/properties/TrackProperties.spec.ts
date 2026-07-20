@@ -52,7 +52,8 @@ vi.mock('~/components/ui/UiConfirmModal.vue', () => ({
     name: 'UiConfirmModal',
     props: ['open'],
     emits: ['update:open', 'confirm'],
-    template: '<div v-if="open" data-testid="confirm-modal"><button data-testid="confirm-btn" @click="$emit(\'confirm\')" /></div>',
+    template:
+      '<div v-if="open" data-testid="confirm-modal"><button data-testid="confirm-btn" @click="$emit(\'confirm\')" /></div>',
   },
 }));
 
@@ -202,7 +203,10 @@ describe('TrackProperties', () => {
   it('deletes empty track without confirmation when deleteWithoutConfirmation is true', async () => {
     const wrapper = await mountComponent();
 
-    const quickActions = (wrapper.vm as any).trackQuickActions as Array<{ id: string; onClick: () => void }>;
+    const quickActions = (wrapper.vm as any).trackQuickActions as Array<{
+      id: string;
+      onClick: () => void;
+    }>;
     const deleteAction = quickActions.find((a) => a.id === 'delete');
     expect(deleteAction).toBeDefined();
     deleteAction!.onClick();
@@ -217,7 +221,10 @@ describe('TrackProperties', () => {
       track: createTrack({ items: [{ id: 'clip-1', kind: 'clip' }] }),
     });
 
-    const quickActions = (wrapper.vm as any).trackQuickActions as Array<{ id: string; onClick: () => void }>;
+    const quickActions = (wrapper.vm as any).trackQuickActions as Array<{
+      id: string;
+      onClick: () => void;
+    }>;
     const deleteAction = quickActions.find((a) => a.id === 'delete');
     deleteAction!.onClick();
     await wrapper.vm.$nextTick();
@@ -232,7 +239,10 @@ describe('TrackProperties', () => {
       track: createTrack({ items: [{ id: 'clip-1', kind: 'clip' }] }),
     });
 
-    const quickActions = (wrapper.vm as any).trackQuickActions as Array<{ id: string; onClick: () => void }>;
+    const quickActions = (wrapper.vm as any).trackQuickActions as Array<{
+      id: string;
+      onClick: () => void;
+    }>;
     quickActions.find((a) => a.id === 'delete')!.onClick();
     await wrapper.vm.$nextTick();
 
@@ -248,7 +258,10 @@ describe('TrackProperties', () => {
       track: createTrack({ audioMuted: false }),
     });
 
-    const quickActions = (wrapper.vm as any).trackQuickActions as Array<{ id: string; onClick: () => void }>;
+    const quickActions = (wrapper.vm as any).trackQuickActions as Array<{
+      id: string;
+      onClick: () => void;
+    }>;
     const muteAction = quickActions.find((a) => a.id === 'toggle-track-muted');
     expect(muteAction).toBeDefined();
     muteAction!.onClick();
@@ -263,7 +276,10 @@ describe('TrackProperties', () => {
       track: createTrack({ audioSolo: false }),
     });
 
-    const quickActions = (wrapper.vm as any).trackQuickActions as Array<{ id: string; onClick: () => void }>;
+    const quickActions = (wrapper.vm as any).trackQuickActions as Array<{
+      id: string;
+      onClick: () => void;
+    }>;
     const soloAction = quickActions.find((a) => a.id === 'toggle-solo');
     expect(soloAction).toBeDefined();
     soloAction!.onClick();
@@ -278,7 +294,10 @@ describe('TrackProperties', () => {
       track: createTrack({ locked: false }),
     });
 
-    const quickActions = (wrapper.vm as any).trackQuickActions as Array<{ id: string; onClick: () => void }>;
+    const quickActions = (wrapper.vm as any).trackQuickActions as Array<{
+      id: string;
+      onClick: () => void;
+    }>;
     const lockAction = quickActions.find((a) => a.id === 'toggle-track-locked');
     expect(lockAction).toBeDefined();
     lockAction!.onClick();
@@ -293,7 +312,10 @@ describe('TrackProperties', () => {
       track: createTrack({ kind: 'video', videoHidden: false }),
     });
 
-    const quickActions = (wrapper.vm as any).trackQuickActions as Array<{ id: string; onClick: () => void }>;
+    const quickActions = (wrapper.vm as any).trackQuickActions as Array<{
+      id: string;
+      onClick: () => void;
+    }>;
     const hideAction = quickActions.find((a) => a.id === 'toggle-video-hidden');
     expect(hideAction).toBeDefined();
     hideAction!.onClick();

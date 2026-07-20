@@ -586,9 +586,7 @@ describe('TimelinePersistenceModule', () => {
     const vfsMock = makeVfsMock(files);
     // Distinct return so we can confirm the *synchronous* serializer (not the
     // worker) produced the written bytes.
-    const syncSerialize = vi
-      .fn()
-      .mockReturnValue(JSON.stringify({ ...fallbackDoc, via: 'sync' }));
+    const syncSerialize = vi.fn().mockReturnValue(JSON.stringify({ ...fallbackDoc, via: 'sync' }));
     const deps = createMockDeps({
       timelineDoc: ref({ ...fallbackDoc }),
       ...vfsMock,

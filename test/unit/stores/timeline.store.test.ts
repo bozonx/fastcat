@@ -23,6 +23,15 @@ vi.mock('~/timeline/otio-serializer', () => ({
   serializeTimelineToOtio: vi.fn().mockReturnValue('{}'),
 }));
 
+// Recovery-sidecar semantics are desktop-native only (see `writesAutosaveToMain`
+// in timeline.store). Default to `false` (browser), tests that exercise the
+// recovery dialog flip this to `true`.
+const isTauriRuntimeMock = vi.hoisted(() => vi.fn(() => false));
+vi.mock('~/utils/runtime', () => ({
+  isTauriRuntime: () => isTauriRuntimeMock(),
+  isMacPlatform: () => false,
+}));
+
 const currentProjectNameRef = ref('test');
 const currentTimelinePathRef = ref('timeline.otio');
 
@@ -208,6 +217,8 @@ describe('TimelineStore', () => {
 
     projectSettingsStoreMock.projectSettings.timelines.sessions = {};
     projectSettingsStoreMock.markProjectSettingsAsDirty.mockClear();
+    isTauriRuntimeMock.mockReset();
+    isTauriRuntimeMock.mockReturnValue(false);
     projectSettingsStoreMock.requestProjectSettingsSave.mockClear();
   });
 
@@ -298,6 +309,9 @@ describe('TimelineStore', () => {
   });
 
   it('settles an existing recovery dialog before opening a new one', async () => {
+    // Recovery sidecars are desktop-native only — emulate the Tauri shell so
+    // `writesAutosaveToMain` is false and the recovery dialog path is taken.
+    isTauriRuntimeMock.mockReturnValue(true);
     const previousResolve = vi.fn();
     uiStoreMock.pendingRecoveryDialog = {
       timelinePath: 'old.otio',

@@ -266,9 +266,7 @@ export function useTimelineItemDrag(
     }
 
     const edgeTicks =
-      mode === 'trim_start'
-        ? preview.startTicks
-        : preview.startTicks + preview.durationTicks;
+      mode === 'trim_start' ? preview.startTicks : preview.startTicks + preview.durationTicks;
     const rect = el.getBoundingClientRect();
     const clientX = rect.left + ticksToPx(edgeTicks, timelineStore.timelineZoom) - el.scrollLeft;
 

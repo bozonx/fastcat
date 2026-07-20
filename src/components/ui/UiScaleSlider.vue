@@ -286,7 +286,9 @@ function resetToDefault() {
           style="left: 100%"
         >
           <div class="w-px h-2 bg-ui-border border-dashed" />
-          <span class="text-[9px] leading-none text-ui-text-muted mt-auto font-mono font-bold">+</span>
+          <span class="text-[9px] leading-none text-ui-text-muted mt-auto font-mono font-bold"
+            >+</span
+          >
         </div>
 
         <!-- Tick marks -->
@@ -364,4 +366,3 @@ function resetToDefault() {
     </div>
   </div>
 </template>
-

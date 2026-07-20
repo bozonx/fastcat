@@ -49,7 +49,6 @@
     "imagePreview": "Image preview",
     "images": "Images",
     "autoDetectFolder": "Auto-detect folder",
-    "items": "Items",
     "itemsSelected": "Selected: {count}",
     "language": "Language",
     "loading": "Loading...",
@@ -417,10 +416,7 @@
         },
         "invert": {
           "description": "Invert colours (negative effect)",
-          "name": "Invert",
-          "params": {
-            "mix": "Amount"
-          }
+          "name": "Invert"
         },
         "tauri": {
           "chromaticAberration": {
@@ -2188,7 +2184,6 @@
       "backupError": "Backup error",
       "backupErrorDesc": "Failed to create a project backup.",
       "clipAddedToCompatibleTrack": "Added to a {kind} track to match the media type.",
-      "mediaTypeNotSupportedOnTrack": "This media type is not supported on this track.",
       "trackKindAudio": "audio",
       "trackKindVideo": "video",
       "fpsMismatch": "FPS Mismatch",

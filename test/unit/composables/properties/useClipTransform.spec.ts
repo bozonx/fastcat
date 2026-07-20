@@ -295,27 +295,21 @@ describe('useClipTransform', () => {
   });
 
   it('getAnimatedDisplayValue overrides static value for scale X', () => {
-    const c = createComposable(
-      createClip({ scale: { x: 1, y: 1, linked: true } }),
-      {
-        isParamAnimated: (path: string) => path === 'transform.scale.x',
-        getAnimatedDisplayValue: (_path: string, staticValue: number) =>
-          _path === 'transform.scale.x' ? 2.5 : staticValue,
-      },
-    );
+    const c = createComposable(createClip({ scale: { x: 1, y: 1, linked: true } }), {
+      isParamAnimated: (path: string) => path === 'transform.scale.x',
+      getAnimatedDisplayValue: (_path: string, staticValue: number) =>
+        _path === 'transform.scale.x' ? 2.5 : staticValue,
+    });
     // Should show 250 (2.5 * 100) instead of 100 (1 * 100)
     expect(c.transformScaleX.value).toBe(250);
   });
 
   it('getAnimatedDisplayValue overrides static value for rotation', () => {
-    const c = createComposable(
-      createClip({ rotationDeg: 0 }),
-      {
-        isParamAnimated: (path: string) => path === 'transform.rotationDeg',
-        getAnimatedDisplayValue: (_path: string, staticValue: number) =>
-          _path === 'transform.rotationDeg' ? 90 : staticValue,
-      },
-    );
+    const c = createComposable(createClip({ rotationDeg: 0 }), {
+      isParamAnimated: (path: string) => path === 'transform.rotationDeg',
+      getAnimatedDisplayValue: (_path: string, staticValue: number) =>
+        _path === 'transform.rotationDeg' ? 90 : staticValue,
+    });
     expect(c.transformRotationDeg.value).toBe(90);
   });
 
@@ -340,9 +334,7 @@ describe('useClipTransform', () => {
   });
 
   it('handles NaN values gracefully', () => {
-    const c = createComposable(
-      createClip({ scale: { x: NaN, y: Infinity, linked: true } } as any),
-    );
+    const c = createComposable(createClip({ scale: { x: NaN, y: Infinity, linked: true } } as any));
     expect(c.transformScaleX.value).toBe(100);
     expect(c.transformScaleY.value).toBe(100);
   });
@@ -351,6 +343,13 @@ describe('useClipTransform', () => {
     const c = createComposable(createClip());
     expect(c.anchorPresetOptions.value).toHaveLength(6);
     const values = c.anchorPresetOptions.value.map((o: { value: string }) => o.value);
-    expect(values).toEqual(['center', 'topLeft', 'topRight', 'bottomLeft', 'bottomRight', 'custom']);
+    expect(values).toEqual([
+      'center',
+      'topLeft',
+      'topRight',
+      'bottomLeft',
+      'bottomRight',
+      'custom',
+    ]);
   });
 });

@@ -49,7 +49,6 @@
     "imagePreview": "Предпросмотр изображения",
     "images": "Картинки",
     "autoDetectFolder": "Автоопределение папки",
-    "items": "Элементы",
     "itemsSelected": "Выбрано: {count}",
     "language": "Язык",
     "loading": "Загрузка...",
@@ -417,10 +416,7 @@
         },
         "invert": {
           "description": "Инверсия цветов (негатив)",
-          "name": "Инверсия",
-          "params": {
-            "mix": "Сила"
-          }
+          "name": "Инверсия"
         },
         "tauri": {
           "chromaticAberration": {
@@ -2188,7 +2184,6 @@
       "backupError": "Ошибка резервного копирования",
       "backupErrorDesc": "Не удалось создать резервную копию проекта.",
       "clipAddedToCompatibleTrack": "Добавлено на {kind} дорожку, соответствующую типу медиа.",
-      "mediaTypeNotSupportedOnTrack": "Этот тип медиа не поддерживается на этой дорожке.",
       "trackKindAudio": "аудио",
       "trackKindVideo": "видео",
       "fpsMismatch": "Несоответствие FPS",

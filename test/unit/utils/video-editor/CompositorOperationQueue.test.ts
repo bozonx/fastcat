@@ -5,7 +5,7 @@ import { CompositorOperationQueue } from '~/utils/video-editor/compositor/Compos
 
 const flush = () => new Promise((r) => setTimeout(r, 0));
 
-function defer<T>() {
+function defer<T = void>() {
   let resolve!: (value: T) => void;
   let reject!: (reason?: unknown) => void;
   const promise = new Promise<T>((res, rej) => {
@@ -44,7 +44,7 @@ describe('CompositorOperationQueue', () => {
   it('runs an interactive operation before queued background work', async () => {
     const queue = new CompositorOperationQueue();
     const order: string[] = [];
-    const first = defer<void>();
+    const first = defer();
 
     const firstPromise = queue.run(async () => {
       order.push('first');
@@ -61,11 +61,13 @@ describe('CompositorOperationQueue', () => {
 
   it('aborts a running background operation when an interactive operation arrives', async () => {
     const queue = new CompositorOperationQueue();
-    const backgroundStarted = defer<void>();
+    const backgroundStarted = defer();
     const background = queue.run(
       async (signal) => {
         backgroundStarted.resolve();
-        await new Promise<void>((resolve) => signal.addEventListener('abort', resolve, { once: true }));
+        await new Promise<void>((resolve) =>
+          signal.addEventListener('abort', resolve, { once: true }),
+        );
       },
       'prewarm',
       'background',

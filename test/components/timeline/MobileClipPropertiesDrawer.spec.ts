@@ -128,10 +128,15 @@ describe('MobileClipPropertiesDrawer', () => {
             template: '<div class="toolbar-stub"><slot /></div>',
           },
           MobileDrawerToolbarButton: {
-            props: ['icon', 'active', 'disabled'],
-            emits: ['click'],
+            props: {
+              icon: String,
+              active: Boolean,
+              disabled: Boolean,
+              withChevron: Boolean,
+            },
+            emits: ['click', 'chevron'],
             template:
-              '<button :data-icon="icon" :class="{ active }" :disabled="disabled" @click="$emit(\'click\')"></button>',
+              '<button :data-icon="icon" :class="{ active }" :disabled="disabled" @click="$emit(\'click\')"></button><button v-if="withChevron" data-chevron @click="$emit(\'chevron\')"></button>',
           },
           ClipProperties: {
             template: '<div />',
@@ -140,25 +145,33 @@ describe('MobileClipPropertiesDrawer', () => {
       },
     });
 
+    // 9 toolbar entries; two of them (delete + trim) carry a variants chevron.
     const buttons = wrapper.findAll('.toolbar-stub button');
-    expect(buttons.length).toBe(9);
+    expect(buttons.length).toBe(11);
 
-    const deleteBtn = buttons[0];
-    const trimBtn = buttons[3];
-    const splitBtn = buttons[4];
-    const transitionsBtn = buttons[5];
-    expect(deleteBtn?.attributes('data-icon')).toBe('i-heroicons-trash');
-    expect(trimBtn?.attributes('data-icon')).toBe('i-heroicons-arrows-right-left');
-    expect(splitBtn?.attributes('data-icon')).toBe('i-lucide-lab-razor-blade');
-    expect(transitionsBtn?.attributes('data-icon')).toBe('i-lucide-blend');
+    const deleteBtn = wrapper.find('button[data-icon="i-heroicons-trash"]');
+    const trimBtn = wrapper.find('button[data-icon="i-heroicons-arrows-right-left"]');
+    const splitBtn = wrapper.find('button[data-icon="i-lucide-lab-razor-blade"]');
+    const transitionsBtn = wrapper.find('button[data-icon="i-lucide-blend"]');
+    expect(deleteBtn.exists()).toBe(true);
+    expect(trimBtn.exists()).toBe(true);
+    expect(splitBtn.exists()).toBe(true);
+    expect(transitionsBtn.exists()).toBe(true);
 
-    await deleteBtn?.trigger('click');
+    // Primary delete tap performs a ripple delete (and closes the drawer); the
+    // variants drawer opens from the corner chevron.
+    await deleteBtn.trigger('click');
+    expect(rippleDeleteFirstSelectedItem).toHaveBeenCalled();
+    expect(wrapper.emitted('close')).toBeTruthy();
+    expect(wrapper.emitted('open-delete-drawer')).toBeUndefined();
+
+    await wrapper.find('button[data-chevron]').trigger('click');
     expect(wrapper.emitted('open-delete-drawer')).toBeTruthy();
 
-    await trimBtn?.trigger('click');
+    await trimBtn.trigger('click');
     expect(wrapper.emitted('open-trim-drawer')).toBeTruthy();
 
-    await transitionsBtn?.trigger('click');
+    await transitionsBtn.trigger('click');
     expect(wrapper.emitted('open-transitions-drawer')).toBeTruthy();
   });
 

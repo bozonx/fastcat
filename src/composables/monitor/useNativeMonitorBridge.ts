@@ -226,7 +226,8 @@ export function useNativeMonitorBridge(): void {
     // Raw `previewResolution`: a value > 0 pins the scale, while 0 (or missing) means
     // "auto" — the scene builder then derives the render scale from the quality tier.
     const configuredPreviewScale = projectStore.activeMonitor?.previewResolution ?? 0;
-    const previewScale = configuredPreviewScale > 0 ? configuredPreviewScale : nativeMonitorPreviewScale.value;
+    const previewScale =
+      configuredPreviewScale > 0 ? configuredPreviewScale : nativeMonitorPreviewScale.value;
     if (!doc?.tracks?.length) {
       const fmt = timelineStore.timelineFormat;
       return {

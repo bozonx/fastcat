@@ -296,6 +296,18 @@ function handleAction(action: string | undefined, key: string | undefined) {
   emit('action', action, key);
 }
 
+// Resolves a numeric bound (min/max) for a control, preferring the explicit
+// `numericInputRanges` override and applying `displayMultiplier` so the wheel
+// input shows values in the user-facing unit. Returns `undefined` when neither
+// source provides a bound, so the input can fall back to its own default.
+function resolveWheelBound(entry: VisibleControlEntry, edge: 'min' | 'max'): number | undefined {
+  const range = props.numericInputRanges?.[entry.key];
+  const raw = range?.[edge] ?? entry.control[edge];
+  if (raw === undefined) return undefined;
+  const mult = entry.control.displayMultiplier;
+  return mult ? raw * mult : raw;
+}
+
 function showStopwatch(key: string, kind: string): boolean {
   return !!props.keyframes && props.keyframes.isKeyframable(key, kind);
 }
@@ -473,22 +485,8 @@ function handleArrayItemUpdate(
         <UiWheelNumberInput
           :model-value="entry.numberValue"
           :size="size"
-          :min="
-            (props.numericInputRanges?.[entry.key]?.min ?? entry.control.min) !== undefined
-              ? entry.control.displayMultiplier
-                ? (props.numericInputRanges?.[entry.key]?.min ?? entry.control.min) *
-                  entry.control.displayMultiplier
-                : (props.numericInputRanges?.[entry.key]?.min ?? entry.control.min)
-              : undefined
-          "
-          :max="
-            (props.numericInputRanges?.[entry.key]?.max ?? entry.control.max) !== undefined
-              ? entry.control.displayMultiplier
-                ? (props.numericInputRanges?.[entry.key]?.max ?? entry.control.max) *
-                  entry.control.displayMultiplier
-                : (props.numericInputRanges?.[entry.key]?.max ?? entry.control.max)
-              : undefined
-          "
+          :min="resolveWheelBound(entry, 'min')"
+          :max="resolveWheelBound(entry, 'max')"
           :step="
             entry.control.step !== undefined
               ? entry.control.displayMultiplier
