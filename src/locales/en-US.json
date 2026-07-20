@@ -415,6 +415,13 @@
             "softLight": "Soft Light"
           }
         },
+        "invert": {
+          "description": "Invert colours (negative effect)",
+          "name": "Invert",
+          "params": {
+            "mix": "Amount"
+          }
+        },
         "tauri": {
           "chromaticAberration": {
             "description": "Offset color channels",

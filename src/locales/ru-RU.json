@@ -415,6 +415,13 @@
             "softLight": "Мягкий свет"
           }
         },
+        "invert": {
+          "description": "Инверсия цветов (негатив)",
+          "name": "Инверсия",
+          "params": {
+            "mix": "Сила"
+          }
+        },
         "tauri": {
           "chromaticAberration": {
             "description": "Смещение цветовых каналов",

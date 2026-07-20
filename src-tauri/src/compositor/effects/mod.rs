@@ -232,6 +232,12 @@ pub enum EffectSpec {
         #[serde(default)]
         fg_offset_y: f32,
     },
+    /// Invert colours (negative). p0 = mix (0 = original, 1 = full invert).
+    /// Point-wise: fusable into the mode-24 chain as op 5.
+    Invert {
+        #[serde(default = "default_mix")]
+        mix: f32,
+    },
     /// Arbitrary WGSL. Not executed by the built-in pipeline yet; keep the
     /// serialized contract available for future plugin-style effects.
     CustomWgsl {

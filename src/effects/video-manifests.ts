@@ -1211,6 +1211,39 @@ export const videoEffectManifests: VideoEffectManifest[] = [
       ];
     },
   },
+  {
+    type: 'invert',
+    name: 'Invert',
+    nameKey: 'fastcat.effects.video.invert.name',
+    description: 'Invert colours (negative effect)',
+    descriptionKey: 'fastcat.effects.video.invert.description',
+    icon: 'i-heroicons-arrow-path',
+    target: 'video',
+    renderer: 'wgsl-compute',
+    defaultValues: {
+      mix: 1,
+    },
+    paramRanges: {
+      mix: VIDEO_EFFECT_PARAM_RANGES.intensity,
+    },
+    controls: [
+      {
+        kind: 'slider',
+        key: 'mix',
+        labelKey: 'fastcat.effects.video.invert.params.mix',
+        min: VIDEO_EFFECT_PARAM_RANGES.intensity.uiMin,
+        max: VIDEO_EFFECT_PARAM_RANGES.intensity.uiMax,
+        step: 0.01,
+        defaultValue: 1,
+        format: percent,
+      },
+    ],
+    toEffectSpecs: (values) => [
+      spec('invert', {
+        mix: clampRange(clampFinite(values.mix, 1), VIDEO_EFFECT_PARAM_RANGES.intensity),
+      }),
+    ],
+  },
 ];
 
 const videoManifestByType = new Map(

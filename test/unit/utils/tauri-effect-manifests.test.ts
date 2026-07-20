@@ -39,6 +39,7 @@ describe('unified video effect manifests', () => {
       'chromatic-aberration',
       'levels',
       'chroma-key',
+      'invert',
     ]);
     expect(types).not.toContain('hue');
     expect(getVideoEffectManifest('hue')).toBeUndefined();
@@ -500,5 +501,38 @@ describe('unified video effect manifests', () => {
     ]);
 
     expect(specs).toEqual([{ type: 'pixelate', size: 12, mix: 0.3 }]);
+  });
+
+  it('serializes invert effect with mix parameter', () => {
+    expect(
+      buildEffectSpecs([
+        {
+          id: 'fx-invert-full',
+          type: 'invert',
+          enabled: true,
+          target: 'video',
+          mix: 1,
+        },
+      ]),
+    ).toEqual([{ type: 'invert', mix: 1 }]);
+
+    expect(
+      buildEffectSpecs([
+        {
+          id: 'fx-invert-partial',
+          type: 'invert',
+          enabled: true,
+          target: 'video',
+          mix: 0.5,
+        },
+      ]),
+    ).toEqual([{ type: 'invert', mix: 0.5 }]);
+
+    // Default mix = 1 (full invert)
+    expect(
+      buildEffectSpecs([
+        { id: 'fx-invert-default', type: 'invert', enabled: true, target: 'video' },
+      ]),
+    ).toEqual([{ type: 'invert', mix: 1 }]);
   });
 });

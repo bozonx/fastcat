@@ -1768,6 +1768,112 @@
           "dst": "owned"
         }
       ]
+    },
+    {
+      "name": "invert standalone uses mode 25",
+      "effects": [
+        {
+          "type": "invert",
+          "mix": 1.0
+        }
+      ],
+      "width": 1920,
+      "height": 1080,
+      "quality": "ultra",
+      "passes": [
+        {
+          "uniform": {
+            "mode": 25,
+            "width": 1920,
+            "height": 1080,
+            "seed": 0,
+            "p0": 1.0,
+            "p1": 0,
+            "p2": 0,
+            "p3": 0,
+            "p4": 0,
+            "p5": 0,
+            "p6": 0,
+            "p7": 0
+          },
+          "customSource": null,
+          "src": "input",
+          "secondary": "input",
+          "dst": "owned"
+        }
+      ]
+    },
+    {
+      "name": "invert fuses with brightness into mode 24 as op 5",
+      "effects": [
+        {
+          "type": "brightness",
+          "value": 1.2
+        },
+        {
+          "type": "invert",
+          "mix": 0.8
+        }
+      ],
+      "width": 1920,
+      "height": 1080,
+      "quality": "ultra",
+      "passes": [
+        {
+          "uniform": {
+            "mode": 24,
+            "width": 1920,
+            "height": 1080,
+            "seed": 0,
+            "p0": 1,
+            "p1": 1.2,
+            "p2": 5,
+            "p3": 0.8,
+            "p4": 0,
+            "p5": 0,
+            "p6": 0,
+            "p7": 0
+          },
+          "customSource": null,
+          "src": "input",
+          "secondary": "input",
+          "dst": "owned"
+        }
+      ]
+    },
+    {
+      "name": "invert clamps mix to 0..1",
+      "effects": [
+        {
+          "type": "invert",
+          "mix": 2.0
+        }
+      ],
+      "width": 1920,
+      "height": 1080,
+      "quality": "ultra",
+      "passes": [
+        {
+          "uniform": {
+            "mode": 25,
+            "width": 1920,
+            "height": 1080,
+            "seed": 0,
+            "p0": 1.0,
+            "p1": 0,
+            "p2": 0,
+            "p3": 0,
+            "p4": 0,
+            "p5": 0,
+            "p6": 0,
+            "p7": 0
+          },
+          "customSource": null,
+          "src": "input",
+          "secondary": "input",
+          "dst": "owned"
+        }
+      ]
     }
   ]
 }

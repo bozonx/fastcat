@@ -439,6 +439,8 @@ function fusablePointwiseOp(effect: VideoEffectSpec): { op: number; param: numbe
       return { op: 3, param: Math.max(0, Math.min(MAX_COLOR_MULTIPLIER, effect.value)) };
     case 'hue':
       return { op: 4, param: effect.degrees };
+    case 'invert':
+      return { op: 5, param: Math.max(0, Math.min(1.0, effect.mix ?? 1)) };
     default:
       return null;
   }
@@ -704,6 +706,8 @@ function effectUniform(
     }
     case 'hue':
       return base(11, effect.degrees, 0, 0, 0, 0, 0, 0);
+    case 'invert':
+      return base(25, Math.max(0, Math.min(1.0, effect.mix ?? 1)), 0, 0, 0, 0, 0, 0);
     case 'levels':
       return base(
         12,

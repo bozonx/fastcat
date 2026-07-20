@@ -121,6 +121,7 @@ fn fusable_pointwise_op(effect: &EffectSpec) -> Option<(f32, f32)> {
         EffectSpec::Contrast { value } => Some((2.0, value.clamp(0.0, MAX_COLOR_MULTIPLIER))),
         EffectSpec::Saturation { value } => Some((3.0, value.clamp(0.0, MAX_COLOR_MULTIPLIER))),
         EffectSpec::Hue { degrees } => Some((4.0, *degrees)),
+        EffectSpec::Invert { mix } => Some((5.0, mix.clamp(0.0, 1.0))),
         _ => None,
     }
 }
@@ -856,6 +857,16 @@ pub(super) fn effect_uniform(
             key_rgba[2] as f32 / 255.0,
             threshold.clamp(0.0, 1.0),
             smoothness.clamp(0.0001, 1.0),
+            0.0,
+            0,
+        ),
+        EffectSpec::Invert { mix } => base(
+            25,
+            mix.clamp(0.0, 1.0),
+            0.0,
+            0.0,
+            0.0,
+            0.0,
             0.0,
             0,
         ),

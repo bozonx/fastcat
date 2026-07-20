@@ -41,4 +41,4 @@ tint_strength: number,
 /**
  * Foreground vertical offset as a fraction of frame height (−0.5..0.5).
  */
-fg_offset_y: number, } | { "type": "custom-wgsl", source: string, params: Record<string, unknown>, };
+fg_offset_y: number, } | { "type": "invert", mix: number, } | { "type": "custom-wgsl", source: string, params: Record<string, unknown>, };

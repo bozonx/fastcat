@@ -48,8 +48,9 @@
 //      p5=preserve luminance, p6=range)
 //   24 fused point-wise chain: up to four ops applied in sequence in one
 //      dispatch. (p0,p1)/(p2,p3)/(p4,p5)/(p6,p7) are (op, param) pairs;
-//      op 0=none, 1=brightness, 2=contrast, 3=saturation, 4=hue (degrees).
-//      Math is identical to modes 1/2/3/11; the only difference is no rgba8
+//      op 0=none, 1=brightness, 2=contrast, 3=saturation, 4=hue (degrees),
+//      5=invert (param=mix 0..1).
+//      Math is identical to modes 1/2/3/11/25; the only difference is no rgba8
 //      quantization between the fused steps. Both pass builders emit it only
 //      for runs of >=2 consecutive fusable effects.
 //
@@ -122,9 +123,12 @@ fn luma(color: vec3<f32>) -> f32 {
 }
 
 // One op of the fused point-wise chain (mode 24). Must stay math-identical to
-// the standalone modes 1 (brightness), 2 (contrast), 3 (saturation) and
-// 11 (hue) — the fused pass is a pure dispatch-count optimization.
+// the standalone modes 1 (brightness), 2 (contrast), 3 (saturation),
+// 11 (hue) and 25 (invert) — the fused pass is a pure dispatch-count optimization.
 fn fused_pointwise_op(c: vec3<f32>, op: f32, param: f32) -> vec3<f32> {
+    if (op >= 4.5) {
+        return mix(c, 1.0 - c, clamp(param, 0.0, 1.0));
+    }
     if (op >= 3.5) {
         return rotate_hue(c, param);
     }
@@ -674,6 +678,9 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
             c = fused_pointwise_op(c, effect.p4, effect.p5);
             c = fused_pointwise_op(c, effect.p6, effect.p7);
             color = vec4<f32>(c, color.a);
+        }
+        case 25u: {
+            color = vec4<f32>(mix(color.rgb, 1.0 - color.rgb, clamp(effect.p0, 0.0, 1.0)), color.a);
         }
         default: {}
     }
