@@ -13,7 +13,10 @@ import { genUuid } from '~/utils/ids';
 import { useDndDropZone } from '~/composables/dnd/useDndDropZone';
 import type { DndDragContext, DndPayload } from '~/composables/dnd/dndTypes';
 import type { VideoClipEffect, AudioClipEffect } from '~/timeline/types';
-import type { ParamsKeyframeHooks } from '~/components/properties/ParamsRenderer.vue';
+import type {
+  ParamsKeyframeHooks,
+  ParamsNumericInputRange,
+} from '~/components/properties/ParamsRenderer.vue';
 
 /**
  * Keyframe hooks for animating VIDEO clip-effect params. Supplied only by the
@@ -75,15 +78,31 @@ const safeEffects = computed(() => props.effects ?? []);
 interface EffectItem {
   effect: Record<string, unknown>;
   manifest: ReturnType<typeof getVideoEffectManifest | typeof getAudioEffectManifest>;
+  numericInputRanges?: Record<string, ParamsNumericInputRange>;
+}
+
+function getNumericInputRanges(
+  manifest: EffectItem['manifest'],
+): Record<string, ParamsNumericInputRange> | undefined {
+  if (!manifest?.paramRanges) return undefined;
+
+  return Object.fromEntries(
+    Object.entries(manifest.paramRanges).map(([key, range]) => [
+      key,
+      { min: range.animationMin, max: range.animationMax },
+    ]),
+  );
 }
 
 const effectsWithManifest = computed<EffectItem[]>(() =>
   safeEffects.value.map((effect) => {
     const typed = effect as Record<string, unknown>;
     const type = String(typed.type ?? '');
+    const manifest = isAudio.value ? getAudioEffectManifest(type) : getVideoEffectManifest(type);
     return {
       effect: typed,
-      manifest: isAudio.value ? getAudioEffectManifest(type) : getVideoEffectManifest(type),
+      manifest,
+      numericInputRanges: getNumericInputRanges(manifest),
     };
   }),
 );
@@ -289,7 +308,7 @@ function resolveEffectName(manifest: EffectItem['manifest'], type: string) {
         @update:model-value="onUpdateOrder"
       >
         <div
-          v-for="{ effect, manifest } in effectsWithManifest"
+          v-for="{ effect, manifest, numericInputRanges } in effectsWithManifest"
           :key="String(effect.id)"
           class="bg-ui-bg border border-ui-border rounded px-2 py-2"
           :class="{ 'opacity-50 pointer-events-none': props.disabled }"
@@ -337,6 +356,7 @@ function resolveEffectName(manifest: EffectItem['manifest'], type: string) {
               :controls="manifest.controls"
               :values="effectRenderValues(effect)"
               :keyframes="paramsKeyframesFor(String(effect.id))"
+              :numeric-input-ranges="numericInputRanges"
               :disabled="props.disabled || !effect.enabled"
               :test-id-prefix="`clip-effect-${String(effect.type)}`"
               @update:value="

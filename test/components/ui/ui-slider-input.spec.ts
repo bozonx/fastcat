@@ -128,6 +128,27 @@ describe('UiSliderInput', () => {
     expect(wheelInput.exists()).toBe(true);
   });
 
+  it('uses expanded bounds for the numeric input while retaining slider bounds', async () => {
+    const component = await mountSuspended(UiSliderInput, {
+      props: {
+        modelValue: 50,
+        min: 0,
+        max: 100,
+        inputMin: -50,
+        inputMax: 500,
+      },
+    });
+
+    expect(component.findComponent({ name: 'UiWheelSlider' }).props()).toMatchObject({
+      min: 0,
+      max: 100,
+    });
+    expect(component.findComponent({ name: 'UiWheelNumberInput' }).props()).toMatchObject({
+      min: -50,
+      max: 500,
+    });
+  });
+
   it('displays 0 if modelValue is not finite', async () => {
     const component = await mountSuspended(UiSliderInput, {
       props: {

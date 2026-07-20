@@ -9,6 +9,8 @@ const props = withDefaults(
     formattedValue?: string;
     min: number;
     max: number;
+    inputMin?: number;
+    inputMax?: number;
     step?: number;
     unit?: string;
     decimals?: number;
@@ -24,6 +26,8 @@ const props = withDefaults(
   {
     label: undefined,
     formattedValue: undefined,
+    inputMin: undefined,
+    inputMax: undefined,
     step: 0.01,
     unit: '',
     decimals: 2,
@@ -92,8 +96,8 @@ function onInputUpdate(value: unknown) {
         <UiWheelNumberInput
           :model-value="modelValue"
           size="2xs"
-          :min="min"
-          :max="max"
+          :min="inputMin ?? min"
+          :max="inputMax ?? max"
           :step="step"
           :class="inputClass"
           :default-value="defaultValue"

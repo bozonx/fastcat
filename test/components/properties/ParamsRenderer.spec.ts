@@ -16,7 +16,7 @@ vi.mock('~/components/ui/UiSliderInput.vue', () => ({
     name: 'UiSliderInput',
     template:
       '<div class="mock-slider-input"><span v-if="label">{{ label }}</span><span v-if="formattedValue">{{ formattedValue }}</span><span>{{ modelValue }}</span></div>',
-    props: ['modelValue', 'label', 'formattedValue'],
+    props: ['modelValue', 'label', 'formattedValue', 'min', 'max', 'inputMin', 'inputMax'],
   },
 }));
 
@@ -167,6 +167,31 @@ describe('ParamsRenderer', () => {
     await stopwatch.trigger('click');
 
     expect(toggle).toHaveBeenCalledWith('innerAmount');
+  });
+
+  it('passes expanded numeric bounds to a slider input without changing its slider range', async () => {
+    const component = await mountWithNuxt(ParamsRenderer, {
+      props: {
+        controls: [
+          {
+            kind: 'slider',
+            key: 'radius',
+            min: 0,
+            max: 100,
+            step: 1,
+          },
+        ],
+        values: { radius: 50 },
+        numericInputRanges: { radius: { min: 0, max: 512 } },
+      },
+    });
+
+    expect(component.findComponent({ name: 'UiSliderInput' }).props()).toMatchObject({
+      min: 0,
+      max: 100,
+      inputMin: 0,
+      inputMax: 512,
+    });
   });
 
   it('updates array empty state and rendered cards from cached array items', async () => {

@@ -29,6 +29,11 @@ export interface ParamsKeyframeHooks {
   toggle: (key: string) => void;
 }
 
+export interface ParamsNumericInputRange {
+  min: number;
+  max: number;
+}
+
 const props = withDefaults(
   defineProps<{
     controls: ParamControl[];
@@ -39,6 +44,7 @@ const props = withDefaults(
     disabled?: boolean;
     testIdPrefix?: string;
     keyframes?: ParamsKeyframeHooks;
+    numericInputRanges?: Record<string, ParamsNumericInputRange>;
   }>(),
   {
     asContents: false,
@@ -47,6 +53,7 @@ const props = withDefaults(
     size: 'sm',
     testIdPrefix: undefined,
     keyframes: undefined,
+    numericInputRanges: undefined,
   },
 );
 
@@ -409,6 +416,8 @@ function handleArrayItemUpdate(
           "
           :min="entry.control.min ?? 0"
           :max="entry.control.max ?? 100"
+          :input-min="props.numericInputRanges?.[entry.key]?.min"
+          :input-max="props.numericInputRanges?.[entry.key]?.max"
           :step="entry.control.step ?? 1"
           :default-value="entry.control.defaultValue"
           :disabled="entry.disabled"
