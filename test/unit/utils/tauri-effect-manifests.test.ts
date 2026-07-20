@@ -504,6 +504,8 @@ describe('unified video effect manifests', () => {
   });
 
   it('serializes invert effect with mix parameter', () => {
+    expect(getVideoEffectManifest('invert')?.controls).toEqual([]);
+
     expect(
       buildEffectSpecs([
         {

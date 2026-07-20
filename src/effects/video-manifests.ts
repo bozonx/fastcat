@@ -1226,18 +1226,9 @@ export const videoEffectManifests: VideoEffectManifest[] = [
     paramRanges: {
       mix: VIDEO_EFFECT_PARAM_RANGES.intensity,
     },
-    controls: [
-      {
-        kind: 'slider',
-        key: 'mix',
-        labelKey: 'fastcat.effects.video.invert.params.mix',
-        min: VIDEO_EFFECT_PARAM_RANGES.intensity.uiMin,
-        max: VIDEO_EFFECT_PARAM_RANGES.intensity.uiMax,
-        step: 0.01,
-        defaultValue: 1,
-        format: percent,
-      },
-    ],
+    // Invert is binary; the effect card's enabled switch is its only UI control.
+    // Keep `mix` in the serialized effect spec to support existing projects.
+    controls: [],
     toEffectSpecs: (values) => [
       spec('invert', {
         mix: clampRange(clampFinite(values.mix, 1), VIDEO_EFFECT_PARAM_RANGES.intensity),
