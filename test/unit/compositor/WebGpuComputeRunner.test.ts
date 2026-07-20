@@ -340,7 +340,7 @@ describe('WebGpuComputeRunner', () => {
     vi.unstubAllGlobals();
   });
 
-  it('creates transition output texture with texture binding usage for GPU blit', () => {
+  it('reuses transition texture views and bind groups across monitor frames', () => {
     vi.stubGlobal('GPUShaderStage', { COMPUTE: 0x04, FRAGMENT: 0x02 });
     vi.stubGlobal('GPUTextureUsage', {
       TEXTURE_BINDING: 0x04,
@@ -398,16 +398,17 @@ describe('WebGpuComputeRunner', () => {
       texture: { getGpuSource: vi.fn(() => gpuTexture) },
     });
 
-    expect(
+    const renderTransition = (progress: number) =>
       runner.applyTransitionToTexture({
         from,
         to,
         output,
         spec: { type: 'crossfade' },
-        progress: 0.5,
+        progress,
         speed: 1,
-      }),
-    ).toBe(true);
+      });
+
+    expect(renderTransition(0.5)).toBe(true);
 
     expect(device.createTexture).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -419,6 +420,13 @@ describe('WebGpuComputeRunner', () => {
       }),
     );
     expect(renderPass.draw).toHaveBeenCalledWith(3, 1, 0, 0);
+
+    const bindGroupCount = device.createBindGroup.mock.calls.length;
+    const rendererTextureViewCount = gpuTexture.createView.mock.calls.length;
+
+    expect(renderTransition(0.6)).toBe(true);
+    expect(device.createBindGroup).toHaveBeenCalledTimes(bindGroupCount);
+    expect(gpuTexture.createView).toHaveBeenCalledTimes(rendererTextureViewCount);
     vi.unstubAllGlobals();
   });
 

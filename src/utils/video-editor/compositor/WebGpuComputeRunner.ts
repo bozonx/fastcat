@@ -162,6 +162,13 @@ interface WebGpuRendererLike {
   texture?: WebGpuTextureSystem;
 }
 
+interface CachedTransitionTextureBindGroup {
+  from: GPUTexture;
+  to: GPUTexture;
+  output: GPUTexture;
+  bindGroup: GPUBindGroup;
+}
+
 function isRenderableColorFormat(format: string): format is GPUTextureFormat {
   return (
     format === 'bgra8unorm' ||
@@ -871,6 +878,8 @@ export class WebGpuComputeRunner {
   private textureBlitBindLayout: GPUBindGroupLayout | null = null;
   private textureBlitShaderModule: GPUShaderModule | null = null;
   private textureBlitPipelines = new Map<string, GPURenderPipeline>();
+  private textureViews = new WeakMap<GPUTexture, GPUTextureView>();
+  private textureBlitBindGroups = new WeakMap<GPUTexture, GPUBindGroup>();
   private pipeline: GPUComputePipeline | null = null;
   private shaderModule: GPUShaderModule | null = null;
   private uniformBuffer: GPUBuffer | null = null;
@@ -926,6 +935,7 @@ export class WebGpuComputeRunner {
   private transOutputTexture: GPUTexture | null = null;
   private transUniformBuffer: GPUBuffer | null = null;
   private transBindGroup: GPUBindGroup | null = null;
+  private transTextureBindGroup: CachedTransitionTextureBindGroup | null = null;
   private transCachedWidth = 0;
   private transCachedHeight = 0;
   // Pooled readback staging buffer for the transition output (MAP_READ).
@@ -1262,6 +1272,31 @@ export class WebGpuComputeRunner {
     return pipeline;
   }
 
+  private getOrCreateTextureView(texture: GPUTexture): GPUTextureView {
+    const cached = this.textureViews.get(texture);
+    if (cached) return cached;
+
+    const view = texture.createView();
+    this.textureViews.set(texture, view);
+    return view;
+  }
+
+  private getOrCreateTextureBlitBindGroup(source: GPUTexture): GPUBindGroup {
+    const cached = this.textureBlitBindGroups.get(source);
+    if (cached) return cached;
+
+    const bindGroup = this.device!.createBindGroup({
+      label: 'web-texture-blit-bind-group',
+      layout: this.textureBlitBindLayout!,
+      entries: [
+        { binding: 0, resource: this.getOrCreateTextureView(source) },
+        { binding: 1, resource: this.sampler! },
+      ],
+    });
+    this.textureBlitBindGroups.set(source, bindGroup);
+    return bindGroup;
+  }
+
   /**
    * Draws `source` into the Pixi-owned `target` texture with a fullscreen
    * triangle. `premultiply` must be true whenever the compute chain ran on
@@ -1291,14 +1326,7 @@ export class WebGpuComputeRunner {
     }
 
     const pipeline = this.getOrCreateTextureBlitPipeline(params.targetFormat, params.premultiply);
-    const bindGroup = this.device.createBindGroup({
-      label: `${params.label}-bind-group`,
-      layout: this.textureBlitBindLayout,
-      entries: [
-        { binding: 0, resource: params.source.createView() },
-        { binding: 1, resource: this.sampler },
-      ],
-    });
+    const bindGroup = this.getOrCreateTextureBlitBindGroup(params.source);
     const ownsEncoder = !params.encoder;
     const encoder =
       params.encoder ?? this.device.createCommandEncoder({ label: `${params.label}-encoder` });
@@ -1306,7 +1334,7 @@ export class WebGpuComputeRunner {
       label: `${params.label}-pass`,
       colorAttachments: [
         {
-          view: params.target.createView(),
+          view: this.getOrCreateTextureView(params.target),
           loadOp: 'clear',
           storeOp: 'store',
           clearValue: { r: 0, g: 0, b: 0, a: 0 },
@@ -2393,22 +2421,33 @@ export class WebGpuComputeRunner {
       // transBindGroup already binds transFromTexture/transToTexture/transOutputTexture + uniform.
       bindGroup = this.transBindGroup!;
     } else {
-      bindGroup = this.device.createBindGroup({
-        label: 'web-transition-texture-bind-group',
-        layout: this.transitionBindLayout,
-        entries: [
-          {
-            binding: 0,
-            resource: this.sharedRendererTexture.getGpuSource(params.from.source).createView(),
-          },
-          {
-            binding: 1,
-            resource: this.sharedRendererTexture.getGpuSource(params.to.source).createView(),
-          },
-          { binding: 2, resource: outputTexture.createView() },
-          { binding: 3, resource: { buffer: uniformBuffer } },
-        ],
-      });
+      const fromTexture = this.sharedRendererTexture.getGpuSource(params.from.source);
+      const toTexture = this.sharedRendererTexture.getGpuSource(params.to.source);
+      const cached = this.transTextureBindGroup;
+      if (
+        cached?.from === fromTexture &&
+        cached.to === toTexture &&
+        cached.output === outputTexture
+      ) {
+        bindGroup = cached.bindGroup;
+      } else {
+        bindGroup = this.device.createBindGroup({
+          label: 'web-transition-texture-bind-group',
+          layout: this.transitionBindLayout,
+          entries: [
+            { binding: 0, resource: this.getOrCreateTextureView(fromTexture) },
+            { binding: 1, resource: this.getOrCreateTextureView(toTexture) },
+            { binding: 2, resource: this.getOrCreateTextureView(outputTexture) },
+            { binding: 3, resource: { buffer: uniformBuffer } },
+          ],
+        });
+        this.transTextureBindGroup = {
+          from: fromTexture,
+          to: toTexture,
+          output: outputTexture,
+          bindGroup,
+        };
+      }
     }
     const pipeline = this.getOrCreateTransitionPipeline(resolveTransitionShaderSource(params.spec));
     const pass = encoder.beginComputePass({ label: 'web-transition-texture-pass' });
@@ -2451,6 +2490,7 @@ export class WebGpuComputeRunner {
     this.transFromTexture?.destroy();
     this.transToTexture?.destroy();
     this.transOutputTexture?.destroy();
+    this.transTextureBindGroup = null;
     // The uniform buffer is size-independent, so allocate it once and keep it.
 
     const inputUsage =
@@ -2490,9 +2530,9 @@ export class WebGpuComputeRunner {
       label: 'web-transition-bind-group',
       layout: this.transitionBindLayout!,
       entries: [
-        { binding: 0, resource: this.transFromTexture.createView() },
-        { binding: 1, resource: this.transToTexture.createView() },
-        { binding: 2, resource: this.transOutputTexture.createView() },
+        { binding: 0, resource: this.getOrCreateTextureView(this.transFromTexture) },
+        { binding: 1, resource: this.getOrCreateTextureView(this.transToTexture) },
+        { binding: 2, resource: this.getOrCreateTextureView(this.transOutputTexture) },
         { binding: 3, resource: { buffer: this.transUniformBuffer } },
       ],
     });
@@ -2855,6 +2895,7 @@ export class WebGpuComputeRunner {
     this.transOutputTexture = null;
     this.transUniformBuffer = null;
     this.transBindGroup = null;
+    this.transTextureBindGroup = null;
     this.transReadbackBuffer = null;
     this.transReadbackCapacity = 0;
     this.transCachedWidth = 0;
@@ -2864,6 +2905,8 @@ export class WebGpuComputeRunner {
     this.customPipelines.clear();
     this.transitionPipelines.clear();
     this.textureBlitPipelines.clear();
+    this.textureViews = new WeakMap();
+    this.textureBlitBindGroups = new WeakMap();
     this.videoFrameUploadSupport.clear();
     this.transitionBindLayout = null;
     this.textureBlitBindLayout = null;
@@ -2928,6 +2971,7 @@ export class WebGpuComputeRunner {
     this.transOutputTexture = null;
     this.transUniformBuffer = null;
     this.transBindGroup = null;
+    this.transTextureBindGroup = null;
     this.transReadbackBuffer = null;
     this.transReadbackCapacity = 0;
     this.transCachedWidth = 0;
@@ -2935,6 +2979,8 @@ export class WebGpuComputeRunner {
     this.customPipelines.clear();
     this.transitionPipelines.clear();
     this.textureBlitPipelines.clear();
+    this.textureViews = new WeakMap();
+    this.textureBlitBindGroups = new WeakMap();
     this.videoFrameUploadSupport.clear();
     this.transitionBindLayout = null;
     this.textureBlitBindLayout = null;
