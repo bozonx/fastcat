@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 import { cloneValue } from '~/utils/clone';
 import { getEffectManifest } from '~/effects';
+import { getEffectNumericInputRanges } from '~/effects/param-ranges';
 import { usePresetsStore } from '~/stores/presets.store';
 import ParamsRenderer from '~/components/properties/ParamsRenderer.vue';
 import ProjectPresetProperties from '~/components/properties/ProjectPresetProperties.vue';
@@ -63,6 +64,7 @@ const {
       v-if="manifest?.controls && manifest.controls.length > 0"
       :controls="manifest.controls"
       :values="params"
+      :numeric-input-ranges="getEffectNumericInputRanges(manifest.paramRanges)"
       @update:value="handleUpdateParam"
     />
     <UiEmptyState

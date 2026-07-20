@@ -8,15 +8,13 @@ import ParamsRenderer from '~/components/properties/ParamsRenderer.vue';
 import PropertySection from '~/components/properties/PropertySection.vue';
 import EffectSettingsModal from '~/components/effects/EffectSettingsModal.vue';
 import { getVideoEffectManifest, getAudioEffectManifest } from '~/effects';
+import { getEffectNumericInputRanges } from '~/effects/param-ranges';
 import { usePresetsStore } from '~/stores/presets.store';
 import { genUuid } from '~/utils/ids';
 import { useDndDropZone } from '~/composables/dnd/useDndDropZone';
 import type { DndDragContext, DndPayload } from '~/composables/dnd/dndTypes';
 import type { VideoClipEffect, AudioClipEffect } from '~/timeline/types';
-import type {
-  ParamsKeyframeHooks,
-  ParamsNumericInputRange,
-} from '~/components/properties/ParamsRenderer.vue';
+import type { ParamsKeyframeHooks } from '~/components/properties/ParamsRenderer.vue';
 
 /**
  * Keyframe hooks for animating VIDEO clip-effect params. Supplied only by the
@@ -78,20 +76,7 @@ const safeEffects = computed(() => props.effects ?? []);
 interface EffectItem {
   effect: Record<string, unknown>;
   manifest: ReturnType<typeof getVideoEffectManifest | typeof getAudioEffectManifest>;
-  numericInputRanges?: Record<string, ParamsNumericInputRange>;
-}
-
-function getNumericInputRanges(
-  manifest: EffectItem['manifest'],
-): Record<string, ParamsNumericInputRange> | undefined {
-  if (!manifest?.paramRanges) return undefined;
-
-  return Object.fromEntries(
-    Object.entries(manifest.paramRanges).map(([key, range]) => [
-      key,
-      { min: range.animationMin, max: range.animationMax },
-    ]),
-  );
+  numericInputRanges?: ReturnType<typeof getEffectNumericInputRanges>;
 }
 
 const effectsWithManifest = computed<EffectItem[]>(() =>
@@ -102,7 +87,7 @@ const effectsWithManifest = computed<EffectItem[]>(() =>
     return {
       effect: typed,
       manifest,
-      numericInputRanges: getNumericInputRanges(manifest),
+      numericInputRanges: getEffectNumericInputRanges(manifest?.paramRanges),
     };
   }),
 );

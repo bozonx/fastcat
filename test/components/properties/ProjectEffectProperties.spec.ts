@@ -43,7 +43,7 @@ const ProjectPresetPropertiesStub = {
 };
 
 const ParamsRendererStub = {
-  props: ['controls', 'values'],
+  props: ['controls', 'values', 'numericInputRanges'],
   emits: ['update:value'],
   template:
     '<div class="params-renderer"><button class="emit-update" @click="$emit(\'update:value\', \'radius\', 10)" /></div>',
@@ -76,6 +76,34 @@ describe('ProjectEffectProperties', () => {
 
     expect(component.find('.params-renderer').exists()).toBe(true);
     expect(component.find('.empty-state').exists()).toBe(false);
+  });
+
+  it('passes animation bounds to numeric effect inputs', async () => {
+    getEffectManifestMock.mockReturnValue({
+      type: 'blur',
+      name: 'Blur',
+      controls: [{ kind: 'slider', key: 'radius' }],
+      defaultValues: { radius: 5 },
+      paramRanges: {
+        radius: {
+          uiMin: 0,
+          uiMax: 100,
+          animationMin: 0,
+          animationMax: 512,
+          renderMin: 0,
+          renderMax: 1024,
+        },
+      },
+    });
+
+    const component = await mountSuspended(ProjectEffectProperties, {
+      props: { effectType: 'blur' },
+      global: { stubs },
+    });
+
+    expect(component.findComponent(ParamsRendererStub).props('numericInputRanges')).toEqual({
+      radius: { min: 0, max: 512 },
+    });
   });
 
   it('renders empty state when manifest has no controls', async () => {
