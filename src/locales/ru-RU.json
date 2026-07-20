@@ -2128,8 +2128,9 @@
         "title": "Аудиоплагины"
       },
       "audio": {
-        "accelerationDiagnostics": "Диагностика аудио",
-        "accelerationDiagnosticsHelp": "Проверяет поддержку экспорта аудио через WebCodecs и доступные браузерные аудио-декодеры/кодеры.",
+        "accelerationDiagnostics": "Диагностика аудиокодеков (WebCodecs)",
+        "accelerationDiagnosticsHelp": "Проверяет низкоуровневые API браузера (WebCodecs AudioDecoder / AudioEncoder), используемые для покадрового рендеринга и экспорта.",
+        "playbackNotice": "Обратите внимание: обычное воспроизведение звука (AAC, MP3 и др.) в плеере и на таймлайне работает через встроенный Web Audio API независимо от поддержки WebCodecs.",
         "loadingDiagnostics": "Загрузка диагностики",
         "unavailableDiagnostics": "Диагностика недоступна",
         "ffmpegDiagnosticsHelp": "Проверяет доступность локального FFmpeg и FFprobe, а также поддержку аудиокодеков.",

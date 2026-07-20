@@ -2128,8 +2128,9 @@
         "title": "Audio plugins"
       },
       "audio": {
-        "accelerationDiagnostics": "Audio diagnostics",
-        "accelerationDiagnosticsHelp": "Checks WebCodecs audio export support and available browser audio decoders/encoders.",
+        "accelerationDiagnostics": "Audio codecs diagnostics (WebCodecs)",
+        "accelerationDiagnosticsHelp": "Checks low-level browser APIs (WebCodecs AudioDecoder / AudioEncoder) used for frame-exact rendering and export.",
+        "playbackNotice": "Note: standard audio playback (AAC, MP3, etc.) in the player and timeline works via the browser's Web Audio API regardless of WebCodecs support.",
         "loadingDiagnostics": "Loading diagnostics",
         "unavailableDiagnostics": "Diagnostics unavailable",
         "ffmpegDiagnosticsHelp": "Checks availability of local FFmpeg and FFprobe, and audio codecs support.",

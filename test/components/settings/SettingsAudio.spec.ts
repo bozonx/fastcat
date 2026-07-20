@@ -164,15 +164,15 @@ vi.mock('~/utils/runtime', () => ({
 // Mock webcodecs
 vi.mock('~/utils/webcodecs', () => ({
   BASE_AUDIO_CODEC_OPTIONS: [
-    { value: 'aac', label: 'AAC' },
+    { value: 'mp4a.40.2', label: 'AAC' },
     { value: 'opus', label: 'Opus' },
   ],
   checkAudioCodecSupport: vi.fn().mockResolvedValue({
-    aac: true,
+    'mp4a.40.2': true,
     opus: false,
   }),
   checkAudioDecoderSupport: vi.fn().mockResolvedValue({
-    aac: true,
+    'mp4a.40.2': true,
     opus: true,
   }),
 }));

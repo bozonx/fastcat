@@ -340,6 +340,9 @@ const hasDiagnostics = computed(() => audioCodecRows.value.length > 0);
           </tbody>
         </table>
       </div>
+      <div v-if="!isTauri" class="text-xs text-ui-text-muted/70 italic">
+        {{ t('videoEditor.settings.audio.playbackNotice') }}
+      </div>
     </div>
   </div>
 </template>

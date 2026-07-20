@@ -40,11 +40,10 @@ export interface CheckVideoCodecSupportOptions {
 }
 
 export const BASE_AUDIO_CODEC_OPTIONS: readonly AudioCodecOption[] = [
-  { value: 'aac', label: 'AAC' },
+  { value: 'mp4a.40.2', label: 'AAC' },
   { value: 'mp3', label: 'MP3' },
   { value: 'opus', label: 'Opus' },
-  { value: 'vorbis', label: 'Vorbis' },
-  { value: 'alac', label: 'ALAC' },
+  { value: 'flac', label: 'FLAC' },
 ];
 
 export interface CheckAudioCodecSupportOptions {

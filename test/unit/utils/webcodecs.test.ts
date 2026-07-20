@@ -38,8 +38,11 @@ describe('webcodecs', () => {
   });
 
   it('resolves audio codec options with disabled flag', () => {
-    const resolved = resolveAudioCodecOptions(BASE_AUDIO_CODEC_OPTIONS, { opus: true, aac: false });
-    expect(resolved.find((o) => o.value === 'aac')!.disabled).toBe(true);
+    const resolved = resolveAudioCodecOptions(BASE_AUDIO_CODEC_OPTIONS, {
+      opus: true,
+      'mp4a.40.2': false,
+    });
+    expect(resolved.find((o) => o.value === 'mp4a.40.2')!.disabled).toBe(true);
     expect(resolved.find((o) => o.value === 'opus')!.disabled).toBe(false);
   });
 });
