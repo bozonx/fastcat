@@ -43,3 +43,14 @@ workspace.json
 # OS files
 .DS_Store
 Thumbs.db
+
+# AI tool configs and local artifacts
+.agents/
+.codex/
+.antigravitycli/
+.zcode/
+.claude/
+
+# Generated jscpd reports
+.jscpd-report.json/
+.jscpd-composables.json/
