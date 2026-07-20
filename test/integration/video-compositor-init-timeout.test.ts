@@ -37,6 +37,11 @@ describe('VideoCompositor init timeout', () => {
     try {
       const compositor = new VideoCompositor();
       const initPromise = compositor.init(1920, 1080, '#000', true);
+      // Attach a handler eagerly: the init rejects when the fake timer fires
+      // inside `advanceTimersByTimeAsync` below, and without an attached handler
+      // at that instant Vitest reports an unhandled rejection. The real
+      // assertion still runs through `expect(...).rejects` afterwards.
+      initPromise.catch(() => {});
       await vi.advanceTimersByTimeAsync(6000);
       await expect(initPromise).rejects.toThrow('timed out');
     } finally {
