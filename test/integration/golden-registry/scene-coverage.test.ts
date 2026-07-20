@@ -467,7 +467,7 @@ describe('scene coverage integration', () => {
   });
 
   describe('transition type coverage', () => {
-    it('covers wipe, slide, and fade-to-black transitions', () => {
+    it('covers all production transitions (dissolve, wipe, slide, fade-to-black, clock, barn-door, circle, rectangle)', () => {
       const used = new Set<string>();
       for (const { fixture } of scenes) {
         for (const layer of fixture.scene.layers as Array<Record<string, unknown>>) {
@@ -477,9 +477,22 @@ describe('scene coverage integration', () => {
           if (tout) used.add(tout.type as string);
         }
       }
-      expect(used.has('wipe')).toBe(true);
-      expect(used.has('slide')).toBe(true);
-      expect(used.has('fade-to-black')).toBe(true);
+      const expectedProductionTransitions = [
+        'dissolve',
+        'wipe',
+        'slide',
+        'fade-to-black',
+        'clock',
+        'barn-door',
+        'circle',
+        'rectangle',
+      ];
+      for (const transitionType of expectedProductionTransitions) {
+        expect(
+          used.has(transitionType),
+          `Production transition "${transitionType}" is missing golden scene coverage`,
+        ).toBe(true);
+      }
     });
   });
 

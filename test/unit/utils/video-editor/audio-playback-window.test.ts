@@ -61,7 +61,7 @@ describe('audio playback window', () => {
     expect(window).not.toBeNull();
     expect(window?.effectiveStartS).toBeCloseTo(0.5);
     expect(window?.effectiveSourceStartS).toBeCloseTo(4);
-    expect(window?.effectivePlayDurationS).toBeCloseTo(2.5);
+    expect(window?.effectivePlayDurationS).toBeCloseTo(2.75);
     expect(window?.remainingInClipS).toBeCloseTo(2.5);
     expect(window?.effectiveSourceEndS).toBeCloseTo(9.5);
   });

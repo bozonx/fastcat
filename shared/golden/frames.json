@@ -493,6 +493,78 @@
       ]
     },
     {
+      "scene": "transition-barn-door.json",
+      "engine": "web",
+      "samples": [
+        {
+          "timeSec": 0.1,
+          "hash": "ff7f3f0f07030000",
+          "tolerance": 12,
+          "colorSig": "fe8400fee800fe0a00fe5b00"
+        },
+        {
+          "timeSec": 0.5,
+          "hash": "0000000000000000",
+          "tolerance": 12,
+          "colorSig": "ff6600ff6600ff6600ff6600"
+        }
+      ]
+    },
+    {
+      "scene": "transition-circle.json",
+      "engine": "web",
+      "samples": [
+        {
+          "timeSec": 0.1,
+          "hash": "ff7f3f0f07030000",
+          "tolerance": 12,
+          "colorSig": "fe8400fee800fe0a00fe5b00"
+        },
+        {
+          "timeSec": 0.5,
+          "hash": "0000000000000000",
+          "tolerance": 12,
+          "colorSig": "ff6600ff6600ff6600ff6600"
+        }
+      ]
+    },
+    {
+      "scene": "transition-clock.json",
+      "engine": "web",
+      "samples": [
+        {
+          "timeSec": 0.1,
+          "hash": "ff7f3f0f07030000",
+          "tolerance": 12,
+          "colorSig": "fe8400fee800fe0a00fe5b00"
+        },
+        {
+          "timeSec": 0.5,
+          "hash": "0000000000000000",
+          "tolerance": 12,
+          "colorSig": "ff6600ff6600ff6600ff6600"
+        }
+      ]
+    },
+    {
+      "scene": "transition-rectangle.json",
+      "engine": "web",
+      "samples": [
+        {
+          "timeSec": 0.1,
+          "hash": "ff7f3f0f07030000",
+          "tolerance": 12,
+          "colorSig": "fe8400fee800fe0a00fe5b00"
+        },
+        {
+          "timeSec": 0.5,
+          "hash": "0000000000000000",
+          "tolerance": 12,
+          "colorSig": "ff6600ff6600ff6600ff6600"
+        }
+      ]
+    },
+    {
       "scene": "video-clip.json",
       "engine": "web",
       "samples": [
@@ -980,6 +1052,78 @@
     },
     {
       "scene": "transition-wipe.json",
+      "engine": "native",
+      "samples": [
+        {
+          "timeSec": 0.1,
+          "hash": "ff7f3f0f07030000",
+          "tolerance": 12,
+          "colorSig": "fe8400fee800fe0a00fe5b00"
+        },
+        {
+          "timeSec": 0.5,
+          "hash": "0000000000000000",
+          "tolerance": 12,
+          "colorSig": "ff6600ff6600ff6600ff6600"
+        }
+      ]
+    },
+    {
+      "scene": "transition-barn-door.json",
+      "engine": "native",
+      "samples": [
+        {
+          "timeSec": 0.1,
+          "hash": "ff7f3f0f07030000",
+          "tolerance": 12,
+          "colorSig": "fe8400fee800fe0a00fe5b00"
+        },
+        {
+          "timeSec": 0.5,
+          "hash": "0000000000000000",
+          "tolerance": 12,
+          "colorSig": "ff6600ff6600ff6600ff6600"
+        }
+      ]
+    },
+    {
+      "scene": "transition-circle.json",
+      "engine": "native",
+      "samples": [
+        {
+          "timeSec": 0.1,
+          "hash": "ff7f3f0f07030000",
+          "tolerance": 12,
+          "colorSig": "fe8400fee800fe0a00fe5b00"
+        },
+        {
+          "timeSec": 0.5,
+          "hash": "0000000000000000",
+          "tolerance": 12,
+          "colorSig": "ff6600ff6600ff6600ff6600"
+        }
+      ]
+    },
+    {
+      "scene": "transition-clock.json",
+      "engine": "native",
+      "samples": [
+        {
+          "timeSec": 0.1,
+          "hash": "ff7f3f0f07030000",
+          "tolerance": 12,
+          "colorSig": "fe8400fee800fe0a00fe5b00"
+        },
+        {
+          "timeSec": 0.5,
+          "hash": "0000000000000000",
+          "tolerance": 12,
+          "colorSig": "ff6600ff6600ff6600ff6600"
+        }
+      ]
+    },
+    {
+      "scene": "transition-rectangle.json",
       "engine": "native",
       "samples": [
         {
