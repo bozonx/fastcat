@@ -180,7 +180,7 @@ const stopFramesQualityOptions = [
           />
         </UiFormField>
 
-        <template v-if="workspaceStore.inDevelopmentFeaturesEnabled">
+        <template v-if="isDesktop && workspaceStore.inDevelopmentFeaturesEnabled">
           <UiFormField>
             <label
               class="flex items-center justify-between gap-3 cursor-pointer select-none w-full"

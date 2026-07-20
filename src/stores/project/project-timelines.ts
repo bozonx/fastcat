@@ -26,6 +26,8 @@ export function createProjectTimelinesModule(params: {
    * editor when the last tab was closed (path becomes `null`).
    */
   onActiveTimelineChanged?: () => Promise<void> | void;
+  /** Flushes the active automatic-save snapshot before its tab is discarded. */
+  beforeActiveTimelineClose?: () => Promise<void> | void;
 }) {
   async function openTimelineFile(path: string) {
     if (!params.currentProjectName.value) {
@@ -56,10 +58,13 @@ export function createProjectTimelinesModule(params: {
     const index = params.projectSettings.value.timelines.openPaths.indexOf(path);
     if (index === -1) return;
 
+    const closingActiveTimeline = params.currentTimelinePath.value === path;
+    if (closingActiveTimeline) await params.beforeActiveTimelineClose?.();
+
     const previousPaths = [...params.projectSettings.value.timelines.openPaths];
     params.projectSettings.value.timelines.openPaths.splice(index, 1);
 
-    if (params.currentTimelinePath.value === path) {
+    if (closingActiveTimeline) {
       const nextPath =
         params.projectSettings.value.timelines.openPaths[index] ??
         params.projectSettings.value.timelines.openPaths[index - 1] ??
@@ -83,6 +88,7 @@ export function createProjectTimelinesModule(params: {
     const hasPath = params.projectSettings.value.timelines.openPaths.includes(path);
     if (!hasPath) return;
 
+    if (params.currentTimelinePath.value !== path) await params.beforeActiveTimelineClose?.();
     params.projectSettings.value.timelines.openPaths = [path];
 
     if (params.currentTimelinePath.value !== path) {
@@ -96,6 +102,7 @@ export function createProjectTimelinesModule(params: {
   }
 
   async function closeAllTimelineFiles() {
+    await params.beforeActiveTimelineClose?.();
     params.projectSettings.value.timelines.openPaths = [];
     params.currentTimelinePath.value = null;
     params.currentFileName.value = null;

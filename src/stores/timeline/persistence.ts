@@ -122,6 +122,7 @@ export interface TimelinePersistenceDeps {
   onRecoveryChoice?: (choice: 'open-saved') => void;
   exitPreview?: () => void;
   onSaveSuccess?: (serialized: string) => void;
+  onAutosaveSuccess?: (serialized: string) => void | Promise<void>;
   onSaveError?: (error: unknown) => void;
   onSaveBlockedReadOnly?: () => void;
 }
@@ -600,6 +601,7 @@ export function createTimelinePersistenceModule(
             mainSavedRevision = currentRevision;
             setDirtyState();
           }
+          await deps.onAutosaveSuccess?.(serialized);
         }
 
         return true;

@@ -106,6 +106,22 @@ describe('SettingsGeneral', () => {
     expect(wrapper.text()).not.toContain('videoEditor.settings.autosaveInterval');
   });
 
+  it('hides backup settings in automatic-save modes', async () => {
+    const wrapper = await mountSuspended(SettingsGeneral);
+
+    expect(wrapper.text()).not.toContain('videoEditor.settings.useBackups');
+    expect(wrapper.text()).not.toContain('videoEditor.settings.backupCount');
+  });
+
+  it('keeps backup settings in native desktop', async () => {
+    (window as Window & { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__ = {};
+    mockWorkspaceStore.userSettings.backup.enabled = true;
+    const wrapper = await mountSuspended(SettingsGeneral);
+
+    expect(wrapper.text()).toContain('videoEditor.settings.useBackups');
+    expect(wrapper.text()).toContain('videoEditor.settings.backupCount');
+  });
+
   it('hides interface scale setting in mobile layout', async () => {
     isMobileLayout.value = true;
 

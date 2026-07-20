@@ -251,7 +251,8 @@ describe('Timeline Persistence and AutoSave', () => {
     expect(WorkerMock.postedMessages[0]).toEqual(rawDoc);
   });
 
-  it('triggers backup after a successful save', async () => {
+  it('triggers backup after a successful native save', async () => {
+    (window as Window & { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__ = {};
     // Enable backup in user settings
     (mockWorkspaceStore.userSettings as any).backup = { enabled: true, count: 5 };
 

@@ -58,6 +58,7 @@ vi.mock('~/components/file-manager/BackgroundTasksButton.vue', () => ({
 describe('EditorHeader', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    delete (window as Window & { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__;
     mockTimelineStore.isSavingTimeline = false;
     mockTimelineStore.isTimelineDirty = false;
     mockTimelineStore.timelineDoc = {};
@@ -85,10 +86,17 @@ describe('EditorHeader', () => {
     expect(wrapper.emitted('open-project-settings')).toBeTruthy();
   });
 
-  it('renders save button in toolbar and calls timelineStore.saveTimeline when clicked', async () => {
+  it('hides the save button in web desktop', async () => {
     const wrapper = await mountSuspended(EditorHeader);
 
-    // Save button should have save icon
+    const saveBtn = wrapper.find('[icon="i-lucide-save"]');
+    expect(saveBtn.exists()).toBe(false);
+  });
+
+  it('renders save button in native desktop and calls timelineStore.saveTimeline when clicked', async () => {
+    (window as Window & { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__ = {};
+    const wrapper = await mountSuspended(EditorHeader);
+
     const saveBtn = wrapper.find('[icon="i-lucide-save"]');
     expect(saveBtn.exists()).toBe(true);
 
@@ -96,7 +104,8 @@ describe('EditorHeader', () => {
     expect(mockTimelineStore.saveTimeline).toHaveBeenCalled();
   });
 
-  it('shows spin animation and path icon on save button when saving', async () => {
+  it('shows spin animation and path icon on native save button when saving', async () => {
+    (window as Window & { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__ = {};
     mockTimelineStore.isSavingTimeline = true;
     const wrapper = await mountSuspended(EditorHeader);
 
@@ -105,7 +114,8 @@ describe('EditorHeader', () => {
     expect(saveBtn.classes()).toContain('animate-spin');
   });
 
-  it('highlights save button when timeline has unsaved changes', async () => {
+  it('highlights native save button when timeline has unsaved changes', async () => {
+    (window as Window & { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__ = {};
     mockTimelineStore.isTimelineDirty = true;
     const wrapper = await mountSuspended(EditorHeader);
 

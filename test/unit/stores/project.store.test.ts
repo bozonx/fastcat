@@ -123,7 +123,8 @@ vi.mock('~/stores/media.store', () => ({
 vi.mock('~/stores/timeline.store', () => ({
   useTimelineStore: vi.fn(() => ({
     resetTimelineState: mockResetTimelineState,
-    maybeCreateMobileBackup: vi.fn().mockResolvedValue(undefined),
+    flushAutomaticBackup: vi.fn().mockResolvedValue(undefined),
+    flushTimelineAutosave: vi.fn().mockResolvedValue(undefined),
   })),
 }));
 

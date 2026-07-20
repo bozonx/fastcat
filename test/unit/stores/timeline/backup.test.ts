@@ -195,6 +195,47 @@ describe('createTimelineBackupModule', () => {
     });
   });
 
+  describe('automatic backups', () => {
+    it('uses a fixed three-version policy and does not copy every automatic save', async () => {
+      const projectStore = makeProjectStoreMock();
+      const deps = createMockDeps({
+        projectStore,
+        writesAutosaveToMain: ref(true),
+        workspaceStore: {
+          userSettings: { backup: { enabled: false, count: 99 } },
+          inDevelopmentFeaturesEnabled: false,
+        },
+      });
+      const backup = createTimelineBackupModule(deps);
+
+      await backup.recordAutomaticSave('first');
+      await backup.recordAutomaticSave('second');
+
+      expect(projectStore.writeTextByPath).toHaveBeenCalledTimes(1);
+
+      await backup.flushAutomaticBackup();
+      await backup.recordAutomaticSave('third');
+      await backup.flushAutomaticBackup();
+      await backup.recordAutomaticSave('fourth');
+      await backup.flushAutomaticBackup();
+
+      expect(projectStore.writeTextByPath).toHaveBeenCalledTimes(4);
+      expect(projectStore.deleteByPath).toHaveBeenCalledTimes(1);
+    });
+
+    it('does nothing when canonical autosave is disabled', async () => {
+      const projectStore = makeProjectStoreMock();
+      const backup = createTimelineBackupModule(
+        createMockDeps({ projectStore, writesAutosaveToMain: ref(false) }),
+      );
+
+      await backup.recordAutomaticSave('serialized');
+      await backup.flushAutomaticBackup();
+
+      expect(projectStore.writeTextByPath).not.toHaveBeenCalled();
+    });
+  });
+
   describe('preserveAndDiscardAutosave', () => {
     it('rotates the autosave content into a backup, then deletes the sidecar', async () => {
       const projectStore = makeProjectStoreMock();

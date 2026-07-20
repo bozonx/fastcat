@@ -531,6 +531,21 @@ describe('TimelinePersistenceModule', () => {
     expect(deps.isTimelineDirty.value).toBe(false);
   });
 
+  it('notifies the automatic backup policy after a canonical autosave', async () => {
+    const onAutosaveSuccess = vi.fn().mockResolvedValue(undefined);
+    const deps = createMockDeps({
+      timelineDoc: ref({ ...fallbackDoc }),
+      writesAutosaveToMain: ref(true),
+      onAutosaveSuccess,
+    });
+    const mod = createTimelinePersistenceModule(deps);
+
+    mod.markDirty();
+    await mod.flushTimelineAutosave();
+
+    expect(onAutosaveSuccess).toHaveBeenCalledWith(expect.any(String));
+  });
+
   it('canonical autosave coalesces edit-driven saves through the debounce', async () => {
     vi.useFakeTimers();
     try {

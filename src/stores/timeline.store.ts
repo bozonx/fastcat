@@ -574,7 +574,10 @@ export const useTimelineStore = defineStore('timeline', () => {
     autosaveDebounceMs: () => (isMobileLayout.value ? 800 : 500),
     writesAutosaveToMain,
     isMobile: isMobileLayout,
-    onMobileBackup: (serialized) => backup.handleBackup(serialized, { force: true }),
+    onMobileBackup: async (serialized) => {
+      await backup.recordAutomaticSave(serialized);
+      await backup.flushAutomaticBackup();
+    },
     deleteAutosaveFile: (timelinePath) => deleteTimelineAutosaveFile(timelinePath),
     discardAutosave: (timelinePath) => backup.preserveAndDiscardAutosave(timelinePath),
     onDirtyStateChange: (timelinePath, dirty) => {
@@ -618,12 +621,12 @@ export const useTimelineStore = defineStore('timeline', () => {
     },
     onSaveSuccess: (serialized) => {
       void lifecycle.handleSaveSuccess();
-      // On desktop backups are created on every explicit save; on mobile they
-      // are taken only when switching timelines or leaving the project.
-      if (!isMobileLayout.value) {
+      // Native desktop keeps its existing explicit-save backup behaviour.
+      if (isTauriRuntime()) {
         void backup.handleBackup(serialized);
       }
     },
+    onAutosaveSuccess: (serialized) => backup.recordAutomaticSave(serialized),
     onSaveError: () => {
       toast.add({
         title: t('common.saveError'),
@@ -1361,17 +1364,10 @@ export const useTimelineStore = defineStore('timeline', () => {
     deleteBackupVersion: backup.deleteBackupVersion,
     loadBackupVersions: backup.loadBackupVersions,
     clearAllBackups: backup.clearAllBackups,
+    flushAutomaticBackup: backup.flushAutomaticBackup,
     isMobileLayout,
     get defaultZoneDurationTicks() {
       return workspaceStore.userSettings.timeline.defaultStaticClipDurationTicks;
-    },
-    // Create a forced backup of the current timeline before leaving the project
-    // or switching timelines on mobile.
-    async maybeCreateMobileBackup() {
-      if (!isMobileLayout.value || !currentTimelinePath.value || !timelineDoc.value) return;
-      if (!isPathDirty(currentTimelinePath.value)) return;
-      const serialized = serializeTimelineToOtio(timelineDoc.value);
-      await backup.handleBackup(serialized, { force: true });
     },
   };
 });

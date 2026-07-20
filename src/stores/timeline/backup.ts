@@ -11,6 +11,9 @@ import { selectTimelineDurationTicks } from '~/timeline/selectors';
 import { getNextBackupName, getBackupsToDelete, getBackupNumber } from '~/utils/timeline-backup';
 const log = createDevLogger('backup');
 
+const AUTOMATIC_BACKUP_COUNT = 3;
+const AUTOMATIC_BACKUP_INTERVAL_MS = 5 * 60_000;
+
 /**
  * A restorable timeline snapshot listed in the backups UI: the main file, the
  * autosave copy, or a numbered backup.
@@ -41,6 +44,7 @@ export interface TimelineBackupDeps {
   previewBackupInfo: Ref<TimelinePreviewBackupInfo | null>;
   isReadOnly?: Ref<boolean>;
   isMobile?: Ref<boolean>;
+  writesAutosaveToMain?: Ref<boolean>;
   isDirty?: Ref<boolean>;
   projectStore: {
     readTextByPath: (path: string) => Promise<string | null>;
@@ -71,6 +75,8 @@ export interface TimelineBackupDeps {
 export interface TimelineBackupModule {
   backupVersions: Ref<TimelineBackupVersion[]>;
   handleBackup: (serialized: string, options?: { force?: boolean }) => Promise<void>;
+  recordAutomaticSave: (serialized: string) => Promise<void>;
+  flushAutomaticBackup: () => Promise<void>;
   preserveAndDiscardAutosave: (timelinePath: string) => Promise<void>;
   exitPreviewAndReload: () => Promise<void>;
   restorePreviewVersion: () => Promise<void>;
@@ -82,14 +88,20 @@ export interface TimelineBackupModule {
 }
 
 /**
- * Owns the timeline backup history and version preview/restore flow. Explicit
- * saves rotate numbered backups; the backups UI lists the main file, autosave
- * and backups, and can preview or restore any of them.
+ * Owns the timeline backup history and version preview/restore flow. Native
+ * explicit saves rotate numbered backups; automatic-save modes rotate them on
+ * a bounded interval and at lifecycle boundaries.
  */
 export function createTimelineBackupModule(deps: TimelineBackupDeps): TimelineBackupModule {
   // eslint-disable-next-line prefer-const
   let module: TimelineBackupModule;
   const backupVersions = ref<TimelineBackupVersion[]>([]);
+  let pendingAutomaticBackup: string | null = null;
+  let lastAutomaticBackupAt = 0;
+
+  function usesAutomaticBackups() {
+    return deps.writesAutosaveToMain?.value ?? false;
+  }
 
   async function readVersionText(version: TimelineBackupVersion): Promise<string> {
     let text: string | null = null;
@@ -108,24 +120,28 @@ export function createTimelineBackupModule(deps: TimelineBackupDeps): TimelineBa
     return text;
   }
 
-  // Backups are a history of EXPLICIT saves (for rollback), so one is taken on
-  // every manual save — `handleBackup` is only wired into `onSaveSuccess`, which
-  // fires from `saveTimeline`, never from the periodic crash-recovery autosave.
-  // `backup.count` controls rotation; 0 disables backups.
+  // Native manual saves use the user-configured rotation. Automatic-save modes
+  // use the fixed policy above, keeping revision history without copying after
+  // every edit-driven canonical save.
   // `force` bypasses the check for one-off preservation (e.g. discarding an
   // unsaved sidecar) so the work is never lost even when backups are disabled.
-  async function handleBackup(serialized: string, options?: { force?: boolean }) {
+  async function handleBackup(
+    serialized: string,
+    options?: { force?: boolean; automatic?: boolean },
+  ) {
     if (!deps.currentTimelinePath.value) return;
     const backupSettings = deps.workspaceStore.userSettings.backup;
-    if (
-      !options?.force &&
-      (!deps.workspaceStore.inDevelopmentFeaturesEnabled ||
+    const automatic = options?.automatic === true;
+    if (!automatic && !options?.force) {
+      if (
+        !deps.workspaceStore.inDevelopmentFeaturesEnabled ||
         !backupSettings ||
         backupSettings.enabled === false ||
-        backupSettings.count <= 0)
-    )
-      return;
-    const rotationCount = backupSettings?.count ?? 5;
+        backupSettings.count <= 0
+      )
+        return;
+    }
+    const rotationCount = automatic ? AUTOMATIC_BACKUP_COUNT : (backupSettings?.count ?? 5);
 
     try {
       const pathParts = deps.currentTimelinePath.value.split('/');
@@ -162,6 +178,22 @@ export function createTimelineBackupModule(deps: TimelineBackupDeps): TimelineBa
         description: deps.t('videoEditor.timeline.backupErrorDesc'),
         color: 'warning',
       });
+    }
+  }
+
+  async function flushAutomaticBackup() {
+    if (!usesAutomaticBackups() || !pendingAutomaticBackup) return;
+    const serialized = pendingAutomaticBackup;
+    await handleBackup(serialized, { automatic: true });
+    pendingAutomaticBackup = null;
+    lastAutomaticBackupAt = Date.now();
+  }
+
+  async function recordAutomaticSave(serialized: string) {
+    if (!usesAutomaticBackups()) return;
+    pendingAutomaticBackup = serialized;
+    if (Date.now() - lastAutomaticBackupAt >= AUTOMATIC_BACKUP_INTERVAL_MS) {
+      await flushAutomaticBackup();
     }
   }
 
@@ -433,6 +465,8 @@ export function createTimelineBackupModule(deps: TimelineBackupDeps): TimelineBa
   module = {
     backupVersions,
     handleBackup,
+    recordAutomaticSave,
+    flushAutomaticBackup,
     preserveAndDiscardAutosave,
     exitPreviewAndReload,
     restorePreviewVersion,

@@ -107,6 +107,10 @@ export const useProjectStore = defineStore('project', () => {
   const { loadProjectMeta, clearProjectMetaState } = metaModule;
 
   async function closeProject() {
+    const timelineStore = useTimelineStore();
+    await timelineStore.flushTimelineAutosave();
+    await timelineStore.flushAutomaticBackup();
+
     currentOpenSessionId++;
     projectSettingsStore.closeProjectSettings();
     currentProjectName.value = null;
@@ -119,12 +123,10 @@ export const useProjectStore = defineStore('project', () => {
     // Reset dependent stores before async gap to prevent stale debounced
     // history timeouts from firing while the timeline document is gone.
     const mediaStore = useMediaStore();
-    const timelineStore = useTimelineStore();
     const selectionStore = useSelectionStore();
     const fileManagerStore = useFileManagerStore();
     const historyStore = useHistoryStore();
 
-    await timelineStore.maybeCreateMobileBackup();
     mediaStore.resetMediaState();
     timelineStore.resetTimelineState();
     selectionStore.clearSelection();
@@ -156,6 +158,11 @@ export const useProjectStore = defineStore('project', () => {
         // No tabs left open — clear the editor instead of leaving a stale doc.
         timelineStore.resetTimelineState();
       }
+    },
+    beforeActiveTimelineClose: async () => {
+      const timelineStore = useTimelineStore();
+      await timelineStore.flushTimelineAutosave();
+      await timelineStore.flushAutomaticBackup();
     },
   });
 

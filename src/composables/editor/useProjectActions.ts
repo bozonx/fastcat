@@ -22,6 +22,7 @@ export function useProjectActions() {
     // un-flushed drag edits would be lost on project leave/switch.
     try {
       await timelineStore.flushTimelineAutosave();
+      await timelineStore.flushAutomaticBackup();
     } catch (e) {
       log.warn('Failed to flush autosave during reset:', e);
     }
@@ -54,6 +55,7 @@ export function useProjectActions() {
       // path changes — only one doc lives in memory, so its accumulated edits
       // would otherwise be lost when the new timeline replaces it.
       await timelineStore.flushTimelineAutosave();
+      await timelineStore.flushAutomaticBackup();
 
       // Save project settings before changing the active path to capture
       // the playhead/zoom of the outgoing timeline.

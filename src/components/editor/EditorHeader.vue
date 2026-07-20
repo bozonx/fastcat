@@ -6,12 +6,14 @@ import { useHotkeyLabel } from '~/composables/useHotkeyLabel';
 import TimelineTabs from '~/components/timeline/TimelineTabs.vue';
 import BackgroundTasksButton from '~/components/file-manager/BackgroundTasksButton.vue';
 import UiTooltip from '~/components/ui/UiTooltip.vue';
+import { isTauriRuntime } from '~/utils/runtime';
 
 const { t } = useI18n();
 const projectStore = useProjectStore();
 const timelineStore = useTimelineStore();
 const workspaceStore = useWorkspaceStore();
 const { getHotkeyTitle } = useHotkeyLabel();
+const isDesktop = isTauriRuntime();
 
 defineEmits(['open-project-settings', 'open-editor-settings', 'open-export-modal']);
 </script>
@@ -52,7 +54,7 @@ defineEmits(['open-project-settings', 'open-editor-settings', 'open-export-modal
           />
         </UiTooltip>
 
-        <UiTooltip :text="getHotkeyTitle(t('common.save'), 'general.save')">
+        <UiTooltip v-if="isDesktop" :text="getHotkeyTitle(t('common.save'), 'general.save')">
           <UiActionButton
             size="sm"
             variant="ghost"

@@ -21,6 +21,7 @@ vi.mock('~/stores/timeline.store', () => ({
   useTimelineStore: () => ({
     resetTimelineState: vi.fn(),
     flushTimelineAutosave: vi.fn().mockResolvedValue(undefined),
+    flushAutomaticBackup: vi.fn().mockResolvedValue(undefined),
     loadTimeline: vi.fn().mockResolvedValue(undefined),
     loadTimelineMetadata: vi.fn().mockResolvedValue(undefined),
     scanOpenPathsForRecovery: vi.fn().mockResolvedValue(undefined),

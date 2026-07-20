@@ -9,6 +9,7 @@ import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
 import { useTimelineZoom } from '~/composables/timeline/useTimelineZoom';
 import { useTimelineWheelHandler } from '~/composables/timeline/useTimelineWheelHandler';
 import { pxPerSecondToZoom, pxToTimeTicks } from '~/utils/timeline/geometry';
+import { TICKS_PER_SECOND } from '~/utils/time';
 
 vi.mock('~/composables/timeline/useTimelineZoom', () => ({
   useTimelineZoom: vi.fn(() => ({
