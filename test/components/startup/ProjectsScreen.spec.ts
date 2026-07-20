@@ -180,6 +180,18 @@ describe('ProjectsScreen', () => {
     expect(component.text()).toContain('fastcat.projects.openProjectDisk');
   });
 
+  it('shows the switch-to-mobile button only in dev builds', async () => {
+    const component = await mountSuspended(ProjectsScreen, {
+      global: {
+        stubs: commonStubs,
+      },
+    });
+
+    // In the Vitest environment NODE_ENV='test', so import.meta.dev resolves to true
+    // (Nuxt treats anything that is not 'production' as dev) and the dev-only button is visible.
+    expect(component.text()).toContain('fastcat.projects.switchToMobile');
+  });
+
   it('opens web projects by project name even when recent metadata has a projectPath', async () => {
     const component = await mountSuspended(ProjectsScreen, {
       global: {

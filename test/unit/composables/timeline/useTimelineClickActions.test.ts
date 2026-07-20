@@ -7,6 +7,8 @@ import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
 import { useTimelineClickActions } from '~/composables/timeline/useTimelineClickActions';
 import type { TimelineTrack } from '~/timeline/types';
 
+const trackHeightsRef = ref<Record<string, number>>({});
+
 const resetTimelineZoomMock = vi.fn();
 const fitTimelineZoomMock = vi.fn();
 const requestCenterPlayheadMock = vi.fn();
@@ -22,6 +24,7 @@ const timelineStoreMock = {
   selectionRange: null,
   isTrimModeActive: false,
   timelineFormat: { fps: 25 },
+  trackHeights: trackHeightsRef,
   resetTimelineZoom: resetTimelineZoomMock,
   fitTimelineZoom: fitTimelineZoomMock,
   requestCenterPlayhead: requestCenterPlayheadMock,
@@ -33,6 +36,12 @@ const timelineStoreMock = {
 const timelineSettingsStoreMock = {
   toolbarSnapMode: 'snap' as const,
 };
+
+vi.mock('pinia', () => ({
+  createPinia: vi.fn(),
+  setActivePinia: vi.fn(),
+  storeToRefs: vi.fn((store: any) => ({ trackHeights: store.trackHeights })),
+}));
 
 const mockWorkspaceStore = {
   userSettings: reactive(JSON.parse(JSON.stringify(DEFAULT_USER_SETTINGS))),
@@ -51,7 +60,7 @@ vi.mock('~/stores/workspace.store', () => ({
 }));
 
 vi.mock('~/composables/timeline/timeline-drag-domain', () => ({
-  resolvePlayheadClickTimeTicks: vi.fn((raw: number) => raw),
+  resolvePlayheadClickTimeTicks: vi.fn((args: any) => args?.rawTimeTicks ?? args),
 }));
 
 let activeWrapper: VueWrapper | null = null;
@@ -69,8 +78,7 @@ function setup({
 
   const videoEl = document.createElement('div');
   videoEl.className = 'video-tracks-scroll';
-  videoEl.getBoundingClientRect = () =>
-    ({ left: 0, top: 0, width: 1000, height: 200 }) as DOMRect;
+  videoEl.getBoundingClientRect = () => ({ left: 0, top: 0, width: 1000, height: 200 }) as DOMRect;
 
   const audioEl = document.createElement('div');
   audioEl.className = 'audio-tracks-scroll';
@@ -78,8 +86,7 @@ function setup({
     ({ left: 0, top: 200, width: 1000, height: 200 }) as DOMRect;
 
   const scrollEl = document.createElement('div');
-  scrollEl.getBoundingClientRect = () =>
-    ({ left: 0, top: 0, width: 1000, height: 400 }) as DOMRect;
+  scrollEl.getBoundingClientRect = () => ({ left: 0, top: 0, width: 1000, height: 400 }) as DOMRect;
 
   const horizontalScrollEl = ref(horizontalEl);
   const videoScrollEl = ref(videoEl);
@@ -280,9 +287,24 @@ describe('useTimelineClickActions', () => {
 
     it('executes the configured click action for timeline clicks on empty area', () => {
       mockWorkspaceStore.userSettings.mouse.timeline.click = 'add_marker';
-      const { api, videoEl } = setup();
+      const track: TimelineTrack = {
+        id: 'v1',
+        kind: 'video',
+        clips: [],
+      } as unknown as TimelineTrack;
+      const { api, videoEl } = setup({ videoTracks: [track] });
+      trackHeightsRef.value = { v1: 80 };
       const emptyEl = document.createElement('div');
-      const event = makeClickEvent(200, emptyEl);
+      videoEl.appendChild(emptyEl);
+      const event = {
+        button: 0,
+        clientX: 200,
+        clientY: 10,
+        target: emptyEl,
+        currentTarget: emptyEl,
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn(),
+      } as unknown as MouseEvent;
       api.onTimelineClick(event);
       expect(applyTimelineMock).toHaveBeenCalledWith(
         expect.objectContaining({ type: 'add_marker' }),

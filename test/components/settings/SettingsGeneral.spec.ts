@@ -129,4 +129,17 @@ describe('SettingsGeneral', () => {
 
     expect(wrapper.text()).not.toContain('videoEditor.settings.uiInterfaceScale');
   });
+
+  it('hides Advanced accordion when no advanced settings are available (web)', async () => {
+    const wrapper = await mountSuspended(SettingsGeneral);
+
+    expect(wrapper.text()).not.toContain('videoEditor.settings.advancedSection');
+  });
+
+  it('shows Advanced accordion in native desktop', async () => {
+    (window as Window & { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__ = {};
+    const wrapper = await mountSuspended(SettingsGeneral);
+
+    expect(wrapper.text()).toContain('videoEditor.settings.advancedSection');
+  });
 });

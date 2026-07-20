@@ -59,7 +59,14 @@ function makeTimelineStore(overrides: AnyClip = {}): any {
   };
 }
 
-function build(options: { clip?: any; trackKind?: 'video' | 'audio'; timelineStore?: any } = {}) {
+function build(
+  options: {
+    clip?: any;
+    trackKind?: 'video' | 'audio';
+    timelineStore?: any;
+    inDevelopmentFeaturesEnabled?: boolean;
+  } = {},
+) {
   const timelineStore = options.timelineStore ?? makeTimelineStore();
   const clip = options.clip ?? makeClip();
   const uiStore = {
@@ -92,7 +99,7 @@ function build(options: { clip?: any; trackKind?: 'video' | 'audio'; timelineSto
       toggleDirectory: vi.fn(async () => {}),
     } as any,
     setActiveTab: vi.fn(),
-    inDevelopmentFeaturesEnabled: ref(true),
+    inDevelopmentFeaturesEnabled: ref(options.inDevelopmentFeaturesEnabled ?? true),
   });
   return { actions, timelineStore, clip, uiStore };
 }
@@ -324,6 +331,24 @@ describe('useClipPropertiesActions', () => {
     const renameIndex = ids.indexOf('rename');
     expect(renameIndex).toBeGreaterThan(-1);
     expect(renameIndex).toBeGreaterThan(pasteParametersIndex);
+  });
+
+  describe('clip parameters actions (in-development feature)', () => {
+    it('includes copy/paste-parameters actions when in-development features are enabled', () => {
+      const { actions } = build({ inDevelopmentFeaturesEnabled: true });
+      const ids = actions.otherActionsList.value.map((a) => a.id);
+
+      expect(ids).toContain('copy-parameters');
+      expect(ids).toContain('paste-parameters');
+    });
+
+    it('hides copy/paste-parameters actions when in-development features are disabled', () => {
+      const { actions } = build({ inDevelopmentFeaturesEnabled: false });
+      const ids = actions.otherActionsList.value.map((a) => a.id);
+
+      expect(ids).not.toContain('copy-parameters');
+      expect(ids).not.toContain('paste-parameters');
+    });
   });
 
   it('includes toggleShowThumbnails for media video clips', () => {

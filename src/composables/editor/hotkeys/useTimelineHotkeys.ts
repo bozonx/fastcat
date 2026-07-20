@@ -369,6 +369,8 @@ export function useTimelineHotkeys(
     },
 
     'timeline.copyClipParameters': () => {
+      // In-development feature — hotkey is a no-op while the UI is gated off.
+      if (!workspaceStore.inDevelopmentFeaturesEnabled) return false;
       if (timelineStore.selectedItemIds.length !== 1) return false;
       const itemId = timelineStore.selectedItemIds[0];
       const doc = timelineStore.timelineDoc;
@@ -393,6 +395,8 @@ export function useTimelineHotkeys(
       // At least one clip must be selected. When several are selected the paste
       // fans out across the whole selection; the first selected clip drives the
       // paste modal (applicable groups) and is expanded downstream.
+      // In-development feature — hotkey is a no-op while the UI is gated off.
+      if (!workspaceStore.inDevelopmentFeaturesEnabled) return false;
       if (timelineStore.selectedItemIds.length === 0) return false;
 
       const payload = clipboardStore.clipboardPayload;

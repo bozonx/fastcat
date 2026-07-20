@@ -1301,4 +1301,131 @@ describe('useTimelineItemDrag', () => {
       }),
     );
   });
+
+  it('activates select_area mode when shift-dragging (clipDragShift)', () => {
+    timelineStoreMock.selectedItemIds = ['clip-1'];
+
+    const scrollEl = ref({ scrollLeft: 0 } as HTMLElement);
+    const tracks = computed(() => timelineStoreMock.timelineDoc.tracks);
+    const { startMoveItem, draggingMode, movePreview } = useTimelineItemDrag(scrollEl, tracks);
+
+    const pointerTarget = {
+      setPointerCapture: vi.fn(),
+      releasePointerCapture: vi.fn(),
+    };
+
+    startMoveItem(
+      {
+        button: 0,
+        buttons: 1,
+        clientX: 100,
+        clientY: 20,
+        pointerId: 41,
+        pointerType: 'mouse',
+        currentTarget: pointerTarget,
+        shiftKey: true,
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn(),
+      } as unknown as PointerEvent,
+      {
+        trackId: 'track-1',
+        itemId: 'clip-1',
+        startTicks: 254_016_000_000,
+        mode: 'move',
+      },
+    );
+
+    // Drag starts in 'move' mode; select_area action doesn't set copy override
+    expect(draggingMode.value).toBe('move');
+    // movePreview has the initial clip position
+    expect(movePreview.value).toHaveLength(1);
+    expect(movePreview.value[0]).toEqual(expect.objectContaining({ itemId: 'clip-1' }));
+  });
+
+  it('activates free_mode when ctrl-dragging (clipDragCtrl)', () => {
+    timelineStoreMock.selectedItemIds = ['clip-1'];
+
+    const scrollEl = ref({ scrollLeft: 0 } as HTMLElement);
+    const tracks = computed(() => timelineStoreMock.timelineDoc.tracks);
+    const { startMoveItem, movePreview } = useTimelineItemDrag(scrollEl, tracks);
+
+    const pointerTarget = {
+      setPointerCapture: vi.fn(),
+      releasePointerCapture: vi.fn(),
+    };
+
+    startMoveItem(
+      {
+        button: 0,
+        buttons: 1,
+        clientX: 100,
+        clientY: 20,
+        pointerId: 42,
+        pointerType: 'mouse',
+        currentTarget: pointerTarget,
+        ctrlKey: true,
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn(),
+      } as unknown as PointerEvent,
+      {
+        trackId: 'track-1',
+        itemId: 'clip-1',
+        startTicks: 254_016_000_000,
+        mode: 'move',
+      },
+    );
+
+    const handlers = bindSessionMock.mock.calls[bindSessionMock.mock.calls.length - 1]?.[0];
+
+    handlers.onPointerMove({
+      buttons: 1,
+      button: 0,
+      clientX: 112,
+      clientY: 20,
+      ctrlKey: true,
+    } as PointerEvent);
+
+    // free_mode should produce a preview without clip snapping
+    expect(movePreview.value.length).toBeGreaterThan(0);
+    expect(movePreview.value[0]).toEqual(
+      expect.objectContaining({
+        itemId: 'clip-1',
+      }),
+    );
+  });
+
+  it('ignores drag when button is not 0 or 2', () => {
+    const scrollEl = ref({ scrollLeft: 0 } as HTMLElement);
+    const tracks = computed(() => timelineStoreMock.timelineDoc.tracks);
+    const { startMoveItem, draggingMode } = useTimelineItemDrag(scrollEl, tracks);
+
+    const pointerTarget = {
+      setPointerCapture: vi.fn(),
+      releasePointerCapture: vi.fn(),
+    };
+
+    startMoveItem(
+      {
+        button: 1,
+        buttons: 4,
+        clientX: 100,
+        clientY: 20,
+        pointerId: 43,
+        pointerType: 'mouse',
+        currentTarget: pointerTarget,
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn(),
+      } as unknown as PointerEvent,
+      {
+        trackId: 'track-1',
+        itemId: 'clip-1',
+        startTicks: 254_016_000_000,
+        mode: 'move',
+      },
+    );
+
+    // Button 1 (middle) is ignored by startMoveItem
+    expect(draggingMode.value).toBeNull();
+    expect(bindSessionMock).not.toHaveBeenCalled();
+  });
 });

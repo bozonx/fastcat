@@ -277,22 +277,25 @@ export function buildSingleItemActionGroup(options: UseClipContextMenuOptions): 
         }),
     });
 
-    // Copy parameters
-    actions.push({
-      label: options.t('fastcat.clip.parameters.copy'),
-      icon: 'i-heroicons-clipboard-document',
-      kbds: options.getHotkeyKbds('timeline.copyClipParameters'),
-      onSelect: () => options.copyClipParameters(clip, track.kind),
-    });
+    // Copy / Paste clip parameters — in-development feature, gated until stable.
+    if (workspaceStore.inDevelopmentFeaturesEnabled) {
+      // Copy parameters
+      actions.push({
+        label: options.t('fastcat.clip.parameters.copy'),
+        icon: 'i-heroicons-clipboard-document',
+        kbds: options.getHotkeyKbds('timeline.copyClipParameters'),
+        onSelect: () => options.copyClipParameters(clip, track.kind),
+      });
 
-    // Paste parameters
-    actions.push({
-      label: options.t('fastcat.clip.parameters.paste'),
-      icon: 'i-heroicons-clipboard-document-check',
-      disabled: isTrackLocked || isLocked || !hasApplicableClipParameters,
-      kbds: options.getHotkeyKbds('timeline.pasteClipParameters'),
-      onSelect: () => options.pasteClipParameters(clip, track.kind),
-    });
+      // Paste parameters
+      actions.push({
+        label: options.t('fastcat.clip.parameters.paste'),
+        icon: 'i-heroicons-clipboard-document-check',
+        disabled: isTrackLocked || isLocked || !hasApplicableClipParameters,
+        kbds: options.getHotkeyKbds('timeline.pasteClipParameters'),
+        onSelect: () => options.pasteClipParameters(clip, track.kind),
+      });
+    }
   }
 
   // Copy

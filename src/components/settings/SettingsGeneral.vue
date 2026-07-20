@@ -20,6 +20,10 @@ const isDesktop = isTauriRuntime();
 
 const isResetConfirmOpen = ref(false);
 
+// Every field inside the Advanced accordion requires the desktop runtime
+// (history/autosave + dev-only backups), so hide the accordion entirely on web.
+const hasAdvancedSettings = isDesktop;
+
 function resetGeneralDefaults() {
   // Preserve the user's language choice during a general reset.
   workspaceStore.userSettings.openLastProjectOnStart = DEFAULT_USER_SETTINGS.openLastProjectOnStart;
@@ -154,7 +158,7 @@ const stopFramesQualityOptions = [
       </div>
     </UiFormField>
 
-    <UiAccordion :title="t('videoEditor.settings.advancedSection')">
+    <UiAccordion v-if="hasAdvancedSettings" :title="t('videoEditor.settings.advancedSection')">
       <div class="flex flex-col gap-6 pt-2">
         <UiFormField v-if="isDesktop" :label="t('videoEditor.settings.historyMaxEntries')">
           <UiWheelNumberInput

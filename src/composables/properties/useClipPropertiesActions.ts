@@ -410,26 +410,29 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
     }[] = [];
     const clip = options.clip.value;
 
-    // 1. Copy parameters
-    list.push({
-      id: 'copy-parameters',
-      label: t('fastcat.clip.parameters.copy'),
-      icon: 'i-heroicons-clipboard-document',
-      onClick: () => {
-        /* Handled in components since it needs clipboard formatting */
-      },
-    });
+    // Copy / Paste clip parameters — in-development feature, gated until stable.
+    if (options.inDevelopmentFeaturesEnabled?.value) {
+      // 1. Copy parameters
+      list.push({
+        id: 'copy-parameters',
+        label: t('fastcat.clip.parameters.copy'),
+        icon: 'i-heroicons-clipboard-document',
+        onClick: () => {
+          /* Handled in components since it needs clipboard formatting */
+        },
+      });
 
-    // 2. Paste parameters
-    list.push({
-      id: 'paste-parameters',
-      label: t('fastcat.clip.parameters.paste'),
-      icon: 'i-heroicons-clipboard-document-check',
-      disabled: !hasApplicableClipParameters.value || options.clip.value.locked,
-      onClick: () => {
-        /* Handled in components since it needs modal state */
-      },
-    });
+      // 2. Paste parameters
+      list.push({
+        id: 'paste-parameters',
+        label: t('fastcat.clip.parameters.paste'),
+        icon: 'i-heroicons-clipboard-document-check',
+        disabled: !hasApplicableClipParameters.value || options.clip.value.locked,
+        onClick: () => {
+          /* Handled in components since it needs modal state */
+        },
+      });
+    }
 
     // 3. Rename
     list.push({

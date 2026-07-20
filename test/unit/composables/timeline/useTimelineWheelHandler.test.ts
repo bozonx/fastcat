@@ -419,4 +419,370 @@ describe('useTimelineWheelHandler', () => {
 
     wrapper.unmount();
   });
+
+  // Helper to mount a minimal timeline wheel handler
+  function mountHandler(opts?: { tracks?: { id: string; kind: string }[] }) {
+    const horizontalEl = document.createElement('div');
+    Object.defineProperty(horizontalEl, 'scrollLeft', {
+      value: 0,
+      writable: true,
+      configurable: true,
+    });
+    Object.defineProperty(horizontalEl, 'clientWidth', {
+      value: 500,
+      writable: true,
+      configurable: true,
+    });
+
+    const videoEl = document.createElement('div');
+    videoEl.className = 'video-tracks-scroll';
+    videoEl.getBoundingClientRect = () =>
+      ({
+        left: 0,
+        top: 0,
+        right: 500,
+        bottom: 200,
+        width: 500,
+        height: 200,
+        x: 0,
+        y: 0,
+        toJSON: () => ({}),
+      }) as DOMRect;
+
+    const audioEl = document.createElement('div');
+    audioEl.className = 'audio-tracks-scroll';
+
+    const rulerEl = document.createElement('div');
+    rulerEl.className = 'ruler-container';
+    rulerEl.getBoundingClientRect = () =>
+      ({
+        left: 0,
+        top: 0,
+        right: 500,
+        bottom: 30,
+        width: 500,
+        height: 30,
+        x: 0,
+        y: 0,
+        toJSON: () => ({}),
+      }) as DOMRect;
+
+    const scrollEl = document.createElement('div');
+    Object.defineProperty(scrollEl, 'scrollTop', {
+      value: 0,
+      writable: true,
+      configurable: true,
+    });
+
+    const tracksRef = ref(opts?.tracks ?? []);
+
+    const TestComp = defineComponent({
+      setup() {
+        useTimelineWheelHandler({
+          horizontalScrollEl: ref(horizontalEl),
+          videoScrollEl: ref(videoEl),
+          audioScrollEl: ref(audioEl),
+          rulerContainerRef: ref(rulerEl),
+          scrollEl: ref(scrollEl),
+          tracks: tracksRef,
+        });
+        return () => null;
+      },
+    });
+
+    const wrapper = mount(TestComp);
+    return { wrapper, horizontalEl, videoEl, audioEl, rulerEl, scrollEl };
+  }
+
+  it('prevents default and does nothing for "none" wheel action', async () => {
+    mockWorkspaceStore.userSettings.mouse.timeline.wheel = 'none';
+    const { wrapper, videoEl } = mountHandler();
+
+    const wheelEvent = new WheelEvent('wheel', { deltaY: 10, bubbles: true, cancelable: true });
+    const preventSpy = vi.spyOn(wheelEvent, 'preventDefault');
+    videoEl.dispatchEvent(wheelEvent);
+
+    await nextTick();
+    expect(preventSpy).toHaveBeenCalled();
+    expect(mockHandleZoomWheel).not.toHaveBeenCalled();
+
+    wrapper.unmount();
+  });
+
+  it('scrolls vertically for "scroll_vertical" action via secondary wheel', async () => {
+    mockWorkspaceStore.userSettings.mouse.timeline.wheel = 'scroll_vertical';
+    const { wrapper, videoEl } = mountHandler();
+
+    // Secondary wheel (deltaX > deltaY) bypasses native scroll check
+    const wheelEvent = new WheelEvent('wheel', {
+      deltaX: 20,
+      deltaY: 5,
+      bubbles: true,
+      cancelable: true,
+    });
+    const preventSpy = vi.spyOn(wheelEvent, 'preventDefault');
+    videoEl.dispatchEvent(wheelEvent);
+
+    await nextTick();
+    // preventDefault is called when the handler processes scroll_vertical programmatically
+    expect(preventSpy).toHaveBeenCalled();
+
+    wrapper.unmount();
+  });
+
+  it('scrolls horizontally for "scroll_horizontal" action', async () => {
+    mockWorkspaceStore.userSettings.mouse.timeline.wheel = 'scroll_horizontal';
+    const { wrapper, horizontalEl, videoEl } = mountHandler();
+
+    const scrollBySpy = vi.spyOn(horizontalEl, 'scrollBy');
+    const wheelEvent = new WheelEvent('wheel', {
+      deltaY: 10,
+      bubbles: true,
+      cancelable: true,
+    });
+    videoEl.dispatchEvent(wheelEvent);
+
+    await nextTick();
+    expect(scrollBySpy).toHaveBeenCalledWith(expect.objectContaining({ left: 10 }));
+
+    wrapper.unmount();
+  });
+
+  it('seeks by frame for "seek_frame" action', async () => {
+    const { useTimelineStore } = await import('~/stores/timeline.store');
+    const timelineStore = useTimelineStore();
+    timelineStore.duration = 60 * TICKS_PER_SECOND;
+    timelineStore.setCurrentTimeTicks(5 * TICKS_PER_SECOND);
+    const setCurrentTimeTicksSpy = vi.spyOn(timelineStore, 'setCurrentTimeTicks');
+
+    mockWorkspaceStore.userSettings.mouse.timeline.wheel = 'seek_frame';
+    const { wrapper, videoEl } = mountHandler();
+
+    videoEl.dispatchEvent(new WheelEvent('wheel', { deltaY: 10, bubbles: true, cancelable: true }));
+
+    await nextTick();
+    expect(setCurrentTimeTicksSpy).toHaveBeenCalled();
+    const seekDelta = setCurrentTimeTicksSpy.mock.calls[0]![0] - 5 * TICKS_PER_SECOND;
+    // One frame forward (deltaY > 0)
+    expect(seekDelta).toBeGreaterThan(0);
+    expect(seekDelta).toBeLessThanOrEqual(TICKS_PER_SECOND);
+
+    wrapper.unmount();
+  });
+
+  it('seeks by second for "seek_second" action', async () => {
+    const { useTimelineStore } = await import('~/stores/timeline.store');
+    const timelineStore = useTimelineStore();
+    timelineStore.duration = 60 * TICKS_PER_SECOND;
+    timelineStore.setCurrentTimeTicks(5 * TICKS_PER_SECOND);
+    const setCurrentTimeTicksSpy = vi.spyOn(timelineStore, 'setCurrentTimeTicks');
+
+    mockWorkspaceStore.userSettings.mouse.timeline.wheel = 'seek_second';
+    const { wrapper, videoEl } = mountHandler();
+
+    videoEl.dispatchEvent(new WheelEvent('wheel', { deltaY: 10, bubbles: true, cancelable: true }));
+
+    await nextTick();
+    expect(setCurrentTimeTicksSpy).toHaveBeenCalled();
+    const seekDelta = setCurrentTimeTicksSpy.mock.calls[0]![0] - 5 * TICKS_PER_SECOND;
+    expect(seekDelta).toBe(TICKS_PER_SECOND);
+
+    wrapper.unmount();
+  });
+
+  it('resizes track height for "resize_track" action', async () => {
+    const { useTimelineStore } = await import('~/stores/timeline.store');
+    const timelineStore = useTimelineStore();
+    const { trackHeights } = await import('~/stores/timeline.store').then(() => {
+      return { trackHeights: (timelineStore as any).trackHeights };
+    });
+
+    const trackId = 'v1';
+    if (timelineStore.trackHeights) {
+      timelineStore.trackHeights[trackId] = 80;
+    }
+
+    mockWorkspaceStore.userSettings.mouse.timeline.wheel = 'resize_track';
+    const { wrapper, videoEl } = mountHandler({ tracks: [{ id: trackId, kind: 'video' }] });
+
+    const trackEl = document.createElement('div');
+    trackEl.setAttribute('data-track-id', trackId);
+    Object.defineProperty(trackEl, 'closest', {
+      value: vi.fn((sel: string) => (sel === '[data-track-id]' ? trackEl : null)),
+      configurable: true,
+    });
+
+    const wheelEvent = new WheelEvent('wheel', {
+      deltaY: 20,
+      bubbles: true,
+      cancelable: true,
+    });
+    Object.defineProperty(wheelEvent, 'target', {
+      value: trackEl,
+      configurable: true,
+    });
+    videoEl.dispatchEvent(wheelEvent);
+
+    await nextTick();
+    if (timelineStore.trackHeights) {
+      expect(timelineStore.trackHeights[trackId]).not.toBe(80);
+    }
+
+    wrapper.unmount();
+  });
+
+  it('zooms vertically for "zoom_vertical" action on video tracks', async () => {
+    const { useTimelineStore } = await import('~/stores/timeline.store');
+    const timelineStore = useTimelineStore();
+    const trackId = 'v1';
+    if (timelineStore.trackHeights) {
+      timelineStore.trackHeights[trackId] = 80;
+    }
+
+    mockWorkspaceStore.userSettings.mouse.timeline.wheel = 'zoom_vertical';
+    const { wrapper, videoEl } = mountHandler({ tracks: [{ id: trackId, kind: 'video' }] });
+
+    videoEl.dispatchEvent(new WheelEvent('wheel', { deltaY: 20, bubbles: true, cancelable: true }));
+
+    await nextTick();
+    if (timelineStore.trackHeights) {
+      // deltaY > 0 means zoom out (shrink)
+      expect(timelineStore.trackHeights[trackId]).toBeLessThan(80);
+    }
+
+    wrapper.unmount();
+  });
+
+  it('handles ruler category wheel events', async () => {
+    mockWorkspaceStore.userSettings.mouse.ruler.wheel = 'zoom_horizontal_to_playhead';
+    const { wrapper, rulerEl } = mountHandler();
+
+    rulerEl.dispatchEvent(new WheelEvent('wheel', { deltaY: 10, bubbles: true, cancelable: true }));
+
+    await nextTick();
+    expect(mockHandleZoomWheel).toHaveBeenCalledOnce();
+
+    wrapper.unmount();
+  });
+
+  it('handles trackHeaders category wheel events via labels container', async () => {
+    mockWorkspaceStore.userSettings.mouse.trackHeaders.wheel = 'zoom_horizontal_to_playhead';
+
+    const horizontalEl = document.createElement('div');
+    Object.defineProperty(horizontalEl, 'scrollLeft', {
+      value: 0,
+      writable: true,
+      configurable: true,
+    });
+    Object.defineProperty(horizontalEl, 'clientWidth', {
+      value: 500,
+      writable: true,
+      configurable: true,
+    });
+
+    const videoEl = document.createElement('div');
+    videoEl.className = 'video-tracks-scroll';
+    videoEl.getBoundingClientRect = () =>
+      ({
+        left: 0,
+        top: 0,
+        right: 500,
+        bottom: 200,
+        width: 500,
+        height: 200,
+        x: 0,
+        y: 0,
+        toJSON: () => ({}),
+      }) as DOMRect;
+
+    const labelsEl = document.createElement('div');
+    labelsEl.className = 'timeline-labels-container';
+    labelsEl.getBoundingClientRect = () =>
+      ({
+        left: 0,
+        top: 0,
+        right: 200,
+        bottom: 200,
+        width: 200,
+        height: 200,
+        x: 0,
+        y: 0,
+        toJSON: () => ({}),
+      }) as DOMRect;
+
+    const scrollEl = document.createElement('div');
+    const rulerEl = document.createElement('div');
+
+    const TestComp = defineComponent({
+      setup() {
+        useTimelineWheelHandler({
+          horizontalScrollEl: ref(horizontalEl),
+          videoScrollEl: ref(videoEl),
+          audioScrollEl: ref(document.createElement('div')),
+          videoLabelsScrollEl: ref(labelsEl),
+          rulerContainerRef: ref(rulerEl),
+          scrollEl: ref(scrollEl),
+          tracks: ref([]),
+        });
+        return () => null;
+      },
+    });
+
+    const wrapper = mount(TestComp);
+
+    labelsEl.dispatchEvent(
+      new WheelEvent('wheel', { deltaY: 10, bubbles: true, cancelable: true }),
+    );
+
+    await nextTick();
+    expect(mockHandleZoomWheel).toHaveBeenCalledOnce();
+
+    wrapper.unmount();
+  });
+
+  it('uses wheelShift when layer1 modifier is active', async () => {
+    mockWorkspaceStore.userSettings.hotkeys.layer1 = 'Shift';
+    mockWorkspaceStore.userSettings.mouse.timeline.wheel = 'none';
+    mockWorkspaceStore.userSettings.mouse.timeline.wheelShift = 'zoom_horizontal_to_playhead';
+
+    const { wrapper, videoEl } = mountHandler();
+
+    const wheelEvent = new WheelEvent('wheel', {
+      deltaY: 10,
+      bubbles: true,
+      cancelable: true,
+    });
+    Object.defineProperty(wheelEvent, 'shiftKey', {
+      value: true,
+      configurable: true,
+    });
+    videoEl.dispatchEvent(wheelEvent);
+
+    await nextTick();
+    expect(mockHandleZoomWheel).toHaveBeenCalledOnce();
+
+    wrapper.unmount();
+  });
+
+  it('uses wheelSecondary for horizontal wheel (secondary)', async () => {
+    mockWorkspaceStore.userSettings.mouse.timeline.wheel = 'none';
+    mockWorkspaceStore.userSettings.mouse.timeline.wheelSecondary = 'zoom_horizontal_to_playhead';
+
+    const { wrapper, videoEl } = mountHandler();
+
+    // Secondary wheel: deltaX > deltaY
+    videoEl.dispatchEvent(
+      new WheelEvent('wheel', {
+        deltaX: 20,
+        deltaY: 5,
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
+
+    await nextTick();
+    expect(mockHandleZoomWheel).toHaveBeenCalledOnce();
+
+    wrapper.unmount();
+  });
 });

@@ -1,6 +1,7 @@
 import type { ContextMenuGroup, UseClipContextMenuOptions } from './types';
 import { collectMultiSelectionState } from './utils';
 import { createLinkedGroupId } from '~/timeline/id';
+import { useWorkspaceStore } from '~/stores/workspace.store';
 
 export function buildMultiSelectionContextMenu(
   options: UseClipContextMenuOptions,
@@ -12,6 +13,7 @@ export function buildMultiSelectionContextMenu(
   if (!isMultiSelection) return null;
 
   const state = collectMultiSelectionState(options.timelineDoc.value, selectedItemIds);
+  const workspaceStore = useWorkspaceStore();
   const mainGroup: ContextMenuGroup = [];
 
   mainGroup.push({
@@ -169,7 +171,13 @@ export function buildMultiSelectionContextMenu(
   // Paste parameters onto every selected clip. The right-clicked clip drives the
   // paste modal (which groups are applicable) and the paste then fans out across
   // the whole selection. Only offered when the clipboard holds copied parameters.
-  if (item.kind === 'clip' && options.getClipParametersSnapshot()) {
+  // Gated behind the in-development flag — hidden from the menu until the feature
+  // is stable.
+  if (
+    workspaceStore.inDevelopmentFeaturesEnabled &&
+    item.kind === 'clip' &&
+    options.getClipParametersSnapshot()
+  ) {
     mainGroup.push({
       label: options.t('fastcat.clip.parameters.paste'),
       icon: 'i-heroicons-clipboard-document-check',

@@ -19,6 +19,7 @@ import { useFileManagerStore } from '~/stores/file-manager.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useClipboardStore } from '~/stores/clipboard.store';
+import { useHistoryStore } from '~/stores/history.store';
 
 const mockWorkspaceStore = {
   userSettings: reactive({
@@ -46,6 +47,7 @@ const mockWorkspaceStore = {
       instances: {},
     },
   },
+  inDevelopmentFeaturesEnabled: false,
   batchUpdateWorkspaceState: vi.fn(),
 };
 
@@ -1718,6 +1720,1096 @@ describe('useEditorHotkeys', () => {
 
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'o', code: 'KeyO', bubbles: true }));
     expect(timelineStore.updateSelectionRange).toHaveBeenCalledOnce();
+  });
+
+  // ── general.undo / general.redo ──────────────────────────────────────────
+
+  it('undoes a timeline snapshot via Ctrl+Z (general.undo)', async () => {
+    wrapper = mount(HotkeysHarness);
+    const projectStore = useProjectStore();
+    const timelineStore = useTimelineStore() as any;
+    const historyStore = useHistoryStore();
+
+    projectStore.setView('cut');
+    timelineStore.historyDebounce = { clearPendingDebouncedHistory: vi.fn() };
+    const applySpy = vi.fn();
+    timelineStore.applyRestoredSnapshot = applySpy;
+
+    historyStore.push('timeline', 'test', { tracks: [] }, 'test.label');
+
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'z', code: 'KeyZ', ctrlKey: true, bubbles: true }),
+    );
+
+    expect(applySpy).toHaveBeenCalledOnce();
+  });
+
+  it('redoes a timeline snapshot via Ctrl+Y (general.redo)', async () => {
+    wrapper = mount(HotkeysHarness);
+    const projectStore = useProjectStore();
+    const timelineStore = useTimelineStore() as any;
+    const historyStore = useHistoryStore();
+
+    projectStore.setView('cut');
+    timelineStore.historyDebounce = { clearPendingDebouncedHistory: vi.fn() };
+    const applySpy = vi.fn();
+    timelineStore.applyRestoredSnapshot = applySpy;
+
+    historyStore.push('timeline', 'test', { tracks: [] }, 'test.label');
+    historyStore.undo('timeline', { tracks: [] });
+
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'y', code: 'KeyY', ctrlKey: true, bubbles: true }),
+    );
+
+    expect(applySpy).toHaveBeenCalledOnce();
+  });
+
+  // ── general.delete ───────────────────────────────────────────────────────
+
+  it('deletes selected timeline clip via X key (general.delete)', async () => {
+    wrapper = mount(HotkeysHarness);
+    const focusStore = useFocusStore();
+    const projectStore = useProjectStore();
+    const selectionStore = useSelectionStore();
+    const timelineStore = useTimelineStore() as any;
+
+    projectStore.setView('cut');
+    focusStore.setMainFocus('timeline');
+    selectionStore.selectedEntity = {
+      source: 'timeline',
+      kind: 'clip',
+      trackId: 'track-1',
+      itemId: 'clip-1',
+    };
+    const deleteSpy = vi.fn();
+    timelineStore.deleteFirstSelectedItem = deleteSpy;
+
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'x', code: 'KeyX', bubbles: true }),
+    );
+
+    expect(deleteSpy).toHaveBeenCalledOnce();
+  });
+
+  it('deletes selected timeline clip via Delete key (general.delete)', async () => {
+    wrapper = mount(HotkeysHarness);
+    const focusStore = useFocusStore();
+    const projectStore = useProjectStore();
+    const selectionStore = useSelectionStore();
+    const timelineStore = useTimelineStore() as any;
+
+    projectStore.setView('cut');
+    focusStore.setMainFocus('timeline');
+    selectionStore.selectedEntity = {
+      source: 'timeline',
+      kind: 'clip',
+      trackId: 'track-1',
+      itemId: 'clip-1',
+    };
+    const deleteSpy = vi.fn();
+    timelineStore.deleteFirstSelectedItem = deleteSpy;
+
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Delete', code: 'Delete', bubbles: true }),
+    );
+
+    expect(deleteSpy).toHaveBeenCalledOnce();
+  });
+
+  // ── general.deselect ─────────────────────────────────────────────────────
+
+  it('clears selection on Escape (general.deselect) when timeline is focused', async () => {
+    wrapper = mount(HotkeysHarness);
+    const focusStore = useFocusStore();
+    const projectStore = useProjectStore();
+    const selectionStore = useSelectionStore();
+    const timelineStore = useTimelineStore() as any;
+
+    projectStore.setView('cut');
+    focusStore.setMainFocus('timeline');
+    selectionStore.selectedEntity = {
+      source: 'timeline',
+      kind: 'clip',
+      trackId: 'track-1',
+      itemId: 'clip-1',
+    };
+    timelineStore.selectedItemIds = ['clip-1'];
+    timelineStore.selectedTrackId = 'track-1';
+
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', bubbles: true }),
+    );
+
+    expect(selectionStore.selectedEntity).toBeNull();
+    expect(timelineStore.selectedItemIds).toEqual([]);
+    expect(timelineStore.selectedTrackId).toBeNull();
+  });
+
+  // ── general.mute ─────────────────────────────────────────────────────────
+
+  it('toggles monitor mute via Ctrl+Q (general.mute)', async () => {
+    wrapper = mount(HotkeysHarness);
+    const projectStore = useProjectStore();
+    const uiStore = useUiStore();
+
+    projectStore.setView('cut');
+    const wasMuted = uiStore.monitorMuted;
+
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'q', code: 'KeyQ', ctrlKey: true, bubbles: true }),
+    );
+
+    expect(uiStore.monitorMuted).toBe(!wasMuted);
+  });
+
+  // ── general.addMarker / prevMarker / nextMarker ──────────────────────────
+
+  it('adds a marker at playhead via M key (general.addMarker)', async () => {
+    wrapper = mount(HotkeysHarness);
+    const projectStore = useProjectStore();
+    const timelineStore = useTimelineStore() as any;
+
+    projectStore.setView('cut');
+    const addMarkerSpy = vi.fn();
+    timelineStore.addMarkerAtPlayhead = addMarkerSpy;
+    timelineStore.getMarkers = vi.fn(() => []);
+
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'm', code: 'KeyM', bubbles: true }),
+    );
+
+    expect(addMarkerSpy).toHaveBeenCalledOnce();
+  });
+
+  it('jumps to previous marker via [ key (general.prevMarker)', async () => {
+    wrapper = mount(HotkeysHarness);
+    const projectStore = useProjectStore();
+    const timelineStore = useTimelineStore() as any;
+
+    projectStore.setView('cut');
+    const jumpSpy = vi.fn();
+    timelineStore.goToPreviousMarker = jumpSpy;
+
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', { key: '[', code: 'BracketLeft', bubbles: true }),
+    );
+
+    expect(jumpSpy).toHaveBeenCalledOnce();
+  });
+
+  it('jumps to next marker via ] key (general.nextMarker)', async () => {
+    wrapper = mount(HotkeysHarness);
+    const projectStore = useProjectStore();
+    const timelineStore = useTimelineStore() as any;
+
+    projectStore.setView('cut');
+    const jumpSpy = vi.fn();
+    timelineStore.goToNextMarker = jumpSpy;
+
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', { key: ']', code: 'BracketRight', bubbles: true }),
+    );
+
+    expect(jumpSpy).toHaveBeenCalledOnce();
+  });
+
+  // ── general.fullscreen ───────────────────────────────────────────────────
+
+  it('toggles fullscreen via ` key (general.fullscreen)', async () => {
+    wrapper = mount(HotkeysHarness);
+    const projectStore = useProjectStore();
+
+    projectStore.setView('cut');
+
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', { key: '`', code: 'Backquote', bubbles: true }),
+    );
+
+    expect(projectStore.currentView).toBe('fullscreen');
+  });
+
+  // ── general.switchView* ──────────────────────────────────────────────────
+
+  it('switches to files view via 1 key (general.switchViewFiles)', async () => {
+    wrapper = mount(HotkeysHarness);
+    const projectStore = useProjectStore();
+
+    projectStore.setView('cut');
+
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', { key: '1', code: 'Digit1', bubbles: true }),
+    );
+
+    expect(projectStore.currentView).toBe('files');
+  });
+
+  it('switches to cut view via 2 key (general.switchViewCut)', async () => {
+    wrapper = mount(HotkeysHarness);
+    const projectStore = useProjectStore();
+
+    projectStore.setView('files');
+
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', { key: '2', code: 'Digit2', bubbles: true }),
+    );
+
+    expect(projectStore.currentView).toBe('cut');
+  });
+
+  it('switches to sound view via 4 key (general.switchViewSound)', async () => {
+    wrapper = mount(HotkeysHarness);
+    const projectStore = useProjectStore();
+
+    projectStore.setView('cut');
+
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', { key: '4', code: 'Digit4', bubbles: true }),
+    );
+
+    expect(projectStore.currentView).toBe('sound');
+  });
+
+  it('switches to export view via 5 key (general.switchViewExport)', async () => {
+    wrapper = mount(HotkeysHarness);
+    const projectStore = useProjectStore();
+
+    projectStore.setView('cut');
+
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', { key: '5', code: 'Digit5', bubbles: true }),
+    );
+
+    expect(projectStore.currentView).toBe('export');
+  });
+
+  // ── general.projectTab* ──────────────────────────────────────────────────
+
+  it('switches project tab to files via Shift+H (general.projectTabFiles)', async () => {
+    wrapper = mount(HotkeysHarness);
+    const projectStore = useProjectStore();
+    const projectTabsStore = useProjectTabsStore();
+
+    projectTabsStore.registerProjectTab({ id: 'files', label: 'Files', component: {} as any });
+    projectTabsStore.registerProjectTab({ id: 'history', label: 'History', component: {} as any });
+    projectTabsStore.initDefaultTab();
+
+    projectStore.setView('cut');
+
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'H', code: 'KeyH', shiftKey: true, bubbles: true }),
+    );
+
+    expect(projectTabsStore.activeTabId).toBe('files');
+  });
+
+  it('switches project tab to effects via Shift+K (general.projectTabEffects)', async () => {
+    wrapper = mount(HotkeysHarness);
+    const projectStore = useProjectStore();
+    const projectTabsStore = useProjectTabsStore();
+
+    projectTabsStore.registerProjectTab({ id: 'files', label: 'Files', component: {} as any });
+    projectTabsStore.registerProjectTab({ id: 'effects', label: 'Effects', component: {} as any });
+    projectTabsStore.initDefaultTab();
+
+    projectStore.setView('cut');
+
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'K', code: 'KeyK', shiftKey: true, bubbles: true }),
+    );
+
+    expect(projectTabsStore.activeTabId).toBe('effects');
+  });
+
+  it('switches project tab to library via Shift+L (general.projectTabLibrary)', async () => {
+    wrapper = mount(HotkeysHarness);
+    const projectStore = useProjectStore();
+    const projectTabsStore = useProjectTabsStore();
+
+    projectTabsStore.registerProjectTab({ id: 'files', label: 'Files', component: {} as any });
+    projectTabsStore.registerProjectTab({ id: 'library', label: 'Library', component: {} as any });
+    projectTabsStore.initDefaultTab();
+
+    projectStore.setView('cut');
+
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'L', code: 'KeyL', shiftKey: true, bubbles: true }),
+    );
+
+    expect(projectTabsStore.activeTabId).toBe('library');
+  });
+
+  it('switches project tab to markers via Shift+; (general.projectTabMarkers)', async () => {
+    wrapper = mount(HotkeysHarness);
+    const projectStore = useProjectStore();
+    const projectTabsStore = useProjectTabsStore();
+
+    projectTabsStore.registerProjectTab({ id: 'files', label: 'Files', component: {} as any });
+    projectTabsStore.registerProjectTab({ id: 'markers', label: 'Markers', component: {} as any });
+    projectTabsStore.initDefaultTab();
+
+    projectStore.setView('cut');
+
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', { key: ';', code: 'Semicolon', shiftKey: true, bubbles: true }),
+    );
+
+    expect(projectTabsStore.activeTabId).toBe('markers');
+  });
+
+  it('switches project tab to backups via Shift+\' (general.projectTabBackups)', async () => {
+    wrapper = mount(HotkeysHarness);
+    const projectStore = useProjectStore();
+    const projectTabsStore = useProjectTabsStore();
+
+    projectTabsStore.registerProjectTab({ id: 'files', label: 'Files', component: {} as any });
+    projectTabsStore.registerProjectTab({ id: 'backups', label: 'Backups', component: {} as any });
+    projectTabsStore.initDefaultTab();
+
+    projectStore.setView('cut');
+
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', { key: "'", code: 'Quote', shiftKey: true, bubbles: true }),
+    );
+
+    expect(projectTabsStore.activeTabId).toBe('backups');
+  });
+
+  // ── timeline.trim* ───────────────────────────────────────────────────────
+
+  it('trims clip start to playhead via C key (timeline.trimToPlayheadLeft)', async () => {
+    wrapper = mount(HotkeysHarness);
+    const focusStore = useFocusStore();
+    const projectStore = useProjectStore();
+    const timelineStore = useTimelineStore() as any;
+
+    projectStore.setView('cut');
+    focusStore.setMainFocus('timeline');
+    const trimSpy = vi.fn().mockResolvedValue(undefined);
+    timelineStore.trimToPlayheadLeftNoRipple = trimSpy;
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'c', code: 'KeyC', bubbles: true }));
+
+    expect(trimSpy).toHaveBeenCalledOnce();
+  });
+
+  it('trims clip end to playhead via V key (timeline.trimToPlayheadRight)', async () => {
+    wrapper = mount(HotkeysHarness);
+    const focusStore = useFocusStore();
+    const projectStore = useProjectStore();
+    const timelineStore = useTimelineStore() as any;
+
+    projectStore.setView('cut');
+    focusStore.setMainFocus('timeline');
+    const trimSpy = vi.fn().mockResolvedValue(undefined);
+    timelineStore.trimToPlayheadRightNoRipple = trimSpy;
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'v', code: 'KeyV', bubbles: true }));
+
+    expect(trimSpy).toHaveBeenCalledOnce();
+  });
+
+  it('ripple trims clip start via Shift+E (timeline.rippleTrimLeft)', async () => {
+    wrapper = mount(HotkeysHarness);
+    const focusStore = useFocusStore();
+    const projectStore = useProjectStore();
+    const timelineStore = useTimelineStore() as any;
+
+    projectStore.setView('cut');
+    focusStore.setMainFocus('timeline');
+    const trimSpy = vi.fn().mockResolvedValue(undefined);
+    timelineStore.rippleTrimLeft = trimSpy;
+
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'e', code: 'KeyE', shiftKey: true, bubbles: true }),
+    );
+
+    expect(trimSpy).toHaveBeenCalledOnce();
+  });
+
+  it('ripple trims clip end via Shift+R (timeline.rippleTrimRight)', async () => {
+    wrapper = mount(HotkeysHarness);
+    const focusStore = useFocusStore();
+    const projectStore = useProjectStore();
+    const timelineStore = useTimelineStore() as any;
+
+    projectStore.setView('cut');
+    focusStore.setMainFocus('timeline');
+    const trimSpy = vi.fn().mockResolvedValue(undefined);
+    timelineStore.rippleTrimRight = trimSpy;
+
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'r', code: 'KeyR', shiftKey: true, bubbles: true }),
+    );
+
+    expect(trimSpy).toHaveBeenCalledOnce();
+  });
+
+  it('advanced ripple trims clip start via E key (timeline.advancedRippleTrimLeft)', async () => {
+    wrapper = mount(HotkeysHarness);
+    const focusStore = useFocusStore();
+    const projectStore = useProjectStore();
+    const timelineStore = useTimelineStore() as any;
+
+    projectStore.setView('cut');
+    focusStore.setMainFocus('timeline');
+    const trimSpy = vi.fn().mockResolvedValue(undefined);
+    timelineStore.advancedRippleTrimLeft = trimSpy;
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'e', code: 'KeyE', bubbles: true }));
+
+    expect(trimSpy).toHaveBeenCalledOnce();
+  });
+
+  it('advanced ripple trims clip end via R key (timeline.advancedRippleTrimRight)', async () => {
+    wrapper = mount(HotkeysHarness);
+    const focusStore = useFocusStore();
+    const projectStore = useProjectStore();
+    const timelineStore = useTimelineStore() as any;
+
+    projectStore.setView('cut');
+    focusStore.setMainFocus('timeline');
+    const trimSpy = vi.fn().mockResolvedValue(undefined);
+    timelineStore.advancedRippleTrimRight = trimSpy;
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'r', code: 'KeyR', bubbles: true }));
+
+    expect(trimSpy).toHaveBeenCalledOnce();
+  });
+
+  // ── timeline.move* ───────────────────────────────────────────────────────
+
+  it('moves selected clips left via Ctrl+ArrowLeft (timeline.moveSelectedClipsLeft)', async () => {
+    wrapper = mount(HotkeysHarness);
+    const focusStore = useFocusStore();
+    const projectStore = useProjectStore();
+    const timelineStore = useTimelineStore() as any;
+
+    projectStore.setView('cut');
+    focusStore.setMainFocus('timeline');
+    timelineStore.selectedItemIds = ['clip-1'];
+    const moveSpy = vi.fn();
+    timelineStore.moveSelectedClips = moveSpy;
+
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'ArrowLeft', code: 'ArrowLeft', ctrlKey: true, bubbles: true }),
+    );
+
+    expect(moveSpy).toHaveBeenCalledWith(-1);
+  });
+
+  it('moves selected clips right via Ctrl+ArrowRight (timeline.moveSelectedClipsRight)', async () => {
+    wrapper = mount(HotkeysHarness);
+    const focusStore = useFocusStore();
+    const projectStore = useProjectStore();
+    const timelineStore = useTimelineStore() as any;
+
+    projectStore.setView('cut');
+    focusStore.setMainFocus('timeline');
+    timelineStore.selectedItemIds = ['clip-1'];
+    const moveSpy = vi.fn();
+    timelineStore.moveSelectedClips = moveSpy;
+
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'ArrowRight', code: 'ArrowRight', ctrlKey: true, bubbles: true }),
+    );
+
+    expect(moveSpy).toHaveBeenCalledWith(1);
+  });
+
+  it('does not move clips when none selected (timeline.moveSelectedClipsLeft returns false)', async () => {
+    wrapper = mount(HotkeysHarness);
+    const focusStore = useFocusStore();
+    const projectStore = useProjectStore();
+    const timelineStore = useTimelineStore() as any;
+
+    projectStore.setView('cut');
+    focusStore.setMainFocus('timeline');
+    timelineStore.selectedItemIds = [];
+    const moveSpy = vi.fn();
+    timelineStore.moveSelectedClips = moveSpy;
+
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'ArrowLeft', code: 'ArrowLeft', ctrlKey: true, bubbles: true }),
+    );
+
+    expect(moveSpy).not.toHaveBeenCalled();
+  });
+
+  // ── timeline.increase/decreaseVolume* ─────────────────────────────────────
+
+  it('increases selected clips volume via Ctrl+ArrowUp (timeline.increaseSelectedClipsVolume)', async () => {
+    wrapper = mount(HotkeysHarness);
+    const focusStore = useFocusStore();
+    const projectStore = useProjectStore();
+    const timelineStore = useTimelineStore() as any;
+
+    projectStore.setView('cut');
+    focusStore.setMainFocus('timeline');
+    timelineStore.selectedItemIds = ['clip-1'];
+    const volSpy = vi.fn();
+    timelineStore.adjustSelectedClipsVolume = volSpy;
+
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'ArrowUp', code: 'ArrowUp', ctrlKey: true, bubbles: true }),
+    );
+
+    // The hold runner fires the action once on start
+    expect(volSpy).toHaveBeenCalledWith(0.01);
+  });
+
+  it('decreases selected clips volume via Ctrl+ArrowDown (timeline.decreaseSelectedClipsVolume)', async () => {
+    wrapper = mount(HotkeysHarness);
+    const focusStore = useFocusStore();
+    const projectStore = useProjectStore();
+    const timelineStore = useTimelineStore() as any;
+
+    projectStore.setView('cut');
+    focusStore.setMainFocus('timeline');
+    timelineStore.selectedItemIds = ['clip-1'];
+    const volSpy = vi.fn();
+    timelineStore.adjustSelectedClipsVolume = volSpy;
+
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'ArrowDown', code: 'ArrowDown', ctrlKey: true, bubbles: true }),
+    );
+
+    expect(volSpy).toHaveBeenCalledWith(-0.01);
+  });
+
+  // ── timeline.duplicate / selectClips* / centerPlayhead / toggleBladeTool ─
+
+  it('duplicates current timeline via Ctrl+Shift+S (timeline.duplicate)', async () => {
+    wrapper = mount(HotkeysHarness);
+    const focusStore = useFocusStore();
+    const projectStore = useProjectStore();
+    const timelineStore = useTimelineStore() as any;
+
+    projectStore.setView('cut');
+    focusStore.setMainFocus('timeline');
+    const dupSpy = vi.fn().mockResolvedValue(undefined);
+    timelineStore.duplicateCurrentTimeline = dupSpy;
+
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 's', code: 'KeyS', ctrlKey: true, shiftKey: true, bubbles: true }),
+    );
+
+    expect(dupSpy).toHaveBeenCalledOnce();
+  });
+
+  it('selects clips left of playhead via Shift+D (timeline.selectClipsLeftOfPlayhead)', async () => {
+    wrapper = mount(HotkeysHarness);
+    const focusStore = useFocusStore();
+    const projectStore = useProjectStore();
+    const timelineStore = useTimelineStore() as any;
+
+    projectStore.setView('cut');
+    focusStore.setMainFocus('timeline');
+    const selectSpy = vi.fn();
+    timelineStore.selectClipsRelativeToPlayhead = selectSpy;
+    timelineStore.getSelectedOrActiveTrackId = vi.fn(() => 'track-1');
+
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'd', code: 'KeyD', shiftKey: true, bubbles: true }),
+    );
+
+    expect(selectSpy).toHaveBeenCalledOnce();
+    expect(selectSpy).toHaveBeenCalledWith(expect.objectContaining({ direction: 'left' }));
+  });
+
+  it('selects clips right of playhead via Shift+F (timeline.selectClipsRightOfPlayhead)', async () => {
+    wrapper = mount(HotkeysHarness);
+    const focusStore = useFocusStore();
+    const projectStore = useProjectStore();
+    const timelineStore = useTimelineStore() as any;
+
+    projectStore.setView('cut');
+    focusStore.setMainFocus('timeline');
+    const selectSpy = vi.fn();
+    timelineStore.selectClipsRelativeToPlayhead = selectSpy;
+    timelineStore.getSelectedOrActiveTrackId = vi.fn(() => 'track-1');
+
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'f', code: 'KeyF', shiftKey: true, bubbles: true }),
+    );
+
+    expect(selectSpy).toHaveBeenCalledOnce();
+    expect(selectSpy).toHaveBeenCalledWith(expect.objectContaining({ direction: 'right' }));
+  });
+
+  it('centers playhead via Shift+/ (timeline.centerPlayhead)', async () => {
+    wrapper = mount(HotkeysHarness);
+    const focusStore = useFocusStore();
+    const projectStore = useProjectStore();
+    const timelineStore = useTimelineStore() as any;
+
+    projectStore.setView('cut');
+    focusStore.setMainFocus('timeline');
+    const centerSpy = vi.fn();
+    timelineStore.requestCenterPlayhead = centerSpy;
+
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', { key: '/', code: 'Slash', shiftKey: true, bubbles: true }),
+    );
+
+    expect(centerSpy).toHaveBeenCalledOnce();
+  });
+
+  it('toggles blade tool via / key (timeline.toggleBladeTool)', async () => {
+    wrapper = mount(HotkeysHarness);
+    const focusStore = useFocusStore();
+    const projectStore = useProjectStore();
+    const timelineStore = useTimelineStore() as any;
+
+    projectStore.setView('cut');
+    focusStore.setMainFocus('timeline');
+    timelineStore.isTrimModeActive = false;
+
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', { key: '/', code: 'Slash', bubbles: true }),
+    );
+
+    expect(timelineStore.isTrimModeActive).toBe(true);
+  });
+
+  // ── timeline.toggleVisibilityTrack / toggleMuteTrack / toggleSoloTrack ────
+
+  it('toggles visibility of target track via Shift+W (timeline.toggleVisibilityTrack)', async () => {
+    wrapper = mount(HotkeysHarness);
+    const focusStore = useFocusStore();
+    const projectStore = useProjectStore();
+    const timelineStore = useTimelineStore() as any;
+
+    projectStore.setView('cut');
+    focusStore.setMainFocus('timeline');
+    const toggleSpy = vi.fn().mockResolvedValue(undefined);
+    timelineStore.toggleVisibilityTargetTrack = toggleSpy;
+
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'w', code: 'KeyW', shiftKey: true, bubbles: true }),
+    );
+
+    expect(toggleSpy).toHaveBeenCalledOnce();
+  });
+
+  it('toggles mute of target track via Shift+Q (timeline.toggleMuteTrack)', async () => {
+    wrapper = mount(HotkeysHarness);
+    const focusStore = useFocusStore();
+    const projectStore = useProjectStore();
+    const timelineStore = useTimelineStore() as any;
+
+    projectStore.setView('cut');
+    focusStore.setMainFocus('timeline');
+    const toggleSpy = vi.fn().mockResolvedValue(undefined);
+    timelineStore.toggleMuteTargetTrack = toggleSpy;
+
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'q', code: 'KeyQ', shiftKey: true, bubbles: true }),
+    );
+
+    expect(toggleSpy).toHaveBeenCalledOnce();
+  });
+
+  it('toggles solo of target track via Shift+S (timeline.toggleSoloTrack)', async () => {
+    wrapper = mount(HotkeysHarness);
+    const focusStore = useFocusStore();
+    const projectStore = useProjectStore();
+    const timelineStore = useTimelineStore() as any;
+
+    projectStore.setView('cut');
+    focusStore.setMainFocus('timeline');
+    const toggleSpy = vi.fn().mockResolvedValue(undefined);
+    timelineStore.toggleSoloTargetTrack = toggleSpy;
+
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 's', code: 'KeyS', shiftKey: true, bubbles: true }),
+    );
+
+    expect(toggleSpy).toHaveBeenCalledOnce();
+  });
+
+  // ── timeline.reverseSpeed / openSpeedModal ───────────────────────────────
+
+  it('reverses speed via P key (timeline.reverseSpeed)', async () => {
+    wrapper = mount(HotkeysHarness);
+    const focusStore = useFocusStore();
+    const projectStore = useProjectStore();
+    const timelineStore = useTimelineStore() as any;
+
+    projectStore.setView('cut');
+    focusStore.setMainFocus('timeline');
+    timelineStore.selectedItemIds = ['clip-1'];
+    timelineStore.timelineDoc = {
+      tracks: [{ id: 'track-1', kind: 'video', items: [{ id: 'clip-1', kind: 'clip', clipType: 'media', isImage: false, speed: 1 }] }],
+    };
+    const batchSpy = vi.fn();
+    timelineStore.batchApplyTimeline = batchSpy;
+    timelineStore.requestTimelineSave = vi.fn().mockResolvedValue(undefined);
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'p', code: 'KeyP', bubbles: true }));
+
+    expect(batchSpy).toHaveBeenCalledOnce();
+  });
+
+  it('opens speed modal via Ctrl+P (timeline.openSpeedModal)', async () => {
+    wrapper = mount(HotkeysHarness);
+    const focusStore = useFocusStore();
+    const projectStore = useProjectStore();
+    const timelineStore = useTimelineStore() as any;
+    const uiStore = useUiStore();
+
+    projectStore.setView('cut');
+    focusStore.setMainFocus('timeline');
+    timelineStore.selectedItemIds = ['clip-1'];
+    timelineStore.timelineDoc = {
+      tracks: [{ id: 'track-1', kind: 'video', items: [{ id: 'clip-1', kind: 'clip', clipType: 'media', isImage: false, speed: 1 }] }],
+    };
+    const speedModalSpy = vi.fn();
+    uiStore.triggerSpeedModal = speedModalSpy;
+
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'p', code: 'KeyP', ctrlKey: true, bubbles: true }),
+    );
+
+    expect(speedModalSpy).toHaveBeenCalledOnce();
+  });
+
+  // ── playback.stepBackward / stepForward ──────────────────────────────────
+
+  it('steps backward one frame via ArrowLeft (playback.stepBackward)', async () => {
+    wrapper = mount(HotkeysHarness);
+    const focusStore = useFocusStore();
+    const projectStore = useProjectStore();
+    const timelineStore = useTimelineStore() as any;
+
+    projectStore.setView('cut');
+    focusStore.setMainFocus('timeline');
+    const seekSpy = vi.fn();
+    timelineStore.seekFrames = seekSpy;
+
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'ArrowLeft', code: 'ArrowLeft', bubbles: true }),
+    );
+
+    expect(seekSpy).toHaveBeenCalledWith(-1);
+  });
+
+  it('steps forward one frame via ArrowRight (playback.stepForward)', async () => {
+    wrapper = mount(HotkeysHarness);
+    const focusStore = useFocusStore();
+    const projectStore = useProjectStore();
+    const timelineStore = useTimelineStore() as any;
+
+    projectStore.setView('cut');
+    focusStore.setMainFocus('timeline');
+    const seekSpy = vi.fn();
+    timelineStore.seekFrames = seekSpy;
+
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'ArrowRight', code: 'ArrowRight', bubbles: true }),
+    );
+
+    expect(seekSpy).toHaveBeenCalledWith(1);
+  });
+
+  // ── playback.jumpPrevBoundary / jumpNextBoundary ─────────────────────────
+
+  it('jumps to previous clip boundary via A key (playback.jumpPrevBoundary)', async () => {
+    wrapper = mount(HotkeysHarness);
+    const focusStore = useFocusStore();
+    const projectStore = useProjectStore();
+    const timelineStore = useTimelineStore() as any;
+
+    projectStore.setView('cut');
+    focusStore.setMainFocus('timeline');
+    const jumpSpy = vi.fn();
+    timelineStore.jumpToPrevClipBoundary = jumpSpy;
+
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'a', code: 'KeyA', bubbles: true }),
+    );
+
+    expect(jumpSpy).toHaveBeenCalledOnce();
+  });
+
+  it('jumps to next clip boundary via G key (playback.jumpNextBoundary)', async () => {
+    wrapper = mount(HotkeysHarness);
+    const focusStore = useFocusStore();
+    const projectStore = useProjectStore();
+    const timelineStore = useTimelineStore() as any;
+
+    projectStore.setView('cut');
+    focusStore.setMainFocus('timeline');
+    const jumpSpy = vi.fn();
+    timelineStore.jumpToNextClipBoundary = jumpSpy;
+
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'g', code: 'KeyG', bubbles: true }),
+    );
+
+    expect(jumpSpy).toHaveBeenCalledOnce();
+  });
+
+  it('jumps to prev boundary on track via Shift+A (playback.jumpPrevBoundaryTrack)', async () => {
+    wrapper = mount(HotkeysHarness);
+    const focusStore = useFocusStore();
+    const projectStore = useProjectStore();
+    const timelineStore = useTimelineStore() as any;
+
+    projectStore.setView('cut');
+    focusStore.setMainFocus('timeline');
+    const jumpSpy = vi.fn();
+    timelineStore.jumpToPrevClipBoundary = jumpSpy;
+
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'a', code: 'KeyA', shiftKey: true, bubbles: true }),
+    );
+
+    expect(jumpSpy).toHaveBeenCalledWith({ currentTrackOnly: true });
+  });
+
+  it('jumps to next boundary on track via Shift+G (playback.jumpNextBoundaryTrack)', async () => {
+    wrapper = mount(HotkeysHarness);
+    const focusStore = useFocusStore();
+    const projectStore = useProjectStore();
+    const timelineStore = useTimelineStore() as any;
+
+    projectStore.setView('cut');
+    focusStore.setMainFocus('timeline');
+    const jumpSpy = vi.fn();
+    timelineStore.jumpToNextClipBoundary = jumpSpy;
+
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'g', code: 'KeyG', shiftKey: true, bubbles: true }),
+    );
+
+    expect(jumpSpy).toHaveBeenCalledWith({ currentTrackOnly: true });
+  });
+
+  // ── playback.toggle / toggle1 ────────────────────────────────────────────
+
+  it('toggles playback via Space (playback.toggle1)', async () => {
+    wrapper = mount(HotkeysHarness);
+    const focusStore = useFocusStore();
+    const projectStore = useProjectStore();
+    const timelineStore = useTimelineStore() as any;
+
+    projectStore.setView('cut');
+    focusStore.setMainFocus('timeline');
+    const toggleSpy = vi.fn();
+    timelineStore.togglePlayback = toggleSpy;
+    timelineStore.setPlaybackSpeed = vi.fn();
+
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', { key: ' ', code: 'Space', bubbles: true }),
+    );
+
+    expect(toggleSpy).toHaveBeenCalledOnce();
+  });
+
+  it('toggles playback at current speed via Shift+Space (playback.toggle)', async () => {
+    wrapper = mount(HotkeysHarness);
+    const focusStore = useFocusStore();
+    const projectStore = useProjectStore();
+    const timelineStore = useTimelineStore() as any;
+
+    projectStore.setView('cut');
+    focusStore.setMainFocus('timeline');
+    const toggleSpy = vi.fn();
+    timelineStore.togglePlayback = toggleSpy;
+
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', { key: ' ', code: 'Space', shiftKey: true, bubbles: true }),
+    );
+
+    expect(toggleSpy).toHaveBeenCalledOnce();
+  });
+
+  // ── playback.shuttleForward / shuttleReverse / shuttleStop ───────────────
+
+  it('shuttle forward via F key (playback.shuttleForward)', async () => {
+    wrapper = mount(HotkeysHarness);
+    const focusStore = useFocusStore();
+    const projectStore = useProjectStore();
+    const timelineStore = useTimelineStore() as any;
+
+    projectStore.setView('cut');
+    focusStore.setMainFocus('timeline');
+    timelineStore.isPlaying = false;
+    timelineStore.playbackSpeed = 1;
+    const speedSpy = vi.fn();
+    timelineStore.setPlaybackSpeed = speedSpy;
+    const toggleSpy = vi.fn();
+    timelineStore.togglePlayback = toggleSpy;
+
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'f', code: 'KeyF', bubbles: true }),
+    );
+
+    expect(speedSpy).toHaveBeenCalled();
+  });
+
+  it('shuttle reverse via S key (playback.shuttleReverse)', async () => {
+    wrapper = mount(HotkeysHarness);
+    const focusStore = useFocusStore();
+    const projectStore = useProjectStore();
+    const timelineStore = useTimelineStore() as any;
+
+    projectStore.setView('cut');
+    focusStore.setMainFocus('timeline');
+    timelineStore.isPlaying = false;
+    timelineStore.playbackSpeed = 1;
+    const speedSpy = vi.fn();
+    timelineStore.setPlaybackSpeed = speedSpy;
+    const toggleSpy = vi.fn();
+    timelineStore.togglePlayback = toggleSpy;
+
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 's', code: 'KeyS', bubbles: true }),
+    );
+
+    expect(speedSpy).toHaveBeenCalled();
+  });
+
+  it('shuttle stop via D key (playback.shuttleStop)', async () => {
+    wrapper = mount(HotkeysHarness);
+    const focusStore = useFocusStore();
+    const projectStore = useProjectStore();
+    const timelineStore = useTimelineStore() as any;
+
+    projectStore.setView('cut');
+    focusStore.setMainFocus('timeline');
+    timelineStore.isPlaying = true;
+    const toggleSpy = vi.fn();
+    timelineStore.togglePlayback = toggleSpy;
+    const speedSpy = vi.fn();
+    timelineStore.setPlaybackSpeed = speedSpy;
+
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'd', code: 'KeyD', bubbles: true }),
+    );
+
+    expect(toggleSpy).toHaveBeenCalledOnce();
+    expect(speedSpy).toHaveBeenCalledWith(1);
+  });
+
+  // ── playback fixed-speed commands (with custom bindings) ─────────────────
+
+  it('plays forward at 2x speed with custom binding (playback.forward2)', async () => {
+    mockWorkspaceStore.userSettings.hotkeys.bindings = {
+      'playback.forward2': ['Digit2'],
+    };
+    wrapper = mount(HotkeysHarness);
+    const focusStore = useFocusStore();
+    const projectStore = useProjectStore();
+    const timelineStore = useTimelineStore() as any;
+
+    projectStore.setView('cut');
+    focusStore.setMainFocus('monitor');
+    timelineStore.isPlaying = false;
+    timelineStore.playbackSpeed = 1;
+    const speedSpy = vi.fn();
+    timelineStore.setPlaybackSpeed = speedSpy;
+    const toggleSpy = vi.fn();
+    timelineStore.togglePlayback = toggleSpy;
+
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', { key: '2', code: 'Digit2', bubbles: true }),
+    );
+
+    expect(speedSpy).toHaveBeenCalledWith(2);
+    expect(toggleSpy).toHaveBeenCalledOnce();
+  });
+
+  it('plays backward at 2x speed with custom binding (playback.backward2)', async () => {
+    mockWorkspaceStore.userSettings.hotkeys.bindings = {
+      'playback.backward2': ['Digit2'],
+    };
+    wrapper = mount(HotkeysHarness);
+    const focusStore = useFocusStore();
+    const projectStore = useProjectStore();
+    const timelineStore = useTimelineStore() as any;
+
+    projectStore.setView('cut');
+    focusStore.setMainFocus('monitor');
+    timelineStore.isPlaying = false;
+    timelineStore.playbackSpeed = 1;
+    const speedSpy = vi.fn();
+    timelineStore.setPlaybackSpeed = speedSpy;
+    const toggleSpy = vi.fn();
+    timelineStore.togglePlayback = toggleSpy;
+
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', { key: '2', code: 'Digit2', bubbles: true }),
+    );
+
+    expect(speedSpy).toHaveBeenCalledWith(-2);
+    expect(toggleSpy).toHaveBeenCalledOnce();
+  });
+
+  // ── timeline.copyClipParameters / pasteClipParameters (in-development gate) ─
+
+  it('copyClipParameters is a no-op when in-development features are disabled', () => {
+    const timelineStore = useTimelineStore() as any;
+    timelineStore.selectedItemIds = ['clip-1'];
+    timelineStore.timelineDoc = {
+      tracks: [{ id: 'track-1', kind: 'video', items: [{ id: 'clip-1', kind: 'clip', clipType: 'media' }] }],
+    };
+
+    mockWorkspaceStore.inDevelopmentFeaturesEnabled = false;
+    const handlers = useTimelineHotkeys(createHotkeyHoldRunner());
+    const clipboardStore = useClipboardStore();
+
+    const result = handlers['timeline.copyClipParameters']?.(
+      new KeyboardEvent('keydown', { key: 'c', code: 'KeyC', ctrlKey: true }),
+    );
+
+    expect(result).toBe(false);
+    expect(clipboardStore.clipboardPayload).toBeNull();
+  });
+
+  it('pasteClipParameters is a no-op when in-development features are disabled', () => {
+    const timelineStore = useTimelineStore() as any;
+    timelineStore.selectedItemIds = ['clip-1'];
+    timelineStore.timelineDoc = {
+      tracks: [{ id: 'track-1', kind: 'video', items: [{ id: 'clip-1', kind: 'clip', clipType: 'media' }] }],
+    };
+    const clipboardStore = useClipboardStore();
+    clipboardStore.setClipboardPayload({
+      source: 'clipParameters',
+      snapshot: {},
+    } as any);
+
+    mockWorkspaceStore.inDevelopmentFeaturesEnabled = false;
+    const handlers = useTimelineHotkeys(createHotkeyHoldRunner());
+    const uiStore = useUiStore();
+    const triggerSpy = vi.spyOn(uiStore, 'triggerClipPasteParameters');
+
+    const result = handlers['timeline.pasteClipParameters']?.(
+      new KeyboardEvent('keydown', { key: 'v', code: 'KeyV', ctrlKey: true }),
+    );
+
+    expect(result).toBe(false);
+    expect(triggerSpy).not.toHaveBeenCalled();
+  });
+
+  it('copyClipParameters works when in-development features are enabled', () => {
+    const timelineStore = useTimelineStore() as any;
+    timelineStore.selectedItemIds = ['clip-1'];
+    timelineStore.timelineDoc = {
+      tracks: [{ id: 'track-1', kind: 'video', items: [{ id: 'clip-1', kind: 'clip', clipType: 'media' }] }],
+    };
+
+    mockWorkspaceStore.inDevelopmentFeaturesEnabled = true;
+    const handlers = useTimelineHotkeys(createHotkeyHoldRunner());
+    const clipboardStore = useClipboardStore();
+
+    const result = handlers['timeline.copyClipParameters']?.(
+      new KeyboardEvent('keydown', { key: 'c', code: 'KeyC', ctrlKey: true }),
+    );
+
+    expect(result).toBe(true);
+    expect(clipboardStore.clipboardPayload).toMatchObject({ source: 'clipParameters' });
   });
 });
 

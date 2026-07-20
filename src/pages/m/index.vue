@@ -122,6 +122,9 @@ async function onNewProjectFilesSelected(e: Event) {
 
 const isSettingsOpen = ref(false);
 
+// Template compiler cannot parse `import.meta` directly — expose as a constant
+const isDev = import.meta.dev;
+
 // Sort the main list by modification date (newest first)
 const sortedProjects = computed(() => {
   if (workspaceStore.workspaceProviderId === 'tauri') {
@@ -257,6 +260,7 @@ function groupLabel(group: ProjectDateGroup<SortedProject>): string {
                 </UButton>
 
                 <UButton
+                  v-if="isDev"
                   size="sm"
                   variant="ghost"
                   color="neutral"

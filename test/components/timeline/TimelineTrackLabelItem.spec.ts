@@ -225,4 +225,102 @@ describe('TimelineTrackLabelItem', () => {
     expect(component.emitted('cancelRename')).toBeTruthy();
     expect(component.emitted('rename')).toBeFalsy();
   });
+
+  it('emits middleClick on auxclick with button 1', async () => {
+    const component = await mountSuspended(TimelineTrackLabelItem, {
+      props: {
+        ...baseProps,
+      },
+      global: {
+        stubs: {
+          UiToggleButton: { template: '<div class="toggle-stub"></div>' },
+        },
+      },
+    });
+
+    const root = component.find('[data-track-id]');
+    await root.trigger('auxclick', { button: 1 });
+
+    expect(component.emitted('middleClick')).toBeTruthy();
+  });
+
+  it('does not emit middleClick on auxclick with button 0', async () => {
+    const component = await mountSuspended(TimelineTrackLabelItem, {
+      props: {
+        ...baseProps,
+      },
+      global: {
+        stubs: {
+          UiToggleButton: { template: '<div class="toggle-stub"></div>' },
+        },
+      },
+    });
+
+    const root = component.find('[data-track-id]');
+    await root.trigger('auxclick', { button: 0 });
+
+    expect(component.emitted('middleClick')).toBeFalsy();
+  });
+
+  it('calls selectAllClipsOnTrack on doubleClick when track is unlocked', async () => {
+    const component = await mountSuspended(TimelineTrackLabelItem, {
+      props: {
+        ...baseProps,
+        track: {
+          ...baseProps.track,
+          locked: false,
+        },
+      },
+      global: {
+        stubs: {
+          UiToggleButton: { template: '<div class="toggle-stub"></div>' },
+        },
+      },
+    });
+
+    const root = component.find('[data-track-id]');
+    await root.trigger('dblclick');
+
+    expect(mockTimelineStore.selectAllClipsOnTrack).toHaveBeenCalledWith('track-1');
+  });
+
+  it('does not call selectAllClipsOnTrack on doubleClick when track is locked', async () => {
+    const component = await mountSuspended(TimelineTrackLabelItem, {
+      props: {
+        ...baseProps,
+        track: {
+          ...baseProps.track,
+          locked: true,
+        },
+      },
+      global: {
+        stubs: {
+          UiToggleButton: { template: '<div class="toggle-stub"></div>' },
+        },
+      },
+    });
+
+    const root = component.find('[data-track-id]');
+    await root.trigger('dblclick');
+
+    expect(mockTimelineStore.selectAllClipsOnTrack).not.toHaveBeenCalled();
+  });
+
+  it('emits select on click', async () => {
+    const component = await mountSuspended(TimelineTrackLabelItem, {
+      props: {
+        ...baseProps,
+      },
+      global: {
+        stubs: {
+          UiToggleButton: { template: '<div class="toggle-stub"></div>' },
+        },
+      },
+    });
+
+    const root = component.find('[data-track-id]');
+    await root.trigger('click');
+
+    expect(component.emitted('select')).toBeTruthy();
+  });
 });

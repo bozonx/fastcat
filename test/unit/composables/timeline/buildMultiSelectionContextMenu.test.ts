@@ -4,6 +4,14 @@ import { describe, expect, it, vi } from 'vitest';
 import { buildMultiSelectionContextMenu } from '~/composables/timeline/clip-context-menu/buildMultiSelectionContextMenu';
 import type { UseClipContextMenuOptions } from '~/composables/timeline/clip-context-menu/types';
 
+const mockWorkspaceStore = {
+  inDevelopmentFeaturesEnabled: false,
+};
+
+vi.mock('~/stores/workspace.store', () => ({
+  useWorkspaceStore: () => mockWorkspaceStore,
+}));
+
 function createOptions(selectedItemIds: string[]): UseClipContextMenuOptions {
   const audioClip = {
     id: 'audio-1',
@@ -144,5 +152,33 @@ describe('buildMultiSelectionContextMenu', () => {
         properties: { locked: true },
       },
     ]);
+  });
+
+  describe('paste parameters action (in-development feature)', () => {
+    it('hides paste parameters when in-development features are disabled', () => {
+      mockWorkspaceStore.inDevelopmentFeaturesEnabled = false;
+
+      const options = createOptions(['audio-1', 'text-1']);
+      options.getClipParametersSnapshot = vi.fn(() => ({}) as any);
+
+      const labels = (buildMultiSelectionContextMenu(options) ?? []).flatMap((group) =>
+        group.map((action) => action.label),
+      );
+
+      expect(labels).not.toContain('fastcat.clip.parameters.paste');
+    });
+
+    it('shows paste parameters when enabled and a snapshot is on the clipboard', () => {
+      mockWorkspaceStore.inDevelopmentFeaturesEnabled = true;
+
+      const options = createOptions(['audio-1', 'text-1']);
+      options.getClipParametersSnapshot = vi.fn(() => ({}) as any);
+
+      const labels = (buildMultiSelectionContextMenu(options) ?? []).flatMap((group) =>
+        group.map((action) => action.label),
+      );
+
+      expect(labels).toContain('fastcat.clip.parameters.paste');
+    });
   });
 });

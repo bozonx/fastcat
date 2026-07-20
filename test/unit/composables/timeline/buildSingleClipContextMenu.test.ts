@@ -7,6 +7,14 @@ import {
 } from '~/composables/timeline/clip-context-menu/buildSingleClipContextMenu';
 import type { UseClipContextMenuOptions } from '~/composables/timeline/clip-context-menu/types';
 
+const mockWorkspaceStore = {
+  inDevelopmentFeaturesEnabled: false,
+};
+
+vi.mock('~/stores/workspace.store', () => ({
+  useWorkspaceStore: () => mockWorkspaceStore,
+}));
+
 function createOptions(
   overrides: Partial<UseClipContextMenuOptions> = {},
 ): UseClipContextMenuOptions {
@@ -219,5 +227,43 @@ describe('buildSingleClipContextMenu', () => {
 
     expect(speedAction?.disabled).toBe(true);
     expect(reverseAction?.disabled).toBe(true);
+  });
+
+  describe('clip parameters actions (in-development feature)', () => {
+    it('hides copy/paste parameters when in-development features are disabled', () => {
+      mockWorkspaceStore.inDevelopmentFeaturesEnabled = false;
+
+      const options = createOptions();
+      const labels = buildSingleItemActionGroup(options).map((action) => action.label);
+
+      expect(labels).not.toContain('fastcat.clip.parameters.copy');
+      expect(labels).not.toContain('fastcat.clip.parameters.paste');
+    });
+
+    it('shows copy/paste parameters when in-development features are enabled', () => {
+      mockWorkspaceStore.inDevelopmentFeaturesEnabled = true;
+
+      const options = createOptions();
+      const labels = buildSingleItemActionGroup(options).map((action) => action.label);
+
+      expect(labels).toContain('fastcat.clip.parameters.copy');
+      expect(labels).toContain('fastcat.clip.parameters.paste');
+    });
+
+    it('calls copyClipParameters when copying', () => {
+      mockWorkspaceStore.inDevelopmentFeaturesEnabled = true;
+
+      const options = createOptions();
+      const copyAction = buildSingleItemActionGroup(options).find(
+        (action) => action.label === 'fastcat.clip.parameters.copy',
+      );
+
+      copyAction?.onSelect();
+
+      expect(options.copyClipParameters).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'clip-1' }),
+        'video',
+      );
+    });
   });
 });
