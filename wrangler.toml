@@ -10,7 +10,7 @@
 # Deploy:  pnpm deploy:cf         (build + wrangler deploy)
 # Preview: pnpm preview:cf        (local wrangler dev against the built assets)
 
-name = "fastcat"
+name = "fastcat-app"
 main = "worker/index.ts"
 compatibility_date = "2024-11-01"
 
