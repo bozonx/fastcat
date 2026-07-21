@@ -14,6 +14,45 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # ── Tier: static ── typecheck + lint + i18n
+  static:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: bash scripts/ci.sh static
+
+  # ── Tier: unit ── web unit + component tests + logic parity
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: bash scripts/ci.sh unit
+
+  # ── Tier: integration-web ── web integration tests
+  integration-web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: bash scripts/ci.sh integration-web
+
   # ── Tier: rust ── clippy + fmt + full Rust suite (native unit/integration + logic parity)
   rust:
     runs-on: ubuntu-latest
@@ -27,10 +66,21 @@ jobs:
       - uses: dtolnay/rust-toolchain@1.87.0
         with:
           components: clippy, rustfmt
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "src-tauri -> target"
       - name: Install native dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg libavdevice-dev libvulkan1 mesa-vulkan-drivers
       - run: pnpm install --frozen-lockfile
       - run: bash scripts/ci.sh rust
+
+  # Future Tauri Release Build job placeholder:
+  # build-tauri:
+  #   needs: [static, unit, integration-web, rust]
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     ...
+
 
