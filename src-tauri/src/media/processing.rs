@@ -67,7 +67,10 @@ pub struct NativeVideoMetadata {
 /// `export-video-passthrough.ts`) for a stricter, scan-based signal.
 const VFR_RATE_DIVERGENCE_TOLERANCE: f64 = 0.01;
 
-fn detect_variable_frame_rate(avg_frame_rate: Option<f64>, r_frame_rate: Option<f64>) -> Option<bool> {
+fn detect_variable_frame_rate(
+    avg_frame_rate: Option<f64>,
+    r_frame_rate: Option<f64>,
+) -> Option<bool> {
     match (avg_frame_rate, r_frame_rate) {
         (Some(avg), Some(r)) if avg > 0.0 && r > 0.0 => {
             let ratio = if avg >= r { avg / r } else { r / avg };
@@ -1579,16 +1582,28 @@ mod tests {
     #[test]
     fn detect_variable_frame_rate_flags_diverging_rates() {
         // CFR: avg == nominal (or within timebase rounding) → not VFR.
-        assert_eq!(detect_variable_frame_rate(Some(30.0), Some(30.0)), Some(false));
+        assert_eq!(
+            detect_variable_frame_rate(Some(30.0), Some(30.0)),
+            Some(false)
+        );
         assert_eq!(
             detect_variable_frame_rate(Some(30000.0 / 1001.0), Some(30000.0 / 1001.0)),
             Some(false)
         );
         // A tiny residual (well under 1%) stays CFR.
-        assert_eq!(detect_variable_frame_rate(Some(29.97), Some(30.0)), Some(false));
+        assert_eq!(
+            detect_variable_frame_rate(Some(29.97), Some(30.0)),
+            Some(false)
+        );
         // VFR: measured average sits far from the nominal/timebase rate.
-        assert_eq!(detect_variable_frame_rate(Some(22.0), Some(30.0)), Some(true));
-        assert_eq!(detect_variable_frame_rate(Some(30.0), Some(24.0)), Some(true));
+        assert_eq!(
+            detect_variable_frame_rate(Some(22.0), Some(30.0)),
+            Some(true)
+        );
+        assert_eq!(
+            detect_variable_frame_rate(Some(30.0), Some(24.0)),
+            Some(true)
+        );
         // Undetermined when either rate is missing or non-positive.
         assert_eq!(detect_variable_frame_rate(Some(30.0), None), None);
         assert_eq!(detect_variable_frame_rate(None, Some(30.0)), None);

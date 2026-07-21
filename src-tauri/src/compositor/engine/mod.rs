@@ -47,6 +47,14 @@ pub(crate) struct GpuCtx<'a> {
     pub queue: &'a wgpu::Queue,
 }
 
+/// Bundles the inputs that identify *which* transition source to resolve:
+/// the source kind, the layer list it references, and the current layer index.
+struct TransitionSourceQuery<'a> {
+    kind: &'a TransitionSource,
+    layers: &'a [Layer],
+    index: usize,
+}
+
 fn device_supports_pipeline_cache(features: wgpu::Features) -> bool {
     features.contains(wgpu::Features::PIPELINE_CACHE)
 }
@@ -309,9 +317,7 @@ impl Compositor {
         &mut self,
         dev_id: usize,
         scene: &super::scene::Scene,
-        source_kind: &TransitionSource,
-        layers: &[super::scene::Layer],
-        i: usize,
+        query: TransitionSourceQuery<'_>,
         // Target size for the (recursive) background/transparent sub-render. Lower effect-quality
         // tiers render it at reduced resolution — the transition then runs at that scale and the
         // result is upscaled on composite, so the expensive recursive lower-layer render shrinks
@@ -321,15 +327,15 @@ impl Compositor {
     ) -> Result<Option<EffectSource>> {
         let GpuCtx { device, queue } = ctx;
         let (sub_w, sub_h) = sub_size;
-        let source = match source_kind {
+        let source = match query.kind {
             TransitionSource::Layer(id) => {
-                let Some(layer) = layers.iter().find(|layer| &layer.id == id).cloned() else {
+                let Some(layer) = query.layers.iter().find(|layer| &layer.id == id).cloned() else {
                     return Ok(None);
                 };
                 self.transition_layer_source(dev_id, scene, &layer, device, queue)?
             }
             TransitionSource::Background => {
-                let lower_layers = layers[..i].to_vec();
+                let lower_layers = query.layers[..query.index].to_vec();
                 let background_scene = scene.isolated(lower_layers);
                 let background_scene = self.materialize_transitions_and_effects(
                     dev_id,
@@ -399,9 +405,11 @@ impl Compositor {
                 let Some(source) = self.resolve_transition_source(
                     dev_id,
                     scene,
-                    &source_kind,
-                    layers,
-                    i,
+                    TransitionSourceQuery {
+                        kind: &source_kind,
+                        layers,
+                        index: i,
+                    },
                     sub_size,
                     GpuCtx { device, queue },
                 )?

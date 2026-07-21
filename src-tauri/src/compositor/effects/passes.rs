@@ -860,16 +860,7 @@ pub(super) fn effect_uniform(
             0.0,
             0,
         ),
-        EffectSpec::Invert { mix } => base(
-            25,
-            mix.clamp(0.0, 1.0),
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0,
-        ),
+        EffectSpec::Invert { mix } => base(25, mix.clamp(0.0, 1.0), 0.0, 0.0, 0.0, 0.0, 0.0, 0),
         EffectSpec::CustomWgsl { source, params } => {
             let mut p = [0.0f32; 8];
             if let serde_json::Value::Object(map) = params {

@@ -784,6 +784,20 @@ mod tests {
     fn paused_warmup_reaches_seek_target_on_long_gop() {
         let fps = 30.0;
         let pump = open_mock_pump(fps, 100.0);
+
+        // Drain the open-time initial frame (generation 0) so the decoder has
+        // parked on cmd_rx.recv() before we send seek + prebuffer. This
+        // guarantees both commands are drained in the same batch — without it,
+        // a race where the seek is processed alone causes the decoder to skip
+        // directly to the target without retaining pre-seek frames.
+        let init_deadline = Instant::now() + Duration::from_secs(3);
+        while Instant::now() < init_deadline {
+            if pump.try_recv_frame().is_some() {
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(2));
+        }
+
         let target = 5.0; // frame ~150, far past the keyframe at 0
 
         let generation = pump.seek(target).expect("seek");

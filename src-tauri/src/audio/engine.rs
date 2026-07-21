@@ -1316,7 +1316,10 @@ mod tests {
         let l = layer("l1", "/tmp/a.wav", 0.0, 10.0, 1.0);
         engine.set_scene(&[l], &[], 1.0, &[]);
 
-        // Manually set pending_ring_clear to true, as on start
+        // Stop the producer so it doesn't asynchronously consume the pending
+        // ring clear before `is_primed` reads it (same race pattern as
+        // `is_primed_is_false_until_ring_reaches_target`).
+        stop_producer(&engine);
         {
             let mut state = engine.shared.0.lock();
             state.playing = true;
