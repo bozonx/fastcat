@@ -1,2 +1,35 @@
+allowBuilds:
+  edgedriver: true
+  esbuild: true
+  geckodriver: true
+  onnxruntime-node: true
+  protobufjs: true
+  sharp: true
+  unrs-resolver: true
+  vue-demi: true
+  workerd: true
 ignoredBuiltDependencies:
   - vue-demi
+minimumReleaseAgeExclude:
+  - '@cloudflare/workerd-darwin-64@1.20260721.1'
+  - '@cloudflare/workerd-darwin-arm64@1.20260721.1'
+  - '@cloudflare/workerd-linux-64@1.20260721.1'
+  - '@cloudflare/workerd-linux-arm64@1.20260721.1'
+  - '@cloudflare/workerd-windows-64@1.20260721.1'
+  - '@nuxtjs/i18n@10.5.0'
+  - '@wdio/cli@9.30.0'
+  - '@wdio/config@9.30.0'
+  - '@wdio/local-runner@9.30.0'
+  - '@wdio/mocha-framework@9.30.0'
+  - '@wdio/protocols@9.30.0'
+  - '@wdio/runner@9.30.0'
+  - '@wdio/utils@9.30.0'
+  - '@wdio/xvfb@9.30.0'
+  - create-wdio@9.30.0
+  - miniflare@4.20260721.0
+  - p-queue@9.3.2
+  - prettier@3.9.6
+  - webdriver@9.30.0
+  - webdriverio@9.30.0
+  - workerd@1.20260721.1
+  - wrangler@4.113.0
