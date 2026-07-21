@@ -98,29 +98,20 @@ export function createTimelineTrimmingModule(deps: TimelineTrimmingDeps): Timeli
     const endTicks = startTicks + item.timelineRange.durationTicks;
     if (!(cutTicks > startTicks && cutTicks < endTicks)) return;
 
-    const cmds = buildSplitClipCommands(doc, deps.currentTime.value, target);
-    for (const cmd of cmds) {
-      deps.applyTimeline(cmd, {
-        saveMode: 'none',
-        historyMode: 'debounced',
-        historyDebounceMs: 100,
-      });
-    }
-
-    const updatedDoc = deps.timelineDoc.value;
-    if (!updatedDoc) return;
-    const updatedTrack = updatedDoc.tracks.find((t) => t.id === target.trackId) ?? null;
-    if (!updatedTrack) return;
-
-    // After split, 'item.id' is the LEFT part
-    const left =
-      updatedTrack.items.filter((it) => it.kind === 'clip').find((it) => it.id === target.itemId) ??
-      null;
-    if (!left || left.kind !== 'clip') return;
-
-    deps.applyTimeline(
-      { type: 'delete_items', trackId: target.trackId, itemIds: [left.id] },
-      { saveMode: 'none', historyMode: 'debounced', historyDebounceMs: 100 },
+    // A single trim_item command replaces the former split + delete pair.
+    // Moving the start edge forward to the cut point removes the left tail
+    // and produces a single undo history entry.
+    deps.batchApplyTimeline(
+      [
+        {
+          type: 'trim_item',
+          trackId: target.trackId,
+          itemId: target.itemId,
+          edge: 'start',
+          deltaTicks: cutTicks - startTicks,
+        },
+      ],
+      { saveMode: 'none', labelKey: 'videoEditor.fileManager.history.entries.trimClip' },
     );
 
     await deps.requestTimelineSave({ immediate: true });
@@ -145,30 +136,20 @@ export function createTimelineTrimmingModule(deps: TimelineTrimmingDeps): Timeli
     const endTicks = startTicks + item.timelineRange.durationTicks;
     if (!(cutTicks > startTicks && cutTicks < endTicks)) return;
 
-    const cmds = buildSplitClipCommands(doc, deps.currentTime.value, target);
-    for (const cmd of cmds) {
-      deps.applyTimeline(cmd, {
-        saveMode: 'none',
-        historyMode: 'debounced',
-        historyDebounceMs: 100,
-      });
-    }
-
-    const updatedDoc = deps.timelineDoc.value;
-    if (!updatedDoc) return;
-    const updatedTrack = updatedDoc.tracks.find((t) => t.id === target.trackId) ?? null;
-    if (!updatedTrack) return;
-
-    // After split, the new item with startTicks === cutTicks is the RIGHT part
-    const right =
-      updatedTrack.items
-        .filter((it) => it.kind === 'clip')
-        .find((it) => it.timelineRange.startTicks === cutTicks) ?? null;
-    if (!right || right.kind !== 'clip') return;
-
-    deps.applyTimeline(
-      { type: 'delete_items', trackId: target.trackId, itemIds: [right.id] },
-      { saveMode: 'none', historyMode: 'debounced', historyDebounceMs: 100 },
+    // A single trim_item command replaces the former split + delete pair.
+    // Moving the end edge backward to the cut point removes the right tail
+    // and produces a single undo history entry.
+    deps.batchApplyTimeline(
+      [
+        {
+          type: 'trim_item',
+          trackId: target.trackId,
+          itemId: target.itemId,
+          edge: 'end',
+          deltaTicks: cutTicks - endTicks,
+        },
+      ],
+      { saveMode: 'none', labelKey: 'videoEditor.fileManager.history.entries.trimClip' },
     );
 
     await deps.requestTimelineSave({ immediate: true });
@@ -191,29 +172,17 @@ export function createTimelineTrimmingModule(deps: TimelineTrimmingDeps): Timeli
     const endTicks = startTicks + item.timelineRange.durationTicks;
     if (!(cutTicks > startTicks && cutTicks < endTicks)) return;
 
-    const cmds = buildSplitClipCommands(doc, atTicks, target);
-    for (const cmd of cmds) {
-      deps.applyTimeline(cmd, {
-        saveMode: 'none',
-        historyMode: 'debounced',
-        historyDebounceMs: 100,
-      });
-    }
-
-    const updatedDoc = deps.timelineDoc.value;
-    if (!updatedDoc) return;
-    const updatedTrack = updatedDoc.tracks.find((t) => t.id === target.trackId) ?? null;
-    if (!updatedTrack) return;
-
-    // After split, 'item.id' is the LEFT part
-    const left =
-      updatedTrack.items.filter((it) => it.kind === 'clip').find((it) => it.id === target.itemId) ??
-      null;
-    if (!left || left.kind !== 'clip') return;
-
-    deps.applyTimeline(
-      { type: 'delete_items', trackId: target.trackId, itemIds: [left.id] },
-      { saveMode: 'none', historyMode: 'debounced', historyDebounceMs: 100 },
+    deps.batchApplyTimeline(
+      [
+        {
+          type: 'trim_item',
+          trackId: target.trackId,
+          itemId: target.itemId,
+          edge: 'start',
+          deltaTicks: cutTicks - startTicks,
+        },
+      ],
+      { saveMode: 'none', labelKey: 'videoEditor.fileManager.history.entries.trimClip' },
     );
 
     await deps.requestTimelineSave({ immediate: true });
@@ -236,30 +205,17 @@ export function createTimelineTrimmingModule(deps: TimelineTrimmingDeps): Timeli
     const endTicks = startTicks + item.timelineRange.durationTicks;
     if (!(cutTicks > startTicks && cutTicks < endTicks)) return;
 
-    const cmds = buildSplitClipCommands(doc, atTicks, target);
-    for (const cmd of cmds) {
-      deps.applyTimeline(cmd, {
-        saveMode: 'none',
-        historyMode: 'debounced',
-        historyDebounceMs: 100,
-      });
-    }
-
-    const updatedDoc = deps.timelineDoc.value;
-    if (!updatedDoc) return;
-    const updatedTrack = updatedDoc.tracks.find((t) => t.id === target.trackId) ?? null;
-    if (!updatedTrack) return;
-
-    // After split, the new item with startTicks === cutTicks is the RIGHT part
-    const right =
-      updatedTrack.items
-        .filter((it) => it.kind === 'clip')
-        .find((it) => it.timelineRange.startTicks === cutTicks) ?? null;
-    if (!right || right.kind !== 'clip') return;
-
-    deps.applyTimeline(
-      { type: 'delete_items', trackId: target.trackId, itemIds: [right.id] },
-      { saveMode: 'none', historyMode: 'debounced', historyDebounceMs: 100 },
+    deps.batchApplyTimeline(
+      [
+        {
+          type: 'trim_item',
+          trackId: target.trackId,
+          itemId: target.itemId,
+          edge: 'end',
+          deltaTicks: cutTicks - endTicks,
+        },
+      ],
+      { saveMode: 'none', labelKey: 'videoEditor.fileManager.history.entries.trimClip' },
     );
 
     await deps.requestTimelineSave({ immediate: true });
