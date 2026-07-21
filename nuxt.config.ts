@@ -5,9 +5,10 @@ import type { PreviewServer, ViteDevServer } from 'vite';
 
 const fastcatDevDir = resolve(import.meta.dirname, process.env.FASTCAT_DEV_DIR || './.dev-files');
 
-function readBooleanEnv(value: unknown): boolean {
+function readBooleanEnv(value: unknown, defaultValue = false): boolean {
   if (value === true) return true;
-  if (value === false || value == null) return false;
+  if (value === false) return false;
+  if (value == null || value === '') return defaultValue;
   const normalized = String(value).trim().toLowerCase();
   return normalized === '1' || normalized === 'true' || normalized === 'yes' || normalized === 'on';
 }
@@ -131,7 +132,8 @@ export default defineNuxtConfig({
       bloggerDogUiUrl: '',
       fastcatAccountApiUrl: '',
       fastcatAccountUiUrl: '',
-      blockContextMenu: true,
+      blockContextMenu: readBooleanEnv(process.env.NUXT_PUBLIC_BLOCK_CONTEXT_MENU, true),
+      blockTextSelection: readBooleanEnv(process.env.NUXT_PUBLIC_BLOCK_TEXT_SELECTION, true),
       fastcatDevDir,
       inDevelopmentFeaturesEnabled: readBooleanEnv(
         process.env.FASTCAT_ENABLE_IN_DEVELOPMENT_FEATURES,

@@ -22,6 +22,7 @@ declare module 'vue' {
 declare module 'nuxt/schema' {
   interface PublicRuntimeConfig {
     blockContextMenu: boolean | string;
+    blockTextSelection: boolean | string;
   }
 }
 

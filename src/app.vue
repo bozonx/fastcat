@@ -41,6 +41,12 @@ const isBrowserCompatibilityBlocked = computed(
 useDismissMenusOnEscape();
 
 function preventContextMenu(e: MouseEvent) {
+  const target = e.target as HTMLElement | null;
+  if (!target) return;
+
+  const isEditable = target.closest('input, textarea, [contenteditable="true"], .allow-native-context-menu');
+  if (isEditable) return;
+
   e.preventDefault();
 }
 
@@ -58,14 +64,26 @@ watch(
 
 onMounted(() => {
   loadFonts(); // Load Google fonts in the main thread too
-  const shouldBlock = String(runtimeConfig.public.blockContextMenu).toLowerCase() !== 'false';
-  if (shouldBlock) {
+  const shouldBlockContextMenu =
+    runtimeConfig.public.blockContextMenu !== false &&
+    String(runtimeConfig.public.blockContextMenu).toLowerCase() !== 'false';
+  if (shouldBlockContextMenu) {
     window.addEventListener('contextmenu', preventContextMenu);
+  }
+
+  const shouldBlockTextSelection =
+    runtimeConfig.public.blockTextSelection !== false &&
+    String(runtimeConfig.public.blockTextSelection).toLowerCase() !== 'false';
+  if (typeof document !== 'undefined' && shouldBlockTextSelection) {
+    document.documentElement.classList.add('block-text-selection');
   }
 });
 
 onUnmounted(() => {
   window.removeEventListener('contextmenu', preventContextMenu);
+  if (typeof document !== 'undefined') {
+    document.documentElement.classList.remove('block-text-selection');
+  }
 });
 
 useConfirmClose();

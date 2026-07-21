@@ -430,7 +430,25 @@ select {
   background: var(--scrollbar-thumb-hover);
 }
 
-/* Disable text selection for UI elements */
+/* Disable text selection globally when block-text-selection class is applied to html */
+html.block-text-selection,
+html.block-text-selection body {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* Allow text selection in inputs, textareas, editable containers, and marked elements */
+html.block-text-selection input,
+html.block-text-selection textarea,
+html.block-text-selection [contenteditable="true"],
+html.block-text-selection .select-text,
+html.block-text-selection .selectable {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+/* Disable text selection utility class */
 .select-none {
   user-select: none;
   -webkit-user-select: none;
