@@ -130,7 +130,6 @@
     "fast-check": "^4.9.0",
     "happy-dom": "^20.11.0",
     "prettier": "^3.9.6",
-    "sortablejs": "^1.15.7",
     "tailwindcss": "^4.3.3",
     "tsx": "^4.23.1",
     "typescript": "^7.0.2",
