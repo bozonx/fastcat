@@ -733,6 +733,51 @@ describe('useTimelineItemDrag', () => {
     expect(requestTimelineSaveMock).toHaveBeenCalledWith({ immediate: true });
   });
 
+  it('keeps a shrinking clip at one frame when the pointer moves past its edge', () => {
+    const scrollEl = ref(document.createElement('div'));
+    const tracks = computed(() => timelineStoreMock.timelineDoc.tracks);
+    const { startTrimItem, trimPreview } = useTimelineItemDrag(scrollEl, tracks);
+
+    startTrimItem(
+      {
+        button: 0,
+        buttons: 1,
+        clientX: 100,
+        clientY: 20,
+        pointerId: 10,
+        pointerType: 'touch',
+        currentTarget: null,
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn(),
+      } as unknown as PointerEvent,
+      {
+        trackId: 'track-1',
+        itemId: 'clip-1',
+        edge: 'start',
+        startTicks: 254_016_000_000,
+        followTrimEdge: true,
+      },
+    );
+
+    const handlers = bindSessionMock.mock.calls[0]?.[0];
+    for (const clientX of [200, 300]) {
+      handlers.onPointerMove({
+        buttons: 1,
+        button: 0,
+        clientX,
+        clientY: 20,
+      } as PointerEvent);
+
+      expect(trimPreview.value).toEqual([
+        expect.objectContaining({
+          itemId: 'clip-1',
+          startTicks: 1_515_628_800_000,
+          durationTicks: 8_467_200_000,
+        }),
+      ]);
+    }
+  });
+
   describe('edge scroll during drag', () => {
     beforeEach(() => {
       vi.useFakeTimers({ toFake: ['requestAnimationFrame'] });

@@ -145,7 +145,7 @@ describe('MobileClipPropertiesDrawer', () => {
       },
     });
 
-    // 9 toolbar entries; two of them (delete + trim) carry a variants chevron.
+    // 9 toolbar entries; two of them (delete + blade) carry a variants chevron.
     const buttons = wrapper.findAll('.toolbar-stub button');
     expect(buttons.length).toBe(11);
 
@@ -165,8 +165,16 @@ describe('MobileClipPropertiesDrawer', () => {
     expect(wrapper.emitted('close')).toBeTruthy();
     expect(wrapper.emitted('open-delete-drawer')).toBeUndefined();
 
-    await wrapper.find('button[data-chevron]').trigger('click');
+    const chevronButtons = wrapper.findAll('button[data-chevron]');
+    expect(chevronButtons.length).toBe(2);
+
+    // First chevron belongs to delete → opens delete drawer.
+    await chevronButtons[0].trigger('click');
     expect(wrapper.emitted('open-delete-drawer')).toBeTruthy();
+
+    // Second chevron belongs to blade/split → opens trim options drawer.
+    await chevronButtons[1].trigger('click');
+    expect(wrapper.emitted('open-trim-options-drawer')).toBeTruthy();
 
     await trimBtn.trigger('click');
     expect(wrapper.emitted('open-trim-drawer')).toBeTruthy();

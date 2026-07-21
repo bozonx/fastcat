@@ -34,7 +34,12 @@ import {
   pickBestSnapCandidateTicks,
   computeSnappedStartTicks,
 } from '~/utils/timeline/geometry';
-import { sanitizeFps, getLinkedClipGroupItemIds, findClipById } from '~/timeline/commands/utils';
+import {
+  sanitizeFps,
+  frameToTicks,
+  getLinkedClipGroupItemIds,
+  findClipById,
+} from '~/timeline/commands/utils';
 import { computeTrimGeometry } from '~/timeline/commands/item/trimGeometry';
 import { formatStopFrameTimecode } from '~/utils/stop-frames';
 import { useTimelinePointerSession } from '~/composables/timeline/useTimelinePointerSession';
@@ -739,6 +744,7 @@ export function useTimelineItemDrag(
     const anchorStartTicks = Math.max(0, Math.round(dragAnchorStartTicks.value));
     const anchorDurationTicks = Math.max(0, Math.round(dragAnchorItemDurationTicks.value));
     const anchorEndTicks = anchorStartTicks + anchorDurationTicks;
+    const minTrimDurationTicks = frameToTicks(1, fps);
 
     let minEdgeTicks = 0;
     let maxEdgeTicks = Number.POSITIVE_INFINITY;
@@ -828,6 +834,12 @@ export function useTimelineItemDrag(
           maxEdgeTicks = Math.min(nextClipStart, maxSourceBound);
         }
       }
+    }
+
+    if (mode === 'trim_start') {
+      maxEdgeTicks = Math.min(maxEdgeTicks, anchorEndTicks - minTrimDurationTicks);
+    } else {
+      minEdgeTicks = Math.max(minEdgeTicks, anchorStartTicks + minTrimDurationTicks);
     }
 
     const unclampedRawEdgeTicks =

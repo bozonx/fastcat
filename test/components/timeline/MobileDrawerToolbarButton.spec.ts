@@ -126,7 +126,7 @@ describe('MobileDrawerToolbarButton', () => {
     expect(button.classes().join(' ')).toContain('pointer-events-none');
   });
 
-  it('renders chevron indicator and emits chevron on chevron click', async () => {
+  it('renders chevron indicator and does not emit chevron on span click', async () => {
     const wrapper = await mountSuspended(MobileDrawerToolbarButton, {
       props: { icon: 'x', withChevron: true, label: 'Delete' },
       global: globalOptions,
@@ -135,7 +135,7 @@ describe('MobileDrawerToolbarButton', () => {
     const chevronSpan = wrapper.find('span');
     expect(chevronSpan.exists()).toBe(true);
     await chevronSpan.trigger('click');
-    expect(wrapper.emitted('chevron')).toHaveLength(1);
+    expect(wrapper.emitted('chevron')).toBeUndefined();
   });
 });
 

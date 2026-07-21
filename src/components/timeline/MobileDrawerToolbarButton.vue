@@ -88,12 +88,6 @@ function onClick(e: MouseEvent) {
   emit('click');
 }
 
-function onChevronClick(e: Event) {
-  e.stopPropagation();
-  if (props.disabled) return;
-  emit('chevron');
-}
-
 onBeforeUnmount(() => {
   clearLongPress();
 });
@@ -139,9 +133,8 @@ onBeforeUnmount(() => {
 
       <span
         v-if="withChevron"
-        class="absolute bottom-1 right-1 flex items-center justify-center w-3.5 h-3.5 rounded-br-sm text-current opacity-70 transition-opacity"
+        class="absolute bottom-1 right-1 flex items-center justify-center w-3.5 h-3.5 rounded-br-sm text-current opacity-70 transition-opacity pointer-events-none"
         :aria-label="`${label ?? ''} — ${t('fastcat.timeline.trimOptions')}`"
-        @click.stop="onChevronClick"
       >
         <UIcon name="i-heroicons-chevron-up" class="w-3 h-3" />
       </span>
