@@ -115,6 +115,9 @@ onBeforeUnmount(() => {
 <template>
   <div
     class="fixed bottom-0 left-0 right-0 z-60 bg-ui-bg/95 backdrop-blur border-t border-ui-border px-3 pt-3 pb-safe select-none shadow-2xl rounded-t-2xl outline outline-white/5"
+    @pointermove.stop
+    @pointerup.stop
+    @pointercancel.stop
   >
     <!-- Header -->
     <div class="flex items-center justify-between mb-3 px-1">

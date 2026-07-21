@@ -153,6 +153,36 @@ describe('MobileTrimToolbar', () => {
     expect(wrapper.emitted('trim-end')?.[0][0]).toMatchObject({ clientX: 5, clientY: 100 });
   });
 
+  it('does not leak toolbar pointer events into the timeline drag session', async () => {
+    const wrapper = await mountSuspended(MobileTrimToolbar, {
+      global: {
+        stubs: {
+          UButton: { template: '<button><slot /></button>' },
+          UIcon: { template: '<span />' },
+        },
+      },
+    });
+    const onWindowPointer = vi.fn();
+    window.addEventListener('pointermove', onWindowPointer);
+    window.addEventListener('pointerup', onWindowPointer);
+    window.addEventListener('pointercancel', onWindowPointer);
+
+    try {
+      const trimArea = wrapper.findAll('.touch-none')[0]!;
+      for (const type of ['pointermove', 'pointerup', 'pointercancel'] as const) {
+        trimArea.element.dispatchEvent(
+          new PointerEvent(type, { bubbles: true, clientX: 100, clientY: 200 }),
+        );
+      }
+
+      expect(onWindowPointer).not.toHaveBeenCalled();
+    } finally {
+      window.removeEventListener('pointermove', onWindowPointer);
+      window.removeEventListener('pointerup', onWindowPointer);
+      window.removeEventListener('pointercancel', onWindowPointer);
+    }
+  });
+
   it('emits back and close events', async () => {
     const wrapper = await mountSuspended(MobileTrimToolbar, {
       global: {
