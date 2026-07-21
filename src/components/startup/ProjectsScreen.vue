@@ -14,6 +14,8 @@ import FriendlyTime from '~/components/ui/FriendlyTime.vue';
 import MediaResolutionSettings from '~/components/media/MediaResolutionSettings.vue';
 import ProjectThumbnail from '~/components/startup/ProjectThumbnail.vue';
 import EditorSettingsModal from '~/components/settings/EditorSettingsModal.vue';
+import NativeAppBanner from '~/components/startup/NativeAppBanner.vue';
+import WebGpuGateModal from '~/components/startup/WebGpuGateModal.vue';
 import { dropdownNoReturnFocus } from '~/composables/useDropdownMenuFocus';
 
 const { t, locale: _locale } = useI18n();
@@ -266,6 +268,9 @@ function getProjectOpenTarget(project: ProjectActionTarget): string {
       <!-- Content Area -->
       <div class="flex-1 overflow-y-auto custom-scrollbar">
         <div class="max-w-7xl mx-auto p-8 space-y-12">
+          <!-- Native App Recommendation Banner -->
+          <NativeAppBanner />
+
           <!-- Projects Grid -->
           <section>
             <div class="flex items-center justify-between mb-6">
@@ -621,6 +626,7 @@ function getProjectOpenTarget(project: ProjectActionTarget): string {
   </UiModal>
 
   <EditorSettingsModal v-model:open="isSettingsOpen" />
+  <WebGpuGateModal />
 
   <!-- Loading Overlay -->
   <div

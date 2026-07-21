@@ -81,6 +81,26 @@ opening a workspace: OPFS, IndexedDB, Web Workers, OffscreenCanvas,
 cross-origin isolation. Missing WebGPU or audio WebCodecs are treated as limited
 feature warnings instead of blocking the basic editor shell.
 
+### WebGPU Compatibility & Dev Testing
+
+When WebGPU is missing or disabled in the browser, the web application (`!isTauriRuntime()`) automatically runs in WebGL fallback mode and presents a WebGPU Gate Modal detailing:
+- Shader and transition limitations under WebGL.
+- Browser-specific instructions for enabling WebGPU flags (e.g. `chrome://flags/#enable-unsafe-webgpu` or `about:config` `dom.webgpu.enabled`).
+- A button to copy the flag URL directly to the clipboard.
+- Recommendations to download the native desktop or mobile app for heavy 4K projects.
+
+#### Dev Testing Query Parameters
+
+You can simulate different browser environments and WebGPU support states during development by passing URL query parameters:
+
+- `?mock_gpu=none` (or `?mock_gpu=0` / `?mock_gpu=webgl`): Simulates missing WebGPU and opens the WebGPU Gate Modal.
+- `?mock_gpu=webgpu` (or `?mock_gpu=1`): Simulates supported WebGPU.
+- `?mock_browser=chrome` | `edge` | `firefox` | `safari`: Overrides browser detection to test flag instructions for specific browsers.
+
+Examples:
+- `http://localhost:3000/?mock_gpu=none` (Test WebGPU modal in Chrome)
+- `http://localhost:3000/?mock_gpu=none&mock_browser=firefox` (Test Firefox `about:config` instructions)
+
 Media is imported into the OPFS sandbox via drag-and-drop from the OS or the
 file-manager upload button (both flow through the same `handleFiles` ingest
 path). The Storage settings panel reports OPFS quota usage and lets the user opt

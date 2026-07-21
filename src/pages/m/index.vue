@@ -19,6 +19,8 @@ import UiMobileDrawer from '~/components/ui/UiMobileDrawer.vue';
 import UiFormField from '~/components/ui/UiFormField.vue';
 import MobileBottomNav from '~/components/layout/MobileBottomNav.vue';
 import FriendlyTime from '~/components/ui/FriendlyTime.vue';
+import NativeAppBanner from '~/components/startup/NativeAppBanner.vue';
+import WebGpuGateModal from '~/components/startup/WebGpuGateModal.vue';
 
 definePageMeta({
   layout: 'mobile',
@@ -282,6 +284,10 @@ function groupLabel(group: ProjectDateGroup<SortedProject>): string {
 
           <!-- Main Content -->
           <main class="flex-1 overflow-y-auto bg-ui-bg custom-scrollbar relative">
+            <div class="px-4 pt-4">
+              <NativeAppBanner />
+            </div>
+
             <!-- 1. Completely Empty State (No projects at all) -->
             <div
               v-if="sortedProjects.length === 0"
@@ -652,6 +658,7 @@ function groupLabel(group: ProjectDateGroup<SortedProject>): string {
         </template>
       </UiMobileDrawer>
     </template>
+    <WebGpuGateModal />
   </div>
 </template>
 
