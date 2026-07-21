@@ -45,11 +45,24 @@ async function copyFlagUrl() {
         >
           <!-- Header -->
           <div class="flex items-start gap-4">
-            <div class="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-400 shrink-0">
-              <svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
-                <line x1="12" y1="9" x2="12" y2="13"/>
-                <line x1="12" y1="17" x2="12.01" y2="17"/>
+            <div
+              class="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-400 shrink-0"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="w-7 h-7"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path
+                  d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"
+                />
+                <line x1="12" y1="9" x2="12" y2="13" />
+                <line x1="12" y1="17" x2="12.01" y2="17" />
               </svg>
             </div>
             <div>
@@ -57,7 +70,8 @@ async function copyFlagUrl() {
                 WebGPU недоступен (WebGL fallback)
               </h2>
               <p class="text-sm text-slate-400 mt-1">
-                Ваш браузер работает в режиме WebGL. Некоторые визуальные эффекты рендеринга и переходы могут иметь ограниченную производительность или не поддерживаться.
+                Ваш браузер работает в режиме WebGL. Некоторые визуальные эффекты рендеринга и
+                переходы могут иметь ограниченную производительность или не поддерживаться.
               </p>
             </div>
           </div>
@@ -85,12 +99,28 @@ async function copyFlagUrl() {
                 class="px-3 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-medium text-xs rounded-lg transition-colors shrink-0 flex items-center gap-1.5"
                 @click="copyFlagUrl"
               >
-                <svg v-if="!copied" xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                <svg
+                  v-if="!copied"
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="w-3.5 h-3.5"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
                 </svg>
-                <svg v-else xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <polyline points="20 6 9 17 4 12"/>
+                <svg
+                  v-else
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="w-3.5 h-3.5"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <polyline points="20 6 9 17 4 12" />
                 </svg>
                 {{ copied ? 'Скопировано!' : 'Скопировать ссылку' }}
               </button>
@@ -98,19 +128,27 @@ async function copyFlagUrl() {
           </div>
 
           <!-- Native App Recommendation -->
-          <div class="bg-gradient-to-r from-blue-950/40 to-slate-800/40 border border-blue-500/20 rounded-xl p-4 space-y-3">
+          <div
+            class="bg-gradient-to-r from-blue-950/40 to-slate-800/40 border border-blue-500/20 rounded-xl p-4 space-y-3"
+          >
             <div class="flex items-center gap-2 text-blue-400">
-              <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
-                <line x1="8" y1="21" x2="16" y2="21"/>
-                <line x1="12" y1="17" x2="12" y2="21"/>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="w-5 h-5 shrink-0"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+                <line x1="8" y1="21" x2="16" y2="21" />
+                <line x1="12" y1="17" x2="12" y2="21" />
               </svg>
-              <h3 class="text-sm font-semibold text-slate-200">
-                Нативное приложение FastCat
-              </h3>
+              <h3 class="text-sm font-semibold text-slate-200">Нативное приложение FastCat</h3>
             </div>
             <p class="text-xs text-slate-300">
-              Для обработки тяжелых 4K-видео и полного аппаратно-ускоренного рендеринга используйте установленную версию FastCat.
+              Для обработки тяжелых 4K-видео и полного аппаратно-ускоренного рендеринга используйте
+              установленную версию FastCat.
             </p>
             <div class="flex flex-wrap gap-2 pt-1">
               <a
@@ -119,10 +157,17 @@ async function copyFlagUrl() {
                 rel="noopener noreferrer"
                 class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-medium text-xs rounded-lg transition-colors inline-flex items-center gap-1.5"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                  <polyline points="7 10 12 15 17 10"/>
-                  <line x1="12" y1="15" x2="12" y2="3"/>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="w-3.5 h-3.5"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="7 10 12 15 17 10" />
+                  <line x1="12" y1="15" x2="12" y2="3" />
                 </svg>
                 Скачать для Desktop
               </a>

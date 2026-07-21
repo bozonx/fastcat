@@ -124,9 +124,7 @@ export async function createPixiCompositorApplication(
         timeoutHandle = setTimeout(
           () =>
             reject(
-              new Error(
-                `Pixi ${rendererPreference} renderer init timed out after ${timeoutMs}ms`,
-              ),
+              new Error(`Pixi ${rendererPreference} renderer init timed out after ${timeoutMs}ms`),
             ),
           timeoutMs,
         );

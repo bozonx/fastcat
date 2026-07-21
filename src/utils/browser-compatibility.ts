@@ -81,7 +81,8 @@ export function detectBrowserGpuFlagInfo(overrideBrowser?: string): BrowserGpuFl
       browserDisplayName: 'Microsoft Edge',
       flagUrl: 'edge://flags/#enable-unsafe-webgpu',
       flagName: 'enable-unsafe-webgpu',
-      instructions: 'Вставьте ссылку в адресную строку Edge и установите параметр в положение Enabled. Также убедитесь, что включено аппаратное ускорение в edge://settings/system.',
+      instructions:
+        'Вставьте ссылку в адресную строку Edge и установите параметр в положение Enabled. Также убедитесь, что включено аппаратное ускорение в edge://settings/system.',
     };
   }
 
@@ -91,7 +92,8 @@ export function detectBrowserGpuFlagInfo(overrideBrowser?: string): BrowserGpuFl
       browserDisplayName: 'Mozilla Firefox',
       flagUrl: 'about:config',
       flagName: 'dom.webgpu.enabled',
-      instructions: 'Введите about:config в адресной строке Firefox, найдите параметр dom.webgpu.enabled и переключите его на true.',
+      instructions:
+        'Введите about:config в адресной строке Firefox, найдите параметр dom.webgpu.enabled и переключите его на true.',
     };
   }
 
@@ -99,7 +101,8 @@ export function detectBrowserGpuFlagInfo(overrideBrowser?: string): BrowserGpuFl
     return {
       browserFamily: 'safari',
       browserDisplayName: 'Apple Safari',
-      instructions: 'В Safari откройте Настройки -> Дополнительно -> «Показать меню Разработка». Затем в меню Разработка -> Feature Flags включите WebGPU.',
+      instructions:
+        'В Safari откройте Настройки -> Дополнительно -> «Показать меню Разработка». Затем в меню Разработка -> Feature Flags включите WebGPU.',
     };
   }
 
@@ -109,23 +112,23 @@ export function detectBrowserGpuFlagInfo(overrideBrowser?: string): BrowserGpuFl
       browserDisplayName: 'Google Chrome / Chromium',
       flagUrl: 'chrome://flags/#enable-unsafe-webgpu',
       flagName: 'enable-unsafe-webgpu',
-      instructions: 'Вставьте ссылку в адресную строку Chrome и установите параметр в положение Enabled. Также проверьте настройки аппаратного ускорения в chrome://settings/system.',
+      instructions:
+        'Вставьте ссылку в адресную строку Chrome и установите параметр в положение Enabled. Также проверьте настройки аппаратного ускорения в chrome://settings/system.',
     };
   }
 
   return {
     browserFamily: 'unknown',
     browserDisplayName: 'Ваш браузер',
-    instructions: 'Для поддержки WebGPU рекомендуется использовать актуальные версии Google Chrome, Microsoft Edge или Yandex Browser с включённым аппаратным ускорением.',
+    instructions:
+      'Для поддержки WebGPU рекомендуется использовать актуальные версии Google Chrome, Microsoft Edge или Yandex Browser с включённым аппаратным ускорением.',
   };
 }
 
 export function evaluateBrowserCompatibility(): BrowserCompatibilityReport {
   const queryMock = getGpuMockFromQuery();
   const webGpuSupported =
-    queryMock !== null
-      ? queryMock
-      : typeof navigator !== 'undefined' && !!navigator.gpu;
+    queryMock !== null ? queryMock : typeof navigator !== 'undefined' && !!navigator.gpu;
 
   const checks: BrowserCompatibilityCheck[] = [
     {

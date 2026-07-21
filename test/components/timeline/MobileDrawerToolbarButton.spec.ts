@@ -138,4 +138,3 @@ describe('MobileDrawerToolbarButton', () => {
     expect(wrapper.emitted('chevron')).toBeUndefined();
   });
 });
-

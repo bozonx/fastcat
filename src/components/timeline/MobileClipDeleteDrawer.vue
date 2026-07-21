@@ -74,10 +74,7 @@ function requestExtractTimeline() {
 </script>
 
 <template>
-  <UiMobileDrawer
-    v-model:open="isOpenLocal"
-    :show-close="false"
-  >
+  <UiMobileDrawer v-model:open="isOpenLocal" :show-close="false">
     <template #header>
       <div class="flex items-center justify-between px-3 w-full">
         <UButton
