@@ -183,22 +183,22 @@ const hasAudio = computed(() => {
             @click="handleCut"
           />
 
-          <!-- 4. Open Trim Panel (tap = manual trim, chevron = trim-by-playhead options) -->
-          <MobileDrawerToolbarButton
-            icon="i-heroicons-arrows-right-left"
-            :label="t('fastcat.timeline.trim')"
-            :disabled="isLocked"
-            with-chevron
-            @click="handleOpenTrimPanel"
-            @chevron="handleOpenTrimOptions"
-          />
-
-          <!-- 5. Split -->
+          <!-- 4. Split (tap = split at playhead, chevron = trim-by-playhead options) -->
           <MobileDrawerToolbarButton
             icon="i-lucide-lab-razor-blade"
             :label="t('fastcat.timeline.split')"
             :disabled="isLocked"
+            with-chevron
             @click="handleSplit"
+            @chevron="handleOpenTrimOptions"
+          />
+
+          <!-- 5. Open Trim Panel -->
+          <MobileDrawerToolbarButton
+            icon="i-heroicons-arrows-right-left"
+            :label="t('fastcat.timeline.trim')"
+            :disabled="isLocked"
+            @click="handleOpenTrimPanel"
           />
 
           <!-- 5b. Transitions (video tracks only) -->
