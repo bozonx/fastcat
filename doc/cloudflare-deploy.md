@@ -61,7 +61,15 @@ export NUXT_PUBLIC_FASTCAT_ENABLE_PREMIUM_FEATURES=true
 export NUXT_PUBLIC_FASTCAT_ENABLE_IN_DEVELOPMENT_FEATURES=false
 ```
 
-## Шаг 3. Сборка и деплой
+## Шаг 3. Автоматический деплой через Cloudflare Git Integration (Dashboard)
+
+В Cloudflare Dashboard (**Workers & Pages → Create / Import from Git**):
+- **Build command**: `pnpm build:cf` (запускает `pnpm check:ui && pnpm generate` — сначала проверяет тесты/типы, затем собирает SPA)
+- **Deploy command**: `npx wrangler deploy`
+
+Любые ошибки линтера, типов или тестов отменят деплой автоматически.
+
+## Шаг 4. Ручной деплой через CLI
 
 ```bash
 pnpm deploy:cf

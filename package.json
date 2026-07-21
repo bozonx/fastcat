@@ -62,6 +62,7 @@
     "start": "nuxt preview",
     "prod": "pnpm build && pnpm start",
     "build:preview": "pnpm build && pnpm preview",
+    "build:cf": "pnpm check:ui && pnpm generate",
     "deploy:cf:safe": "pnpm check:ui && pnpm deploy:cf",
     "deploy:cf": "pnpm generate && wrangler deploy",
     "preview:cf": "pnpm generate && wrangler dev"
