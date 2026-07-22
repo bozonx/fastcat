@@ -12,7 +12,11 @@ import type { selectTimelineDurationTicks } from '~/timeline/selectors';
 import type { ProxyThumbnailService } from '~/media-cache/application/proxyThumbnailService';
 import { ensureProxyCommand } from '~/media-cache/application/proxyThumbnailCommands';
 import { buildEffectiveAudioClipItems } from '~/utils/audio/track-bus';
-import { secondsToTicksClamped } from '~/utils/time';
+import {
+  findNearestStandardFrameRate,
+  frameRateToStandardFpsValue,
+  secondsToTicksClamped,
+} from '~/utils/time';
 import type { TimelineFormatInput } from '~/timeline/format';
 import { getTimelineFormat, resolveEffectiveTimelineFormat } from '~/timeline/format';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
@@ -452,7 +456,9 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
           const isRotated90 = Math.abs(rotation) === 90 || Math.abs(rotation) === 270;
           appliedWidth = isRotated90 ? metadata.video.height : metadata.video.width;
           appliedHeight = isRotated90 ? metadata.video.width : metadata.video.height;
-          appliedFps = metadata.video.fps;
+          appliedFps = frameRateToStandardFpsValue(
+            findNearestStandardFrameRate(metadata.video.fps),
+          );
           Object.assign(
             patch,
             applyResolutionPreset({

@@ -93,6 +93,39 @@ export function findStandardFrameRate(value: unknown): StandardFrameRate | null 
   );
 }
 
+export function findNearestStandardFrameRate(value: unknown): StandardFrameRate {
+  const parsed = parseFrameRate(value);
+  const fps = parsed
+    ? frameRateToNumber(reduceFrameRate(parsed))
+    : typeof value === 'number' && Number.isFinite(value)
+      ? value
+      : frameRateToNumber(DEFAULT_FRAME_RATE);
+
+  if (!Number.isFinite(fps) || fps <= 0) {
+    const defaultRate = STANDARD_FRAME_RATES.find(
+      (candidate) =>
+        candidate.num === DEFAULT_FRAME_RATE.num && candidate.den === DEFAULT_FRAME_RATE.den,
+    );
+    return defaultRate ?? STANDARD_FRAME_RATES[4];
+  }
+
+  let nearest = STANDARD_FRAME_RATES[0];
+  let minDiff = Math.abs(frameRateToNumber(nearest) - fps);
+
+  for (let i = 1; i < STANDARD_FRAME_RATES.length; i++) {
+    const candidate = STANDARD_FRAME_RATES[i];
+    const candidateFps = frameRateToNumber(candidate);
+    const diff = Math.abs(candidateFps - fps);
+    if (diff < minDiff) {
+      minDiff = diff;
+      nearest = candidate;
+    }
+  }
+
+  return nearest;
+}
+
+
 export function ticksToSeconds(ticks: number): number {
   return ticks / TICKS_PER_SECOND;
 }

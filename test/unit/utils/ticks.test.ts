@@ -7,6 +7,7 @@ import {
   STANDARD_FRAME_RATES,
   TICKS_PER_SECOND,
   TICKS_PER_MILLISECOND,
+  findNearestStandardFrameRate,
   formatTicksAsTimecode,
   frameRateToStandardFpsValue,
   framesToTicks,
@@ -116,3 +117,15 @@ describe('timecode conversion', () => {
     expect(parseTimecodeToTicks({ timecode: '00:00', fps: 0 })).toBeNull();
   });
 });
+
+describe('nearest standard frame-rate matching', () => {
+  it('snaps arbitrary non-standard VFR rates to the closest standard frame rate', () => {
+    expect(findNearestStandardFrameRate(28.354).label).toBe('29.97');
+    expect(findNearestStandardFrameRate(29.98).label).toBe('29.97');
+    expect(findNearestStandardFrameRate(29.99).label).toBe('30');
+    expect(findNearestStandardFrameRate(59.2).label).toBe('59.94');
+    expect(findNearestStandardFrameRate(24.1).label).toBe('24');
+    expect(findNearestStandardFrameRate(23.95).label).toBe('23.976');
+  });
+});
+

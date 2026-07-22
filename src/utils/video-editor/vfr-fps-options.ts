@@ -1,7 +1,8 @@
 import {
   STANDARD_FRAME_RATES,
+  findNearestStandardFrameRate,
   frameRateToNumber,
-  sanitizeFrameRate,
+  frameRateToStandardFpsValue,
   type FrameRate,
 } from '~/utils/time/ticks';
 
@@ -34,9 +35,9 @@ function standardByLabel(label: string): FrameRate | null {
  * conform preserve every captured frame via duplication rather than dropping any.
  */
 export function buildVfrFrameRateOptions(detectedFps: number): VfrFrameRateOption[] {
-  const detectedRate = sanitizeFrameRate(detectedFps);
-  const detectedValue = frameRateToNumber(detectedRate);
-  const detectedLabel = formatFrameRateLabel(detectedValue);
+  const detectedRate = findNearestStandardFrameRate(detectedFps);
+  const detectedValue = frameRateToStandardFpsValue(detectedRate);
+  const detectedLabel = detectedRate.label;
 
   // Key by rounded value so the detected average and a common rate it snapped to
   // (e.g. a source measured at 29.98 → "30") collapse into a single option.
