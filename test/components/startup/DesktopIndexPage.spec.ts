@@ -4,40 +4,19 @@ import { nextTick } from 'vue';
 import { useRoute, useRouter } from '#app/composables/router';
 import DesktopIndexPage from '~/pages/index.vue';
 
-const mockResetProjectState = vi.hoisted(() => vi.fn());
-const mockProjectStore = vi.hoisted(() => ({ currentProjectName: '' }));
+const mockWorkspaceStore = vi.hoisted(() => ({
+  isInitializing: false,
+  workspaceProviderId: 'web',
+  userSettings: { openLastProjectOnStart: false },
+  lastProjectName: null as string | null,
+  lastProjectPath: null as string | null,
+}));
 const mockDevice = vi.hoisted(() => ({ isMobile: false }));
-const mockReadLocalStorageString = vi.hoisted(() => vi.fn());
-const mockWriteLocalStorageString = vi.hoisted(() => vi.fn());
 
 mockNuxtImport('useDevice', () => () => mockDevice);
 
-vi.mock('~/components/startup/ProjectsScreen.vue', () => ({
-  default: {
-    name: 'ProjectsScreen',
-    template: '<div data-testid="projects-screen" />',
-  },
-}));
-
-vi.mock('~/composables/editor/useProjectActions', () => ({
-  useProjectActions: () => ({
-    resetProjectState: mockResetProjectState,
-  }),
-}));
-
-vi.mock('~/stores/project.store', () => ({
-  useProjectStore: () => mockProjectStore,
-}));
-
-vi.mock('~/stores/ui/uiLocalStorage', () => ({
-  STORAGE_KEYS: {
-    APP: {
-      ALREADY_LAUNCHED: 'fastcat:already-launched',
-      PREFER_DESKTOP: 'fastcat:prefer-desktop',
-    },
-  },
-  readLocalStorageString: mockReadLocalStorageString,
-  writeLocalStorageString: mockWriteLocalStorageString,
+vi.mock('~/stores/workspace.store', () => ({
+  useWorkspaceStore: () => mockWorkspaceStore,
 }));
 
 describe('desktop index page', () => {
@@ -45,9 +24,12 @@ describe('desktop index page', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockProjectStore.currentProjectName = '';
+    mockWorkspaceStore.isInitializing = false;
+    mockWorkspaceStore.workspaceProviderId = 'web';
+    mockWorkspaceStore.userSettings = { openLastProjectOnStart: false };
+    mockWorkspaceStore.lastProjectName = null;
+    mockWorkspaceStore.lastProjectPath = null;
     mockDevice.isMobile = false;
-    mockReadLocalStorageString.mockImplementation(() => null);
 
     vi.mocked(useRoute).mockReturnValue({
       path: '/',
@@ -68,47 +50,15 @@ describe('desktop index page', () => {
     } as any);
   });
 
-  it('renders the desktop projects screen', async () => {
-    const component = await mountSuspended(DesktopIndexPage);
-
-    expect(component.find('[data-testid="projects-screen"]').exists()).toBe(true);
-  });
-
-  it('does not reset project state when no project is open', async () => {
-    await mountSuspended(DesktopIndexPage);
-
-    expect(mockResetProjectState).not.toHaveBeenCalled();
-  });
-
-  it('resets project state when landing on root with an open project', async () => {
-    mockProjectStore.currentProjectName = 'Open Project';
-
-    await mountSuspended(DesktopIndexPage);
-
-    expect(mockResetProjectState).toHaveBeenCalledTimes(1);
-  });
-
-  it('persists forced desktop mode from the route query', async () => {
-    vi.mocked(useRoute).mockReturnValue({
-      path: '/',
-      fullPath: '/?mode=desktop',
-      query: { mode: 'desktop' },
-      params: {},
-      hash: '',
-      meta: { layout: 'default' },
-    } as any);
-
+  it('redirects to /projects on desktop when no auto-open', async () => {
     await mountSuspended(DesktopIndexPage);
     await nextTick();
 
-    expect(mockWriteLocalStorageString).toHaveBeenCalledWith('fastcat:prefer-desktop', 'true');
+    expect(mockReplace).toHaveBeenCalledWith('/projects');
   });
 
-  it('redirects mobile devices to mobile root unless desktop mode is preferred', async () => {
+  it('redirects to /m on mobile', async () => {
     mockDevice.isMobile = true;
-    mockReadLocalStorageString.mockImplementation((key: string) =>
-      key === 'fastcat:prefer-desktop' ? 'false' : null,
-    );
 
     await mountSuspended(DesktopIndexPage);
     await nextTick();
@@ -116,15 +66,38 @@ describe('desktop index page', () => {
     expect(mockReplace).toHaveBeenCalledWith('/m');
   });
 
-  it('does not redirect mobile devices when desktop mode is preferred', async () => {
-    mockDevice.isMobile = true;
-    mockReadLocalStorageString.mockImplementation((key: string) =>
-      key === 'fastcat:prefer-desktop' ? 'true' : null,
-    );
+  it('auto-opens last project on Tauri when setting is enabled', async () => {
+    mockWorkspaceStore.workspaceProviderId = 'tauri';
+    mockWorkspaceStore.userSettings = { openLastProjectOnStart: true };
+    mockWorkspaceStore.lastProjectName = 'MyProject';
+    mockWorkspaceStore.lastProjectPath = '/path/to/MyProject';
 
     await mountSuspended(DesktopIndexPage);
     await nextTick();
 
-    expect(mockReplace).not.toHaveBeenCalledWith('/m');
+    expect(mockReplace).toHaveBeenCalledWith('/editor/%2Fpath%2Fto%2FMyProject');
+  });
+
+  it('falls back to lastProjectName when lastProjectPath is null', async () => {
+    mockWorkspaceStore.workspaceProviderId = 'tauri';
+    mockWorkspaceStore.userSettings = { openLastProjectOnStart: true };
+    mockWorkspaceStore.lastProjectName = 'MyProject';
+    mockWorkspaceStore.lastProjectPath = null;
+
+    await mountSuspended(DesktopIndexPage);
+    await nextTick();
+
+    expect(mockReplace).toHaveBeenCalledWith('/editor/MyProject');
+  });
+
+  it('does not auto-open on web even with setting enabled', async () => {
+    mockWorkspaceStore.workspaceProviderId = 'web';
+    mockWorkspaceStore.userSettings = { openLastProjectOnStart: true };
+    mockWorkspaceStore.lastProjectName = 'MyProject';
+
+    await mountSuspended(DesktopIndexPage);
+    await nextTick();
+
+    expect(mockReplace).toHaveBeenCalledWith('/projects');
   });
 });
