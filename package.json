@@ -16,6 +16,7 @@
     "postinstall": "node scripts/vendor-fonts.mjs && nuxt prepare",
     "fonts:vendor": "node scripts/vendor-fonts.mjs",
     "update:tauri": "pnpm add -D @tauri-apps/cli@latest @tauri-apps/api@latest && pnpm add @tauri-apps/plugin-dialog@latest @tauri-apps/plugin-fs@latest @tauri-apps/plugin-os@latest",
+    "update:crates": "cargo update --manifest-path src-tauri/Cargo.toml",
     "check": "pnpm check:ui && pnpm check:native && pnpm test:e2e && pnpm test:e2e:tauri",
     "check:ui": "pnpm check:static && pnpm test:unit && pnpm test:integration:web",
     "check:native": "pnpm clippy && pnpm fmt:check && pnpm test:native",

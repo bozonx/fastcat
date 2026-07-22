@@ -2,6 +2,7 @@
   "extends": "./.nuxt/tsconfig.json",
   "compilerOptions": {
     "baseUrl": ".",
+    "lib": ["ESNext", "dom", "dom.iterable", "dom.asynciterable", "webworker"],
     "paths": {
       "~/*": ["src/*"],
       "@/*": ["src/*"],

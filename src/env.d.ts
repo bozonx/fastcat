@@ -15,6 +15,3 @@ declare module '#app' {
   }
 }
 
-interface FileSystemDirectoryHandle {
-  values(): AsyncIterableIterator<FileSystemHandle>;
-}
