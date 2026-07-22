@@ -35,4 +35,3 @@ describe('features', () => {
     expect(isPremiumFeaturesEnabled(config)).toBe(false);
   });
 });
-

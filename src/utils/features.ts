@@ -16,4 +16,3 @@ export function isInDevelopmentFeaturesEnabled(config: FastCatRuntimeFeatureConf
 export function isPremiumFeaturesEnabled(config: FastCatRuntimeFeatureConfig): boolean {
   return parseFeatureEnvFlag(config.public?.premiumFeaturesEnabled);
 }
-

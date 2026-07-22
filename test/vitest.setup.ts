@@ -519,8 +519,9 @@ if (typeof window !== 'undefined') {
   (globalThis as any).removeEventListener = vi.fn();
 }
 
-// OffscreenCanvas mock — happy-dom does not provide it
-if (typeof globalThis.OffscreenCanvas === 'undefined') {
+// OffscreenCanvas mock — happy-dom provides it but with a broken getContext('2d')
+// that returns null, so always override with our working mock.
+{
   class OffscreenCanvasMock {
     width: number;
     height: number;
@@ -650,4 +651,15 @@ if (typeof globalThis.OffscreenCanvas === 'undefined') {
     }
   }
   (globalThis as any).OffscreenCanvas = OffscreenCanvasMock;
+}
+
+// Mock HTMLCanvasElement.toBlob — happy-dom provides it but never invokes the
+// callback, so presentCanvas in TimelineAudioWaveform never sets waveformImageUrl
+// and the <img> element is never rendered. Use direct assignment (not vi.spyOn)
+// so the mock survives vi.restoreAllMocks() in test afterEach hooks.
+if (typeof HTMLCanvasElement !== 'undefined') {
+  HTMLCanvasElement.prototype.toBlob = function (callback: BlobCallback) {
+    callback(new Blob([]));
+    return undefined;
+  };
 }

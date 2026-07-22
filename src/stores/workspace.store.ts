@@ -25,10 +25,7 @@ import { useProxyStore } from './proxy.store';
 
 import { getErrorMessage } from '~/utils/errors';
 import { useRuntimeConfig } from 'nuxt/app';
-import {
-  isInDevelopmentFeaturesEnabled,
-  isPremiumFeaturesEnabled,
-} from '~/utils/features';
+import { isInDevelopmentFeaturesEnabled, isPremiumFeaturesEnabled } from '~/utils/features';
 const log = createDevLogger('workspace.store');
 
 export interface RecentProject {
