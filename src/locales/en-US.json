@@ -660,6 +660,7 @@
       "sortByDate": "By last update date",
       "sortByName": "By name",
       "switchToMobile": "Mobile version",
+      "switchToDesktop": "Desktop version",
       "title": "Projects",
       "localWorkspaceName": "Local Disk",
       "projectLocation": "Project Location",

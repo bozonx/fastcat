@@ -7,8 +7,7 @@ import {
   usePendingNewProjectFiles,
 } from '~/composables/project/useProjectManagement';
 import { useProjectStore } from '~/stores/project.store';
-import { onMounted, ref } from 'vue';
-import { writeLocalStorageString, STORAGE_KEYS } from '~/stores/ui/uiLocalStorage';
+import { ref } from 'vue';
 import WelcomeScreen from '~/components/startup/WelcomeScreen.vue';
 import { dropdownNoReturnFocus } from '~/composables/useDropdownMenuFocus';
 import { groupProjectsByDate, type ProjectDateGroup } from '~/utils/project/groupProjectsByDate';
@@ -35,10 +34,6 @@ const { pendingFilesForNewProject } = usePendingNewProjectFiles();
 
 // Reset the open-project state when landing on the list
 resetProjectState();
-
-onMounted(() => {
-  writeLocalStorageString(STORAGE_KEYS.APP.PREFER_DESKTOP, 'false');
-});
 
 const {
   renameValue,
@@ -123,9 +118,6 @@ async function onNewProjectFilesSelected(e: Event) {
 }
 
 const isSettingsOpen = ref(false);
-
-// Template compiler cannot parse `import.meta` directly — expose as a constant
-const isDev = import.meta.dev;
 
 // Sort the main list by modification date (newest first)
 const sortedProjects = computed(() => {
@@ -262,13 +254,13 @@ function groupLabel(group: ProjectDateGroup<SortedProject>): string {
                 </UButton>
 
                 <UButton
-                  v-if="isDev"
                   size="sm"
                   variant="ghost"
                   color="neutral"
                   icon="i-heroicons-computer-desktop"
                   class="rounded-full w-10 h-10 p-0 flex items-center justify-center bg-white/5 text-ui-text-muted"
-                  @click="void router.push('/?mode=desktop')"
+                  :title="t('fastcat.projects.switchToDesktop')"
+                  @click="void router.push('/projects')"
                 />
                 <UButton
                   size="sm"

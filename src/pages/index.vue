@@ -1,47 +1,39 @@
 <script setup lang="ts">
-import { useProjectActions } from '~/composables/editor/useProjectActions';
-import { useProjectStore } from '~/stores/project.store';
-import ProjectsScreen from '~/components/startup/ProjectsScreen.vue';
-import {
-  readLocalStorageString,
-  writeLocalStorageString,
-  STORAGE_KEYS,
-} from '~/stores/ui/uiLocalStorage';
+import { useWorkspaceStore } from '~/stores/workspace.store';
+import { until } from '@vueuse/core';
 
-const { resetProjectState } = useProjectActions();
-const projectStore = useProjectStore();
-const route = useRoute();
-const router = useRouter();
+const workspaceStore = useWorkspaceStore();
 const { isMobile } = useDevice();
+const router = useRouter();
 
-// Reset project state in Pinia when landing on the root — but only if a project
-// is actually open. Otherwise this becomes a floating promise (closeProject + save)
-// that may race the ongoing project load in the editor during autostart
-// (`openLastProjectOnStart` → navigateTo('/editor/X')) and wipe its state.
-if (projectStore.currentProjectName) {
-  void resetProjectState();
-}
-
-onMounted(() => {
-  if (route.query.mode === 'desktop') {
-    writeLocalStorageString(STORAGE_KEYS.APP.PREFER_DESKTOP, 'true');
+onMounted(async () => {
+  if (workspaceStore.isInitializing) {
+    await until(() => !workspaceStore.isInitializing).toBeTruthy();
   }
 
-  const preferDesktop = readLocalStorageString(STORAGE_KEYS.APP.PREFER_DESKTOP) === 'true';
+  // Auto-open last project ONLY for Tauri Desktop app
+  const isTauri = workspaceStore.workspaceProviderId === 'tauri';
+  const shouldAutoOpen =
+    isTauri &&
+    workspaceStore.userSettings.openLastProjectOnStart &&
+    Boolean(workspaceStore.lastProjectName);
 
-  // If on a mobile device and forced desktop mode is not selected
-  if (isMobile && !preferDesktop) {
-    router.replace('/m');
+  if (shouldAutoOpen) {
+    const target = workspaceStore.lastProjectPath || workspaceStore.lastProjectName!;
+    router.replace(`/editor/${encodeURIComponent(target)}`);
     return;
   }
 
-  const alreadyLaunched = readLocalStorageString(STORAGE_KEYS.APP.ALREADY_LAUNCHED) === 'true';
-  if (!alreadyLaunched) {
-    writeLocalStorageString(STORAGE_KEYS.APP.ALREADY_LAUNCHED, 'true');
+  if (isMobile) {
+    router.replace('/m');
+  } else {
+    router.replace('/projects');
   }
 });
 </script>
 
 <template>
-  <ProjectsScreen />
+  <div class="flex h-screen w-full items-center justify-center bg-ui-bg">
+    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
+  </div>
 </template>

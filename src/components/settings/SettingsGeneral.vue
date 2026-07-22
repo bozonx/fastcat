@@ -117,7 +117,7 @@ const stopFramesQualityOptions = [
       />
     </UiFormField>
 
-    <UiFormField>
+    <UiFormField v-if="isDesktop">
       <label class="flex items-center justify-between gap-3 cursor-pointer select-none w-full">
         <span class="text-sm text-ui-text">
           {{ t('videoEditor.settings.openLastProjectOnStart') }}

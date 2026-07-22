@@ -109,11 +109,12 @@ export function findNearestStandardFrameRate(value: unknown): StandardFrameRate 
     return defaultRate ?? STANDARD_FRAME_RATES[4];
   }
 
-  let nearest = STANDARD_FRAME_RATES[0];
+  let nearest: StandardFrameRate = STANDARD_FRAME_RATES[0]!;
   let minDiff = Math.abs(frameRateToNumber(nearest) - fps);
 
   for (let i = 1; i < STANDARD_FRAME_RATES.length; i++) {
     const candidate = STANDARD_FRAME_RATES[i];
+    if (!candidate) continue;
     const candidateFps = frameRateToNumber(candidate);
     const diff = Math.abs(candidateFps - fps);
     if (diff < minDiff) {
@@ -124,7 +125,6 @@ export function findNearestStandardFrameRate(value: unknown): StandardFrameRate 
 
   return nearest;
 }
-
 
 export function ticksToSeconds(ticks: number): number {
   return ticks / TICKS_PER_SECOND;

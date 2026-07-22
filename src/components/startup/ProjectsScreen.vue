@@ -22,9 +22,6 @@ const { t, locale: _locale } = useI18n();
 const workspaceStore = useWorkspaceStore();
 const isSettingsOpen = ref(false);
 
-// Template compiler cannot parse `import.meta` directly — expose as a constant
-const isDev = import.meta.dev;
-
 const {
   searchQuery,
   renameValue,
@@ -231,7 +228,6 @@ function getProjectOpenTarget(project: ProjectActionTarget): string {
             @click="void (isSettingsOpen = true)"
           />
           <UButton
-            v-if="isDev"
             block
             variant="ghost"
             color="primary"

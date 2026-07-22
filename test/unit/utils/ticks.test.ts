@@ -128,4 +128,3 @@ describe('nearest standard frame-rate matching', () => {
     expect(findNearestStandardFrameRate(23.95).label).toBe('23.976');
   });
 });
-

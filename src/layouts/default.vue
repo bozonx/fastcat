@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, watch } from 'vue';
-import { readLocalStorageString, STORAGE_KEYS } from '~/stores/ui/uiLocalStorage';
+
 import 'splitpanes/dist/splitpanes.css';
 
 // Stores
@@ -106,29 +106,15 @@ onMounted(() => {
     .then(() => {
       const shouldAutoOpen =
         route.path === '/' &&
-        route.query.mode !== 'desktop' &&
-        (workspaceStore.workspaceHandle || workspaceStore.workspaceProviderId === 'tauri') &&
+        workspaceStore.workspaceProviderId === 'tauri' &&
         workspaceStore.userSettings.openLastProjectOnStart &&
-        workspaceStore.lastProjectName &&
-        (workspaceStore.workspaceProviderId === 'tauri' ||
-          workspaceStore.projects.includes(workspaceStore.lastProjectName));
+        Boolean(workspaceStore.lastProjectName);
 
       if (shouldAutoOpen) {
         isAutoOpening.value = true;
         autoOpenProjectName.value = workspaceStore.lastProjectName;
-        const target =
-          workspaceStore.workspaceProviderId === 'tauri' && workspaceStore.lastProjectPath
-            ? workspaceStore.lastProjectPath
-            : workspaceStore.lastProjectName!;
-
-        const { isMobile } = useDevice();
-        const preferDesktop = readLocalStorageString(STORAGE_KEYS.APP.PREFER_DESKTOP) === 'true';
-
-        if (isMobile && !preferDesktop) {
-          void navigateTo(`/m/editor/${encodeURIComponent(target)}`);
-        } else {
-          void navigateTo(`/editor/${encodeURIComponent(target)}`);
-        }
+        const target = workspaceStore.lastProjectPath || workspaceStore.lastProjectName!;
+        void navigateTo(`/editor/${encodeURIComponent(target)}`);
       } else {
         isStartingUp.value = false;
       }
