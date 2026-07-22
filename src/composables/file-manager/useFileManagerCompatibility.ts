@@ -32,8 +32,7 @@ function computeStatus(
   const externalKey = `external:${path}`;
 
   const meta = (mediaMetadata[cacheKey] ?? mediaMetadata[externalKey]) as
-    | Record<string, unknown>
-    | undefined;
+    Record<string, unknown> | undefined;
   const isFailed = Boolean(metadataLoadFailed[cacheKey] || metadataLoadFailed[externalKey]);
   const isLoading = Boolean(metadataLoading[cacheKey] || metadataLoading[externalKey]);
 

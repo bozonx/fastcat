@@ -33,10 +33,22 @@ if (typeof document === 'undefined') {
         getContext: () => null,
       };
     },
+    createElementNS: (_ns: string, tag: string) => {
+      return (g.document as { createElement: (t: string) => unknown }).createElement(tag);
+    },
+    querySelector: () => null,
+    querySelectorAll: () => [],
+    getElementsByTagName: () => [],
+    head: {
+      appendChild: () => {},
+      removeChild: () => {},
+    },
     body: {
       appendChild: () => {},
       removeChild: () => {},
     },
+    addEventListener: () => {},
+    removeEventListener: () => {},
   };
   g.window = globalThis;
 }

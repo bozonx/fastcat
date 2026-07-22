@@ -13,8 +13,7 @@ export interface UseMobileFileBrowserModalsOptions {
   entries: Ref<FsEntry[]> | ComputedRef<FsEntry[]>;
   /** Compatibility map for the current entries. */
   compatibility:
-    | Ref<Record<string, FileCompatibility>>
-    | ComputedRef<Record<string, FileCompatibility>>;
+    Ref<Record<string, FileCompatibility>> | ComputedRef<Record<string, FileCompatibility>>;
   /** Selection mode flag from the parent component. */
   isSelectionMode: Ref<boolean> | ComputedRef<boolean>;
   /** Currently selected entries. */

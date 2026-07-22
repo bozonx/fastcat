@@ -7,7 +7,7 @@ import PropertySection from '~/components/properties/PropertySection.vue';
 import PropertyRow from '~/components/properties/PropertyRow.vue';
 import ExpandableYamlSection from '~/components/properties/file/ExpandableYamlSection.vue';
 import { formatDurationSeconds } from '~/utils/time';
-import yaml from 'js-yaml';
+import { dump as yamlDump } from 'js-yaml';
 const log = createDevLogger('BloggerDogItemPropertiesSection');
 
 const props = defineProps<{
@@ -38,7 +38,7 @@ const rawMetaYaml = computed(() => {
   const { duration, updatedAt, note, ...rest } = props.item.meta as Record<string, unknown>;
   if (Object.keys(rest).length === 0) return null;
   try {
-    return yaml.dump(rest, { indent: 2 });
+    return yamlDump(rest, { indent: 2 });
   } catch {
     return String(rest);
   }

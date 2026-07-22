@@ -369,8 +369,7 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
       shapeType:
         clipType === 'shape'
           ? (((item.presetParams as Record<string, unknown>)?.shapeType as
-              | import('~/timeline/types').ShapeType
-              | undefined) ?? resolveShapeType(item.type))
+              import('~/timeline/types').ShapeType | undefined) ?? resolveShapeType(item.type))
           : undefined,
       fillColor:
         clipType === 'shape'
@@ -387,26 +386,22 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
       shapeConfig:
         clipType === 'shape'
           ? ((item.presetParams as Record<string, unknown>)?.shapeConfig as
-              | import('~/timeline/types').ShapeConfig
-              | undefined)
+              import('~/timeline/types').ShapeConfig | undefined)
           : undefined,
       hudType:
         clipType === 'hud'
           ? (((item.presetParams as Record<string, unknown>)?.hudType as
-              | 'media_frame'
-              | undefined) ?? resolveHudType(item.type))
+              'media_frame' | undefined) ?? resolveHudType(item.type))
           : undefined,
       background:
         clipType === 'hud'
           ? ((item.presetParams as Record<string, unknown>)?.background as
-              | import('~/timeline/types').HudMediaParams
-              | undefined)
+              import('~/timeline/types').HudMediaParams | undefined)
           : undefined,
       content:
         clipType === 'hud'
           ? ((item.presetParams as Record<string, unknown>)?.content as
-              | import('~/timeline/types').HudMediaParams
-              | undefined)
+              import('~/timeline/types').HudMediaParams | undefined)
           : undefined,
       text:
         clipType === 'text'
@@ -415,8 +410,7 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
       style:
         clipType === 'text'
           ? ((item.presetParams as Record<string, unknown>)?.style as
-              | import('~/timeline/types').TextClipStyle
-              | undefined)
+              import('~/timeline/types').TextClipStyle | undefined)
           : undefined,
       pseudo: context.pseudo,
     });
@@ -635,8 +629,7 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
         ...item,
         path:
           ((resultPath as unknown as Record<string, unknown> | undefined)?.newPath as
-            | string
-            | undefined) || item.path,
+            string | undefined) || item.path,
         kind: 'file',
       };
     }

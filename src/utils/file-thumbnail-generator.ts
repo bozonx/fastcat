@@ -125,9 +125,7 @@ export async function resizeImage(file: File, maxWidth: number, maxHeight: numbe
     }
 
     const ctx = canvas.getContext('2d') as
-      | CanvasRenderingContext2D
-      | OffscreenCanvasRenderingContext2D
-      | null;
+      CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D | null;
     if (!ctx) throw new Error('Failed to get 2d context for image resize');
     ctx.drawImage(imageBitmap, 0, 0, width, height);
     if (paintCheckerboardBehindTransparentImage(ctx, width, height)) {

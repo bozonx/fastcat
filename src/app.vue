@@ -44,7 +44,9 @@ function preventContextMenu(e: MouseEvent) {
   const target = e.target as HTMLElement | null;
   if (!target) return;
 
-  const isEditable = target.closest('input, textarea, [contenteditable="true"], .allow-native-context-menu');
+  const isEditable = target.closest(
+    'input, textarea, [contenteditable="true"], .allow-native-context-menu',
+  );
   if (isEditable) return;
 
   e.preventDefault();

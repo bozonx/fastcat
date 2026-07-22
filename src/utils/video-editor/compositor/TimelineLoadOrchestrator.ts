@@ -295,19 +295,15 @@ export class TimelineLoadOrchestrator {
         blendMode: resolveBlendMode((clipData as Record<string, unknown>).blendMode),
         effects: callbacks.toVideoEffects((clipData as Record<string, unknown>).effects),
         transform: (clipData as Record<string, unknown>).transform as
-          | import('~/timeline/types').ClipTransform
-          | undefined,
+          import('~/timeline/types').ClipTransform | undefined,
         sourceOrientation: (clipData as Record<string, unknown>)
           .sourceOrientation as CompositorClip['sourceOrientation'],
         transitionIn: (clipData as Record<string, unknown>).transitionIn as
-          | import('~/timeline/types').ClipTransition
-          | undefined,
+          import('~/timeline/types').ClipTransition | undefined,
         transitionOut: (clipData as Record<string, unknown>).transitionOut as
-          | import('~/timeline/types').ClipTransition
-          | undefined,
+          import('~/timeline/types').ClipTransition | undefined,
         mask: (clipData as Record<string, unknown>).mask as
-          | import('~/timeline/types').ClipMask
-          | undefined,
+          import('~/timeline/types').ClipMask | undefined,
       });
       if (bitmap) {
         const frameW = Math.max(1, Math.round(bitmap.width ?? 1));
@@ -375,19 +371,15 @@ export class TimelineLoadOrchestrator {
         blendMode: resolveBlendMode((clipData as Record<string, unknown>).blendMode),
         effects: callbacks.toVideoEffects((clipData as Record<string, unknown>).effects),
         transform: (clipData as Record<string, unknown>).transform as
-          | import('~/timeline/types').ClipTransform
-          | undefined,
+          import('~/timeline/types').ClipTransform | undefined,
         sourceOrientation: (clipData as Record<string, unknown>)
           .sourceOrientation as CompositorClip['sourceOrientation'],
         transitionIn: (clipData as Record<string, unknown>).transitionIn as
-          | import('~/timeline/types').ClipTransition
-          | undefined,
+          import('~/timeline/types').ClipTransition | undefined,
         transitionOut: (clipData as Record<string, unknown>).transitionOut as
-          | import('~/timeline/types').ClipTransition
-          | undefined,
+          import('~/timeline/types').ClipTransition | undefined,
         mask: (clipData as Record<string, unknown>).mask as
-          | import('~/timeline/types').ClipMask
-          | undefined,
+          import('~/timeline/types').ClipMask | undefined,
       });
       callbacks.registerLoadedClip({
         clip: compositorClip,

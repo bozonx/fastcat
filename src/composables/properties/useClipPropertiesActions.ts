@@ -398,14 +398,7 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
       onClick: () => void;
       onSelect?: () => void;
       color?:
-        | 'neutral'
-        | 'error'
-        | 'success'
-        | 'warning'
-        | 'info'
-        | 'primary'
-        | 'secondary'
-        | 'danger';
+        'neutral' | 'error' | 'success' | 'warning' | 'info' | 'primary' | 'secondary' | 'danger';
       disabled?: boolean;
     }[] = [];
     const clip = options.clip.value;
@@ -617,14 +610,7 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
       icon: string;
       onClick: () => void;
       color?:
-        | 'neutral'
-        | 'error'
-        | 'success'
-        | 'warning'
-        | 'info'
-        | 'primary'
-        | 'secondary'
-        | 'danger';
+        'neutral' | 'error' | 'success' | 'warning' | 'info' | 'primary' | 'secondary' | 'danger';
       variant?: 'solid' | 'outline' | 'soft' | 'ghost' | 'subtle' | 'link';
     }> = [
       {

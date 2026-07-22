@@ -73,8 +73,7 @@ export interface AudioEffectManifest<T = Record<string, unknown>> extends BaseEf
 }
 
 export type EffectManifest<T = Record<string, unknown>> =
-  | VideoEffectManifest<T>
-  | AudioEffectManifest<T>;
+  VideoEffectManifest<T> | AudioEffectManifest<T>;
 
 export interface BaseClipEffect {
   id: string;

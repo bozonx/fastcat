@@ -98,8 +98,7 @@ const clipLayout = computed(() => {
     canvasWidth: props.renderWidth,
     canvasHeight: props.renderHeight,
     transform: (clipData.value as { transform?: ClipTransform }).transform as
-      | ClipTransform
-      | undefined,
+      ClipTransform | undefined,
   });
 });
 

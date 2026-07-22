@@ -34,7 +34,4 @@ export type FileAction =
 
 /** File-browser actions that are exposed in the mobile drawer/toolbar UI. */
 export type MobileDrawerAction =
-  | FileAction
-  | 'openAsPanelCut'
-  | 'openAsPanelSound'
-  | 'openAsProjectTab';
+  FileAction | 'openAsPanelCut' | 'openAsPanelSound' | 'openAsProjectTab';

@@ -423,9 +423,7 @@ export async function runConcurrentExportWriters(params: {
 function fillCanvasBlack(canvas: OffscreenCanvas | HTMLCanvasElement | undefined | null) {
   if (!canvas) return;
   const context = canvas.getContext('2d') as
-    | CanvasRenderingContext2D
-    | OffscreenCanvasRenderingContext2D
-    | null;
+    CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D | null;
   if (!context) return;
   context.save();
   context.fillStyle = '#000';
@@ -467,11 +465,9 @@ export function isPassthroughCompatibleClip(
     return { ok: false, reason: 'clip has fade in/out' };
   }
   const transitionIn = (clip.transitionIn ?? fastcat.transitionIn) as
-    | { durationTicks?: unknown }
-    | undefined;
+    { durationTicks?: unknown } | undefined;
   const transitionOut = (clip.transitionOut ?? fastcat.transitionOut) as
-    | { durationTicks?: unknown }
-    | undefined;
+    { durationTicks?: unknown } | undefined;
   if (
     (transitionIn?.durationTicks && Number(transitionIn.durationTicks) > 0) ||
     (transitionOut?.durationTicks && Number(transitionOut.durationTicks) > 0)
@@ -1021,8 +1017,7 @@ export async function runExport(
     }> {
       let audioSource: unknown = null;
       let writeMixedAudioToSource:
-        | ((onProgress?: (progress: number) => void) => Promise<void>)
-        | null = null;
+        ((onProgress?: (progress: number) => void) => Promise<void>) | null = null;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let audioPacketState: any = null;
 

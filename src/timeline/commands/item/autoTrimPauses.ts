@@ -26,8 +26,7 @@ export function autoTrimPauses(
     if (!track) continue;
 
     const originalItem = track.items.find((it) => it.id === target.itemId) as
-      | TimelineMediaClipItem
-      | undefined;
+      TimelineMediaClipItem | undefined;
     if (!originalItem || originalItem.kind !== 'clip') continue;
 
     // Sorting split points from RIGHT to LEFT to keep the original ID stable on the left part
@@ -62,8 +61,7 @@ export function autoTrimPauses(
       // Manual split logic similar to splitItem but simplified for batch
       const currentTrack = getTrackById(nextDoc, target.trackId);
       const item = currentTrack?.items.find((it) => it.id === currentItemId) as
-        | TimelineMediaClipItem
-        | undefined;
+        TimelineMediaClipItem | undefined;
       if (!item || item.kind !== 'clip') break;
 
       const fps = getDocFps(nextDoc);

@@ -14,11 +14,7 @@
 import { BROWSER_NATIVE_IMAGE_EXTENSIONS, getMediaTypeFromFilename } from '~/utils/media-types';
 
 export type FileCompatibilityStatus =
-  | 'ok'
-  | 'checking'
-  | 'fully_unsupported'
-  | 'audio_unsupported'
-  | 'corrupt';
+  'ok' | 'checking' | 'fully_unsupported' | 'audio_unsupported' | 'corrupt';
 
 /**
  * Minimal structural view of the fields these decisions read. Kept loose so both

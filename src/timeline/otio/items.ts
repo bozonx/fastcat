@@ -326,8 +326,7 @@ export function parseClipItem(input: {
       typeData?.kind === 'shape'
         ? (typeData as Record<string, unknown>)
         : ((fastcatMeta.typeData as unknown as { shape?: unknown })?.shape as
-            | Record<string, unknown>
-            | undefined);
+            Record<string, unknown> | undefined);
     return {
       ...base,
       clipType: 'shape',
@@ -353,8 +352,7 @@ export function parseClipItem(input: {
       typeData?.kind === 'hud'
         ? (typeData as Record<string, unknown>)
         : ((fastcatMeta.typeData as unknown as { hud?: unknown })?.hud as
-            | Record<string, unknown>
-            | undefined);
+            Record<string, unknown> | undefined);
     return {
       ...base,
       clipType: 'hud',

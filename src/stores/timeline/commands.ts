@@ -122,8 +122,7 @@ export function createTimelineCommandsModule(params: TimelineCommandsDeps): Time
     >,
     getMediaMetadataByPath: (path) =>
       (mediaMetadata.value[path] ?? null) as
-        | import('~/timeline/application/timelineCommandService').TimelineMediaMetadata
-        | null,
+        import('~/timeline/application/timelineCommandService').TimelineMediaMetadata | null,
     fetchMediaMetadataByPath: getOrFetchMetadataByPath as (
       path: string,
     ) => Promise<

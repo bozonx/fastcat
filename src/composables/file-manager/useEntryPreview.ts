@@ -1,7 +1,7 @@
 import { createDevLogger } from '~/utils/dev-logger';
 import { computed, onUnmounted, ref, watch, type Ref } from 'vue';
 import { useSafeObjectUrl, safeRevokeObjectURL } from '~/composables/useSafeObjectUrl';
-import yaml from 'js-yaml';
+import { dump as yamlDump } from 'js-yaml';
 import { getMediaTypeFromFilename, getMimeTypeFromFilename } from '~/utils/media-types';
 import { parseTimelineFromOtio } from '~/timeline/otio-serializer';
 import { selectTimelineDurationTicks } from '~/timeline/selectors';
@@ -102,7 +102,7 @@ export function useEntryPreview(params: {
   const exifYaml = computed(() => {
     if (!exifData.value) return null;
     try {
-      return yaml.dump(exifData.value, { indent: 2 });
+      return yamlDump(exifData.value, { indent: 2 });
     } catch {
       return String(exifData.value);
     }
@@ -126,9 +126,9 @@ export function useEntryPreview(params: {
       if (rawMeta && typeof rawMeta === 'object') {
         const cleanMeta = { ...rawMeta } as Record<string, unknown>;
         delete cleanMeta.audioPeaks;
-        return yaml.dump(cleanMeta, { indent: 2 });
+        return yamlDump(cleanMeta, { indent: 2 });
       }
-      return yaml.dump(rawMeta, { indent: 2 });
+      return yamlDump(rawMeta, { indent: 2 });
     } catch {
       return String(fileInfo.value.metadata);
     }

@@ -7,13 +7,7 @@
  */
 
 export type ProjectDateBucketKind =
-  | 'today'
-  | 'yesterday'
-  | 'thisWeek'
-  | 'lastWeek'
-  | 'thisMonth'
-  | 'month'
-  | 'unknown';
+  'today' | 'yesterday' | 'thisWeek' | 'lastWeek' | 'thisMonth' | 'month' | 'unknown';
 
 export interface ProjectDateGroup<T> {
   /** Stable id, used as a `:key` and for i18n lookups. */

@@ -123,8 +123,7 @@ const layout = computed(() => {
   const d = intrinsicDimensions.value;
   if (!d) return null;
   const transform = (clipData.value as { transform?: ClipTransform })?.transform as
-    | ClipTransform
-    | undefined;
+    ClipTransform | undefined;
   const boxLayout = computeClipBoxLayout({
     frameWidth: d.w,
     frameHeight: d.h,

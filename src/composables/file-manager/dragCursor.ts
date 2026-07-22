@@ -7,12 +7,7 @@ const FILE_MANAGER_DRAG_MOVE_CLASS = 'fastcat-file-manager-drag-move';
 const FILE_MANAGER_DRAG_CANCEL_CLASS = 'fastcat-file-manager-drag-cancel';
 const FILE_MANAGER_DRAG_OVERLAY_ID = 'fastcat-file-manager-drag-overlay';
 type FileManagerDragCursorOperation =
-  | 'copy'
-  | 'move'
-  | 'cancel'
-  | 'open-panel'
-  | 'open-tab'
-  | 'timeline-add';
+  'copy' | 'move' | 'cancel' | 'open-panel' | 'open-tab' | 'timeline-add';
 
 let dragOverlay: HTMLDivElement | null = null;
 let dragOverlayIcon: HTMLSpanElement | null = null;
@@ -29,8 +24,7 @@ function translateDragOperation(operation: FileManagerDragCursorOperation | null
   try {
     const nuxtApp = _useNuxtApp();
     const i18nService = nuxtApp.$i18nService as
-      | { t?: (translationKey: string) => string }
-      | undefined;
+      { t?: (translationKey: string) => string } | undefined;
     return i18nService?.t?.(key) ?? key;
   } catch {
     return key;

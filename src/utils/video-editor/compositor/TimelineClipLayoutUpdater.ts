@@ -32,11 +32,9 @@ export class TimelineClipLayoutUpdater {
 
     const n = next as unknown as Record<string, unknown>;
     const timelineRange = n['timelineRange'] as
-      | { startTicks?: unknown; durationTicks?: unknown }
-      | undefined;
+      { startTicks?: unknown; durationTicks?: unknown } | undefined;
     const sourceRange = n['sourceRange'] as
-      | { startTicks?: unknown; durationTicks?: unknown }
-      | undefined;
+      { startTicks?: unknown; durationTicks?: unknown } | undefined;
     const startTicks = Math.max(
       0,
       Math.round(Number(timelineRange?.startTicks ?? clip.startTicks)),

@@ -484,8 +484,7 @@ describe('useFileConversionActions', () => {
     const props = createProps('audio');
     const customReload = vi.fn().mockResolvedValue(undefined);
     props.targetReloadDirectory.value = customReload as unknown as
-      | ((path: string) => Promise<void>)
-      | null;
+      ((path: string) => Promise<void>) | null;
 
     const { startConversion } = useFileConversionActions(props);
 

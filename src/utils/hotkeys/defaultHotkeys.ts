@@ -1,9 +1,5 @@
 export type HotkeyGroupId =
-  | 'general'
-  | 'fileManager'
-  | 'timeline'
-  | 'timelineMonitorGlobal'
-  | 'monitor';
+  'general' | 'fileManager' | 'timeline' | 'timelineMonitorGlobal' | 'monitor';
 
 export type HotkeyCommandId =
   | 'general.focus'

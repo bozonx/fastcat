@@ -32,9 +32,7 @@ export function useImagePanZoom(containerRef: Ref<HTMLElement | null>) {
 
     const container = containerRef.value;
     const media = container.querySelector('img, video') as
-      | HTMLImageElement
-      | HTMLVideoElement
-      | null;
+      HTMLImageElement | HTMLVideoElement | null;
 
     if (!media) return null;
 

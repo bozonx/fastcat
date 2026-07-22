@@ -96,8 +96,7 @@ const activeSettingsEffect = computed(() => {
   if (!settingsEffectId.value) return null;
   return (
     (safeEffects.value.find((e) => (e as Record<string, unknown>).id === settingsEffectId.value) as
-      | Record<string, unknown>
-      | undefined) ?? null
+      Record<string, unknown> | undefined) ?? null
   );
 });
 

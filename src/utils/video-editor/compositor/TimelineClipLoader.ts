@@ -82,29 +82,25 @@ export class TimelineClipLoader {
     const hudBackgroundPath = String(
       (
         (clipData.background as Record<string, unknown> | undefined)?.source as
-          | Record<string, unknown>
-          | undefined
+          Record<string, unknown> | undefined
       )?.path ?? '',
     );
     const hudContentPath = String(
       (
         (clipData.content as Record<string, unknown> | undefined)?.source as
-          | Record<string, unknown>
-          | undefined
+          Record<string, unknown> | undefined
       )?.path ?? '',
     );
     const hudFramePath = String(
       (
         (clipData.frame as Record<string, unknown> | undefined)?.source as
-          | Record<string, unknown>
-          | undefined
+          Record<string, unknown> | undefined
       )?.path ?? '',
     );
     const maskPath = String(
       (
         (clipData.mask as Record<string, unknown> | undefined)?.source as
-          | Record<string, unknown>
-          | undefined
+          Record<string, unknown> | undefined
       )?.path ?? '',
     );
 
@@ -269,15 +265,12 @@ export class TimelineClipLoader {
     reusable.transform = clipData.transform as import('~/timeline/types').ClipTransform | undefined;
     reusable.transformActive = clipData.transformActive as boolean | undefined;
     reusable.animations = clipData.animations as
-      | import('~/timeline/types').ClipAnimations
-      | undefined;
+      import('~/timeline/types').ClipAnimations | undefined;
     reusable.bakedEffects = bakeClipEffectAnimations(reusable.effects, reusable.animations);
     reusable.transitionIn = clipData.transitionIn as
-      | import('~/timeline/types').ClipTransition
-      | undefined;
+      import('~/timeline/types').ClipTransition | undefined;
     reusable.transitionOut = clipData.transitionOut as
-      | import('~/timeline/types').ClipTransition
-      | undefined;
+      import('~/timeline/types').ClipTransition | undefined;
     reusable.mask = clipData.mask as import('~/timeline/types').ClipMask | undefined;
     reusable.maskActive = clipData.maskActive as boolean | undefined;
 

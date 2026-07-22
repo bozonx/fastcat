@@ -103,6 +103,20 @@ describe('worker-polyfill', () => {
     expect(typeof doc.body.removeChild).toBe('function');
   });
 
+  it('provides DOM query methods and element creation stubs', async () => {
+    await import('~/workers/worker-polyfill');
+    const doc = (globalThis as any).document;
+    expect(typeof doc.querySelector).toBe('function');
+    expect(doc.querySelector('div')).toBeNull();
+    expect(typeof doc.querySelectorAll).toBe('function');
+    expect(doc.querySelectorAll('div')).toEqual([]);
+    expect(typeof doc.getElementsByTagName).toBe('function');
+    expect(doc.getElementsByTagName('div')).toEqual([]);
+    expect(doc.head).toBeDefined();
+    expect(typeof doc.head.appendChild).toBe('function');
+    expect(typeof doc.createElementNS).toBe('function');
+  });
+
   it('does not override an existing document', async () => {
     const existingDoc = { custom: true, createElement: () => null };
     (globalThis as any).document = existingDoc;

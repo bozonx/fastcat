@@ -62,10 +62,7 @@ export type TauriBase =
  * any other string is an absolute path, a function returns one of the above.
  */
 export type TauriBaseInput =
-  | TauriBase
-  | string
-  | (() => string | Promise<string>)
-  | (() => TauriBase | Promise<TauriBase>);
+  TauriBase | string | (() => string | Promise<string>) | (() => TauriBase | Promise<TauriBase>);
 
 function normalizeBaseInput(input: TauriBaseInput): TauriBase | (() => Promise<TauriBase>) {
   if (typeof input === 'string') {

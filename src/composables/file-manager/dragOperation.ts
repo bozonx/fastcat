@@ -12,12 +12,7 @@ export interface FileManagerDraggedItem {
 }
 
 export type FileManagerDragCursorOperation =
-  | 'copy'
-  | 'move'
-  | 'cancel'
-  | 'open-panel'
-  | 'open-tab'
-  | 'timeline-add';
+  'copy' | 'move' | 'cancel' | 'open-panel' | 'open-tab' | 'timeline-add';
 
 export interface ResolveFileManagerDropOperationParams extends ResolveFileManagerDragOperationParams {
   currentDragOperation?: FileManagerDragCursorOperation | null;

@@ -563,8 +563,7 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
     if (!fromTrack || !toTrack) throw new Error('Track not found');
 
     const item = fromTrack.items.find((it) => it.id === input.itemId) as
-      | TimelineClipItem
-      | undefined;
+      TimelineClipItem | undefined;
     if (!item || item.kind !== 'clip') throw new Error('Item not found');
 
     const path = item.source?.path;
@@ -606,8 +605,7 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
     if (!videoTrack || videoTrack.kind !== 'video') throw new Error('Invalid video track');
 
     const videoItem = videoTrack.items.find((it) => it.id === input.videoItemId) as
-      | TimelineClipItem
-      | undefined;
+      TimelineClipItem | undefined;
     if (!videoItem || videoItem.kind !== 'clip') throw new Error('Clip not found');
 
     if (videoItem.clipType !== 'media') {

@@ -100,9 +100,7 @@ const stopFramesQualityOptions = [
         @update:model-value="
           (v: unknown) =>
             (workspaceStore.userSettings.locale = ((v as { value: string })?.value ?? v) as
-              | 'en-US'
-              | 'ru-RU'
-              | 'es-419')
+              'en-US' | 'ru-RU' | 'es-419')
         "
       />
     </UiFormField>

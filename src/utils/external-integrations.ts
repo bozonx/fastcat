@@ -3,10 +3,7 @@ import type { ExternalIntegrationsSettings, FastCatUserSettings } from '~/utils/
 export type ExternalServiceKind = 'files' | 'stt';
 export type ExternalServiceSource = 'fastcat_publicador' | 'manual';
 export type FastCatIntegrationScope =
-  | 'content-library:read'
-  | 'content-library:write'
-  | 'stt:transcribe'
-  | 'llm:chat';
+  'content-library:read' | 'content-library:write' | 'stt:transcribe' | 'llm:chat';
 
 export interface ResolvedExternalServiceConfig {
   source: ExternalServiceSource;

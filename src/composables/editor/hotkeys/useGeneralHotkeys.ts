@@ -263,8 +263,7 @@ export function useGeneralHotkeys(
           if (doc) {
             for (const track of doc.tracks) {
               const clip = track.items.find((it) => it.id === itemId && it.kind === 'clip') as
-                | TimelineClipItem
-                | undefined;
+                TimelineClipItem | undefined;
               if (clip) {
                 uiStore.pendingClipRename = {
                   trackId: track.id,

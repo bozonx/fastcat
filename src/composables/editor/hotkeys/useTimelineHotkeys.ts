@@ -377,8 +377,7 @@ export function useTimelineHotkeys(
       if (doc) {
         for (const track of doc.tracks) {
           const clip = track.items.find((it) => it.id === itemId && it.kind === 'clip') as
-            | TimelineClipItem
-            | undefined;
+            TimelineClipItem | undefined;
           if (clip) {
             clipboardStore.setClipboardPayload({
               source: 'clipParameters',
@@ -407,8 +406,7 @@ export function useTimelineHotkeys(
       if (doc) {
         for (const track of doc.tracks) {
           const clip = track.items.find((it) => it.id === itemId && it.kind === 'clip') as
-            | TimelineClipItem
-            | undefined;
+            TimelineClipItem | undefined;
           if (clip) {
             uiStore.triggerClipPasteParameters(track.id, clip.id);
             return true;

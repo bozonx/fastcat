@@ -173,10 +173,11 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
       let hasDirectories: boolean | undefined;
 
       if (entryHandle.kind === 'directory' && options?.checkChildren) {
+        const dirHandle = entryHandle as FileSystemDirectoryHandle;
         try {
           hasChildren = false;
           hasDirectories = false;
-          for await (const [, childHandle] of entryHandle.entries()) {
+          for await (const [, childHandle] of dirHandle.entries()) {
             hasChildren = true;
             if (childHandle.kind === 'directory') {
               hasDirectories = true;

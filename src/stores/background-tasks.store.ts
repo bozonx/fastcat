@@ -4,12 +4,7 @@ import { genUuid } from '~/utils/ids';
 
 export type BackgroundTaskStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
 export type BackgroundTaskType =
-  | 'proxy'
-  | 'conversion'
-  | 'file-operation'
-  | 'transcription'
-  | 'model-download'
-  | 'other';
+  'proxy' | 'conversion' | 'file-operation' | 'transcription' | 'model-download' | 'other';
 
 export interface BackgroundTask {
   id: string;

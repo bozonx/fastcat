@@ -35,7 +35,6 @@ const { t } = useI18n();
     <pre
       v-if="props.expanded"
       class="w-full p-2 bg-ui-bg text-2xs font-mono whitespace-pre overflow-x-auto border border-ui-border rounded"
-      >{{ props.content }}</pre
-    >
+      >{{ props.content }}</pre>
   </PropertySection>
 </template>

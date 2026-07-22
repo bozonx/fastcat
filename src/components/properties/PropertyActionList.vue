@@ -37,14 +37,7 @@ const props = withDefaults(
     variant?: 'solid' | 'outline' | 'soft' | 'ghost' | 'subtle' | 'link';
     /** Default color for buttons */
     color?:
-      | 'neutral'
-      | 'primary'
-      | 'secondary'
-      | 'success'
-      | 'warning'
-      | 'error'
-      | 'info'
-      | 'danger';
+      'neutral' | 'primary' | 'secondary' | 'success' | 'warning' | 'error' | 'info' | 'danger';
     /** Additional class for the container */
     class?: string;
   }>(),

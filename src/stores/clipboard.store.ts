@@ -45,9 +45,7 @@ export interface ClipParametersClipboardPayload {
 }
 
 export type AppClipboardPayload =
-  | FileManagerClipboardPayload
-  | TimelineClipboardPayload
-  | ClipParametersClipboardPayload;
+  FileManagerClipboardPayload | TimelineClipboardPayload | ClipParametersClipboardPayload;
 
 export const useClipboardStore = defineStore('clipboard', () => {
   const clipboardPayload = ref<AppClipboardPayload | null>(null);

@@ -681,8 +681,7 @@ export function resolveClipParametersApplyTargets(params: {
   for (const id of selectedItemIds) {
     for (const track of doc.tracks) {
       const clip = track.items.find((it) => it.id === id && it.kind === 'clip') as
-        | TimelineClipItem
-        | undefined;
+        TimelineClipItem | undefined;
       if (clip) {
         // Locked clips are skipped rather than aborting the whole fan-out: a
         // single locked clip in an atomic batch throws and rolls back every

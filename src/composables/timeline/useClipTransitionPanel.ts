@@ -92,8 +92,7 @@ export function useClipTransitionPanel(options: UseClipTransitionPanelOptions) {
   watch(selectedType, (type) => {
     const manifest = getTransitionManifest(type);
     const nextParams = normalizeTransitionParams(type, selectedParams.value) as
-      | Record<string, unknown>
-      | undefined;
+      Record<string, unknown> | undefined;
     selectedParams.value = nextParams ?? {
       ...(manifest?.defaultParams as Record<string, unknown> | undefined),
     };
@@ -126,8 +125,7 @@ export function useClipTransitionPanel(options: UseClipTransitionPanelOptions) {
     const transitionType = appliedTransition.type;
     const paramsSource = appliedTransition.params ?? selectedParams.value;
     const normalizedParams = normalizeTransitionParams(transitionType, paramsSource) as
-      | Record<string, unknown>
-      | undefined;
+      Record<string, unknown> | undefined;
 
     options.onUpdate({
       trackId: options.trackId.value,

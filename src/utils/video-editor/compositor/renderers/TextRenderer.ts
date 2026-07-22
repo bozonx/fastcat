@@ -374,8 +374,7 @@ export class TextRenderer {
     clip: CompositorClip,
   ): { resize?: (width: number, height: number) => void; update?: () => void } | undefined {
     return (clip.sprite as { texture?: { source?: unknown } } | null)?.texture?.source as
-      | { resize?: (width: number, height: number) => void; update?: () => void }
-      | undefined;
+      { resize?: (width: number, height: number) => void; update?: () => void } | undefined;
   }
 
   private drawTextLines(params: {

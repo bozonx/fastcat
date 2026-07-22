@@ -39,13 +39,7 @@ export interface TimelineSourceRef {
 }
 
 export type TimelineClipType =
-  | 'media'
-  | 'timeline'
-  | 'adjustment'
-  | 'background'
-  | 'text'
-  | 'shape'
-  | 'hud';
+  'media' | 'timeline' | 'adjustment' | 'background' | 'text' | 'shape' | 'hud';
 
 export type TimelineBlendMode =
   | 'normal'
@@ -114,12 +108,7 @@ export interface TextClipStyle {
 }
 
 export type ClipAnchorPreset =
-  | 'center'
-  | 'topLeft'
-  | 'topRight'
-  | 'bottomLeft'
-  | 'bottomRight'
-  | 'custom';
+  'center' | 'topLeft' | 'topRight' | 'bottomLeft' | 'bottomRight' | 'custom';
 
 export interface ClipAnchor {
   preset: ClipAnchorPreset;
@@ -376,13 +365,7 @@ export interface TimelineTextClipItem extends TimelineClipBase {
 }
 
 export type ShapeType =
-  | 'square'
-  | 'circle'
-  | 'triangle'
-  | 'star'
-  | 'cloud'
-  | 'speech_bubble'
-  | 'bang';
+  'square' | 'circle' | 'triangle' | 'star' | 'cloud' | 'speech_bubble' | 'bang';
 
 export interface ShapeConfig {
   // Circle

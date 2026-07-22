@@ -76,8 +76,7 @@ describe('bakeClipEffectAnimations', () => {
 
     const hueAt = (t: number) => {
       const s = patchBakedEffectSpecs(baked, t).find((x) => x.type === 'hue') as
-        | Record<string, unknown>
-        | undefined;
+        Record<string, unknown> | undefined;
       return (s?.degrees as number) ?? 0;
     };
     expect(hueAt(0)).toBeCloseTo(0, 1);

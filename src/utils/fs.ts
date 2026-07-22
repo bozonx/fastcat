@@ -188,8 +188,7 @@ export async function computeDirectoryStats(
       seen += 1;
 
       const entryHandle = (Array.isArray(value) ? value[1] : value) as
-        | FileSystemFileHandle
-        | FileSystemDirectoryHandle;
+        FileSystemFileHandle | FileSystemDirectoryHandle;
 
       if (entryHandle.kind === 'file') {
         try {

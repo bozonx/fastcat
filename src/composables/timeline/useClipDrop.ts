@@ -163,8 +163,7 @@ export function useClipDrop(options: UseClipDropOptions) {
       mode: DEFAULT_TRANSITION_MODE,
       curve: DEFAULT_TRANSITION_CURVE,
       params: (appliedTransition.params ?? normalizeTransitionParams(appliedTransition.type)) as
-        | Record<string, unknown>
-        | undefined,
+        Record<string, unknown> | undefined,
     } satisfies import('~/timeline/types').ClipTransition;
 
     options.updateClipTransition(

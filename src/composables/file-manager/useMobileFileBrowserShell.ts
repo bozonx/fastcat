@@ -25,8 +25,7 @@ export interface UseMobileFileBrowserShellOptions {
   entries: Ref<FsEntry[]> | ComputedRef<FsEntry[]>;
   /** Compatibility map for the current entries. */
   compatibility:
-    | Ref<Record<string, FileCompatibility>>
-    | ComputedRef<Record<string, FileCompatibility>>;
+    Ref<Record<string, FileCompatibility>> | ComputedRef<Record<string, FileCompatibility>>;
   /** Reloads the current view after destructive changes. */
   reload: () => Promise<void>;
   /** Optional loadFolderContent for the create composable. Defaults to reload. */
