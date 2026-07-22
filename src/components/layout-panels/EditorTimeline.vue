@@ -53,10 +53,13 @@ import { useTimelineClipActions } from '~/composables/timeline/useTimelineClipAc
 import { useTimelineSpeedModal } from '~/composables/timeline/useTimelineSpeedModal';
 import TextPresetSelectionModal from '~/components/timeline/TextPresetSelectionModal.vue';
 
+import { useMobileLayout } from '~/composables/useMobileLayout';
+
 const { t } = useI18n();
 const toast = useToast();
 
 const timelineStore = useTimelineStore();
+const { isMobileLayout } = useMobileLayout();
 const workspaceStore = useWorkspaceStore();
 const focusStore = useFocusStore();
 const timelineSettingsStore = useTimelineSettingsStore();
@@ -1322,6 +1325,7 @@ async function handleConfirmCreateVersion(newName: string) {
             class="w-full h-full border-b border-ui-border bg-ui-bg-elevated cursor-pointer"
             :scroll-el="masterScrollEl"
             :scroll-left="scrollLeftRef"
+            :is-mobile="isMobileLayout"
             @pointerdown="onTimeRulerPointerDown"
             @start-playhead-drag="onRulerStartPlayheadDrag"
             @start-pan="onRulerStartPan"
@@ -1350,6 +1354,7 @@ async function handleConfirmCreateVersion(newName: string) {
         :track-heights="trackHeights"
         :can-edit-clip-content="canEditClipContent"
         :horizontal-scroll-el="masterScrollEl"
+        :is-mobile="isMobileLayout"
         :drag-preview="dragPreview"
         :move-preview="movePreview"
         :slip-preview="slipPreview"
@@ -1393,6 +1398,7 @@ async function handleConfirmCreateVersion(newName: string) {
         :track-heights="trackHeights"
         :can-edit-clip-content="canEditClipContent"
         :horizontal-scroll-el="masterScrollEl"
+        :is-mobile="isMobileLayout"
         :drag-preview="dragPreview"
         :move-preview="movePreview"
         :slip-preview="slipPreview"

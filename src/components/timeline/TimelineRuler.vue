@@ -15,6 +15,7 @@ import { useTimelineRulerSelectionDrag } from '~/composables/timeline/useTimelin
 import { useTimelineRulerDraw } from '~/composables/timeline/useTimelineRulerDraw';
 import { useTimelineRulerInteractions } from '~/composables/timeline/useTimelineRulerInteractions';
 import { useExclusiveContextMenu } from '~/composables/ui/useExclusiveContextMenu';
+import UiMobileDrawer from '~/components/ui/UiMobileDrawer.vue';
 import {
   computeSnapTargetsTicks,
   resolvePlayheadClickTimeTicks,
@@ -39,6 +40,7 @@ const emit = defineEmits<{
 const canvasRef = ref<HTMLCanvasElement | null>(null);
 const containerRef = ref<HTMLElement | null>(null);
 const { isContextMenuOpen, setContextMenuOpen } = useExclusiveContextMenu();
+const isMobileRulerDrawerOpen = ref(false);
 
 const timelineStore = useTimelineStore();
 const selectionStore = useSelectionStore();
@@ -323,8 +325,23 @@ const {
 });
 
 function setRulerContextMenuOpen(open: boolean) {
+  if (props.isMobile) {
+    if (open) {
+      isMobileRulerDrawerOpen.value = true;
+    }
+    return;
+  }
   setContextMenuOpen(open);
   onContextMenuOpenChange(open);
+}
+
+function handleRulerContextMenu(event: MouseEvent) {
+  onRulerContextMenu(event);
+  if (props.isMobile) {
+    event.preventDefault();
+    event.stopPropagation();
+    isMobileRulerDrawerOpen.value = true;
+  }
 }
 
 const {
@@ -416,7 +433,8 @@ function onMobilePointerUp() {
 
 <template>
   <UContextMenu
-    :open="isContextMenuOpen"
+    :disabled="isMobile"
+    :open="isMobile ? false : isContextMenuOpen"
     :items="rulerContextMenuItems"
     class="w-full h-full"
     @update:open="setRulerContextMenuOpen"
@@ -426,7 +444,7 @@ function onMobilePointerUp() {
       data-testid="timeline-ruler"
       class="relative w-full h-full overflow-hidden cursor-pointer"
       :class="isMobile ? '' : 'touch-none'"
-      @contextmenu="onRulerContextMenu"
+      @contextmenu="handleRulerContextMenu"
       @click="onRulerClick"
       @dblclick="onRulerDblClick"
       @auxclick="onRulerAuxClick"
@@ -487,4 +505,29 @@ function onMobilePointerUp() {
       />
     </div>
   </UContextMenu>
+
+  <UiMobileDrawer
+    v-if="isMobile"
+    v-model:open="isMobileRulerDrawerOpen"
+    :title="t('fastcat.timeline.rulerActions')"
+  >
+    <div class="p-4 flex flex-col gap-2">
+      <template v-for="(group, gIdx) in rulerContextMenuItems" :key="gIdx">
+        <button
+          v-for="(item, iIdx) in group"
+          :key="iIdx"
+          type="button"
+          class="flex items-center gap-3 px-4 py-3 rounded-lg bg-ui-bg-elevated hover:bg-ui-bg-accent active:bg-ui-bg-accent/80 text-left text-sm font-medium transition-colors cursor-pointer"
+          :class="item.color === 'red' ? 'text-red-400' : 'text-ui-text'"
+          @click="
+            isMobileRulerDrawerOpen = false;
+            item.onSelect?.();
+          "
+        >
+          <UIcon v-if="item.icon" :name="item.icon" class="w-5 h-5 shrink-0" />
+          <span>{{ item.label }}</span>
+        </button>
+      </template>
+    </div>
+  </UiMobileDrawer>
 </template>

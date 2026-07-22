@@ -541,7 +541,11 @@ watch(
       @mouseleave="timelineStore.hoveredTrackId = null"
       @dragover.prevent="emit('dragover', $event, trackViewModel.track.id)"
       @drop.prevent="emit('drop', $event, trackViewModel.track.id)"
-      @contextmenu="handleTrackContextMenu($event, trackViewModel.track)"
+      @contextmenu="
+        isMobile
+          ? ($event.preventDefault(), $event.stopPropagation())
+          : handleTrackContextMenu($event, trackViewModel.track)
+      "
     >
       <!-- Drop Previews inside track -->
       <div

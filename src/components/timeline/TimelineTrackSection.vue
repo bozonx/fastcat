@@ -19,6 +19,7 @@ const props = defineProps<{
   trackHeights: Record<string, number>;
   canEditClipContent: boolean;
   horizontalScrollEl: HTMLElement | null;
+  isMobile?: boolean;
   dragPreview?: {
     trackId: string;
     startTicks: number;
@@ -48,35 +49,32 @@ const props = defineProps<{
 
 function onSectionDragLeave(e: DragEvent) {
   const relatedTarget = e.relatedTarget as Node | null;
-  const sectionEl = e.currentTarget as HTMLElement;
-  // If the mouse moved to another element inside this section (e.g. track labels,
-  // another track, or empty space within the same section), keep the preview alive.
-  if (relatedTarget && sectionEl.contains(relatedTarget)) return;
-  if (props.dragPreview) {
-    emit('dragleave', e, props.dragPreview.trackId);
+  const currentTarget = e.currentTarget as Node | null;
+
+  if (currentTarget && relatedTarget && currentTarget.contains(relatedTarget)) {
+    return;
   }
+
+  emit('dragLeave');
 }
 
 const emit = defineEmits<{
-  (e: 'drop', event: DragEvent, trackId: string): void;
-  (e: 'dragover', event: DragEvent, trackId: string): void;
-  (e: 'dragleave', event: DragEvent, trackId: string): void;
+  (e: 'labelsScroll' | 'scroll' | 'dragLeave'): void;
+  (e: 'updateTrackHeight', trackId: string, height: number): void;
+  (e: 'click', event: MouseEvent): void;
+  (e: 'drop' | 'dragover', event: DragEvent, trackId: string): void;
   (e: 'startMoveItem', event: PointerEvent, payload: TimelineMoveItemPayload): void;
-  (e: 'selectItem', event: PointerEvent, itemId: string): void;
+  (e: 'selectItem', event: MouseEvent | PointerEvent, itemId: string): void;
   (e: 'startTrimItem', event: PointerEvent, payload: TimelineTrimItemPayload): void;
   (e: 'clipAction', payload: TimelineClipActionPayload): void;
   (e: 'open-speed-modal', payload: TimelineOpenSpeedModalPayload): void;
-  (e: 'click', event: MouseEvent): void;
-  (e: 'scroll'): void;
-  (e: 'labelsScroll'): void;
-  (e: 'updateTrackHeight', trackId: string, height: number): void;
 }>();
 
 const scrollEl = ref<HTMLElement | null>(null);
 const labelsRef = ref<InstanceType<typeof TimelineTrackLabels> | null>(null);
 
 defineExpose({
-  scrollEl,
+  scrollEl: computed(() => scrollEl.value),
   labelsScrollEl: computed(() => labelsRef.value?.labelsScrollContainer ?? null),
 });
 </script>
@@ -94,6 +92,7 @@ defineExpose({
       :style="{ width: `${TRACK_LABELS_WIDTH}px` }"
       :tracks="tracks"
       :track-heights="trackHeights"
+      :is-mobile="isMobile"
       :on-zoom-to-fit="onZoomToFit"
       @scroll="emit('labelsScroll')"
       @update:track-height="(id: string, h: number) => emit('updateTrackHeight', id, h)"
@@ -121,6 +120,7 @@ defineExpose({
           :tracks="tracks"
           :track-heights="trackHeights"
           :can-edit-clip-content="canEditClipContent"
+          :is-mobile="isMobile"
           :drag-preview="dragPreview"
           :move-preview="movePreview"
           :slip-preview="slipPreview"

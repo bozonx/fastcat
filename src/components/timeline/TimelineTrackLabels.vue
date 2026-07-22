@@ -21,6 +21,7 @@ defineOptions({
 const props = defineProps<{
   tracks: TimelineTrack[];
   trackHeights: Record<string, number>;
+  isMobile?: boolean;
   onZoomToFit?: () => void;
 }>();
 

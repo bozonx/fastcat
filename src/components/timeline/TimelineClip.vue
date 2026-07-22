@@ -894,7 +894,7 @@ function addTransition(edge: 'in' | 'out') {
 
 <template>
   <UContextMenu
-    :open="isContextMenuOpen"
+    :open="props.isMobile ? false : isContextMenuOpen"
     :items="lazyContextMenuItems"
     :disabled="props.isMobile || rightClickPointerActive || rightClickDragTriggered"
     @update:open="setContextMenuOpen"

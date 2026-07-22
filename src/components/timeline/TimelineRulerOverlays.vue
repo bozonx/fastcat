@@ -97,7 +97,7 @@ function getMarkerButtonClass(marker: MarkerPoint) {
     </div>
 
     <!-- 2. Selection Area (middle z-index) -->
-    <UContextMenu v-if="selectionRangePoint" :items="selectionRangeMenuItems">
+    <UContextMenu v-if="selectionRangePoint" :items="selectionRangeMenuItems" :disabled="isMobile">
       <div
         class="absolute inset-y-0 pointer-events-auto z-20"
         :style="{
@@ -144,6 +144,7 @@ function getMarkerButtonClass(marker: MarkerPoint) {
       <div class="absolute bottom-0 left-0 pointer-events-auto">
         <UContextMenu
           :items="point.isZone ? getZoneMarkerMenuItems(point.id) : getMarkerMenuItems(point.id)"
+          :disabled="isMobile"
         >
           <UiTooltip :text="truncateTooltip(point.text)" :disabled="!point.text">
             <button
@@ -182,7 +183,7 @@ function getMarkerButtonClass(marker: MarkerPoint) {
       </div>
 
       <div v-if="point.isZone" class="absolute bottom-0 right-0 pointer-events-auto">
-        <UContextMenu :items="getZoneMarkerMenuItems(point.id)">
+        <UContextMenu :items="getZoneMarkerMenuItems(point.id)" :disabled="isMobile">
           <UiTooltip :text="truncateTooltip(point.text)" :disabled="!point.text">
             <button
               type="button"

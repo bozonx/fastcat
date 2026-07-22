@@ -217,7 +217,7 @@ onScopeDispose(() => {
 
 <template>
   <UContextMenu
-    :open="isContextMenuOpen"
+    :open="isMobile ? false : isContextMenuOpen"
     :items="[
       [
         {
