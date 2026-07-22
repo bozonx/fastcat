@@ -3,7 +3,7 @@ name = "fastcat"
 version = "0.5.2"
 description = "FastCat video editor"
 edition = "2021"
-rust-version = "1.87.0"
+rust-version = "1.88.0"
 default-run = "fastcat"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
