@@ -387,7 +387,8 @@ const headerTitle = computed(() => {
 
 <template>
   <div
-    class="panel-focus-frame flex flex-col h-full bg-ui-bg-elevated border-r border-ui-border min-w-0 relative"
+    data-properties-panel
+    class="panel-focus-frame properties-panel flex flex-col h-full bg-ui-bg-elevated border-r border-ui-border min-w-0 relative"
     :class="{
       'panel-focus-frame--active':
         !props.useExternalFocus && focusStore.isPanelFocused(panelFocusId),

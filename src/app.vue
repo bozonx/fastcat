@@ -70,7 +70,7 @@ onMounted(() => {
     runtimeConfig.public.blockContextMenu !== false &&
     String(runtimeConfig.public.blockContextMenu).toLowerCase() !== 'false';
   if (shouldBlockContextMenu) {
-    window.addEventListener('contextmenu', preventContextMenu);
+    window.addEventListener('contextmenu', preventContextMenu, { capture: true });
   }
 
   const shouldBlockTextSelection =
@@ -82,7 +82,7 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
-  window.removeEventListener('contextmenu', preventContextMenu);
+  window.removeEventListener('contextmenu', preventContextMenu, { capture: true });
   if (typeof document !== 'undefined') {
     document.documentElement.classList.remove('block-text-selection');
   }

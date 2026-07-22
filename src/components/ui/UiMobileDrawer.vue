@@ -743,7 +743,7 @@ watch(isOpen, (val) => {
     @update:active-snap-point="onSnapPointChange"
   >
     <template #content>
-      <div ref="containerRef" :class="containerClasses" :style="containerStyle">
+      <div ref="containerRef" data-mobile-drawer :class="containerClasses" :style="containerStyle">
         <!-- Vertical mode: drag handle (revealed edge = top) -->
         <div
           v-if="isVerticalDrawer && props.withHandle"

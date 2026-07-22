@@ -344,6 +344,7 @@ const { isContextMenuOpen: isTextContextMenuOpen, setContextMenuOpen: setTextCon
   useExclusiveContextMenu();
 
 function onToolbarContextMenu(e: MouseEvent) {
+  e.preventDefault();
   e.stopPropagation();
 }
 </script>
@@ -354,7 +355,7 @@ function onToolbarContextMenu(e: MouseEvent) {
     data-timeline-toolbar
     @pointerdown.capture="focusStore.setPanelFocus('timeline')"
     @click.self="timelineStore.selectTimelineProperties()"
-    @contextmenu="onToolbarContextMenu"
+    @contextmenu.prevent="onToolbarContextMenu"
   >
     <!-- Left column: Main actions -->
     <div

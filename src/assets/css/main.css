@@ -438,18 +438,71 @@ html.block-text-selection body {
   -webkit-touch-callout: none;
 }
 
-/* Allow text selection in inputs, textareas, editable containers, and marked elements */
+/* Allow text selection in inputs, textareas, editable containers, control/checkbox labels,
+   property inspector details (labels & values), modals, settings, and mobile drawers/sheets */
 html.block-text-selection input,
 html.block-text-selection textarea,
 html.block-text-selection [contenteditable="true"],
 html.block-text-selection .select-text,
-html.block-text-selection .selectable {
+html.block-text-selection .selectable,
+html.block-text-selection label,
+html.block-text-selection [data-part="label"],
+html.block-text-selection [data-part="description"],
+html.block-text-selection [data-slot="label"],
+html.block-text-selection [data-slot="description"],
+html.block-text-selection .form-label,
+html.block-text-selection .control-label,
+html.block-text-selection .ui-label,
+html.block-text-selection [data-properties-panel],
+html.block-text-selection [data-properties-panel] *,
+html.block-text-selection .properties-panel,
+html.block-text-selection .properties-panel *,
+html.block-text-selection .property-section,
+html.block-text-selection .property-section *,
+html.block-text-selection .property-item,
+html.block-text-selection .property-item *,
+html.block-text-selection .property-label,
+html.block-text-selection .property-value,
+html.block-text-selection .media-metadata-list,
+html.block-text-selection .media-metadata-list *,
+html.block-text-selection [role="dialog"],
+html.block-text-selection [role="dialog"] *,
+html.block-text-selection [data-slot="content"],
+html.block-text-selection [data-slot="content"] *,
+html.block-text-selection [data-radix-dialog-content],
+html.block-text-selection [data-radix-dialog-content] *,
+html.block-text-selection .ui-modal,
+html.block-text-selection .ui-modal *,
+html.block-text-selection [data-modal],
+html.block-text-selection [data-modal] *,
+html.block-text-selection [data-settings-panel],
+html.block-text-selection [data-settings-panel] *,
+html.block-text-selection .settings-panel,
+html.block-text-selection .settings-panel *,
+html.block-text-selection [data-mobile-drawer],
+html.block-text-selection [data-mobile-drawer] *,
+html.block-text-selection [data-vaul-drawer],
+html.block-text-selection [data-vaul-drawer] *,
+html.block-text-selection [data-drawer],
+html.block-text-selection [data-drawer] *,
+html.block-text-selection [data-sheet],
+html.block-text-selection [data-sheet] *,
+html.block-text-selection .mobile-drawer,
+html.block-text-selection .mobile-drawer * {
   user-select: text;
   -webkit-user-select: text;
 }
 
-/* Disable text selection utility class */
-.select-none {
+/* Keep interactive controls, drag handles, icons, and sliders unselectable inside text-selectable areas */
+html.block-text-selection button,
+html.block-text-selection [role="button"],
+html.block-text-selection [data-panel-drag-handle],
+html.block-text-selection [data-vaul-handle],
+html.block-text-selection [data-slider-root],
+html.block-text-selection [data-slider-thumb],
+html.block-text-selection input[type="range"],
+html.block-text-selection .select-none,
+html.block-text-selection .no-select {
   user-select: none;
   -webkit-user-select: none;
 }

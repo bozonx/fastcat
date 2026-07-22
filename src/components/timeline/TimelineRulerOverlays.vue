@@ -104,7 +104,7 @@ function getMarkerButtonClass(marker: MarkerPoint) {
           left: `${selectionRangePoint.x}px`,
           width: `${selectionRangePoint.width}px`,
         }"
-        @contextmenu.stop
+        @contextmenu.prevent.stop
       >
         <button
           type="button"
@@ -155,7 +155,7 @@ function getMarkerButtonClass(marker: MarkerPoint) {
               @mouseenter="hoveredMarkerId = point.id"
               @mouseleave="hoveredMarkerId = null"
               @pointerdown.stop="emit('marker-pointerdown', $event, point.id)"
-              @contextmenu.stop
+              @contextmenu.prevent.stop
               @click="emit('seek-to-marker', point.id, $event, 'left')"
             >
               <!-- 11px wide (odd) for precise centering; shorter + more open angle -->
@@ -193,7 +193,7 @@ function getMarkerButtonClass(marker: MarkerPoint) {
               @mouseenter="hoveredMarkerId = point.id"
               @mouseleave="hoveredMarkerId = null"
               @pointerdown.stop="emit('marker-pointerdown', $event, point.id, 'right')"
-              @contextmenu.stop
+              @contextmenu.prevent.stop
               @click="emit('seek-to-marker', point.id, $event, 'right')"
             >
               <svg

@@ -193,7 +193,7 @@ onBeforeUnmount(() => {
     @click.stop="emit('select')"
     @auxclick.stop="(e) => e.button === 1 && emit('middleClick', e)"
     @dblclick="!track.locked && timelineStore.selectAllClipsOnTrack(track.id)"
-    @contextmenu.stop="emit('select')"
+    @contextmenu.prevent.stop="emit('select')"
   >
     <!-- Left Accent/Track Color Indicator — shown when track is selected directly or has active clip/gap -->
     <div
