@@ -2650,7 +2650,8 @@ mod tests {
         let out_frames = out.len() / 2;
         assert!(
             (47000..49000).contains(&out_frames),
-            "expected ~1s ({48000}) of output, got {out_frames} frames"
+            "expected ~1s ({}) of output, got {out_frames} frames",
+            48000
         );
         // Must be far less than a whole-file decode (10s → 480000 frames).
         assert!(out_frames < 100_000, "decode was not bounded to the range");

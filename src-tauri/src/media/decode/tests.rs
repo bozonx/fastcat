@@ -306,7 +306,8 @@ fn ffmpeg_next_decoder_seek_keep_preseek_emits_preseek_frames() {
     // We must get several frames
     assert!(
         frames.len() > 1,
-        "expected multiple preseek frames, got {frames.len()}"
+        "expected multiple preseek frames, got {}",
+        frames.len()
     );
     // The first frame should be near 0.0 (the keyframe)
     assert!(
