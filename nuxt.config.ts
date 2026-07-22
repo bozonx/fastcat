@@ -122,6 +122,15 @@ export default defineNuxtConfig({
 
   compatibilityDate: '2024-11-01',
 
+  routeRules: {
+    '/**': {
+      headers: {
+        'Cross-Origin-Opener-Policy': 'same-origin',
+        'Cross-Origin-Embedder-Policy': 'require-corp',
+      },
+    },
+  },
+
   typescript: {
     strict: true,
   },
