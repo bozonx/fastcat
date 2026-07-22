@@ -323,10 +323,8 @@ impl DrainedCommands {
             } => {
                 self.latest_seek = Some((generation, time_sec));
                 let (prev_frames, prev_keep) = self.pending_preroll.unwrap_or((0, false));
-                self.pending_preroll = Some((
-                    prev_frames.max(frames),
-                    prev_keep || keep_preseek_frames,
-                ));
+                self.pending_preroll =
+                    Some((prev_frames.max(frames), prev_keep || keep_preseek_frames));
             }
             DecoderCmd::Prebuffer {
                 frames,

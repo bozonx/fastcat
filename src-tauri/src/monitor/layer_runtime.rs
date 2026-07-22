@@ -331,7 +331,10 @@ impl VideoLayerRt {
     /// frames that should have been retained for backward-scrub caching).
     pub fn seek_and_prebuffer(&mut self, target_clip_local: f64) {
         let frames = self.preroll_frame_count(PREROLL_LOOKAHEAD_SEC);
-        if let Err(e) = self.pump.seek_with_prebuffer(target_clip_local, frames, true) {
+        if let Err(e) = self
+            .pump
+            .seek_with_prebuffer(target_clip_local, frames, true)
+        {
             log::error!("[monitor] seek_and_prebuffer: {e:?}");
         }
         self.last_pump_seek_pts = Some(target_clip_local);
