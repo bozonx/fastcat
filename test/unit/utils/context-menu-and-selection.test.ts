@@ -13,7 +13,7 @@ describe('Context Menu & Text Selection Blocking Logic', () => {
     e.preventDefault();
   }
 
-  it('prevents native context menu on non-editable elements like timeline toolbar', () => {
+  it('prevents native context menu on non-editable elements', () => {
     const toolbar = document.createElement('div');
     toolbar.setAttribute('data-timeline-toolbar', 'true');
     document.body.appendChild(toolbar);
@@ -35,7 +35,6 @@ describe('Context Menu & Text Selection Blocking Logic', () => {
     const event = new MouseEvent('contextmenu', { bubbles: true, cancelable: true });
     const preventDefaultSpy = vi.spyOn(event, 'preventDefault');
 
-    // Simulate dispatching on input
     Object.defineProperty(event, 'target', { value: input, writable: false });
     preventContextMenu(event);
 
@@ -43,32 +42,30 @@ describe('Context Menu & Text Selection Blocking Logic', () => {
     document.body.removeChild(input);
   });
 
-  it('window capture phase listener catches contextmenu before stopPropagation stops bubbling', () => {
-    const windowPreventDefaultSpy = vi.fn();
+  it('allows custom context menu handlers on elements (e.g. clips and files) before window bubble listener', () => {
+    const clipHandlerSpy = vi.fn();
     const windowListener = (e: MouseEvent) => {
       preventContextMenu(e);
-      if (e.defaultPrevented) {
-        windowPreventDefaultSpy();
-      }
     };
 
-    window.addEventListener('contextmenu', windowListener, { capture: true });
+    window.addEventListener('contextmenu', windowListener);
 
-    const toolbar = document.createElement('div');
-    document.body.appendChild(toolbar);
+    const clip = document.createElement('div');
+    document.body.appendChild(clip);
 
-    // Child element that calls stopPropagation
-    toolbar.addEventListener('contextmenu', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
+    clip.addEventListener('contextmenu', (e) => {
+      if (!e.defaultPrevented) {
+        clipHandlerSpy();
+        e.preventDefault();
+      }
     });
 
     const event = new MouseEvent('contextmenu', { bubbles: true, cancelable: true });
-    toolbar.dispatchEvent(event);
+    clip.dispatchEvent(event);
 
-    expect(windowPreventDefaultSpy).toHaveBeenCalled();
+    expect(clipHandlerSpy).toHaveBeenCalled();
 
-    window.removeEventListener('contextmenu', windowListener, { capture: true });
-    document.body.removeChild(toolbar);
+    window.removeEventListener('contextmenu', windowListener);
+    document.body.removeChild(clip);
   });
 });

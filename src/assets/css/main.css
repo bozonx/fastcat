@@ -439,7 +439,8 @@ html.block-text-selection body {
 }
 
 /* Allow text selection in inputs, textareas, editable containers, control/checkbox labels,
-   property inspector details (labels & values), modals, settings, and mobile drawers/sheets */
+   headings (in property inspector, property drawers, settings, modals), details (labels & values),
+   modals, settings, and mobile drawers/sheets */
 html.block-text-selection input,
 html.block-text-selection textarea,
 html.block-text-selection [contenteditable="true"],
@@ -453,6 +454,19 @@ html.block-text-selection [data-slot="description"],
 html.block-text-selection .form-label,
 html.block-text-selection .control-label,
 html.block-text-selection .ui-label,
+html.block-text-selection h1,
+html.block-text-selection h2,
+html.block-text-selection h3,
+html.block-text-selection h4,
+html.block-text-selection h5,
+html.block-text-selection h6,
+html.block-text-selection [data-slot="title"],
+html.block-text-selection [data-part="title"],
+html.block-text-selection .title,
+html.block-text-selection .heading,
+html.block-text-selection .panel-title,
+html.block-text-selection .drawer-title,
+html.block-text-selection .modal-title,
 html.block-text-selection [data-properties-panel],
 html.block-text-selection [data-properties-panel] *,
 html.block-text-selection .properties-panel,
@@ -493,18 +507,33 @@ html.block-text-selection .mobile-drawer * {
   -webkit-user-select: text;
 }
 
-/* Keep interactive controls, drag handles, icons, and sliders unselectable inside text-selectable areas */
+/* Ensure headings and labels in property inspector, drawers, settings, and modals override .select-none */
+html.block-text-selection :is(
+  [data-properties-panel], .properties-panel,
+  [data-mobile-drawer], [data-vaul-drawer], [data-drawer], [data-sheet], .mobile-drawer,
+  [data-settings-panel], .settings-panel,
+  [role="dialog"], .ui-modal, [data-modal]
+) :is(h1, h2, h3, h4, h5, h6, label, .title, .heading, [data-slot="title"], [data-part="title"]) {
+  user-select: text !important;
+  -webkit-user-select: text !important;
+}
+
+/* Keep interactive controls, drag handle backgrounds, icons, and sliders unselectable */
 html.block-text-selection button,
 html.block-text-selection [role="button"],
 html.block-text-selection [data-panel-drag-handle],
 html.block-text-selection [data-vaul-handle],
 html.block-text-selection [data-slider-root],
 html.block-text-selection [data-slider-thumb],
-html.block-text-selection input[type="range"],
-html.block-text-selection .select-none,
-html.block-text-selection .no-select {
+html.block-text-selection input[type="range"] {
   user-select: none;
   -webkit-user-select: none;
+}
+
+/* Re-enable text selection on title texts inside panel drag handles / drawer headers */
+html.block-text-selection :is([data-panel-drag-handle], [data-vaul-no-drag]) :is(h1, h2, h3, h4, h5, h6, span, p) {
+  user-select: text;
+  -webkit-user-select: text;
 }
 
 /* Override USlider (Nuxt UI) colors */
