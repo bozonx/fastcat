@@ -738,7 +738,7 @@ fn decode_and_prepare_layer(
         target,
         shared,
     })
-    .with_context(|| format!("decode audio layer {layer.id}"))
+    .with_context(|| format!("decode audio layer {}", layer.id))
     {
         Ok(decoded) => decoded,
         Err(error) => {
@@ -765,7 +765,8 @@ fn decode_and_prepare_layer(
                 state.diagnostics.last_skip_timeline_sec = Some(effect_start_sec);
             }
             log::warn!(
-                "[audio] skipping layer {layer.id} at {effect_start_sec:.3}s: {error:?}"
+                "[audio] skipping layer {} at {effect_start_sec:.3}s: {error:?}",
+                layer.id
             );
             return Ok(None);
         }

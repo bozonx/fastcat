@@ -342,9 +342,7 @@ pub fn probe_media_validated(
     // failing the whole probe — an unset flag is treated as decodable downstream,
     // so a missing ffmpeg never falsely brands files as corrupt.
     if let Err(e) = verify_ffmpeg_binary(ffmpeg_path) {
-        log::warn!(
-            "[probe_media_validated] skipping decode validation, ffmpeg unavailable: {e:#}"
-        );
+        log::warn!("[probe_media_validated] skipping decode validation, ffmpeg unavailable: {e:#}");
         return Ok(metadata);
     }
 
@@ -743,7 +741,7 @@ fn build_convert_ffmpeg_args(
             }
             args.extend(audio_args(options, on_warning));
         }
-        _ => return Err(anyhow!("unsupported conversion kind: {options.kind}")),
+        _ => return Err(anyhow!("unsupported conversion kind: {}", options.kind)),
     }
 
     if options.format == "mp4" {
@@ -1001,7 +999,8 @@ fn audio_args(
         resolve_audio_encoder(options.audio_codec.as_deref(), &options.format);
     if substituted {
         let message = format!(
-            "[native-media] audio codec {options.audio_codec:?} not usable for {options.format} container; using {codec}"
+            "[native-media] audio codec {:?} not usable for {} container; using {codec}",
+            options.audio_codec, options.format
         );
         log::warn!("{message}");
         emit_media_warning(on_warning, message);

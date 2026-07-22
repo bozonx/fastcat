@@ -162,9 +162,9 @@ pub fn push_video_encode_filter_args_with_extra(
     // decides the matrix. `push_color_tag_args` then tags the stream to match.
     let color_scale = color.map(|c| {
         if color_input_declared {
-            format!("setparams=colorspace={c.space}:range=tv")
+            format!("setparams=colorspace={}:range=tv", c.space)
         } else {
-            format!("scale=out_color_matrix={c.matrix}:out_range=tv")
+            format!("scale=out_color_matrix={}:out_range=tv", c.matrix)
         }
     });
     match hw_mode {

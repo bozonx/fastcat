@@ -298,12 +298,18 @@ impl LayerRuntimeManager {
         if scale_changed || any_decode_key_changed || cache_policy_changed {
             if scale_changed {
                 log::info!(
-                    "[monitor] preview_scale {self.preview_scale:?} → {scene.preview_scale:?}: dropping video runtimes"
+                    "[monitor] preview_scale {:?} → {:?}: dropping video runtimes",
+                    self.preview_scale,
+                    scene.preview_scale,
                 );
             }
             if cache_policy_changed {
                 log::info!(
-                    "[monitor] frame cache policy {self.frame_cache_mode:?}/{self.frame_cache_custom_mb}MB → {scene.frame_cache_mode:?}/{scene.frame_cache_custom_mb}MB: dropping video runtimes"
+                    "[monitor] frame cache policy {:?}/{}MB → {:?}/{}MB: dropping video runtimes",
+                    self.frame_cache_mode,
+                    self.frame_cache_custom_mb,
+                    scene.frame_cache_mode,
+                    scene.frame_cache_custom_mb,
                 );
             }
             self.load_epoch = self.load_epoch.wrapping_add(1);
@@ -666,7 +672,7 @@ impl LayerRuntimeManager {
                     self.runtimes.remove(&id);
                     return;
                 }
-                log::info!("[monitor] decoded image {id}: {size.0}x{size.1}");
+                log::info!("[monitor] decoded image {id}: {}x{}", size.0, size.1);
                 self.insert_raster_runtime(id, image, size, false);
             }
             BgLayerResult::ImageErr { epoch, id, error } => {
@@ -690,7 +696,7 @@ impl LayerRuntimeManager {
                     self.runtimes.remove(&id);
                     return;
                 }
-                log::info!("[monitor] decoded svg {id}: {size.0}x{size.1}");
+                log::info!("[monitor] decoded svg {id}: {}x{}", size.0, size.1);
                 self.insert_raster_runtime(id, image, size, true);
             }
             BgLayerResult::SvgErr { epoch, id, error } => {
@@ -750,9 +756,12 @@ impl LayerRuntimeManager {
         media_size: (u32, u32),
         source_rotation: i32,
     ) {
-        let info = &pump.info;
         log::info!(
-            "[monitor] opened video {id}: {info.width}x{info.height} @ {info.fps:.3}fps codec={info.codec}"
+            "[monitor] opened video {id}: {}x{} @ {:.3}fps codec={}",
+            pump.info.width,
+            pump.info.height,
+            pump.info.fps,
+            pump.info.codec,
         );
         // Seek to the CURRENT playhead, not the clip start: otherwise opening a clip
         // in the middle of the timeline would have the decoder run forward from
@@ -1053,7 +1062,7 @@ impl LayerRuntimeManager {
                         rt.seek_and_prebuffer(clip_local);
                     } else {
                         if let Err(e) = rt.pump.seek(clip_local) {
-                            log::error!("[monitor] seek pump {layer.id}: {e:?}");
+                            log::error!("[monitor] seek pump {}: {e:?}", layer.id);
                         }
                         rt.last_pump_seek_pts = Some(clip_local);
                         rt.note_seek_requested();
@@ -1252,7 +1261,7 @@ impl LayerRuntimeManager {
                 };
                 if need_seek {
                     if let Err(e) = rt.pump.seek(clip_local) {
-                        log::error!("[monitor] resync pump {layer.id}: {e:?}");
+                        log::error!("[monitor] resync pump {}: {e:?}", layer.id);
                     }
                     rt.last_pump_seek_pts = Some(clip_local);
                     rt.note_seek_requested();

@@ -183,7 +183,10 @@ fn log_export_memory_snapshot(
         .map(|mb| format!(" available_mb={mb}"))
         .unwrap_or_default();
     log::info!(
-        "[native-export-memory] stage={stage}{progress} rss_mb={snapshot.rss_mb} peak_rss_mb={snapshot.peak_rss_mb}{available}"
+        "[native-export-memory] stage={stage}{progress} rss_mb={} peak_rss_mb={}{}",
+        snapshot.rss_mb,
+        snapshot.peak_rss_mb,
+        available,
     );
 }
 
@@ -276,7 +279,9 @@ impl ExportStageTrace {
 
         let elapsed = self.started.elapsed().as_secs_f64().max(0.001);
         log::info!(
-            "[native-export-trace] stage={self.stage} frames={self.count} throughput_fps={:.2} avg_main_ms={:.2} avg_wait_ms={:.2}",
+            "[native-export-trace] stage={} frames={} throughput_fps={:.2} avg_main_ms={:.2} avg_wait_ms={:.2}",
+            self.stage,
+            self.count,
             self.count as f64 / elapsed,
             self.total_main_ms / self.count as f64,
             self.total_wait_ms / self.count as f64,

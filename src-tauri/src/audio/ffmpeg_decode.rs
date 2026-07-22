@@ -174,7 +174,8 @@ pub(crate) fn probe_audio_format_ffprobe(path: &Path) -> Result<(u32, usize)> {
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
         return Err(anyhow!(
-            "ffprobe audio probe failed with status {output.status}: {}",
+            "ffprobe audio probe failed with status {}: {}",
+            output.status,
             stderr.trim()
         ));
     }

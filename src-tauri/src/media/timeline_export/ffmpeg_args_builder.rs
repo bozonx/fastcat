@@ -202,7 +202,9 @@ fn push_audio_metadata_output_tail(
             resolve_audio_encoder(options.audio_codec.as_deref(), &options.format);
         if substituted {
             log::warn!(
-                "[native-export] audio codec {options.audio_codec:?} not usable for {options.format} container; using {codec}"
+                "[native-export] audio codec {:?} not usable for {} container; using {codec}",
+                options.audio_codec,
+                options.format
             );
         }
         args.extend(["-c:a".to_string(), codec.to_string()]);

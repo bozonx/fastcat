@@ -87,7 +87,8 @@ impl CpalAudioBackend {
         }
 
         log::info!(
-            "[audio] output config: {sample_rate} Hz, {channels} ch, buffer {config.buffer_size:?}, format {:?}",
+            "[audio] output config: {sample_rate} Hz, {channels} ch, buffer {:?}, format {:?}",
+            config.buffer_size,
             supported.sample_format(),
         );
 

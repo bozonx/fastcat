@@ -311,7 +311,8 @@ fn ffmpeg_next_decoder_seek_keep_preseek_emits_preseek_frames() {
     // The first frame should be near 0.0 (the keyframe)
     assert!(
         frames[0].pts_sec < 0.1,
-        "first frame should be keyframe, got {frames[0].pts_sec}"
+        "first frame should be keyframe, got {}",
+        frames[0].pts_sec
     );
     // The last frame should be close to target
     let last_pts = frames.last().unwrap().pts_sec;

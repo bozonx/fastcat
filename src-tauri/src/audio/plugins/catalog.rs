@@ -132,7 +132,7 @@ fn enrich_descriptors(plugins: Vec<AudioPluginDescriptor>) -> Vec<AudioPluginDes
                 let path_hash = stable_path_id(&descriptor.path);
                 for plugin in contained {
                     out.push(AudioPluginDescriptor {
-                        id: format!("clap:{path_hash}:{plugin.id}"),
+                        id: format!("clap:{path_hash}:{}", plugin.id),
                         format: AudioPluginFormat::Clap,
                         path: descriptor.path.clone(),
                         name: plugin.name.unwrap_or_else(|| descriptor.name.clone()),
@@ -141,7 +141,7 @@ fn enrich_descriptors(plugins: Vec<AudioPluginDescriptor>) -> Vec<AudioPluginDes
                         is_loadable: true,
                         status: AudioPluginStatus {
                             code: AudioPluginStatusCode::Candidate,
-                            message: format!("CLAP plugin ready ({plugin.id})"),
+                            message: format!("CLAP plugin ready ({})", plugin.id),
                         },
                     });
                 }
