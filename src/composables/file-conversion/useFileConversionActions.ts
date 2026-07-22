@@ -405,7 +405,7 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
     }
 
     const baseName = entry.name.replace(/\.[^.]+$/, '');
-    let newExt = '';
+    let newExt: string;
     if (type === 'image') newExt = 'webp';
     else if (type === 'audio') {
       newExt = resolveAudioOnlyFileExtension(props.audioSettings.onlyFormat);

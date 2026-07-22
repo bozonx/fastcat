@@ -181,7 +181,7 @@ export function useFileManagerActions(actions: FileManagerActions) {
 
     const baseName = t('common.folderBaseName');
     let index = 1;
-    let newName = '';
+    let newName: string;
     do {
       newName = `${baseName}_${index.toString().padStart(3, '0')}`;
       index++;

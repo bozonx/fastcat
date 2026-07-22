@@ -1,8 +1,11 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { isTauriRuntime } from '~/utils/runtime';
+import { useWorkspaceStore } from '~/stores/workspace.store';
 
+const workspaceStore = useWorkspaceStore();
 const isNative = isTauriRuntime();
+const isFeatureEnabled = computed(() => workspaceStore.inDevelopmentFeaturesEnabled);
 const isDismissed = ref(false);
 
 function dismiss() {
@@ -28,7 +31,7 @@ if (typeof window !== 'undefined') {
 
 <template>
   <div
-    v-if="!isNative && !isDismissed"
+    v-if="!isNative && isFeatureEnabled && !isDismissed"
     class="relative w-full bg-gradient-to-r from-slate-900 via-blue-950/60 to-slate-900 border border-blue-500/30 rounded-2xl p-4 md:p-5 shadow-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-slate-100"
   >
     <div class="flex items-start gap-3">

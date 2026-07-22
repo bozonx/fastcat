@@ -814,19 +814,25 @@ impl LayerRuntimeManager {
         let defer_play_until_active = self.playing && !is_active_at_playhead;
         rt.set_play_deferred_until_active(defer_play_until_active);
         rt.set_transport_playing(self.playing);
-        if let Err(e) = rt.pump.seek(clip_local) {
-            log::error!("[monitor] initial seek {id}: {e:?}");
-        }
-        rt.last_pump_seek_pts = Some(clip_local);
-        rt.note_seek_requested();
         // Warm the first GOP ahead of the playhead, but don't let a future runtime
         // free-run past the seam. A future clip that is about to play (deferred
         // during playback) is warmed deeper — otherwise on a decode-bound 4K source
         // it starts with ~2 frames and stutters at the seam.
         if defer_play_until_active {
+            if let Err(e) = rt.pump.seek(clip_local) {
+                log::error!("[monitor] initial seek {id}: {e:?}");
+            }
+            rt.last_pump_seek_pts = Some(clip_local);
+            rt.note_seek_requested();
             rt.request_warm_ahead();
         } else if !self.playing {
-            rt.request_prebuffer();
+            rt.seek_and_prebuffer(clip_local);
+        } else {
+            if let Err(e) = rt.pump.seek(clip_local) {
+                log::error!("[monitor] initial seek {id}: {e:?}");
+            }
+            rt.last_pump_seek_pts = Some(clip_local);
+            rt.note_seek_requested();
         }
         self.runtimes.insert(id, LayerRuntime::Video(Box::new(rt)));
     }
@@ -1041,13 +1047,10 @@ impl LayerRuntimeManager {
                         None => true,
                     };
                     if need_seek {
-                        if let Err(e) = rt.pump.seek(clip_local) {
-                            log::error!("[monitor] cache-hit warm seek {}: {e:?}", layer.id);
-                        }
-                        rt.last_pump_seek_pts = Some(clip_local);
-                        rt.note_seek_requested();
+                        rt.seek_and_prebuffer(clip_local);
+                    } else {
+                        rt.request_prebuffer();
                     }
-                    rt.request_prebuffer();
                     continue;
                 }
                 let need_seek = match rt.last_pump_seek_pts {
@@ -1055,16 +1058,16 @@ impl LayerRuntimeManager {
                     None => true,
                 };
                 if need_seek {
-                    if let Err(e) = rt.pump.seek(clip_local) {
-                        log::error!("[monitor] seek pump {}: {e:?}", layer.id);
+                    if !playing {
+                        rt.seek_and_prebuffer(clip_local);
+                    } else {
+                        if let Err(e) = rt.pump.seek(clip_local) {
+                            log::error!("[monitor] seek pump {}: {e:?}", layer.id);
+                        }
+                        rt.last_pump_seek_pts = Some(clip_local);
+                        rt.note_seek_requested();
                     }
-                    rt.last_pump_seek_pts = Some(clip_local);
-                    rt.note_seek_requested();
-                }
-                // While paused, warm the first GOP ahead of the playhead immediately so a
-                // subsequent Play doesn't freeze decoding 4K from a keyframe. During
-                // playback the decoder streams forward anyway — no separate warm-up needed.
-                if !playing {
+                } else if !playing {
                     rt.request_prebuffer();
                 }
                 let lead = if playing {
@@ -1230,16 +1233,10 @@ impl LayerRuntimeManager {
                         None => true,
                     };
                     if need_seek {
-                        if let Err(e) = rt.pump.seek(clip_local) {
-                            log::error!(
-                                "[monitor] transition-from refresh seek {}: {e:?}",
-                                layer.id
-                            );
-                        }
-                        rt.last_pump_seek_pts = Some(clip_local);
-                        rt.note_seek_requested();
+                        rt.seek_and_prebuffer(clip_local);
+                    } else {
+                        rt.request_prebuffer();
                     }
-                    rt.request_prebuffer();
                 }
                 let lead = Some(1.0 / rt.pump.info.effective_fps());
                 rt.update_display(clip_local, None, lead);

@@ -394,7 +394,7 @@ export function createTimelinePersistenceModule(
       JSON.parse(serialized);
     } catch (e) {
       log.error('Invalid timeline serialization', e, serialized.substring(0, 100));
-      throw new Error('Refusing to save: Invalid timeline JSON structure');
+      throw new Error('Refusing to save: Invalid timeline JSON structure', { cause: e });
     }
 
     return serialized;

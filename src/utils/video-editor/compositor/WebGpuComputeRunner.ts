@@ -1365,7 +1365,7 @@ export class WebGpuComputeRunner {
     const cached = this.videoFrameUploadSupport.get(format);
     if (cached !== undefined) return cached;
 
-    let supported = false;
+    let supported: boolean;
     let probeTexture: GPUTexture | null = null;
     try {
       probeTexture = this.device.createTexture({

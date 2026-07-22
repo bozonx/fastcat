@@ -266,7 +266,7 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
     }
 
     const type = getMediaTypeFromFilename(task.projectRelativePath);
-    let blob: Blob | null = null;
+    let blob: Blob | null;
     const ext = task.projectRelativePath.split('.').pop()?.toLowerCase();
     const isSvg = ext === 'svg';
 

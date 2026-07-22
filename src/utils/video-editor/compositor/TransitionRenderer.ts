@@ -436,7 +436,7 @@ export class TransitionRenderer {
 
     const key = clip.itemId + '_transition_texture';
     const abortController = params.createAbortController(key);
-    let sample: unknown | null = null;
+    let sample: unknown | null;
     try {
       sample = await params.getVideoSampleForClip({
         clip,

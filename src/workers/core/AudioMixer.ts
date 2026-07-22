@@ -555,7 +555,6 @@ async function* processClipAudio(args: {
           { length: numberOfChannels },
           () => new Float32Array(targetFrames),
         );
-        blockOutputFrames = targetFrames;
       }
     }
 

@@ -939,8 +939,7 @@ export function useTimelineItemDrag(
 
     const fps = sanitizeFps(timelineStore.timelineDoc?.timebase);
     const zoom = timelineStore.timelineZoom;
-    let enableFrameSnap = true;
-    let isAudioOnlyDrag = false;
+    let isAudioOnlyDrag: boolean;
     if (mode === 'move') {
       const selectedMovableItemIds = getSelectedMovableItemIds({
         selectedItemIds: timelineStore.selectedItemIds,
@@ -955,7 +954,7 @@ export function useTimelineItemDrag(
       const track = tracks.value.find((t) => t.id === trackId);
       isAudioOnlyDrag = track?.kind === 'audio';
     }
-    enableFrameSnap = resolveDragFrameSnap(isAudioOnlyDrag);
+    const enableFrameSnap = resolveDragFrameSnap(isAudioOnlyDrag);
     // The free override (clip-snap bypass) is audio-only too: on video/mixed
     // drags it is ignored so nothing but audio can be placed freely.
     const freeOverrideActive = dragIsFreeOverride.value && isAudioOnlyDrag;
@@ -1099,7 +1098,7 @@ export function useTimelineItemDrag(
         const enableFrameSnap = resolveDragFrameSnap(!hasVideo);
 
         const docBeforeApply = timelineStore.timelineDoc;
-        let appliedCmdLocal: TimelineCommand | null = null;
+        let appliedCmdLocal: TimelineCommand | null;
         if (overlapMode === 'pseudo') {
           const cmds: Extract<TimelineCommand, { type: 'overlay_place_item' }>[] = commit.moves.map(
             (move) => ({

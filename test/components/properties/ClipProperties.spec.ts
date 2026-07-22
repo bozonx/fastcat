@@ -117,7 +117,6 @@ const mockWorkspaceStore = reactive({
     },
   },
   inDevelopmentFeaturesEnabled: false,
-  isFeatureEnabled: vi.fn(() => false),
 });
 const mockFocusStore = reactive({});
 const mockFileManagerStore = reactive({});

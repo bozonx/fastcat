@@ -271,7 +271,7 @@ async function collectDeletedFilePaths(params: {
     throw new Error(`Maximum delete cleanup depth exceeded (${MAX_TREE_TRAVERSAL_DEPTH})`);
   }
 
-  let entries: Awaited<ReturnType<IFileSystemAdapter['readDirectory']>> = [];
+  let entries: Awaited<ReturnType<IFileSystemAdapter['readDirectory']>>;
   try {
     entries = await params.vfs.readDirectory(params.entry.path);
   } catch (err) {
@@ -335,7 +335,7 @@ export async function renameEntryCommand(
     await deps.vfs.moveEntry(target.path, nextPath);
   } catch (e) {
     if (e instanceof VfsConflictError) {
-      throw new Error(`Target name already exists: ${params.newName}`);
+      throw new Error(`Target name already exists: ${params.newName}`, { cause: e });
     }
     throw e;
   }

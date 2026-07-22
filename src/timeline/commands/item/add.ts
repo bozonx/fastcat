@@ -74,7 +74,7 @@ export function addClipToTrack(
     audioWaveformMode: cmd.audioWaveformMode,
   };
 
-  let nextTracks = doc.tracks;
+  let nextTracks: typeof doc.tracks;
   if (cmd.pseudo) {
     const sliced = sliceTrackItemsForOverlay(track.items, startTicks, durationTicks, fps, false);
     const nextItemsRaw = [...sliced, clip];
@@ -182,7 +182,7 @@ export function addVirtualClipToTrack(
       break;
   }
 
-  let nextTracks = doc.tracks;
+  let nextTracks: typeof doc.tracks;
   if (cmd.pseudo) {
     const sliced = sliceTrackItemsForOverlay(track.items, startTicks, durationTicks, fps, false);
     const nextItemsRaw = [...sliced, clip];

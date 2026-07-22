@@ -27,7 +27,7 @@ const mockPresetsStore = reactive({
 });
 
 const mockWorkspaceStore = reactive({
-  isFeatureEnabled: vi.fn((feature: string) => feature === 'hud'),
+  inDevelopmentFeaturesEnabled: true,
 });
 
 const mockUiStore = reactive({

@@ -149,7 +149,6 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
 
         if (snapStart.distTicks < thresholdTicks && snapStart.distTicks <= snapEnd.distTicks) {
           nextStartTicks = quantize(snapStart.snappedTicks);
-          nextEndTicks = nextStartTicks + quantize(durationTicks);
         } else if (snapEnd.distTicks < thresholdTicks) {
           nextEndTicks = quantize(snapEnd.snappedTicks);
           nextStartTicks = Math.max(0, nextEndTicks - quantize(durationTicks));

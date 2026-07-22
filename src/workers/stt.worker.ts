@@ -31,7 +31,7 @@ self.fetch = (async (url: string | URL, options?: RequestInit) => {
 
   const escapedCurrentModelName = currentModelName.replace(/\//g, '_');
 
-  let filePath = '';
+  let filePath: string;
   const modelsPrefix = '/models/';
   if (urlStr.includes(modelsPrefix)) {
     const fullPath = urlStr.substring(urlStr.indexOf(modelsPrefix) + modelsPrefix.length);

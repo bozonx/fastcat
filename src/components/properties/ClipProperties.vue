@@ -73,7 +73,7 @@ const selectionStore = useSelectionStore();
 const fileManager = useFileManager();
 const uiStore = useUiStore();
 const workspaceStore = useWorkspaceStore();
-const isHudFeatureEnabled = computed(() => workspaceStore.isFeatureEnabled('hud'));
+const isHudFeatureEnabled = computed(() => workspaceStore.inDevelopmentFeaturesEnabled);
 const isAudioEffectsFeatureEnabled = computed(() => workspaceStore.inDevelopmentFeaturesEnabled);
 const focusStore = useFocusStore();
 const fileManagerStore = inject('fileManagerStore', useFileManagerStore()) as ReturnType<

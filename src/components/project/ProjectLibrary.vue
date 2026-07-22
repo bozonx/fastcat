@@ -22,7 +22,7 @@ const { t } = useI18n();
 const selectionStore = useSelectionStore();
 const presetsStore = usePresetsStore();
 const workspaceStore = useWorkspaceStore();
-const isHudFeatureEnabled = computed(() => workspaceStore.isFeatureEnabled('hud'));
+const isHudFeatureEnabled = computed(() => workspaceStore.inDevelopmentFeaturesEnabled);
 
 const isRenameModalOpen = ref(false);
 const renamingPresetId = ref<string | null>(null);

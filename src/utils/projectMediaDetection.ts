@@ -106,7 +106,7 @@ export function detectProjectFormat(width: number, height: number): ProjectForma
     }
   }
 
-  let resolutionFormat = '1080p';
+  let resolutionFormat: string;
   if (shortSide >= 2160) {
     resolutionFormat = '4k';
   } else if (shortSide >= 1440) {
@@ -129,8 +129,8 @@ export function detectProjectFormat(width: number, height: number): ProjectForma
   const base = bases[resolutionFormat] || 1080;
   const targetRatio = bestAspect.ratio;
 
-  let finalWidth = 0;
-  let finalHeight = 0;
+  let finalWidth: number;
+  let finalHeight: number;
   const orientation: 'landscape' | 'portrait' = isPortrait ? 'portrait' : 'landscape';
 
   if (orientation === 'landscape') {

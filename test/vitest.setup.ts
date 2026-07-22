@@ -112,7 +112,6 @@ const mockWorkspaceStore = vi.hoisted(() => {
     isSttModelDownloaded: false,
     inDevelopmentFeaturesEnabled: false,
     premiumFeaturesEnabled: false,
-    isFeatureEnabled: vi.fn(() => false),
     userSettings: {
       timeline: {
         defaultAudioFadeDurationTicks: TICKS_PER_SECOND,

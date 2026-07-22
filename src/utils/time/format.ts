@@ -63,7 +63,7 @@ export function formatMsOrHms(ticks: number): string {
   const hh = Math.floor(totalSeconds / 3600);
 
   const pad = (n: number) => String(n).padStart(2, '0');
-  let formatted = '';
+  let formatted: string;
   if (hh > 0) {
     formatted = `${pad(hh)}:${pad(mm)}:${pad(ss)}`;
   } else {

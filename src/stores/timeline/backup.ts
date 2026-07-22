@@ -104,7 +104,7 @@ export function createTimelineBackupModule(deps: TimelineBackupDeps): TimelineBa
   }
 
   async function readVersionText(version: TimelineBackupVersion): Promise<string> {
-    let text: string | null = null;
+    let text: string | null;
     if (version.type === 'main') {
       const r = await withFileIoSlot(() => deps.readTimelineFile(deps.currentTimelinePath.value!));
       text = r?.text ?? null;

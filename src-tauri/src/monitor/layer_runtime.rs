@@ -323,6 +323,21 @@ impl VideoLayerRt {
         }
     }
 
+    /// Atomic seek + paused prebuffer: combines both into a single decoder command
+    /// so the preroll budget and `keep_preseek` flag are applied in the same batch
+    /// as the seek. This eliminates the race where a separate `pump.seek()` +
+    /// `request_prebuffer()` are processed as two batches by the decoder thread
+    /// (the seek alone causes a skipping decode to the target, discarding pre-seek
+    /// frames that should have been retained for backward-scrub caching).
+    pub fn seek_and_prebuffer(&mut self, target_clip_local: f64) {
+        let frames = self.preroll_frame_count(PREROLL_LOOKAHEAD_SEC);
+        if let Err(e) = self.pump.seek_with_prebuffer(target_clip_local, frames, true) {
+            log::error!("[monitor] seek_and_prebuffer: {e:?}");
+        }
+        self.last_pump_seek_pts = Some(target_clip_local);
+        self.note_seek_requested();
+    }
+
     /// Deeper one-shot warm-up for an imminent FUTURE clip during playback.
     ///
     /// `request_prebuffer` (paused preroll) only needs the playhead frame, so on a

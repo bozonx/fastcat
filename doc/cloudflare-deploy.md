@@ -57,8 +57,8 @@ export NUXT_PUBLIC_FASTCAT_ACCOUNT_UI_URL="https://fastcat.app"
 Feature-флаги:
 
 ```bash
-export NUXT_PUBLIC_FASTCAT_ENABLE_PREMIUM_FEATURES=true
-export NUXT_PUBLIC_FASTCAT_ENABLE_IN_DEVELOPMENT_FEATURES=false
+export FASTCAT_ENABLE_PREMIUM_FEATURES=true
+export FASTCAT_ENABLE_IN_DEVELOPMENT_FEATURES=false
 ```
 
 ## Шаг 3. Автоматический деплой через Cloudflare Git Integration (Dashboard)

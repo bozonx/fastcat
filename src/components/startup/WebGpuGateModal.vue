@@ -1,8 +1,11 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { useGpuCapability } from '~/composables/useGpuCapability';
+import { useWorkspaceStore } from '~/stores/workspace.store';
 
 const { shouldShowModal, browserInfo, dismissModal } = useGpuCapability();
+const workspaceStore = useWorkspaceStore();
+const isNativeAppDownloadEnabled = computed(() => workspaceStore.inDevelopmentFeaturesEnabled);
 
 const copied = ref(false);
 
@@ -129,6 +132,7 @@ async function copyFlagUrl() {
 
           <!-- Native App Recommendation -->
           <div
+            v-if="isNativeAppDownloadEnabled"
             class="bg-gradient-to-r from-blue-950/40 to-slate-800/40 border border-blue-500/20 rounded-xl p-4 space-y-3"
           >
             <div class="flex items-center gap-2 text-blue-400">

@@ -1,20 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import {
-  isFastCatFeatureEnabled,
   isInDevelopmentFeaturesEnabled,
   isPremiumFeaturesEnabled,
   parseFeatureEnvFlag,
 } from '~/utils/features';
 
 describe('features', () => {
-  it('keeps both feature groups disabled by default', () => {
+  it('keeps feature groups disabled by default', () => {
     const config = { public: {} };
 
     expect(isInDevelopmentFeaturesEnabled(config)).toBe(false);
     expect(isPremiumFeaturesEnabled(config)).toBe(false);
-    expect(isFastCatFeatureEnabled('conversion', config)).toBe(false);
-    expect(isFastCatFeatureEnabled('hud', config)).toBe(false);
-    expect(isFastCatFeatureEnabled('audioExtraction', config)).toBe(false);
   });
 
   it('parses explicit truthy env values', () => {
@@ -23,65 +19,20 @@ describe('features', () => {
     expect(parseFeatureEnvFlag('yes')).toBe(true);
     expect(parseFeatureEnvFlag('on')).toBe(true);
     expect(parseFeatureEnvFlag('false')).toBe(false);
+    expect(parseFeatureEnvFlag(null)).toBe(false);
+    expect(parseFeatureEnvFlag(undefined)).toBe(false);
   });
 
-  it('requires both development and premium flags for conversion', () => {
-    expect(
-      isFastCatFeatureEnabled('conversion', {
-        public: {
-          inDevelopmentFeaturesEnabled: true,
-          premiumFeaturesEnabled: false,
-        },
-      }),
-    ).toBe(false);
+  it('correctly checks in-development and premium feature flags', () => {
+    const config = {
+      public: {
+        inDevelopmentFeaturesEnabled: true,
+        premiumFeaturesEnabled: false,
+      },
+    };
 
-    expect(
-      isFastCatFeatureEnabled('conversion', {
-        public: {
-          inDevelopmentFeaturesEnabled: true,
-          premiumFeaturesEnabled: true,
-        },
-      }),
-    ).toBe(true);
-  });
-
-  it('requires only premium flag for hud', () => {
-    expect(
-      isFastCatFeatureEnabled('hud', {
-        public: {
-          inDevelopmentFeaturesEnabled: false,
-          premiumFeaturesEnabled: true,
-        },
-      }),
-    ).toBe(true);
-  });
-
-  it('requires both development and premium flags for audioExtraction', () => {
-    expect(
-      isFastCatFeatureEnabled('audioExtraction', {
-        public: {
-          inDevelopmentFeaturesEnabled: true,
-          premiumFeaturesEnabled: false,
-        },
-      }),
-    ).toBe(false);
-
-    expect(
-      isFastCatFeatureEnabled('audioExtraction', {
-        public: {
-          inDevelopmentFeaturesEnabled: false,
-          premiumFeaturesEnabled: true,
-        },
-      }),
-    ).toBe(false);
-
-    expect(
-      isFastCatFeatureEnabled('audioExtraction', {
-        public: {
-          inDevelopmentFeaturesEnabled: true,
-          premiumFeaturesEnabled: true,
-        },
-      }),
-    ).toBe(true);
+    expect(isInDevelopmentFeaturesEnabled(config)).toBe(true);
+    expect(isPremiumFeaturesEnabled(config)).toBe(false);
   });
 });
+

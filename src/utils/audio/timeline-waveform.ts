@@ -125,7 +125,7 @@ export async function buildTimelinePeaks(
       ? resolveNestedMediaPath({ nestedTimelinePath: timelinePath, mediaPath: rawPath })
       : rawPath;
 
-    let sourcePeaks: Float32Array[] | null = null;
+    let sourcePeaks: Float32Array[] | null;
     const clipSourceDurationTicks =
       clip.sourceDurationTicks && clip.sourceDurationTicks > 0
         ? clip.sourceDurationTicks

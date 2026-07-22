@@ -130,7 +130,7 @@ export function useBatchConversion() {
 
   function buildConversionRequest(entry: FsEntry, type: BatchConversionType): ConversionRequest {
     const baseName = entry.name.replace(/\.[^.]+$/, '');
-    let newExt = '';
+    let newExt: string;
     if (type === 'image') newExt = 'webp';
     else if (type === 'audio') {
       newExt = resolveAudioOnlyFileExtension(audioSettings.onlyFormat);
@@ -254,7 +254,7 @@ export function useBatchConversion() {
         isCancelRequested,
       });
     } else if (type === 'image') {
-      let sourceFile: File | null = null;
+      let sourceFile: File | null;
       try {
         sourceFile = await fileManager.vfs.getFile(entry.path!);
       } catch {

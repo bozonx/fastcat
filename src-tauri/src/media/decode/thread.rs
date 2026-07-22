@@ -79,6 +79,15 @@ enum DecoderCmd {
         generation: u64,
         time_sec: f64,
     },
+    /// Atomic seek + prebuffer: guarantees the preroll budget and keep-preseek flag
+    /// are applied in the same command batch as the seek, eliminating the race where
+    /// a separate `Seek` followed by `Prebuffer` is processed as two batches.
+    SeekWithPrebuffer {
+        generation: u64,
+        time_sec: f64,
+        frames: u32,
+        keep_preseek_frames: bool,
+    },
     Stop,
 }
 
@@ -205,6 +214,29 @@ impl DecodePump {
         Ok(gen)
     }
 
+    /// Atomic seek + prebuffer: combines both operations into a single command so
+    /// the decoder thread always applies the preroll budget in the same batch as
+    /// the seek. Use this when you need `keep_preseek_frames` to be honored — a
+    /// separate `seek` + `prebuffer` can race when the decoder processes the seek
+    /// alone and skips to the target before the prebuffer arrives.
+    pub fn seek_with_prebuffer(
+        &self,
+        time_sec: f64,
+        frames: u32,
+        keep_preseek_frames: bool,
+    ) -> Result<u64> {
+        let gen = self.generation.fetch_add(1, Ordering::SeqCst) + 1;
+        self.cmd_tx
+            .send(DecoderCmd::SeekWithPrebuffer {
+                generation: gen,
+                time_sec,
+                frames,
+                keep_preseek_frames,
+            })
+            .map_err(|_| anyhow!("decoder thread is gone"))?;
+        Ok(gen)
+    }
+
     pub fn current_generation(&self) -> u64 {
         self.generation.load(Ordering::SeqCst)
     }
@@ -282,6 +314,19 @@ impl DrainedCommands {
                 time_sec,
             } => {
                 self.latest_seek = Some((generation, time_sec));
+            }
+            DecoderCmd::SeekWithPrebuffer {
+                generation,
+                time_sec,
+                frames,
+                keep_preseek_frames,
+            } => {
+                self.latest_seek = Some((generation, time_sec));
+                let (prev_frames, prev_keep) = self.pending_preroll.unwrap_or((0, false));
+                self.pending_preroll = Some((
+                    prev_frames.max(frames),
+                    prev_keep || keep_preseek_frames,
+                ));
             }
             DecoderCmd::Prebuffer {
                 frames,
@@ -800,9 +845,14 @@ mod tests {
 
         let target = 5.0; // frame ~150, far past the keyframe at 0
 
-        let generation = pump.seek(target).expect("seek");
+        // Atomic seek + prebuffer: a separate seek + prebuffer can race when the
+        // decoder processes the seek alone and skips to the target before the
+        // prebuffer arrives. The combined command guarantees both are applied in
+        // the same batch.
         // Tiny budget, as for a 4K source; keep_preseek=true as request_prebuffer uses.
-        pump.prebuffer(2, true).expect("prebuffer");
+        let generation = pump
+            .seek_with_prebuffer(target, 2, true)
+            .expect("seek_with_prebuffer");
 
         let seen = drain_generation_until_pts_ge(
             &pump,

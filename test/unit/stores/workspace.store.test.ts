@@ -13,7 +13,6 @@ const mockInDevelopmentFeaturesEnabled = vi.fn(() => false);
 vi.mock('~/utils/features', () => ({
   isInDevelopmentFeaturesEnabled: () => mockInDevelopmentFeaturesEnabled(),
   isPremiumFeaturesEnabled: vi.fn(() => false),
-  isFastCatFeatureEnabled: vi.fn(() => false),
 }));
 
 // Project list/delete/rename go through the application VFS (`@project/<name>`).

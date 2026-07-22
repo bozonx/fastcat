@@ -26,10 +26,8 @@ import { useProxyStore } from './proxy.store';
 import { getErrorMessage } from '~/utils/errors';
 import { useRuntimeConfig } from 'nuxt/app';
 import {
-  isFastCatFeatureEnabled,
   isInDevelopmentFeaturesEnabled,
   isPremiumFeaturesEnabled,
-  type FastCatFeatureId,
 } from '~/utils/features';
 const log = createDevLogger('workspace.store');
 
@@ -301,10 +299,6 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   );
   const premiumFeaturesEnabled = computed(() => isPremiumFeaturesEnabled(runtimeConfig));
 
-  function isFeatureEnabled(featureId: FastCatFeatureId): boolean {
-    return isFastCatFeatureEnabled(featureId, runtimeConfig);
-  }
-
   async function syncFfmpegSettingsToNative() {
     if (!isTauriRuntime()) return;
     try {
@@ -489,7 +483,6 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     hasPersistentStorage,
     inDevelopmentFeaturesEnabled,
     premiumFeaturesEnabled,
-    isFeatureEnabled,
     tauriAppPaths: skipHydrate(tauriAppPaths),
     lastProjectName: skipHydrate(lastProjectName),
     lastProjectPath: skipHydrate(lastProjectPath),

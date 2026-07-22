@@ -74,7 +74,7 @@ export function computeTrimGeometry(input: TrimGeometryInput): TrimGeometryResul
   if (!hasFixedSourceDuration) {
     const prevTimelineEndTicks = prevTimelineStartTicks + prevTimelineDurationTicks;
     let nextTimelineStartTicks = prevTimelineStartTicks;
-    let nextTimelineDurationTicks = prevTimelineDurationTicks;
+    let nextTimelineDurationTicks: number;
 
     if (edge === 'start') {
       nextTimelineStartTicks = Math.max(
@@ -121,10 +121,10 @@ export function computeTrimGeometry(input: TrimGeometryInput): TrimGeometryResul
     ? (knownSourceDurationTicks ?? prevSourceEndTicks)
     : Number.POSITIVE_INFINITY;
 
-  let nextTimelineStartTicks = prevTimelineStartTicks;
-  let nextTimelineDurationTicks = prevTimelineDurationTicks;
-  let nextSourceStartTicks = prevSourceStartTicks;
-  let nextSourceEndTicks = prevSourceEndTicks;
+  let nextTimelineStartTicks: number;
+  let nextTimelineDurationTicks: number;
+  let nextSourceStartTicks: number;
+  let nextSourceEndTicks: number;
 
   if (edge === 'start') {
     if (speed >= 0) {

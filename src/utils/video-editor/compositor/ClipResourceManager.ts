@@ -776,7 +776,7 @@ export class ClipResourceManager {
     monitorSyncMode: WebMonitorSyncMode | undefined,
     abortSignal?: AbortSignal,
   ): Promise<VideoFrame | null> {
-    let sample = await this.context.resourceManager.withVideoSampleSlot(
+    const sample = await this.context.resourceManager.withVideoSampleSlot(
       () =>
         getVideoSampleWithZeroFallback(
           clip.sink as unknown as import('mediabunny').VideoSampleSink,
@@ -810,7 +810,6 @@ export class ClipResourceManager {
         );
         const retryObj = retry as { toVideoFrame?: () => VideoFrame } | null;
         if (retry && typeof retryObj?.toVideoFrame === 'function') {
-          sample = retry;
           sampleValue = retry as unknown;
         }
       }

@@ -521,7 +521,7 @@ export function parseTimelineFromOtio(
   const report = new OtioValidationReport();
   const shouldLogWarnings = options?.logWarnings ?? true;
 
-  let parsed: OtioTimeline | null = null;
+  let parsed: OtioTimeline | null;
   try {
     parsed = JSON.parse(text);
   } catch {

@@ -50,7 +50,7 @@ export function useFocusableListNavigation({
       return;
     }
 
-    let nextIndex = currentIndex;
+    let nextIndex: number;
 
     if (event.key === 'ArrowRight') {
       nextIndex = Math.min(currentIndex + 1, items.length - 1);
