@@ -865,7 +865,7 @@ pub(super) fn effect_uniform(
             let mut p = [0.0f32; 8];
             if let serde_json::Value::Object(map) = params {
                 for (i, pi) in p.iter_mut().enumerate() {
-                    let key = format!("p{}", i);
+                    let key = format!("p{i}");
                     if let Some(v) = map.get(&key).and_then(|v| v.as_f64()) {
                         *pi = v as f32;
                     }

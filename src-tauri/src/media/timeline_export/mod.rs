@@ -183,10 +183,7 @@ fn log_export_memory_snapshot(
         .map(|mb| format!(" available_mb={mb}"))
         .unwrap_or_default();
     log::info!(
-        "[native-export-memory] stage={stage}{progress} rss_mb={} peak_rss_mb={}{}",
-        snapshot.rss_mb,
-        snapshot.peak_rss_mb,
-        available
+        "[native-export-memory] stage={stage}{progress} rss_mb={snapshot.rss_mb} peak_rss_mb={snapshot.peak_rss_mb}{available}"
     );
 }
 
@@ -279,9 +276,7 @@ impl ExportStageTrace {
 
         let elapsed = self.started.elapsed().as_secs_f64().max(0.001);
         log::info!(
-            "[native-export-trace] stage={} frames={} throughput_fps={:.2} avg_main_ms={:.2} avg_wait_ms={:.2}",
-            self.stage,
-            self.count,
+            "[native-export-trace] stage={self.stage} frames={self.count} throughput_fps={:.2} avg_main_ms={:.2} avg_wait_ms={:.2}",
             self.count as f64 / elapsed,
             self.total_main_ms / self.count as f64,
             self.total_wait_ms / self.count as f64,
@@ -604,7 +599,7 @@ pub fn export_timeline(
         };
         let ffmpeg_cmd = opts.hw.ffmpeg_cmd();
         verify_ffmpeg_binary(ffmpeg_cmd).context("ffmpeg binary check failed")?;
-        eprintln!("[native-export] ffmpeg args: {} {:?}", ffmpeg_cmd, args);
+        eprintln!("[native-export] ffmpeg args: {ffmpeg_cmd} {args:?}");
         log_export_memory_checkpoint("ffmpeg-spawn");
         let mut child = Command::new(ffmpeg_cmd)
             .args(&args)
@@ -770,11 +765,7 @@ pub fn export_timeline(
                 let active_video_layers = max_active_video_layers(&scene, start, end);
                 let scene_depth = scene_pipeline_depth(width, height, active_video_layers);
                 log::info!(
-                    "[native-export] scene queue depth={} active_video_layers={} resolution={}x{}",
-                    scene_depth,
-                    active_video_layers,
-                    width,
-                    height
+                    "[native-export] scene queue depth={scene_depth} active_video_layers={active_video_layers} resolution={width}x{height}"
                 );
                 log_export_memory_checkpoint("compositor-pipeline-start");
                 let (scene_tx, scene_rx) =

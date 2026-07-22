@@ -142,7 +142,7 @@ impl Compositor {
             .devices
             .renderers
             .get_mut(&surface.dev_id)
-            .ok_or_else(|| anyhow!("no renderer for device {}", surface.dev_id))?;
+            .ok_or_else(|| anyhow!("no renderer for device {surface.dev_id}"))?;
 
         renderer
             .render_to_texture(
@@ -767,7 +767,7 @@ impl Compositor {
             layers.insert(
                 insert_at.min(layers.len()),
                 Layer {
-                    id: format!("__track:{}", track.id),
+                    id: format!("__track:{track.id}"),
                     kind: LayerKind::Raster {
                         source: RasterSource::GpuTexture(output),
                         natural_size: (scene.width, scene.height),
@@ -915,8 +915,7 @@ impl Compositor {
                 Ok(EffectSource::from_texture(texture))
             }
             LayerKind::Adjustment => Err(anyhow!(
-                "layer_to_effect_source called on adjustment layer {}",
-                layer.id
+                "layer_to_effect_source called on adjustment layer {layer.id}"
             )),
         }
     }
@@ -1058,7 +1057,7 @@ impl Compositor {
             .devices
             .renderers
             .get_mut(&dev_id)
-            .ok_or_else(|| anyhow!("no renderer for device {}", dev_id))?;
+            .ok_or_else(|| anyhow!("no renderer for device {dev_id}"))?;
         let image = renderer.register_texture(texture.clone());
         registered_images.push(image.clone());
         Ok(image)
@@ -1161,7 +1160,7 @@ impl Compositor {
             .devices
             .renderers
             .get_mut(&dev_id)
-            .ok_or_else(|| anyhow!("no renderer for device {}", dev_id))?;
+            .ok_or_else(|| anyhow!("no renderer for device {dev_id}"))?;
         renderer
             .render_to_texture(
                 device,
@@ -1251,7 +1250,7 @@ impl Compositor {
             .devices
             .renderers
             .get_mut(&dev_id)
-            .ok_or_else(|| anyhow!("no renderer for device {}", dev_id))?;
+            .ok_or_else(|| anyhow!("no renderer for device {dev_id}"))?;
         renderer
             .render_to_texture(
                 device,
@@ -1483,7 +1482,7 @@ impl Compositor {
             .devices
             .renderers
             .get_mut(&session.dev_id)
-            .ok_or_else(|| anyhow!("no renderer for device {}", session.dev_id))?;
+            .ok_or_else(|| anyhow!("no renderer for device {session.dev_id}"))?;
         renderer
             .render_to_texture(
                 device,

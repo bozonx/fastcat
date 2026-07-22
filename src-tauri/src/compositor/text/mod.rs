@@ -71,9 +71,7 @@ pub fn build_font_family<'a>(
     }
 
     log::warn!(
-        "[text] font '{}' not found in system collection, falling back to {:?}",
-        primary,
-        fallback
+        "[text] font '{primary}' not found in system collection, falling back to {fallback:?}"
     );
     parley::style::FontFamily::from(generic_family_str(fallback))
 }

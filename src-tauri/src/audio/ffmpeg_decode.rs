@@ -69,8 +69,7 @@ impl FfmpegPcmReader {
         if !status.success() {
             let stderr = String::from_utf8_lossy(&stderr);
             return Err(anyhow!(
-                "ffmpeg audio decode failed with status {}: {}",
-                status,
+                "ffmpeg audio decode failed with status {status}: {}",
                 stderr.trim()
             ));
         }
@@ -127,7 +126,7 @@ pub(crate) fn spawn_ffmpeg_f32le(params: FfmpegDecodeParams<'_>) -> Result<Ffmpe
 
     let mut child = command
         .spawn()
-        .with_context(|| format!("failed to run ffmpeg for audio decode: {}", path))?;
+        .with_context(|| format!("failed to run ffmpeg for audio decode: {path}"))?;
     let stdout = child
         .stdout
         .take()
@@ -175,8 +174,7 @@ pub(crate) fn probe_audio_format_ffprobe(path: &Path) -> Result<(u32, usize)> {
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
         return Err(anyhow!(
-            "ffprobe audio probe failed with status {}: {}",
-            output.status,
+            "ffprobe audio probe failed with status {output.status}: {}",
             stderr.trim()
         ));
     }

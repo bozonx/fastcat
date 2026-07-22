@@ -31,7 +31,7 @@ pub(crate) fn make_sinc_resampler(
         RESAMPLER_CHUNK_SIZE,
         num_channels,
     )
-    .map_err(|e| anyhow!("failed to create resampler: {:?}", e))
+    .map_err(|e| anyhow!("failed to create resampler: {e:?}"))
 }
 
 pub(crate) fn resample_planar_with_speed(
@@ -69,7 +69,7 @@ pub(crate) fn resample_planar_with_speed(
 
         let out_chunk = resampler
             .process(&chunk, None)
-            .map_err(|e| anyhow!("failed to resample chunk: {:?}", e))?;
+            .map_err(|e| anyhow!("failed to resample chunk: {e:?}"))?;
 
         for (out, och) in output.iter_mut().zip(out_chunk.iter()) {
             out.extend_from_slice(och);
@@ -92,7 +92,7 @@ pub(crate) fn resample_planar_with_speed(
     while output[0].len() < target_total {
         let out_chunk = resampler
             .process(&flush, None)
-            .map_err(|e| anyhow!("failed to flush resampler: {:?}", e))?;
+            .map_err(|e| anyhow!("failed to flush resampler: {e:?}"))?;
         if out_chunk.iter().all(|ch| ch.is_empty()) {
             break;
         }
@@ -187,7 +187,7 @@ pub(crate) fn resample_planar_cached(
         }
         let out_chunk = resampler
             .process(&chunk, None)
-            .map_err(|e| anyhow!("failed to resample chunk: {:?}", e))?;
+            .map_err(|e| anyhow!("failed to resample chunk: {e:?}"))?;
         for (out, och) in output.iter_mut().zip(out_chunk.iter()) {
             out.extend_from_slice(och);
         }
@@ -263,7 +263,7 @@ pub(crate) fn resample_flush_cached(
     }
     let out_chunk = resampler
         .process(&first, None)
-        .map_err(|e| anyhow!("failed to flush resampler: {:?}", e))?;
+        .map_err(|e| anyhow!("failed to flush resampler: {e:?}"))?;
     for (out, och) in output.iter_mut().zip(out_chunk.iter()) {
         out.extend_from_slice(och);
     }
@@ -273,7 +273,7 @@ pub(crate) fn resample_flush_cached(
     while output.first().map(Vec::len).unwrap_or(0) < valid {
         let out_chunk = resampler
             .process(&zero, None)
-            .map_err(|e| anyhow!("failed to flush resampler: {:?}", e))?;
+            .map_err(|e| anyhow!("failed to flush resampler: {e:?}"))?;
         if out_chunk.iter().all(|c| c.is_empty()) {
             break;
         }

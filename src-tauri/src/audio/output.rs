@@ -87,10 +87,7 @@ impl CpalAudioBackend {
         }
 
         log::info!(
-            "[audio] output config: {} Hz, {} ch, buffer {:?}, format {:?}",
-            sample_rate,
-            channels,
-            config.buffer_size,
+            "[audio] output config: {sample_rate} Hz, {channels} ch, buffer {config.buffer_size:?}, format {:?}",
             supported.sample_format(),
         );
 
@@ -166,7 +163,7 @@ impl CpalAudioBackend {
         }
         let available = cpal::available_hosts();
         let match_id = available.iter().find(|id| {
-            let name = format!("{:?}", id).to_lowercase();
+            let name = format!("{id:?}").to_lowercase();
             name.contains(&requested.to_lowercase())
         });
         if let Some(id) = match_id {
@@ -362,8 +359,7 @@ pub(crate) fn write_output<T: OutputSample>(
         let needed = data.len();
         if needed > buf.len() {
             log::warn!(
-                "[audio] callback buffer size {} exceeds preallocated temp capacity {}; resizing",
-                needed,
+                "[audio] callback buffer size {needed} exceeds preallocated temp capacity {}; resizing",
                 buf.len()
             );
             buf.resize(needed, 0.0);

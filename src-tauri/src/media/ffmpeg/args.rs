@@ -153,7 +153,7 @@ pub fn push_video_encode_filter_args_with_extra(
         } else if tail.is_empty() {
             extra_filters.join(",")
         } else {
-            format!("{},{}", extra_filters.join(","), tail)
+            format!("{},{tail}", extra_filters.join(","))
         }
     };
     // When a colour space is requested, pin the RGB→YUV matrix and output range on a
@@ -162,9 +162,9 @@ pub fn push_video_encode_filter_args_with_extra(
     // decides the matrix. `push_color_tag_args` then tags the stream to match.
     let color_scale = color.map(|c| {
         if color_input_declared {
-            format!("setparams=colorspace={}:range=tv", c.space)
+            format!("setparams=colorspace={c.space}:range=tv")
         } else {
-            format!("scale=out_color_matrix={}:out_range=tv", c.matrix)
+            format!("scale=out_color_matrix={c.matrix}:out_range=tv")
         }
     });
     match hw_mode {

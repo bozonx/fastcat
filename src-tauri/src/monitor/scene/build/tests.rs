@@ -936,14 +936,11 @@ mod tests {
         assert_eq!(wrapped.frame_width, 260.0);
         assert!(
             wrapped.text_block_height > unwrapped.text_block_height,
-            "expected parley break_all_lines to add visual lines: wrapped={} unwrapped={}",
-            wrapped.text_block_height,
-            unwrapped.text_block_height
+            "expected parley break_all_lines to add visual lines: wrapped={wrapped.text_block_height} unwrapped={unwrapped.text_block_height}"
         );
         assert!(
             wrapped.text_block_height >= 48.0 * 1.2 * 3.0,
-            "expected at least three laid-out lines, got height {}",
-            wrapped.text_block_height
+            "expected at least three laid-out lines, got height {wrapped.text_block_height}"
         );
     }
 

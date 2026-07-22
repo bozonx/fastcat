@@ -623,7 +623,7 @@ pub async fn native_get_ffmpeg_diagnostics(
                         (false, "ffmpeg returned error status".to_string())
                     }
                 }
-                Err(e) => (false, format!("Failed to execute: {}", e)),
+                Err(e) => (false, format!("Failed to execute: {e}")),
             };
 
         // 2. Check ffprobe
@@ -638,7 +638,7 @@ pub async fn native_get_ffmpeg_diagnostics(
                         (false, "ffprobe returned error status".to_string())
                     }
                 }
-                Err(e) => (false, format!("Failed to execute: {}", e)),
+                Err(e) => (false, format!("Failed to execute: {e}")),
             };
 
         // 3. Get hwaccels, encoders, decoders

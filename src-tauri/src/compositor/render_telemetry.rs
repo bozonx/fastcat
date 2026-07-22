@@ -61,11 +61,7 @@ impl RenderTelemetry {
         if self.frames == 0 && timing.total_ms >= Self::INITIAL_WARMUP_CUTOFF_MS {
             self.warmup_frames += 1;
             log::info!(
-                "[compositor-timing] {target}: warmup total={:.2}ms materialize={:.2}ms build_vello={:.2}ms render={:.2}ms; excluded from avg",
-                timing.total_ms,
-                timing.materialize_ms,
-                timing.build_vello_ms,
-                timing.render_ms,
+                "[compositor-timing] {target}: warmup total={timing.total_ms:.2}ms materialize={timing.materialize_ms:.2}ms build_vello={timing.build_vello_ms:.2}ms render={timing.render_ms:.2}ms; excluded from avg"
             );
             self.last_log = Instant::now();
             return;
@@ -86,16 +82,11 @@ impl RenderTelemetry {
 
         let frames = self.frames as f64;
         log::info!(
-            "[compositor-timing] {target}: last total={:.2}ms materialize={:.2}ms build_vello={:.2}ms render={:.2}ms; avg total={:.2}ms materialize={:.2}ms build_vello={:.2}ms render={:.2}ms over {} frames",
-            timing.total_ms,
-            timing.materialize_ms,
-            timing.build_vello_ms,
-            timing.render_ms,
+            "[compositor-timing] {target}: last total={timing.total_ms:.2}ms materialize={timing.materialize_ms:.2}ms build_vello={timing.build_vello_ms:.2}ms render={timing.render_ms:.2}ms; avg total={:.2}ms materialize={:.2}ms build_vello={:.2}ms render={:.2}ms over {self.frames} frames",
             self.total_sum_ms / frames,
             self.materialize_sum_ms / frames,
             self.build_vello_sum_ms / frames,
             self.render_sum_ms / frames,
-            self.frames,
         );
         self.last_log = Instant::now();
     }

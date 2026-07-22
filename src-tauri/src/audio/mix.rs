@@ -738,7 +738,7 @@ fn decode_and_prepare_layer(
         target,
         shared,
     })
-    .with_context(|| format!("decode audio layer {}", layer.id))
+    .with_context(|| format!("decode audio layer {layer.id}"))
     {
         Ok(decoded) => decoded,
         Err(error) => {
@@ -765,8 +765,7 @@ fn decode_and_prepare_layer(
                 state.diagnostics.last_skip_timeline_sec = Some(effect_start_sec);
             }
             log::warn!(
-                "[audio] skipping layer {} at {effect_start_sec:.3}s: {error:?}",
-                layer.id
+                "[audio] skipping layer {layer.id} at {effect_start_sec:.3}s: {error:?}"
             );
             return Ok(None);
         }
@@ -1019,15 +1018,12 @@ fn apply_layer_mix(params: ApplyLayerMixParams<'_>) {
     }
     debug_assert!(
         write_start_frame + frames_to_write <= mixed.len() / channels,
-        "write range ({}, {}) exceeds mixed buffer capacity ({})",
-        write_start_frame,
-        frames_to_write,
+        "write range ({write_start_frame}, {frames_to_write}) exceeds mixed buffer capacity ({})",
         mixed.len() / channels
     );
     debug_assert!(
         frames_to_write <= decoded.len() / channels,
-        "decoded buffer too small for frames_to_write ({} > {})",
-        frames_to_write,
+        "decoded buffer too small for frames_to_write ({frames_to_write} > {})",
         decoded.len() / channels
     );
     let stereo = channels >= 2;
@@ -2171,16 +2167,13 @@ mod tests {
             // Baseline sample: 0.5 (source) * 2.0 (layer multiply) * 1.0 (gain) = 1.0.
             assert!(
                 (s_base - expected).abs() < 1e-4,
-                "Baseline sample should be 1.0, got {}",
-                s_base
+                "Baseline sample should be 1.0, got {s_base}"
             );
 
             // Processed sample: 0.5 (source) * 2.0 (layer multiply) * 2.0 (master multiply) * 0.5 (master gain) = 1.0.
             assert!(
                 (s_proc - expected).abs() < 1e-4,
-                "Expected unity value: {}, got {}",
-                expected,
-                s_proc
+                "Expected unity value: {expected}, got {s_proc}"
             );
             checked += 1;
         }

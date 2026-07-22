@@ -620,13 +620,10 @@ fn build_raster_kind(
                 Ok(decoded) => decoded,
                 Err(e) => {
                     let message = format!(
-                        "Video layer could not be decoded at {time_sec:.3}s: {}.",
-                        layer.path,
+                        "Video layer could not be decoded at {time_sec:.3}s: {layer.path}."
                     );
                     log::warn!(
-                        "[native-export] aborting after video decode failure {} at {:.3}s: {e}",
-                        layer.path,
-                        time_sec
+                        "[native-export] aborting after video decode failure {layer.path} at {time_sec:.3}s: {e}"
                     );
                     if let Some(callback) = on_warning {
                         callback(message.clone());

@@ -306,22 +306,19 @@ fn ffmpeg_next_decoder_seek_keep_preseek_emits_preseek_frames() {
     // We must get several frames
     assert!(
         frames.len() > 1,
-        "expected multiple preseek frames, got {}",
-        frames.len()
+        "expected multiple preseek frames, got {frames.len()}"
     );
     // The first frame should be near 0.0 (the keyframe)
     assert!(
         frames[0].pts_sec < 0.1,
-        "first frame should be keyframe, got {}",
-        frames[0].pts_sec
+        "first frame should be keyframe, got {frames[0].pts_sec}"
     );
     // The last frame should be close to target
     let last_pts = frames.last().unwrap().pts_sec;
     let fps = decoder.effective_fps();
     assert!(
         (last_pts - target).abs() <= 0.5 / fps + 1e-6,
-        "last frame not near target: target={target}, got pts={}",
-        last_pts
+        "last frame not near target: target={target}, got pts={last_pts}"
     );
 }
 

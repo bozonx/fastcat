@@ -326,7 +326,7 @@ mod tests {
         assert_eq!(peaks[0].len(), 5);
         let expected = [0.2f32, 0.4, 0.6, 0.8, 1.0];
         for (a, b) in peaks[0].iter().zip(expected.iter()) {
-            assert!((a - b).abs() < 1e-4, "peak mismatch: {} vs {}", a, b);
+            assert!((a - b).abs() < 1e-4, "peak mismatch: {a} vs {b}");
         }
     }
 
@@ -346,7 +346,7 @@ mod tests {
         assert_eq!(peaks[0].len(), 10);
         let expected: Vec<f32> = (1..=10).map(|k| (k as f32 * 10.0) / 100.0).collect();
         for (a, b) in peaks[0].iter().zip(expected.iter()) {
-            assert!((a - b).abs() < 1e-3, "peak mismatch: {} vs {}", a, b);
+            assert!((a - b).abs() < 1e-3, "peak mismatch: {a} vs {b}");
         }
     }
 
@@ -414,10 +414,8 @@ mod tests {
         static COUNTER: AtomicU64 = AtomicU64::new(0);
         let n = COUNTER.fetch_add(1, Ordering::Relaxed);
         std::env::temp_dir().join(format!(
-            "fastcat-waveform-{}-{}-{}.wav",
-            label,
+            "fastcat-waveform-{label}-{}-{n}.wav",
             std::process::id(),
-            n
         ))
     }
 

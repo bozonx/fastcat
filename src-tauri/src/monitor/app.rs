@@ -1303,23 +1303,10 @@ impl WindowState {
             return;
         }
         log::warn!(
-            "[audio-diagnostics] ring={}/{}% producer_pts={:.3}s audio_pts={:?} \
-             underruns={} skipped_layers={} decode_errors={} prewarm={} catchups={} \
-             dropped={:.3}s over_budget={} worst={:.1}ms last_skip={:?}@{:?}",
-            snapshot.last_ring_fill_samples,
+            "[audio-diagnostics] ring={snapshot.last_ring_fill_samples}/{}% producer_pts={snapshot.last_producer_pts_sec:.3}s audio_pts={snapshot.last_audio_pts_sec:?} \
+             underruns={snapshot.underrun_events} skipped_layers={snapshot.skipped_layers_total} decode_errors={snapshot.decode_errors_total} prewarm={snapshot.prewarm_requests_total} catchups={snapshot.catchup_events_total} \
+             dropped={snapshot.catchup_dropped_sec_total:.3}s over_budget={snapshot.over_budget_chunks_total} worst={snapshot.worst_chunk_ms:.1}ms last_skip={snapshot.last_skipped_layer_id:?}@{snapshot.last_skip_timeline_sec:?}",
             (snapshot.last_ring_fill_ratio * 100.0).round(),
-            snapshot.last_producer_pts_sec,
-            snapshot.last_audio_pts_sec,
-            snapshot.underrun_events,
-            snapshot.skipped_layers_total,
-            snapshot.decode_errors_total,
-            snapshot.prewarm_requests_total,
-            snapshot.catchup_events_total,
-            snapshot.catchup_dropped_sec_total,
-            snapshot.over_budget_chunks_total,
-            snapshot.worst_chunk_ms,
-            snapshot.last_skipped_layer_id,
-            snapshot.last_skip_timeline_sec,
         );
         self.last_audio_diag_log = Instant::now();
     }

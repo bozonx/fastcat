@@ -104,15 +104,13 @@ fn evaluate_direct(
     // Exactly one visible layer, and it must be a plain video clip.
     if scene.layers.len() != 1 {
         return Err(format!(
-            "scene has {} layers (need exactly 1)",
-            scene.layers.len()
+            "scene has {scene.layers.len()} layers (need exactly 1)"
         ));
     }
     let layer = &scene.layers[0];
     if !matches!(layer.kind, LayerKind::Video) {
         return Err(format!(
-            "the single layer is {:?}, not a plain video clip",
-            layer.kind
+            "the single layer is {layer.kind:?}, not a plain video clip"
         ));
     }
     if layer.path.is_empty() {
@@ -122,17 +120,16 @@ fn evaluate_direct(
     // It must span the entire export range (no gaps where the background shows).
     if layer.timeline_start_sec > start + EPS || layer.timeline_end_sec < end - EPS {
         return Err(format!(
-            "clip [{:.3}s,{:.3}s] does not cover the export range [{:.3}s,{:.3}s]",
-            layer.timeline_start_sec, layer.timeline_end_sec, start, end
+            "clip [{layer.timeline_start_sec:.3}s,{layer.timeline_end_sec:.3}s] does not cover the export range [{start:.3}s,{end:.3}s]"
         ));
     }
 
     // Anything below would force the compositor to do real work; bail to vello.
     if (layer.opacity - 1.0).abs() > EPS {
-        return Err(format!("clip opacity is {:.3}, not 1.0", layer.opacity));
+        return Err(format!("clip opacity is {layer.opacity:.3}, not 1.0"));
     }
     if !layer.effects.is_empty() {
-        return Err(format!("clip has {} effect(s)", layer.effects.len()));
+        return Err(format!("clip has {layer.effects.len()} effect(s)"));
     }
     if layer.transition_in.is_some() || layer.transition_out.is_some() {
         return Err("clip has a transition".into());
@@ -141,15 +138,14 @@ fn evaluate_direct(
         return Err("clip has a transform (move/scale/rotate/crop)".into());
     }
     if (layer.speed - 1.0).abs() > EPS {
-        return Err(format!("clip speed is {:.3}x, not 1.0x", layer.speed));
+        return Err(format!("clip speed is {layer.speed:.3}x, not 1.0x"));
     }
     if layer.freeze_frame_source_sec.is_some() {
         return Err("clip is a freeze frame".into());
     }
     if !matches!(layer.blend_mode, BlendMode::Normal) {
         return Err(format!(
-            "clip blend mode is {:?}, not Normal",
-            layer.blend_mode
+            "clip blend mode is {layer.blend_mode:?}, not Normal"
         ));
     }
     // Explicit orientation overrides the source's own rotation handling; let vello own it.
@@ -157,8 +153,7 @@ fn evaluate_direct(
     // the probe below still rejects rotated sources so direct output matches the monitor.
     if !matches!(layer.source_orientation.as_deref(), None | Some("auto")) {
         return Err(format!(
-            "clip has an explicit orientation override ({:?})",
-            layer.source_orientation
+            "clip has an explicit orientation override ({layer.source_orientation:?})"
         ));
     }
 
@@ -166,9 +161,9 @@ fn evaluate_direct(
     // is the identity and the only mapping left is the clip→scene fit handled below.
     if even(scene.width) != width || even(scene.height) != height {
         return Err(format!(
-            "export size {width}x{height} differs from scene size {}x{}",
-            even(scene.width),
-            even(scene.height)
+            "export size {width}x{height} differs from scene size {scene_w}x{scene_h}",
+            scene_w = even(scene.width),
+            scene_h = even(scene.height)
         ));
     }
 
@@ -176,12 +171,11 @@ fn evaluate_direct(
     // plain resize with no letterbox bars) and it must carry no rotation metadata (which
     // would otherwise need a transpose to match the monitor).
     let decoder = crate::media::decode::open(Path::new(&layer.path), None, HwAccelMode::None, None)
-        .map_err(|e| format!("could not probe source {}: {e}", layer.path))?;
+        .map_err(|e| format!("could not probe source {layer.path}: {e}"))?;
     let info = decoder.info();
     if info.rotation != 0 || info.width == 0 || info.height == 0 {
         return Err(format!(
-            "source carries rotation {}° or zero dimensions ({}x{})",
-            info.rotation, info.width, info.height
+            "source carries rotation {info.rotation}° or zero dimensions ({info.width}x{info.height})"
         ));
     }
     // The vello/monitor decode path normalises a non-zero stream start time (MPEG-TS,
@@ -192,8 +186,7 @@ fn evaluate_direct(
     // a start offset.
     if info.start_time_sec.abs() > EPS {
         return Err(format!(
-            "source has a stream start offset of {:.3}s (ffmpeg -ss would target the wrong frame)",
-            info.start_time_sec
+            "source has a stream start offset of {info.start_time_sec:.3}s (ffmpeg -ss would target the wrong frame)"
         ));
     }
     // HDR / wide-gamut sources: the direct path keeps the source's colour tags while the
@@ -206,8 +199,7 @@ fn evaluate_direct(
     // ~0.5% tolerance absorbs rounding between stored display size and even() output.
     if (src_aspect - out_aspect).abs() > out_aspect * 0.005 {
         return Err(format!(
-            "source aspect {:.4} ({}x{}) differs from output aspect {:.4} ({width}x{}) — would need letterboxing",
-            src_aspect, info.width, info.height, out_aspect, height
+            "source aspect {src_aspect:.4} ({info.width}x{info.height}) differs from output aspect {out_aspect:.4} ({width}x{height}) — would need letterboxing"
         ));
     }
     let source_duration_sec = info.duration_sec;

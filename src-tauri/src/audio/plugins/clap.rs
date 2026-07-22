@@ -297,8 +297,7 @@ pub fn describe_isolated(path: &Path) -> Result<Vec<ClapPluginDesc>, String> {
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
         return Err(format!(
-            "CLAP scan helper exited with {}{}",
-            output.status,
+            "CLAP scan helper exited with {output.status}{}",
             if stderr.trim().is_empty() {
                 String::new()
             } else {
@@ -672,8 +671,7 @@ impl ClapInstance {
 
         let Some(plugin) = spec.plugin.as_ref() else {
             log::warn!(
-                "CLAP effect {} has no plugin reference; passing audio through",
-                spec.id
+                "CLAP effect {spec.id} has no plugin reference; passing audio through"
             );
             return instance;
         };

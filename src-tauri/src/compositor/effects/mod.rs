@@ -1785,57 +1785,52 @@ mod tests {
             assert_eq!(
                 passes.len(),
                 case.passes.len(),
-                "{}: pass count mismatch",
-                case.name
+                "{case.name}: pass count mismatch"
             );
 
             for (i, (actual, expected)) in passes.iter().zip(case.passes.iter()).enumerate() {
                 assert_eq!(
                     actual.src,
                     buf_from_str(&expected.src),
-                    "{}: pass[{i}].src",
-                    case.name
+                    "{case.name}: pass[{i}].src"
                 );
                 assert_eq!(
                     actual.secondary,
                     buf_from_str(&expected.secondary),
-                    "{}: pass[{i}].secondary",
-                    case.name
+                    "{case.name}: pass[{i}].secondary"
                 );
                 assert_eq!(
                     actual.dst,
                     buf_from_str(&expected.dst),
-                    "{}: pass[{i}].dst",
-                    case.name
+                    "{case.name}: pass[{i}].dst"
                 );
 
                 // custom_source
                 match (&actual.custom_source, &expected.custom_source) {
                     (None, None) => {}
                     (Some(a), Some(b)) => {
-                        assert_eq!(a, b, "{}: pass[{i}].custom_source", case.name)
+                        assert_eq!(a, b, "{case.name}: pass[{i}].custom_source")
                     }
                     (a, b) => panic!(
-                        "{}: pass[{i}].custom_source mismatch: actual={a:?} expected={b:?}",
-                        case.name
+                        "{case.name}: pass[{i}].custom_source mismatch: actual={a:?} expected={b:?}"
                     ),
                 }
 
                 // Uniform fields
                 let u = &actual.uniform;
                 let e = &expected.uniform;
-                assert_eq!(u.mode, e.mode, "{}: pass[{i}].mode", case.name);
-                assert_eq!(u.width, e.width, "{}: pass[{i}].width", case.name);
-                assert_eq!(u.height, e.height, "{}: pass[{i}].height", case.name);
-                assert_eq!(u.seed, e.seed, "{}: pass[{i}].seed", case.name);
-                approx_eq(u.p0, e.p0, &format!("{}: pass[{i}].p0", case.name));
-                approx_eq(u.p1, e.p1, &format!("{}: pass[{i}].p1", case.name));
-                approx_eq(u.p2, e.p2, &format!("{}: pass[{i}].p2", case.name));
-                approx_eq(u.p3, e.p3, &format!("{}: pass[{i}].p3", case.name));
-                approx_eq(u.p4, e.p4, &format!("{}: pass[{i}].p4", case.name));
-                approx_eq(u.p5, e.p5, &format!("{}: pass[{i}].p5", case.name));
-                approx_eq(u.p6, e.p6, &format!("{}: pass[{i}].p6", case.name));
-                approx_eq(u.p7, e.p7, &format!("{}: pass[{i}].p7", case.name));
+                assert_eq!(u.mode, e.mode, "{case.name}: pass[{i}].mode");
+                assert_eq!(u.width, e.width, "{case.name}: pass[{i}].width");
+                assert_eq!(u.height, e.height, "{case.name}: pass[{i}].height");
+                assert_eq!(u.seed, e.seed, "{case.name}: pass[{i}].seed");
+                approx_eq(u.p0, e.p0, &format!("{case.name}: pass[{i}].p0"));
+                approx_eq(u.p1, e.p1, &format!("{case.name}: pass[{i}].p1"));
+                approx_eq(u.p2, e.p2, &format!("{case.name}: pass[{i}].p2"));
+                approx_eq(u.p3, e.p3, &format!("{case.name}: pass[{i}].p3"));
+                approx_eq(u.p4, e.p4, &format!("{case.name}: pass[{i}].p4"));
+                approx_eq(u.p5, e.p5, &format!("{case.name}: pass[{i}].p5"));
+                approx_eq(u.p6, e.p6, &format!("{case.name}: pass[{i}].p6"));
+                approx_eq(u.p7, e.p7, &format!("{case.name}: pass[{i}].p7"));
             }
         }
     }

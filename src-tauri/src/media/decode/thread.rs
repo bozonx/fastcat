@@ -123,7 +123,7 @@ impl DecodePump {
 
         let (init_tx, init_rx) = mpsc::channel::<Result<MediaInfo>>();
         let thread = std::thread::Builder::new()
-            .name(format!("fastcat-decode:{}", path_str))
+            .name(format!("fastcat-decode:{path_str}"))
             .spawn(move || {
                 let decoder = factory.open(
                     &path_buf,

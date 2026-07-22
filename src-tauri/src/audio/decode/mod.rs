@@ -363,7 +363,7 @@ fn collect_planar_window(
                 break;
             }
             Err(symphonia::core::errors::Error::DecodeError(err)) => {
-                log::warn!("[audio] symphonia decode error: {:?}", err);
+                log::warn!("[audio] symphonia decode error: {err:?}");
                 continue;
             }
             Err(err) => return Err(err).context("failed to decode packet"),
@@ -963,7 +963,7 @@ impl SymphoniaDecoder {
                     break;
                 }
                 Err(symphonia::core::errors::Error::DecodeError(err)) => {
-                    log::warn!("[audio] symphonia chunk decode error: {:?}", err);
+                    log::warn!("[audio] symphonia chunk decode error: {err:?}");
                     continue;
                 }
                 Err(err) => return Err(err).context("failed to decode packet"),
@@ -2650,8 +2650,7 @@ mod tests {
         let out_frames = out.len() / 2;
         assert!(
             (47000..49000).contains(&out_frames),
-            "expected ~1s ({}) of output, got {out_frames} frames",
-            48000
+            "expected ~1s ({48000}) of output, got {out_frames} frames"
         );
         // Must be far less than a whole-file decode (10s → 480000 frames).
         assert!(out_frames < 100_000, "decode was not bounded to the range");

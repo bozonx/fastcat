@@ -724,7 +724,7 @@ fn build_uniform(
             ..
         } => {
             for i in 0..12 {
-                let key = format!("p{}", i);
+                let key = format!("p{i}");
                 if let Some(v) = map.get(&key).and_then(|v| v.as_f64()) {
                     match i {
                         0 => uni.p0 = v as f32,

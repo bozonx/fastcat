@@ -133,9 +133,7 @@ pub(crate) fn run_ffmpeg_task(
                 let stderr_text = stderr_text.trim();
                 if !stderr_text.is_empty() {
                     log::info!(
-                        "[ffmpeg] task {} succeeded with stderr output:\n{}",
-                        task_id,
-                        stderr_text
+                        "[ffmpeg] task {task_id} succeeded with stderr output:\n{stderr_text}"
                     );
                 }
                 return Ok(());

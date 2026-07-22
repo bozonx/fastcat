@@ -145,11 +145,10 @@ pub fn probe_media(path: &Path, ffprobe_path: &str) -> Result<NativeMediaMetadat
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
         log::warn!(
-            "[probe_media] ffprobe failed for {}: {}",
-            path.display(),
-            stderr
+            "[probe_media] ffprobe failed for {}: {stderr}",
+            path.display()
         );
-        return Err(anyhow!("ffprobe failed: {}", stderr));
+        return Err(anyhow!("ffprobe failed: {stderr}"));
     }
 
     let json: Value =
@@ -344,8 +343,7 @@ pub fn probe_media_validated(
     // so a missing ffmpeg never falsely brands files as corrupt.
     if let Err(e) = verify_ffmpeg_binary(ffmpeg_path) {
         log::warn!(
-            "[probe_media_validated] skipping decode validation, ffmpeg unavailable: {:#}",
-            e
+            "[probe_media_validated] skipping decode validation, ffmpeg unavailable: {e:#}"
         );
         return Ok(metadata);
     }
@@ -745,7 +743,7 @@ fn build_convert_ffmpeg_args(
             }
             args.extend(audio_args(options, on_warning));
         }
-        _ => return Err(anyhow!("unsupported conversion kind: {}", options.kind)),
+        _ => return Err(anyhow!("unsupported conversion kind: {options.kind}")),
     }
 
     if options.format == "mp4" {
@@ -906,8 +904,7 @@ pub fn extract_video_frame_webps(
         if needs_seek {
             if let Err(e) = decoder.seek(target_time) {
                 log::warn!(
-                    "[native-media] seek failed at {:.3}s for {}: {e}",
-                    target_time,
+                    "[native-media] seek failed at {target_time:.3}s for {}: {e}",
                     source_path.display()
                 );
                 last_pts = -1.0;
@@ -929,8 +926,7 @@ pub fn extract_video_frame_webps(
                 Ok(None) => break, // EOF
                 Err(e) => {
                     log::warn!(
-                        "[native-media] decode failed at {:.3}s for {}: {e}",
-                        target_time,
+                        "[native-media] decode failed at {target_time:.3}s for {}: {e}",
                         source_path.display()
                     );
                     break;
@@ -976,8 +972,7 @@ pub fn extract_video_frame_webps(
                 }
                 Err(e) => {
                     log::warn!(
-                        "[native-media] webp encode/rotate failed at {:.3}s for {}: {e}",
-                        target_time,
+                        "[native-media] webp encode/rotate failed at {target_time:.3}s for {}: {e}",
                         source_path.display()
                     );
                 }
@@ -1006,8 +1001,7 @@ fn audio_args(
         resolve_audio_encoder(options.audio_codec.as_deref(), &options.format);
     if substituted {
         let message = format!(
-            "[native-media] audio codec {:?} not usable for {} container; using {codec}",
-            options.audio_codec, options.format
+            "[native-media] audio codec {options.audio_codec:?} not usable for {options.format} container; using {codec}"
         );
         log::warn!("{message}");
         emit_media_warning(on_warning, message);

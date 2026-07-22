@@ -100,19 +100,19 @@ pub(crate) fn render_text_layer_with_gpu_shadow(
         background: Color::TRANSPARENT,
         layers: vec![
             gpu_texture_layer(
-                format!("{}:gpu-text-bg", layer.id),
+                format!("{layer.id}:gpu-text-bg"),
                 Arc::new(crate::media::SharedTexture::new_shared(Arc::new(
                     background,
                 ))),
                 (width, height),
             ),
             gpu_texture_layer(
-                format!("{}:gpu-text-shadow", layer.id),
+                format!("{layer.id}:gpu-text-shadow"),
                 blurred_shadow,
                 (width, height),
             ),
             gpu_texture_layer(
-                format!("{}:gpu-text-glyphs", layer.id),
+                format!("{layer.id}:gpu-text-glyphs"),
                 Arc::new(crate::media::SharedTexture::new_shared(Arc::new(text))),
                 (width, height),
             ),
