@@ -145,9 +145,7 @@ const stopFramesQualityOptions = [
         :input-max="100"
         :input-step="1"
         :input-wheel-step-multiplier="5"
-        @update:model-value="
-          workspaceStore.userSettings.stopFrames.qualityPercent = Number($event)
-        "
+        @update:model-value="workspaceStore.userSettings.stopFrames.qualityPercent = Number($event)"
       />
     </UiFormField>
 
