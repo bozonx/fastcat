@@ -317,17 +317,15 @@ vi.mock('#app/nuxt', async (importOriginal) => {
     ...original,
     tryUseNuxtApp: () => {
       try {
-        return original.useNuxtApp();
+        return original.tryUseNuxtApp?.() ?? createNuxtMock();
       } catch {
         return createNuxtMock();
       }
     },
     useRuntimeConfig: () => {
-      try {
-        return original.useRuntimeConfig();
-      } catch {
-        return { public: {}, app: { baseURL: '/' } };
-      }
+      const nuxtApp = original.tryUseNuxtApp?.();
+      if (!nuxtApp) return { public: {}, app: { baseURL: '/' } };
+      return original.useRuntimeConfig();
     },
   };
 });

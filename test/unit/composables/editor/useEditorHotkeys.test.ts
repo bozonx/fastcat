@@ -78,6 +78,10 @@ vi.mock('#app', () => ({
     $notificationService: { add: vi.fn() },
     $i18nService: { t: (key: string) => key },
   }),
+  useRuntimeConfig: () => ({
+    public: {},
+    app: { baseURL: '/' },
+  }),
 }));
 
 const HotkeysHarness = defineComponent({
