@@ -503,31 +503,30 @@ function onMobilePointerUp() {
         @select-selection-range="selectSelectionRange"
         @selection-range-pointerdown="startSelectionRangeDrag"
       />
+      <UiMobileDrawer
+        v-if="isMobile"
+        v-model:open="isMobileRulerDrawerOpen"
+        :title="t('fastcat.timeline.rulerActions')"
+      >
+        <div class="p-4 flex flex-col gap-2">
+          <template v-for="(group, gIdx) in rulerContextMenuItems" :key="gIdx">
+            <button
+              v-for="(item, iIdx) in group"
+              :key="iIdx"
+              type="button"
+              class="flex items-center gap-3 px-4 py-3 rounded-lg bg-ui-bg-elevated hover:bg-ui-bg-accent active:bg-ui-bg-accent/80 text-left text-sm font-medium transition-colors cursor-pointer"
+              :class="item.color === 'red' ? 'text-red-400' : 'text-ui-text'"
+              @click="
+                isMobileRulerDrawerOpen = false;
+                item.onSelect?.();
+              "
+            >
+              <UIcon v-if="item.icon" :name="item.icon" class="w-5 h-5 shrink-0" />
+              <span>{{ item.label }}</span>
+            </button>
+          </template>
+        </div>
+      </UiMobileDrawer>
     </div>
   </UContextMenu>
-
-  <UiMobileDrawer
-    v-if="isMobile"
-    v-model:open="isMobileRulerDrawerOpen"
-    :title="t('fastcat.timeline.rulerActions')"
-  >
-    <div class="p-4 flex flex-col gap-2">
-      <template v-for="(group, gIdx) in rulerContextMenuItems" :key="gIdx">
-        <button
-          v-for="(item, iIdx) in group"
-          :key="iIdx"
-          type="button"
-          class="flex items-center gap-3 px-4 py-3 rounded-lg bg-ui-bg-elevated hover:bg-ui-bg-accent active:bg-ui-bg-accent/80 text-left text-sm font-medium transition-colors cursor-pointer"
-          :class="item.color === 'red' ? 'text-red-400' : 'text-ui-text'"
-          @click="
-            isMobileRulerDrawerOpen = false;
-            item.onSelect?.();
-          "
-        >
-          <UIcon v-if="item.icon" :name="item.icon" class="w-5 h-5 shrink-0" />
-          <span>{{ item.label }}</span>
-        </button>
-      </template>
-    </div>
-  </UiMobileDrawer>
 </template>

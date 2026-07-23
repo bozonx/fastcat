@@ -942,6 +942,7 @@
       "rippleTrimLeft": "Recorte ripple a la izquierda",
       "rippleTrimRight": "Recorte ripple a la derecha",
       "rippleTrimSelection": "Recorte ripple de selección",
+      "rulerActions": "Acciones de la regla",
       "selectedClipsCount": "{count} clips seleccionados",
       "selectedMarkersCount": "{count} marcadores seleccionados",
       "groupSelectedClipsCount": "Grupo ({count} clips)",
