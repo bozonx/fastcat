@@ -50,7 +50,7 @@ const isDiscreteMode = computed(() => !!props.options);
 
 const hasOverflowTail = computed(() => props.overflowTail);
 
-const scaleEndPercent = computed(() => (hasOverflowTail.value ? 88 : 100));
+const scaleEndPercent = computed(() => (hasOverflowTail.value ? 94 : 100));
 
 const clampedValue = computed(() => clamp(modelValue.value as number, props.min, props.max));
 
@@ -141,10 +141,7 @@ const thumbPercent = computed(() => {
 
       if (val <= minOpt) return 0;
       if (val > maxOpt) {
-        if (!hasOverflowTail.value) return 100;
-        const delta = val - maxOpt;
-        const progress = clamp(delta / Math.max(1, (maxOpt - minOpt) * 0.2), 0.3, 1.0);
-        return maxP + progress * (98 - maxP);
+        return hasOverflowTail.value ? maxP : 100;
       }
 
       // Try exact match first
@@ -178,11 +175,7 @@ const thumbPercent = computed(() => {
   // Numeric mode
   const val = Number(modelValue.value);
   if (!isNaN(val) && val > props.max) {
-    if (!hasOverflowTail.value) return 100;
-    const delta = val - props.max;
-    const range = props.max - props.min;
-    const progress = clamp(delta / Math.max(1, range * 0.2), 0.3, 1.0);
-    return maxP + progress * (98 - maxP);
+    return hasOverflowTail.value ? maxP : 100;
   }
 
   const range = props.max - props.min;
@@ -232,18 +225,52 @@ function onTrackPointerDown(event: PointerEvent) {
   if (event.button !== 0 || props.disabled) return;
   event.preventDefault();
   isDragging.value = true;
-  modelValue.value = valueFromPointer(event);
   (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+
+  if (innerTrackRef.value) {
+    const rect = innerTrackRef.value.getBoundingClientRect();
+    const rawRatio = (event.clientX - rect.left) / rect.width;
+    const maxP = scaleEndPercent.value / 100;
+
+    if (isOverflow.value && rawRatio >= maxP) {
+      return;
+    }
+  }
+
+  modelValue.value = valueFromPointer(event);
 }
 
 function onPointerMove(event: PointerEvent) {
   if (!isDragging.value) return;
+
+  if (innerTrackRef.value) {
+    const rect = innerTrackRef.value.getBoundingClientRect();
+    const rawRatio = (event.clientX - rect.left) / rect.width;
+    const maxP = scaleEndPercent.value / 100;
+
+    if (isOverflow.value && rawRatio >= maxP) {
+      return;
+    }
+  }
+
   modelValue.value = valueFromPointer(event);
 }
 
 function onPointerUp(event: PointerEvent) {
   if (!isDragging.value) return;
   isDragging.value = false;
+
+  if (innerTrackRef.value) {
+    const rect = innerTrackRef.value.getBoundingClientRect();
+    const rawRatio = (event.clientX - rect.left) / rect.width;
+    const maxP = scaleEndPercent.value / 100;
+
+    if (isOverflow.value && rawRatio >= maxP) {
+      (event.currentTarget as HTMLElement).releasePointerCapture(event.pointerId);
+      return;
+    }
+  }
+
   modelValue.value = valueFromPointer(event);
   (event.currentTarget as HTMLElement).releasePointerCapture(event.pointerId);
 }

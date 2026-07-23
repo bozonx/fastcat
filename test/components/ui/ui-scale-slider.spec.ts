@@ -132,7 +132,7 @@ describe('UiScaleSlider', () => {
   });
 
   describe('overflow tail', () => {
-    it('renders dashed tail and positions thumb beyond scaleEndPercent when overflowTail is true', async () => {
+    it('renders dashed tail and positions thumb at scaleEndPercent (94%) when overflowTail is true and value > max', async () => {
       const options = [
         { label: '1', value: '1' },
         { label: '16', value: '16' },
@@ -147,12 +147,11 @@ describe('UiScaleSlider', () => {
       });
 
       expect(component.text()).toContain('+');
-      // Overflow fill div (left: 88%) precedes thumb wrapper in DOM — take the last match
       const thumbEls = component.findAll('.absolute.pointer-events-none[style*="left:"]');
       const thumbEl = thumbEls[thumbEls.length - 1];
       const style = thumbEl?.attributes('style') || '';
       const leftVal = parseFloat(style.replace('left:', '').replace('%', '').trim());
-      expect(leftVal).toBeGreaterThan(88);
+      expect(leftVal).toBe(94);
     });
 
     it('does not render dashed tail or + indicator by default when overflowTail is false', async () => {
