@@ -284,7 +284,7 @@ function resetToDefault() {
 
 <template>
   <div
-    class="flex items-center gap-4 w-full"
+    class="flex items-center gap-4 w-full py-2"
     :class="disabled ? 'opacity-50 pointer-events-none' : ''"
   >
     <div class="flex flex-col gap-1 w-[22rem] select-none">
