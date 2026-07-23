@@ -22,7 +22,7 @@ const props = withDefaults(defineProps<UiScaleSliderProps>(), {
   options: undefined,
   withInput: false,
   defaultValue: undefined,
-  overflowTail: undefined,
+  overflowTail: false,
 });
 
 const modelValue = defineModel<number | string>({ required: true });
@@ -33,7 +33,7 @@ const isDragging = ref(false);
 
 const isDiscreteMode = computed(() => !!props.options);
 
-const hasOverflowTail = computed(() => props.overflowTail ?? props.withInput ?? false);
+const hasOverflowTail = computed(() => props.overflowTail);
 
 const scaleEndPercent = computed(() => (hasOverflowTail.value ? 88 : 100));
 

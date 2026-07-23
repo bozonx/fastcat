@@ -132,7 +132,7 @@ describe('UiScaleSlider', () => {
   });
 
   describe('overflow tail', () => {
-    it('renders dashed tail and positions thumb beyond scaleEndPercent when value exceeds max', async () => {
+    it('renders dashed tail and positions thumb beyond scaleEndPercent when overflowTail is true', async () => {
       const options = [
         { label: '1', value: '1' },
         { label: '16', value: '16' },
@@ -142,6 +142,7 @@ describe('UiScaleSlider', () => {
           modelValue: 17,
           options,
           withInput: true,
+          overflowTail: true,
         },
       });
 
@@ -152,6 +153,24 @@ describe('UiScaleSlider', () => {
       const style = thumbEl?.attributes('style') || '';
       const leftVal = parseFloat(style.replace('left:', '').replace('%', '').trim());
       expect(leftVal).toBeGreaterThan(88);
+    });
+
+    it('does not render dashed tail or + indicator by default when overflowTail is false', async () => {
+      const options = [
+        { label: '96', value: '96' },
+        { label: '320', value: '320' },
+      ];
+      const component = await mountSuspended(UiScaleSlider, {
+        props: {
+          modelValue: '320',
+          options,
+          withInput: true,
+        },
+      });
+
+      expect(component.text()).not.toContain('+');
+      const borderDashed = component.find('.border-dashed');
+      expect(borderDashed.exists()).toBe(false);
     });
   });
 

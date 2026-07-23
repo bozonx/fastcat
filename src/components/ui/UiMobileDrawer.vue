@@ -129,24 +129,17 @@ function toRenderedSnapPoint(point: number | string) {
 
 const renderedSnapPoints = computed(() => props.snapPoints?.map(toRenderedSnapPoint));
 
-const renderedActiveSnapPoint = computed(() => {
-  if (activeSnapPoint.value === null) return undefined;
-  return toRenderedSnapPoint(activeSnapPoint.value);
-});
-
 /**
- * vaul's snap geometry assumes the content spans the full viewport along the snap
- * axis and translates it by `viewport - snap`. That works for the bottom sheet, but
- * a right-anchored, width-capped side drawer gets pushed off-screen at the first
- * snap. So the side toolbar does NOT delegate its snaps to vaul: it renders as a
- * normal (fully open) side drawer and we drive the rail<->full transition ourselves
- * via the container width (see {@link sideToolbarStyle}). vaul still owns the
- * slide-out on close.
+ * Snap geometry is layout-driven instead of delegated to vaul. Vaul keeps drawers
+ * with snap points on a permanent translate3d layer, which makes Chromium rasterize
+ * descendant text and visibly softens it at fractional display scales. The inner
+ * container changes height/width instead, leaving the resting drawer untransformed.
  */
-const vaulSnapPoints = computed(() => (isSideDrawer.value ? undefined : renderedSnapPoints.value));
-const vaulActiveSnapPoint = computed(() =>
-  isSideDrawer.value ? undefined : renderedActiveSnapPoint.value,
-);
+const lastActiveSnapPoint = ref<string | number | null>(activeSnapPoint.value);
+
+watch(activeSnapPoint, (point) => {
+  if (point !== null) lastActiveSnapPoint.value = point;
+});
 
 /** Rail (first) and full (last) snap widths in px, for the side toolbar. */
 const sideRailFullPx = computed(() => {
@@ -166,17 +159,19 @@ const sideBaseWidth = computed(() => {
   return isExpanded.value ? rf.full : rf.rail;
 });
 
-/**
- * Compute max-height from the largest snap point.
- * vaul-vue renders the DrawerContent at full viewport height and translates it,
- * so without this constraint the container overflows behind the screen edge.
- */
-const snapContentHeight = computed(() => {
+const activeVerticalSnapHeight = computed(() => {
   if (!props.snapPoints?.length) return undefined;
-  if (effectiveDirection.value !== 'bottom' && effectiveDirection.value !== 'top') return undefined;
-  const lastPoint = props.snapPoints[props.snapPoints.length - 1];
-  if (typeof lastPoint === 'number') return `${Math.floor(height.value * lastPoint)}px`;
-  return undefined;
+  if (!isVerticalDrawer.value) return undefined;
+
+  const activeIndex = props.snapPoints.findIndex((point) => point === activeSnapPoint.value);
+  const previousIndex = props.snapPoints.findIndex((point) => point === lastActiveSnapPoint.value);
+  const index =
+    activeIndex >= 0
+      ? activeIndex
+      : !isOpen.value && previousIndex >= 0
+        ? previousIndex
+        : props.snapPoints.length - 1;
+  return renderedSnapPoints.value?.[index];
 });
 
 const backdropZIndexClass = computed(() => {
@@ -277,7 +272,12 @@ const isBackdropInteractive = computed(
 );
 
 const containerStyle = computed(() => {
-  if (snapContentHeight.value) return { height: snapContentHeight.value };
+  if (activeVerticalSnapHeight.value) {
+    return {
+      height: activeVerticalSnapHeight.value,
+      transition: handleDragging.value ? 'none' : `height ${ANIMATION_EXPAND_MS}ms ${SETTLE_EASE}`,
+    };
+  }
   if (isSideToolbar.value && sideBaseWidth.value !== null) {
     const w = sideDragWidth.value ?? sideBaseWidth.value;
     // No transition while the finger drives the width, so the rail tracks the
@@ -315,9 +315,9 @@ const bodyRef = ref<HTMLElement | null>(null);
  * the long drag vaul needs to dismiss is awkward) WITHOUT the "snap back, then
  * close" double animation that happens when our action races vaul's own release.
  *
- * On release we hand the toolbar<->full transition back to vaul (it animates the
- * snap change) and settle our own offset to 0 in sync, so the motion is continuous
- * from the finger's release position. Close is a single slide-out we drive here.
+ * On release the container animates its layout height/width to the selected snap
+ * and settles the temporary drag transform to 0 in sync. Close is a single
+ * slide-out we drive here.
  */
 const SETTLE_EASE = 'cubic-bezier(0.32, 0.72, 0, 1)';
 
@@ -473,8 +473,7 @@ function onHandleTouchEnd(e: TouchEvent) {
   const d = clampDisplacement(t ? displacementFrom(t) : 0);
 
   // Side toolbar: hand the width back to the snap (CSS-animated) and pick the
-  // outcome from the same thresholds the vertical sheet uses; close just lets vaul
-  // slide the panel out.
+  // outcome from the same thresholds the vertical sheet uses.
   if (isSideToolbar.value) {
     sideDragging.value = false;
     sideDragWidth.value = null;
@@ -509,7 +508,7 @@ function settleHandle(fromD: number) {
   animateHandle(fromD, 0, ANIMATION_SETTLE_MS, resetHandleTransform);
 }
 
-/** Hand off to the full snap, syncing our offset with vaul's snap transition. */
+/** Expand to the full layout snap while settling the temporary drag transform. */
 function expandByHandle(fromD: number) {
   if (props.snapPoints?.length) {
     activeSnapPoint.value = props.snapPoints[props.snapPoints.length - 1] as string | number;
@@ -646,12 +645,6 @@ function onHandleTap() {
   isOpen.value = true;
 }
 
-function onSnapPointChange(val: string | number) {
-  const renderedIndex = renderedSnapPoints.value?.findIndex((point) => point === val) ?? -1;
-  activeSnapPoint.value =
-    renderedIndex >= 0 && props.snapPoints ? (props.snapPoints[renderedIndex] ?? val) : val;
-}
-
 // --- Backdrop visibility (debounced to avoid flash on re-open) ---
 const isBackdropVisible = ref(false);
 let backdropShowTimer: ReturnType<typeof setTimeout> | null = null;
@@ -731,8 +724,6 @@ watch(isOpen, (val) => {
     :direction="effectiveDirection"
     :title="drawerTitleForA11y"
     :description="drawerDescriptionForA11y"
-    :snap-points="vaulSnapPoints"
-    :active-snap-point="vaulActiveSnapPoint"
     :dismissible="props.dismissible"
     :should-scale-background="props.shouldScaleBackground"
     :modal="false"
@@ -740,7 +731,6 @@ watch(isOpen, (val) => {
     :handle="false"
     :content="drawerContentProps"
     :ui="drawerUi"
-    @update:active-snap-point="onSnapPointChange"
   >
     <template #content>
       <div ref="containerRef" data-mobile-drawer :class="containerClasses" :style="containerStyle">

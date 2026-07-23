@@ -206,7 +206,7 @@ describe('UiMobileDrawer', () => {
     expect(wrapper.html()).toContain('z-[var(--z-fixed)]');
   });
 
-  it('renders vertical numeric snap points as integer pixel values for sharp text', async () => {
+  it('renders vertical snap points as layout heights without a vaul transform layer', async () => {
     const wrapper = await mountSuspended(UiMobileDrawer, {
       props: {
         open: true,
@@ -225,9 +225,17 @@ describe('UiMobileDrawer', () => {
     });
 
     const drawer = wrapper.findComponent(drawerStub);
+    const container = wrapper.find('[data-mobile-drawer]');
 
-    expect(drawer.props('snapPoints')).toEqual(['116px', '776px']);
-    expect(drawer.props('activeSnapPoint')).toBe('776px');
+    expect(drawer.props('snapPoints')).toBeUndefined();
+    expect(drawer.props('activeSnapPoint')).toBeUndefined();
+    expect(container.attributes('style')).toContain('height: 776px');
+    expect(container.attributes('style')).not.toContain('transform');
+
+    await wrapper.setProps({ activeSnapPoint: '116px' });
+
+    expect(container.attributes('style')).toContain('height: 116px');
+    expect(container.attributes('style')).not.toContain('transform');
   });
 
   it('keeps drawer content out of rasterized text layers', async () => {
@@ -446,17 +454,35 @@ describe('UiMobileDrawer', () => {
     expect(wrapper.find('button').exists()).toBe(false);
   });
 
-  it('maps rendered snap point back to original value on snap point change', async () => {
+  it('falls back to the last layout snap when no active point is provided', async () => {
     const wrapper = await mountSuspended(UiMobileDrawer, {
-      props: { open: true, snapPoints: [0.25, 0.92], activeSnapPoint: 0.92 },
+      props: { open: true, snapPoints: [0.25, 0.92] },
       slots: { default: '<div>Body</div>' },
       global: { stubs: { UDrawer: drawerStub } },
     });
 
-    const drawer = wrapper.findComponent(drawerStub);
-    await drawer.vm.$emit('update:activeSnapPoint', '211px');
+    const container = wrapper.find('[data-mobile-drawer]');
 
-    expect(wrapper.emitted('update:activeSnapPoint')?.at(-1)).toEqual([0.25]);
+    expect(container.attributes('style')).toContain('height: 776px');
+  });
+
+  it('keeps the current layout height while a toolbar snap closes', async () => {
+    const wrapper = await mountSuspended(UiMobileDrawer, {
+      props: {
+        open: true,
+        snapPoints: ['116px', 0.92],
+        activeSnapPoint: '116px',
+        direction: 'bottom',
+      },
+      slots: { default: '<div>Body</div>' },
+      global: { stubs: { UDrawer: drawerStub } },
+    });
+
+    const container = wrapper.find('[data-mobile-drawer]');
+
+    await wrapper.setProps({ open: false, activeSnapPoint: null });
+
+    expect(container.attributes('style')).toContain('height: 116px');
   });
 
   it('keeps backdrop non-interactive when drawer is not expanded', async () => {

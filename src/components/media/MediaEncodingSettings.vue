@@ -336,6 +336,7 @@ watch(
             :options="videoBitrateOptions"
             :disabled="props.disabled"
             with-input
+            overflow-tail
             @update:model-value="bitrateMbps = Number($event)"
           />
           <UiWheelNumberInput
