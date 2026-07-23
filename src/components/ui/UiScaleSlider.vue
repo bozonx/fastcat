@@ -3,15 +3,17 @@ import { computed, ref } from 'vue';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import { clamp } from '~/utils/math';
 
-interface ScaleSliderOption {
+export interface ScaleSliderOption {
   label: string;
   value: string;
 }
 
+export type ScaleSliderOptionInput = ScaleSliderOption | string | number;
+
 interface UiScaleSliderProps {
   min?: number;
   max?: number;
-  options?: ScaleSliderOption[];
+  options?: ScaleSliderOptionInput[];
   withInput?: boolean;
   defaultValue?: number | string;
   overflowTail?: boolean;
@@ -46,7 +48,20 @@ const trackRef = ref<HTMLElement | null>(null);
 const innerTrackRef = ref<HTMLElement | null>(null);
 const isDragging = ref(false);
 
-const isDiscreteMode = computed(() => !!props.options);
+const normalizedOptions = computed<ScaleSliderOption[] | undefined>(() => {
+  if (!props.options) return undefined;
+  return props.options.map((opt) => {
+    if (typeof opt === 'object' && opt !== null && 'value' in opt) {
+      return opt as ScaleSliderOption;
+    }
+    return {
+      label: String(opt),
+      value: String(opt),
+    };
+  });
+});
+
+const isDiscreteMode = computed(() => !!normalizedOptions.value);
 
 const hasOverflowTail = computed(() => props.overflowTail);
 
@@ -55,8 +70,9 @@ const scaleEndPercent = computed(() => (hasOverflowTail.value ? 94 : 100));
 const clampedValue = computed(() => clamp(modelValue.value as number, props.min, props.max));
 
 const currentIndex = computed(() => {
-  if (!props.options) return 0;
-  const idx = props.options.findIndex((o) => o.value === modelValue.value);
+  const opts = normalizedOptions.value;
+  if (!opts) return 0;
+  const idx = opts.findIndex((o) => o.value === modelValue.value);
   return idx < 0 ? 0 : idx;
 });
 
@@ -65,7 +81,7 @@ const isOverflow = computed(() => {
   if (isNaN(val)) return false;
 
   if (isDiscreteMode.value) {
-    const opts = props.options!;
+    const opts = normalizedOptions.value!;
     if (opts.length === 0) return false;
     const optNums = opts.map((o) => Number(o.value));
     if (optNums.every((n) => !isNaN(n))) {
@@ -88,7 +104,7 @@ interface Tick {
 const ticks = computed<Tick[]>(() => {
   const maxP = scaleEndPercent.value;
   if (isDiscreteMode.value) {
-    const opts = props.options!;
+    const opts = normalizedOptions.value!;
     const count = opts.length;
     const val = Number(modelValue.value);
     const optNums = opts.map((o) => Number(o.value));
@@ -127,7 +143,7 @@ const thumbPercent = computed(() => {
   const maxP = scaleEndPercent.value;
 
   if (isDiscreteMode.value) {
-    const opts = props.options!;
+    const opts = normalizedOptions.value!;
     const count = opts.length;
     if (count <= 1) return 0;
 
@@ -188,9 +204,10 @@ const thumbLabel = computed(() => {
     return '-';
   }
   if (isDiscreteMode.value) {
-    const idx = props.options?.findIndex((o) => o.value === modelValue.value) ?? -1;
+    const opts = normalizedOptions.value;
+    const idx = opts?.findIndex((o) => o.value === modelValue.value) ?? -1;
     if (idx >= 0) {
-      return props.options?.[idx]?.label ?? '';
+      return opts?.[idx]?.label ?? '';
     }
     return String(modelValue.value);
   }
@@ -205,9 +222,10 @@ function valueFromPointer(event: PointerEvent): number | string {
   const ratio = clamp(rawRatio / (maxP / 100), 0, 1);
 
   if (isDiscreteMode.value) {
-    const count = props.options!.length;
+    const opts = normalizedOptions.value!;
+    const count = opts.length;
     const idx = Math.round(ratio * (count - 1));
-    return props.options![idx]!.value;
+    return opts[idx]!.value;
   }
   const raw = props.min + ratio * (props.max - props.min);
   return Math.round(raw);
@@ -284,10 +302,10 @@ function resetToDefault() {
 
 <template>
   <div
-    class="flex items-center gap-4 w-full py-2"
+    class="flex items-center gap-2 sm:gap-4 w-full py-2"
     :class="disabled ? 'opacity-50 pointer-events-none' : ''"
   >
-    <div class="flex flex-col gap-1 w-[22rem] select-none">
+    <div class="flex flex-col gap-1 flex-1 min-w-0 select-none">
       <!-- Track area — captures all pointer events -->
       <div
         ref="trackRef"
@@ -295,7 +313,7 @@ function resetToDefault() {
         role="slider"
         :aria-valuenow="isDiscreteMode ? currentIndex + 1 : clampedValue"
         :aria-valuemin="isDiscreteMode ? 1 : min"
-        :aria-valuemax="isDiscreteMode ? (options?.length ?? 1) : max"
+        :aria-valuemax="isDiscreteMode ? (normalizedOptions?.length ?? 1) : max"
         :aria-valuetext="thumbLabel"
         @pointerdown="onTrackPointerDown"
         @pointermove="onPointerMove"
@@ -429,7 +447,7 @@ function resetToDefault() {
       :step="inputStep ?? 1"
       :wheel-step-multiplier="inputWheelStepMultiplier"
       :disabled="disabled"
-      :class="inputClass ?? 'w-24!'"
+      :class="inputClass ?? 'w-20 sm:w-24'"
       @update:model-value="onInputValueUpdate"
     />
 

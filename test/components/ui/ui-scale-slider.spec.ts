@@ -129,6 +129,19 @@ describe('UiScaleSlider', () => {
       const thumb = component.find('.absolute.pointer-events-none[style*="left:"]');
       expect(thumb.attributes('style')).toContain('left: 75%');
     });
+
+    it('accepts simple primitive arrays as options', async () => {
+      const primitiveOpts = [1, 2, 3, 5, 10, 20, 40];
+      const component = await mountSuspended(UiScaleSlider, {
+        props: {
+          modelValue: 10,
+          options: primitiveOpts,
+        },
+      });
+
+      expect(component.text()).toContain('40');
+      expect(component.text()).toContain('10');
+    });
   });
 
   describe('overflow tail', () => {
