@@ -1,5 +1,6 @@
 {
   "name": "fastcat",
+  "description": "Gpu-native, Linux friendly video editor. It has desktop and mobile versions on Tauri/ffmpeg and web based desktop, mobile and embeded versions on MediaBunny",
   "version": "0.6.2",
   "type": "module",
   "packageManager": "pnpm@11.15.1",
