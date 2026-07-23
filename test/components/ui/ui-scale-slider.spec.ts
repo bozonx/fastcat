@@ -193,4 +193,35 @@ describe('UiScaleSlider', () => {
       expect(emitted![0][0]).toBe(14);
     });
   });
+
+  describe('composite features (number input & unit)', () => {
+    it('renders unit label when unit prop is provided', async () => {
+      const component = await mountSuspended(UiScaleSlider, {
+        props: {
+          modelValue: 192,
+          min: 96,
+          max: 320,
+          unit: 'Kbps',
+        },
+      });
+
+      expect(component.text()).toContain('Kbps');
+    });
+
+    it('renders UiWheelNumberInput when withInput is true', async () => {
+      const component = await mountSuspended(UiScaleSlider, {
+        props: {
+          modelValue: 5,
+          min: 1,
+          max: 10,
+          withInput: true,
+          unit: 'units',
+        },
+      });
+
+      expect(component.text()).toContain('units');
+      const input = component.findComponent({ name: 'UiWheelNumberInput' });
+      expect(input.exists()).toBe(true);
+    });
+  });
 });

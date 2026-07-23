@@ -136,26 +136,20 @@ const stopFramesQualityOptions = [
     </UiFormField>
 
     <UiFormField :label="t('videoEditor.settings.stopFramesQuality')">
-      <div class="flex items-center gap-4 w-full">
-        <UiScaleSlider
-          :model-value="String(workspaceStore.userSettings.stopFrames.qualityPercent)"
-          :options="stopFramesQualityOptions"
-          with-input
-          :default-value="85"
-          @update:model-value="
-            workspaceStore.userSettings.stopFrames.qualityPercent = Number($event)
-          "
-        />
-        <UiWheelNumberInput
-          v-model="workspaceStore.userSettings.stopFrames.qualityPercent"
-          :min="20"
-          :max="100"
-          :step="1"
-          :wheel-step-multiplier="5"
-          class="w-24!"
-        />
-        <span class="text-xs text-ui-text-muted whitespace-nowrap">%</span>
-      </div>
+      <UiScaleSlider
+        :model-value="String(workspaceStore.userSettings.stopFrames.qualityPercent)"
+        :options="stopFramesQualityOptions"
+        with-input
+        unit="%"
+        :default-value="85"
+        :input-min="20"
+        :input-max="100"
+        :input-step="1"
+        :input-wheel-step-multiplier="5"
+        @update:model-value="
+          workspaceStore.userSettings.stopFrames.qualityPercent = Number($event)
+        "
+      />
     </UiFormField>
 
     <UiAccordion v-if="hasAdvancedSettings" :title="t('videoEditor.settings.advancedSection')">
@@ -201,23 +195,18 @@ const stopFramesQualityOptions = [
             :label="t('videoEditor.settings.backupCount')"
             :help="t('videoEditor.settings.backupCountHelp')"
           >
-            <div class="flex items-center gap-4">
-              <UiScaleSlider
-                :model-value="workspaceStore.userSettings.backup.count"
-                :min="1"
-                :max="10"
-                with-input
-                :default-value="5"
-                @update:model-value="workspaceStore.userSettings.backup.count = $event as number"
-              />
-              <UiWheelNumberInput
-                v-model="workspaceStore.userSettings.backup.count"
-                :min="1"
-                :max="50"
-                :step="1"
-                :wheel-step-multiplier="5"
-              />
-            </div>
+            <UiScaleSlider
+              :model-value="workspaceStore.userSettings.backup.count"
+              :min="1"
+              :max="10"
+              with-input
+              :default-value="5"
+              :input-min="1"
+              :input-max="50"
+              :input-step="1"
+              :input-wheel-step-multiplier="5"
+              @update:model-value="workspaceStore.userSettings.backup.count = Number($event)"
+            />
           </UiFormField>
         </template>
       </div>

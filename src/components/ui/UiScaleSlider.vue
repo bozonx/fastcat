@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
+import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import { clamp } from '~/utils/math';
 
 interface ScaleSliderOption {
@@ -14,6 +15,13 @@ interface UiScaleSliderProps {
   withInput?: boolean;
   defaultValue?: number | string;
   overflowTail?: boolean;
+  disabled?: boolean;
+  unit?: string;
+  inputMin?: number;
+  inputMax?: number;
+  inputStep?: number;
+  inputWheelStepMultiplier?: number;
+  inputClass?: string;
 }
 
 const props = withDefaults(defineProps<UiScaleSliderProps>(), {
@@ -23,6 +31,13 @@ const props = withDefaults(defineProps<UiScaleSliderProps>(), {
   withInput: false,
   defaultValue: undefined,
   overflowTail: false,
+  disabled: false,
+  unit: undefined,
+  inputMin: undefined,
+  inputMax: undefined,
+  inputStep: undefined,
+  inputWheelStepMultiplier: undefined,
+  inputClass: undefined,
 });
 
 const modelValue = defineModel<number | string>({ required: true });
@@ -205,8 +220,16 @@ function valueFromPointer(event: PointerEvent): number | string {
   return Math.round(raw);
 }
 
+function onInputValueUpdate(val: number) {
+  if (isDiscreteMode.value) {
+    modelValue.value = String(val);
+  } else {
+    modelValue.value = val;
+  }
+}
+
 function onTrackPointerDown(event: PointerEvent) {
-  if (event.button !== 0) return;
+  if (event.button !== 0 || props.disabled) return;
   event.preventDefault();
   isDragging.value = true;
   modelValue.value = valueFromPointer(event);
@@ -233,136 +256,157 @@ function resetToDefault() {
 </script>
 
 <template>
-  <div class="flex flex-col gap-1 w-[22rem] select-none">
-    <!-- Track area — captures all pointer events -->
-    <div
-      ref="trackRef"
-      class="relative h-10 flex items-center px-4 slider-cursor-self cursor-pointer touch-none"
-      role="slider"
-      :aria-valuenow="isDiscreteMode ? currentIndex + 1 : clampedValue"
-      :aria-valuemin="isDiscreteMode ? 1 : min"
-      :aria-valuemax="isDiscreteMode ? (options?.length ?? 1) : max"
-      :aria-valuetext="thumbLabel"
-      @pointerdown="onTrackPointerDown"
-      @pointermove="onPointerMove"
-      @pointerup="onPointerUp"
-      @pointercancel="isDragging = false"
-    >
-      <!-- Inner track wrapper to prevent clipping of the thumb and ticks at the edges -->
-      <div ref="innerTrackRef" class="relative w-full h-full flex items-center">
-        <!-- Main track line -->
-        <div
-          class="absolute top-1/2 -translate-y-1/2 h-0.5 rounded-l-full bg-ui-border"
-          :style="{ left: '0%', width: `${scaleEndPercent}%` }"
-        />
-
-        <!-- Dashed Overflow Tail track line (Right extension) -->
-        <div
-          v-if="hasOverflowTail"
-          class="absolute top-1/2 -translate-y-1/2 h-0 border-b-2 border-dashed border-ui-border"
-          :style="{ left: `${scaleEndPercent}%`, width: `${100 - scaleEndPercent}%` }"
-        />
-
-        <!-- Filled range (Main solid track) -->
-        <div
-          class="absolute left-0 top-1/2 -translate-y-1/2 h-0.5 rounded-l-full bg-primary-500 pointer-events-none transition-[width] duration-75"
-          :style="{ width: `${Math.min(thumbPercent, scaleEndPercent)}%` }"
-        />
-
-        <!-- Filled range (Active overflow dashed tail highlight when value > max) -->
-        <div
-          v-if="hasOverflowTail && thumbPercent > scaleEndPercent"
-          class="absolute top-1/2 -translate-y-1/2 h-0 border-b-2 border-dashed border-primary-500 pointer-events-none transition-[width] duration-75"
-          :style="{
-            left: `${scaleEndPercent}%`,
-            width: `${thumbPercent - scaleEndPercent}%`,
-          }"
-        />
-
-        <!-- Plus / Overflow end indicator at 100% -->
-        <div
-          v-if="hasOverflowTail"
-          class="absolute flex flex-col items-center -translate-x-1/2 top-1/2 h-6"
-          style="left: 100%"
-        >
-          <div class="w-px h-2 bg-ui-border border-dashed" />
-          <span class="text-[9px] leading-none text-ui-text-muted mt-auto font-mono font-bold"
-            >+</span
-          >
-        </div>
-
-        <!-- Tick marks -->
-        <div
-          v-for="tick in ticks"
-          :key="tick.key"
-          class="absolute flex flex-col items-center -translate-x-1/2 top-1/2 h-6"
-          :style="{ left: `${tick.percent}%` }"
-        >
-          <!-- Tick line -->
+  <div
+    class="flex items-center gap-4 w-full"
+    :class="disabled ? 'opacity-50 pointer-events-none' : ''"
+  >
+    <div class="flex flex-col gap-1 w-[22rem] select-none">
+      <!-- Track area — captures all pointer events -->
+      <div
+        ref="trackRef"
+        class="relative h-10 flex items-center px-4 slider-cursor-self cursor-pointer touch-none"
+        role="slider"
+        :aria-valuenow="isDiscreteMode ? currentIndex + 1 : clampedValue"
+        :aria-valuemin="isDiscreteMode ? 1 : min"
+        :aria-valuemax="isDiscreteMode ? (options?.length ?? 1) : max"
+        :aria-valuetext="thumbLabel"
+        @pointerdown="onTrackPointerDown"
+        @pointermove="onPointerMove"
+        @pointerup="onPointerUp"
+        @pointercancel="isDragging = false"
+      >
+        <!-- Inner track wrapper to prevent clipping of the thumb and ticks at the edges -->
+        <div ref="innerTrackRef" class="relative w-full h-full flex items-center">
+          <!-- Main track line -->
           <div
-            class="w-px transition-colors duration-75"
-            :class="[
-              tick.isActive ? 'bg-primary-500' : 'bg-ui-border',
-              tick.isEdge ? 'h-3' : 'h-2',
-            ]"
+            class="absolute top-1/2 -translate-y-1/2 h-0.5 rounded-l-full bg-ui-border"
+            :style="{ left: '0%', width: `${scaleEndPercent}%` }"
           />
-          <!-- Tick label -->
-          <span
-            class="text-[9px] leading-none transition-colors duration-75 mt-auto"
-            :class="[
-              isDiscreteMode ? '' : 'font-mono',
-              tick.key === modelValue ? 'text-primary-400 font-semibold' : 'text-ui-text-muted',
-            ]"
-          >
-            {{ tick.label }}
-          </span>
-        </div>
 
-        <!-- Thumb — pill body with downward-pointing triangle -->
-        <div
-          class="absolute -translate-x-1/2 pointer-events-none"
-          :class="isDragging ? 'transition-none' : 'transition-[left] duration-75'"
-          :style="{ left: `${thumbPercent}%` }"
-        >
-          <div class="flex flex-col items-center" style="margin-top: -26px">
-            <!-- Rounded pill body showing current value or drag handle bars -->
-            <div
-              class="h-4 rounded bg-primary-500 shadow-md flex items-center justify-center transition-transform duration-75 px-1 pointer-events-auto touch-none"
-              :class="[
-                isDragging ? 'scale-110 cursor-grabbing' : 'cursor-grab',
-                withInput ? 'w-6' : isDiscreteMode ? 'min-w-[3rem]' : 'w-6',
-                isOverflow ? 'ring-2 ring-primary-400/80' : '',
-              ]"
-              @dblclick="resetToDefault"
+          <!-- Dashed Overflow Tail track line (Right extension) -->
+          <div
+            v-if="hasOverflowTail"
+            class="absolute top-1/2 -translate-y-1/2 h-0 border-b-2 border-dashed border-ui-border"
+            :style="{ left: `${scaleEndPercent}%`, width: `${100 - scaleEndPercent}%` }"
+          />
+
+          <!-- Filled range (Main solid track) -->
+          <div
+            class="absolute left-0 top-1/2 -translate-y-1/2 h-0.5 rounded-l-full bg-primary-500 pointer-events-none transition-[width] duration-75"
+            :style="{ width: `${Math.min(thumbPercent, scaleEndPercent)}%` }"
+          />
+
+          <!-- Filled range (Active overflow dashed tail highlight when value > max) -->
+          <div
+            v-if="hasOverflowTail && thumbPercent > scaleEndPercent"
+            class="absolute top-1/2 -translate-y-1/2 h-0 border-b-2 border-dashed border-primary-500 pointer-events-none transition-[width] duration-75"
+            :style="{
+              left: `${scaleEndPercent}%`,
+              width: `${thumbPercent - scaleEndPercent}%`,
+            }"
+          />
+
+          <!-- Plus / Overflow end indicator at 100% -->
+          <div
+            v-if="hasOverflowTail"
+            class="absolute flex flex-col items-center -translate-x-1/2 top-1/2 h-6"
+            style="left: 100%"
+          >
+            <div class="w-px h-2 bg-ui-border border-dashed" />
+            <span class="text-[9px] leading-none text-ui-text-muted mt-auto font-mono font-bold"
+              >+</span
             >
-              <div v-if="withInput" class="flex items-center justify-center pointer-events-none">
-                <template v-if="isOverflow">
-                  <UIcon name="i-heroicons-chevron-right" class="w-3 h-3 text-white" />
-                </template>
-                <template v-else>
-                  <div class="flex flex-col gap-0.5">
-                    <div class="w-2.5 h-[1.5px] bg-white/70 rounded-full" />
-                    <div class="w-2.5 h-[1.5px] bg-white/70 rounded-full" />
-                  </div>
-                </template>
-              </div>
-              <span v-else class="text-[9px] font-bold text-white leading-none whitespace-nowrap">
-                {{ thumbLabel }}
-              </span>
-            </div>
-            <!-- Downward-pointing triangle (sharp end pointing at the value) -->
+          </div>
+
+          <!-- Tick marks -->
+          <div
+            v-for="tick in ticks"
+            :key="tick.key"
+            class="absolute flex flex-col items-center -translate-x-1/2 top-1/2 h-6"
+            :style="{ left: `${tick.percent}%` }"
+          >
+            <!-- Tick line -->
             <div
-              class="w-0 h-0 transition-transform duration-75"
-              :class="isDragging ? 'scale-110' : ''"
-              style="
-                border-left: 5px solid transparent;
-                border-right: 5px solid transparent;
-                border-top: 6px solid var(--color-primary-500);
-              "
+              class="w-px transition-colors duration-75"
+              :class="[
+                tick.isActive ? 'bg-primary-500' : 'bg-ui-border',
+                tick.isEdge ? 'h-3' : 'h-2',
+              ]"
             />
+            <!-- Tick label -->
+            <span
+              class="text-[9px] leading-none transition-colors duration-75 mt-auto"
+              :class="[
+                isDiscreteMode ? '' : 'font-mono',
+                tick.key === modelValue ? 'text-primary-400 font-semibold' : 'text-ui-text-muted',
+              ]"
+            >
+              {{ tick.label }}
+            </span>
+          </div>
+
+          <!-- Thumb — pill body with downward-pointing triangle -->
+          <div
+            class="absolute -translate-x-1/2 pointer-events-none"
+            :class="isDragging ? 'transition-none' : 'transition-[left] duration-75'"
+            :style="{ left: `${thumbPercent}%` }"
+          >
+            <div class="flex flex-col items-center" style="margin-top: -26px">
+              <!-- Rounded pill body showing current value or drag handle bars -->
+              <div
+                class="h-4 rounded bg-primary-500 shadow-md flex items-center justify-center transition-transform duration-75 px-1 pointer-events-auto touch-none"
+                :class="[
+                  isDragging ? 'scale-110 cursor-grabbing' : 'cursor-grab',
+                  withInput ? 'w-6' : isDiscreteMode ? 'min-w-[3rem]' : 'w-6',
+                  isOverflow ? 'ring-2 ring-primary-400/80' : '',
+                ]"
+                @dblclick="resetToDefault"
+              >
+                <div v-if="withInput" class="flex items-center justify-center pointer-events-none">
+                  <template v-if="isOverflow">
+                    <UIcon name="i-heroicons-chevron-right" class="w-3 h-3 text-white" />
+                  </template>
+                  <template v-else>
+                    <div class="flex flex-col gap-0.5">
+                      <div class="w-2.5 h-[1.5px] bg-white/70 rounded-full" />
+                      <div class="w-2.5 h-[1.5px] bg-white/70 rounded-full" />
+                    </div>
+                  </template>
+                </div>
+                <span v-else class="text-[9px] font-bold text-white leading-none whitespace-nowrap">
+                  {{ thumbLabel }}
+                </span>
+              </div>
+              <!-- Downward-pointing triangle (sharp end pointing at the value) -->
+              <div
+                class="w-0 h-0 transition-transform duration-75"
+                :class="isDragging ? 'scale-110' : ''"
+                style="
+                  border-left: 5px solid transparent;
+                  border-right: 5px solid transparent;
+                  border-top: 6px solid var(--color-primary-500);
+                "
+              />
+            </div>
           </div>
         </div>
       </div>
     </div>
+
+    <!-- Optional Number Input -->
+    <UiWheelNumberInput
+      v-if="withInput"
+      :model-value="Number(modelValue)"
+      :min="inputMin ?? min"
+      :max="inputMax ?? max"
+      :step="inputStep ?? 1"
+      :wheel-step-multiplier="inputWheelStepMultiplier"
+      :disabled="disabled"
+      :class="inputClass ?? 'w-24!'"
+      @update:model-value="onInputValueUpdate"
+    />
+
+    <!-- Optional Unit Label -->
+    <span v-if="unit" class="text-xs text-ui-text-muted whitespace-nowrap">{{ unit }}</span>
   </div>
 </template>

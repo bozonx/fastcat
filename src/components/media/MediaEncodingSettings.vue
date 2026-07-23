@@ -330,26 +330,19 @@ watch(
             </UiTooltip>
           </div>
         </template>
-        <div class="flex items-center gap-4 w-full">
-          <UiScaleSlider
-            :model-value="String(bitrateMbps)"
-            :options="videoBitrateOptions"
-            :disabled="props.disabled"
-            with-input
-            overflow-tail
-            @update:model-value="bitrateMbps = Number($event)"
-          />
-          <UiWheelNumberInput
-            v-model="bitrateMbps"
-            :min="0.2"
-            :max="999"
-            :step="0.1"
-            :wheel-step-multiplier="10"
-            :disabled="props.disabled"
-            class="w-24!"
-          />
-          <span class="text-xs text-ui-text-muted whitespace-nowrap">Mbps</span>
-        </div>
+        <UiScaleSlider
+          :model-value="String(bitrateMbps)"
+          :options="videoBitrateOptions"
+          :disabled="props.disabled"
+          with-input
+          overflow-tail
+          unit="Mbps"
+          :input-min="0.2"
+          :input-max="999"
+          :input-step="0.1"
+          :input-wheel-step-multiplier="10"
+          @update:model-value="bitrateMbps = Number($event)"
+        />
       </UiFormField>
     </div>
 
@@ -523,15 +516,13 @@ watch(
         :label="t('videoEditor.export.audioBitrate')"
         :help="t('videoEditor.export.audioBitrateHelp')"
       >
-        <div class="flex items-center gap-4 w-full">
-          <UiScaleSlider
-            :model-value="String(audioBitrateKbps)"
-            :options="audioBitrateOptions"
-            :disabled="props.disabled"
-            @update:model-value="audioBitrateKbps = Number($event)"
-          />
-          <span class="text-xs text-ui-text-muted whitespace-nowrap">Kbps</span>
-        </div>
+        <UiScaleSlider
+          :model-value="String(audioBitrateKbps)"
+          :options="audioBitrateOptions"
+          :disabled="props.disabled"
+          unit="Kbps"
+          @update:model-value="audioBitrateKbps = Number($event)"
+        />
       </UiFormField>
     </div>
 

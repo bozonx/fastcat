@@ -160,15 +160,13 @@ function resetSampleRate() {
         <label class="text-xs text-ui-text-muted font-medium">
           {{ t('videoEditor.export.audioBitrate') }}
         </label>
-        <div class="flex items-center gap-4 w-full">
-          <UiScaleSlider
-            :model-value="String(audioBitrateKbps)"
-            :options="audioBitrateOptions"
-            :disabled="props.disabled"
-            @update:model-value="audioBitrateKbps = Number($event)"
-          />
-          <span class="text-xs text-ui-text-muted whitespace-nowrap">Kbps</span>
-        </div>
+        <UiScaleSlider
+          :model-value="String(audioBitrateKbps)"
+          :options="audioBitrateOptions"
+          :disabled="props.disabled"
+          unit="Kbps"
+          @update:model-value="audioBitrateKbps = Number($event)"
+        />
       </div>
 
       <!-- Sample Rate Select -->
