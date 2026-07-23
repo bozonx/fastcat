@@ -2,7 +2,6 @@
 import { computed } from 'vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
 import UiScaleSlider from '~/components/ui/UiScaleSlider.vue';
-import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import UiButtonGroup from '~/components/ui/UiButtonGroup.vue';
 import { useAudioCodecOptions } from '~/composables/timeline/export/core/useAudioCodecOptions';
 
@@ -166,17 +165,7 @@ function resetSampleRate() {
             :model-value="String(audioBitrateKbps)"
             :options="audioBitrateOptions"
             :disabled="props.disabled"
-            with-input
             @update:model-value="audioBitrateKbps = Number($event)"
-          />
-          <UiWheelNumberInput
-            v-model="audioBitrateKbps"
-            :min="32"
-            :max="512"
-            :step="16"
-            :wheel-step-multiplier="2"
-            :disabled="props.disabled"
-            class="w-24!"
           />
           <span class="text-xs text-ui-text-muted whitespace-nowrap">Kbps</span>
         </div>
