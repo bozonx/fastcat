@@ -141,7 +141,7 @@ const thumbPercent = computed(() => {
 
       if (val <= minOpt) return 0;
       if (val > maxOpt) {
-        return hasOverflowTail.value ? maxP : 100;
+        return 100;
       }
 
       // Try exact match first
@@ -175,7 +175,7 @@ const thumbPercent = computed(() => {
   // Numeric mode
   const val = Number(modelValue.value);
   if (!isNaN(val) && val > props.max) {
-    return hasOverflowTail.value ? maxP : 100;
+    return 100;
   }
 
   const range = props.max - props.min;

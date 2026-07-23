@@ -151,7 +151,7 @@ describe('UiScaleSlider', () => {
       const thumbEl = thumbEls[thumbEls.length - 1];
       const style = thumbEl?.attributes('style') || '';
       const leftVal = parseFloat(style.replace('left:', '').replace('%', '').trim());
-      expect(leftVal).toBe(94);
+      expect(leftVal).toBe(100);
     });
 
     it('does not render dashed tail or + indicator by default when overflowTail is false', async () => {
