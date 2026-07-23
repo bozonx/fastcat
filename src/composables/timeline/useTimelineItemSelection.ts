@@ -22,7 +22,7 @@ export function useTimelineItemSelection(tracks: ComputedRef<TimelineTrack[]>) {
       projectStore.currentView === 'sound',
   );
 
-  function selectItem(e: PointerEvent, itemId: string) {
+  function selectItem(e: MouseEvent, itemId: string) {
     const isLayer1 = isLayer1Active(e, workspaceStore.userSettings);
     const isLayer2 = isLayer2Active(e, workspaceStore.userSettings);
 

@@ -5,6 +5,13 @@ interface MarkerLike {
   id: string;
 }
 
+interface RulerMenuItem {
+  label: string;
+  icon: string;
+  color?: 'red';
+  onSelect: () => void;
+}
+
 interface UseTimelineRulerMenusOptions {
   t: ReturnType<typeof useI18n>['t'];
   timelineStore: {
@@ -34,7 +41,7 @@ interface UseTimelineRulerMenusOptions {
 export function useTimelineRulerMenus(options: UseTimelineRulerMenusOptions) {
   const { getHotkeyTitle } = useHotkeyLabel();
 
-  const rulerContextMenuItems = computed(() => [
+  const rulerContextMenuItems = computed<RulerMenuItem[][]>(() => [
     [
       {
         label: getHotkeyTitle(options.t('fastcat.timeline.addMarker'), 'general.addMarker'),

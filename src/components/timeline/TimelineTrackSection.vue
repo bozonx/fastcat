@@ -13,7 +13,7 @@ import TimelineGrid from '~/components/timeline/TimelineGrid.vue';
 import TimelinePlayheadOverlay from '~/components/timeline/TimelinePlayheadOverlay.vue';
 import { TIMELINE_TRACK_LABELS_WIDTH as TRACK_LABELS_WIDTH } from '~/utils/constants';
 
-const props = defineProps<{
+defineProps<{
   kind: 'video' | 'audio';
   tracks: TimelineTrack[];
   trackHeights: Record<string, number>;

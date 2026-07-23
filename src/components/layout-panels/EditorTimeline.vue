@@ -240,7 +240,6 @@ const {
   handleLibraryDrop,
   getDropPosition,
   onTrackDragOver,
-  onTrackDragLeave,
   isImporting,
   importProgress,
   importFileName,
@@ -1369,7 +1368,7 @@ async function handleConfirmCreateVersion(newName: string) {
         @click="onTimelineClick"
         @drop="onDrop"
         @dragover="(ev, id) => onTrackDragOver(ev, id)"
-        @dragleave="(ev, id) => onTrackDragLeave(ev, id)"
+        @drag-leave="clearDragPreview"
         @start-move-item="startMoveItem"
         @select-item="selectItem"
         @start-trim-item="startTrimItem"
@@ -1413,7 +1412,7 @@ async function handleConfirmCreateVersion(newName: string) {
         @click="onTimelineClick"
         @drop="onDrop"
         @dragover="(ev, id) => onTrackDragOver(ev, id)"
-        @dragleave="(ev, id) => onTrackDragLeave(ev, id)"
+        @drag-leave="clearDragPreview"
         @start-move-item="startMoveItem"
         @select-item="selectItem"
         @start-trim-item="startTrimItem"

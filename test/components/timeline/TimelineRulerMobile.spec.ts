@@ -14,11 +14,13 @@ describe('TimelineRuler Mobile Behavior', () => {
         stubs: {
           UContextMenu: {
             props: ['disabled', 'open'],
-            template: '<div class="u-context-menu-stub" :data-disabled="disabled" :data-open="open"><slot /></div>',
+            template:
+              '<div class="u-context-menu-stub" :data-disabled="disabled" :data-open="open"><slot /></div>',
           },
           UiMobileDrawer: {
             props: ['open', 'title'],
-            template: '<div class="ui-mobile-drawer-stub" :data-open="open" :data-title="title"><slot /></div>',
+            template:
+              '<div class="ui-mobile-drawer-stub" :data-open="open" :data-title="title"><slot /></div>',
           },
           TimelineRulerOverlays: {
             template: '<div class="overlays-stub" />',

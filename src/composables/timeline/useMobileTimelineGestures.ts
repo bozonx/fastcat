@@ -26,7 +26,7 @@ export interface UseMobileTimelineGesturesOptions {
   suppressDrawerSelectionClearTemporarily: (callback?: () => void) => Promise<void>;
   toggleMobileClipSelection: (itemId: string) => void;
   enterMobileMultiSelection: (itemId: string) => void;
-  selectItem: (ev: PointerEvent, id: string) => void;
+  selectItem: (ev: MouseEvent, id: string) => void;
   startMoveItem: (event: PointerEvent, payload: TimelineMoveItemPayload) => void;
   startTrimItem: (event: PointerEvent, payload: TimelineTrimItemPayload) => void;
   onGlobalPointerMove: (e: PointerEvent) => void;
