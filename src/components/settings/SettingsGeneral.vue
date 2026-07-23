@@ -140,7 +140,6 @@ const stopFramesQualityOptions = [
         :model-value="String(workspaceStore.userSettings.stopFrames.qualityPercent)"
         :options="stopFramesQualityOptions"
         with-input
-        unit="%"
         :default-value="85"
         :input-min="20"
         :input-max="100"

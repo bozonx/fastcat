@@ -180,7 +180,7 @@
       },
       "audio": {
         "balance": "Баланс",
-        "volume": "Громкость"
+        "volume": "Громкость (%)"
       },
       "audioFade": {
         "curve": {
@@ -914,7 +914,7 @@
       "project": "Проект",
       "properties": {
         "actions": "Действия",
-        "masterVolume": "Громкость мастер трека",
+        "masterVolume": "Громкость мастер трека (%)",
         "overlapMode": "Режим наложения",
         "snapSettings": "Настройки привязок",
         "snapToClips": "Привязка к клипам",
@@ -1161,7 +1161,7 @@
       "trackName": "Дорожка: {name}",
       "audio": {
         "balance": "Баланс",
-        "volume": "Громкость"
+        "volume": "Громкость (%)"
       },
       "clipsCount": "Количество клипов",
       "color": "Цвет",
@@ -2072,7 +2072,7 @@
       "snappingDescription": "Настройка поведения привязки на таймлайне.",
       "snappingTitle": "Привязка",
       "notAvailable": "Настройки недоступны",
-      "stopFramesQuality": "Качество снимка с монитора",
+      "stopFramesQuality": "Качество снимка с монитора (%)",
       "sttDownloadModel": "Скачать модель",
       "sttFastcat": "FASTCAT STT",
       "sttLocal": "Локальное (Whisper)",

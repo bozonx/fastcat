@@ -180,7 +180,7 @@
       },
       "audio": {
         "balance": "Balance",
-        "volume": "Volumen"
+        "volume": "Volumen (%)"
       },
       "audioFade": {
         "curve": {
@@ -914,7 +914,7 @@
       "project": "Proyecto",
       "properties": {
         "actions": "Acciones",
-        "masterVolume": "Volumen de la pista master",
+        "masterVolume": "Volumen de la pista master (%)",
         "overlapMode": "Modo de superposición",
         "snapSettings": "Ajustes de snapping",
         "snapToClips": "Ajustar a clips",
@@ -1161,7 +1161,7 @@
       "trackName": "Pista: {name}",
       "audio": {
         "balance": "Balance",
-        "volume": "Volumen"
+        "volume": "Volumen (%)"
       },
       "clipsCount": "Cantidad de clips",
       "color": "Color",
@@ -2072,7 +2072,7 @@
       "snappingDescription": "Configura el comportamiento de ajuste de la línea de tiempo.",
       "snappingTitle": "Ajuste",
       "notAvailable": "Ajustes no disponibles",
-      "stopFramesQuality": "Calidad de la captura del monitor",
+      "stopFramesQuality": "Calidad de la captura del monitor (%)",
       "sttDownloadModel": "Descargar modelo",
       "sttFastcat": "FASTCAT STT",
       "sttLocal": "Local (Whisper)",

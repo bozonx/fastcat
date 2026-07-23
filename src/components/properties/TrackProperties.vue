@@ -238,7 +238,6 @@ const clipCount = computed(
           :default-value="100"
           :decimals="0"
           unit="%"
-          show-input-unit
         />
 
         <UiSliderInput

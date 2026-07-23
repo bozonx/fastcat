@@ -164,7 +164,6 @@ function resetSampleRate() {
           :model-value="String(audioBitrateKbps)"
           :options="audioBitrateOptions"
           :disabled="props.disabled"
-          unit="Kbps"
           @update:model-value="audioBitrateKbps = Number($event)"
         />
       </div>

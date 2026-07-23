@@ -180,7 +180,7 @@
       },
       "audio": {
         "balance": "Balance",
-        "volume": "Volume"
+        "volume": "Volume (%)"
       },
       "audioFade": {
         "curve": {
@@ -914,7 +914,7 @@
       "project": "Project",
       "properties": {
         "actions": "Actions",
-        "masterVolume": "Master track volume",
+        "masterVolume": "Master track volume (%)",
         "overlapMode": "Overlap Mode",
         "snapSettings": "Snapping settings",
         "snapToClips": "Snap to clips",
@@ -1161,7 +1161,7 @@
       "trackName": "Track: {name}",
       "audio": {
         "balance": "Balance",
-        "volume": "Volume"
+        "volume": "Volume (%)"
       },
       "clipsCount": "Clips count",
       "color": "Color",
@@ -2072,7 +2072,7 @@
       "snappingDescription": "Configure timeline snapping behavior.",
       "snappingTitle": "Snapping",
       "notAvailable": "Settings not available",
-      "stopFramesQuality": "Monitor snapshot quality",
+      "stopFramesQuality": "Monitor snapshot quality (%)",
       "sttDownloadModel": "Download Model",
       "sttFastcat": "FASTCAT STT",
       "sttLocal": "Local (Whisper)",

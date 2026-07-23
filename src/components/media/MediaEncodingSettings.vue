@@ -336,7 +336,6 @@ watch(
           :disabled="props.disabled"
           with-input
           overflow-tail
-          unit="Mbps"
           :input-min="0.2"
           :input-max="999"
           :input-step="0.1"
@@ -402,18 +401,15 @@ watch(
                 </UiTooltip>
               </div>
             </template>
-            <div class="flex items-center gap-2">
-              <UiWheelNumberInput
-                v-model="maxBitrate"
-                :min="bitrateMbps"
-                :max="bitrateMbps * 4"
-                :step="0.1"
-                :wheel-step-multiplier="10"
-                :disabled="props.disabled"
-                class="w-24!"
-              />
-              <span class="text-xs text-ui-text-muted">Mbps</span>
-            </div>
+            <UiWheelNumberInput
+              v-model="maxBitrate"
+              :min="bitrateMbps"
+              :max="bitrateMbps * 4"
+              :step="0.1"
+              :wheel-step-multiplier="10"
+              :disabled="props.disabled"
+              class="w-24!"
+            />
           </UiFormField>
 
           <UCheckbox
@@ -437,18 +433,15 @@ watch(
                 </UiTooltip>
               </div>
             </template>
-            <div class="flex items-center gap-2">
-              <UiWheelNumberInput
-                v-model="minBitrate"
-                :min="0.1"
-                :max="bitrateMbps"
-                :step="0.1"
-                :wheel-step-multiplier="10"
-                :disabled="props.disabled"
-                class="w-24!"
-              />
-              <span class="text-xs text-ui-text-muted">Mbps</span>
-            </div>
+            <UiWheelNumberInput
+              v-model="minBitrate"
+              :min="0.1"
+              :max="bitrateMbps"
+              :step="0.1"
+              :wheel-step-multiplier="10"
+              :disabled="props.disabled"
+              class="w-24!"
+            />
           </UiFormField>
         </template>
 
@@ -520,7 +513,6 @@ watch(
           :model-value="String(audioBitrateKbps)"
           :options="audioBitrateOptions"
           :disabled="props.disabled"
-          unit="Kbps"
           @update:model-value="audioBitrateKbps = Number($event)"
         />
       </UiFormField>

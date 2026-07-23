@@ -137,7 +137,6 @@ describe('TrackProperties', () => {
     expect(volumeSlider.props('modelValue')).toBe(176);
     expect(volumeSlider.props('max')).toBe(200);
     expect(volumeSlider.props('unit')).toBe('%');
-    expect(volumeSlider.props('showInputUnit')).toBe(true);
 
     await volumeSlider.vm.$emit('update:modelValue', 150);
 
