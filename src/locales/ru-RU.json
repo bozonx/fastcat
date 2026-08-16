@@ -1271,6 +1271,10 @@
       "initializingTauriWorkspace": "Инициализация стандартной рабочей области desktop-версии.",
       "openSandbox": "Открыть рабочую область браузера",
       "openWebWorkspace": "FastCat хранит веб-проекты в приватной рабочей области браузера."
+    },
+    "embed": {
+      "standaloneNotice": "Этот редактор предназначен для встраивания в приложение-хост.",
+      "preparing": "Готовим редактор…"
     }
   },
   "timelineCreation": {

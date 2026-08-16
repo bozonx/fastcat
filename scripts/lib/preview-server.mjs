@@ -45,3 +45,16 @@ export async function waitForServer(url, timeoutMs = 120_000) {
 
   throw new Error(`Server at ${url} did not start within ${timeoutMs}ms`);
 }
+
+/**
+ * Port/URL of the embed host stand — the second origin the `embed` tier drives
+ * the editor from. Shared by `playwright.config.ts` (which starts the server)
+ * and the specs (which navigate to it) so the two cannot drift.
+ */
+export function embedHostPort(e2ePort) {
+  return Number(process.env.EMBED_HOST_PORT ?? e2ePort + 100);
+}
+
+export function embedHostUrl(host, e2ePort) {
+  return `http://${host}:${embedHostPort(e2ePort)}`;
+}

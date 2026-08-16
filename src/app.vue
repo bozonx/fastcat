@@ -20,6 +20,7 @@ import {
   type BrowserCompatibilityReport,
 } from '~/utils/browser-compatibility';
 import { isTauriRuntime } from '~/utils/runtime';
+import { isEmbedRuntime } from '~/utils/embed-runtime';
 const uiStore = useUiStore();
 const { t } = useI18n();
 const { isMobileLayout } = useMobileLayout();
@@ -30,7 +31,9 @@ const runtimeConfig = useRuntimeConfig();
 const workspaceStore = useWorkspaceStore();
 const browserCompatibilityReport = shallowRef<BrowserCompatibilityReport | null>(null);
 if (typeof window !== 'undefined' && !isTauriRuntime()) {
-  browserCompatibilityReport.value = evaluateBrowserCompatibility();
+  browserCompatibilityReport.value = evaluateBrowserCompatibility({
+    requireSharedArrayBuffer: !isEmbedRuntime(),
+  });
 }
 const isBrowserCompatibilityBlocked = computed(
   () =>

@@ -27,7 +27,18 @@ const host = parseArg('--host', '127.0.0.1');
 const port = Number(parseArg('--port', '3007'));
 const root = resolve(parseArg('--root', '.output/public'));
 
-function setIsolationHeaders(res) {
+/**
+ * Mirrors the production header contract from `public/_headers`, including the
+ * embed route's opt-out. Serving `/embed` isolated here would let the e2e tier
+ * pass with a `SharedArrayBuffer` that no real host page can provide.
+ */
+function setIsolationHeaders(res, urlPath) {
+  const path = (urlPath ?? '/').split('?')[0].replace(/\/+$/, '');
+  if (path === '/embed' || path.startsWith('/embed/')) {
+    res.setHeader('Cross-Origin-Opener-Policy', 'unsafe-none');
+    res.setHeader('Cross-Origin-Embedder-Policy', 'unsafe-none');
+    return;
+  }
   res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
   res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
 }
@@ -58,7 +69,7 @@ async function resolvePath(urlPath) {
 }
 
 const server = createServer(async (req, res) => {
-  setIsolationHeaders(res);
+  setIsolationHeaders(res, req.url);
 
   const filePath = await resolvePath(req.url ?? '/');
   if (!filePath) {

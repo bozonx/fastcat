@@ -1,0 +1,19 @@
+{
+  "name": "@fastcat/embed",
+  "version": "0.1.0",
+  "description": "Embed the FastCat video editor into any page through a sandboxed iframe.",
+  "license": "MIT",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bozonx/fastcat.git",
+    "directory": "packages/embed"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "files": [
+    "src"
+  ],
+  "sideEffects": false
+}

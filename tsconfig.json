@@ -7,7 +7,9 @@
       "~/*": ["src/*"],
       "@/*": ["src/*"],
       "~shared": ["shared"],
-      "~shared/*": ["shared/*"]
+      "~shared/*": ["shared/*"],
+      "~embed": ["packages/embed/src"],
+      "~embed/*": ["packages/embed/src/*"]
     }
   }
 }

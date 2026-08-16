@@ -1,5 +1,9 @@
 import { defineConfig, devices } from '@playwright/test';
-import { staticPreviewServerCommand } from './scripts/lib/preview-server.mjs';
+import {
+  embedHostPort,
+  embedHostUrl,
+  staticPreviewServerCommand,
+} from './scripts/lib/preview-server.mjs';
 
 const e2eHost = process.env.E2E_HOST ?? '127.0.0.1';
 const e2ePort = Number(process.env.E2E_PORT ?? 3007);
@@ -13,6 +17,18 @@ const webServerCommand = staticPreviewServerCommand({
   port: e2ePort,
   root: `${e2eOutputDir}/public`,
 });
+
+// Second origin for the `embed` tier. Same host, different port, which is all a
+// browser needs to treat the stand as a third-party page: origin checks, the
+// postMessage boundary and the absence of cross-origin isolation are all real.
+const standPort = embedHostPort(e2ePort);
+const standURL = embedHostUrl(e2eHost, e2ePort);
+const embedHostCommand = [
+  'node scripts/embed-host-server.mjs',
+  `--host ${e2eHost}`,
+  `--port ${standPort}`,
+  `--editor ${baseURL}/embed`,
+].join(' ');
 
 // Shared Chromium config for the smoke / e2e / golden tiers.
 const chromiumUse = {
@@ -81,6 +97,14 @@ export default defineConfig({
       testMatch: ['golden/**/*.spec.ts'],
       use: chromiumUse,
     },
+    // ── Tier: embed ── drives the editor the way a third-party host page does:
+    // an iframe on a different origin, spoken to only over postMessage, with no
+    // cross-origin isolation. Guards the published protocol contract.
+    {
+      name: 'embed',
+      testMatch: ['e2e/embed/**/*.spec.ts'],
+      use: chromiumUse,
+    },
     // Firefox smoke: verifies the OPFS-sandbox startup path works on a second
     // engine (cross-origin isolation, workspace bootstrap). Scoped to the
     // engine-agnostic smoke specs — WebGPU/export/codec breadth stays Chromium-
@@ -104,19 +128,27 @@ export default defineConfig({
   // teardown) for every test-run entrypoint. `run-playwright-with-preview.mjs`
   // only builds the bundle and picks a free port, then hands both here via env —
   // there is no second server manager.
-  webServer: {
-    command: webServerCommand,
-    url: baseURL,
-    timeout: 120_000,
-    reuseExistingServer: !process.env.CI,
-    env: {
-      E2E_TEST: '1',
-      E2E_HOST: e2eHost,
-      E2E_PORT: String(e2ePort),
-      NUXT_IGNORE_LOCK: '1',
-      E2E_OUTPUT_DIR: e2eOutputDir,
-      TMPDIR: `${process.cwd()}/test-files/playwright/tmp`,
-      FASTCAT_ENABLE_IN_DEVELOPMENT_FEATURES: 'true',
+  webServer: [
+    {
+      command: webServerCommand,
+      url: baseURL,
+      timeout: 120_000,
+      reuseExistingServer: !process.env.CI,
+      env: {
+        E2E_TEST: '1',
+        E2E_HOST: e2eHost,
+        E2E_PORT: String(e2ePort),
+        NUXT_IGNORE_LOCK: '1',
+        E2E_OUTPUT_DIR: e2eOutputDir,
+        TMPDIR: `${process.cwd()}/test-files/playwright/tmp`,
+        FASTCAT_ENABLE_IN_DEVELOPMENT_FEATURES: 'true',
+      },
     },
-  },
+    {
+      command: embedHostCommand,
+      url: `${standURL}/config.json`,
+      timeout: 60_000,
+      reuseExistingServer: !process.env.CI,
+    },
+  ],
 });

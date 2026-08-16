@@ -13,8 +13,25 @@ function readBooleanEnv(value: unknown, defaultValue = false): boolean {
   return normalized === '1' || normalized === 'true' || normalized === 'yes' || normalized === 'on';
 }
 
+/** Matches the embed route and the assets a directly-served `/embed` document
+ *  needs, so the isolation opt-out covers the whole page, not just its HTML. */
+function isEmbedRequestPath(url: string | undefined): boolean {
+  if (!url) return false;
+  const path = url.split('?')[0]?.replace(/\/+$/, '') ?? '';
+  return path === '/embed' || path.startsWith('/embed/');
+}
+
 function installIsolationHeaders(server: ViteDevServer | PreviewServer): void {
-  server.middlewares.use((_req, res, next) => {
+  server.middlewares.use((req, res, next) => {
+    // Mirror the production headers, including the embed route's opt-out — a dev
+    // server that isolated `/embed` would hide every no-SharedArrayBuffer bug
+    // until the bundle reached a real host page.
+    if (isEmbedRequestPath(req.url)) {
+      res.setHeader('Cross-Origin-Opener-Policy', 'unsafe-none');
+      res.setHeader('Cross-Origin-Embedder-Policy', 'unsafe-none');
+      next();
+      return;
+    }
     res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
     res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
     next();
@@ -64,6 +81,9 @@ export default defineNuxtConfig({
   // (`include_str!`).
   alias: {
     '~shared': resolve(import.meta.dirname, 'shared'),
+    // The embed protocol is published as `@fastcat/embed`; the app compiles
+    // against its source so host and editor can never disagree on the contract.
+    '~embed': resolve(import.meta.dirname, 'packages/embed/src'),
   },
 
   modules: [
@@ -122,11 +142,23 @@ export default defineNuxtConfig({
 
   compatibilityDate: '2024-11-01',
 
+  // The standalone app opts into cross-origin isolation for a shared-memory I/O
+  // budget. The embed route must not: isolation would force every host page to
+  // adopt COOP/COEP, which breaks their own third-party embeds. It runs on the
+  // per-realm `LocalBudget` fallback instead. Keep this in sync with
+  // `public/_headers`, `scripts/static-preview-server.mjs` and the dev plugin
+  // below — all four serve the same contract on different surfaces.
   routeRules: {
     '/**': {
       headers: {
         'Cross-Origin-Opener-Policy': 'same-origin',
         'Cross-Origin-Embedder-Policy': 'require-corp',
+      },
+    },
+    '/embed': {
+      headers: {
+        'Cross-Origin-Opener-Policy': 'unsafe-none',
+        'Cross-Origin-Embedder-Policy': 'unsafe-none',
       },
     },
   },

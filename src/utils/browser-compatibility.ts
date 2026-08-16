@@ -125,7 +125,19 @@ export function detectBrowserGpuFlagInfo(overrideBrowser?: string): BrowserGpuFl
   };
 }
 
-export function evaluateBrowserCompatibility(): BrowserCompatibilityReport {
+export interface BrowserCompatibilityOptions {
+  /**
+   * Whether a cross-origin-isolated `SharedArrayBuffer` is a hard requirement.
+   * The embeddable build sets this to false: it cannot demand COOP/COEP from
+   * host pages, and the I/O budget falls back to per-realm `LocalBudget` there.
+   */
+  requireSharedArrayBuffer?: boolean;
+}
+
+export function evaluateBrowserCompatibility(
+  options: BrowserCompatibilityOptions = {},
+): BrowserCompatibilityReport {
+  const requireSharedArrayBuffer = options.requireSharedArrayBuffer ?? true;
   const queryMock = getGpuMockFromQuery();
   const webGpuSupported =
     queryMock !== null ? queryMock : typeof navigator !== 'undefined' && !!navigator.gpu;
@@ -178,7 +190,7 @@ export function evaluateBrowserCompatibility(): BrowserCompatibilityReport {
       labelKey: 'fastcat.browserCompatibility.checks.sharedArrayBuffer.label',
       descriptionKey: 'fastcat.browserCompatibility.checks.sharedArrayBuffer.description',
       supported: hasSharedArrayBufferIsolation(),
-      severity: 'critical',
+      severity: requireSharedArrayBuffer ? 'critical' : 'warning',
     },
     {
       id: 'webcodecs-audio',

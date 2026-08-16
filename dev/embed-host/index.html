@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>FastCat embed host stand</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #14171c;
+        --panel: #1b1f26;
+        --line: #2a3039;
+        --ink: #e6e9ee;
+        --muted: #8d95a2;
+        --accent: #e4703f;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        height: 100dvh;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 380px;
+        background: var(--bg);
+        color: var(--ink);
+        font:
+          14px/1.5 system-ui,
+          sans-serif;
+      }
+      #stage {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+      }
+      #controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--line);
+        background: var(--panel);
+      }
+      #frame {
+        flex: 1;
+        min-height: 0;
+        background: #0d1013;
+      }
+      #frame iframe {
+        display: block;
+        width: 100%;
+        height: 100%;
+        border: 0;
+      }
+      aside {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        border-left: 1px solid var(--line);
+        background: var(--panel);
+      }
+      h2 {
+        margin: 0;
+        padding: 10px 12px;
+        font-size: 11px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--muted);
+        border-bottom: 1px solid var(--line);
+      }
+      #status {
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--line);
+        font-size: 13px;
+      }
+      #status dl {
+        margin: 0;
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 2px 10px;
+      }
+      #status dt {
+        color: var(--muted);
+      }
+      #status dd {
+        margin: 0;
+        overflow-wrap: anywhere;
+      }
+      #log {
+        flex: 1;
+        overflow: auto;
+        margin: 0;
+        padding: 8px 12px;
+        font:
+          12px/1.5 ui-monospace,
+          monospace;
+        white-space: pre-wrap;
+      }
+      .row {
+        border-bottom: 1px solid var(--line);
+        padding: 3px 0;
+      }
+      .out {
+        color: var(--accent);
+      }
+      .in {
+        color: #7fafca;
+      }
+      button,
+      input {
+        font: inherit;
+        color: inherit;
+        background: #232833;
+        border: 1px solid var(--line);
+        border-radius: 4px;
+        padding: 5px 10px;
+      }
+      button:disabled {
+        opacity: 0.45;
+      }
+      input {
+        min-width: 260px;
+      }
+    </style>
+  </head>
+  <body>
+    <main id="stage">
+      <div id="controls">
+        <input id="asset-url" aria-label="Asset URL" />
+        <button id="open" data-testid="stand-open">Open editor</button>
+        <button id="export" data-testid="stand-export" disabled>Export</button>
+        <button id="dispose" data-testid="stand-dispose" disabled>Dispose</button>
+        <button id="download" data-testid="stand-download" disabled>Save result</button>
+      </div>
+      <div id="frame" data-testid="stand-frame"></div>
+    </main>
+
+    <aside>
+      <h2>Session</h2>
+      <div id="status">
+        <dl>
+          <dt>Phase</dt>
+          <dd data-testid="stand-phase" id="phase">idle</dd>
+          <dt>Capabilities</dt>
+          <dd data-testid="stand-caps" id="caps">—</dd>
+          <dt>Result</dt>
+          <dd data-testid="stand-result" id="result">—</dd>
+        </dl>
+      </div>
+      <h2>Protocol log</h2>
+      <div id="log" data-testid="stand-log"></div>
+    </aside>
+
+    <script type="module">
+      import { createFastcatEmbed } from '/sdk/index.js';
+
+      const params = new URLSearchParams(location.search);
+      const { editorUrl } = await fetch('/config.json').then((r) => r.json());
+
+      const assetInput = document.getElementById('asset-url');
+      assetInput.value =
+        params.get('asset') ?? new URL('/media/sample-1s-720p.mp4', location.origin).toString();
+
+      const els = {
+        frame: document.getElementById('frame'),
+        log: document.getElementById('log'),
+        phase: document.getElementById('phase'),
+        caps: document.getElementById('caps'),
+        result: document.getElementById('result'),
+        open: document.getElementById('open'),
+        export: document.getElementById('export'),
+        dispose: document.getElementById('dispose'),
+        download: document.getElementById('download'),
+      };
+
+      /** Observable surface the `embed` Playwright tier asserts against. */
+      const stand = {
+        phase: 'idle',
+        capabilities: null,
+        initialized: null,
+        /** Bytes counted while draining `file.stream()` — never buffered whole. */
+        streamedBytes: 0,
+        result: null,
+        /** True while the host is still reading the file, i.e. before the ack. */
+        readingExport: false,
+        exportHandlerDelayMs: 0,
+        errors: [],
+        messages: [],
+      };
+      window.__embedStand = stand;
+
+      function setPhase(phase) {
+        stand.phase = phase;
+        els.phase.textContent = phase;
+      }
+
+      function log(direction, type, payload) {
+        stand.messages.push({ direction, type });
+        const row = document.createElement('div');
+        row.className = `row ${direction}`;
+        row.textContent = `${direction === 'out' ? '→' : '←'} ${type}${
+          payload && typeof payload === 'object' && !(payload.file instanceof File)
+            ? ` ${JSON.stringify(payload).slice(0, 160)}`
+            : ''
+        }`;
+        els.log.appendChild(row);
+        els.log.scrollTop = els.log.scrollHeight;
+      }
+
+      let embed = null;
+
+      function open() {
+        if (embed) return;
+        els.frame.replaceChildren();
+        setPhase('opening');
+
+        embed = createFastcatEmbed({
+          container: els.frame,
+          editorUrl,
+          locale: params.get('locale') ?? 'en-US',
+          assets: assetInput.value ? [{ url: assetInput.value, kind: 'video' }] : [],
+          onDebug: log,
+          onReady(capabilities) {
+            stand.capabilities = capabilities;
+            els.caps.textContent = Object.entries(capabilities)
+              .map(([key, value]) => `${key}:${value ? 'yes' : 'no'}`)
+              .join(' ');
+            setPhase('ready');
+          },
+          onInitialized(info) {
+            stand.initialized = info;
+            setPhase('initialized');
+            els.export.disabled = false;
+            els.dispose.disabled = false;
+          },
+          onExportProgress(progress) {
+            setPhase(`exporting ${Math.round(progress.progress * 100)}%`);
+          },
+          async onExportDone({ file, meta }) {
+            stand.readingExport = true;
+            setPhase('receiving');
+
+            // Drain the stream rather than materialising the file, which is the
+            // whole reason the editor hands back a `File` instead of chunks.
+            let streamed = 0;
+            const chunks = [];
+            const reader = file.stream().getReader();
+            for (;;) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              streamed += value.byteLength;
+              chunks.push(value);
+            }
+
+            if (stand.exportHandlerDelayMs) {
+              await new Promise((r) => setTimeout(r, stand.exportHandlerDelayMs));
+            }
+
+            stand.streamedBytes = streamed;
+            stand.result = { ...meta, streamedBytes: streamed };
+            stand.readingExport = false;
+            stand.savedBlob = new Blob(chunks, { type: meta.mimeType });
+
+            els.result.textContent = `${meta.filename} · ${streamed} B`;
+            els.download.disabled = false;
+            setPhase('exported');
+          },
+          onError(error) {
+            stand.errors.push(error);
+            setPhase(`error: ${error.code}`);
+          },
+          onUnavailable(reason) {
+            stand.errors.push({ code: 'unavailable', message: reason });
+            setPhase('unavailable');
+          },
+          onRequestClose() {
+            void dispose();
+          },
+        });
+      }
+
+      async function dispose() {
+        if (!embed) return;
+        await embed.dispose();
+        embed = null;
+        els.export.disabled = true;
+        els.dispose.disabled = true;
+        setPhase('disposed');
+      }
+
+      els.open.addEventListener('click', open);
+      els.export.addEventListener('click', () => embed?.startExport());
+      els.dispose.addEventListener('click', () => void dispose());
+      els.download.addEventListener('click', () => {
+        if (!stand.savedBlob) return;
+        const url = URL.createObjectURL(stand.savedBlob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = stand.result?.filename ?? 'export.mp4';
+        a.click();
+        URL.revokeObjectURL(url);
+      });
+
+      if (params.get('autostart') === '1') open();
+    </script>
+  </body>
+</html>

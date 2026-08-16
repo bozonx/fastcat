@@ -1271,6 +1271,10 @@
       "initializingTauriWorkspace": "Inicializando el espacio de trabajo de escritorio predeterminado.",
       "openSandbox": "Abrir espacio de trabajo del navegador",
       "openWebWorkspace": "FastCat almacena los proyectos web en un espacio de trabajo privado del navegador."
+    },
+    "embed": {
+      "standaloneNotice": "Este editor está pensado para incrustarse en una aplicación anfitriona.",
+      "preparing": "Preparando el editor…"
     }
   },
   "timelineCreation": {

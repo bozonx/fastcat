@@ -22,7 +22,7 @@ const playwrightArgs = process.argv.slice(2);
 // Inputs whose contents decide whether the prebuilt bundle is still valid.
 // Kept coarse on purpose: a superset is safe (rebuilds when it didn't strictly
 // need to); a subset would serve a stale bundle.
-const BUILD_INPUT_DIRS = ['src', 'shared', 'public'];
+const BUILD_INPUT_DIRS = ['src', 'shared', 'public', 'packages'];
 const BUILD_INPUT_FILES = ['package.json', 'pnpm-lock.yaml', 'nuxt.config.ts', 'tsconfig.json'];
 const BUILD_MANIFEST = join(e2eOutputDir, '.e2e-build-hash');
 
@@ -155,6 +155,10 @@ async function main() {
   const e2ePort = process.env.E2E_BASE_URL ? requestedPort : await findAvailablePort(requestedPort);
   const baseURL = process.env.E2E_BASE_URL ?? `http://${e2eHost}:${e2ePort}`;
 
+  // The `embed` tier needs a second origin for the host stand. Same host, a
+  // different port — enough for the browser to treat it as third-party.
+  const embedHostPort = await findAvailablePort(e2ePort + 100);
+
   runBuild(e2ePort);
 
   // Hand the chosen port + built bundle to Playwright and let its own
@@ -170,6 +174,7 @@ async function main() {
       E2E_BASE_URL: baseURL,
       E2E_TEST: '1',
       E2E_OUTPUT_DIR: e2eOutputDir,
+      EMBED_HOST_PORT: String(embedHostPort),
       PLAYWRIGHT_OUTPUT_DIR: join('test-files', 'playwright', 'results'),
       PLAYWRIGHT_HTML_REPORT: join('test-files', 'playwright', 'report'),
       TMPDIR: playwrightTmpDir,

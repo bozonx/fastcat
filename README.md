@@ -129,6 +129,43 @@ pnpm deploy:cf
 pnpm preview:cf
 ```
 
+## Embeddable Editor
+
+Host pages embed the editor as a **same-document iframe** pointed at the `/embed`
+route and talk to it only over `postMessage`. The protocol lives in
+`packages/embed/src/protocol.ts` and is published as `@fastcat/embed`; the app
+compiles against that same source through the `~embed` alias, so the two halves
+of the contract cannot drift.
+
+The embed route deliberately **opts out of cross-origin isolation**. Requiring
+COOP/COEP would force every embedding site to adopt them and break their own
+third-party embeds, so the editor runs there without a `SharedArrayBuffer` and
+falls back to the per-realm `LocalBudget` (see the I/O budget section above).
+That opt-out is expressed in four places that must stay in sync:
+`nuxt.config.ts` (`routeRules` + the dev middleware), `public/_headers`, and
+`scripts/static-preview-server.mjs`.
+
+The session owns no persistence. It opens a per-session ephemeral OPFS workspace,
+lays the host's assets straight onto the timeline, and hands the render back as a
+`File` — which crosses the boundary by reference to its backing store, so the host
+streams it out without either page buffering the bytes. The editor keeps that file
+alive until the host replies with `export:ack`.
+
+### Developing against a real host origin
+
+```bash
+pnpm dev:embed
+```
+
+This runs the Nuxt dev server for the editor plus a host stand on a second
+origin (`localhost` vs `127.0.0.1` — different origins to the browser, no DNS
+setup needed). The stand lives in `dev/embed-host/`, serves media fixtures with
+CORS and byte ranges the way a host's signed URLs would, and logs every message
+crossing the boundary in both directions.
+
+Opening `/embed` directly in a browser is not an error — the page reports that it
+expects to be embedded and opens no channel at all.
+
 ## Setup
 
 ```bash
@@ -404,6 +441,7 @@ the GPU-fragile ones stay out of the merge gate. Two things used to both be call
 | Integration/unit (native) | `src-tauri/tests/`, Rust `#[test]`s (incl. logic parity)    | `pnpm test:native`          | gate         |
 | E2E — smoke               | `test/e2e/smoke/`                                           | `pnpm test:e2e:smoke`       | gate         |
 | E2E — full                | `test/e2e/web/`                                             | `pnpm test:e2e`             | gate         |
+| E2E — embed               | `test/e2e/embed/`                                           | `pnpm test:e2e:embed`       | gate         |
 | Golden (web)              | `test/golden/` + `test/golden-helpers/`                     | `pnpm test:golden:web`      | manual (GPU) |
 | Golden (native)           | `src-tauri/tests/engine_parity.rs`                          | `pnpm test:golden:native`   | manual (GPU) |
 

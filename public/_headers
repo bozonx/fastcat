@@ -8,6 +8,18 @@
   Cross-Origin-Opener-Policy: same-origin
   Cross-Origin-Embedder-Policy: require-corp
 
+# The embeddable editor opts OUT of cross-origin isolation: requiring it would
+# force every host page to adopt COOP/COEP and break their own third-party
+# embeds. Cloudflare applies every matching rule in order, so these later,
+# more specific entries override the `/*` block above.
+/embed
+  Cross-Origin-Opener-Policy: unsafe-none
+  Cross-Origin-Embedder-Policy: unsafe-none
+
+/embed/*
+  Cross-Origin-Opener-Policy: unsafe-none
+  Cross-Origin-Embedder-Policy: unsafe-none
+
 # Hashed, immutable build assets — cache aggressively.
 /_nuxt/*
   Cache-Control: public, max-age=31536000, immutable

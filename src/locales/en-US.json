@@ -1271,6 +1271,10 @@
       "initializingTauriWorkspace": "Initializing the default desktop workspace.",
       "openSandbox": "Open Browser Workspace",
       "openWebWorkspace": "FastCat stores web projects in a private browser workspace."
+    },
+    "embed": {
+      "standaloneNotice": "This editor is meant to be embedded by a host application.",
+      "preparing": "Preparing the editor…"
     }
   },
   "timelineCreation": {
