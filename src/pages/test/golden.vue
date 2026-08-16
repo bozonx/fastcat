@@ -7,7 +7,7 @@ import { computeFrameHash, computeColorSignature } from '~/utils/video-editor/pe
 import { DEFAULT_TRANSITION_MODE, DEFAULT_TRANSITION_CURVE } from '~/transitions/core/registry';
 
 definePageMeta({
-  layout: 'embedded',
+  layout: 'blank',
 });
 
 interface ParitySceneData {

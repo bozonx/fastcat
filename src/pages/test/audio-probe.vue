@@ -1,6 +1,6 @@
 <script setup lang="ts">
 definePageMeta({
-  layout: 'embedded',
+  layout: 'blank',
 });
 
 interface AudioPcmStats {

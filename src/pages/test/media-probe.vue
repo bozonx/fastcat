@@ -5,7 +5,7 @@ import { getMediaTypeFromFilename } from '~/utils/media-types';
 import type { MediaMetadata } from '~/types/media';
 
 definePageMeta({
-  layout: 'embedded',
+  layout: 'blank',
 });
 
 /** Flattened probe result handed back to the Playwright test (node context). */

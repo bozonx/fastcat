@@ -11,7 +11,6 @@
   "scripts": {
     "dev": "nuxt dev",
     "build": "nuxt build",
-    "build:lib": "vite build -c vite.config.lib.ts",
     "generate": "nuxt generate",
     "preview": "node scripts/static-preview-server.mjs",
     "postinstall": "node scripts/vendor-fonts.mjs && nuxt prepare",
