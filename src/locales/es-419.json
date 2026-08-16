@@ -113,7 +113,8 @@
       "required": "El nombre es obligatorio."
     },
     "video": "Video",
-    "warning": "Advertencia"
+    "warning": "Advertencia",
+    "sound": "Sonido"
   },
   "fastcat": {
     "audioMixer": {
@@ -1274,7 +1275,8 @@
     },
     "embed": {
       "standaloneNotice": "Este editor está pensado para incrustarse en una aplicación anfitriona.",
-      "preparing": "Preparando el editor…"
+      "preparing": "Preparando el editor…",
+      "toggleLayout": "Cambiar disposición"
     }
   },
   "timelineCreation": {
@@ -2184,7 +2186,8 @@
       "videoFrameCacheMb": "Caché de fotogramas de video (MB)",
       "videoFrameCacheMbHelp": "Cantidad máxima de RAM que se usará para los fotogramas de vista previa decodificados. Establece 0 para desactivar la caché.",
       "workspaceSection": "Ajustes de la aplicación",
-      "workspaceStorage": "Almacenamiento"
+      "workspaceStorage": "Almacenamiento",
+      "hotkeysReservedEmbedDesc": "La página anfitriona que rodea al editor usa {combo}."
     },
     "timeline": {
       "backupError": "Error de copia de seguridad",

@@ -1,12 +1,46 @@
 <script setup lang="ts">
-import { onMounted } from 'vue';
-import MobileMonitorContainer from '~/components/monitor/MobileMonitorContainer.vue';
-import MobileTimeline from '~/components/timeline/MobileTimeline.vue';
+import { computed, onMounted, ref } from 'vue';
+import EditorRoot from '~/components/editor/EditorRoot.vue';
+import type { MobileShellTab } from '~/components/editor/MobileShell.vue';
 import UiProgressSpinner from '~/components/ui/UiProgressSpinner.vue';
 import { useEmbedSession } from '~/composables/embed/useEmbedSession';
+import { useEmbedFeatures } from '~/utils/embed-features';
+import { useProjectStore } from '~/stores/project.store';
 
 const { t } = useI18n();
 const session = useEmbedSession();
+const projectStore = useProjectStore();
+const { isEnabled } = useEmbedFeatures();
+
+const editorRoot = ref<InstanceType<typeof EditorRoot> | null>(null);
+
+/** Views the host switched on, in the order the toolbar shows them. */
+const desktopViews = computed(() => {
+  const views: { id: 'files' | 'cut' | 'sound' | 'export'; labelKey: string; icon: string }[] = [];
+  if (isEnabled('files')) {
+    views.push({ id: 'files', labelKey: 'common.files', icon: 'lucide:folder-open' });
+  }
+  views.push({ id: 'cut', labelKey: 'common.edit', icon: 'lucide:clapperboard' });
+  if (isEnabled('sound')) {
+    views.push({ id: 'sound', labelKey: 'common.sound', icon: 'lucide:audio-lines' });
+  }
+  if (isEnabled('export')) {
+    views.push({ id: 'export', labelKey: 'common.export', icon: 'lucide:download' });
+  }
+  return views;
+});
+
+const mobileTabs = computed<MobileShellTab[]>(() => {
+  const tabs: MobileShellTab[] = [];
+  if (isEnabled('files')) tabs.push('files');
+  tabs.push('edit');
+  if (isEnabled('export')) tabs.push('export');
+  if (isEnabled('settings')) tabs.push('settings');
+  return tabs;
+});
+
+const layoutMode = computed(() => editorRoot.value?.mode ?? null);
+const isDesktopLayout = computed(() => layoutMode.value === 'desktop');
 
 onMounted(() => {
   session.start();
@@ -46,8 +80,39 @@ onMounted(() => {
 
     <template v-else>
       <header
-        class="flex items-center justify-end gap-2 px-3 py-2 border-b border-ui-border shrink-0"
+        class="flex items-center gap-2 px-3 py-2 border-b border-ui-border shrink-0"
+        data-testid="embed-toolbar"
       >
+        <!-- The mobile shell carries its own bottom navigation. -->
+        <div v-if="isDesktopLayout" class="flex items-center gap-1">
+          <UButton
+            v-for="view in desktopViews"
+            :key="view.id"
+            size="sm"
+            :icon="view.icon"
+            :color="projectStore.currentView === view.id ? 'primary' : 'neutral'"
+            :variant="projectStore.currentView === view.id ? 'solid' : 'ghost'"
+            :aria-pressed="projectStore.currentView === view.id"
+            :data-testid="`embed-view-${view.id}`"
+            @click="projectStore.setView(view.id)"
+          >
+            {{ t(view.labelKey) }}
+          </UButton>
+        </div>
+
+        <div class="flex-1" />
+
+        <UButton
+          size="sm"
+          color="neutral"
+          variant="ghost"
+          :icon="isDesktopLayout ? 'lucide:smartphone' : 'lucide:monitor'"
+          :aria-label="t('fastcat.embed.toggleLayout')"
+          :title="t('fastcat.embed.toggleLayout')"
+          data-testid="embed-toggle-layout"
+          @click="editorRoot?.toggle()"
+        />
+
         <UButton
           size="sm"
           color="primary"
@@ -61,11 +126,12 @@ onMounted(() => {
       </header>
 
       <div class="flex-1 min-h-0">
-        <MobileMonitorContainer flexible />
-      </div>
-
-      <div class="h-2/5 min-h-0 border-t border-ui-border">
-        <MobileTimeline />
+        <EditorRoot
+          ref="editorRoot"
+          :layout="session.layoutPreference.value"
+          :mobile-tabs="mobileTabs"
+          nav-mode="embedded"
+        />
       </div>
     </template>
   </div>

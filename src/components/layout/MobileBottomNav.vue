@@ -11,9 +11,24 @@ interface NavItem {
   icon: string;
 }
 
-const props = defineProps<{
-  activeTab?: TabId;
-}>();
+const props = withDefaults(
+  defineProps<{
+    activeTab?: TabId;
+    /** Tabs offered, in order. A trimmed list drives the embed profile. */
+    tabs?: TabId[];
+    /**
+     * `routed` is the standalone app: the bar also carries a home button and
+     * navigates. `embedded` has nowhere to navigate to — the host owns
+     * everything outside the editor — so it only switches tabs.
+     */
+    mode?: 'routed' | 'embedded';
+  }>(),
+  {
+    activeTab: undefined,
+    tabs: () => ['files', 'edit', 'export', 'settings'],
+    mode: 'routed',
+  },
+);
 
 const emit = defineEmits<{
   (e: 'update:activeTab', value: TabId): void;
@@ -27,7 +42,8 @@ const { leaveProject } = useProjectActions();
 const fileManagerStore = useFileManagerStore();
 
 const lastProjectName = computed(() => workspaceStore.lastProjectName);
-const isEditorPage = computed(() => route.path.startsWith('/m/editor/'));
+const isEmbedded = computed(() => props.mode === 'embedded');
+const isEditorPage = computed(() => isEmbedded.value || route.path.startsWith('/m/editor/'));
 
 // Panels should be hidden on home if no last-project
 const showNav = computed(() => {
@@ -35,15 +51,29 @@ const showNav = computed(() => {
   return !!lastProjectName.value;
 });
 
-const navItems = computed<NavItem[]>(() => [
-  { id: 'home', label: t('common.toHome'), icon: 'lucide:home' },
-  { id: 'files', label: t('common.files'), icon: 'lucide:folder-open' },
-  { id: 'edit', label: t('common.edit'), icon: 'lucide:clapperboard' },
-  { id: 'export', label: t('common.export'), icon: 'lucide:download' },
-  { id: 'settings', label: t('common.settings'), icon: 'lucide:settings' },
-]);
+const TAB_ITEMS: Record<TabId, { labelKey: string; icon: string }> = {
+  files: { labelKey: 'common.files', icon: 'lucide:folder-open' },
+  edit: { labelKey: 'common.edit', icon: 'lucide:clapperboard' },
+  export: { labelKey: 'common.export', icon: 'lucide:download' },
+  settings: { labelKey: 'common.settings', icon: 'lucide:settings' },
+};
+
+const navItems = computed<NavItem[]>(() => {
+  const tabs = props.tabs.map((id) => ({
+    id,
+    label: t(TAB_ITEMS[id].labelKey),
+    icon: TAB_ITEMS[id].icon,
+  }));
+  if (isEmbedded.value) return tabs;
+  return [{ id: 'home' as const, label: t('common.toHome'), icon: 'lucide:home' }, ...tabs];
+});
 
 async function handleItemClick(itemId: NavItem['id']) {
+  if (isEmbedded.value) {
+    if (itemId !== 'home') emit('update:activeTab', itemId);
+    return;
+  }
+
   if (itemId === 'home') {
     if (isEditorPage.value) {
       await leaveProject('/m');
@@ -74,7 +104,8 @@ async function handleItemClick(itemId: NavItem['id']) {
     class="shrink-0 border-t border-ui-border bg-ui-bg/95 pb-safe backdrop-blur landscape:border-t-0 landscape:border-r landscape:pb-0 landscape:pt-safe landscape:w-20 landscape:h-full"
   >
     <div
-      class="grid h-16 grid-cols-5 items-center gap-1 px-1 landscape:flex landscape:flex-col landscape:h-full landscape:w-full landscape:py-6 landscape:gap-4 landscape:items-center landscape:justify-start"
+      class="grid h-16 items-center gap-1 px-1 landscape:flex landscape:flex-col landscape:h-full landscape:w-full landscape:py-6 landscape:gap-4 landscape:items-center landscape:justify-start"
+      :style="{ gridTemplateColumns: `repeat(${navItems.length}, minmax(0, 1fr))` }"
     >
       <button
         v-for="item in navItems"

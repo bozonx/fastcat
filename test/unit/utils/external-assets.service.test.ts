@@ -1,116 +1,48 @@
 /** @vitest-environment node */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { loadExternalAssets, type ExternalAsset } from '~/utils/external-assets.service';
+import { describe, it, expect } from 'vitest';
+import { resolveAssetPlacement } from '~/utils/external-assets.service';
 
-const mockFetch = vi.fn();
-vi.stubGlobal('fetch', mockFetch);
-
-describe('loadExternalAssets', () => {
-  beforeEach(() => {
-    mockFetch.mockReset();
+describe('resolveAssetPlacement', () => {
+  it('honours an explicitly declared type over everything else', () => {
+    const placement = resolveAssetPlacement(
+      { url: 'https://example.com/clip.mp4', type: 'audio' },
+      'video/mp4',
+    );
+    expect(placement.type).toBe('audio');
+    expect(placement.relativePath).toBe('_audio/clip.mp4');
   });
 
-  it('returns empty array for no assets', async () => {
-    const writeProjectFile = vi.fn();
-    const results = await loadExternalAssets({ assets: [], writeProjectFile });
-    expect(results).toEqual([]);
+  it('falls back to the served content type', () => {
+    const placement = resolveAssetPlacement({ url: 'https://example.com/asset' }, 'video/mp4');
+    expect(placement.type).toBe('video');
+    expect(placement.relativePath).toBe('_video/asset');
   });
 
-  it('loads an asset successfully', async () => {
-    const blob = new Blob(['data'], { type: 'video/mp4' });
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      status: 200,
-      headers: new Headers({ 'Content-Type': 'video/mp4' }),
-      blob: async () => blob,
-    });
-    const writeProjectFile = vi.fn().mockResolvedValue(undefined);
-    const results = await loadExternalAssets({
-      assets: [{ url: 'https://example.com/video.mp4' }],
-      writeProjectFile,
-    });
-    expect(results).toHaveLength(1);
-    expect(results[0]!.success).toBe(true);
-    expect(results[0]!.path).toContain('video/');
-    expect(writeProjectFile).toHaveBeenCalledOnce();
+  it('falls back to the file extension when no content type is served', () => {
+    expect(resolveAssetPlacement({ url: 'https://example.com/track.mp3' }).type).toBe('audio');
+    expect(resolveAssetPlacement({ url: 'https://example.com/movie.mov' }).type).toBe('video');
+    expect(resolveAssetPlacement({ url: 'https://example.com/photo.png' }).type).toBe('image');
   });
 
-  it('handles fetch failure', async () => {
-    mockFetch.mockRejectedValueOnce(new Error('Network error'));
-    const writeProjectFile = vi.fn();
-    const results = await loadExternalAssets({
-      assets: [{ url: 'https://example.com/bad.mp4' }],
-      writeProjectFile,
+  it('strips the query string off a signed URL when deriving the filename', () => {
+    const placement = resolveAssetPlacement({
+      url: 'https://cdn.example.com/media/clip.mp4?signature=abc&expires=123',
     });
-    expect(results).toHaveLength(1);
-    expect(results[0]!.success).toBe(false);
-    expect(results[0]!.error).toBe('Network error');
+    expect(placement.filename).toBe('clip.mp4');
+    expect(placement.relativePath).toBe('_video/clip.mp4');
   });
 
-  it('handles HTTP error status', async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: false,
-      status: 404,
-      headers: new Headers(),
-      blob: async () => new Blob(),
+  it('prefers the host-supplied filename', () => {
+    const placement = resolveAssetPlacement({
+      url: 'https://cdn.example.com/9f8a7b6c',
+      filename: 'interview.mp4',
     });
-    const writeProjectFile = vi.fn();
-    const results = await loadExternalAssets({
-      assets: [{ url: 'https://example.com/missing.mp4' }],
-      writeProjectFile,
-    });
-    expect(results[0]!.success).toBe(false);
-    expect(results[0]!.error).toContain('404');
+    expect(placement.relativePath).toBe('_video/interview.mp4');
   });
 
-  it('resolves type from Content-Type header', async () => {
-    const blob = new Blob(['data'], { type: 'audio/mpeg' });
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      status: 200,
-      headers: new Headers({ 'Content-Type': 'audio/mpeg' }),
-      blob: async () => blob,
-    });
-    const writeProjectFile = vi.fn().mockResolvedValue(undefined);
-    const results = await loadExternalAssets({
-      assets: [{ url: 'https://example.com/audio' }],
-      writeProjectFile,
-    });
-    expect(results[0]!.success).toBe(true);
-    expect(results[0]!.path).toContain('audio/');
-  });
-
-  it('resolves type from file extension when Content-Type is generic', async () => {
-    const blob = new Blob(['data']);
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      status: 200,
-      headers: new Headers({ 'Content-Type': 'application/octet-stream' }),
-      blob: async () => blob,
-    });
-    const writeProjectFile = vi.fn().mockResolvedValue(undefined);
-    const results = await loadExternalAssets({
-      assets: [{ url: 'https://example.com/file', filename: 'file.mp3' }],
-      writeProjectFile,
-    });
-    expect(results[0]!.success).toBe(true);
-    expect(results[0]!.path).toContain('audio/');
-  });
-
-  it('uses explicit type from asset', async () => {
-    const blob = new Blob(['data']);
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      status: 200,
-      headers: new Headers({ 'Content-Type': 'application/octet-stream' }),
-      blob: async () => blob,
-    });
-    const writeProjectFile = vi.fn().mockResolvedValue(undefined);
-    const results = await loadExternalAssets({
-      assets: [{ url: 'https://example.com/file', type: 'image' }],
-      writeProjectFile,
-    });
-    expect(results[0]!.success).toBe(true);
-    expect(results[0]!.path).toContain('images/');
+  it('invents a unique filename when the URL carries none', () => {
+    const placement = resolveAssetPlacement({ url: 'https://example.com/', type: 'video' });
+    expect(placement.filename).toMatch(/^asset-\d+-[a-z0-9]+\.mp4$/i);
+    expect(placement.relativePath.startsWith('_video/')).toBe(true);
   });
 });

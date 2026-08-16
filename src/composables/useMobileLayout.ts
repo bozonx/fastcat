@@ -1,11 +1,21 @@
 import { computed } from 'vue';
+import { getLayoutModeOverride } from '~/composables/layout/useLayoutMode';
 
 /**
- * Returns true when the app is running in the mobile layout route (`/m/*`).
- * Used to branch UI behaviour (e.g. foreground vs background tasks).
+ * True when the touch-oriented shell is active.
+ *
+ * An explicit layout mode wins when one is set — that is how the embeddable
+ * build, which has no `/m/*` route, selects its shell. The standalone app sets
+ * none and keeps deciding from the route.
  */
 export function useMobileLayout() {
   const route = useRoute();
-  const isMobileLayout = computed(() => route.path === '/m' || route.path.startsWith('/m/'));
+  const layoutModeOverride = getLayoutModeOverride();
+
+  const isMobileLayout = computed(() => {
+    if (layoutModeOverride.value) return layoutModeOverride.value === 'mobile';
+    return route.path === '/m' || route.path.startsWith('/m/');
+  });
+
   return { isMobileLayout };
 }

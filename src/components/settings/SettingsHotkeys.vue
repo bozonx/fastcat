@@ -23,6 +23,12 @@ import { useHotkeyCapture } from '~/composables/settings/useHotkeyCapture';
 import SettingsHotkeysGroup from './hotkeys/SettingsHotkeysGroup.vue';
 
 const { t } = useI18n();
+
+const RESERVED_DESC_KEYS: Record<'browser' | 'tauri' | 'embed', string> = {
+  browser: 'videoEditor.settings.hotkeysReservedBrowserDesc',
+  tauri: 'videoEditor.settings.hotkeysReservedTauriDesc',
+  embed: 'videoEditor.settings.hotkeysReservedEmbedDesc',
+};
 const workspaceStore = useWorkspaceStore();
 const toast = useToast();
 
@@ -63,12 +69,7 @@ const { isCapturingHotkey, captureTargetCommandId, capturedCombo, startCapture, 
     onReserved: (_cmdId, combo, reservation) => {
       toast.add({
         title: t('videoEditor.settings.hotkeysReservedTitle'),
-        description: t(
-          reservation.runtime === 'tauri'
-            ? 'videoEditor.settings.hotkeysReservedTauriDesc'
-            : 'videoEditor.settings.hotkeysReservedBrowserDesc',
-          { combo },
-        ),
+        description: t(RESERVED_DESC_KEYS[reservation.runtime], { combo }),
         color: 'warning',
       });
     },

@@ -22,43 +22,50 @@ interface StandState {
     opfs: boolean;
     sharedArrayBuffer: boolean;
   } | null;
-  initialized: { assetCount: number; durationMs: number } | null;
+  initialized: {
+    assetCount: number;
+    durationMs: number;
+    layout: 'desktop' | 'mobile';
+    reclaimedSessions: number;
+  } | null;
   streamedBytes: number;
   result: { filename: string; mimeType: string; sizeBytes: number; streamedBytes: number } | null;
   readingExport: boolean;
+  assetProgress: Record<string, { loadedBytes: number; totalBytes: number | null }>;
+  urlRefreshes: number;
+  preferences: unknown;
+  preferenceUpdates: number;
+  lastChange: { dirty: boolean; otioLength: number } | null;
   errors: { code: string; message: string }[];
   messages: { direction: 'in' | 'out'; type: string }[];
 }
 
 function readStand(page: Page): Promise<StandState> {
   return page.evaluate(() => {
-    const stand = (window as unknown as { __embedStand: StandState }).__embedStand;
-    // Strip the retained Blob before it crosses the CDP boundary.
-    const {
-      phase,
-      capabilities,
-      initialized,
-      streamedBytes,
-      result,
-      readingExport,
-      errors,
-      messages,
-    } = stand;
-    return {
-      phase,
-      capabilities,
-      initialized,
-      streamedBytes,
-      result,
-      readingExport,
-      errors,
-      messages,
-    };
+    const stand = (window as unknown as { __embedStand: Record<string, unknown> }).__embedStand;
+    // Copy field by field: the stand also retains the exported Blob, which
+    // cannot cross the CDP boundary.
+    const keys = [
+      'phase',
+      'capabilities',
+      'initialized',
+      'streamedBytes',
+      'result',
+      'readingExport',
+      'assetProgress',
+      'urlRefreshes',
+      'preferences',
+      'preferenceUpdates',
+      'lastChange',
+      'errors',
+      'messages',
+    ] as const;
+    return Object.fromEntries(keys.map((key) => [key, stand[key]]));
   }) as Promise<StandState>;
 }
 
-async function openStand(page: Page) {
-  await page.goto(`${HOST_URL}/?autostart=1`);
+async function openStand(page: Page, query = '') {
+  await page.goto(`${HOST_URL}/?autostart=1${query}`);
   await expect
     .poll(async () => (await readStand(page)).initialized?.assetCount ?? null, { timeout: 60_000 })
     .not.toBeNull();
@@ -136,5 +143,124 @@ test.describe('Embed: host integration', () => {
     );
     expect(doneIndex).toBeGreaterThanOrEqual(0);
     expect(ackIndex).toBeGreaterThan(doneIndex);
+  });
+
+  test('picks the shell from the container size and keeps it across a resize', async ({ page }) => {
+    await page.setViewportSize({ width: 1400, height: 900 });
+    await openStand(page);
+
+    expect((await readStand(page)).initialized!.layout).toBe('desktop');
+    const root = page.frameLocator('iframe').locator('[data-layout-mode]');
+    await expect(root).toHaveAttribute('data-layout-mode', 'desktop');
+
+    // A shell that flipped here would throw away the arrangement every time the
+    // host resized its container, so the choice must survive.
+    await page.setViewportSize({ width: 520, height: 900 });
+    await page.waitForTimeout(500);
+    await expect(root).toHaveAttribute('data-layout-mode', 'desktop');
+  });
+
+  test('honours an explicit layout from the host', async ({ page }) => {
+    await page.setViewportSize({ width: 1400, height: 900 });
+    await openStand(page, '&layout=mobile');
+
+    expect((await readStand(page)).initialized!.layout).toBe('mobile');
+    await expect(page.frameLocator('iframe').locator('[data-layout-mode]')).toHaveAttribute(
+      'data-layout-mode',
+      'mobile',
+    );
+  });
+
+  test('offers only the views the host switched on', async ({ page }) => {
+    await page.setViewportSize({ width: 1400, height: 900 });
+    await openStand(page);
+
+    const frame = page.frameLocator('iframe');
+    // The default profile is the timeline plus an export; nothing else.
+    await expect(frame.getByTestId('embed-view-cut')).toBeVisible();
+    await expect(frame.getByTestId('embed-view-export')).toBeVisible();
+    await expect(frame.getByTestId('embed-view-files')).toHaveCount(0);
+    await expect(frame.getByTestId('embed-view-sound')).toHaveCount(0);
+  });
+
+  test('switches shells on request without losing the session', async ({ page }) => {
+    await page.setViewportSize({ width: 1400, height: 900 });
+    await openStand(page);
+
+    const frame = page.frameLocator('iframe');
+    const root = frame.locator('[data-layout-mode]');
+    await expect(root).toHaveAttribute('data-layout-mode', 'desktop');
+
+    await frame.getByTestId('embed-toggle-layout').click();
+    await expect(root).toHaveAttribute('data-layout-mode', 'mobile');
+
+    // The stores are shared across shells, so the loaded asset is still there
+    // and an export is still possible.
+    await expect(frame.getByTestId('embed-export')).toBeEnabled();
+    expect((await readStand(page)).errors).toEqual([]);
+  });
+
+  test('reclaims storage from a session that was torn down without disposing', async ({ page }) => {
+    await openStand(page);
+    // Nothing preceded this one in a fresh browser context.
+    expect((await readStand(page)).initialized!.reclaimedSessions).toBe(0);
+
+    // Reloading kills the iframe outright — no `dispose`, exactly what a closed
+    // tab or a crash looks like from the editor's side.
+    await page.reload();
+    await openStand(page);
+
+    expect((await readStand(page)).initialized!.reclaimedSessions).toBeGreaterThanOrEqual(1);
+  });
+
+  test('reports asset download progress against a known total', async ({ page }) => {
+    await openStand(page);
+
+    const { assetProgress } = await readStand(page);
+    const entries = Object.values(assetProgress);
+    expect(entries.length).toBeGreaterThan(0);
+
+    const last = entries[entries.length - 1]!;
+    // The server advertises a size, so progress ends exactly at the total
+    // rather than trailing off at an unknown fraction.
+    expect(last.totalBytes).toBeGreaterThan(0);
+    expect(last.loadedBytes).toBe(last.totalBytes);
+  });
+
+  test('recovers when an asset URL expires mid-import', async ({ page }) => {
+    await openStand(page, '&expiring=1');
+
+    const stand = await readStand(page);
+    expect(stand.urlRefreshes).toBeGreaterThanOrEqual(1);
+    // The refreshed URL carried the import through: the clip still landed.
+    expect(stand.initialized!.assetCount).toBe(1);
+    expect(stand.initialized!.durationMs).toBeGreaterThan(0);
+  });
+
+  test('hands the timeline to the host on request', async ({ page }) => {
+    await openStand(page);
+    await page.getByTestId('stand-save').click();
+
+    await expect.poll(async () => (await readStand(page)).lastChange).not.toBeNull();
+    const { lastChange } = await readStand(page);
+    // A real OTIO document, not an empty placeholder.
+    expect(lastChange!.otioLength).toBeGreaterThan(100);
+  });
+
+  test('returns preferences to the host and takes them back next session', async ({ page }) => {
+    await openStand(page);
+    await page.getByTestId('stand-dispose').click();
+
+    // Disposing flushes whatever is still behind the debounce, so the host
+    // never loses the last edit to a preference.
+    await expect.poll(async () => (await readStand(page)).preferenceUpdates).toBeGreaterThan(0);
+    const stored = (await readStand(page)).preferences as { version: number } | null;
+    expect(stored?.version).toBe(1);
+
+    // The stand replays what it stored on the next open; an editor that
+    // rejected its own payload would report an error.
+    await page.reload();
+    await openStand(page);
+    expect((await readStand(page)).errors).toEqual([]);
   });
 });

@@ -8,6 +8,8 @@ import {
   type EmbedAsset,
   type EmbedCapabilities,
   type EmbedExportMeta,
+  type EmbedFeatureName,
+  type EmbedLayoutPreference,
   type HostToEditorMessages,
   type HostToEditorType,
 } from './protocol';
@@ -26,11 +28,39 @@ export interface FastcatEmbedOptions {
   editorUrl: string;
   assets?: EmbedAsset[];
   locale?: string;
+  /** Preferences stored from this user's previous session, opaque to the host. */
+  preferences?: unknown;
+  layout?: EmbedLayoutPreference;
+  features?: EmbedFeatureName[];
   /** How long to wait for the editor's `ready` before declaring it unavailable. */
   readyTimeoutMs?: number;
   onReady?: (capabilities: EmbedCapabilities) => void;
   onInitialized?: (info: EditorToHostMessages['initialized']) => void;
   onExportProgress?: (progress: EditorToHostMessages['export:progress']) => void;
+  onAssetProgress?: (progress: EditorToHostMessages['asset:progress']) => void;
+  /**
+   * Called when an asset's signed URL stops authorising mid-session. Resolve
+   * with a fresh URL; reads resume from where they stopped. Without a handler
+   * the asset simply fails, so provide one whenever URLs have a TTL.
+   */
+  onAssetUrlExpired?: (assetId: string) => Promise<string> | string;
+  /**
+   * The timeline changed. Persist `otio` to keep a recoverable draft; `dirty`
+   * mirrors what an unsaved-changes guard should show.
+   */
+  onChange?: (change: EditorToHostMessages['change']) => void;
+  /**
+   * Preferences to store against the user's profile and hand back as
+   * `preferences` next time. Opaque — do not inspect or edit it.
+   */
+  onPreferencesChanged?: (preferences: unknown) => void;
+  /**
+   * Runs speech-to-text on the host's own infrastructure. Required for any
+   * transcription feature: the editor deliberately holds no credentials.
+   */
+  onSttRequest?: (payload: unknown) => Promise<unknown>;
+  /** Runs a language-model request on the host's own infrastructure. */
+  onLlmRequest?: (payload: unknown) => Promise<unknown>;
   /**
    * Receives the finished render. The exported `File` is backed by storage
    * inside the iframe, so the editor is told to release it only after this
@@ -48,10 +78,13 @@ export interface FastcatEmbedOptions {
 export interface FastcatEmbed {
   readonly iframe: HTMLIFrameElement;
   startExport: (options?: { filename?: string }) => void;
+  requestSave: () => void;
   dispose: () => Promise<void>;
 }
 
 const DEFAULT_READY_TIMEOUT_MS = 20_000;
+/** How long `dispose()` waits for the editor's farewell before giving up. */
+const DISPOSE_TIMEOUT_MS = 5_000;
 
 export function createFastcatEmbed(options: FastcatEmbedOptions): FastcatEmbed {
   const nonce = createEmbedNonce();
@@ -67,6 +100,7 @@ export function createFastcatEmbed(options: FastcatEmbedOptions): FastcatEmbed {
 
   let disposed = false;
   let pendingExport: Promise<void> = Promise.resolve();
+  let onDisposed: (() => void) | null = null;
 
   const readyTimer = window.setTimeout(() => {
     if (!disposed) options.onUnavailable?.('The editor did not respond to the handshake.');
@@ -83,12 +117,28 @@ export function createFastcatEmbed(options: FastcatEmbedOptions): FastcatEmbed {
         window.clearTimeout(readyTimer);
         const { capabilities } = payload as EditorToHostMessages['ready'];
         options.onReady?.(capabilities);
-        send('init', { locale: options.locale, assets: options.assets });
+        send('init', {
+          locale: options.locale,
+          assets: options.assets,
+          layout: options.layout,
+          features: options.features,
+          preferences: options.preferences,
+        });
         return;
       }
       case 'initialized':
         options.onInitialized?.(payload as EditorToHostMessages['initialized']);
         return;
+      case 'asset:progress':
+        options.onAssetProgress?.(payload as EditorToHostMessages['asset:progress']);
+        return;
+      case 'asset:url-expired': {
+        const { assetId } = payload as EditorToHostMessages['asset:url-expired'];
+        if (!options.onAssetUrlExpired) return;
+        const url = await options.onAssetUrlExpired(assetId);
+        send('asset:url', { assetId, url });
+        return;
+      }
       case 'export:progress':
         options.onExportProgress?.(payload as EditorToHostMessages['export:progress']);
         return;
@@ -118,6 +168,33 @@ export function createFastcatEmbed(options: FastcatEmbedOptions): FastcatEmbed {
       case 'error':
         options.onError?.(payload as EditorToHostMessages['error']);
         return;
+      case 'change':
+        options.onChange?.(payload as EditorToHostMessages['change']);
+        return;
+      case 'preferences:changed':
+        options.onPreferencesChanged?.(payload);
+        return;
+      case 'stt:request':
+      case 'llm:request': {
+        const { requestId, payload: request } = payload as EditorToHostMessages['stt:request'];
+        const handler = type === 'stt:request' ? options.onSttRequest : options.onLlmRequest;
+        if (!handler) {
+          send('rpc:result', { requestId, error: `The host does not handle ${type}` });
+          return;
+        }
+        try {
+          send('rpc:result', { requestId, result: await handler(request) });
+        } catch (e) {
+          send('rpc:result', {
+            requestId,
+            error: e instanceof Error ? e.message : String(e),
+          });
+        }
+        return;
+      }
+      case 'disposed':
+        onDisposed?.();
+        return;
       case 'requestClose':
         options.onRequestClose?.();
         return;
@@ -141,6 +218,10 @@ export function createFastcatEmbed(options: FastcatEmbedOptions): FastcatEmbed {
     startExport(exportOptions) {
       send('export:start', exportOptions);
     },
+    /** Asks for the current timeline immediately, bypassing the change debounce. */
+    requestSave() {
+      send('save:request', undefined);
+    },
     async dispose() {
       if (disposed) return;
       // Let an in-flight export handler finish reading the file before the
@@ -148,7 +229,18 @@ export function createFastcatEmbed(options: FastcatEmbedOptions): FastcatEmbed {
       await pendingExport;
       disposed = true;
       window.clearTimeout(readyTimer);
+
+      // The editor flushes its final `change` and `preferences:changed` while
+      // shutting down, so the listener has to outlive the request. Tearing it
+      // down here would silently drop the user's last edits.
+      const farewell = new Promise<void>((resolve) => {
+        onDisposed = resolve;
+        window.setTimeout(resolve, DISPOSE_TIMEOUT_MS);
+      });
       send('dispose', undefined);
+      await farewell;
+
+      onDisposed = null;
       window.removeEventListener('message', onMessage);
       iframe.remove();
     },

@@ -1,7 +1,5 @@
-import { createDevLogger } from '~/utils/dev-logger';
 import { VIDEO_DIR_NAME, AUDIO_DIR_NAME, IMAGES_DIR_NAME } from '~/utils/constants';
 import { randomToken } from '~/utils/ids';
-const log = createDevLogger('external-assets.service');
 
 export interface ExternalAsset {
   id?: string;
@@ -10,84 +8,57 @@ export interface ExternalAsset {
   filename?: string;
 }
 
-export interface AssetLoadResult {
-  asset: ExternalAsset;
-  path: string;
-  success: boolean;
-  error?: string;
+export interface ExternalAssetPlacement {
+  type: 'video' | 'audio' | 'image';
+  filename: string;
+  /** Where the asset lands inside the project, e.g. `_video/clip.mp4`. */
+  relativePath: string;
+}
+
+const EXTENSIONS_BY_TYPE: Record<'video' | 'audio' | 'image', string[]> = {
+  video: ['mp4', 'webm', 'mov', 'mkv', 'm4v', 'avi'],
+  audio: ['mp3', 'wav', 'ogg', 'aac', 'flac', 'opus', 'm4a'],
+  image: [],
+};
+
+const DIR_BY_TYPE = {
+  video: VIDEO_DIR_NAME,
+  audio: AUDIO_DIR_NAME,
+  image: IMAGES_DIR_NAME,
+} as const;
+
+const DEFAULT_EXTENSION = { video: 'mp4', audio: 'mp3', image: 'png' } as const;
+
+function inferType(filename: string | undefined, contentType: string | null | undefined) {
+  if (contentType?.startsWith('video/')) return 'video';
+  if (contentType?.startsWith('audio/')) return 'audio';
+  if (contentType?.startsWith('image/')) return 'image';
+
+  const ext = filename?.split('.').pop()?.toLowerCase() ?? '';
+  if (EXTENSIONS_BY_TYPE.video.includes(ext)) return 'video';
+  if (EXTENSIONS_BY_TYPE.audio.includes(ext)) return 'audio';
+  return 'image';
 }
 
 /**
- * Service to load external assets into the project's OPFS storage.
+ * Decides what an asset is and where it belongs in the project.
+ *
+ * The host's declared `type` wins; otherwise the server's content type decides,
+ * and the file extension is the last resort. Kept separate from any fetching so
+ * the destination can be resolved from a cheap header probe, before a byte of
+ * the media itself is moved.
  */
-export async function loadExternalAssets(params: {
-  assets: ExternalAsset[];
-  /** Write a downloaded asset to the project at the given project-relative path. */
-  writeProjectFile: (path: string, data: Blob) => Promise<void>;
-}): Promise<AssetLoadResult[]> {
-  const promises = params.assets.map(async (asset) => {
-    try {
-      const response = await fetch(asset.url);
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+export function resolveAssetPlacement(
+  asset: ExternalAsset,
+  contentType?: string | null,
+): ExternalAssetPlacement {
+  const urlFilename = asset.url.split('/').pop()?.split('?')[0];
+  let filename = asset.filename || urlFilename;
+  const type = asset.type ?? inferType(filename, contentType);
 
-      const blob = await response.blob();
-      const contentType = response.headers.get('Content-Type');
-
-      // 1. Resolve filename
-      let filename = asset.filename || asset.url.split('/').pop()?.split('?')[0];
-
-      // 2. Resolve content type and folder
-      let resolvedType = asset.type;
-      if (!resolvedType) {
-        if (contentType?.startsWith('video/')) resolvedType = 'video';
-        else if (contentType?.startsWith('audio/')) resolvedType = 'audio';
-        else if (contentType?.startsWith('image/')) resolvedType = 'image';
-        else {
-          // Fallback to extension if Content-Type is missing or generic
-          const ext = filename?.split('.').pop()?.toLowerCase();
-          if (['mp4', 'webm', 'mov'].includes(ext || '')) resolvedType = 'video';
-          else if (['mp3', 'wav', 'ogg', 'aac'].includes(ext || '')) resolvedType = 'audio';
-          else resolvedType = 'image'; // default fallback
-        }
-      }
-
-      const folder =
-        resolvedType === 'video'
-          ? VIDEO_DIR_NAME
-          : resolvedType === 'audio'
-            ? AUDIO_DIR_NAME
-            : IMAGES_DIR_NAME;
-
-      if (!filename) {
-        filename = `asset-${Date.now()}-${randomToken(7)}.${resolvedType === 'image' ? 'png' : resolvedType === 'video' ? 'mp4' : 'mp3'}`;
-      }
-
-      const relativePath = `${folder}/${filename}`;
-
-      await params.writeProjectFile(relativePath, blob);
-
-      return {
-        asset: { ...asset, id: asset.id || filename, type: resolvedType, filename },
-        path: relativePath,
-        success: true,
-      };
-    } catch (e) {
-      log.error(`Failed to load asset ${asset.url}:`, e);
-      return {
-        asset,
-        path: '',
-        success: false,
-        error: e instanceof Error ? e.message : String(e),
-      };
-    }
-  });
-
-  // Batch execution to limit concurrent fetches + blob memory pressure.
-  const BATCH_SIZE = 4;
-  const results: AssetLoadResult[] = [];
-  for (let i = 0; i < promises.length; i += BATCH_SIZE) {
-    const batch = promises.slice(i, i + BATCH_SIZE);
-    results.push(...(await Promise.all(batch)));
+  if (!filename) {
+    filename = `asset-${Date.now()}-${randomToken(7)}.${DEFAULT_EXTENSION[type]}`;
   }
-  return results;
+
+  return { type, filename, relativePath: `${DIR_BY_TYPE[type]}/${filename}` };
 }

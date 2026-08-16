@@ -125,6 +125,9 @@ function safeJoin(root, requestPath, prefix) {
   return join(root, relative);
 }
 
+/** Paths that have already burned their one-shot `?expire=1` authorisation. */
+const expiredOnce = new Set();
+
 const server = createServer(async (req, res) => {
   const requestPath = (req.url ?? '/').split('?')[0];
 
@@ -132,6 +135,19 @@ const server = createServer(async (req, res) => {
   // and exposing the headers a range reader needs to see.
   if (requestPath.startsWith('/media/')) {
     res.setHeader('Access-Control-Allow-Origin', '*');
+    // `?expire=1` makes this URL authorise exactly once, so the embed tier can
+    // exercise the refresh path the way a real signed URL behaves.
+    if ((req.url ?? '').includes('expire=1')) {
+      const key = requestPath;
+      if (expiredOnce.has(key)) {
+        expiredOnce.delete(key);
+      } else {
+        expiredOnce.add(key);
+        res.statusCode = 403;
+        res.end('URL expired');
+        return;
+      }
+    }
     res.setHeader('Access-Control-Expose-Headers', 'Content-Range, Content-Length, Accept-Ranges');
     if (req.method === 'OPTIONS') {
       res.setHeader('Access-Control-Allow-Headers', 'Range');

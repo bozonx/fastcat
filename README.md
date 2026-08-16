@@ -149,7 +149,84 @@ The session owns no persistence. It opens a per-session ephemeral OPFS workspace
 lays the host's assets straight onto the timeline, and hands the render back as a
 `File` — which crosses the boundary by reference to its backing store, so the host
 streams it out without either page buffering the bytes. The editor keeps that file
-alive until the host replies with `export:ack`.
+alive until the host replies with `export:ack`, and announces `disposed` only once
+its storage is actually gone.
+
+### One session, two shells
+
+`EditorRoot` renders either `DesktopShell` (splitpanes, dynamic panels) or
+`MobileShell` (virtual tabs, bottom bar) — the same components the routed
+`/editor/[id]` and `/m/editor/[id]` pages use, so there is one implementation of
+each layout rather than an embed-specific third.
+
+The choice comes from the **container's** first measured size, not the user
+agent: a 420px-wide panel on a desktop needs the touch layout, a tablet in
+landscape does not. It is made once and then left alone — a shell that flipped
+whenever the host resized its container would discard the user's arrangement
+every time. Hosts can pin it with `layout`, and the toolbar offers a manual
+switch; because every editing store is a global singleton under one root,
+switching keeps the timeline, media and history intact.
+
+`useMobileLayout()` consults that resolved mode when one is set and otherwise
+falls back to the standalone app's route rule. The override is a module
+singleton rather than provide/inject because its consumers include Pinia stores,
+which have no component instance to inject from.
+
+### Feature profile
+
+The embed is one screen, not an application. By default it offers the timeline
+and an export; a media bin, the audio view and settings are opt-in through
+`features` at handshake time (see `src/utils/embed-features.ts`). Flags arrive
+per session rather than being baked into the build, so one deployed artifact
+serves every integration. Unknown names are ignored rather than rejected, so a
+newer host can still talk to an older editor.
+
+### Session storage and cleanup
+
+Every session writes under `fastcat-embed/<sessionId>/` and takes an exclusive
+Web Lock for its lifetime, *before* registering itself. Cleanup then runs on the
+way **in**, not on the way out: an unload handler cannot reliably finish an
+asynchronous OPFS delete, and a killed tab never runs one at all, whereas a lock
+that can be taken instantly proves no live context is behind that session. New
+sessions sweep the leftovers and report the count to the host in `initialized`.
+A heartbeat in the session registry carries the same job on browsers with no Web
+Locks. `navigator.storage.persist()` is deliberately never requested — an
+ephemeral cache should be the *first* thing a browser evicts.
+
+### Assets
+
+Assets arrive either as a signed URL (read directly with range requests) or as a
+`File` the host already holds. Reading from the network rather than proxying
+bytes through the host keeps every read one round trip; seeking a timeline
+issues thousands of small reads, and each one bounced through `postMessage`
+would pay for an extra hop plus a copy, from a worker that cannot talk to the
+host at all.
+
+Signed URLs expire, and sessions outlive them. When one stops authorising, the
+editor emits `asset:url-expired`, the host answers with `asset:url`, and reads
+resume where they stopped — concurrent readers share a single refresh rather
+than storming the host.
+
+Metadata is probed straight off the network through Mediabunny's `CustomSource`,
+so a broken or undecodable asset fails before any bytes reach storage. Each
+asset is then materialised in chunks through the shared file-I/O budget and
+placed on the timeline as it lands, so with several assets the user starts
+trimming the first while the rest are still arriving. Export stays gated until
+ingest is quiet — a still-arriving source would render as a truncated clip.
+
+### Preferences and host-run work
+
+Remapped keys, mouse bindings, snapping habits and export presets go to the host
+as an opaque versioned blob (`src/utils/embed/synced-settings.ts`) and come back
+in the next `init`. Storing them host-side is what makes them survive a
+third-party storage purge or a change of device; panel sizes and scroll offsets
+stay local because they are derived from a viewport and cost nothing to lose.
+A payload from a *newer* editor is ignored rather than merged.
+
+Speech-to-text and language-model work is the host's to run — it already holds
+the credentials, and an editor that carried an API key would hand that key to
+every page that frames it. The editor describes the work over `stt:request` /
+`llm:request` and waits for `rpc:result` (`src/utils/embed/host-rpc.ts`).
 
 ### Developing against a real host origin
 

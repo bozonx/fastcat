@@ -1,8 +1,9 @@
 import { isTauriRuntime } from '~/utils/runtime';
+import { isEmbedRuntime } from '~/utils/embed-runtime';
 
 import { normalizeHotkeyCombo, parseHotkeyCombo } from './hotkeyUtils';
 
-export type HotkeyReservationRuntime = 'browser' | 'tauri';
+export type HotkeyReservationRuntime = 'browser' | 'tauri' | 'embed';
 
 export interface HotkeyReservation {
   runtime: HotkeyReservationRuntime;
@@ -57,6 +58,15 @@ const BROWSER_RESERVED_COMBOS = new Set([
   'Meta+W',
 ]);
 
+/**
+ * Additionally unavailable inside a host page's iframe.
+ *
+ * The embedded editor shares its keyboard with the page around it, and the host
+ * is the one that owns saving and closing. Binding these here would either be
+ * swallowed by the host or fire in both places at once.
+ */
+const EMBED_RESERVED_COMBOS = new Set(['Ctrl+S', 'Meta+S', 'Ctrl+Shift+S', 'Meta+Shift+S']);
+
 const TAURI_RESERVED_COMBOS = new Set([
   'Alt+F4',
   'Alt+Space',
@@ -106,6 +116,10 @@ export function getReservedHotkeyReservation(combo: string): HotkeyReservation |
     return comparableCombos.some((value) => TAURI_RESERVED_COMBOS.has(value))
       ? { runtime: 'tauri' }
       : null;
+  }
+
+  if (isEmbedRuntime() && comparableCombos.some((value) => EMBED_RESERVED_COMBOS.has(value))) {
+    return { runtime: 'embed' };
   }
 
   return comparableCombos.some((value) => BROWSER_RESERVED_COMBOS.has(value))

@@ -6,17 +6,47 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectActions } from '~/composables/editor/useProjectActions';
 import { useAddMediaToTimeline } from '~/composables/timeline/useAddMediaToTimeline';
 import { useExportForm } from '~/composables/timeline/export/useExportForm';
-import { loadExternalAssets, type ExternalAsset } from '~/utils/external-assets.service';
+import { resolveAssetPlacement } from '~/utils/external-assets.service';
+import { createFileTransport, createUrlTransport } from '~/utils/embed/asset-transport';
+import { downloadAssetToFile, probeAssetMetadata } from '~/utils/embed/asset-ingest';
 import { EXPORT_DIR_NAME } from '~/utils/constants';
 import { randomToken } from '~/utils/ids';
 import { ticksToSeconds } from '~/utils/time';
 import { createEmbedBridge, type EmbedBridge } from './useEmbedBridge';
-import type { EmbedAsset, EmbedCapabilities, EmbedInitPayload } from '~embed';
+import { setEmbedFeatures } from '~/utils/embed-features';
+import { applySyncedSettings, extractSyncedSettings } from '~/utils/embed/synced-settings';
+import { registerHostRpc, settleHostRpc } from '~/utils/embed/host-rpc';
+import { serializeTimelineToOtio } from '~/timeline/otio-serializer';
+import {
+  acquireSessionLock,
+  collectAbandonedSessions,
+  embedSessionDirPath,
+  registerSession,
+  removeSession,
+  startSessionHeartbeat,
+} from '~/utils/embed/session-lifecycle';
+import { getLayoutModeOverride } from '~/composables/layout/useLayoutMode';
+import type {
+  EmbedAsset,
+  EmbedCapabilities,
+  EmbedInitPayload,
+  EmbedLayoutPreference,
+} from '~embed';
 
 const log = createDevLogger('embed-session');
 
-const EMBED_WORKSPACE_PREFIX = 'fastcat-embed-';
 const EMBED_PROJECT_NAME = 'session';
+
+/**
+ * Preferences change in bursts — dragging a slider fires on every frame — so
+ * they settle before the host hears about them.
+ */
+const PREFERENCES_DEBOUNCE_MS = 5_000;
+/**
+ * The timeline changes constantly during editing. This is a draft-keeping
+ * signal, not a save button, so it trades latency for far fewer messages.
+ */
+const CHANGE_DEBOUNCE_MS = 10_000;
 
 export type EmbedSessionPhase =
   'standalone' | 'handshake' | 'loading' | 'ready' | 'exporting' | 'error';
@@ -28,15 +58,6 @@ function detectCapabilities(): EmbedCapabilities {
     opfs: typeof navigator !== 'undefined' && !!navigator.storage?.getDirectory,
     sharedArrayBuffer: typeof SharedArrayBuffer === 'function' && globalThis.crossOriginIsolated,
   };
-}
-
-function toExternalAssets(assets: EmbedAsset[]): ExternalAsset[] {
-  return assets.map((asset) => ({
-    id: asset.id,
-    url: asset.url,
-    type: asset.kind,
-    filename: asset.filename,
-  }));
 }
 
 /**
@@ -59,17 +80,32 @@ export function useEmbedSession() {
   const phase = ref<EmbedSessionPhase>('handshake');
   const errorMessage = ref<string | null>(null);
   const assetCount = ref(0);
+  const reclaimedSessions = ref(0);
+  const layoutPreference = ref<EmbedLayoutPreference>('auto');
   const bridge = shallowRef<EmbedBridge | null>(null);
+  const resolvedLayoutMode = getLayoutModeOverride();
 
   const sessionId = randomToken(10);
-  const workspaceDirName = `${EMBED_WORKSPACE_PREFIX}${sessionId}`;
+
+  let releaseSessionLock: (() => void) | null = null;
+  let stopHeartbeat: (() => void) | null = null;
 
   /** Resolved once the host acknowledges it has consumed the exported file. */
   let exportAck: (() => void) | null = null;
   let exportedFilename: string | null = null;
 
+  const isIngesting = ref(false);
+
+  /**
+   * Rendering reads every participating source end to end, so an asset that is
+   * still arriving would export as a truncated clip. The gate stays shut until
+   * ingest is quiet and something is actually on the timeline.
+   */
   const canExport = computed(
-    () => phase.value === 'ready' && (timelineStore.timelineDoc?.tracks?.length ?? 0) > 0,
+    () =>
+      phase.value === 'ready' &&
+      !isIngesting.value &&
+      (timelineStore.timelineDoc?.tracks?.length ?? 0) > 0,
   );
 
   function fail(code: string, message: string) {
@@ -79,49 +115,89 @@ export function useEmbedSession() {
     bridge.value?.send('error', { code, message });
   }
 
-  async function writeProjectFile(relativePath: string, data: Blob) {
-    const handle = await projectStore.getProjectFileHandleByRelativePath({
-      relativePath,
-      create: true,
-    });
-    if (!handle) throw new Error(`Failed to create project file: ${relativePath}`);
+  /** Resolves once the host answers `asset:url-expired` with a fresh URL. */
+  const pendingUrlRefreshes = new Map<string, (url: string) => void>();
 
-    const writable = await handle.createWritable();
-    try {
-      await writable.write(data);
-    } finally {
-      await writable.close();
-    }
+  function requestFreshUrl(assetId: string): Promise<string> {
+    return new Promise<string>((resolve, reject) => {
+      if (!bridge.value) {
+        reject(new Error('No host to ask for a fresh URL'));
+        return;
+      }
+      pendingUrlRefreshes.set(assetId, resolve);
+      bridge.value.send('asset:url-expired', { assetId });
+    });
   }
 
+  function createTransport(asset: EmbedAsset, assetId: string) {
+    if (asset.file) return createFileTransport(assetId, asset.file);
+    if (!asset.url) throw new Error(`Asset ${assetId} has neither a URL nor a file`);
+    return createUrlTransport({ id: assetId, url: asset.url, requestFreshUrl });
+  }
+
+  /**
+   * Brings the host's assets in one at a time, placing each on the timeline as
+   * soon as it lands rather than after the whole batch. With several assets the
+   * user starts trimming the first while the rest are still arriving.
+   */
   async function ingestAssets(assets: EmbedAsset[]) {
     if (!assets.length) return;
 
-    const results = await loadExternalAssets({
-      assets: toExternalAssets(assets),
-      writeProjectFile,
-    });
+    isIngesting.value = true;
+    try {
+      await ingestAssetsSequentially(assets);
+    } finally {
+      isIngesting.value = false;
+    }
+  }
 
-    const failed = results.filter((result) => !result.success);
-    for (const result of failed) {
-      log.warn('Asset failed to load', result.asset.url, result.error);
+  async function ingestAssetsSequentially(assets: EmbedAsset[]) {
+    for (const [index, asset] of assets.entries()) {
+      const assetId = asset.id ?? `asset-${index}`;
+      try {
+        const transport = createTransport(asset, assetId);
+        // Probing over the network settles size and decodability before any
+        // bytes are committed to storage, so a broken asset fails fast instead
+        // of after a long download.
+        const metadata = await probeAssetMetadata(transport);
+        if (!metadata) log.warn(`No metadata for ${assetId}; importing it anyway`);
+
+        const placement = resolveAssetPlacement(
+          { url: asset.url ?? '', type: asset.kind, filename: asset.filename },
+          null,
+        );
+        const fileHandle = await projectStore.getProjectFileHandleByRelativePath({
+          relativePath: placement.relativePath,
+          create: true,
+        });
+        if (!fileHandle) throw new Error(`Cannot create ${placement.relativePath}`);
+
+        await downloadAssetToFile({
+          transport,
+          fileHandle,
+          onProgress: (loadedBytes, totalBytes) => {
+            bridge.value?.send('asset:progress', { assetId, loadedBytes, totalBytes });
+          },
+        });
+        transport.dispose();
+
+        // Placement is sequential from the playhead, so the first asset starts
+        // at the timeline head and each later one lands after it.
+        if (assetCount.value === 0) timelineStore.setCurrentTimeTicks(0);
+        await addMediaToTimeline([{ name: placement.filename, path: placement.relativePath }], {
+          notifyRedirect: false,
+        });
+        assetCount.value += 1;
+      } catch (e) {
+        log.error(`Failed to import asset ${assetId}`, e);
+        bridge.value?.send('error', {
+          code: 'asset-failed',
+          message: e instanceof Error ? e.message : String(e),
+        });
+      }
     }
 
-    const loaded = results.filter((result) => result.success);
-    if (!loaded.length) {
-      if (failed.length) throw new Error('None of the supplied assets could be loaded');
-      return;
-    }
-
-    // Placement is sequential from the playhead, so start from the timeline head
-    // rather than wherever a previous operation left it.
-    timelineStore.setCurrentTimeTicks(0);
-    await addMediaToTimeline(
-      loaded.map((result) => ({ name: result.asset.filename ?? result.path, path: result.path })),
-      { notifyRedirect: false },
-    );
-
-    assetCount.value = loaded.length;
+    if (!assetCount.value) throw new Error('None of the supplied assets could be loaded');
   }
 
   async function initSession(payload: EmbedInitPayload) {
@@ -133,11 +209,37 @@ export function useEmbedSession() {
     phase.value = 'loading';
     try {
       if (payload.locale) locale.value = payload.locale;
+      layoutPreference.value = payload.layout ?? 'auto';
+      setEmbedFeatures(payload.features);
 
-      await workspaceStore.initAutomaticWorkspace(workspaceDirName);
+      // Reclaim whatever earlier sessions left behind before adding to it. This
+      // is the only cleanup path that survives a crashed or killed tab.
+      const reclaimed = await collectAbandonedSessions(sessionId);
+      reclaimedSessions.value = reclaimed.length;
+      if (reclaimed.length) log.log(`Reclaimed ${reclaimed.length} abandoned session(s)`);
+
+      // Lock first, register second: the collector treats "registered but
+      // unlocked" as dead, so the reverse order would leave a window where a
+      // concurrent tab could sweep a session that is still starting up.
+      releaseSessionLock = await acquireSessionLock(sessionId);
+      await registerSession(sessionId);
+      stopHeartbeat = startSessionHeartbeat(sessionId);
+
+      await workspaceStore.initAutomaticWorkspace(embedSessionDirPath(sessionId));
       if (!workspaceStore.workspaceHandle) {
         throw new Error(workspaceStore.error ?? 'Failed to open the embedded workspace');
       }
+
+      // Nothing here outlives the session, so the persistence machinery built
+      // for real projects is dead weight: rotating backups would fill the very
+      // directory the session deletes on the way out, and the host is the one
+      // holding the timeline (as OTIO) between visits.
+      workspaceStore.userSettings.backup.enabled = false;
+      workspaceStore.userSettings.openLastProjectOnStart = false;
+      // Applied after the workspace has loaded its defaults so the host's stored
+      // values win, and before the project opens so hotkeys and snapping are
+      // already the user's by the time anything is on screen.
+      applySyncedSettings(workspaceStore.userSettings, payload.preferences);
 
       await projectStore.createProject(EMBED_PROJECT_NAME);
       await openProject(EMBED_PROJECT_NAME);
@@ -147,11 +249,10 @@ export function useEmbedSession() {
 
       await ingestAssets(payload.assets ?? []);
 
+      // `initialized` waits for the shell to pick a layout (see the watcher
+      // below): the host is told which one it got, and that is only known once
+      // the editor root has measured its container.
       phase.value = 'ready';
-      bridge.value?.send('initialized', {
-        assetCount: assetCount.value,
-        durationMs: Math.round(ticksToSeconds(timelineStore.duration) * 1000),
-      });
     } catch (e) {
       fail('init-failed', e instanceof Error ? e.message : String(e));
     }
@@ -216,18 +317,37 @@ export function useEmbedSession() {
   }
 
   async function dispose() {
-    bridge.value?.stop();
-    bridge.value = null;
+    // Flush anything still sitting behind a debounce: this is the host's last
+    // chance to keep the user's work and preferences.
+    if (preferencesTimer) clearTimeout(preferencesTimer);
+    if (changeTimer) clearTimeout(changeTimer);
+    emitPreferences();
+    emitChange();
+
+    registerHostRpc(null);
+    const farewellBridge = bridge.value;
+
+    stopHeartbeat?.();
+    stopHeartbeat = null;
 
     try {
       await resetProjectState();
       await workspaceStore.wipeWorkspace();
       workspaceStore.resetWorkspace();
-
-      const root = await navigator.storage?.getDirectory();
-      await root?.removeEntry(workspaceDirName, { recursive: true });
+      await removeSession(sessionId);
     } catch (e) {
       log.warn('Failed to clean up the embedded session', e);
+    } finally {
+      // Released last: while it is held, another tab's collector treats this
+      // session as alive and leaves its directory alone.
+      releaseSessionLock?.();
+      releaseSessionLock = null;
+
+      // Announced only once the storage is actually gone, so a host that waits
+      // for it knows the session left nothing behind.
+      farewellBridge?.send('disposed', undefined);
+      farewellBridge?.stop();
+      bridge.value = null;
     }
   }
 
@@ -241,14 +361,82 @@ export function useEmbedSession() {
     bridge.value = created;
     created.on('init', (payload) => void initSession(payload));
     created.on('export:start', (payload) => void startExport(payload));
+    created.on('asset:url', ({ assetId, url }) => {
+      pendingUrlRefreshes.get(assetId)?.(url);
+      pendingUrlRefreshes.delete(assetId);
+    });
+    created.on('rpc:result', ({ requestId, result, error }) =>
+      settleHostRpc(requestId, { result, error }),
+    );
+    created.on('save:request', () => emitChange());
     created.on('export:ack', () => void acknowledgeExport());
     created.on('dispose', () => void dispose());
+
+    registerHostRpc((channel, requestId, payload) => {
+      created.send(channel === 'stt' ? 'stt:request' : 'llm:request', { requestId, payload });
+    });
 
     created.send('ready', {
       version: 1,
       capabilities: detectCapabilities(),
     });
   }
+
+  let preferencesTimer: ReturnType<typeof setTimeout> | null = null;
+  let changeTimer: ReturnType<typeof setTimeout> | null = null;
+
+  function emitPreferences() {
+    bridge.value?.send('preferences:changed', extractSyncedSettings(workspaceStore.userSettings));
+  }
+
+  function emitChange() {
+    const doc = timelineStore.timelineDoc;
+    if (!doc) return;
+    try {
+      bridge.value?.send('change', {
+        dirty: timelineStore.isTimelineDirty,
+        otio: serializeTimelineToOtio(doc),
+      });
+    } catch (e) {
+      log.warn('Failed to serialise the timeline for the host', e);
+    }
+  }
+
+  watch(
+    () => workspaceStore.userSettings,
+    () => {
+      if (phase.value === 'handshake' || phase.value === 'loading') return;
+      if (preferencesTimer) clearTimeout(preferencesTimer);
+      preferencesTimer = setTimeout(emitPreferences, PREFERENCES_DEBOUNCE_MS);
+    },
+    { deep: true },
+  );
+
+  watch(
+    () => [timelineStore.timelineDoc, timelineStore.isTimelineDirty] as const,
+    () => {
+      if (phase.value !== 'ready' && phase.value !== 'exporting') return;
+      if (changeTimer) clearTimeout(changeTimer);
+      changeTimer = setTimeout(emitChange, CHANGE_DEBOUNCE_MS);
+    },
+    { deep: true },
+  );
+
+  let hasAnnouncedInit = false;
+  watch(
+    () => [phase.value, resolvedLayoutMode.value] as const,
+    ([currentPhase, layout]) => {
+      if (hasAnnouncedInit || currentPhase !== 'ready' || !layout) return;
+      hasAnnouncedInit = true;
+      bridge.value?.send('initialized', {
+        assetCount: assetCount.value,
+        durationMs: Math.round(ticksToSeconds(timelineStore.duration) * 1000),
+        layout,
+        reclaimedSessions: reclaimedSessions.value,
+      });
+    },
+    { immediate: true },
+  );
 
   watch(
     () => [exportForm.exportPhase.value, exportForm.exportProgress.value] as const,
@@ -259,14 +447,22 @@ export function useEmbedSession() {
   );
 
   onScopeDispose(() => {
+    if (preferencesTimer) clearTimeout(preferencesTimer);
+    if (changeTimer) clearTimeout(changeTimer);
+    registerHostRpc(null);
     bridge.value?.stop();
+    stopHeartbeat?.();
+    releaseSessionLock?.();
   });
 
   return {
     phase,
     errorMessage,
     assetCount,
+    reclaimedSessions,
+    layoutPreference,
     canExport,
+    isIngesting,
     start,
     startExport,
     dispose,

@@ -113,7 +113,8 @@
       "required": "Имя обязательно"
     },
     "video": "Видео",
-    "warning": "Предупреждение"
+    "warning": "Предупреждение",
+    "sound": "Звук"
   },
   "fastcat": {
     "audioMixer": {
@@ -1274,7 +1275,8 @@
     },
     "embed": {
       "standaloneNotice": "Этот редактор предназначен для встраивания в приложение-хост.",
-      "preparing": "Готовим редактор…"
+      "preparing": "Готовим редактор…",
+      "toggleLayout": "Сменить вид"
     }
   },
   "timelineCreation": {
@@ -2184,7 +2186,8 @@
       "videoFrameCacheMb": "Кэш видеокадров (МБ)",
       "videoFrameCacheMbHelp": "Максимальный объем оперативной памяти для декодированных кадров предпросмотра. Установите 0 для отключения кэша.",
       "workspaceSection": "Настройки приложения",
-      "workspaceStorage": "Хранилище"
+      "workspaceStorage": "Хранилище",
+      "hotkeysReservedEmbedDesc": "Сочетание {combo} занято страницей, в которую встроен редактор."
     },
     "timeline": {
       "backupError": "Ошибка резервного копирования",

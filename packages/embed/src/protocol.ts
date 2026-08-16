@@ -24,14 +24,42 @@ export type EmbedAssetKind = 'video' | 'audio' | 'image';
 
 export interface EmbedAsset {
   id?: string;
-  url: string;
+  /** Required for the `url` transport; ignored for `host`. */
+  url?: string;
+  /**
+   * The asset's bytes, when the host already holds them — a file the user just
+   * picked, or a source it cannot expose over CORS.
+   */
+  file?: File;
   kind?: EmbedAssetKind;
   filename?: string;
 }
 
+/** Optional capabilities a host switches on for the session. */
+export type EmbedFeatureName = 'files' | 'sound' | 'export' | 'settings';
+
+export type EmbedLayoutPreference = 'auto' | 'desktop' | 'mobile';
+
 export interface EmbedInitPayload {
   locale?: string;
   assets?: EmbedAsset[];
+  /**
+   * `auto` (the default) decides once from the iframe's first measured size and
+   * never re-decides on its own: a shell that flipped mid-session would discard
+   * the user's arrangement every time the host resized its container.
+   */
+  layout?: EmbedLayoutPreference;
+  /**
+   * Anything beyond the timeline and an export must be asked for. Unknown names
+   * are ignored rather than rejected, so a newer host still talks to an older
+   * editor.
+   */
+  features?: EmbedFeatureName[];
+  /**
+   * Preferences this host stored from an earlier session, exactly as the editor
+   * emitted them. Opaque to the host: it keeps the blob, it does not read it.
+   */
+  preferences?: unknown;
 }
 
 export interface EmbedExportMeta {
@@ -43,6 +71,12 @@ export interface EmbedExportMeta {
 /** Messages the host is allowed to send to the editor. */
 export interface HostToEditorMessages {
   init: EmbedInitPayload;
+  /** A replacement URL for an asset whose signed URL expired. */
+  'asset:url': { assetId: string; url: string };
+  /** Answer to a `stt:request` or `llm:request`, matched by `requestId`. */
+  'rpc:result': { requestId: string; result?: unknown; error?: string };
+  /** Asks the editor to emit the current timeline without waiting for a debounce. */
+  'save:request': undefined;
   'export:start': { filename?: string } | undefined;
   'export:ack': undefined;
   dispose: undefined;
@@ -51,10 +85,46 @@ export interface HostToEditorMessages {
 /** Messages the editor is allowed to send to the host. */
 export interface EditorToHostMessages {
   ready: { version: number; capabilities: EmbedCapabilities };
-  initialized: { assetCount: number; durationMs: number };
+  initialized: {
+    assetCount: number;
+    durationMs: number;
+    layout: 'desktop' | 'mobile';
+    /**
+     * Storage belonging to earlier sessions that this one reclaimed on the way
+     * in. Non-zero means previous sessions ended without a `dispose` — useful
+     * for spotting hosts that tear the iframe down abruptly.
+     */
+    reclaimedSessions: number;
+  };
+  /**
+   * The current URL for this asset stopped authorising. The host is expected to
+   * answer with `asset:url`; reads resume from where they stopped.
+   */
+  'asset:url-expired': { assetId: string };
+  'asset:progress': { assetId: string; loadedBytes: number; totalBytes: number | null };
+  /**
+   * Work the host must run on the editor's behalf, because the host owns the
+   * credentials. Answer with `rpc:result` carrying the same `requestId`.
+   */
+  'stt:request': { requestId: string; payload: unknown };
+  'llm:request': { requestId: string; payload: unknown };
+  /**
+   * The timeline changed. `otio` is the full document, so a host can keep a
+   * draft and reopen it later; `dirty` says whether it differs from the last
+   * state the host acknowledged.
+   */
+  change: { dirty: boolean; otio: string };
+  /** Preferences worth storing against the user's profile. Treat as opaque. */
+  'preferences:changed': unknown;
   'export:progress': { phase: string | null; progress: number };
   'export:done': { file: File; meta: EmbedExportMeta };
   'export:error': { message: string };
+  /**
+   * Cleanup finished. Sent last, after the final `change` and
+   * `preferences:changed`, so a host that waits for it is guaranteed to have
+   * heard everything worth keeping before the iframe goes away.
+   */
+  disposed: undefined;
   error: { code: string; message: string };
   requestClose: undefined;
 }

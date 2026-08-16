@@ -60,7 +60,14 @@ export function createEmbedBridge(): EmbedBridge | null {
   return {
     hostOrigin: params.hostOrigin,
     send(type, payload) {
-      window.parent.postMessage(createEnvelope(params.nonce, type, payload), params.hostOrigin);
+      try {
+        window.parent.postMessage(createEnvelope(params.nonce, type, payload), params.hostOrigin);
+      } catch (e) {
+        // A payload that cannot be structured-cloned must not take down whatever
+        // the editor was doing — teardown in particular sends its last messages
+        // while it is already unwinding.
+        log.error(`Failed to post "${type}" to the host`, e);
+      }
     },
     on(type, handler) {
       handlers.set(type, handler as (payload: never) => void);

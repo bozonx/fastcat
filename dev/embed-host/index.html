@@ -130,6 +130,7 @@
         <input id="asset-url" aria-label="Asset URL" />
         <button id="open" data-testid="stand-open">Open editor</button>
         <button id="export" data-testid="stand-export" disabled>Export</button>
+        <button id="save" data-testid="stand-save">Request timeline</button>
         <button id="dispose" data-testid="stand-dispose" disabled>Dispose</button>
         <button id="download" data-testid="stand-download" disabled>Save result</button>
       </div>
@@ -159,8 +160,12 @@
       const { editorUrl } = await fetch('/config.json').then((r) => r.json());
 
       const assetInput = document.getElementById('asset-url');
+      // `expiring=1` asks the stand's server for a URL that authorises exactly
+      // once, standing in for a signed URL that lapses mid-session.
+      const expiringSuffix = params.get('expiring') === '1' ? '?expire=1' : '';
       assetInput.value =
-        params.get('asset') ?? new URL('/media/sample-1s-720p.mp4', location.origin).toString();
+        params.get('asset') ??
+        new URL(`/media/sample-1s-720p.mp4${expiringSuffix}`, location.origin).toString();
 
       const els = {
         frame: document.getElementById('frame'),
@@ -172,6 +177,7 @@
         export: document.getElementById('export'),
         dispose: document.getElementById('dispose'),
         download: document.getElementById('download'),
+        save: document.getElementById('save'),
       };
 
       /** Observable surface the `embed` Playwright tier asserts against. */
@@ -184,6 +190,12 @@
         result: null,
         /** True while the host is still reading the file, i.e. before the ack. */
         readingExport: false,
+        assetProgress: {},
+        urlRefreshes: 0,
+        preferences: null,
+        preferenceUpdates: 0,
+        lastChange: null,
+        rpcCalls: [],
         exportHandlerDelayMs: 0,
         errors: [],
         messages: [],
@@ -219,7 +231,10 @@
           container: els.frame,
           editorUrl,
           locale: params.get('locale') ?? 'en-US',
+          layout: params.get('layout') ?? 'auto',
+          features: params.get('features')?.split(',').filter(Boolean) ?? ['export'],
           assets: assetInput.value ? [{ url: assetInput.value, kind: 'video' }] : [],
+          preferences: JSON.parse(sessionStorage.getItem('fastcat:prefs') ?? 'null'),
           onDebug: log,
           onReady(capabilities) {
             stand.capabilities = capabilities;
@@ -233,6 +248,36 @@
             setPhase('initialized');
             els.export.disabled = false;
             els.dispose.disabled = false;
+          },
+          onAssetProgress({ assetId, loadedBytes, totalBytes }) {
+            stand.assetProgress[assetId] = { loadedBytes, totalBytes };
+            setPhase(`loading ${assetId} ${loadedBytes}/${totalBytes ?? '?'}`);
+          },
+          onAssetUrlExpired() {
+            stand.urlRefreshes += 1;
+            // A "fresh" URL here is simply the same file without the one-shot
+            // flag — what a host would return after re-signing.
+            const fresh = new URL(assetInput.value);
+            fresh.searchParams.delete('expire');
+            return fresh.toString();
+          },
+          onChange({ dirty, otio }) {
+            stand.lastChange = { dirty, otioLength: otio.length };
+          },
+          onPreferencesChanged(preferences) {
+            // A host stores this blob verbatim against the user's profile and
+            // never looks inside it.
+            stand.preferences = preferences;
+            stand.preferenceUpdates += 1;
+            sessionStorage.setItem('fastcat:prefs', JSON.stringify(preferences));
+          },
+          async onSttRequest(payload) {
+            stand.rpcCalls.push({ channel: 'stt', payload });
+            return { text: 'transcript from the host' };
+          },
+          async onLlmRequest(payload) {
+            stand.rpcCalls.push({ channel: 'llm', payload });
+            return { text: 'completion from the host' };
           },
           onExportProgress(progress) {
             setPhase(`exporting ${Math.round(progress.progress * 100)}%`);
@@ -291,6 +336,7 @@
 
       els.open.addEventListener('click', open);
       els.export.addEventListener('click', () => embed?.startExport());
+      els.save.addEventListener('click', () => embed?.requestSave());
       els.dispose.addEventListener('click', () => void dispose());
       els.download.addEventListener('click', () => {
         if (!stand.savedBlob) return;

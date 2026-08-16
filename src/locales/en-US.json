@@ -113,7 +113,8 @@
       "required": "Name is required."
     },
     "video": "Video",
-    "warning": "Warning"
+    "warning": "Warning",
+    "sound": "Sound"
   },
   "fastcat": {
     "audioMixer": {
@@ -1274,7 +1275,8 @@
     },
     "embed": {
       "standaloneNotice": "This editor is meant to be embedded by a host application.",
-      "preparing": "Preparing the editor…"
+      "preparing": "Preparing the editor…",
+      "toggleLayout": "Switch layout"
     }
   },
   "timelineCreation": {
@@ -2184,7 +2186,8 @@
       "videoFrameCacheMb": "Video frame cache (MB)",
       "videoFrameCacheMbHelp": "Maximum amount of RAM to use for decoded preview frames. Set to 0 to disable cache.",
       "workspaceSection": "App Settings",
-      "workspaceStorage": "Storage"
+      "workspaceStorage": "Storage",
+      "hotkeysReservedEmbedDesc": "The host page around the editor owns {combo}."
     },
     "timeline": {
       "backupError": "Backup error",
