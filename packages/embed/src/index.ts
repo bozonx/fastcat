@@ -8,8 +8,11 @@ import {
   type EmbedAsset,
   type EmbedCapabilities,
   type EmbedExportMeta,
+  type EmbedAssetTransportKind,
   type EmbedFeatureName,
   type EmbedLayoutPreference,
+  type EmbedOutputMode,
+  type EmbedProjectDefaults,
   type HostToEditorMessages,
   type HostToEditorType,
 } from './protocol';
@@ -17,7 +20,11 @@ import {
 export * from './protocol';
 
 export interface FastcatEmbedExportResult {
-  file: File;
+  /** Absent in `upload` mode, where the editor sent the render itself. */
+  file?: File;
+  poster: Blob | null;
+  /** The timeline behind this render, for a later "edit again". */
+  otio: string;
   meta: EmbedExportMeta;
 }
 
@@ -32,6 +39,9 @@ export interface FastcatEmbedOptions {
   preferences?: unknown;
   layout?: EmbedLayoutPreference;
   features?: EmbedFeatureName[];
+  projectDefaults?: EmbedProjectDefaults;
+  assetTransport?: EmbedAssetTransportKind;
+  output?: EmbedOutputMode;
   /** How long to wait for the editor's `ready` before declaring it unavailable. */
   readyTimeoutMs?: number;
   onReady?: (capabilities: EmbedCapabilities) => void;
@@ -69,6 +79,8 @@ export interface FastcatEmbedOptions {
   onExportDone?: (result: FastcatEmbedExportResult) => void | Promise<void>;
   onError?: (error: { code: string; message: string }) => void;
   onRequestClose?: () => void;
+  /** The editor would like more vertical room. Advisory; the host decides. */
+  onResizeRequest?: (request: EditorToHostMessages['resize-request']) => void;
   /** Called when the editor never completes the handshake. */
   onUnavailable?: (reason: string) => void;
   /** Every message crossing the boundary, for logging and integration tests. */
@@ -77,7 +89,9 @@ export interface FastcatEmbedOptions {
 
 export interface FastcatEmbed {
   readonly iframe: HTMLIFrameElement;
-  startExport: (options?: { filename?: string }) => void;
+  startExport: (options?: { filename?: string; uploadUrl?: string }) => void;
+  cancelExport: () => void;
+  addAssets: (assets: EmbedAsset[]) => void;
   requestSave: () => void;
   dispose: () => Promise<void>;
 }
@@ -115,7 +129,14 @@ export function createFastcatEmbed(options: FastcatEmbedOptions): FastcatEmbed {
     switch (type) {
       case 'ready': {
         window.clearTimeout(readyTimer);
-        const { capabilities } = payload as EditorToHostMessages['ready'];
+        const { capabilities, version } = payload as EditorToHostMessages['ready'];
+        if (version !== EMBED_PROTOCOL_VERSION) {
+          // Talking anyway would mean guessing at message shapes on both sides.
+          options.onUnavailable?.(
+            `This editor speaks protocol v${version}; this SDK speaks v${EMBED_PROTOCOL_VERSION}.`,
+          );
+          return;
+        }
         options.onReady?.(capabilities);
         send('init', {
           locale: options.locale,
@@ -123,6 +144,9 @@ export function createFastcatEmbed(options: FastcatEmbedOptions): FastcatEmbed {
           layout: options.layout,
           features: options.features,
           preferences: options.preferences,
+          projectDefaults: options.projectDefaults,
+          assetTransport: options.assetTransport,
+          output: options.output,
         });
         return;
       }
@@ -198,6 +222,9 @@ export function createFastcatEmbed(options: FastcatEmbedOptions): FastcatEmbed {
       case 'requestClose':
         options.onRequestClose?.();
         return;
+      case 'resize-request':
+        options.onResizeRequest?.(payload as EditorToHostMessages['resize-request']);
+        return;
     }
   }
 
@@ -217,6 +244,13 @@ export function createFastcatEmbed(options: FastcatEmbedOptions): FastcatEmbed {
     iframe,
     startExport(exportOptions) {
       send('export:start', exportOptions);
+    },
+    cancelExport() {
+      send('export:cancel', undefined);
+    },
+    /** Adds assets to a session already in progress. */
+    addAssets(assets) {
+      send('asset:add', { assets });
     },
     /** Asks for the current timeline immediately, bypassing the change debounce. */
     requestSave() {

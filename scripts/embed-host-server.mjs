@@ -128,6 +128,9 @@ function safeJoin(root, requestPath, prefix) {
 /** Paths that have already burned their one-shot `?expire=1` authorisation. */
 const expiredOnce = new Set();
 
+/** Byte counts received on `PUT /upload/…`, standing in for a host's storage. */
+const uploads = new Map();
+
 const server = createServer(async (req, res) => {
   const requestPath = (req.url ?? '/').split('?')[0];
 
@@ -156,6 +159,32 @@ const server = createServer(async (req, res) => {
       return;
     }
     await serveFile(req, res, safeJoin(mediaRoot, requestPath, '/media/'));
+    return;
+  }
+
+  // Stands in for a host's presigned PUT endpoint, so `output: 'upload'` is
+  // exercised end to end rather than only declared in the protocol.
+  if (requestPath.startsWith('/upload/')) {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'PUT, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    if (req.method === 'OPTIONS') {
+      res.statusCode = 204;
+      res.end();
+      return;
+    }
+    if (req.method === 'PUT') {
+      let received = 0;
+      req.on('data', (chunk) => (received += chunk.length));
+      req.on('end', () => {
+        uploads.set(requestPath, received);
+        res.statusCode = 200;
+        res.end();
+      });
+      return;
+    }
+    res.setHeader('Content-Type', MIME_TYPES['.json']);
+    res.end(JSON.stringify({ receivedBytes: uploads.get(requestPath) ?? 0 }));
     return;
   }
 

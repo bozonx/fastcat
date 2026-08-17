@@ -228,6 +228,48 @@ the credentials, and an editor that carried an API key would hand that key to
 every page that frames it. The editor describes the work over `stt:request` /
 `llm:request` and waits for `rpc:result` (`src/utils/embed/host-rpc.ts`).
 
+### Protocol v1
+
+Both sides pin every message to a single expected origin and a nonce minted per
+embed instance, so a page that merely guesses the iframe URL cannot talk to the
+editor, and the editor cannot broadcast a project or a render to a wildcard.
+Envelopes carrying a different protocol version are dropped; the SDK compares
+versions on `ready` and reports the mismatch instead of guessing at shapes.
+
+**Host → editor**
+
+| Message | Purpose |
+| --- | --- |
+| `init` | locale, layout, features, assets, preferences, `projectDefaults`, `assetTransport`, `output` |
+| `asset:add` | adds assets to a running session |
+| `asset:url` | a replacement URL for one that expired |
+| `rpc:result` | answers an `stt:request` / `llm:request`, matched by `requestId` |
+| `save:request` | asks for the timeline now, bypassing the change debounce |
+| `export:start` / `export:cancel` | begins or aborts a render |
+| `export:ack` | the render has been read; the editor may release it |
+| `dispose` | end the session and clean up |
+
+**Editor → host**
+
+| Message | Purpose |
+| --- | --- |
+| `ready` | protocol version + capabilities (WebGPU, WebCodecs, OPFS, SAB, storage quota) |
+| `initialized` | asset count, duration, chosen layout, sessions reclaimed on the way in |
+| `asset:progress` / `asset:url-expired` | import progress; a URL that stopped authorising |
+| `stt:request` / `llm:request` | work for the host to run with its own credentials |
+| `change` | `dirty` plus the full timeline as OTIO |
+| `preferences:changed` | opaque blob to store against the user's profile |
+| `export:progress` / `export:done` / `export:error` | render lifecycle |
+| `requestClose` / `resize-request` | the editor asks; the host owns the frame |
+| `disposed` | cleanup finished — sent last, after the final `change` |
+
+`export:done` carries the render (`file`), a poster frame, the OTIO that produced
+it, and metadata read back **off the finished file** rather than off the export
+settings, so what a host stores can never disagree with the bytes it received.
+In `output: 'upload'` mode the editor streams the render to a presigned URL the
+host supplies and omits `file`, keeping very large renders out of the message
+path entirely.
+
 ### Developing against a real host origin
 
 ```bash

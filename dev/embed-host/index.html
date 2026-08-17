@@ -131,6 +131,7 @@
         <button id="open" data-testid="stand-open">Open editor</button>
         <button id="export" data-testid="stand-export" disabled>Export</button>
         <button id="save" data-testid="stand-save">Request timeline</button>
+        <button id="add-asset" data-testid="stand-add-asset">Add asset</button>
         <button id="dispose" data-testid="stand-dispose" disabled>Dispose</button>
         <button id="download" data-testid="stand-download" disabled>Save result</button>
       </div>
@@ -178,6 +179,7 @@
         dispose: document.getElementById('dispose'),
         download: document.getElementById('download'),
         save: document.getElementById('save'),
+        addAsset: document.getElementById('add-asset'),
       };
 
       /** Observable surface the `embed` Playwright tier asserts against. */
@@ -196,6 +198,9 @@
         preferenceUpdates: 0,
         lastChange: null,
         rpcCalls: [],
+        closeRequests: 0,
+        resizeRequests: [],
+        addedAssets: 0,
         exportHandlerDelayMs: 0,
         errors: [],
         messages: [],
@@ -235,6 +240,14 @@
           features: params.get('features')?.split(',').filter(Boolean) ?? ['export'],
           assets: assetInput.value ? [{ url: assetInput.value, kind: 'video' }] : [],
           preferences: JSON.parse(sessionStorage.getItem('fastcat:prefs') ?? 'null'),
+          output: params.get('output') ?? 'blob',
+          projectDefaults: params.get('width')
+            ? {
+                width: Number(params.get('width')),
+                height: Number(params.get('height')),
+                fps: Number(params.get('fps') ?? 30),
+              }
+            : undefined,
           onDebug: log,
           onReady(capabilities) {
             stand.capabilities = capabilities;
@@ -282,9 +295,20 @@
           onExportProgress(progress) {
             setPhase(`exporting ${Math.round(progress.progress * 100)}%`);
           },
-          async onExportDone({ file, meta }) {
+          async onExportDone({ file, poster, otio, meta }) {
             stand.readingExport = true;
             setPhase('receiving');
+
+            if (!file) {
+              // Upload mode: the editor streamed the render itself, so the host
+              // only confirms what its endpoint received.
+              const { receivedBytes } = await fetch(uploadPath).then((r) => r.json());
+              stand.streamedBytes = receivedBytes;
+              stand.result = { ...meta, streamedBytes: receivedBytes, posterBytes: poster?.size ?? 0, otioLength: otio.length };
+              stand.readingExport = false;
+              setPhase('exported');
+              return;
+            }
 
             // Drain the stream rather than materialising the file, which is the
             // whole reason the editor hands back a `File` instead of chunks.
@@ -303,7 +327,12 @@
             }
 
             stand.streamedBytes = streamed;
-            stand.result = { ...meta, streamedBytes: streamed };
+            stand.result = {
+              ...meta,
+              streamedBytes: streamed,
+              posterBytes: poster?.size ?? 0,
+              otioLength: otio.length,
+            };
             stand.readingExport = false;
             stand.savedBlob = new Blob(chunks, { type: meta.mimeType });
 
@@ -320,7 +349,10 @@
             setPhase('unavailable');
           },
           onRequestClose() {
-            void dispose();
+            stand.closeRequests += 1;
+          },
+          onResizeRequest({ minHeightPx }) {
+            stand.resizeRequests.push(minHeightPx);
           },
         });
       }
@@ -335,8 +367,19 @@
       }
 
       els.open.addEventListener('click', open);
-      els.export.addEventListener('click', () => embed?.startExport());
+      const uploadPath = `/upload/${Date.now()}.mp4`;
+      els.export.addEventListener('click', () =>
+        embed?.startExport(
+          params.get('output') === 'upload'
+            ? { uploadUrl: new URL(uploadPath, location.origin).toString() }
+            : undefined,
+        ),
+      );
       els.save.addEventListener('click', () => embed?.requestSave());
+      els.addAsset.addEventListener('click', () => {
+        stand.addedAssets += 1;
+        embed?.addAssets([{ url: assetInput.value, kind: 'video' }]);
+      });
       els.dispose.addEventListener('click', () => void dispose());
       els.download.addEventListener('click', () => {
         if (!stand.savedBlob) return;

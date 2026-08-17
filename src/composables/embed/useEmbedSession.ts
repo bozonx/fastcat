@@ -9,6 +9,7 @@ import { useExportForm } from '~/composables/timeline/export/useExportForm';
 import { resolveAssetPlacement } from '~/utils/external-assets.service';
 import { createFileTransport, createUrlTransport } from '~/utils/embed/asset-transport';
 import { downloadAssetToFile, probeAssetMetadata } from '~/utils/embed/asset-ingest';
+import { summariseExport } from '~/utils/embed/export-summary';
 import { EXPORT_DIR_NAME } from '~/utils/constants';
 import { randomToken } from '~/utils/ids';
 import { ticksToSeconds } from '~/utils/time';
@@ -26,11 +27,14 @@ import {
   startSessionHeartbeat,
 } from '~/utils/embed/session-lifecycle';
 import { getLayoutModeOverride } from '~/composables/layout/useLayoutMode';
+import { EMBED_PROTOCOL_VERSION } from '~embed';
 import type {
   EmbedAsset,
   EmbedCapabilities,
   EmbedInitPayload,
+  EmbedAssetTransportKind,
   EmbedLayoutPreference,
+  EmbedOutputMode,
 } from '~embed';
 
 const log = createDevLogger('embed-session');
@@ -51,12 +55,21 @@ const CHANGE_DEBOUNCE_MS = 10_000;
 export type EmbedSessionPhase =
   'standalone' | 'handshake' | 'loading' | 'ready' | 'exporting' | 'error';
 
-function detectCapabilities(): EmbedCapabilities {
+async function detectCapabilities(): Promise<EmbedCapabilities> {
+  let storageQuotaBytes: number | null = null;
+  try {
+    storageQuotaBytes = (await navigator.storage?.estimate())?.quota ?? null;
+  } catch {
+    // Some browsers refuse to estimate in a third-party frame; that is itself
+    // useful information for the host, reported as "unknown".
+  }
+
   return {
     webgpu: typeof navigator !== 'undefined' && !!navigator.gpu,
     webcodecs: typeof VideoEncoder === 'function' && typeof VideoDecoder === 'function',
     opfs: typeof navigator !== 'undefined' && !!navigator.storage?.getDirectory,
     sharedArrayBuffer: typeof SharedArrayBuffer === 'function' && globalThis.crossOriginIsolated,
+    storageQuotaBytes,
   };
 }
 
@@ -82,6 +95,8 @@ export function useEmbedSession() {
   const assetCount = ref(0);
   const reclaimedSessions = ref(0);
   const layoutPreference = ref<EmbedLayoutPreference>('auto');
+  const outputMode = ref<EmbedOutputMode>('blob');
+  const assetTransport = ref<EmbedAssetTransportKind>('url');
   const bridge = shallowRef<EmbedBridge | null>(null);
   const resolvedLayoutMode = getLayoutModeOverride();
 
@@ -132,6 +147,14 @@ export function useEmbedSession() {
   function createTransport(asset: EmbedAsset, assetId: string) {
     if (asset.file) return createFileTransport(assetId, asset.file);
     if (!asset.url) throw new Error(`Asset ${assetId} has neither a URL nor a file`);
+
+    // A host that declared `host` transport has told us its URLs are not
+    // reachable from here. Failing loudly beats a confusing CORS error, or
+    // worse, a request that quietly leaves the host's control.
+    if (assetTransport.value === 'host') {
+      throw new Error(`Asset ${assetId} arrived as a URL, but this session uses host transport`);
+    }
+
     return createUrlTransport({ id: assetId, url: asset.url, requestFreshUrl });
   }
 
@@ -210,6 +233,8 @@ export function useEmbedSession() {
     try {
       if (payload.locale) locale.value = payload.locale;
       layoutPreference.value = payload.layout ?? 'auto';
+      outputMode.value = payload.output ?? 'blob';
+      assetTransport.value = payload.assetTransport ?? 'url';
       setEmbedFeatures(payload.features);
 
       // Reclaim whatever earlier sessions left behind before adding to it. This
@@ -241,7 +266,9 @@ export function useEmbedSession() {
       // already the user's by the time anything is on screen.
       applySyncedSettings(workspaceStore.userSettings, payload.preferences);
 
-      await projectStore.createProject(EMBED_PROJECT_NAME);
+      // The host usually knows the target format before the first clip does —
+      // a story is 9:16 whatever the source footage happens to be.
+      await projectStore.createProject(EMBED_PROJECT_NAME, payload.projectDefaults);
       await openProject(EMBED_PROJECT_NAME);
       if (!projectStore.currentProjectName) {
         throw new Error('Failed to create the embedded session project');
@@ -258,7 +285,16 @@ export function useEmbedSession() {
     }
   }
 
-  async function startExport(options?: { filename?: string }) {
+  async function uploadExport(file: File, uploadUrl: string) {
+    const response = await fetch(uploadUrl, {
+      method: 'PUT',
+      body: file,
+      headers: file.type ? { 'Content-Type': file.type } : undefined,
+    });
+    if (!response.ok) throw new Error(`Upload rejected with HTTP ${response.status}`);
+  }
+
+  async function startExport(options?: { filename?: string; uploadUrl?: string }) {
     if (phase.value !== 'ready') {
       log.warn('Ignoring export request in phase', phase.value);
       return;
@@ -271,17 +307,27 @@ export function useEmbedSession() {
 
       await exportForm.handleStartExport(async (file: File) => {
         exportedFilename = file.name;
+
+        // Described from the finished file rather than the export settings, so
+        // what the host records cannot disagree with the bytes it receives.
+        const { meta, poster } = await summariseExport(file);
+        const doc = timelineStore.timelineDoc;
+        const otio = doc ? serializeTimelineToOtio(doc) : '';
+
+        if (outputMode.value === 'upload') {
+          if (!options?.uploadUrl) throw new Error('Upload mode requires an uploadUrl');
+          // Streams straight out of storage to the host's endpoint, so a render
+          // too large to hand across the channel never enters it.
+          await uploadExport(file, options.uploadUrl);
+          bridge.value?.send('export:done', { poster, otio, meta });
+          await acknowledgeExport();
+          return;
+        }
+
         // `File` crosses the boundary by reference to its backing store, so the
         // host streams it straight out of OPFS without the bytes ever being
         // materialised in either page's heap.
-        bridge.value?.send('export:done', {
-          file,
-          meta: {
-            filename: file.name,
-            mimeType: file.type,
-            sizeBytes: file.size,
-          },
-        });
+        bridge.value?.send('export:done', { file, poster, otio, meta });
       });
 
       if (exportForm.exportError.value) {
@@ -294,6 +340,20 @@ export function useEmbedSession() {
     } finally {
       phase.value = 'ready';
     }
+  }
+
+  /** Lets the editor's own close control reach the host, which owns the frame. */
+  function requestClose() {
+    bridge.value?.send('requestClose', undefined);
+  }
+
+  /**
+   * Tells the host the frame is too short to work in. Advisory only — the host
+   * owns its own layout — but without it an editor squeezed into a 200px slot
+   * has no way to say so, and the user just sees a broken screen.
+   */
+  function requestResize(minHeightPx: number) {
+    bridge.value?.send('resize-request', { minHeightPx });
   }
 
   /**
@@ -369,6 +429,8 @@ export function useEmbedSession() {
       settleHostRpc(requestId, { result, error }),
     );
     created.on('save:request', () => emitChange());
+    created.on('asset:add', ({ assets }) => void ingestAssets(assets));
+    created.on('export:cancel', () => void exportForm.cancelExport());
     created.on('export:ack', () => void acknowledgeExport());
     created.on('dispose', () => void dispose());
 
@@ -376,9 +438,8 @@ export function useEmbedSession() {
       created.send(channel === 'stt' ? 'stt:request' : 'llm:request', { requestId, payload });
     });
 
-    created.send('ready', {
-      version: 1,
-      capabilities: detectCapabilities(),
+    void detectCapabilities().then((capabilities) => {
+      created.send('ready', { version: EMBED_PROTOCOL_VERSION, capabilities });
     });
   }
 
@@ -461,7 +522,11 @@ export function useEmbedSession() {
     assetCount,
     reclaimedSessions,
     layoutPreference,
+    outputMode,
+    assetTransport,
     canExport,
+    requestClose,
+    requestResize,
     isIngesting,
     start,
     startExport,

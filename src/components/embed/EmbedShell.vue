@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import EditorRoot from '~/components/editor/EditorRoot.vue';
 import type { MobileShellTab } from '~/components/editor/MobileShell.vue';
 import UiProgressSpinner from '~/components/ui/UiProgressSpinner.vue';
@@ -41,6 +41,15 @@ const mobileTabs = computed<MobileShellTab[]>(() => {
 
 const layoutMode = computed(() => editorRoot.value?.mode ?? null);
 const isDesktopLayout = computed(() => layoutMode.value === 'desktop');
+
+/** Below this a monitor, a timeline and a toolbar cannot all be usable. */
+const MIN_WORKABLE_HEIGHT_PX = { desktop: 560, mobile: 480 } as const;
+
+watch(layoutMode, (mode) => {
+  if (!mode) return;
+  const required = MIN_WORKABLE_HEIGHT_PX[mode];
+  if (window.innerHeight < required) session.requestResize(required);
+});
 
 onMounted(() => {
   session.start();
@@ -111,6 +120,17 @@ onMounted(() => {
           :title="t('fastcat.embed.toggleLayout')"
           data-testid="embed-toggle-layout"
           @click="editorRoot?.toggle()"
+        />
+
+        <UButton
+          size="sm"
+          color="neutral"
+          variant="ghost"
+          icon="lucide:x"
+          :aria-label="t('common.close')"
+          :title="t('common.close')"
+          data-testid="embed-close"
+          @click="session.requestClose()"
         />
 
         <UButton

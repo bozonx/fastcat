@@ -29,13 +29,26 @@ interface StandState {
     reclaimedSessions: number;
   } | null;
   streamedBytes: number;
-  result: { filename: string; mimeType: string; sizeBytes: number; streamedBytes: number } | null;
+  result: {
+    filename: string;
+    mimeType: string;
+    sizeBytes: number;
+    streamedBytes: number;
+    width: number | null;
+    height: number | null;
+    durationMs: number | null;
+    fps: number | null;
+    posterBytes: number;
+    otioLength: number;
+  } | null;
   readingExport: boolean;
   assetProgress: Record<string, { loadedBytes: number; totalBytes: number | null }>;
   urlRefreshes: number;
   preferences: unknown;
   preferenceUpdates: number;
   lastChange: { dirty: boolean; otioLength: number } | null;
+  closeRequests: number;
+  resizeRequests: number[];
   errors: { code: string; message: string }[];
   messages: { direction: 'in' | 'out'; type: string }[];
 }
@@ -57,6 +70,8 @@ function readStand(page: Page): Promise<StandState> {
       'preferences',
       'preferenceUpdates',
       'lastChange',
+      'closeRequests',
+      'resizeRequests',
       'errors',
       'messages',
     ] as const;
@@ -262,5 +277,88 @@ test.describe('Embed: host integration', () => {
     await page.reload();
     await openStand(page);
     expect((await readStand(page)).errors).toEqual([]);
+  });
+
+  test('describes the render from the finished file, with a poster and its timeline', async ({
+    page,
+  }) => {
+    await openStand(page);
+    await page.getByTestId('stand-export').click();
+
+    await expect
+      .poll(async () => (await readStand(page)).result, { timeout: 120_000 })
+      .not.toBeNull();
+
+    const { result } = await readStand(page);
+    // Read back off the exported bytes, so these cannot disagree with the file.
+    expect(result!.width).toBeGreaterThan(0);
+    expect(result!.height).toBeGreaterThan(0);
+    expect(result!.durationMs).toBeGreaterThan(0);
+    expect(result!.fps).toBeGreaterThan(0);
+    // A poster the host can put on a card, and the timeline behind the render
+    // so it can offer "edit again" instead of starting over.
+    expect(result!.posterBytes).toBeGreaterThan(0);
+    expect(result!.otioLength).toBeGreaterThan(100);
+  });
+
+  test('starts from the composition the host asked for', async ({ page }) => {
+    // A 9:16 story, whatever shape the source footage happens to be.
+    await openStand(page, '&width=1080&height=1920&fps=30');
+    await page.getByTestId('stand-export').click();
+
+    await expect
+      .poll(async () => (await readStand(page)).result, { timeout: 120_000 })
+      .not.toBeNull();
+
+    const { result } = await readStand(page);
+    expect(result!.width).toBe(1080);
+    expect(result!.height).toBe(1920);
+  });
+
+  test('takes assets added after the session started', async ({ page }) => {
+    await openStand(page);
+    expect((await readStand(page)).initialized!.assetCount).toBe(1);
+
+    await page.getByTestId('stand-add-asset').click();
+
+    const frame = page.frameLocator('iframe');
+    await expect(frame.getByTestId('embed-export')).toBeEnabled({ timeout: 30_000 });
+    expect((await readStand(page)).errors).toEqual([]);
+  });
+
+  test('routes its own close control to the host rather than acting alone', async ({ page }) => {
+    await openStand(page);
+    await page.frameLocator('iframe').getByTestId('embed-close').click();
+
+    // The host owns the frame, so the editor asks rather than tears itself down.
+    await expect.poll(async () => (await readStand(page)).closeRequests).toBe(1);
+    await expect(page.frameLocator('iframe').getByTestId('embed-shell')).toBeVisible();
+  });
+
+  test('asks for room when the frame is too short to work in', async ({ page }) => {
+    await page.setViewportSize({ width: 1400, height: 420 });
+    await openStand(page);
+
+    const { resizeRequests } = await readStand(page);
+    expect(resizeRequests.length).toBeGreaterThan(0);
+    expect(resizeRequests[0]).toBeGreaterThan(420);
+  });
+
+  test('streams the render to the host endpoint in upload mode', async ({ page }) => {
+    await openStand(page, '&output=upload');
+    await page.getByTestId('stand-export').click();
+
+    await expect
+      .poll(async () => (await readStand(page)).result, { timeout: 120_000 })
+      .not.toBeNull();
+
+    const stand = await readStand(page);
+    // The bytes reached the host's endpoint without ever crossing the message
+    // channel — this is the path for renders too large to hand over as a Blob.
+    expect(stand.streamedBytes).toBeGreaterThan(0);
+    expect(stand.result!.sizeBytes).toBe(stand.streamedBytes);
+    // The metadata and poster still come back; only the file itself does not.
+    expect(stand.result!.posterBytes).toBeGreaterThan(0);
+    expect(stand.errors).toEqual([]);
   });
 });

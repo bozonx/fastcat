@@ -18,6 +18,8 @@ export interface EmbedCapabilities {
   webcodecs: boolean;
   opfs: boolean;
   sharedArrayBuffer: boolean;
+  /** Storage the browser is willing to grant, when it will say. */
+  storageQuotaBytes: number | null;
 }
 
 export type EmbedAssetKind = 'video' | 'audio' | 'image';
@@ -60,24 +62,61 @@ export interface EmbedInitPayload {
    * emitted them. Opaque to the host: it keeps the blob, it does not read it.
    */
   preferences?: unknown;
+  /**
+   * Composition to start from — a host that knows it is producing a 9:16 story
+   * should say so, rather than letting the first clip decide.
+   */
+  projectDefaults?: EmbedProjectDefaults;
+  assetTransport?: EmbedAssetTransportKind;
+  output?: EmbedOutputMode;
 }
 
 export interface EmbedExportMeta {
   filename: string;
   mimeType: string;
   sizeBytes: number;
+  /** Read back off the finished file, so it always matches the actual bytes. */
+  width: number | null;
+  height: number | null;
+  durationMs: number | null;
+  fps: number | null;
 }
+
+/** Composition settings the host wants the session to start from. */
+export interface EmbedProjectDefaults {
+  width?: number;
+  height?: number;
+  fps?: number;
+  sampleRate?: number;
+}
+
+/**
+ * How the editor gets at an asset's bytes. `url` reads directly over range
+ * requests and is what you want; `host` is for sources that cannot be exposed
+ * over CORS, or files the host already holds.
+ */
+export type EmbedAssetTransportKind = 'url' | 'host';
+
+/**
+ * Where a finished render goes. `blob` hands the file back over the channel;
+ * `upload` streams it to a presigned URL the host supplies, which keeps very
+ * large renders out of the message path entirely.
+ */
+export type EmbedOutputMode = 'blob' | 'upload';
 
 /** Messages the host is allowed to send to the editor. */
 export interface HostToEditorMessages {
   init: EmbedInitPayload;
+  /** Adds an asset to a session that is already running. */
+  'asset:add': { assets: EmbedAsset[] };
   /** A replacement URL for an asset whose signed URL expired. */
   'asset:url': { assetId: string; url: string };
   /** Answer to a `stt:request` or `llm:request`, matched by `requestId`. */
   'rpc:result': { requestId: string; result?: unknown; error?: string };
   /** Asks the editor to emit the current timeline without waiting for a debounce. */
   'save:request': undefined;
-  'export:start': { filename?: string } | undefined;
+  'export:start': { filename?: string; uploadUrl?: string } | undefined;
+  'export:cancel': undefined;
   'export:ack': undefined;
   dispose: undefined;
 }
@@ -117,7 +156,12 @@ export interface EditorToHostMessages {
   /** Preferences worth storing against the user's profile. Treat as opaque. */
   'preferences:changed': unknown;
   'export:progress': { phase: string | null; progress: number };
-  'export:done': { file: File; meta: EmbedExportMeta };
+  /**
+   * `file` is omitted in `upload` mode, where the editor streamed the render to
+   * the host's presigned URL instead. `otio` is the timeline that produced it,
+   * so the host can offer "edit again" rather than starting over.
+   */
+  'export:done': { file?: File; poster: Blob | null; otio: string; meta: EmbedExportMeta };
   'export:error': { message: string };
   /**
    * Cleanup finished. Sent last, after the final `change` and
@@ -126,7 +170,14 @@ export interface EditorToHostMessages {
    */
   disposed: undefined;
   error: { code: string; message: string };
+  /** The user asked to close the editor from inside it. */
   requestClose: undefined;
+  /**
+   * The editor would like a different height — the touch shell in particular
+   * needs vertical room for a monitor, a timeline and its drawers. Advisory:
+   * the host owns its own layout and may ignore it.
+   */
+  'resize-request': { minHeightPx: number };
 }
 
 export type HostToEditorType = keyof HostToEditorMessages;
