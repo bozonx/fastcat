@@ -1,4 +1,5 @@
 import { createDevLogger } from '~/utils/dev-logger';
+import { withFileIoSlot } from '~/utils/io/io-governor';
 
 const log = createDevLogger('embed-asset-transport');
 
@@ -9,6 +10,7 @@ export interface EmbedAssetTransport {
   readonly id: string;
   /** Total size in bytes, or null when the server refuses to say. */
   getSize: () => Promise<number | null>;
+  getContentType: () => Promise<string | null>;
   readRange: (start: number, endExclusive: number) => Promise<Uint8Array>;
   dispose: () => void;
 }
@@ -41,6 +43,7 @@ function isExpiredResponse(response: Response): boolean {
 export function createUrlTransport(options: UrlTransportOptions): EmbedAssetTransport {
   let currentUrl = options.url;
   let cachedSize: number | null | undefined;
+  let cachedContentType: string | null | undefined;
   let refreshInFlight: Promise<string> | null = null;
 
   async function refreshUrl(): Promise<boolean> {
@@ -61,10 +64,12 @@ export function createUrlTransport(options: UrlTransportOptions): EmbedAssetTran
   }
 
   async function fetchWithRefresh(init: RequestInit): Promise<Response> {
-    const response = await fetch(currentUrl, { ...init, signal: options.signal });
+    const response = await withFileIoSlot(() =>
+      fetch(currentUrl, { ...init, signal: options.signal }),
+    );
     if (!isExpiredResponse(response)) return response;
     if (!(await refreshUrl())) return response;
-    return fetch(currentUrl, { ...init, signal: options.signal });
+    return withFileIoSlot(() => fetch(currentUrl, { ...init, signal: options.signal }));
   }
 
   return {
@@ -81,6 +86,7 @@ export function createUrlTransport(options: UrlTransportOptions): EmbedAssetTran
       }
 
       const contentRange = response.headers.get('Content-Range');
+      cachedContentType = response.headers.get('Content-Type')?.split(';')[0]?.trim() || null;
       const total = contentRange?.split('/')[1];
       cachedSize = total && total !== '*' ? Number(total) : null;
 
@@ -93,6 +99,11 @@ export function createUrlTransport(options: UrlTransportOptions): EmbedAssetTran
 
       void response.body?.cancel();
       return cachedSize;
+    },
+
+    async getContentType() {
+      if (cachedContentType === undefined) await this.getSize();
+      return cachedContentType ?? null;
     },
 
     async readRange(start, endExclusive) {
@@ -116,6 +127,7 @@ export function createUrlTransport(options: UrlTransportOptions): EmbedAssetTran
 
     dispose() {
       cachedSize = undefined;
+      cachedContentType = undefined;
     },
   };
 }
@@ -132,6 +144,7 @@ export function createFileTransport(id: string, file: File): EmbedAssetTransport
   return {
     id,
     getSize: () => Promise.resolve(file.size),
+    getContentType: () => Promise.resolve(file.type || null),
     async readRange(start, endExclusive) {
       return new Uint8Array(await file.slice(start, endExclusive).arrayBuffer());
     },

@@ -1276,7 +1276,8 @@
     "embed": {
       "standaloneNotice": "This editor is meant to be embedded by a host application.",
       "preparing": "Preparing the editor…",
-      "toggleLayout": "Switch layout"
+      "toggleLayout": "Switch layout",
+      "webGpuWarning": "WebGPU is unavailable. Editing continues with reduced rendering performance."
     }
   },
   "timelineCreation": {

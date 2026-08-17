@@ -64,3 +64,12 @@ export function writeLocalStorageString(key: string, value: string) {
     return;
   }
 }
+
+export function removeLocalStorageKey(key: string) {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.removeItem(key);
+  } catch {
+    return;
+  }
+}

@@ -1276,7 +1276,8 @@
     "embed": {
       "standaloneNotice": "Este editor está pensado para incrustarse en una aplicación anfitriona.",
       "preparing": "Preparando el editor…",
-      "toggleLayout": "Cambiar disposición"
+      "toggleLayout": "Cambiar disposición",
+      "webGpuWarning": "WebGPU no está disponible. La edición continúa con un rendimiento de renderizado reducido."
     }
   },
   "timelineCreation": {

@@ -26,6 +26,13 @@ import { useProxyStore } from './proxy.store';
 import { getErrorMessage } from '~/utils/errors';
 import { useRuntimeConfig } from 'nuxt/app';
 import { isInDevelopmentFeaturesEnabled, isPremiumFeaturesEnabled } from '~/utils/features';
+import {
+  readLocalStorageJson,
+  readLocalStorageString,
+  removeLocalStorageKey,
+  writeLocalStorageJson,
+  writeLocalStorageString,
+} from '~/stores/ui/uiLocalStorage';
 const log = createDevLogger('workspace.store');
 
 export interface RecentProject {
@@ -55,24 +62,12 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const error = ref<string | null>(null);
   const isInitializing = ref(true);
   const isEphemeral = ref(false);
-  const lastProjectName = ref<string | null>(
-    typeof window !== 'undefined' ? localStorage.getItem('fastcat_last_project_name') : null,
-  );
-  const lastProjectPath = ref<string | null>(
-    typeof window !== 'undefined' ? localStorage.getItem('fastcat_last_project_path') : null,
-  );
+  const lastProjectName = ref<string | null>(readLocalStorageString('fastcat_last_project_name'));
+  const lastProjectPath = ref<string | null>(readLocalStorageString('fastcat_last_project_path'));
 
-  const recentProjects = ref<RecentProject[]>([]);
-  if (typeof window !== 'undefined') {
-    const saved = localStorage.getItem('fastcat_recent_projects');
-    if (saved) {
-      try {
-        recentProjects.value = JSON.parse(saved);
-      } catch {
-        // ignore
-      }
-    }
-  }
+  const recentProjects = ref<RecentProject[]>(
+    readLocalStorageJson<RecentProject[]>('fastcat_recent_projects', []),
+  );
 
   const settingsModule = createWorkspaceSettingsModule({ settingsRepo });
   const {
@@ -188,13 +183,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   } = projectsModule;
 
   watch(lastProjectName, (v) => {
-    if (typeof window !== 'undefined') {
-      if (v) {
-        localStorage.setItem('fastcat_last_project_name', v);
-      } else {
-        localStorage.removeItem('fastcat_last_project_name');
-      }
-    }
+    if (v) writeLocalStorageString('fastcat_last_project_name', v);
+    else removeLocalStorageKey('fastcat_last_project_name');
     if (isEphemeral.value) return;
     void batchUpdateWorkspaceState((draft) => {
       draft.ui.lastProjectName = v;
@@ -202,21 +192,14 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   });
 
   watch(lastProjectPath, (v) => {
-    if (typeof window !== 'undefined') {
-      if (v) {
-        localStorage.setItem('fastcat_last_project_path', v);
-      } else {
-        localStorage.removeItem('fastcat_last_project_path');
-      }
-    }
+    if (v) writeLocalStorageString('fastcat_last_project_path', v);
+    else removeLocalStorageKey('fastcat_last_project_path');
   });
 
   watch(
     recentProjects,
     (v) => {
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('fastcat_recent_projects', JSON.stringify(v));
-      }
+      writeLocalStorageJson('fastcat_recent_projects', v);
       if (isEphemeral.value) return;
       void batchUpdateWorkspaceState((draft) => {
         draft.ui.recentProjects = [...v];
@@ -401,11 +384,9 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     lastProjectPath.value = null;
     error.value = null;
 
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('fastcat_last_project_name');
-      localStorage.removeItem('fastcat_last_project_path');
-      localStorage.removeItem('fastcat_recent_projects');
-    }
+    removeLocalStorageKey('fastcat_last_project_name');
+    removeLocalStorageKey('fastcat_last_project_path');
+    removeLocalStorageKey('fastcat_recent_projects');
 
     resetSettingsState();
     resetWorkspaceState();

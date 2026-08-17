@@ -4,6 +4,7 @@ import type { FastCatUserSettings } from '~/utils/settings';
 import { getMimeTypeFromFilename } from '~/utils/media-types';
 import { withFileIoSlot } from '~/utils/io/io-governor';
 import { createDevLogger } from '~/utils/dev-logger';
+import { callHostRpc, isHostRpcAvailable } from '~/utils/embed/host-rpc';
 
 export type { TranscriptionRequest, TranscriptionResult };
 
@@ -101,6 +102,34 @@ export async function transcribeAudioFile(
     });
   }
 
+  const file =
+    input.file instanceof File
+      ? input.file
+      : await withFileIoSlot(async () => (input.file as FileSystemFileHandle).getFile());
+  const language = normalizeLanguage(input.language);
+  const models = normalizeModels(input.userSettings.integrations.stt.models);
+  const contentType = normalizeFileType(input.fileType, file);
+
+  if (isHostRpcAvailable()) {
+    input.onProgress?.(0);
+    const result = await callHostRpc(
+      'stt',
+      {
+        file,
+        fileName: input.fileName,
+        filePath: input.filePath,
+        contentType,
+        language,
+        provider,
+        models,
+        settings: input.userSettings.integrations.stt,
+      },
+      { signal: input.signal },
+    );
+    input.onProgress?.(1);
+    return result as TranscriptionResult;
+  }
+
   const resolvedConfig = resolveExternalServiceConfig({
     service: 'stt',
     integrations: input.userSettings.integrations,
@@ -115,14 +144,6 @@ export async function transcribeAudioFile(
   if (!resolvedConfig || !endpoint) {
     throw new Error('STT integration is not configured');
   }
-
-  const file =
-    input.file instanceof File
-      ? input.file
-      : await withFileIoSlot(async () => (input.file as FileSystemFileHandle).getFile());
-  const language = normalizeLanguage(input.language);
-  const models = normalizeModels(input.userSettings.integrations.stt.models);
-  const contentType = normalizeFileType(input.fileType, file);
 
   const body = file;
   const headers = createRequestHeaders({

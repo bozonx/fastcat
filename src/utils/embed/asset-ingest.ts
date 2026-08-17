@@ -7,62 +7,6 @@ const log = createDevLogger('embed-asset-ingest');
 /** Bytes pulled per network round trip while materialising an asset. */
 const DOWNLOAD_CHUNK_BYTES = 4 * 1024 * 1024;
 
-export interface EmbedAssetMetadata {
-  durationSec: number | null;
-  width: number | null;
-  height: number | null;
-}
-
-/**
- * Reads an asset's duration and dimensions straight off the network, without
- * materialising the file first.
- *
- * This is what lets the editor open with the clips already on the timeline
- * instead of a spinner: a container's header and index are a tiny fraction of
- * a video, and Mediabunny's `CustomSource` fetches exactly the ranges it needs
- * to parse them. A full download would gate the first frame on the whole file.
- */
-export async function probeAssetMetadata(
-  transport: EmbedAssetTransport,
-): Promise<EmbedAssetMetadata | null> {
-  const size = await transport.getSize();
-  if (!size) {
-    log.warn(`Asset ${transport.id} has no known size; skipping the metadata probe`);
-    return null;
-  }
-
-  const { Input, CustomSource, ALL_FORMATS } = await import('mediabunny');
-
-  const source = new CustomSource({
-    getSize: () => size,
-    read: (start, end) => transport.readRange(start, end),
-    // Reads here are network round trips, so let Mediabunny batch them
-    // aggressively rather than issuing one request per structure it parses.
-    prefetchProfile: 'network',
-  });
-
-  const input = new Input({ source, formats: ALL_FORMATS });
-  try {
-    const durationSec = await input.computeDuration().catch(() => null);
-    const videoTrack = await input.getPrimaryVideoTrack().catch(() => null);
-
-    return {
-      durationSec: Number.isFinite(durationSec) ? (durationSec as number) : null,
-      width: videoTrack?.displayWidth ?? null,
-      height: videoTrack?.displayHeight ?? null,
-    };
-  } catch (e) {
-    log.warn(`Failed to probe metadata for ${transport.id}`, e);
-    return null;
-  } finally {
-    try {
-      await input.dispose();
-    } catch {
-      // Disposal failures are not worth surfacing over a metadata probe.
-    }
-  }
-}
-
 /** Narrows the buffer type the File System API insists on. */
 function toWritableChunk(chunk: Uint8Array): ArrayBufferView<ArrayBuffer> {
   return chunk as unknown as ArrayBufferView<ArrayBuffer>;

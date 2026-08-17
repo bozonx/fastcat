@@ -84,6 +84,7 @@ feature warnings instead of blocking the basic editor shell.
 ### WebGPU Compatibility & Dev Testing
 
 When WebGPU is missing or disabled in the browser, the web application (`!isTauriRuntime()`) automatically runs in WebGL fallback mode and presents a WebGPU Gate Modal detailing:
+
 - Shader and transition limitations under WebGL.
 - Browser-specific instructions for enabling WebGPU flags (e.g. `chrome://flags/#enable-unsafe-webgpu` or `about:config` `dom.webgpu.enabled`).
 - A button to copy the flag URL directly to the clipboard.
@@ -98,6 +99,7 @@ You can simulate different browser environments and WebGPU support states during
 - `?mock_browser=chrome` | `edge` | `firefox` | `safari`: Overrides browser detection to test flag instructions for specific browsers.
 
 Examples:
+
 - `http://localhost:3000/?mock_gpu=none` (Test WebGPU modal in Chrome)
 - `http://localhost:3000/?mock_gpu=none&mock_browser=firefox` (Test Firefox `about:config` instructions)
 
@@ -184,14 +186,14 @@ newer host can still talk to an older editor.
 ### Session storage and cleanup
 
 Every session writes under `fastcat-embed/<sessionId>/` and takes an exclusive
-Web Lock for its lifetime, *before* registering itself. Cleanup then runs on the
+Web Lock for its lifetime, _before_ registering itself. Cleanup then runs on the
 way **in**, not on the way out: an unload handler cannot reliably finish an
 asynchronous OPFS delete, and a killed tab never runs one at all, whereas a lock
 that can be taken instantly proves no live context is behind that session. New
 sessions sweep the leftovers and report the count to the host in `initialized`.
 A heartbeat in the session registry carries the same job on browsers with no Web
 Locks. `navigator.storage.persist()` is deliberately never requested — an
-ephemeral cache should be the *first* thing a browser evicts.
+ephemeral cache should be the _first_ thing a browser evicts.
 
 ### Assets
 
@@ -207,12 +209,13 @@ editor emits `asset:url-expired`, the host answers with `asset:url`, and reads
 resume where they stopped — concurrent readers share a single refresh rather
 than storming the host.
 
-Metadata is probed straight off the network through Mediabunny's `CustomSource`,
-so a broken or undecodable asset fails before any bytes reach storage. Each
-asset is then materialised in chunks through the shared file-I/O budget and
-placed on the timeline as it lands, so with several assets the user starts
-trimming the first while the rest are still arriving. Export stays gated until
-ingest is quiet — a still-arriving source would render as a truncated clip.
+The initial range probe returns both size and `Content-Type`, so extensionless
+signed URLs still land in the correct media directory. Assets are materialised
+one at a time in chunks; both network reads and OPFS writes use the shared I/O
+budget. Each completed asset is placed after the current timeline duration by
+default, while `track` and `startAt` let the host override its destination.
+Export stays gated until ingest is quiet — a still-arriving source would render
+as a truncated clip.
 
 ### Preferences and host-run work
 
@@ -221,7 +224,7 @@ as an opaque versioned blob (`src/utils/embed/synced-settings.ts`) and come back
 in the next `init`. Storing them host-side is what makes them survive a
 third-party storage purge or a change of device; panel sizes and scroll offsets
 stay local because they are derived from a viewport and cost nothing to lose.
-A payload from a *newer* editor is ignored rather than merged.
+A payload from a _newer_ editor is ignored rather than merged.
 
 Speech-to-text and language-model work is the host's to run — it already holds
 the credentials, and an editor that carried an API key would hand that key to
@@ -238,30 +241,30 @@ versions on `ready` and reports the mismatch instead of guessing at shapes.
 
 **Host → editor**
 
-| Message | Purpose |
-| --- | --- |
-| `init` | locale, layout, features, assets, preferences, `projectDefaults`, `assetTransport`, `output` |
-| `asset:add` | adds assets to a running session |
-| `asset:url` | a replacement URL for one that expired |
-| `rpc:result` | answers an `stt:request` / `llm:request`, matched by `requestId` |
-| `save:request` | asks for the timeline now, bypassing the change debounce |
-| `export:start` / `export:cancel` | begins or aborts a render |
-| `export:ack` | the render has been read; the editor may release it |
-| `dispose` | end the session and clean up |
+| Message                          | Purpose                                                                                      |
+| -------------------------------- | -------------------------------------------------------------------------------------------- |
+| `init`                           | locale, layout, features, assets, preferences, `projectDefaults`, `assetTransport`, `output` |
+| `asset:add`                      | adds assets to a running session                                                             |
+| `asset:url`                      | a replacement URL for one that expired                                                       |
+| `rpc:result`                     | answers an `stt:request` / `llm:request`, matched by `requestId`                             |
+| `save:request`                   | asks for the timeline now, bypassing the change debounce                                     |
+| `export:start` / `export:cancel` | begins or aborts a render                                                                    |
+| `export:ack`                     | the render has been read; the editor may release it                                          |
+| `dispose`                        | end the session and clean up                                                                 |
 
 **Editor → host**
 
-| Message | Purpose |
-| --- | --- |
-| `ready` | protocol version + capabilities (WebGPU, WebCodecs, OPFS, SAB, storage quota) |
-| `initialized` | asset count, duration, chosen layout, sessions reclaimed on the way in |
-| `asset:progress` / `asset:url-expired` | import progress; a URL that stopped authorising |
-| `stt:request` / `llm:request` | work for the host to run with its own credentials |
-| `change` | `dirty` plus the full timeline as OTIO |
-| `preferences:changed` | opaque blob to store against the user's profile |
-| `export:progress` / `export:done` / `export:error` | render lifecycle |
-| `requestClose` / `resize-request` | the editor asks; the host owns the frame |
-| `disposed` | cleanup finished — sent last, after the final `change` |
+| Message                                            | Purpose                                                                       |
+| -------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `ready`                                            | protocol version + capabilities (WebGPU, WebCodecs, OPFS, SAB, storage quota) |
+| `initialized`                                      | asset count, duration, chosen layout, sessions reclaimed on the way in        |
+| `asset:progress` / `asset:url-expired`             | import progress; a URL that stopped authorising                               |
+| `stt:request` / `llm:request`                      | work for the host to run with its own credentials                             |
+| `change`                                           | `dirty` plus the full timeline as OTIO                                        |
+| `preferences:changed`                              | opaque blob to store against the user's profile                               |
+| `export:progress` / `export:done` / `export:error` | render lifecycle                                                              |
+| `requestClose` / `resize-request`                  | the editor asks; the host owns the frame                                      |
+| `disposed`                                         | cleanup finished — sent last, after the final `change`                        |
 
 `export:done` carries the render (`file`), a poster frame, the OTIO that produced
 it, and metadata read back **off the finished file** rather than off the export

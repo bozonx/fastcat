@@ -13,6 +13,7 @@ const projectStore = useProjectStore();
 const { isEnabled } = useEmbedFeatures();
 
 const editorRoot = ref<InstanceType<typeof EditorRoot> | null>(null);
+const hasWebGpu = typeof navigator !== 'undefined' && !!navigator.gpu;
 
 /** Views the host switched on, in the order the toolbar shows them. */
 const desktopViews = computed(() => {
@@ -88,6 +89,15 @@ onMounted(() => {
     </div>
 
     <template v-else>
+      <div
+        v-if="!hasWebGpu"
+        class="flex items-start gap-2 border-b border-warning-500/30 bg-warning-500/10 px-3 py-2 text-sm text-warning-100"
+        data-testid="embed-webgpu-warning"
+        role="status"
+      >
+        <UIcon name="i-heroicons-exclamation-triangle" class="mt-0.5 size-4 shrink-0" />
+        <span>{{ t('fastcat.embed.webGpuWarning') }}</span>
+      </div>
       <header
         class="flex items-center gap-2 px-3 py-2 border-b border-ui-border shrink-0"
         data-testid="embed-toolbar"

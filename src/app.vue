@@ -91,7 +91,7 @@ onUnmounted(() => {
   }
 });
 
-useConfirmClose();
+if (!isEmbedRuntime()) useConfirmClose();
 
 // Apply interface scale dynamically
 watchEffect(() => {

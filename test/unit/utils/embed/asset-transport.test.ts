@@ -5,12 +5,13 @@ import { createFileTransport, createUrlTransport } from '~/utils/embed/asset-tra
 const mockFetch = vi.fn();
 vi.stubGlobal('fetch', mockFetch);
 
-function rangeResponse(bytes: Uint8Array, total: number, start = 0) {
+function rangeResponse(bytes: Uint8Array, total: number, start = 0, contentType?: string) {
   return {
     ok: true,
     status: 206,
     headers: new Headers({
       'Content-Range': `bytes ${start}-${start + bytes.length - 1}/${total}`,
+      ...(contentType ? { 'Content-Type': contentType } : {}),
     }),
     arrayBuffer: async () => bytes.buffer,
     body: null,
@@ -21,12 +22,23 @@ beforeEach(() => mockFetch.mockReset());
 
 describe('url transport', () => {
   it('reads the total size out of Content-Range', async () => {
-    mockFetch.mockResolvedValueOnce(rangeResponse(new Uint8Array([1]), 4096));
+    mockFetch.mockResolvedValueOnce(rangeResponse(new Uint8Array([1]), 4096, 0, 'video/mp4'));
 
     const transport = createUrlTransport({ id: 'a', url: 'https://example.com/v.mp4' });
     expect(await transport.getSize()).toBe(4096);
+    expect(await transport.getContentType()).toBe('video/mp4');
     // Probing twice must not cost a second round trip.
     expect(await transport.getSize()).toBe(4096);
+    expect(mockFetch).toHaveBeenCalledOnce();
+  });
+
+  it('returns the MIME type for an extensionless signed URL from the same probe', async () => {
+    mockFetch.mockResolvedValueOnce(
+      rangeResponse(new Uint8Array([1]), 4096, 0, 'audio/ogg; charset=binary'),
+    );
+
+    const transport = createUrlTransport({ id: 'a', url: 'https://example.com/signed' });
+    expect(await transport.getContentType()).toBe('audio/ogg');
     expect(mockFetch).toHaveBeenCalledOnce();
   });
 
@@ -100,6 +112,7 @@ describe('file transport', () => {
     const transport = createFileTransport('a', file);
 
     expect(await transport.getSize()).toBe(4);
+    expect(await transport.getContentType()).toBeNull();
     expect(Array.from(await transport.readRange(1, 3))).toEqual([8, 7]);
   });
 });

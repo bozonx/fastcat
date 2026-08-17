@@ -1,4 +1,5 @@
 import { createDevLogger } from '~/utils/dev-logger';
+import type { EmbedExportMeta } from '~embed';
 
 const log = createDevLogger('embed-export-summary');
 
@@ -6,16 +7,6 @@ const log = createDevLogger('embed-export-summary');
 const POSTER_MAX_WIDTH = 1280;
 /** Seconds into the render to grab the poster from; avoids fade-ins from black. */
 const POSTER_TARGET_S = 0.5;
-
-export interface EmbedExportMeta {
-  filename: string;
-  mimeType: string;
-  sizeBytes: number;
-  width: number | null;
-  height: number | null;
-  durationMs: number | null;
-  fps: number | null;
-}
 
 export interface EmbedExportSummary {
   meta: EmbedExportMeta;

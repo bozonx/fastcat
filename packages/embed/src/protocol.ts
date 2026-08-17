@@ -35,6 +35,10 @@ export interface EmbedAsset {
   file?: File;
   kind?: EmbedAssetKind;
   filename?: string;
+  /** Existing timeline track id to place the asset on. */
+  track?: string;
+  /** Explicit insertion time in seconds. */
+  startAt?: number;
 }
 
 /** Optional capabilities a host switches on for the session. */

@@ -66,6 +66,30 @@ describe('WorkspaceStore', () => {
     expect(store.userSettings.exportPresets.items[0]?.format).toBe('mkv');
   });
 
+  it('survives blocked third-party localStorage', async () => {
+    const securityError = new DOMException('Blocked', 'SecurityError');
+    const getItem = vi.spyOn(localStorage, 'getItem').mockImplementation(() => {
+      throw securityError;
+    });
+    const setItem = vi.spyOn(localStorage, 'setItem').mockImplementation(() => {
+      throw securityError;
+    });
+    const removeItem = vi.spyOn(localStorage, 'removeItem').mockImplementation(() => {
+      throw securityError;
+    });
+
+    setActivePinia(createPinia());
+    const store = useWorkspaceStore();
+    store.lastProjectPath = '/blocked/project';
+    await nextTick();
+    expect(() => store.resetWorkspace()).not.toThrow();
+    expect(store.lastProjectPath).toBeNull();
+
+    getItem.mockRestore();
+    setItem.mockRestore();
+    removeItem.mockRestore();
+  });
+
   it('updates lastProjectName in workspace state', async () => {
     const store = useWorkspaceStore();
     store.lastProjectName = 'test-project';

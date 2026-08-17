@@ -8,11 +8,11 @@ import { useAddMediaToTimeline } from '~/composables/timeline/useAddMediaToTimel
 import { useExportForm } from '~/composables/timeline/export/useExportForm';
 import { resolveAssetPlacement } from '~/utils/external-assets.service';
 import { createFileTransport, createUrlTransport } from '~/utils/embed/asset-transport';
-import { downloadAssetToFile, probeAssetMetadata } from '~/utils/embed/asset-ingest';
+import { downloadAssetToFile } from '~/utils/embed/asset-ingest';
 import { summariseExport } from '~/utils/embed/export-summary';
 import { EXPORT_DIR_NAME } from '~/utils/constants';
 import { randomToken } from '~/utils/ids';
-import { ticksToSeconds } from '~/utils/time';
+import { secondsToTicksClamped, ticksToSeconds } from '~/utils/time';
 import { createEmbedBridge, type EmbedBridge } from './useEmbedBridge';
 import { setEmbedFeatures } from '~/utils/embed-features';
 import { applySyncedSettings, extractSyncedSettings } from '~/utils/embed/synced-settings';
@@ -107,9 +107,11 @@ export function useEmbedSession() {
 
   /** Resolved once the host acknowledges it has consumed the exported file. */
   let exportAck: (() => void) | null = null;
+  let pendingExportAck: Promise<void> | null = null;
   let exportedFilename: string | null = null;
 
   const isIngesting = ref(false);
+  const hasUnacknowledgedExport = ref(false);
 
   /**
    * Rendering reads every participating source end to end, so an asset that is
@@ -120,6 +122,7 @@ export function useEmbedSession() {
     () =>
       phase.value === 'ready' &&
       !isIngesting.value &&
+      !hasUnacknowledgedExport.value &&
       (timelineStore.timelineDoc?.tracks?.length ?? 0) > 0,
   );
 
@@ -179,15 +182,10 @@ export function useEmbedSession() {
       const assetId = asset.id ?? `asset-${index}`;
       try {
         const transport = createTransport(asset, assetId);
-        // Probing over the network settles size and decodability before any
-        // bytes are committed to storage, so a broken asset fails fast instead
-        // of after a long download.
-        const metadata = await probeAssetMetadata(transport);
-        if (!metadata) log.warn(`No metadata for ${assetId}; importing it anyway`);
-
+        const contentType = await transport.getContentType();
         const placement = resolveAssetPlacement(
           { url: asset.url ?? '', type: asset.kind, filename: asset.filename },
-          null,
+          contentType,
         );
         const fileHandle = await projectStore.getProjectFileHandleByRelativePath({
           relativePath: placement.relativePath,
@@ -195,21 +193,35 @@ export function useEmbedSession() {
         });
         if (!fileHandle) throw new Error(`Cannot create ${placement.relativePath}`);
 
-        await downloadAssetToFile({
-          transport,
-          fileHandle,
-          onProgress: (loadedBytes, totalBytes) => {
-            bridge.value?.send('asset:progress', { assetId, loadedBytes, totalBytes });
-          },
-        });
-        transport.dispose();
+        try {
+          await downloadAssetToFile({
+            transport,
+            fileHandle,
+            onProgress: (loadedBytes, totalBytes) => {
+              bridge.value?.send('asset:progress', { assetId, loadedBytes, totalBytes });
+            },
+          });
+        } finally {
+          transport.dispose();
+        }
 
         // Placement is sequential from the playhead, so the first asset starts
         // at the timeline head and each later one lands after it.
-        if (assetCount.value === 0) timelineStore.setCurrentTimeTicks(0);
-        await addMediaToTimeline([{ name: placement.filename, path: placement.relativePath }], {
-          notifyRedirect: false,
-        });
+        const startTicks =
+          asset.startAt === undefined
+            ? assetCount.value === 0
+              ? 0
+              : timelineStore.duration
+            : secondsToTicksClamped(asset.startAt);
+        timelineStore.setCurrentTimeTicks(startTicks);
+        const wasAdded = await addMediaToTimeline(
+          [{ name: placement.filename, path: placement.relativePath }],
+          {
+            targetTrackId: asset.track,
+            notifyRedirect: false,
+          },
+        );
+        if (!wasAdded) throw new Error(`Cannot place ${assetId} on the timeline`);
         assetCount.value += 1;
       } catch (e) {
         log.error(`Failed to import asset ${assetId}`, e);
@@ -295,7 +307,7 @@ export function useEmbedSession() {
   }
 
   async function startExport(options?: { filename?: string; uploadUrl?: string }) {
-    if (phase.value !== 'ready') {
+    if (phase.value !== 'ready' || hasUnacknowledgedExport.value) {
       log.warn('Ignoring export request in phase', phase.value);
       return;
     }
@@ -327,6 +339,10 @@ export function useEmbedSession() {
         // `File` crosses the boundary by reference to its backing store, so the
         // host streams it straight out of OPFS without the bytes ever being
         // materialised in either page's heap.
+        pendingExportAck = new Promise<void>((resolve) => {
+          exportAck = resolve;
+        });
+        hasUnacknowledgedExport.value = true;
         bridge.value?.send('export:done', { file, poster, otio, meta });
       });
 
@@ -364,6 +380,8 @@ export function useEmbedSession() {
   async function acknowledgeExport() {
     exportAck?.();
     exportAck = null;
+    pendingExportAck = null;
+    hasUnacknowledgedExport.value = false;
 
     if (!exportedFilename) return;
     const filename = exportedFilename;
@@ -386,6 +404,10 @@ export function useEmbedSession() {
 
     registerHostRpc(null);
     const farewellBridge = bridge.value;
+
+    // The host may issue dispose as soon as it sees export:done. Keep OPFS
+    // alive until it confirms the File has actually been consumed.
+    await pendingExportAck;
 
     stopHeartbeat?.();
     stopHeartbeat = null;
