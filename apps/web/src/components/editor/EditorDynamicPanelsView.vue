@@ -8,6 +8,7 @@ import { ref, computed } from 'vue';
 import type { EditorPanelEvents, SplitResizeEvent } from '~/types/editor-panels';
 
 interface Props {
+  embedded?: boolean;
   view: 'cut' | 'sound';
   columns: PanelColumn[];
   topSizes: number[];
@@ -154,6 +155,7 @@ function shouldStartPanelDrag(event: PointerEvent) {
               <EditorDynamicPanelContent
                 :panel="panel"
                 :view="view"
+                :embedded="embedded"
                 :focus-panel-id="getFocusId(panel.id)"
                 @focus="(panelId) => emit('focus', panelId)"
                 @close="(targetPanel, targetView) => emit('close', targetPanel, targetView)"

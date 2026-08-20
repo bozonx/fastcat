@@ -196,6 +196,14 @@ test.describe('Embed: host integration', () => {
     await expect(frame.getByTestId('embed-view-export')).toBeVisible();
     await expect(frame.getByTestId('embed-view-files')).toHaveCount(0);
     await expect(frame.getByTestId('embed-view-sound')).toHaveCount(0);
+
+    // The embedded workspace is owned by the host, so it must not expose its
+    // transient file browser or backups. Editing tabs remain available.
+    await expect(frame.locator('[data-tab-id="files"]')).toHaveCount(0);
+    await expect(frame.locator('[data-tab-id="backups"]')).toHaveCount(0);
+    await expect(frame.locator('[data-tab-id="effects"]')).toBeVisible();
+    await expect(frame.locator('[data-tab-id="markers"]')).toBeVisible();
+    await expect(frame.locator('[data-panel-id]')).toHaveCount(3);
   });
 
   test('switches shells on request without losing the session', async ({ page }) => {

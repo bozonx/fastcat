@@ -22,11 +22,14 @@ const props = withDefaults(
     useExternalFocus?: boolean;
     compact?: boolean;
     fileManagerInstanceId?: string;
+    /** The embed has no project filesystem or session-local backup surface. */
+    embedded?: boolean;
   }>(),
   {
     useExternalFocus: false,
     compact: false,
     fileManagerInstanceId: 'fileManager',
+    embedded: false,
   },
 );
 
@@ -42,14 +45,16 @@ const { activateProjectFocus, activeFileTab, activeStaticComponent } = useProjec
 });
 
 onMounted(() => {
-  registerProjectTab({
-    id: 'files',
-    label: t('videoEditor.fileManager.tabs.files'),
-    icon: 'i-heroicons-folder',
-    component: markRaw(ProjectFilesTab),
-  });
+  if (!props.embedded) {
+    registerProjectTab({
+      id: 'files',
+      label: t('videoEditor.fileManager.tabs.files'),
+      icon: 'i-heroicons-folder',
+      component: markRaw(ProjectFilesTab),
+    });
+  }
 
-  if (workspaceStore.inDevelopmentFeaturesEnabled) {
+  if (workspaceStore.inDevelopmentFeaturesEnabled && !props.embedded) {
     registerProjectTab({
       id: 'history',
       label: t('videoEditor.fileManager.tabs.history'),
@@ -65,7 +70,7 @@ onMounted(() => {
     component: markRaw(ProjectEffects),
   });
 
-  if (workspaceStore.inDevelopmentFeaturesEnabled) {
+  if (workspaceStore.inDevelopmentFeaturesEnabled && !props.embedded) {
     registerProjectTab({
       id: 'library',
       label: t('videoEditor.fileManager.tabs.library'),
@@ -81,7 +86,7 @@ onMounted(() => {
     component: markRaw(ProjectMarkers),
   });
 
-  if (workspaceStore.inDevelopmentFeaturesEnabled) {
+  if (workspaceStore.inDevelopmentFeaturesEnabled && !props.embedded) {
     registerProjectTab({
       id: 'backups',
       label: t('videoEditor.timeline.backups.tabLabel'),

@@ -334,8 +334,8 @@ export function createFastcatEmbed(options: FastcatEmbedOptions): FastcatEmbed {
       ensureState('start an export', ['active']);
       if (exportOptions?.filename && !isSafeEmbedFilename(exportOptions.filename))
         throw new Error('protocol-invalid-payload: Invalid export filename.');
-      state = 'exporting';
       send('export:start', exportOptions);
+      state = 'exporting';
     },
     cancelExport() {
       ensureState('cancel an export', ['exporting']);

@@ -20,11 +20,13 @@ const props = withDefaults(
     layout?: LayoutModePreference;
     mobileTabs?: MobileShellTab[];
     navMode?: 'routed' | 'embedded';
+    embedded?: boolean;
   }>(),
   {
     layout: 'auto',
     mobileTabs: () => ['files', 'edit', 'export', 'settings'],
     navMode: 'embedded',
+    embedded: false,
   },
 );
 
@@ -40,7 +42,7 @@ defineExpose({ mode, isResolved, toggle });
     class="h-full w-full min-h-0 min-w-0"
     :data-layout-mode="mode ?? 'pending'"
   >
-    <DesktopShell v-if="mode === 'desktop'" />
+    <DesktopShell v-if="mode === 'desktop'" :embedded="embedded" />
     <MobileShell v-else-if="mode === 'mobile'" :tabs="mobileTabs" :nav-mode="navMode" />
   </div>
 </template>

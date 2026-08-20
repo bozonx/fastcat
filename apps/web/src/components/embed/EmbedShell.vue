@@ -161,6 +161,7 @@ onMounted(() => {
           :layout="session.layoutPreference.value"
           :mobile-tabs="mobileTabs"
           nav-mode="embedded"
+          embedded
         />
       </div>
     </template>

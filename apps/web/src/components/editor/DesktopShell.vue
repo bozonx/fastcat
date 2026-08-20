@@ -21,6 +21,15 @@ import { computed, ref } from 'vue';
 import EditorTimeline from '~/components/layout-panels/EditorTimeline.vue';
 import UiContextMenuPortal from '~/components/ui/UiContextMenuPortal.vue';
 
+const props = withDefaults(
+  defineProps<{
+    embedded?: boolean;
+  }>(),
+  {
+    embedded: false,
+  },
+);
+
 const projectStore = useProjectStore();
 const focusStore = useFocusStore();
 const selectionStore = useSelectionStore();
@@ -230,6 +239,7 @@ function onMainSplitResize(event: { panes: { size: number }[] }) {
 
           <EditorCutView
             v-else-if="activeEditorView === 'cut'"
+            :embedded="props.embedded"
             :columns="projectStore.cutPanels"
             :top-sizes="topSplitSizes"
             :dragging-panel-id="draggingPanelId"

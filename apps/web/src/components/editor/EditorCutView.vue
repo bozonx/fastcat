@@ -8,6 +8,7 @@ import type { EditorPanelEvents } from '~/types/editor-panels';
 import { createEditorPanelEventListeners } from '~/utils/editor-panels';
 
 interface Props {
+  embedded?: boolean;
   columns: PanelColumn[];
   topSizes: number[];
   draggingPanelId: string | null;
@@ -37,6 +38,7 @@ provide('fileManagerStore', useFileManagerStore());
     left-panel-type="files"
     right-panel-type="monitor"
     view="cut"
+    :embedded="embedded"
     :columns="columns"
     :top-sizes="topSizes"
     :dragging-panel-id="draggingPanelId"

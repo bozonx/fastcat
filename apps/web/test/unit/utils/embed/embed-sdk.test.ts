@@ -125,4 +125,8 @@ describe('embed protocol runtime validation', () => {
       code: 'protocol-invalid-payload',
     });
   });
+
+  it('accepts an export request without optional settings', () => {
+    expect(validateEmbedMessage('host', 'export:start', undefined)).toEqual({ ok: true });
+  });
 });

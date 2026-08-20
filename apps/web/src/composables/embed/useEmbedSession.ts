@@ -41,6 +41,13 @@ const log = createDevLogger('embed-session');
 
 const EMBED_PROJECT_NAME = 'session';
 
+/** The embed always starts with a compact desktop-oriented editing workspace. */
+const EMBED_CUT_PANELS = [
+  { id: 'embed-project', panels: [{ id: 'fileManager', type: 'fileManager' as const }] },
+  { id: 'embed-monitor', panels: [{ id: 'monitor', type: 'monitor' as const }] },
+  { id: 'embed-properties', panels: [{ id: 'properties', type: 'properties' as const }] },
+];
+
 /**
  * Preferences change in bursts — dragging a slider fires on every frame — so
  * they settle before the host hears about them.
@@ -314,6 +321,14 @@ export function useEmbedSession() {
       if (!projectStore.currentProjectName) {
         throw new Error('Failed to create the embedded session project');
       }
+
+      // Embed sessions have no project-level file manager. Keep the project
+      // panel, monitor and properties side by side regardless of media aspect
+      // ratio, rather than inheriting the portrait layout that stacks panels.
+      projectStore.cutPanels = EMBED_CUT_PANELS.map((column) => ({
+        ...column,
+        panels: column.panels.map((panel) => ({ ...panel })),
+      }));
 
       if (payload.initialProject) {
         const timelinePath = projectStore.currentTimelinePath;

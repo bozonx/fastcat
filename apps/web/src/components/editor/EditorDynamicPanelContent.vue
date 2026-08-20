@@ -22,6 +22,7 @@ interface Props {
   panel: DynamicPanel;
   view: 'cut' | 'sound';
   focusPanelId: PanelFocusId;
+  embedded?: boolean;
 }
 
 const props = defineProps<Props>();
@@ -249,6 +250,7 @@ const detachedStaticPanelContextMenuItems = computed(() => {
         :use-external-focus="true"
         :compact="view === 'cut'"
         :file-manager-instance-id="panel.id"
+        :embedded="embedded"
       />
     </div>
   </div>

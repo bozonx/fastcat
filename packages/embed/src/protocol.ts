@@ -407,6 +407,7 @@ function validPayload(type: string, payload: unknown, direction: 'host' | 'edito
   if (payload === undefined)
     return [
       'save:request',
+      'export:start',
       'export:cancel',
       'export:ack',
       'dispose',
@@ -425,9 +426,10 @@ function validPayload(type: string, payload: unknown, direction: 'host' | 'edito
     return isRecord(payload) && typeof payload.assetId === 'string' && isSafeHttpUrl(payload.url);
   if (type === 'export:start')
     return (
-      isRecord(payload) &&
-      (payload.filename === undefined || isSafeEmbedFilename(payload.filename)) &&
-      (payload.uploadUrl === undefined || isSafeHttpUrl(payload.uploadUrl))
+      payload === undefined ||
+      (isRecord(payload) &&
+        (payload.filename === undefined || isSafeEmbedFilename(payload.filename)) &&
+        (payload.uploadUrl === undefined || isSafeHttpUrl(payload.uploadUrl)))
     );
   if (type === 'rpc:result')
     return (
