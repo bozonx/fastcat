@@ -22,3 +22,8 @@ not_found_handling = "single-page-application"
 # Let the Worker run for every request so it can attach isolation headers even
 # when an asset exists (default would short-circuit static hits before the Worker).
 run_worker_first = true
+
+routes = [
+  { pattern = "app.fastcat.video", custom_domain = true },
+  { pattern = "embed.fastcat.video", custom_domain = true }
+]

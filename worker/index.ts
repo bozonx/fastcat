@@ -1,46 +1,79 @@
 // Cloudflare Worker entry: serves the pre-built static SPA from the ASSETS
-// binding and stamps cross-origin isolation headers on every response.
+// binding and stamps appropriate isolation / embed headers on every response.
 //
-// COOP/COEP make the document cross-origin isolated, which is required for
-// `SharedArrayBuffer` (the coordinated OPFS I/O budget, WASM threads, etc.).
-// COEP `require-corp` additionally demands that every subresource carry CORP or
-// CORS — all of FastCat's subresources are same-origin (fonts vendored under
-// /fonts/, icons inlined into the bundle), so a same-origin CORP on every
-// response satisfies it without breaking anything.
-//
-// Cloudflare Workers ignore `public/_headers` (that's a Pages/Netlify feature),
-// so this is the single source of truth for isolation headers on the Worker
-// deploy target. Keep it in sync with `public/_headers` and the dev/preview
-// middleware in `nuxt.config.ts`.
+// Dual-domain architecture:
+// 1. `app.fastcat.video` (Standalone app):
+//    COOP/COEP make the document cross-origin isolated, which is required for
+//    `SharedArrayBuffer` (the coordinated OPFS I/O budget, WASM threads, etc.).
+// 2. `embed.fastcat.video` (and `/embed` routes):
+//    Opts OUT of isolation (`unsafe-none`) so third-party host pages can embed
+//    the editor without adopting COOP/COEP. Root requests to `embed.fastcat.video/`
+//    are transparently routed to the `/embed` asset.
 
-interface Env {
+export interface Env {
   ASSETS: { fetch: (request: Request) => Promise<Response> };
 }
 
-const ISOLATION_HEADERS: Record<string, string> = {
+export const ISOLATION_HEADERS: Record<string, string> = {
   'Cross-Origin-Opener-Policy': 'same-origin',
   'Cross-Origin-Embedder-Policy': 'require-corp',
   'Cross-Origin-Resource-Policy': 'same-origin',
 };
 
-const IMMUTABLE_PREFIXES = ['/_nuxt/', '/fonts/'];
-const IMMUTABLE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
+export const EMBED_HEADERS: Record<string, string> = {
+  'Cross-Origin-Opener-Policy': 'unsafe-none',
+  'Cross-Origin-Embedder-Policy': 'unsafe-none',
+  'Cross-Origin-Resource-Policy': 'cross-origin',
+  'Access-Control-Allow-Origin': '*',
+};
+
+export const IMMUTABLE_PREFIXES = ['/_nuxt/', '/fonts/'];
+export const IMMUTABLE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
+
+export function isEmbedRequest(url: URL): boolean {
+  return (
+    url.hostname === 'embed.fastcat.video' ||
+    url.pathname === '/embed' ||
+    url.pathname.startsWith('/embed/')
+  );
+}
+
+export function resolveTargetRequest(request: Request, url: URL): Request {
+  if (url.hostname === 'embed.fastcat.video' && url.pathname === '/') {
+    const embedUrl = new URL('/embed', request.url);
+    return new Request(embedUrl.toString(), request);
+  }
+  return request;
+}
+
+export function resolveResponseHeaders(
+  sourceHeaders: Headers,
+  url: URL,
+  isEmbed: boolean,
+): Headers {
+  const headers = new Headers(sourceHeaders);
+  const activeHeaders = isEmbed ? EMBED_HEADERS : ISOLATION_HEADERS;
+
+  for (const [name, value] of Object.entries(activeHeaders)) {
+    headers.set(name, value);
+  }
+
+  if (IMMUTABLE_PREFIXES.some((prefix) => url.pathname.startsWith(prefix))) {
+    headers.set('Cache-Control', IMMUTABLE_CACHE_CONTROL);
+  }
+
+  return headers;
+}
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
-    const assetResponse = await env.ASSETS.fetch(request);
+    const url = new URL(request.url);
+    const isEmbed = isEmbedRequest(url);
+    const targetRequest = resolveTargetRequest(request, url);
 
-    // Response headers from the ASSETS binding are immutable; clone into a
-    // mutable Response so we can attach the isolation + cache headers.
-    const headers = new Headers(assetResponse.headers);
-    for (const [name, value] of Object.entries(ISOLATION_HEADERS)) {
-      headers.set(name, value);
-    }
+    const assetResponse = await env.ASSETS.fetch(targetRequest);
 
-    const { pathname } = new URL(request.url);
-    if (IMMUTABLE_PREFIXES.some((prefix) => pathname.startsWith(prefix))) {
-      headers.set('Cache-Control', IMMUTABLE_CACHE_CONTROL);
-    }
+    const headers = resolveResponseHeaders(assetResponse.headers, url, isEmbed);
 
     return new Response(assetResponse.body, {
       status: assetResponse.status,

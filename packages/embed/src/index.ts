@@ -28,11 +28,30 @@ export interface FastcatEmbedExportResult {
   meta: EmbedExportMeta;
 }
 
+export const DEFAULT_EMBED_ALLOW =
+  'fullscreen; clipboard-read; clipboard-write; autoplay; cross-origin-isolated';
+
 export interface FastcatEmbedOptions {
   /** Element the iframe is appended to. */
   container: HTMLElement;
   /** Absolute URL of the editor's embed route, e.g. `https://embed.fastcat.video/v1/embed`. */
   editorUrl: string;
+  /**
+   * Permissions Policy `allow` attribute for the iframe.
+   * Defaults to {@link DEFAULT_EMBED_ALLOW}.
+   */
+  allow?: string;
+  /**
+   * Optional custom HTML `sandbox` attribute for the iframe.
+   *
+   * By default, FastCat relies on standard cross-origin isolation (Same-Origin Policy)
+   * rather than the `sandbox` attribute, because `sandbox` without `allow-same-origin`
+   * assigns an opaque origin (`null`) that breaks OPFS (`navigator.storage.getDirectory()`).
+   *
+   * If you explicitly provide a sandbox string, it MUST at least include:
+   * `'allow-scripts allow-same-origin allow-downloads allow-forms allow-popups allow-popups-to-escape-sandbox'`
+   */
+  sandbox?: string;
   assets?: EmbedAsset[];
   locale?: string;
   /** Preferences stored from this user's previous session, opaque to the host. */
@@ -106,7 +125,10 @@ export function createFastcatEmbed(options: FastcatEmbedOptions): FastcatEmbed {
 
   const iframe = document.createElement('iframe');
   iframe.src = buildEmbedUrl(options.editorUrl, { nonce, hostOrigin: window.location.origin });
-  iframe.allow = 'fullscreen; clipboard-write; autoplay';
+  iframe.allow = options.allow ?? DEFAULT_EMBED_ALLOW;
+  if (options.sandbox) {
+    iframe.setAttribute('sandbox', options.sandbox);
+  }
   iframe.style.width = '100%';
   iframe.style.height = '100%';
   iframe.style.border = '0';

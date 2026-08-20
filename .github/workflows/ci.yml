@@ -1,7 +1,6 @@
-name: CI (Native)
+name: CI & Deploy
 
-# GitHub Actions workflow for Native (Tauri / Rust) builds and checks.
-# Web application checks and deployments are handled directly by Cloudflare CI.
+# GitHub Actions workflow for full-stack CI (Native + Web) and Cloudflare Workers Assets deployment.
 
 on:
   push:
@@ -10,7 +9,7 @@ on:
     branches: [main, master]
 
 concurrency:
-  group: ci-native-${{ github.ref }}
+  group: ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -78,11 +77,35 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: bash scripts/ci.sh rust
 
+  # ── Deploy: Cloudflare Workers with Static Assets ──
+  deploy:
+    name: Deploy (Cloudflare Workers)
+    needs: [static, unit, integration-web, rust]
+    if: (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build static SPA assets
+        run: pnpm generate
+
+      - name: Deploy to Cloudflare Workers
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy
+
   # Future Tauri Release Build job placeholder:
   # build-tauri:
   #   needs: [static, unit, integration-web, rust]
   #   runs-on: ubuntu-latest
   #   steps:
-  #     ...
 
 

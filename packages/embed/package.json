@@ -1,7 +1,7 @@
 {
   "name": "@fastcat/embed",
   "version": "0.1.0",
-  "description": "Embed the FastCat video editor into any page through a sandboxed iframe.",
+  "description": "Embed the FastCat video editor into any page through an isolated cross-origin iframe.",
   "license": "MIT",
   "type": "module",
   "repository": {

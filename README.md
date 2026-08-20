@@ -133,7 +133,7 @@ pnpm preview:cf
 
 ## Embeddable Editor
 
-Host pages embed the editor as a **same-document iframe** pointed at the `/embed`
+Host pages embed the editor as an **isolated cross-origin iframe** pointed at the `/embed`
 route and talk to it only over `postMessage`. The protocol lives in
 `packages/embed/src/protocol.ts` and is published as `@fastcat/embed`; the app
 compiles against that same source through the `~embed` alias, so the two halves
@@ -271,7 +271,24 @@ it, and metadata read back **off the finished file** rather than off the export
 settings, so what a host stores can never disagree with the bytes it received.
 In `output: 'upload'` mode the editor streams the render to a presigned URL the
 host supplies and omits `file`, keeping very large renders out of the message
-path entirely.
+### Security, Permissions Policy & Sandbox
+
+The embed boundary relies on a defense-in-depth model:
+
+1. **Same-Origin Policy (SOP)**: The editor runs on a separate origin (e.g. `https://embed.fastcat.video`) from the embedding host. Browser SOP prevents the host from reading the editor's internal state/storage, and prevents the editor from accessing the host document, cookies, or credentials.
+2. **Cryptographic Nonce & Origin Pinning**: Every session mints a 128-bit cryptographic nonce passed in the URL hash. All `postMessage` calls in both directions explicitly declare the exact expected target origin (`editorOrigin` / `hostOrigin`) and enforce envelope nonces, rejecting wildcard targets and unauthorized senders.
+3. **Permissions Policy**: By default `@fastcat/embed` sets `iframe.allow`:
+   ```html
+   allow="fullscreen; clipboard-read; clipboard-write; autoplay; cross-origin-isolated"
+   ```
+   This can be overridden via `options.allow`.
+4. **HTML `sandbox` considerations**:
+   - The HTML `sandbox` attribute is **not enabled by default**. Setting `sandbox` without `allow-same-origin` gives the frame an opaque `null` origin, which immediately breaks OPFS (`navigator.storage.getDirectory()`) and Web Workers.
+   - Setting `sandbox="allow-scripts allow-same-origin ..."` on a cross-origin frame is functionally equivalent to standard SOP isolation, while risking storage partitioning quirks in Safari and older engines.
+   - If an embedding site requires an explicit `sandbox` attribute for compliance, it can be passed via `options.sandbox`. The minimal required tokens for full functionality are:
+     ```ts
+     sandbox: 'allow-scripts allow-same-origin allow-downloads allow-forms allow-popups allow-popups-to-escape-sandbox'
+     ```
 
 ### Developing against a real host origin
 
