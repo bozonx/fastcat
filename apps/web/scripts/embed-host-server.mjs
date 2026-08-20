@@ -205,5 +205,6 @@ const server = createServer(async (req, res) => {
 });
 
 server.listen(port, host, () => {
+  // eslint-disable-next-line no-console
   console.log(`Embed host stand listening on http://${host}:${port}/ (editor: ${editorUrl})`);
 });
