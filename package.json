@@ -74,9 +74,13 @@
     "build:cf": "pnpm check:ui && pnpm generate",
     "deploy:cf:safe": "pnpm check:ui && pnpm deploy:cf",
     "deploy:cf": "pnpm generate && pnpm --filter @fastcat/worker deploy",
-    "preview:cf": "pnpm generate && pnpm --filter @fastcat/worker dev"
+    "preview:cf": "pnpm generate && pnpm --filter @fastcat/worker dev",
+    "changeset": "changeset",
+    "version-packages": "changeset version",
+    "release": "turbo run build && changeset publish"
   },
   "devDependencies": {
+    "@changesets/cli": "^3.0.1",
     "@playwright/test": "^1.61.1",
     "dotenv-cli": "^11.0.0",
     "eslint": "^10.7.0",
