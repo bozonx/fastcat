@@ -271,6 +271,7 @@ it, and metadata read back **off the finished file** rather than off the export
 settings, so what a host stores can never disagree with the bytes it received.
 In `output: 'upload'` mode the editor streams the render to a presigned URL the
 host supplies and omits `file`, keeping very large renders out of the message
+
 ### Security, Permissions Policy & Sandbox
 
 The embed boundary relies on a defense-in-depth model:
@@ -287,7 +288,7 @@ The embed boundary relies on a defense-in-depth model:
    - Setting `sandbox="allow-scripts allow-same-origin ..."` on a cross-origin frame is functionally equivalent to standard SOP isolation, while risking storage partitioning quirks in Safari and older engines.
    - If an embedding site requires an explicit `sandbox` attribute for compliance, it can be passed via `options.sandbox`. The minimal required tokens for full functionality are:
      ```ts
-     sandbox: 'allow-scripts allow-same-origin allow-downloads allow-forms allow-popups allow-popups-to-escape-sandbox'
+     sandbox: 'allow-scripts allow-same-origin allow-downloads allow-forms allow-popups allow-popups-to-escape-sandbox';
      ```
 
 ### Developing against a real host origin
@@ -573,16 +574,16 @@ the GPU-fragile ones stay out of the merge gate. Two things used to both be call
 - **golden** = cross-engine _rendered-frame_ comparison against
   `packages/shared/golden/frames.json` (GPU-dependent).
 
-| Tier                      | Location                                                                          | Command                     | CI           |
-| ------------------------- | --------------------------------------------------------------------------------- | --------------------------- | ------------ |
-| Unit                      | `apps/web/test/unit/`, `apps/web/test/components/` (incl. `*.parity.test.ts`)     | `pnpm test:unit`            | gate         |
-| Integration (web)         | `apps/web/test/integration/`, `apps/web/test/golden-helpers/`                     | `pnpm test:integration:web` | gate         |
-| Integration/unit (native) | `apps/native/src-tauri/tests/`, Rust `#[test]`s (incl. logic parity)              | `pnpm test:native`          | gate         |
-| E2E — smoke               | `apps/web/test/e2e/smoke/`                                                        | `pnpm test:e2e:smoke`       | gate         |
-| E2E — full                | `apps/web/test/e2e/web/`                                                          | `pnpm test:e2e`             | gate         |
-| E2E — embed               | `apps/web/test/e2e/embed/`                                                        | `pnpm test:e2e:embed`       | gate         |
-| Golden (web)              | `apps/web/test/golden/` + `apps/web/test/golden-helpers/`                         | `pnpm test:golden:web`      | manual (GPU) |
-| Golden (native)           | `apps/native/src-tauri/tests/engine_parity.rs`                                    | `pnpm test:golden:native`   | manual (GPU) |
+| Tier                      | Location                                                                      | Command                     | CI             |
+| ------------------------- | ----------------------------------------------------------------------------- | --------------------------- | -------------- |
+| Unit                      | `apps/web/test/unit/`, `apps/web/test/components/` (incl. `*.parity.test.ts`) | `pnpm test:unit`            | gate           |
+| Integration (web)         | `apps/web/test/integration/`, `apps/web/test/golden-helpers/`                 | `pnpm test:integration:web` | gate           |
+| Integration/unit (native) | `apps/native/src-tauri/tests/`, Rust `#[test]`s (incl. logic parity)          | `pnpm test:native`          | gate           |
+| E2E — smoke               | `apps/web/test/e2e/smoke/`                                                    | `pnpm test:e2e:smoke`       | deferred (OOM) |
+| E2E — full                | `apps/web/test/e2e/web/`                                                      | `pnpm test:e2e`             | deferred (OOM) |
+| E2E — embed               | `apps/web/test/e2e/embed/`                                                    | `pnpm test:e2e:embed`       | deferred (OOM) |
+| Golden (web)              | `apps/web/test/golden/` + `apps/web/test/golden-helpers/`                     | `pnpm test:golden:web`      | manual (GPU)   |
+| Golden (native)           | `apps/native/src-tauri/tests/engine_parity.rs`                                | `pnpm test:golden:native`   | manual (GPU)   |
 
 `apps/web/test/integration/golden-registry/` holds CPU vitest checks that validate the
 golden registry integrity and scene coverage (no GPU), and runs with the web
@@ -595,7 +596,7 @@ Handy aggregates:
 - `pnpm test` — all Vitest tiers in one pass (unit + components + integration + golden-helpers); no browser, no cargo.
 - `pnpm check:fast` — quick loop: static checks + unit + web integration.
 - `pnpm check` — everything locally: static checks + all tiers incl. e2e and golden.
-- `bash scripts/ci.sh <tier>` — the exact per-job command CI runs (`static`, `unit`, `integration-web`, `rust`, `e2e-smoke`, `e2e`, `golden-web`, `golden-native`).
+- `bash scripts/ci.sh <tier>` — CI tier entrypoint. The blocking workflow currently runs `static`, `unit`, `integration-web`, and `rust`; Playwright tiers are deferred while their OOM issue is investigated.
 
 For desktop-web Playwright scenarios, keep project creation as a dedicated UI flow
 (`test/e2e/web/project-creation.spec.ts`). Scenario tests that need an open
@@ -703,7 +704,7 @@ Export functionality is covered across three testing layers:
 - Cross-engine frame hash parity is covered by the parity test suite (see above)
 - `buildNativeExportOptions` parity test ensures web export options map correctly to native `NativeExportOptions`
 
-**CI:** the `.github/workflows/parity.yml` GitHub Actions workflow runs web parity in a Dockerized Playwright container and native parity on an Ubuntu runner with a software Vulkan adapter.
+**CI:** logic parity runs in the unit and Rust blocking tiers. GPU golden tests are manual; Playwright tiers are temporarily deferred while their OOM issue is investigated.
 
 ## License
 

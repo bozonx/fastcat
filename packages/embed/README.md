@@ -89,41 +89,41 @@ Mounts the editor iframe into `options.container`, initiates the secure handshak
 
 #### `FastcatEmbedOptions`
 
-| Option | Type | Default | Description |
-| :--- | :--- | :--- | :--- |
-| `container` | `HTMLElement` | *required* | The DOM element where the iframe is appended. |
-| `editorUrl` | `string` | *required* | Absolute URL of the editor embed route (e.g. `https://embed.fastcat.video/embed`). |
-| `assets` | `EmbedAsset[]` | `[]` | Initial media assets loaded into the editor session. |
-| `locale` | `string` | `'en'` | Interface language code (e.g. `'en'`, `'ru'`). |
-| `layout` | `'auto' \| 'desktop' \| 'mobile'` | `'auto'` | Preferred editor layout. `'auto'` selects automatically on first render. |
-| `features` | `EmbedFeatureName[]` | `['export']` | Enabled feature panels: `'files'`, `'sound'`, `'export'`, `'settings'`. |
-| `projectDefaults` | `EmbedProjectDefaults` | `undefined` | Composition dimensions, FPS, and sample rate overrides. |
-| `assetTransport` | `'url' \| 'host'` | `'url'` | `'url'` streams assets via HTTP range requests; `'host'` uses in-memory transfers. |
-| `output` | `'blob' \| 'upload'` | `'blob'` | `'blob'` returns `File` in `onExportDone`; `'upload'` streams directly to presigned URL. |
-| `preferences` | `unknown` | `undefined` | Opaque state from a previous session (`onPreferencesChanged`). |
-| `readyTimeoutMs` | `number` | `20000` | Timeout in milliseconds before `onUnavailable` is called. |
-| `sandbox` | `string` | `undefined` | Custom iframe `sandbox` attribute value if needed. |
-| `allow` | `string` | `DEFAULT_EMBED_ALLOW` | Iframe feature policy (`fullscreen; clipboard-write; autoplay; ...`). |
+| Option            | Type                              | Default               | Description                                                                              |
+| :---------------- | :-------------------------------- | :-------------------- | :--------------------------------------------------------------------------------------- |
+| `container`       | `HTMLElement`                     | _required_            | The DOM element where the iframe is appended.                                            |
+| `editorUrl`       | `string`                          | _required_            | Absolute URL of the editor embed route (e.g. `https://embed.fastcat.video/embed`).       |
+| `assets`          | `EmbedAsset[]`                    | `[]`                  | Initial media assets loaded into the editor session.                                     |
+| `locale`          | `string`                          | `'en'`                | Interface language code (e.g. `'en'`, `'ru'`).                                           |
+| `layout`          | `'auto' \| 'desktop' \| 'mobile'` | `'auto'`              | Preferred editor layout. `'auto'` selects automatically on first render.                 |
+| `features`        | `EmbedFeatureName[]`              | `['export']`          | Enabled feature panels: `'files'`, `'sound'`, `'export'`, `'settings'`.                  |
+| `projectDefaults` | `EmbedProjectDefaults`            | `undefined`           | Composition dimensions, FPS, and sample rate overrides.                                  |
+| `assetTransport`  | `'url' \| 'host'`                 | `'url'`               | `'url'` streams assets via HTTP range requests; `'host'` uses in-memory transfers.       |
+| `output`          | `'blob' \| 'upload'`              | `'blob'`              | `'blob'` returns `File` in `onExportDone`; `'upload'` streams directly to presigned URL. |
+| `preferences`     | `unknown`                         | `undefined`           | Opaque state from a previous session (`onPreferencesChanged`).                           |
+| `readyTimeoutMs`  | `number`                          | `20000`               | Timeout in milliseconds before `onUnavailable` is called.                                |
+| `sandbox`         | `string`                          | `undefined`           | Custom iframe `sandbox` attribute value if needed.                                       |
+| `allow`           | `string`                          | `DEFAULT_EMBED_ALLOW` | Iframe feature policy (`fullscreen; clipboard-write; autoplay; ...`).                    |
 
 #### Event Callbacks
 
-| Callback | Signature | Description |
-| :--- | :--- | :--- |
-| `onReady` | `(capabilities: EmbedCapabilities) => void` | Called after handshake confirms hardware capabilities (WebGPU, OPFS, etc.). |
-| `onInitialized` | `(info: EmbedInitializedInfo) => void` | Called once initial assets and timeline are loaded. |
-| `onChange` | `(change: { dirty: boolean; otio: string }) => void` | Emitted when timeline edits occur. Save `otio` to preserve user draft. |
-| `onExportProgress` | `(progress: { phase: string \| null; progress: number }) => void` | Real-time rendering progress updates. |
-| `onExportDone` | `(result: FastcatEmbedExportResult) => void \| Promise<void>` | Export completed. Contains output `file`, `poster`, `otio`, and `meta`. |
-| `onAssetProgress` | `(progress: { assetId: string; loadedBytes: number; totalBytes: number \| null }) => void` | Asset buffering and fetch progress. |
-| `onAssetUrlExpired` | `(assetId: string) => Promise<string> \| string` | Invoked when signed asset URL expires mid-session. Return fresh URL to resume. |
-| `onPreferencesChanged` | `(preferences: unknown) => void` | Opaque user settings to store in host database. |
-| `onSttRequest` | `(payload: unknown) => Promise<unknown>` | Handle speech-to-text proxy requests using host credentials. |
-| `onLlmRequest` | `(payload: unknown) => Promise<unknown>` | Handle LLM/AI requests using host credentials. |
-| `onError` | `(error: { code: string; message: string }) => void` | Error notification from editor. |
-| `onRequestClose` | `() => void` | User clicked the close/exit button inside the editor. |
-| `onResizeRequest` | `(request: { minHeightPx: number }) => void` | Advisory request for more vertical viewport space. |
-| `onUnavailable` | `(reason: string) => void` | Handshake timed out or protocol version mismatch. |
-| `onDebug` | `(direction: 'in' \| 'out', type: string, payload: unknown) => void` | Low-level message logger for debugging. |
+| Callback               | Signature                                                                                  | Description                                                                    |
+| :--------------------- | :----------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------- |
+| `onReady`              | `(capabilities: EmbedCapabilities) => void`                                                | Called after handshake confirms hardware capabilities (WebGPU, OPFS, etc.).    |
+| `onInitialized`        | `(info: EmbedInitializedInfo) => void`                                                     | Called once initial assets and timeline are loaded.                            |
+| `onChange`             | `(change: { dirty: boolean; otio: string }) => void`                                       | Emitted when timeline edits occur. Save `otio` to preserve user draft.         |
+| `onExportProgress`     | `(progress: { phase: string \| null; progress: number }) => void`                          | Real-time rendering progress updates.                                          |
+| `onExportDone`         | `(result: FastcatEmbedExportResult) => void \| Promise<void>`                              | Export completed. Contains output `file`, `poster`, `otio`, and `meta`.        |
+| `onAssetProgress`      | `(progress: { assetId: string; loadedBytes: number; totalBytes: number \| null }) => void` | Asset buffering and fetch progress.                                            |
+| `onAssetUrlExpired`    | `(assetId: string) => Promise<string> \| string`                                           | Invoked when signed asset URL expires mid-session. Return fresh URL to resume. |
+| `onPreferencesChanged` | `(preferences: unknown) => void`                                                           | Opaque user settings to store in host database.                                |
+| `onSttRequest`         | `(payload: unknown) => Promise<unknown>`                                                   | Handle speech-to-text proxy requests using host credentials.                   |
+| `onLlmRequest`         | `(payload: unknown) => Promise<unknown>`                                                   | Handle LLM/AI requests using host credentials.                                 |
+| `onError`              | `(error: { code: string; message: string }) => void`                                       | Error notification from editor.                                                |
+| `onRequestClose`       | `() => void`                                                                               | User clicked the close/exit button inside the editor.                          |
+| `onResizeRequest`      | `(request: { minHeightPx: number }) => void`                                               | Advisory request for more vertical viewport space.                             |
+| `onUnavailable`        | `(reason: string) => void`                                                                 | Handshake timed out or protocol version mismatch.                              |
+| `onDebug`              | `(direction: 'in' \| 'out', type: string, payload: unknown) => void`                       | Low-level message logger for debugging.                                        |
 
 ---
 
@@ -180,12 +180,12 @@ import {
 
 ## Browser Support
 
-| Browser | Supported Versions | Notes |
-| :--- | :--- | :--- |
-| **Google Chrome / Chromium** | 113+ | Full WebGPU + WebCodecs hardware acceleration |
-| **Microsoft Edge** | 113+ | Full WebGPU + WebCodecs hardware acceleration |
-| **Apple Safari** | 17+ | WebCodecs + WebGPU support |
-| **Mozilla Firefox** | 120+ | WebCodecs enabled; WebGPU subject to platform flags |
+| Browser                      | Supported Versions | Notes                                               |
+| :--------------------------- | :----------------- | :-------------------------------------------------- |
+| **Google Chrome / Chromium** | 113+               | Full WebGPU + WebCodecs hardware acceleration       |
+| **Microsoft Edge**           | 113+               | Full WebGPU + WebCodecs hardware acceleration       |
+| **Apple Safari**             | 17+                | WebCodecs + WebGPU support                          |
+| **Mozilla Firefox**          | 120+               | WebCodecs enabled; WebGPU subject to platform flags |
 
 ---
 

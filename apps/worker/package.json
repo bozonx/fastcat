@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
+    "lint": "prettier --check .",
+    "lint:fix": "prettier --write .",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {

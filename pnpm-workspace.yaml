@@ -2,6 +2,8 @@ packages:
   - 'apps/*'
   - 'packages/*'
 
+minimumReleaseAge: 1440
+
 allowBuilds:
   edgedriver: true
   esbuild: true
@@ -10,7 +12,6 @@ allowBuilds:
   protobufjs: true
   sharp: true
   unrs-resolver: true
-  vue-demi: true
   workerd: true
 ignoredBuiltDependencies:
   - vue-demi

@@ -1,29 +1,43 @@
 {
   "$schema": "https://turbo.build/schema.json",
-  "globalEnv": [
-    "NODE_ENV",
-    "PORT",
-    "FASTCAT_ENABLE_IN_DEVELOPMENT_FEATURES",
-    "FASTCAT_ENABLE_PREMIUM_FEATURES",
-    "FASTCAT_DEV_DIR"
-  ],
-  "globalPassThroughEnv": [
-    "CI",
-    "GITHUB_*",
-    "TAURI_*",
-    "PLAYWRIGHT_*"
-  ],
   "tasks": {
     "build": {
+      "dependsOn": ["^build"]
+    },
+    "@fastcat/web#build": {
       "dependsOn": ["^build"],
-      "outputs": [".output/**", ".nuxt/**", "dist/**", "src/.vitepress/dist/**"]
+      "env": [
+        "NODE_ENV",
+        "FASTCAT_ENABLE_IN_DEVELOPMENT_FEATURES",
+        "FASTCAT_ENABLE_PREMIUM_FEATURES"
+      ],
+      "outputs": [".output/**", ".nuxt/**"]
+    },
+    "@fastcat/embed#build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**"]
+    },
+    "@fastcat/docs#build": {
+      "dependsOn": ["^build"],
+      "outputs": ["src/.vitepress/dist/**"]
     },
     "generate": {
-      "dependsOn": ["^build"],
-      "outputs": [".output/public/**"]
-    },
-    "typecheck": {
       "dependsOn": ["^build"]
+    },
+    "@fastcat/web#generate": {
+      "dependsOn": ["^build"],
+      "env": [
+        "NODE_ENV",
+        "FASTCAT_ENABLE_IN_DEVELOPMENT_FEATURES",
+        "FASTCAT_ENABLE_PREMIUM_FEATURES",
+        "E2E_TEST",
+        "E2E_OUTPUT_DIR"
+      ],
+      "outputs": [".output/**", ".nuxt/**"]
+    },
+    "@fastcat/web#typecheck": {
+      "dependsOn": ["^build"],
+      "env": ["NODE_ENV"]
     },
     "lint": {
       "cache": true
@@ -34,15 +48,30 @@
     "test": {
       "dependsOn": ["^build"]
     },
+    "@fastcat/web#test": {
+      "dependsOn": ["^build"],
+      "env": ["CI"]
+    },
     "test:unit": {
-      "cache": true
+      "env": ["CI"]
     },
     "test:integration:web": {
-      "cache": true
+      "env": ["CI"]
     },
     "dev": {
       "cache": false,
       "persistent": true
+    },
+    "@fastcat/web#dev": {
+      "cache": false,
+      "persistent": true,
+      "env": [
+        "NODE_ENV",
+        "PORT",
+        "FASTCAT_ENABLE_IN_DEVELOPMENT_FEATURES",
+        "FASTCAT_ENABLE_PREMIUM_FEATURES",
+        "FASTCAT_DEV_DIR"
+      ]
     },
     "clean": {
       "cache": false

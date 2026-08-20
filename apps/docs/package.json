@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vitepress dev src",
     "build": "vitepress build src",
+    "lint": "prettier --check .",
+    "lint:fix": "prettier --write .",
     "preview": "vitepress preview src"
   },
   "devDependencies": {

@@ -27,8 +27,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .turbo
-          key: ${{ runner.os }}-turbo-${{ github.sha }}
+          key: ${{ runner.os }}-turbo-static-${{ github.sha }}
           restore-keys: |
+            ${{ runner.os }}-turbo-static-
             ${{ runner.os }}-turbo-
       - run: pnpm install --frozen-lockfile
       - run: bash scripts/ci.sh static
@@ -47,8 +48,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .turbo
-          key: ${{ runner.os }}-turbo-${{ github.sha }}
+          key: ${{ runner.os }}-turbo-unit-${{ github.sha }}
           restore-keys: |
+            ${{ runner.os }}-turbo-unit-
             ${{ runner.os }}-turbo-
       - run: pnpm install --frozen-lockfile
       - run: bash scripts/ci.sh unit
@@ -67,8 +69,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .turbo
-          key: ${{ runner.os }}-turbo-${{ github.sha }}
+          key: ${{ runner.os }}-turbo-integration-web-${{ github.sha }}
           restore-keys: |
+            ${{ runner.os }}-turbo-integration-web-
             ${{ runner.os }}-turbo-
       - run: pnpm install --frozen-lockfile
       - run: bash scripts/ci.sh integration-web
@@ -88,7 +91,7 @@ jobs:
           components: clippy, rustfmt
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: "apps/native/src-tauri -> target"
+          workspaces: 'apps/native/src-tauri -> target'
       - name: Install native dependencies
         run: |
           sudo apt-get update
@@ -115,8 +118,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .turbo
-          key: ${{ runner.os }}-turbo-${{ github.sha }}
+          key: ${{ runner.os }}-turbo-deploy-${{ github.sha }}
           restore-keys: |
+            ${{ runner.os }}-turbo-deploy-
             ${{ runner.os }}-turbo-
       - run: pnpm install --frozen-lockfile
 
@@ -135,5 +139,3 @@ jobs:
   #   needs: [static, unit, integration-web, rust]
   #   runs-on: ubuntu-latest
   #   steps:
-
-
