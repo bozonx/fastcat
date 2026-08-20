@@ -3,6 +3,7 @@
  * Chrome-free shell for the embeddable editor. The host page owns the
  * surrounding UI, so this layout contributes nothing but a full-bleed root.
  */
+import 'splitpanes/dist/splitpanes.css';
 </script>
 
 <template>

@@ -206,6 +206,33 @@ test.describe('Embed: host integration', () => {
     await expect(frame.locator('[data-panel-id]')).toHaveCount(3);
   });
 
+  test('lays out the monitor and timeline without overlapping the project panel', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1400, height: 900 });
+    await openStand(page);
+
+    const frame = page.frameLocator('iframe');
+    const projectPanel = frame.locator('[data-panel-id="fileManager"]');
+    const monitorPanel = frame.locator('[data-panel-id="monitor"]');
+    const timeline = frame.getByTestId('timeline-container');
+
+    await expect(projectPanel).toBeVisible();
+    await expect(monitorPanel).toBeVisible();
+    await expect(timeline).toBeVisible();
+
+    const projectBox = await projectPanel.boundingBox();
+    const monitorBox = await monitorPanel.boundingBox();
+    const timelineBox = await timeline.boundingBox();
+
+    expect(projectBox).not.toBeNull();
+    expect(monitorBox).not.toBeNull();
+    expect(timelineBox).not.toBeNull();
+    expect(monitorBox!.x).toBeGreaterThanOrEqual(projectBox!.x + projectBox!.width - 2);
+    expect(timelineBox!.y).toBeGreaterThanOrEqual(projectBox!.y + projectBox!.height - 2);
+    expect(timelineBox!.y).toBeGreaterThanOrEqual(monitorBox!.y + monitorBox!.height - 2);
+  });
+
   test('switches shells on request without losing the session', async ({ page }) => {
     await page.setViewportSize({ width: 1400, height: 900 });
     await openStand(page);
