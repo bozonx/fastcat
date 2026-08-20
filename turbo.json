@@ -1,5 +1,6 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  "globalDependencies": ["scripts/clean-test-files.mjs", "scripts/vendor-fonts.mjs"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"]

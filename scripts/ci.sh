@@ -6,12 +6,9 @@ set -euo pipefail
 # repo (runnable locally, reviewable in one place) instead of scattered in YAML.
 #
 # Tiers (see README "Testing") — each maps to one CI job, kept non-overlapping:
-#   static          typecheck + lint + i18n           (host, fast, blocking)
+#   static          typecheck + lint + format + i18n  (host, fast, blocking)
 #   unit            web unit + component tests        (host, fast, blocking)
 #   integration-web web integration                   (host, blocking)
-#   rust            clippy + fmt + full Rust suite     (host, blocking)
-#                   (covers native unit/integration + logic parity; the GPU
-#                    golden test skips gracefully here — see golden-native)
 #   e2e-smoke       Playwright smoke tier             (Docker, blocking)
 #   e2e             Playwright full UI e2e            (Docker, blocking)
 #   golden-web      web rendered-frame golden         (Docker, GPU, non-gate)
@@ -30,17 +27,13 @@ TIER="${1:-}"
 
 case "$TIER" in
   static)
-    pnpm check
+    pnpm check:static
     ;;
   unit)
     pnpm test:unit
     ;;
   integration-web)
     pnpm test:integration:web
-    ;;
-  rust)
-    pnpm --filter @fastcat/native check
-    pnpm test:native
     ;;
   e2e-smoke)
     bash scripts/e2e-docker.sh test:e2e:smoke
@@ -55,7 +48,7 @@ case "$TIER" in
     REQUIRE_TEST_DEPS=1 pnpm test:golden:native
     ;;
   *)
-    echo "Usage: bash scripts/ci.sh <static|unit|integration-web|rust|e2e-smoke|e2e|golden-web|golden-native>" >&2
+    echo "Usage: bash scripts/ci.sh <static|unit|integration-web|e2e-smoke|e2e|golden-web|golden-native>" >&2
     exit 2
     ;;
 esac

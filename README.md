@@ -578,7 +578,7 @@ the GPU-fragile ones stay out of the merge gate. Two things used to both be call
 | ------------------------- | ----------------------------------------------------------------------------- | --------------------------- | ------------ |
 | Unit                      | `apps/web/test/unit/`, `apps/web/test/components/` (incl. `*.parity.test.ts`) | `pnpm test:unit`            | gate         |
 | Integration (web)         | `apps/web/test/integration/`, `apps/web/test/golden-helpers/`                 | `pnpm test:integration:web` | gate         |
-| Integration/unit (native) | `apps/native/src-tauri/tests/`, Rust `#[test]`s (incl. logic parity)          | `pnpm test:native`          | gate         |
+| Integration/unit (native) | `apps/native/src-tauri/tests/`, Rust `#[test]`s (incl. logic parity)          | `pnpm test:native`          | local/manual |
 | E2E — smoke               | `apps/web/test/e2e/smoke/`                                                    | `pnpm test:e2e:smoke`       | deferred     |
 | E2E — full                | `apps/web/test/e2e/web/`                                                      | `pnpm test:e2e:web`         | deferred     |
 | E2E — embed               | `apps/web/test/e2e/embed/`                                                    | `pnpm test:e2e:embed`       | deferred     |
@@ -594,9 +594,10 @@ logic parity, with the GPU golden test skipping gracefully).
 Handy aggregates:
 
 - `pnpm test` — all Vitest tiers in one pass (unit + components + integration + golden-helpers); no browser, no cargo.
+- `pnpm check:static` — TypeScript, ESLint, Prettier and i18n checks without Rust.
 - `pnpm check:fast` — quick loop: static checks + unit + web integration.
-- `pnpm check` — everything locally: static checks + all tiers incl. e2e and golden.
-- `bash scripts/ci.sh <tier>` — CI tier entrypoint. The blocking workflow currently runs `static`, `unit`, `integration-web`, and `rust`; Playwright tiers are deferred while their OOM issue is investigated.
+- `pnpm check` — static checks including local Rust formatting.
+- `bash scripts/ci.sh <tier>` — CI tier entrypoint. The blocking workflow currently runs `static`, `unit`, and `integration-web`; native, Playwright and golden tiers are manual while their release/deployment pipelines are not enabled.
 
 For desktop-web Playwright scenarios, keep project creation as a dedicated UI flow
 (`test/e2e/web/project-creation.spec.ts`). Scenario tests that need an open

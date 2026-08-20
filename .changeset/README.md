@@ -19,6 +19,6 @@ Follow the interactive prompts:
 
 ## Release Process
 
-1. When PRs with changesets are merged into `main`, GitHub Actions will automatically open or update a PR titled `chore(release): version packages`.
+1. After a merged commit passes the blocking `CI` workflow, GitHub Actions automatically opens or updates a PR titled `chore(release): version packages`.
 2. When the team decides to publish a release, simply merge that `Version Packages` PR.
-3. GitHub Actions will build the packages, publish them to npm (with provenance attestations), and generate GitHub releases and git tags.
+3. After the merge commit passes `CI`, GitHub Actions publishes the changed packages to npm (with provenance attestations) and generates GitHub releases and git tags. Each package builds through its own `prepack` script.

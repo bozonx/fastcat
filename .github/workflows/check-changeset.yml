@@ -5,10 +5,13 @@ name: Check Changeset
 on:
   pull_request:
     paths:
-      - 'packages/**'
+      - 'packages/embed/**'
+      - '.changeset/**'
     branches:
       - main
-      - master
+
+permissions:
+  contents: read
 
 jobs:
   validate-changeset:
