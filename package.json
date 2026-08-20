@@ -12,6 +12,7 @@
     "dev": "nuxt dev",
     "dev:embed": "node scripts/dev-embed.mjs",
     "build": "nuxt build",
+    "build:embed": "tsc -p packages/embed/tsconfig.json",
     "generate": "nuxt generate",
     "preview": "node scripts/static-preview-server.mjs",
     "postinstall": "node scripts/vendor-fonts.mjs && nuxt prepare",

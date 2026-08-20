@@ -15,9 +15,9 @@ import {
   type EmbedProjectDefaults,
   type HostToEditorMessages,
   type HostToEditorType,
-} from './protocol';
+} from './protocol.js';
 
-export * from './protocol';
+export * from './protocol.js';
 
 export interface FastcatEmbedExportResult {
   /** Absent in `upload` mode, where the editor sent the render itself. */

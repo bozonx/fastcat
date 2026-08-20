@@ -58,9 +58,15 @@ describe('Cloudflare Worker (worker/index.ts)', () => {
       const url = new URL('https://app.fastcat.video/');
       const headers = resolveResponseHeaders(source, url, false);
 
-      expect(headers.get('Cross-Origin-Opener-Policy')).toBe(ISOLATION_HEADERS['Cross-Origin-Opener-Policy']);
-      expect(headers.get('Cross-Origin-Embedder-Policy')).toBe(ISOLATION_HEADERS['Cross-Origin-Embedder-Policy']);
-      expect(headers.get('Cross-Origin-Resource-Policy')).toBe(ISOLATION_HEADERS['Cross-Origin-Resource-Policy']);
+      expect(headers.get('Cross-Origin-Opener-Policy')).toBe(
+        ISOLATION_HEADERS['Cross-Origin-Opener-Policy'],
+      );
+      expect(headers.get('Cross-Origin-Embedder-Policy')).toBe(
+        ISOLATION_HEADERS['Cross-Origin-Embedder-Policy'],
+      );
+      expect(headers.get('Cross-Origin-Resource-Policy')).toBe(
+        ISOLATION_HEADERS['Cross-Origin-Resource-Policy'],
+      );
       expect(headers.get('content-type')).toBe('text/html');
     });
 
@@ -69,10 +75,18 @@ describe('Cloudflare Worker (worker/index.ts)', () => {
       const url = new URL('https://embed.fastcat.video/');
       const headers = resolveResponseHeaders(source, url, true);
 
-      expect(headers.get('Cross-Origin-Opener-Policy')).toBe(EMBED_HEADERS['Cross-Origin-Opener-Policy']);
-      expect(headers.get('Cross-Origin-Embedder-Policy')).toBe(EMBED_HEADERS['Cross-Origin-Embedder-Policy']);
-      expect(headers.get('Cross-Origin-Resource-Policy')).toBe(EMBED_HEADERS['Cross-Origin-Resource-Policy']);
-      expect(headers.get('Access-Control-Allow-Origin')).toBe(EMBED_HEADERS['Access-Control-Allow-Origin']);
+      expect(headers.get('Cross-Origin-Opener-Policy')).toBe(
+        EMBED_HEADERS['Cross-Origin-Opener-Policy'],
+      );
+      expect(headers.get('Cross-Origin-Embedder-Policy')).toBe(
+        EMBED_HEADERS['Cross-Origin-Embedder-Policy'],
+      );
+      expect(headers.get('Cross-Origin-Resource-Policy')).toBe(
+        EMBED_HEADERS['Cross-Origin-Resource-Policy'],
+      );
+      expect(headers.get('Access-Control-Allow-Origin')).toBe(
+        EMBED_HEADERS['Access-Control-Allow-Origin'],
+      );
     });
 
     it('adds immutable cache control for /_nuxt/ and /fonts/ assets', () => {

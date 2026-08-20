@@ -1,19 +1,57 @@
 {
   "name": "@fastcat/embed",
   "version": "0.1.0",
-  "description": "Embed the FastCat video editor into any page through an isolated cross-origin iframe.",
+  "description": "SDK for embedding the FastCat video editor into any web page through an isolated iframe.",
   "license": "MIT",
   "type": "module",
+  "author": "FastCat Team",
+  "homepage": "https://github.com/bozonx/fastcat#readme",
+  "bugs": {
+    "url": "https://github.com/bozonx/fastcat/issues"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/bozonx/fastcat.git",
     "directory": "packages/embed"
   },
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
-    ".": "./src/index.ts"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./protocol": {
+      "types": "./dist/protocol.d.ts",
+      "import": "./dist/protocol.js",
+      "default": "./dist/protocol.js"
+    },
+    "./package.json": "./package.json"
   },
   "files": [
-    "src"
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "clean": "rm -rf dist",
+    "prepack": "pnpm run build"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "fastcat",
+    "video-editor",
+    "embed",
+    "iframe",
+    "sdk",
+    "postmessage",
+    "webgpu"
   ],
   "sideEffects": false
 }
