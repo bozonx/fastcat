@@ -1,6 +1,6 @@
 # @fastcat/embed
 
-Official JavaScript / TypeScript SDK for embedding the **FastCat Video Editor** into any web application through a secure, sandboxed iframe.
+Official JavaScript / TypeScript SDK for embedding the **FastCat Video Editor** into any web application through an isolated cross-origin iframe.
 
 [![npm version](https://img.shields.io/npm/v/@fastcat/embed.svg)](https://www.npmjs.com/package/@fastcat/embed)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -74,6 +74,8 @@ const embed: FastcatEmbed = createFastcatEmbed({
 });
 
 // Programmatic actions
+await embed.ready;
+await embed.initialized;
 // embed.startExport({ filename: 'my-video.mp4' });
 // embed.addAssets([{ url: 'https://cdn.example.com/audio.mp3', kind: 'audio' }]);
 // await embed.dispose();
@@ -100,6 +102,7 @@ Mounts the editor iframe into `options.container`, initiates the secure handshak
 | `projectDefaults` | `EmbedProjectDefaults`            | `undefined`           | Composition dimensions, FPS, and sample rate overrides.                                  |
 | `assetTransport`  | `'url' \| 'host'`                 | `'url'`               | `'url'` streams assets via HTTP range requests; `'host'` uses in-memory transfers.       |
 | `output`          | `'blob' \| 'upload'`              | `'blob'`              | `'blob'` returns `File` in `onExportDone`; `'upload'` streams directly to presigned URL. |
+| `initialProject`  | `{ otio: string }`                 | `undefined`           | Optional previous OTIO document restored before initial assets.                            |
 | `preferences`     | `unknown`                         | `undefined`           | Opaque state from a previous session (`onPreferencesChanged`).                           |
 | `readyTimeoutMs`  | `number`                          | `20000`               | Timeout in milliseconds before `onUnavailable` is called.                                |
 | `sandbox`         | `string`                          | `undefined`           | Custom iframe `sandbox` attribute value if needed.                                       |
@@ -175,6 +178,22 @@ import {
    The host application does not require cross-origin isolation (COOP/COEP headers), making integration safe for host sites that load third-party scripts.
 3. **Hardware Acceleration**:
    The editor utilizes WebGPU, WebCodecs, and OPFS for real-time timeline compositing and zero-lag rendering.
+
+The lifecycle is `creating → ready → initialized → active/exporting → disposing → disposed`.
+Handshake and initialization failures move to `unavailable`; commands before `active` reject
+with a stable `protocol-invalid-state` error. `dispose()` is idempotent and cancels outstanding
+session work. Invalid payloads, unknown messages, and protocol version mismatches are reported
+as stable `protocol-*` errors rather than silently becoming a timeout.
+
+Asset URLs and upload URLs must use HTTP(S), filenames must be plain basenames, and initial and
+added assets are limited in count and size. Asset servers need CORS; `Range` support is strongly
+recommended, while a range-blind HTTP 200 response is consumed once as a fallback. Use short-lived
+signed URLs and refresh them through `onAssetUrlExpired`; upload endpoints must accept `PUT`.
+
+The SDK does not enable `sandbox` by default: an opaque sandbox origin breaks OPFS. If a host
+requires it, test `allow-scripts allow-same-origin` plus the configured permissions in target
+browsers. The editor deployment must set its own `frame-ancestors`, `connect-src`, and
+`Permissions-Policy`; a client SDK cannot enforce response headers for another origin.
 
 ---
 

@@ -44,6 +44,8 @@ export function createUrlTransport(options: UrlTransportOptions): EmbedAssetTran
   let currentUrl = options.url;
   let cachedSize: number | null | undefined;
   let cachedContentType: string | null | undefined;
+  // Servers that ignore Range must be read once, not once per requested chunk.
+  let completeResponse: Uint8Array | null = null;
   let refreshInFlight: Promise<string> | null = null;
 
   async function refreshUrl(): Promise<boolean> {
@@ -97,7 +99,15 @@ export function createUrlTransport(options: UrlTransportOptions): EmbedAssetTran
         cachedSize = response.status === 200 && length ? Number(length) : null;
       }
 
-      void response.body?.cancel();
+      if (response.status === 200) {
+        completeResponse = new Uint8Array(await response.arrayBuffer());
+        if (cachedSize !== null && completeResponse.byteLength !== cachedSize) {
+          throw new Error(`Truncated response while probing ${options.id}`);
+        }
+        cachedSize = completeResponse.byteLength;
+      } else {
+        void response.body?.cancel();
+      }
       return cachedSize;
     },
 
@@ -107,6 +117,13 @@ export function createUrlTransport(options: UrlTransportOptions): EmbedAssetTran
     },
 
     async readRange(start, endExclusive) {
+      if (!Number.isSafeInteger(start) || !Number.isSafeInteger(endExclusive) || start < 0 || endExclusive < start) {
+        throw new Error(`Invalid byte range for ${options.id}`);
+      }
+      if (completeResponse) {
+        if (endExclusive > completeResponse.byteLength) throw new Error(`Range exceeds ${options.id} length`);
+        return completeResponse.subarray(start, endExclusive);
+      }
       const response = await fetchWithRefresh({
         headers: { Range: `bytes=${start}-${endExclusive - 1}` },
       });
@@ -117,17 +134,22 @@ export function createUrlTransport(options: UrlTransportOptions): EmbedAssetTran
       }
 
       const buffer = new Uint8Array(await response.arrayBuffer());
-      // A server that ignores Range hands back the whole file; slice out the
-      // window the caller asked for rather than corrupting its offsets.
-      if (response.status === 200 && buffer.byteLength > endExclusive - start) {
+      const expectedLength = endExclusive - start;
+      if (response.status === 200) {
+        // Keep the one full response as the streaming fallback. This prevents
+        // a range-blind server from causing a full re-download per chunk.
+        completeResponse = buffer;
+        if (endExclusive > buffer.byteLength) throw new Error(`Truncated response for ${options.id}`);
         return buffer.subarray(start, endExclusive);
       }
+      if (buffer.byteLength !== expectedLength) throw new Error(`Short range response for ${options.id}`);
       return buffer;
     },
 
     dispose() {
       cachedSize = undefined;
       cachedContentType = undefined;
+      completeResponse = null;
     },
   };
 }

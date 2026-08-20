@@ -8,6 +8,20 @@
 
 export const EMBED_CHANNEL = 'fastcat-embed';
 export const EMBED_PROTOCOL_VERSION = 1;
+export const MAX_EMBED_ASSETS = 100;
+export const MAX_EMBED_ASSET_BYTES = 10 * 1024 * 1024 * 1024;
+export const MAX_EMBED_EXPORT_BYTES = 10 * 1024 * 1024 * 1024;
+
+/** Stable errors that may cross the host/editor boundary. */
+export type EmbedProtocolErrorCode =
+  | 'protocol-invalid-envelope'
+  | 'protocol-version-mismatch'
+  | 'protocol-unknown-message'
+  | 'protocol-invalid-payload'
+  | 'protocol-invalid-state'
+  | 'protocol-timeout'
+  | 'protocol-cancelled'
+  | 'protocol-callback-failed';
 
 /** Hash keys carrying the handshake parameters into the iframe document. */
 const NONCE_KEY = 'fcNonce';
@@ -73,6 +87,8 @@ export interface EmbedInitPayload {
   projectDefaults?: EmbedProjectDefaults;
   assetTransport?: EmbedAssetTransportKind;
   output?: EmbedOutputMode;
+  /** A previously emitted OTIO document, restored before any new assets land. */
+  initialProject?: { otio: string };
 }
 
 export interface EmbedExportMeta {
@@ -195,6 +211,12 @@ export interface EmbedEnvelope<T extends string = string> {
   payload: unknown;
 }
 
+export interface EmbedProtocolValidationResult {
+  ok: boolean;
+  code?: EmbedProtocolErrorCode;
+  message?: string;
+}
+
 export interface EmbedHandshakeParams {
   nonce: string;
   hostOrigin: string;
@@ -246,10 +268,142 @@ export function isEmbedEnvelope(data: unknown, nonce: string): data is EmbedEnve
   const candidate = data as Partial<EmbedEnvelope>;
   return (
     candidate.channel === EMBED_CHANNEL &&
-    candidate.version === EMBED_PROTOCOL_VERSION &&
+    typeof candidate.version === 'number' &&
     candidate.nonce === nonce &&
     typeof candidate.type === 'string'
   );
+}
+
+/** Envelope identity and protocol-version checks are deliberately separate. */
+export function hasEmbedProtocolVersion(envelope: EmbedEnvelope): boolean {
+  return envelope.version === EMBED_PROTOCOL_VERSION;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isFiniteNumber(value: unknown, min = -Number.MAX_VALUE, max = Number.MAX_VALUE): boolean {
+  return typeof value === 'number' && Number.isFinite(value) && value >= min && value <= max;
+}
+
+function isSafeHttpUrl(value: unknown): value is string {
+  if (typeof value !== 'string' || value.length > 4_096) return false;
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' || url.protocol === 'http:';
+  } catch {
+    return false;
+  }
+}
+
+export function isSafeEmbedFilename(value: unknown): value is string {
+  return (
+    typeof value === 'string' &&
+    value.length > 0 &&
+    value.length <= 255 &&
+    !value.includes('/') &&
+    !value.includes('\\') &&
+    !value.includes('..') &&
+    /^[a-zA-Z0-9][a-zA-Z0-9._ -]*$/.test(value)
+  );
+}
+
+function isAsset(value: unknown): boolean {
+  if (!isRecord(value)) return false;
+  if (value.id !== undefined && (typeof value.id !== 'string' || value.id.length > 128)) return false;
+  if (value.url !== undefined && !isSafeHttpUrl(value.url)) return false;
+  if (value.filename !== undefined && !isSafeEmbedFilename(value.filename)) return false;
+  if (value.kind !== undefined && !['video', 'audio', 'image'].includes(value.kind as string)) return false;
+  if (value.track !== undefined && (typeof value.track !== 'string' || value.track.length > 128)) return false;
+  if (value.startAt !== undefined && !isFiniteNumber(value.startAt, 0, 86_400)) return false;
+  if (value.file !== undefined && (!(value.file instanceof Blob) || value.file.size > MAX_EMBED_ASSET_BYTES)) return false;
+  return (value.url !== undefined) !== (value.file !== undefined);
+}
+
+function isProjectDefaults(value: unknown): boolean {
+  if (value === undefined) return true;
+  if (!isRecord(value)) return false;
+  return (
+    (value.width === undefined || isFiniteNumber(value.width, 16, 16_384)) &&
+    (value.height === undefined || isFiniteNumber(value.height, 16, 16_384)) &&
+    (value.fps === undefined || isFiniteNumber(value.fps, 1, 240)) &&
+    (value.sampleRate === undefined || isFiniteNumber(value.sampleRate, 8_000, 192_000))
+  );
+}
+
+function isInitPayload(value: unknown): boolean {
+  if (!isRecord(value)) return false;
+  const assets = value.assets;
+  return (
+    (value.locale === undefined || (typeof value.locale === 'string' && value.locale.length <= 32)) &&
+    (assets === undefined || (Array.isArray(assets) && assets.length <= MAX_EMBED_ASSETS && assets.every(isAsset))) &&
+    (value.layout === undefined || ['auto', 'desktop', 'mobile'].includes(value.layout as string)) &&
+    (value.features === undefined || (Array.isArray(value.features) && value.features.every((item) => ['files', 'sound', 'export', 'settings'].includes(item as string)))) &&
+    isProjectDefaults(value.projectDefaults) &&
+    (value.assetTransport === undefined || value.assetTransport === 'url' || value.assetTransport === 'host') &&
+    (value.output === undefined || value.output === 'blob' || value.output === 'upload') &&
+    (value.initialProject === undefined || (isRecord(value.initialProject) && isInitialOtio(value.initialProject.otio)))
+  );
+}
+
+function isInitialOtio(value: unknown): boolean {
+  if (typeof value !== 'string' || value.length === 0 || value.length > 10_000_000) return false;
+  try {
+    const document = JSON.parse(value) as { OTIO_SCHEMA?: unknown; tracks?: unknown };
+    return document.OTIO_SCHEMA === 'Timeline.1' && isRecord(document.tracks);
+  } catch {
+    return false;
+  }
+}
+
+const HOST_TYPES = new Set<HostToEditorType>([
+  'init', 'asset:add', 'asset:url', 'rpc:result', 'save:request', 'export:start', 'export:cancel', 'export:ack', 'dispose',
+]);
+const EDITOR_TYPES = new Set<EditorToHostType>([
+  'ready', 'initialized', 'asset:url-expired', 'asset:progress', 'stt:request', 'llm:request', 'change', 'preferences:changed', 'export:progress', 'export:done', 'export:error', 'disposed', 'error', 'requestClose', 'resize-request',
+]);
+
+function validPayload(type: string, payload: unknown, direction: 'host' | 'editor'): boolean {
+  if (payload === undefined) return ['save:request', 'export:cancel', 'export:ack', 'dispose', 'disposed', 'requestClose'].includes(type);
+  if (type === 'init') return isInitPayload(payload);
+  if (type === 'asset:add') return isRecord(payload) && Array.isArray(payload.assets) && payload.assets.length <= MAX_EMBED_ASSETS && payload.assets.every(isAsset);
+  if (type === 'asset:url') return isRecord(payload) && typeof payload.assetId === 'string' && isSafeHttpUrl(payload.url);
+  if (type === 'export:start') return isRecord(payload) && (payload.filename === undefined || isSafeEmbedFilename(payload.filename)) && (payload.uploadUrl === undefined || isSafeHttpUrl(payload.uploadUrl));
+  if (type === 'rpc:result') return isRecord(payload) && typeof payload.requestId === 'string' && payload.requestId.length <= 128 && (payload.error === undefined || typeof payload.error === 'string');
+  if (type === 'ready') return isRecord(payload) && typeof payload.version === 'number' && isRecord(payload.capabilities) &&
+    typeof payload.capabilities.webgpu === 'boolean' && typeof payload.capabilities.webcodecs === 'boolean' &&
+    typeof payload.capabilities.opfs === 'boolean' && typeof payload.capabilities.sharedArrayBuffer === 'boolean' &&
+    (payload.capabilities.storageQuotaBytes === null || isFiniteNumber(payload.capabilities.storageQuotaBytes, 0));
+  if (type === 'initialized') return isRecord(payload) && isFiniteNumber(payload.assetCount, 0, MAX_EMBED_ASSETS) && isFiniteNumber(payload.durationMs, 0) && ['desktop', 'mobile'].includes(payload.layout as string) && isFiniteNumber(payload.reclaimedSessions, 0);
+  if (type === 'asset:url-expired') return isRecord(payload) && typeof payload.assetId === 'string';
+  if (type === 'asset:progress') return isRecord(payload) && typeof payload.assetId === 'string' && isFiniteNumber(payload.loadedBytes, 0) && (payload.totalBytes === null || isFiniteNumber(payload.totalBytes, 0));
+  if (type === 'stt:request' || type === 'llm:request') return isRecord(payload) && typeof payload.requestId === 'string';
+  if (type === 'change') return isRecord(payload) && typeof payload.dirty === 'boolean' && typeof payload.otio === 'string' && payload.otio.length <= 10_000_000;
+  if (type === 'export:progress') return isRecord(payload) && (payload.phase === null || typeof payload.phase === 'string') && isFiniteNumber(payload.progress, 0, 1);
+  if (type === 'export:error') return isRecord(payload) && typeof payload.message === 'string';
+  if (type === 'error') return isRecord(payload) && typeof payload.code === 'string' && typeof payload.message === 'string';
+  if (type === 'resize-request') return isRecord(payload) && isFiniteNumber(payload.minHeightPx, 100, 10_000);
+  if (type === 'export:done') return isRecord(payload) && typeof payload.otio === 'string' && payload.otio.length <= 10_000_000 &&
+    (payload.file === undefined || payload.file instanceof Blob) && (payload.poster === null || payload.poster instanceof Blob) &&
+    isRecord(payload.meta) && isSafeEmbedFilename(payload.meta.filename) && typeof payload.meta.mimeType === 'string' &&
+    isFiniteNumber(payload.meta.sizeBytes, 0, MAX_EMBED_EXPORT_BYTES) &&
+    (payload.meta.width === null || isFiniteNumber(payload.meta.width, 1, 16_384)) &&
+    (payload.meta.height === null || isFiniteNumber(payload.meta.height, 1, 16_384)) &&
+    (payload.meta.durationMs === null || isFiniteNumber(payload.meta.durationMs, 0)) &&
+    (payload.meta.fps === null || isFiniteNumber(payload.meta.fps, 1, 240));
+  return direction === 'editor' && type === 'preferences:changed';
+}
+
+export function validateEmbedMessage(
+  direction: 'host' | 'editor',
+  type: string,
+  payload: unknown,
+): EmbedProtocolValidationResult {
+  const known = direction === 'host' ? HOST_TYPES.has(type as HostToEditorType) : EDITOR_TYPES.has(type as EditorToHostType);
+  if (!known) return { ok: false, code: 'protocol-unknown-message', message: `Unknown ${direction} message: ${type}` };
+  if (!validPayload(type, payload, direction)) return { ok: false, code: 'protocol-invalid-payload', message: `Invalid payload for ${type}` };
+  return { ok: true };
 }
 
 export function createEnvelope(nonce: string, type: string, payload: unknown): EmbedEnvelope {

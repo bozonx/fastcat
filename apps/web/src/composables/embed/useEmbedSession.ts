@@ -51,6 +51,7 @@ const PREFERENCES_DEBOUNCE_MS = 5_000;
  * signal, not a save button, so it trades latency for far fewer messages.
  */
 const CHANGE_DEBOUNCE_MS = 10_000;
+const EXPORT_ACK_TIMEOUT_MS = 30_000;
 
 export type EmbedSessionPhase =
   'standalone' | 'handshake' | 'loading' | 'ready' | 'exporting' | 'error';
@@ -109,6 +110,12 @@ export function useEmbedSession() {
   let exportAck: (() => void) | null = null;
   let pendingExportAck: Promise<void> | null = null;
   let exportedFilename: string | null = null;
+  let exportAckTimer: ReturnType<typeof setTimeout> | null = null;
+  const sessionAbortController = new AbortController();
+  let ingestQueue: Promise<void> = Promise.resolve();
+  let queuedIngestBatches = 0;
+  let nextAssetSequence = 0;
+  const assetIds = new Set<string>();
 
   const isIngesting = ref(false);
   const hasUnacknowledgedExport = ref(false);
@@ -158,7 +165,12 @@ export function useEmbedSession() {
       throw new Error(`Asset ${assetId} arrived as a URL, but this session uses host transport`);
     }
 
-    return createUrlTransport({ id: assetId, url: asset.url, requestFreshUrl });
+    return createUrlTransport({
+      id: assetId,
+      url: asset.url,
+      requestFreshUrl,
+      signal: sessionAbortController.signal,
+    });
   }
 
   /**
@@ -166,20 +178,31 @@ export function useEmbedSession() {
    * soon as it lands rather than after the whole batch. With several assets the
    * user starts trimming the first while the rest are still arriving.
    */
-  async function ingestAssets(assets: EmbedAsset[]) {
-    if (!assets.length) return;
-
+  function ingestAssets(assets: EmbedAsset[]): Promise<void> {
+    if (!assets.length) return Promise.resolve();
+    queuedIngestBatches += 1;
     isIngesting.value = true;
-    try {
-      await ingestAssetsSequentially(assets);
-    } finally {
-      isIngesting.value = false;
-    }
+    const batch = ingestQueue.then(() => ingestAssetsSequentially(assets));
+    // Keep the queue alive after a failed batch so later host actions are not
+    // poisoned by one bad URL.
+    ingestQueue = batch.catch((error: unknown) => {
+      log.warn('Asset ingest batch failed', error);
+    }).finally(() => {
+      queuedIngestBatches -= 1;
+      isIngesting.value = queuedIngestBatches > 0;
+    });
+    return batch;
   }
 
   async function ingestAssetsSequentially(assets: EmbedAsset[]) {
-    for (const [index, asset] of assets.entries()) {
-      const assetId = asset.id ?? `asset-${index}`;
+    for (const asset of assets) {
+      const suppliedId = asset.id;
+      const assetId = suppliedId ?? `asset-${nextAssetSequence++}`;
+      if (assetIds.has(assetId)) {
+        bridge.value?.send('error', { code: 'asset-duplicate-id', message: `Asset ID ${assetId} already exists` });
+        continue;
+      }
+      assetIds.add(assetId);
       try {
         const transport = createTransport(asset, assetId);
         const contentType = await transport.getContentType();
@@ -200,6 +223,7 @@ export function useEmbedSession() {
             onProgress: (loadedBytes, totalBytes) => {
               bridge.value?.send('asset:progress', { assetId, loadedBytes, totalBytes });
             },
+            signal: sessionAbortController.signal,
           });
         } finally {
           transport.dispose();
@@ -224,6 +248,7 @@ export function useEmbedSession() {
         if (!wasAdded) throw new Error(`Cannot place ${assetId} on the timeline`);
         assetCount.value += 1;
       } catch (e) {
+        assetIds.delete(assetId);
         log.error(`Failed to import asset ${assetId}`, e);
         bridge.value?.send('error', {
           code: 'asset-failed',
@@ -286,6 +311,17 @@ export function useEmbedSession() {
         throw new Error('Failed to create the embedded session project');
       }
 
+      if (payload.initialProject) {
+        const timelinePath = projectStore.currentTimelinePath;
+        if (!timelinePath) throw new Error('Embedded project has no timeline to restore');
+        // Runtime protocol validation already checked Timeline.1. Writing it
+        // before ingest means any clips whose media is supplied below resolve
+        // against the final session workspace; unresolved references remain
+        // visibly offline instead of being silently replaced.
+        await projectStore.writeTextByPath(timelinePath, payload.initialProject.otio);
+        await timelineStore.loadTimeline();
+      }
+
       await ingestAssets(payload.assets ?? []);
 
       // `initialized` waits for the shell to pick a layout (see the watcher
@@ -344,6 +380,13 @@ export function useEmbedSession() {
         });
         hasUnacknowledgedExport.value = true;
         bridge.value?.send('export:done', { file, poster, otio, meta });
+        exportAckTimer = setTimeout(() => {
+          bridge.value?.send('error', {
+            code: 'protocol-timeout',
+            message: 'The host did not acknowledge the exported file in time.',
+          });
+          void acknowledgeExport();
+        }, EXPORT_ACK_TIMEOUT_MS);
       });
 
       if (exportForm.exportError.value) {
@@ -378,6 +421,8 @@ export function useEmbedSession() {
    * keep editing after taking one render.
    */
   async function acknowledgeExport() {
+    if (exportAckTimer) clearTimeout(exportAckTimer);
+    exportAckTimer = null;
     exportAck?.();
     exportAck = null;
     pendingExportAck = null;
@@ -395,6 +440,8 @@ export function useEmbedSession() {
   }
 
   async function dispose() {
+    sessionAbortController.abort();
+    if (exportAckTimer) clearTimeout(exportAckTimer);
     // Flush anything still sitting behind a debounce: this is the host's last
     // chance to keep the user's work and preferences.
     if (preferencesTimer) clearTimeout(preferencesTimer);
@@ -407,7 +454,10 @@ export function useEmbedSession() {
 
     // The host may issue dispose as soon as it sees export:done. Keep OPFS
     // alive until it confirms the File has actually been consumed.
-    await pendingExportAck;
+    // A host can dispose from inside its export callback. Do not wait for an
+    // acknowledgement which now cannot arrive; release the file ourselves.
+    await acknowledgeExport();
+    await ingestQueue;
 
     stopHeartbeat?.();
     stopHeartbeat = null;

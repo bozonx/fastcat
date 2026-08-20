@@ -56,6 +56,9 @@ export async function downloadAssetToFile(options: DownloadAssetOptions): Promis
       onProgress?.(written, totalBytes);
     }
 
+    if (written !== totalBytes) {
+      throw new Error(`Asset ${transport.id} was truncated: expected ${totalBytes} bytes, received ${written}`);
+    }
     return written;
   } finally {
     await writable.close().catch((e: unknown) => {

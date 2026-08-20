@@ -5,6 +5,10 @@ import {
   createEmbedNonce,
   buildEmbedUrl,
   parseEmbedHandshakeParams,
+  createEnvelope,
+  hasEmbedProtocolVersion,
+  isEmbedEnvelope,
+  validateEmbedMessage,
 } from '~embed';
 
 describe('embed SDK iframe creation and attributes', () => {
@@ -78,6 +82,41 @@ describe('embed SDK iframe creation and attributes', () => {
     expect(hashParams).toEqual({
       nonce,
       hostOrigin: 'https://example.com',
+    });
+  });
+});
+
+describe('embed protocol runtime validation', () => {
+  it('separates a valid envelope from a protocol version mismatch', () => {
+    const envelope = createEnvelope('nonce', 'ready', {
+      version: 999,
+      capabilities: {},
+    });
+    envelope.version = 999;
+
+    expect(isEmbedEnvelope(envelope, 'nonce')).toBe(true);
+    expect(hasEmbedProtocolVersion(envelope)).toBe(false);
+  });
+
+  it('rejects malformed payloads and unknown messages with stable codes', () => {
+    expect(validateEmbedMessage('host', 'asset:add', { assets: [{ url: 'file:///secret' }] })).toMatchObject({
+      ok: false,
+      code: 'protocol-invalid-payload',
+    });
+    expect(validateEmbedMessage('editor', 'not-a-message', {})).toMatchObject({
+      ok: false,
+      code: 'protocol-unknown-message',
+    });
+  });
+
+  it('limits project defaults and export filenames', () => {
+    expect(validateEmbedMessage('host', 'init', { projectDefaults: { width: 100_000 } })).toMatchObject({
+      ok: false,
+      code: 'protocol-invalid-payload',
+    });
+    expect(validateEmbedMessage('host', 'export:start', { filename: '../render.mp4' })).toMatchObject({
+      ok: false,
+      code: 'protocol-invalid-payload',
     });
   });
 });

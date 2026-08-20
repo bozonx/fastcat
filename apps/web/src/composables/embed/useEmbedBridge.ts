@@ -1,8 +1,10 @@
 import { createDevLogger } from '~/utils/dev-logger';
 import {
   createEnvelope,
+  hasEmbedProtocolVersion,
   isEmbedEnvelope,
   parseEmbedHandshakeParams,
+  validateEmbedMessage,
   type EditorToHostMessages,
   type EditorToHostType,
   type HostToEditorMessages,
@@ -46,6 +48,16 @@ export function createEmbedBridge(): EmbedBridge | null {
     if (event.source !== window.parent) return;
     if (event.origin !== params!.hostOrigin) return;
     if (!isEmbedEnvelope(event.data, params!.nonce)) return;
+    if (!hasEmbedProtocolVersion(event.data)) {
+      log.warn('Host protocol version mismatch', event.data.version);
+      return;
+    }
+
+    const validation = validateEmbedMessage('host', event.data.type, event.data.payload);
+    if (!validation.ok) {
+      log.warn(validation.message);
+      return;
+    }
 
     const handler = handlers.get(event.data.type);
     if (!handler) {
