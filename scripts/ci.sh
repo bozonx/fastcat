@@ -30,7 +30,7 @@ TIER="${1:-}"
 
 case "$TIER" in
   static)
-    pnpm check:static
+    pnpm check
     ;;
   unit)
     pnpm test:unit
@@ -39,8 +39,7 @@ case "$TIER" in
     pnpm test:integration:web
     ;;
   rust)
-    pnpm clippy
-    pnpm fmt:check
+    pnpm --filter @fastcat/native check
     pnpm test:native
     ;;
   e2e-smoke)

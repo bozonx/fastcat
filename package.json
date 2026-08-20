@@ -22,16 +22,14 @@
     "fonts:vendor": "node scripts/vendor-fonts.mjs",
     "update:tauri": "pnpm --filter @fastcat/web add -D @tauri-apps/api@latest && pnpm --filter @fastcat/web add @tauri-apps/plugin-dialog@latest @tauri-apps/plugin-fs@latest @tauri-apps/plugin-os@latest && pnpm --filter @fastcat/native add -D @tauri-apps/cli@latest",
     "update:crates": "cargo update --manifest-path apps/native/src-tauri/Cargo.toml",
-    "check": "pnpm check:ui && pnpm check:native && pnpm test:e2e && pnpm test:e2e:tauri",
-    "check:ui": "pnpm check:static && pnpm test:unit && pnpm test:integration:web && pnpm test:e2e:embed",
-    "check:native": "pnpm --filter @fastcat/native check && pnpm test:native",
-    "check:static": "pnpm i18n:check && pnpm typecheck && pnpm lint",
-    "check:fast": "pnpm check:static && pnpm test:unit && pnpm test:integration:web",
-    "lint": "turbo run lint",
-    "lint:fix": "turbo run lint:fix",
+    "check": "pnpm i18n:check && pnpm typecheck && pnpm lint && pnpm format:check",
+    "validate": "pnpm check && pnpm test:unit && pnpm test:integration:web && pnpm --filter @fastcat/native test",
+    "validate:all": "pnpm check && pnpm test:unit && pnpm test:integration && pnpm test:e2e && pnpm test:e2e:tauri",
+    "lint": "eslint --max-warnings 0 . && turbo run lint",
+    "lint:fix": "eslint --fix . && turbo run lint:fix",
     "clippy": "pnpm --filter @fastcat/native clippy",
-    "fmt:check": "pnpm --filter @fastcat/native fmt:check",
-    "fmt": "pnpm --filter @fastcat/native fmt",
+    "format": "prettier --write . && pnpm --filter @fastcat/native format",
+    "format:check": "prettier --check . && pnpm --filter @fastcat/native format:check",
     "i18n:check": "node scripts/check-i18n-locales.mjs",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
@@ -84,6 +82,8 @@
   "devDependencies": {
     "@changesets/cli": "^3.0.1",
     "@playwright/test": "^1.61.1",
+    "@typescript-eslint/eslint-plugin": "^8.67.0",
+    "@typescript-eslint/parser": "^8.67.0",
     "dotenv-cli": "^11.0.0",
     "eslint": "^10.7.0",
     "eslint-config-prettier": "^10.1.8",
@@ -91,6 +91,7 @@
     "prettier": "^3.9.6",
     "tsx": "^4.23.1",
     "turbo": "^2.4.4",
-    "typescript": "~5.9.0"
+    "typescript": "~5.9.0",
+    "typescript-eslint": "^8.67.0"
   }
 }

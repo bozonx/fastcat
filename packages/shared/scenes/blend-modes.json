@@ -387,9 +387,7 @@
     "master_effects": [],
     "audio_master_effects": []
   },
-  "sample_times_sec": [
-    0.5
-  ],
+  "sample_times_sec": [0.5],
   "tolerance": 26,
   "color_tolerance": 1080
 }

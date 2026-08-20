@@ -24,13 +24,13 @@ The probe/decode/export suites don't need it, but it's harmless to always pass.
 
 ## Suites
 
-| File | Needs | What it checks |
-|------|-------|----------------|
-| `media_probe.rs` | ffprobe / image crate | `probe_media` over the container matrix, `decode_image` (png/jpeg/webp), `extract_audio_stream` |
-| `audio_offline.rs` | — (linked libav) | scene → PCM mix: length, 440 Hz energy, speed, fades, pan, track gain/mute/solo, master-gain scaling, silence |
-| `audio_engine_realtime.rs` | — (mock backend) | transport state machine (scene/seek/play/pause) without a `cpal` device |
-| `timeline_export.rs` | ffmpeg + GPU | full `export_timeline`: audio-only file, and GPU video export verified with ffprobe |
-| `engine_parity.rs` | ffmpeg + GPU | cross-engine parity: renders shared scenes from `shared/scenes/` through the real GPU compositor, computes perceptual hashes, and compares against golden hashes in `shared/golden/frames.json` |
+| File                       | Needs                 | What it checks                                                                                                                                                                                  |
+| -------------------------- | --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `media_probe.rs`           | ffprobe / image crate | `probe_media` over the container matrix, `decode_image` (png/jpeg/webp), `extract_audio_stream`                                                                                                 |
+| `audio_offline.rs`         | — (linked libav)      | scene → PCM mix: length, 440 Hz energy, speed, fades, pan, track gain/mute/solo, master-gain scaling, silence                                                                                   |
+| `audio_engine_realtime.rs` | — (mock backend)      | transport state machine (scene/seek/play/pause) without a `cpal` device                                                                                                                         |
+| `timeline_export.rs`       | ffmpeg + GPU          | full `export_timeline`: audio-only file, and GPU video export verified with ffprobe                                                                                                             |
+| `engine_parity.rs`         | ffmpeg + GPU          | cross-engine parity: renders shared scenes from `shared/scenes/` through the real GPU compositor, computes perceptual hashes, and compares against golden hashes in `shared/golden/frames.json` |
 
 ## Graceful skips
 

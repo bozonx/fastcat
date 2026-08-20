@@ -304,7 +304,6 @@ summary:disabled {
   cursor: not-allowed !important;
 }
 
-
 /* Range inputs */
 input[type='range'] {
   -webkit-appearance: none;
@@ -443,14 +442,14 @@ html.block-text-selection body {
    modals, settings, and mobile drawers/sheets */
 html.block-text-selection input,
 html.block-text-selection textarea,
-html.block-text-selection [contenteditable="true"],
+html.block-text-selection [contenteditable='true'],
 html.block-text-selection .select-text,
 html.block-text-selection .selectable,
 html.block-text-selection label,
-html.block-text-selection [data-part="label"],
-html.block-text-selection [data-part="description"],
-html.block-text-selection [data-slot="label"],
-html.block-text-selection [data-slot="description"],
+html.block-text-selection [data-part='label'],
+html.block-text-selection [data-part='description'],
+html.block-text-selection [data-slot='label'],
+html.block-text-selection [data-slot='description'],
 html.block-text-selection .form-label,
 html.block-text-selection .control-label,
 html.block-text-selection .ui-label,
@@ -460,8 +459,8 @@ html.block-text-selection h3,
 html.block-text-selection h4,
 html.block-text-selection h5,
 html.block-text-selection h6,
-html.block-text-selection [data-slot="title"],
-html.block-text-selection [data-part="title"],
+html.block-text-selection [data-slot='title'],
+html.block-text-selection [data-part='title'],
 html.block-text-selection .title,
 html.block-text-selection .heading,
 html.block-text-selection .panel-title,
@@ -479,10 +478,10 @@ html.block-text-selection .property-label,
 html.block-text-selection .property-value,
 html.block-text-selection .media-metadata-list,
 html.block-text-selection .media-metadata-list *,
-html.block-text-selection [role="dialog"],
-html.block-text-selection [role="dialog"] *,
-html.block-text-selection [data-slot="content"],
-html.block-text-selection [data-slot="content"] *,
+html.block-text-selection [role='dialog'],
+html.block-text-selection [role='dialog'] *,
+html.block-text-selection [data-slot='content'],
+html.block-text-selection [data-slot='content'] *,
 html.block-text-selection [data-radix-dialog-content],
 html.block-text-selection [data-radix-dialog-content] *,
 html.block-text-selection .ui-modal,
@@ -508,30 +507,42 @@ html.block-text-selection .mobile-drawer * {
 }
 
 /* Ensure headings and labels in property inspector, drawers, settings, and modals override .select-none */
-html.block-text-selection :is(
-  [data-properties-panel], .properties-panel,
-  [data-mobile-drawer], [data-vaul-drawer], [data-drawer], [data-sheet], .mobile-drawer,
-  [data-settings-panel], .settings-panel,
-  [role="dialog"], .ui-modal, [data-modal]
-) :is(h1, h2, h3, h4, h5, h6, label, .title, .heading, [data-slot="title"], [data-part="title"]) {
+html.block-text-selection
+  :is(
+    [data-properties-panel],
+    .properties-panel,
+    [data-mobile-drawer],
+    [data-vaul-drawer],
+    [data-drawer],
+    [data-sheet],
+    .mobile-drawer,
+    [data-settings-panel],
+    .settings-panel,
+    [role='dialog'],
+    .ui-modal,
+    [data-modal]
+  )
+  :is(h1, h2, h3, h4, h5, h6, label, .title, .heading, [data-slot='title'], [data-part='title']) {
   user-select: text !important;
   -webkit-user-select: text !important;
 }
 
 /* Keep interactive controls, drag handle backgrounds, icons, and sliders unselectable */
 html.block-text-selection button,
-html.block-text-selection [role="button"],
+html.block-text-selection [role='button'],
 html.block-text-selection [data-panel-drag-handle],
 html.block-text-selection [data-vaul-handle],
 html.block-text-selection [data-slider-root],
 html.block-text-selection [data-slider-thumb],
-html.block-text-selection input[type="range"] {
+html.block-text-selection input[type='range'] {
   user-select: none;
   -webkit-user-select: none;
 }
 
 /* Re-enable text selection on title texts inside panel drag handles / drawer headers */
-html.block-text-selection :is([data-panel-drag-handle], [data-vaul-no-drag]) :is(h1, h2, h3, h4, h5, h6, span, p) {
+html.block-text-selection
+  :is([data-panel-drag-handle], [data-vaul-no-drag])
+  :is(h1, h2, h3, h4, h5, h6, span, p) {
   user-select: text;
   -webkit-user-select: text;
 }
@@ -604,10 +615,13 @@ html.block-text-selection :is([data-panel-drag-handle], [data-vaul-no-drag]) :is
 }
 
 .muted-track-dots {
-  background-image: radial-gradient(rgba(255, 255, 255, 0.12) 15%, transparent 16%),
-                    radial-gradient(rgba(255, 255, 255, 0.12) 15%, transparent 16%);
+  background-image:
+    radial-gradient(rgba(255, 255, 255, 0.12) 15%, transparent 16%),
+    radial-gradient(rgba(255, 255, 255, 0.12) 15%, transparent 16%);
   background-size: 16px 16px;
-  background-position: 0 0, 8px 8px;
+  background-position:
+    0 0,
+    8px 8px;
 }
 
 .checkerboard-bg {
@@ -626,12 +640,11 @@ html.block-text-selection :is([data-panel-drag-handle], [data-vaul-no-drag]) :is
   background-repeat: repeat;
 }
 
-
 /* Select Menu styling to prevent border/background loss on focus/hover */
 .ui-select-menu button,
 button.ui-select-menu,
 .ui-select-menu,
-button[role="combobox"],
+button[role='combobox'],
 button.ui-select-trigger,
 .ui-select-menu-trigger {
   border: 1px solid var(--ui-border) !important;
@@ -660,7 +673,7 @@ button[role='combobox']:has([data-slot='leading']) {
 .ui-select-menu button:hover,
 button.ui-select-menu:hover,
 .ui-select-menu:hover,
-button[role="combobox"]:hover,
+button[role='combobox']:hover,
 button.ui-select-trigger:hover {
   background-color: var(--ui-bg-hover) !important;
   border-color: var(--ui-border) !important;
@@ -669,19 +682,19 @@ button.ui-select-trigger:hover {
 /* Focus and Open states */
 .ui-select-menu button:focus,
 .ui-select-menu button:focus-visible,
-.ui-select-menu button[data-state="open"],
+.ui-select-menu button[data-state='open'],
 button.ui-select-menu:focus,
 button.ui-select-menu:focus-visible,
-button.ui-select-menu[data-state="open"],
+button.ui-select-menu[data-state='open'],
 .ui-select-menu:focus,
 .ui-select-menu:focus-visible,
-.ui-select-menu[data-state="open"],
-button[role="combobox"]:focus,
-button[role="combobox"]:focus-visible,
-button[role="combobox"][data-state="open"],
+.ui-select-menu[data-state='open'],
+button[role='combobox']:focus,
+button[role='combobox']:focus-visible,
+button[role='combobox'][data-state='open'],
 button.ui-select-trigger:focus,
 button.ui-select-trigger:focus-visible,
-button.ui-select-trigger[data-state="open"] {
+button.ui-select-trigger[data-state='open'] {
   border-color: var(--color-primary-500) !important;
   outline: none !important;
   box-shadow: 0 0 0 1px var(--color-primary-500) !important;
@@ -691,32 +704,30 @@ button.ui-select-trigger[data-state="open"] {
 /* Hover state when focused/open */
 .ui-select-menu button:focus:hover,
 .ui-select-menu button:focus-visible:hover,
-.ui-select-menu button[data-state="open"]:hover,
+.ui-select-menu button[data-state='open']:hover,
 button.ui-select-menu:focus:hover,
 button.ui-select-menu:focus-visible:hover,
-button.ui-select-menu[data-state="open"]:hover,
+button.ui-select-menu[data-state='open']:hover,
 .ui-select-menu:focus:hover,
 .ui-select-menu:focus-visible:hover,
-.ui-select-menu[data-state="open"]:hover,
-button[role="combobox"]:focus:hover,
-button[role="combobox"]:focus-visible:hover,
-button[role="combobox"][data-state="open"]:hover,
+.ui-select-menu[data-state='open']:hover,
+button[role='combobox']:focus:hover,
+button[role='combobox']:focus-visible:hover,
+button[role='combobox'][data-state='open']:hover,
 button.ui-select-trigger:focus:hover,
 button.ui-select-trigger:focus-visible:hover,
-button.ui-select-trigger[data-state="open"]:hover {
+button.ui-select-trigger[data-state='open']:hover {
   border-color: var(--color-primary-500) !important;
   box-shadow: 0 0 0 1px var(--color-primary-500) !important;
   background-color: var(--ui-bg-hover) !important;
 }
-
-
 
 /* ==========================================================================
    Mobile Layout Form Overrides (.is-mobile-layout)
    ========================================================================== */
 .is-mobile-layout {
   /* 1. Input fields styling (text, number, email, etc.) and textarea */
-  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  input:not([type='checkbox']):not([type='radio']):not([type='range']),
   textarea:not(.text-editor-textarea) {
     font-size: 0.95rem !important; /* Readable font size, prevents auto-zoom on iOS */
     border-radius: var(--radius-ui-md) !important; /* 8px border radius */
@@ -737,7 +748,7 @@ button.ui-select-trigger[data-state="open"]:hover {
   }
 
   /* Focus state for inputs and textareas */
-  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):focus-visible,
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):focus-visible,
   textarea:not(.text-editor-textarea):focus-visible {
     border-color: var(--color-primary-500) !important;
     outline: none !important;
@@ -748,7 +759,7 @@ button.ui-select-trigger[data-state="open"]:hover {
   .ui-select-menu button,
   button.ui-select-menu,
   .ui-select-menu,
-  button[role="combobox"],
+  button[role='combobox'],
   button.ui-select-trigger,
   .ui-select-menu-trigger {
     font-size: 0.95rem !important;
@@ -772,7 +783,7 @@ button.ui-select-trigger[data-state="open"]:hover {
   .ui-select-menu button:has([data-slot='leading']),
   button.ui-select-menu:has([data-slot='leading']),
   .ui-select-menu:has([data-slot='leading']),
-  button[role="combobox"]:has([data-slot='leading']),
+  button[role='combobox']:has([data-slot='leading']),
   button.ui-select-trigger:has([data-slot='leading']),
   .ui-select-menu-trigger:has([data-slot='leading']) {
     padding-left: 2rem !important;
@@ -782,7 +793,7 @@ button.ui-select-trigger[data-state="open"]:hover {
   .ui-select-menu button:focus-visible,
   button.ui-select-menu:focus-visible,
   .ui-select-menu:focus-visible,
-  button[role="combobox"]:focus-visible,
+  button[role='combobox']:focus-visible,
   button.ui-select-trigger:focus-visible {
     border-color: var(--color-primary-500) !important;
     outline: none !important;
@@ -798,8 +809,22 @@ button.ui-select-trigger[data-state="open"]:hover {
   }
 
   /* 4. Auxiliary buttons in forms (e.g. chevron button next to FPS presets) */
-  .flex.items-center.gap-1 > button:not(.mobile-timeline-toolbar *, .mobile-drawer-toolbar *, .file-browser-breadcrumbs *, .mobile-file-browser-navbar *, .marker-color-filter *),
-  .flex.items-center.gap-1\.5 > button:not(.mobile-timeline-toolbar *, .mobile-drawer-toolbar *, .file-browser-breadcrumbs *, .mobile-file-browser-navbar *, .marker-color-filter *) {
+  .flex.items-center.gap-1
+    > button:not(
+      .mobile-timeline-toolbar *,
+      .mobile-drawer-toolbar *,
+      .file-browser-breadcrumbs *,
+      .mobile-file-browser-navbar *,
+      .marker-color-filter *
+    ),
+  .flex.items-center.gap-1\.5
+    > button:not(
+      .mobile-timeline-toolbar *,
+      .mobile-drawer-toolbar *,
+      .file-browser-breadcrumbs *,
+      .mobile-file-browser-navbar *,
+      .marker-color-filter *
+    ) {
     height: 38px !important;
     width: 38px !important;
     display: inline-flex !important;

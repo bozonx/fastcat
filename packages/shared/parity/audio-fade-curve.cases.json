@@ -12,7 +12,12 @@
     { "name": "log-start", "curve": "logarithmic", "progress": 0, "gain": 0 },
     { "name": "log-quarter", "curve": "logarithmic", "progress": 0.25, "gain": 0.3826834323650898 },
     { "name": "log-half", "curve": "logarithmic", "progress": 0.5, "gain": 0.7071067811865475 },
-    { "name": "log-three-quarter", "curve": "logarithmic", "progress": 0.75, "gain": 0.9238795325112867 },
+    {
+      "name": "log-three-quarter",
+      "curve": "logarithmic",
+      "progress": 0.75,
+      "gain": 0.9238795325112867
+    },
     { "name": "log-end", "curve": "logarithmic", "progress": 1, "gain": 1 },
     { "name": "log-clamps-below-zero", "curve": "logarithmic", "progress": -0.5, "gain": 0 },
     { "name": "log-clamps-above-one", "curve": "logarithmic", "progress": 1.5, "gain": 1 }

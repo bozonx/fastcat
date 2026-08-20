@@ -99,7 +99,9 @@ describe('embed protocol runtime validation', () => {
   });
 
   it('rejects malformed payloads and unknown messages with stable codes', () => {
-    expect(validateEmbedMessage('host', 'asset:add', { assets: [{ url: 'file:///secret' }] })).toMatchObject({
+    expect(
+      validateEmbedMessage('host', 'asset:add', { assets: [{ url: 'file:///secret' }] }),
+    ).toMatchObject({
       ok: false,
       code: 'protocol-invalid-payload',
     });
@@ -110,11 +112,15 @@ describe('embed protocol runtime validation', () => {
   });
 
   it('limits project defaults and export filenames', () => {
-    expect(validateEmbedMessage('host', 'init', { projectDefaults: { width: 100_000 } })).toMatchObject({
+    expect(
+      validateEmbedMessage('host', 'init', { projectDefaults: { width: 100_000 } }),
+    ).toMatchObject({
       ok: false,
       code: 'protocol-invalid-payload',
     });
-    expect(validateEmbedMessage('host', 'export:start', { filename: '../render.mp4' })).toMatchObject({
+    expect(
+      validateEmbedMessage('host', 'export:start', { filename: '../render.mp4' }),
+    ).toMatchObject({
       ok: false,
       code: 'protocol-invalid-payload',
     });

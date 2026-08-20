@@ -6,8 +6,10 @@
   "scripts": {
     "dev": "vitepress dev src",
     "build": "vitepress build src",
-    "lint": "prettier --check .",
-    "lint:fix": "prettier --write .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check": "pnpm format:check",
+    "validate": "pnpm check",
     "preview": "vitepress preview src"
   },
   "devDependencies": {

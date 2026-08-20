@@ -18,21 +18,21 @@ Tauri e2e is the smallest native confidence layer. Add tests here only when the
 behavior can be wrong in the real Tauri/WebKitGTK app while still passing the
 Chromium Playwright suite.
 
-| Concern | Test here? | Better home |
-| --- | --- | --- |
-| App boots in the native webview and exposes Tauri internals | Yes | `test/tauri-e2e/specs/smoke.e2e.ts` |
-| JS-to-Rust command wiring, payload shape, and command errors | Yes | Tauri e2e + matching unit/contract tests |
-| Real filesystem permissions, app data paths, asset protocol URLs | Yes | `test/tauri-e2e/specs/ipc-scope.e2e.ts` |
-| Native runtime capabilities and web fallback check | Yes | `test/tauri-e2e/specs/native-runtime-capabilities.e2e.ts` |
-| FFmpeg probe metadata via IPC | Yes | `test/tauri-e2e/specs/native-media-metadata.e2e.ts` |
-| Native fontdb family discovery | Yes | `test/tauri-e2e/specs/native-fonts.e2e.ts` |
-| FFmpeg diagnostics and HW settings updates | Yes | `test/tauri-e2e/specs/native-ffmpeg-diagnostics.e2e.ts` |
-| WebP video frame extraction via IPC | Yes | `test/tauri-e2e/specs/native-frame-render.e2e.ts` |
-| Minimal timeline export smoke | Yes | `test/tauri-e2e/specs/native-export-smoke.e2e.ts` |
-| Native monitor IPC lifecycle smoke | Yes | `test/tauri-e2e/specs/native-monitor-smoke.e2e.ts` |
-| Timeline editing, selection, undo/redo, project workflow logic | No | `test/e2e/web` and unit tests |
-| Pure math, serialization, media graph, transition logic | No | unit/parity/golden tiers |
-| Browser-only OPFS workflows with mocked Tauri APIs | No | `test/e2e/web` |
+| Concern                                                          | Test here? | Better home                                               |
+| ---------------------------------------------------------------- | ---------- | --------------------------------------------------------- |
+| App boots in the native webview and exposes Tauri internals      | Yes        | `test/tauri-e2e/specs/smoke.e2e.ts`                       |
+| JS-to-Rust command wiring, payload shape, and command errors     | Yes        | Tauri e2e + matching unit/contract tests                  |
+| Real filesystem permissions, app data paths, asset protocol URLs | Yes        | `test/tauri-e2e/specs/ipc-scope.e2e.ts`                   |
+| Native runtime capabilities and web fallback check               | Yes        | `test/tauri-e2e/specs/native-runtime-capabilities.e2e.ts` |
+| FFmpeg probe metadata via IPC                                    | Yes        | `test/tauri-e2e/specs/native-media-metadata.e2e.ts`       |
+| Native fontdb family discovery                                   | Yes        | `test/tauri-e2e/specs/native-fonts.e2e.ts`                |
+| FFmpeg diagnostics and HW settings updates                       | Yes        | `test/tauri-e2e/specs/native-ffmpeg-diagnostics.e2e.ts`   |
+| WebP video frame extraction via IPC                              | Yes        | `test/tauri-e2e/specs/native-frame-render.e2e.ts`         |
+| Minimal timeline export smoke                                    | Yes        | `test/tauri-e2e/specs/native-export-smoke.e2e.ts`         |
+| Native monitor IPC lifecycle smoke                               | Yes        | `test/tauri-e2e/specs/native-monitor-smoke.e2e.ts`        |
+| Timeline editing, selection, undo/redo, project workflow logic   | No         | `test/e2e/web` and unit tests                             |
+| Pure math, serialization, media graph, transition logic          | No         | unit/parity/golden tiers                                  |
+| Browser-only OPFS workflows with mocked Tauri APIs               | No         | `test/e2e/web`                                            |
 
 ## Suite Organization
 
@@ -48,7 +48,6 @@ Chromium Playwright suite.
   - `native-frame-render.e2e.ts`: WebP video frame extraction (`native_video_frame_webp`), magic header validation (`RIFF...WEBP`), and invalid path error handling.
   - `native-export-smoke.e2e.ts`: Minimal 0.5s native export (`native_timeline_export`) — an audio-only WAV path plus a video mp4/h264 path (through the vello/wgpu compositor, skipped when no GPU adapter), verifying output file existence, duration probing, and (for video) a real H.264 stream at the requested resolution.
   - `native-monitor-smoke.e2e.ts`: Monitor IPC lifecycle (`monitor_set_mode`, `monitor_set_canvas_size`, `monitor_set_scene`, `monitor_seek`, `monitor_pause`, `monitor_close`).
-
 
 Good Tauri e2e scenarios:
 
@@ -121,11 +120,11 @@ TAURI_E2E_BINARY=src-tauri/target/debug/fastcat pnpm exec wdio run test/tauri-e2
 
 ## Env overrides
 
-| Var                  | Default                      | Purpose                          |
-| -------------------- | ---------------------------- | -------------------------------- |
-| `TAURI_E2E_BINARY`   | `…/target/release/fastcat`   | Use a prebuilt binary as-is      |
-| `TAURI_DRIVER_PATH`  | `~/.cargo/bin/tauri-driver`  | tauri-driver location            |
-| `TAURI_DRIVER_PORT`  | `4444`                       | tauri-driver intermediary port   |
-| `FASTCAT_DEV_DIR`    | `./test-files/tauri-e2e`     | Emulated desktop filesystem root |
-| `TAURI_E2E_PROJECTS_ROOT` | `$FASTCAT_DEV_DIR/home/user/Documents/FastCat/projects` | Project cleanup root |
-| `TAURI_E2E_TEMP_ROOT` | `$FASTCAT_DEV_DIR/tmp/fixtures` | Temporary copied fixture root |
+| Var                       | Default                                                 | Purpose                          |
+| ------------------------- | ------------------------------------------------------- | -------------------------------- |
+| `TAURI_E2E_BINARY`        | `…/target/release/fastcat`                              | Use a prebuilt binary as-is      |
+| `TAURI_DRIVER_PATH`       | `~/.cargo/bin/tauri-driver`                             | tauri-driver location            |
+| `TAURI_DRIVER_PORT`       | `4444`                                                  | tauri-driver intermediary port   |
+| `FASTCAT_DEV_DIR`         | `./test-files/tauri-e2e`                                | Emulated desktop filesystem root |
+| `TAURI_E2E_PROJECTS_ROOT` | `$FASTCAT_DEV_DIR/home/user/Documents/FastCat/projects` | Project cleanup root             |
+| `TAURI_E2E_TEMP_ROOT`     | `$FASTCAT_DEV_DIR/tmp/fixtures`                         | Temporary copied fixture root    |

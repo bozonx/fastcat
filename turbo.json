@@ -35,6 +35,10 @@
       ],
       "outputs": [".output/**", ".nuxt/**"]
     },
+    "typecheck": {
+      "cache": true,
+      "dependsOn": ["^build"]
+    },
     "@fastcat/web#typecheck": {
       "dependsOn": ["^build"],
       "env": ["NODE_ENV"]
@@ -44,6 +48,16 @@
     },
     "lint:fix": {
       "cache": false
+    },
+    "format:check": {
+      "cache": true
+    },
+    "format": {
+      "cache": false
+    },
+    "check": {
+      "cache": true,
+      "dependsOn": ["typecheck", "lint", "format:check"]
     },
     "test": {
       "dependsOn": ["^build"]

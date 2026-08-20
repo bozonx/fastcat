@@ -38,6 +38,7 @@ export CLOUDFLARE_API_TOKEN="ваш-токен"
 ```
 
 Токен: Cloudflare Dashboard → My Profile → API Tokens. Нужны права:
+
 - **Account** → Workers Scripts → Edit
 - **Zone** → Workers Routes → Edit (для кастомного домена)
 
@@ -64,6 +65,7 @@ export FASTCAT_ENABLE_IN_DEVELOPMENT_FEATURES=false
 ## Шаг 3. Автоматический деплой через Cloudflare Git Integration (Dashboard)
 
 В Cloudflare Dashboard (**Workers & Pages → Create / Import from Git**):
+
 - **Build command**: `pnpm build:cf` (запускает `pnpm check:ui && pnpm generate` — сначала проверяет тесты/типы, затем собирает SPA)
 - **Deploy command**: `npx wrangler deploy`
 
@@ -76,6 +78,7 @@ pnpm deploy:cf
 ```
 
 Запускает `pnpm generate && wrangler deploy`:
+
 1. `pnpm generate` — собирает статику в `.output/public`
 2. `wrangler deploy` — загружает Worker + ассеты в Cloudflare
 
@@ -108,6 +111,7 @@ routes = [
 ### SharedArrayBuffer недоступен
 
 Проверьте, что Worker отдаёт заголовки:
+
 - `Cross-Origin-Opener-Policy: same-origin`
 - `Cross-Origin-Embedder-Policy: require-corp`
 

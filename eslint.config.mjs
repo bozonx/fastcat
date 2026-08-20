@@ -1,6 +1,7 @@
 import eslintPluginPrettierRecommended from 'eslint-plugin-prettier/recommended';
+import tseslint from 'typescript-eslint';
 
-export default [
+export default tseslint.config(
   eslintPluginPrettierRecommended,
   {
     ignores: [
@@ -15,8 +16,10 @@ export default [
   },
   {
     files: ['scripts/**/*.mjs', 'scripts/**/*.js', 'scripts/**/*.ts'],
+    extends: [...tseslint.configs.recommended],
     rules: {
       'no-console': 'off',
+      '@typescript-eslint/no-explicit-any': 'off',
     },
   },
-];
+);

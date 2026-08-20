@@ -6,12 +6,18 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "lint": "prettier --check .",
-    "lint:fix": "prettier --write .",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "lint": "eslint --max-warnings 0 .",
+    "lint:fix": "eslint --fix .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "check": "pnpm typecheck && pnpm lint && pnpm format:check",
+    "validate": "pnpm check"
   },
   "devDependencies": {
+    "@fastcat/eslint-config": "workspace:*",
     "@fastcat/typescript-config": "workspace:*",
+    "eslint": "^10.7.0",
     "typescript": "~5.9.0",
     "wrangler": "^4.113.0"
   }

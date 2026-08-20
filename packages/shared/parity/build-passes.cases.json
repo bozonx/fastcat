@@ -1030,12 +1030,7 @@
       "effects": [
         {
           "type": "chroma-key",
-          "key_rgba": [
-            0,
-            255,
-            0,
-            255
-          ],
+          "key_rgba": [0, 255, 0, 255],
           "threshold": 0.2,
           "smoothness": 0.1
         }
@@ -1071,12 +1066,7 @@
       "effects": [
         {
           "type": "color-tone",
-          "color_rgba": [
-            255,
-            136,
-            0,
-            255
-          ],
+          "color_rgba": [255, 136, 0, 255],
           "amount": 0.6,
           "blend_mode": "overlay",
           "preserve_luminance": true,

@@ -23,13 +23,13 @@ video engine output, not user workflows.
 
 ## What is e2e here vs. what is not
 
-| Concern | Where it lives |
-| --- | --- |
-| DSP math, pan-law, fades, geometry | unit / parity fixtures (`shared/parity`, `*.parity.test.ts`) |
-| Codec/container ingest matrix | `web/media-format-import.spec.ts` (probe route) |
-| Audio graph numbers (RMS/peak) | `web/audio-playback.spec.ts` (probe route) |
-| I/O budget / OPFS decode lifecycle | `web/opfs-io-budget.spec.ts` |
-| **User workflows through the real UI** | the specs described below |
+| Concern                                | Where it lives                                               |
+| -------------------------------------- | ------------------------------------------------------------ |
+| DSP math, pan-law, fades, geometry     | unit / parity fixtures (`shared/parity`, `*.parity.test.ts`) |
+| Codec/container ingest matrix          | `web/media-format-import.spec.ts` (probe route)              |
+| Audio graph numbers (RMS/peak)         | `web/audio-playback.spec.ts` (probe route)                   |
+| I/O budget / OPFS decode lifecycle     | `web/opfs-io-budget.spec.ts`                                 |
+| **User workflows through the real UI** | the specs described below                                    |
 
 ## Structure
 
@@ -71,7 +71,7 @@ test/utils/e2e/
 - **Start from `e2eProject`** (fixture) — every test gets an open project with an
   isolated OPFS workspace that is cleaned up afterwards.
 - **Precondition media with `seedProjectMedia`** (writes bytes + reloads). Only
-  `media-import.spec.ts` drives the import *UI* via `importViaUpload`; other
+  `media-import.spec.ts` drives the import _UI_ via `importViaUpload`; other
   specs must not re-run import just to get a clip.
 - **Assert on the persisted doc** via `readTimelineDoc` / `waitForTimelineDoc`.
   UI locators confirm the action happened; the `.otio` file confirms it stuck.
@@ -90,22 +90,22 @@ Most of the app is already addressable via existing data attributes
 `data-monitor-play`). The following `data-testid`s were added for nodes that had
 no stable hook:
 
-| test id | node |
-| --- | --- |
-| `clip-trim-start` / `clip-trim-end` | timeline clip trim handles |
-| `timeline-playhead` | playhead line |
-| `timeline-ruler` | ruler seek surface |
-| `file-create-folder` | file toolbar create-folder button |
-| `file-view-grid` / `file-view-list` | file toolbar view toggles |
-| `file-upload-input` | hidden file input for import |
-| `nav-export` | editor header export-view tab |
-| `export-start` | export start button |
-| `export-progress` / `export-success` | export status regions |
+| test id                                         | node                               |
+| ----------------------------------------------- | ---------------------------------- |
+| `clip-trim-start` / `clip-trim-end`             | timeline clip trim handles         |
+| `timeline-playhead`                             | playhead line                      |
+| `timeline-ruler`                                | ruler seek surface                 |
+| `file-create-folder`                            | file toolbar create-folder button  |
+| `file-view-grid` / `file-view-list`             | file toolbar view toggles          |
+| `file-upload-input`                             | hidden file input for import       |
+| `nav-export`                                    | editor header export-view tab      |
+| `export-start`                                  | export start button                |
+| `export-progress` / `export-success`            | export status regions              |
 | `clip-effects-video` / `clip-effects-video-add` | video effect editor and add button |
-| `select-effect-<type>` | effect picker card |
-| `clip-effect-<type>` | applied clip effect block |
-| `clip-effect-<type>-param-<key>` | applied effect parameter control |
-| `monitor-preview-effects` | monitor preview-effects toggle |
+| `select-effect-<type>`                          | effect picker card                 |
+| `clip-effect-<type>`                            | applied clip effect block          |
+| `clip-effect-<type>-param-<key>`                | applied effect parameter control   |
+| `monitor-preview-effects`                       | monitor preview-effects toggle     |
 
 ## Running
 

@@ -1,10 +1,12 @@
 # Tauri-композитор на Vello — архитектура
 
 ## Цель
+
 Заменить веб-композитор (PixiJS + WebCodecs в video-core worker) на нативный Rust-композитор
 в Tauri-сборке. Веб-сборка продолжает использовать старое ядро без изменений.
 
 Разделение:
+
 - **Web** → `src/workers/video-core.worker.ts` + `src/utils/video-editor/VideoCompositor.ts` (Pixi).
 - **Tauri** → `src-tauri/src/compositor` (Vello) + `src-tauri/src/media` (декод).
 
@@ -42,6 +44,7 @@ Web и native — это два полностью отдельных конве
 ## Файловая структура
 
 ### Rust (src-tauri/src)
+
 ```
 compositor/
   mod.rs              — модуль и Compositor reexport
@@ -67,6 +70,7 @@ ipc/
 ```
 
 ### Frontend (src/utils/video-backend)
+
 ```
 index.ts   — getVideoBackend() — runtime-выбор web vs tauri
 types.ts   — Scene/Layer/EffectSpec/TransitionSpec — TS зеркало Rust-структур
@@ -75,6 +79,7 @@ web.ts    — Web-обёртка над старым ядром (пока заг
 ```
 
 ## Как использовать с фронта
+
 ```ts
 import { getVideoBackend } from '~/utils/video-backend';
 
@@ -82,11 +87,13 @@ const backend = await getVideoBackend();
 const info = await backend.openMedia('/path/to/clip.mp4');
 const frame = await backend.renderFrame(scene);
 ```
+
 `tauri.ts` динамически импортируется только в Tauri-рантайме — `web.ts` не утянет `@tauri-apps/api`,
 и наоборот: `web.ts` НЕ импортирует старый `VideoCompositor`, поэтому в Tauri-бандле его не будет
 (если все вызовы переведены через `getVideoBackend`).
 
 ### План миграции вызовов (TODO)
+
 1. Монитор: `src/composables/monitor/useMonitorCore.compositor.ts` → дергает `getVideoBackend().renderFrame()`
    вместо прямого `new VideoCompositor()`.
 2. Превью: `src/composables/preview/*` → то же.
@@ -101,23 +108,24 @@ const frame = await backend.renderFrame(scene);
 
 **Бери FFmpeg (через `ffmpeg-next` crate).** Причины:
 
-| | FFmpeg | GStreamer |
-|---|---|---|
-| Поддержка кодеков | максимум, эталон | хорошо, но через плагины |
-| GPU на Linux | VAAPI ✓, NVENC/NVDEC ✓, Vulkan ✓ (h264_vulkan, hevc_vulkan с 6.0) | VAAPI ✓ (gstreamer-vaapi), NVENC ✓ (nvcodecplugin) |
-| GPU на macOS | VideoToolbox ✓ | VideoToolbox ✓ (vtenc/vtdec) |
-| GPU на Windows | D3D11VA, NVENC, AMF, QuickSync ✓ | D3D11, NVENC ✓ |
-| Зависимости/сборка | один libavcodec + флаги | много `.so`, плагины, GLib runtime |
-| Bundling в .deb/.rpm | проще (статика или dlopen) | тащит GStreamer стек целиком (десятки пакетов) |
-| API в Rust | `ffmpeg-next` (зрелый, активен) | `gstreamer-rs` (зрелый, но pipeline-based mental model) |
-| Pipeline-композитинг | ручной граф фильтров (libavfilter) | мощный graph из коробки |
-| Подходит как **бэкенд декодера/энкодера** к нашему собственному композитору | ★★★★★ | ★★★ |
-| Подходит как **готовый pipeline editor с микшированием** | ★★★ | ★★★★★ |
+|                                                                             | FFmpeg                                                            | GStreamer                                               |
+| --------------------------------------------------------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------- |
+| Поддержка кодеков                                                           | максимум, эталон                                                  | хорошо, но через плагины                                |
+| GPU на Linux                                                                | VAAPI ✓, NVENC/NVDEC ✓, Vulkan ✓ (h264_vulkan, hevc_vulkan с 6.0) | VAAPI ✓ (gstreamer-vaapi), NVENC ✓ (nvcodecplugin)      |
+| GPU на macOS                                                                | VideoToolbox ✓                                                    | VideoToolbox ✓ (vtenc/vtdec)                            |
+| GPU на Windows                                                              | D3D11VA, NVENC, AMF, QuickSync ✓                                  | D3D11, NVENC ✓                                          |
+| Зависимости/сборка                                                          | один libavcodec + флаги                                           | много `.so`, плагины, GLib runtime                      |
+| Bundling в .deb/.rpm                                                        | проще (статика или dlopen)                                        | тащит GStreamer стек целиком (десятки пакетов)          |
+| API в Rust                                                                  | `ffmpeg-next` (зрелый, активен)                                   | `gstreamer-rs` (зрелый, но pipeline-based mental model) |
+| Pipeline-композитинг                                                        | ручной граф фильтров (libavfilter)                                | мощный graph из коробки                                 |
+| Подходит как **бэкенд декодера/энкодера** к нашему собственному композитору | ★★★★★                                                             | ★★★                                                     |
+| Подходит как **готовый pipeline editor с микшированием**                    | ★★★                                                               | ★★★★★                                                   |
 
 Поскольку **композитинг мы делаем сами на Vello+wgpu**, нам не нужны pipeline-возможности GStreamer.
 Нам нужен максимально широкий и компактный декод/энкод — это FFmpeg.
 
 **GPU-encoding на Linux:**
+
 - NVIDIA → NVENC (через ffmpeg `h264_nvenc`/`hevc_nvenc`/`av1_nvenc`) — отлично работает на свежих драйверах.
 - AMD/Intel → VAAPI (`h264_vaapi`/`hevc_vaapi`/`av1_vaapi`) — на современных Mesa уже стабильно.
 - Универсальный fallback: Vulkan Video (с FFmpeg 7.x) — пока экспериментально, но растёт.
@@ -132,16 +140,19 @@ const frame = await backend.renderFrame(scene);
 Есть три реальных варианта, от худшего к лучшему:
 
 #### A) Pull bitmap → отдать в `<canvas>` (текущий план tauri.ts: base64 PNG)
+
 - **Эффективность:** очень плохая. Encode PNG (CPU!) + base64 (CPU) + IPC (сериализация) + decode в браузере + draw. На 1080p60 — десятки мс на кадр, дропы гарантированы.
 - **Когда подходит:** только для разовых preview-снимков.
 
 #### B) Raw RGBA через IPC + put в `<canvas>` (через `ImageData` или `texSubImage2D`)
+
 - Если использовать Tauri **invoke с binary** (или custom URI scheme `asset://frame/<id>`) и пробрасывать сырой буфер RGBA — копия одна, без encode.
 - 1080p RGBA = 8.3 МБ × 60fps = 500 МБ/с через IPC. **Слишком много** для invoke (он сериализует через webview bridge).
 - Лучше — **custom URI scheme** (`tauri::Builder::register_asynchronous_uri_scheme_protocol`): браузер делает один GET на `frame://<id>`, Tauri отдаёт raw bytes без сериализации. Это работает на 60fps для 1080p при условии, что Rust готовит буфер заранее.
 - Можно ускорить ещё: один **SharedArrayBuffer** (если включены COOP/COEP headers) — Rust пишет в shared memory, JS читает без копии. В Tauri 2 настраивается через custom protocol с правильными CORS-заголовками.
 
 #### C) Native overlay surface (zero-copy)
+
 - Tauri умеет создавать **отдельное native окно** (не webview), куда wgpu рендерит напрямую через `raw-window-handle`. Это окно позиционируется поверх области монитора в webview (или окно с прозрачным webview, где monitor — это «дырка» через CSS).
 - **Эффективность:** максимум. Нулевые копии, surface рисуется драйвером, webview только обрабатывает UI. На 4K60 работает спокойно.
 - **Сложность:** средняя. Нужна синхронизация позиции/размера overlay-окна при ресайзе/скролле панелей; на Linux/Wayland есть нюансы с subsurface'ами.
@@ -149,15 +160,16 @@ const frame = await backend.renderFrame(scene);
 
 **Сравнение (1080p60):**
 
-| Подход | Копий/кадр | CPU на кадр | Сложность | Качество |
-|---|---|---|---|---|
-| A: PNG base64 invoke | 4 (encode, b64, decode, draw) | ~10–30 мс | низкая | работает, но дропы |
-| B1: invoke raw RGBA | 3 | ~3–5 мс | низкая | 60fps впритык |
-| B2: custom URI scheme RGBA | 2 (copy → GPU upload) | ~1–2 мс | средняя | стабильно 60fps |
-| B3: SharedArrayBuffer | 1 (только GPU upload) | <1 мс | средняя | стабильно 60fps+ |
-| C: Native overlay surface | 0 (прямой surface) | ~0 | средне-высокая | 4K60 ок |
+| Подход                     | Копий/кадр                    | CPU на кадр | Сложность      | Качество           |
+| -------------------------- | ----------------------------- | ----------- | -------------- | ------------------ |
+| A: PNG base64 invoke       | 4 (encode, b64, decode, draw) | ~10–30 мс   | низкая         | работает, но дропы |
+| B1: invoke raw RGBA        | 3                             | ~3–5 мс     | низкая         | 60fps впритык      |
+| B2: custom URI scheme RGBA | 2 (copy → GPU upload)         | ~1–2 мс     | средняя        | стабильно 60fps    |
+| B3: SharedArrayBuffer      | 1 (только GPU upload)         | <1 мс       | средняя        | стабильно 60fps+   |
+| C: Native overlay surface  | 0 (прямой surface)            | ~0          | средне-высокая | 4K60 ок            |
 
 **Рекомендация поэтапно:**
+
 1. **Сейчас (MVP):** B2 — custom URI scheme отдаёт raw RGBA. Просто, без shared memory, всё ещё быстро.
 2. **Для production:** C — native overlay-окно с wgpu surface. Это путь профессиональных видео-редакторов и единственный, который масштабируется до 4K HDR без забот.
 3. Между ними B3 как переходный шаг, если C окажется дорогим по времени реализации (особенно из-за Wayland).

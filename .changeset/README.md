@@ -11,6 +11,7 @@ pnpm changeset
 ```
 
 Follow the interactive prompts:
+
 1. Select which package(s) were changed.
 2. Select whether the change is `patch`, `minor`, or `major`.
 3. Provide a summary message describing the changes for users of the package.

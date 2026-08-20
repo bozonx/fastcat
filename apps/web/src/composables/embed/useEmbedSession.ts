@@ -185,12 +185,14 @@ export function useEmbedSession() {
     const batch = ingestQueue.then(() => ingestAssetsSequentially(assets));
     // Keep the queue alive after a failed batch so later host actions are not
     // poisoned by one bad URL.
-    ingestQueue = batch.catch((error: unknown) => {
-      log.warn('Asset ingest batch failed', error);
-    }).finally(() => {
-      queuedIngestBatches -= 1;
-      isIngesting.value = queuedIngestBatches > 0;
-    });
+    ingestQueue = batch
+      .catch((error: unknown) => {
+        log.warn('Asset ingest batch failed', error);
+      })
+      .finally(() => {
+        queuedIngestBatches -= 1;
+        isIngesting.value = queuedIngestBatches > 0;
+      });
     return batch;
   }
 
@@ -199,7 +201,10 @@ export function useEmbedSession() {
       const suppliedId = asset.id;
       const assetId = suppliedId ?? `asset-${nextAssetSequence++}`;
       if (assetIds.has(assetId)) {
-        bridge.value?.send('error', { code: 'asset-duplicate-id', message: `Asset ID ${assetId} already exists` });
+        bridge.value?.send('error', {
+          code: 'asset-duplicate-id',
+          message: `Asset ID ${assetId} already exists`,
+        });
         continue;
       }
       assetIds.add(assetId);

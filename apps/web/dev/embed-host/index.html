@@ -304,7 +304,12 @@
               // only confirms what its endpoint received.
               const { receivedBytes } = await fetch(uploadPath).then((r) => r.json());
               stand.streamedBytes = receivedBytes;
-              stand.result = { ...meta, streamedBytes: receivedBytes, posterBytes: poster?.size ?? 0, otioLength: otio.length };
+              stand.result = {
+                ...meta,
+                streamedBytes: receivedBytes,
+                posterBytes: poster?.size ?? 0,
+                otioLength: otio.length,
+              };
               stand.readingExport = false;
               setPhase('exported');
               return;

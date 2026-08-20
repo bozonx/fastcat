@@ -311,13 +311,20 @@ export function isSafeEmbedFilename(value: unknown): value is string {
 
 function isAsset(value: unknown): boolean {
   if (!isRecord(value)) return false;
-  if (value.id !== undefined && (typeof value.id !== 'string' || value.id.length > 128)) return false;
+  if (value.id !== undefined && (typeof value.id !== 'string' || value.id.length > 128))
+    return false;
   if (value.url !== undefined && !isSafeHttpUrl(value.url)) return false;
   if (value.filename !== undefined && !isSafeEmbedFilename(value.filename)) return false;
-  if (value.kind !== undefined && !['video', 'audio', 'image'].includes(value.kind as string)) return false;
-  if (value.track !== undefined && (typeof value.track !== 'string' || value.track.length > 128)) return false;
+  if (value.kind !== undefined && !['video', 'audio', 'image'].includes(value.kind as string))
+    return false;
+  if (value.track !== undefined && (typeof value.track !== 'string' || value.track.length > 128))
+    return false;
   if (value.startAt !== undefined && !isFiniteNumber(value.startAt, 0, 86_400)) return false;
-  if (value.file !== undefined && (!(value.file instanceof Blob) || value.file.size > MAX_EMBED_ASSET_BYTES)) return false;
+  if (
+    value.file !== undefined &&
+    (!(value.file instanceof Blob) || value.file.size > MAX_EMBED_ASSET_BYTES)
+  )
+    return false;
   return (value.url !== undefined) !== (value.file !== undefined);
 }
 
@@ -336,14 +343,24 @@ function isInitPayload(value: unknown): boolean {
   if (!isRecord(value)) return false;
   const assets = value.assets;
   return (
-    (value.locale === undefined || (typeof value.locale === 'string' && value.locale.length <= 32)) &&
-    (assets === undefined || (Array.isArray(assets) && assets.length <= MAX_EMBED_ASSETS && assets.every(isAsset))) &&
-    (value.layout === undefined || ['auto', 'desktop', 'mobile'].includes(value.layout as string)) &&
-    (value.features === undefined || (Array.isArray(value.features) && value.features.every((item) => ['files', 'sound', 'export', 'settings'].includes(item as string)))) &&
+    (value.locale === undefined ||
+      (typeof value.locale === 'string' && value.locale.length <= 32)) &&
+    (assets === undefined ||
+      (Array.isArray(assets) && assets.length <= MAX_EMBED_ASSETS && assets.every(isAsset))) &&
+    (value.layout === undefined ||
+      ['auto', 'desktop', 'mobile'].includes(value.layout as string)) &&
+    (value.features === undefined ||
+      (Array.isArray(value.features) &&
+        value.features.every((item) =>
+          ['files', 'sound', 'export', 'settings'].includes(item as string),
+        ))) &&
     isProjectDefaults(value.projectDefaults) &&
-    (value.assetTransport === undefined || value.assetTransport === 'url' || value.assetTransport === 'host') &&
+    (value.assetTransport === undefined ||
+      value.assetTransport === 'url' ||
+      value.assetTransport === 'host') &&
     (value.output === undefined || value.output === 'blob' || value.output === 'upload') &&
-    (value.initialProject === undefined || (isRecord(value.initialProject) && isInitialOtio(value.initialProject.otio)))
+    (value.initialProject === undefined ||
+      (isRecord(value.initialProject) && isInitialOtio(value.initialProject.otio)))
   );
 }
 
@@ -358,40 +375,133 @@ function isInitialOtio(value: unknown): boolean {
 }
 
 const HOST_TYPES = new Set<HostToEditorType>([
-  'init', 'asset:add', 'asset:url', 'rpc:result', 'save:request', 'export:start', 'export:cancel', 'export:ack', 'dispose',
+  'init',
+  'asset:add',
+  'asset:url',
+  'rpc:result',
+  'save:request',
+  'export:start',
+  'export:cancel',
+  'export:ack',
+  'dispose',
 ]);
 const EDITOR_TYPES = new Set<EditorToHostType>([
-  'ready', 'initialized', 'asset:url-expired', 'asset:progress', 'stt:request', 'llm:request', 'change', 'preferences:changed', 'export:progress', 'export:done', 'export:error', 'disposed', 'error', 'requestClose', 'resize-request',
+  'ready',
+  'initialized',
+  'asset:url-expired',
+  'asset:progress',
+  'stt:request',
+  'llm:request',
+  'change',
+  'preferences:changed',
+  'export:progress',
+  'export:done',
+  'export:error',
+  'disposed',
+  'error',
+  'requestClose',
+  'resize-request',
 ]);
 
 function validPayload(type: string, payload: unknown, direction: 'host' | 'editor'): boolean {
-  if (payload === undefined) return ['save:request', 'export:cancel', 'export:ack', 'dispose', 'disposed', 'requestClose'].includes(type);
+  if (payload === undefined)
+    return [
+      'save:request',
+      'export:cancel',
+      'export:ack',
+      'dispose',
+      'disposed',
+      'requestClose',
+    ].includes(type);
   if (type === 'init') return isInitPayload(payload);
-  if (type === 'asset:add') return isRecord(payload) && Array.isArray(payload.assets) && payload.assets.length <= MAX_EMBED_ASSETS && payload.assets.every(isAsset);
-  if (type === 'asset:url') return isRecord(payload) && typeof payload.assetId === 'string' && isSafeHttpUrl(payload.url);
-  if (type === 'export:start') return isRecord(payload) && (payload.filename === undefined || isSafeEmbedFilename(payload.filename)) && (payload.uploadUrl === undefined || isSafeHttpUrl(payload.uploadUrl));
-  if (type === 'rpc:result') return isRecord(payload) && typeof payload.requestId === 'string' && payload.requestId.length <= 128 && (payload.error === undefined || typeof payload.error === 'string');
-  if (type === 'ready') return isRecord(payload) && typeof payload.version === 'number' && isRecord(payload.capabilities) &&
-    typeof payload.capabilities.webgpu === 'boolean' && typeof payload.capabilities.webcodecs === 'boolean' &&
-    typeof payload.capabilities.opfs === 'boolean' && typeof payload.capabilities.sharedArrayBuffer === 'boolean' &&
-    (payload.capabilities.storageQuotaBytes === null || isFiniteNumber(payload.capabilities.storageQuotaBytes, 0));
-  if (type === 'initialized') return isRecord(payload) && isFiniteNumber(payload.assetCount, 0, MAX_EMBED_ASSETS) && isFiniteNumber(payload.durationMs, 0) && ['desktop', 'mobile'].includes(payload.layout as string) && isFiniteNumber(payload.reclaimedSessions, 0);
+  if (type === 'asset:add')
+    return (
+      isRecord(payload) &&
+      Array.isArray(payload.assets) &&
+      payload.assets.length <= MAX_EMBED_ASSETS &&
+      payload.assets.every(isAsset)
+    );
+  if (type === 'asset:url')
+    return isRecord(payload) && typeof payload.assetId === 'string' && isSafeHttpUrl(payload.url);
+  if (type === 'export:start')
+    return (
+      isRecord(payload) &&
+      (payload.filename === undefined || isSafeEmbedFilename(payload.filename)) &&
+      (payload.uploadUrl === undefined || isSafeHttpUrl(payload.uploadUrl))
+    );
+  if (type === 'rpc:result')
+    return (
+      isRecord(payload) &&
+      typeof payload.requestId === 'string' &&
+      payload.requestId.length <= 128 &&
+      (payload.error === undefined || typeof payload.error === 'string')
+    );
+  if (type === 'ready')
+    return (
+      isRecord(payload) &&
+      typeof payload.version === 'number' &&
+      isRecord(payload.capabilities) &&
+      typeof payload.capabilities.webgpu === 'boolean' &&
+      typeof payload.capabilities.webcodecs === 'boolean' &&
+      typeof payload.capabilities.opfs === 'boolean' &&
+      typeof payload.capabilities.sharedArrayBuffer === 'boolean' &&
+      (payload.capabilities.storageQuotaBytes === null ||
+        isFiniteNumber(payload.capabilities.storageQuotaBytes, 0))
+    );
+  if (type === 'initialized')
+    return (
+      isRecord(payload) &&
+      isFiniteNumber(payload.assetCount, 0, MAX_EMBED_ASSETS) &&
+      isFiniteNumber(payload.durationMs, 0) &&
+      ['desktop', 'mobile'].includes(payload.layout as string) &&
+      isFiniteNumber(payload.reclaimedSessions, 0)
+    );
   if (type === 'asset:url-expired') return isRecord(payload) && typeof payload.assetId === 'string';
-  if (type === 'asset:progress') return isRecord(payload) && typeof payload.assetId === 'string' && isFiniteNumber(payload.loadedBytes, 0) && (payload.totalBytes === null || isFiniteNumber(payload.totalBytes, 0));
-  if (type === 'stt:request' || type === 'llm:request') return isRecord(payload) && typeof payload.requestId === 'string';
-  if (type === 'change') return isRecord(payload) && typeof payload.dirty === 'boolean' && typeof payload.otio === 'string' && payload.otio.length <= 10_000_000;
-  if (type === 'export:progress') return isRecord(payload) && (payload.phase === null || typeof payload.phase === 'string') && isFiniteNumber(payload.progress, 0, 1);
+  if (type === 'asset:progress')
+    return (
+      isRecord(payload) &&
+      typeof payload.assetId === 'string' &&
+      isFiniteNumber(payload.loadedBytes, 0) &&
+      (payload.totalBytes === null || isFiniteNumber(payload.totalBytes, 0))
+    );
+  if (type === 'stt:request' || type === 'llm:request')
+    return isRecord(payload) && typeof payload.requestId === 'string';
+  if (type === 'change')
+    return (
+      isRecord(payload) &&
+      typeof payload.dirty === 'boolean' &&
+      typeof payload.otio === 'string' &&
+      payload.otio.length <= 10_000_000
+    );
+  if (type === 'export:progress')
+    return (
+      isRecord(payload) &&
+      (payload.phase === null || typeof payload.phase === 'string') &&
+      isFiniteNumber(payload.progress, 0, 1)
+    );
   if (type === 'export:error') return isRecord(payload) && typeof payload.message === 'string';
-  if (type === 'error') return isRecord(payload) && typeof payload.code === 'string' && typeof payload.message === 'string';
-  if (type === 'resize-request') return isRecord(payload) && isFiniteNumber(payload.minHeightPx, 100, 10_000);
-  if (type === 'export:done') return isRecord(payload) && typeof payload.otio === 'string' && payload.otio.length <= 10_000_000 &&
-    (payload.file === undefined || payload.file instanceof Blob) && (payload.poster === null || payload.poster instanceof Blob) &&
-    isRecord(payload.meta) && isSafeEmbedFilename(payload.meta.filename) && typeof payload.meta.mimeType === 'string' &&
-    isFiniteNumber(payload.meta.sizeBytes, 0, MAX_EMBED_EXPORT_BYTES) &&
-    (payload.meta.width === null || isFiniteNumber(payload.meta.width, 1, 16_384)) &&
-    (payload.meta.height === null || isFiniteNumber(payload.meta.height, 1, 16_384)) &&
-    (payload.meta.durationMs === null || isFiniteNumber(payload.meta.durationMs, 0)) &&
-    (payload.meta.fps === null || isFiniteNumber(payload.meta.fps, 1, 240));
+  if (type === 'error')
+    return (
+      isRecord(payload) && typeof payload.code === 'string' && typeof payload.message === 'string'
+    );
+  if (type === 'resize-request')
+    return isRecord(payload) && isFiniteNumber(payload.minHeightPx, 100, 10_000);
+  if (type === 'export:done')
+    return (
+      isRecord(payload) &&
+      typeof payload.otio === 'string' &&
+      payload.otio.length <= 10_000_000 &&
+      (payload.file === undefined || payload.file instanceof Blob) &&
+      (payload.poster === null || payload.poster instanceof Blob) &&
+      isRecord(payload.meta) &&
+      isSafeEmbedFilename(payload.meta.filename) &&
+      typeof payload.meta.mimeType === 'string' &&
+      isFiniteNumber(payload.meta.sizeBytes, 0, MAX_EMBED_EXPORT_BYTES) &&
+      (payload.meta.width === null || isFiniteNumber(payload.meta.width, 1, 16_384)) &&
+      (payload.meta.height === null || isFiniteNumber(payload.meta.height, 1, 16_384)) &&
+      (payload.meta.durationMs === null || isFiniteNumber(payload.meta.durationMs, 0)) &&
+      (payload.meta.fps === null || isFiniteNumber(payload.meta.fps, 1, 240))
+    );
   return direction === 'editor' && type === 'preferences:changed';
 }
 
@@ -400,9 +510,18 @@ export function validateEmbedMessage(
   type: string,
   payload: unknown,
 ): EmbedProtocolValidationResult {
-  const known = direction === 'host' ? HOST_TYPES.has(type as HostToEditorType) : EDITOR_TYPES.has(type as EditorToHostType);
-  if (!known) return { ok: false, code: 'protocol-unknown-message', message: `Unknown ${direction} message: ${type}` };
-  if (!validPayload(type, payload, direction)) return { ok: false, code: 'protocol-invalid-payload', message: `Invalid payload for ${type}` };
+  const known =
+    direction === 'host'
+      ? HOST_TYPES.has(type as HostToEditorType)
+      : EDITOR_TYPES.has(type as EditorToHostType);
+  if (!known)
+    return {
+      ok: false,
+      code: 'protocol-unknown-message',
+      message: `Unknown ${direction} message: ${type}`,
+    };
+  if (!validPayload(type, payload, direction))
+    return { ok: false, code: 'protocol-invalid-payload', message: `Invalid payload for ${type}` };
   return { ok: true };
 }
 

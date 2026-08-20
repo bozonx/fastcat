@@ -59,8 +59,6 @@
     "master_effects": [],
     "audio_master_effects": []
   },
-  "sample_times_sec": [
-    0.5
-  ],
+  "sample_times_sec": [0.5],
   "tolerance": 12
 }

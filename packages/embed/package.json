@@ -37,14 +37,20 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "lint": "prettier --check .",
-    "lint:fix": "prettier --write .",
+    "lint": "eslint --max-warnings 0 .",
+    "lint:fix": "eslint --fix .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "typecheck": "tsc -p tsconfig.json --noEmit",
+    "check": "pnpm typecheck && pnpm lint && pnpm format:check",
+    "validate": "pnpm check",
     "clean": "rm -rf dist",
     "prepack": "pnpm run build"
   },
   "devDependencies": {
+    "@fastcat/eslint-config": "workspace:*",
     "@fastcat/typescript-config": "workspace:*",
+    "eslint": "^10.7.0",
     "typescript": "~5.9.0"
   },
   "engines": {

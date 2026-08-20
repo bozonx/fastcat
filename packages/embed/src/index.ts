@@ -131,7 +131,10 @@ export function createFastcatEmbed(options: FastcatEmbedOptions): FastcatEmbed {
   let exportAckTimer: number | null = null;
   const readyDeferred = deferred<EmbedCapabilities>();
   const initializedDeferred = deferred<EditorToHostMessages['initialized']>();
-  const readyTimer = window.setTimeout(() => unavailable('Handshake timed out.'), options.readyTimeoutMs ?? DEFAULT_READY_TIMEOUT_MS);
+  const readyTimer = window.setTimeout(
+    () => unavailable('Handshake timed out.'),
+    options.readyTimeoutMs ?? DEFAULT_READY_TIMEOUT_MS,
+  );
   let initializedTimer: number | null = null;
 
   function report(code: string, message: string) {
@@ -142,7 +145,9 @@ export function createFastcatEmbed(options: FastcatEmbedOptions): FastcatEmbed {
     try {
       const result = callback();
       if (result && typeof (result as Promise<unknown>).catch === 'function') {
-        void (result as Promise<unknown>).catch((error: unknown) => report('protocol-callback-failed', `${name}: ${String(error)}`));
+        void (result as Promise<unknown>).catch((error: unknown) =>
+          report('protocol-callback-failed', `${name}: ${String(error)}`),
+        );
       }
     } catch (error) {
       // Do not allow host code to escape the message handler.
@@ -186,63 +191,129 @@ export function createFastcatEmbed(options: FastcatEmbedOptions): FastcatEmbed {
         state = 'ready';
         readyDeferred.resolve(ready.capabilities);
         safeCallback('onReady', () => options.onReady?.(ready.capabilities));
-        send('init', { locale: options.locale, assets: options.assets, layout: options.layout, features: options.features, preferences: options.preferences, projectDefaults: options.projectDefaults, initialProject: options.initialProject, assetTransport: options.assetTransport, output: options.output });
-        initializedTimer = window.setTimeout(() => unavailable('Editor initialization timed out.'), options.initializedTimeoutMs ?? DEFAULT_INITIALIZED_TIMEOUT_MS);
+        send('init', {
+          locale: options.locale,
+          assets: options.assets,
+          layout: options.layout,
+          features: options.features,
+          preferences: options.preferences,
+          projectDefaults: options.projectDefaults,
+          initialProject: options.initialProject,
+          assetTransport: options.assetTransport,
+          output: options.output,
+        });
+        initializedTimer = window.setTimeout(
+          () => unavailable('Editor initialization timed out.'),
+          options.initializedTimeoutMs ?? DEFAULT_INITIALIZED_TIMEOUT_MS,
+        );
         return;
       }
       case 'initialized':
         if (initializedTimer) window.clearTimeout(initializedTimer);
         state = 'initialized';
         initializedDeferred.resolve(payload as EditorToHostMessages['initialized']);
-        safeCallback('onInitialized', () => options.onInitialized?.(payload as EditorToHostMessages['initialized']));
+        safeCallback('onInitialized', () =>
+          options.onInitialized?.(payload as EditorToHostMessages['initialized']),
+        );
         state = 'active';
         return;
-      case 'asset:progress': return safeCallback('onAssetProgress', () => options.onAssetProgress?.(payload as EditorToHostMessages['asset:progress']));
-      case 'export:progress': return safeCallback('onExportProgress', () => options.onExportProgress?.(payload as EditorToHostMessages['export:progress']));
-      case 'change': return safeCallback('onChange', () => options.onChange?.(payload as EditorToHostMessages['change']));
-      case 'preferences:changed': return safeCallback('onPreferencesChanged', () => options.onPreferencesChanged?.(payload));
-      case 'requestClose': return safeCallback('onRequestClose', () => options.onRequestClose?.());
-      case 'resize-request': return safeCallback('onResizeRequest', () => options.onResizeRequest?.(payload as EditorToHostMessages['resize-request']));
-      case 'error': return report((payload as EditorToHostMessages['error']).code, (payload as EditorToHostMessages['error']).message);
-      case 'export:error': state = 'active'; return report('export-failed', (payload as EditorToHostMessages['export:error']).message);
+      case 'asset:progress':
+        return safeCallback('onAssetProgress', () =>
+          options.onAssetProgress?.(payload as EditorToHostMessages['asset:progress']),
+        );
+      case 'export:progress':
+        return safeCallback('onExportProgress', () =>
+          options.onExportProgress?.(payload as EditorToHostMessages['export:progress']),
+        );
+      case 'change':
+        return safeCallback('onChange', () =>
+          options.onChange?.(payload as EditorToHostMessages['change']),
+        );
+      case 'preferences:changed':
+        return safeCallback('onPreferencesChanged', () => options.onPreferencesChanged?.(payload));
+      case 'requestClose':
+        return safeCallback('onRequestClose', () => options.onRequestClose?.());
+      case 'resize-request':
+        return safeCallback('onResizeRequest', () =>
+          options.onResizeRequest?.(payload as EditorToHostMessages['resize-request']),
+        );
+      case 'error':
+        return report(
+          (payload as EditorToHostMessages['error']).code,
+          (payload as EditorToHostMessages['error']).message,
+        );
+      case 'export:error':
+        state = 'active';
+        return report('export-failed', (payload as EditorToHostMessages['export:error']).message);
       case 'asset:url-expired': {
-        if (!options.onAssetUrlExpired) return report('asset-url-expired', `No URL refresh handler for ${(payload as { assetId: string }).assetId}`);
+        if (!options.onAssetUrlExpired)
+          return report(
+            'asset-url-expired',
+            `No URL refresh handler for ${(payload as { assetId: string }).assetId}`,
+          );
         try {
           const url = await options.onAssetUrlExpired((payload as { assetId: string }).assetId);
           send('asset:url', { assetId: (payload as { assetId: string }).assetId, url });
-        } catch (error) { report('protocol-callback-failed', `onAssetUrlExpired: ${String(error)}`); }
+        } catch (error) {
+          report('protocol-callback-failed', `onAssetUrlExpired: ${String(error)}`);
+        }
         return;
       }
       case 'stt:request':
       case 'llm:request': {
         const request = payload as EditorToHostMessages['stt:request'];
         const handler = type === 'stt:request' ? options.onSttRequest : options.onLlmRequest;
-        if (!handler) return send('rpc:result', { requestId: request.requestId, error: `The host does not handle ${type}` });
-        try { send('rpc:result', { requestId: request.requestId, result: await handler(request.payload) }); }
-        catch (error) { send('rpc:result', { requestId: request.requestId, error: String(error) }); }
+        if (!handler)
+          return send('rpc:result', {
+            requestId: request.requestId,
+            error: `The host does not handle ${type}`,
+          });
+        try {
+          send('rpc:result', {
+            requestId: request.requestId,
+            result: await handler(request.payload),
+          });
+        } catch (error) {
+          send('rpc:result', { requestId: request.requestId, error: String(error) });
+        }
         return;
       }
       case 'export:done': {
         const result = payload as FastcatEmbedExportResult;
         state = 'exporting';
-        try { await options.onExportDone?.(result); }
-        catch (error) { report('protocol-callback-failed', `onExportDone: ${String(error)}`); }
+        try {
+          await options.onExportDone?.(result);
+        } catch (error) {
+          report('protocol-callback-failed', `onExportDone: ${String(error)}`);
+        }
         // Ack is independent from dispose: calling dispose from onExportDone cannot await itself.
         if (!(['disposing', 'disposed'] as FastcatEmbedState[]).includes(state)) {
           send('export:ack', undefined);
-          exportAckTimer = window.setTimeout(() => report('protocol-timeout', 'Export acknowledgement timed out.'), options.exportAckTimeoutMs ?? DEFAULT_EXPORT_ACK_TIMEOUT_MS);
+          exportAckTimer = window.setTimeout(
+            () => report('protocol-timeout', 'Export acknowledgement timed out.'),
+            options.exportAckTimeoutMs ?? DEFAULT_EXPORT_ACK_TIMEOUT_MS,
+          );
           state = 'active';
         }
         return;
       }
-      case 'disposed': onDisposed?.(); return;
+      case 'disposed':
+        onDisposed?.();
+        return;
     }
   }
 
   function onMessage(event: MessageEvent) {
-    if (event.source !== iframe.contentWindow || event.origin !== editorOrigin || !isEmbedEnvelope(event.data, nonce)) return;
+    if (
+      event.source !== iframe.contentWindow ||
+      event.origin !== editorOrigin ||
+      !isEmbedEnvelope(event.data, nonce)
+    )
+      return;
     if (!hasEmbedProtocolVersion(event.data)) {
-      unavailable(`This editor speaks protocol v${event.data.version}; this SDK speaks v${EMBED_PROTOCOL_VERSION}.`);
+      unavailable(
+        `This editor speaks protocol v${event.data.version}; this SDK speaks v${EMBED_PROTOCOL_VERSION}.`,
+      );
       return;
     }
     safeCallback('onDebug', () => options.onDebug?.('in', event.data.type, event.data.payload));
@@ -254,26 +325,54 @@ export function createFastcatEmbed(options: FastcatEmbedOptions): FastcatEmbed {
 
   return {
     iframe,
-    get state() { return state; },
+    get state() {
+      return state;
+    },
     ready: readyDeferred.promise,
     initialized: initializedDeferred.promise,
     startExport(exportOptions) {
       ensureState('start an export', ['active']);
-      if (exportOptions?.filename && !isSafeEmbedFilename(exportOptions.filename)) throw new Error('protocol-invalid-payload: Invalid export filename.');
-      state = 'exporting'; send('export:start', exportOptions);
+      if (exportOptions?.filename && !isSafeEmbedFilename(exportOptions.filename))
+        throw new Error('protocol-invalid-payload: Invalid export filename.');
+      state = 'exporting';
+      send('export:start', exportOptions);
     },
-    cancelExport() { ensureState('cancel an export', ['exporting']); send('export:cancel', undefined); },
-    addAssets(assets) { ensureState('add assets', ['active']); send('asset:add', { assets }); },
-    requestSave() { ensureState('request a save', ['initialized', 'active', 'exporting']); send('save:request', undefined); },
+    cancelExport() {
+      ensureState('cancel an export', ['exporting']);
+      send('export:cancel', undefined);
+    },
+    addAssets(assets) {
+      ensureState('add assets', ['active']);
+      send('asset:add', { assets });
+    },
+    requestSave() {
+      ensureState('request a save', ['initialized', 'active', 'exporting']);
+      send('save:request', undefined);
+    },
     dispose() {
       if (disposePromise) return disposePromise;
       disposePromise = (async () => {
-        state = 'disposing'; window.clearTimeout(readyTimer); if (initializedTimer) window.clearTimeout(initializedTimer); if (exportAckTimer) window.clearTimeout(exportAckTimer);
+        state = 'disposing';
+        window.clearTimeout(readyTimer);
+        if (initializedTimer) window.clearTimeout(initializedTimer);
+        if (exportAckTimer) window.clearTimeout(exportAckTimer);
         readyDeferred.reject(new Error('The embed was disposed before ready.'));
-        initializedDeferred.reject(new Error('The embed was disposed before initialization completed.'));
-        const farewell = new Promise<void>((resolve) => { onDisposed = resolve; window.setTimeout(resolve, DISPOSE_TIMEOUT_MS); });
-        try { send('dispose', undefined); await farewell; }
-        finally { onDisposed = null; window.removeEventListener('message', onMessage); iframe.remove(); state = 'disposed'; }
+        initializedDeferred.reject(
+          new Error('The embed was disposed before initialization completed.'),
+        );
+        const farewell = new Promise<void>((resolve) => {
+          onDisposed = resolve;
+          window.setTimeout(resolve, DISPOSE_TIMEOUT_MS);
+        });
+        try {
+          send('dispose', undefined);
+          await farewell;
+        } finally {
+          onDisposed = null;
+          window.removeEventListener('message', onMessage);
+          iframe.remove();
+          state = 'disposed';
+        }
       })();
       return disposePromise;
     },

@@ -14,12 +14,7 @@
       "name": "solid-white",
       "width": 8,
       "height": 8,
-      "background": [
-        255,
-        255,
-        255,
-        255
-      ],
+      "background": [255, 255, 255, 255],
       "rects": [],
       "expectedHash": "0000000000000000",
       "expectedColorSig": "ffffffffffffffffffffffff"
@@ -28,12 +23,7 @@
       "name": "solid-black",
       "width": 8,
       "height": 8,
-      "background": [
-        0,
-        0,
-        0,
-        255
-      ],
+      "background": [0, 0, 0, 255],
       "rects": [],
       "expectedHash": "0000000000000000",
       "expectedColorSig": "000000000000000000000000"
@@ -42,12 +32,7 @@
       "name": "solid-red",
       "width": 8,
       "height": 8,
-      "background": [
-        255,
-        0,
-        0,
-        255
-      ],
+      "background": [255, 0, 0, 255],
       "rects": [],
       "expectedHash": "ffffffffffffffff",
       "expectedColorSig": "ff0000ff0000ff0000ff0000"
@@ -56,24 +41,14 @@
       "name": "left-white-right-black",
       "width": 8,
       "height": 8,
-      "background": [
-        0,
-        0,
-        0,
-        255
-      ],
+      "background": [0, 0, 0, 255],
       "rects": [
         {
           "x": 0,
           "y": 0,
           "w": 4,
           "h": 8,
-          "color": [
-            255,
-            255,
-            255,
-            255
-          ]
+          "color": [255, 255, 255, 255]
         }
       ],
       "expectedHash": "f0f0f0f0f0f0f0f0",
@@ -83,24 +58,14 @@
       "name": "top-white-bottom-black",
       "width": 8,
       "height": 8,
-      "background": [
-        0,
-        0,
-        0,
-        255
-      ],
+      "background": [0, 0, 0, 255],
       "rects": [
         {
           "x": 0,
           "y": 0,
           "w": 8,
           "h": 4,
-          "color": [
-            255,
-            255,
-            255,
-            255
-          ]
+          "color": [255, 255, 255, 255]
         }
       ],
       "expectedHash": "ffffffff00000000",
@@ -110,60 +75,35 @@
       "name": "quadrants-rgbw",
       "width": 8,
       "height": 8,
-      "background": [
-        0,
-        0,
-        0,
-        255
-      ],
+      "background": [0, 0, 0, 255],
       "rects": [
         {
           "x": 0,
           "y": 0,
           "w": 4,
           "h": 4,
-          "color": [
-            255,
-            0,
-            0,
-            255
-          ]
+          "color": [255, 0, 0, 255]
         },
         {
           "x": 4,
           "y": 0,
           "w": 4,
           "h": 4,
-          "color": [
-            0,
-            255,
-            0,
-            255
-          ]
+          "color": [0, 255, 0, 255]
         },
         {
           "x": 0,
           "y": 4,
           "w": 4,
           "h": 4,
-          "color": [
-            0,
-            0,
-            255,
-            255
-          ]
+          "color": [0, 0, 255, 255]
         },
         {
           "x": 4,
           "y": 4,
           "w": 4,
           "h": 4,
-          "color": [
-            255,
-            255,
-            255,
-            255
-          ]
+          "color": [255, 255, 255, 255]
         }
       ],
       "expectedHash": "0f0f0f0f0f0f0f0f",
@@ -173,60 +113,35 @@
       "name": "quadrants-bgrw",
       "width": 8,
       "height": 8,
-      "background": [
-        0,
-        0,
-        0,
-        255
-      ],
+      "background": [0, 0, 0, 255],
       "rects": [
         {
           "x": 0,
           "y": 0,
           "w": 4,
           "h": 4,
-          "color": [
-            0,
-            0,
-            255,
-            255
-          ]
+          "color": [0, 0, 255, 255]
         },
         {
           "x": 4,
           "y": 0,
           "w": 4,
           "h": 4,
-          "color": [
-            0,
-            255,
-            0,
-            255
-          ]
+          "color": [0, 255, 0, 255]
         },
         {
           "x": 0,
           "y": 4,
           "w": 4,
           "h": 4,
-          "color": [
-            255,
-            0,
-            0,
-            255
-          ]
+          "color": [255, 0, 0, 255]
         },
         {
           "x": 4,
           "y": 4,
           "w": 4,
           "h": 4,
-          "color": [
-            255,
-            255,
-            255,
-            255
-          ]
+          "color": [255, 255, 255, 255]
         }
       ],
       "expectedHash": "0f0f0f0f0f0f0f0f",
@@ -236,24 +151,14 @@
       "name": "gray-center-square",
       "width": 16,
       "height": 16,
-      "background": [
-        128,
-        128,
-        128,
-        255
-      ],
+      "background": [128, 128, 128, 255],
       "rects": [
         {
           "x": 4,
           "y": 4,
           "w": 8,
           "h": 8,
-          "color": [
-            255,
-            255,
-            255,
-            255
-          ]
+          "color": [255, 255, 255, 255]
         }
       ],
       "expectedHash": "00003c3c3c3c0000",

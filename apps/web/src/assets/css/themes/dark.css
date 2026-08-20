@@ -35,28 +35,28 @@
 
   /* === Clip colors === */
   --clip-text: #ffffff;
-  --clip-video-bg: rgba(99, 102, 241, 0.60);
-  --clip-video-border: rgba(99, 102, 241, 0.70);
-  --clip-video-bg-hover: rgba(99, 102, 241, 0.70);
+  --clip-video-bg: rgba(99, 102, 241, 0.6);
+  --clip-video-border: rgba(99, 102, 241, 0.7);
+  --clip-video-bg-hover: rgba(99, 102, 241, 0.7);
 
-  --clip-audio-bg: rgba(20, 184, 166, 0.50);
-  --clip-audio-border: rgba(20, 184, 166, 0.70);
-  --clip-audio-bg-hover: rgba(20, 184, 166, 0.60);
+  --clip-audio-bg: rgba(20, 184, 166, 0.5);
+  --clip-audio-border: rgba(20, 184, 166, 0.7);
+  --clip-audio-bg-hover: rgba(20, 184, 166, 0.6);
 
-  --clip-background-bg: rgba(139, 92, 246, 0.40);
-  --clip-background-border: rgba(139, 92, 246, 0.60);
-  --clip-background-bg-hover: rgba(139, 92, 246, 0.50);
+  --clip-background-bg: rgba(139, 92, 246, 0.4);
+  --clip-background-border: rgba(139, 92, 246, 0.6);
+  --clip-background-bg-hover: rgba(139, 92, 246, 0.5);
 
-  --clip-adjustment-bg: rgba(245, 158, 11, 0.40);
-  --clip-adjustment-border: rgba(245, 158, 11, 0.60);
-  --clip-adjustment-bg-hover: rgba(245, 158, 11, 0.50);
+  --clip-adjustment-bg: rgba(245, 158, 11, 0.4);
+  --clip-adjustment-border: rgba(245, 158, 11, 0.6);
+  --clip-adjustment-bg-hover: rgba(245, 158, 11, 0.5);
 
-  --clip-text-bg: rgba(236, 72, 153, 0.40);
-  --clip-text-border: rgba(236, 72, 153, 0.60);
-  --clip-text-bg-hover: rgba(236, 72, 153, 0.50);
+  --clip-text-bg: rgba(236, 72, 153, 0.4);
+  --clip-text-border: rgba(236, 72, 153, 0.6);
+  --clip-text-bg-hover: rgba(236, 72, 153, 0.5);
 
   /* === Overlays / indicators === */
-  --overlay-bg: rgba(0, 0, 0, 0.40);
+  --overlay-bg: rgba(0, 0, 0, 0.4);
   --clip-lower-tri: rgba(0, 0, 0, 0.35);
 
   /* === Media === */

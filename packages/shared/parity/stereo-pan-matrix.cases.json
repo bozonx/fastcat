@@ -3,13 +3,55 @@
   "epsilon": 1e-9,
   "cases": [
     { "name": "center", "balance": 0, "ll": 1, "lr": 0, "rl": 0, "rr": 1 },
-    { "name": "quarter-left", "balance": -0.25, "ll": 1, "lr": 0.3826834323650898, "rl": 0, "rr": 0.9238795325112867 },
-    { "name": "half-left", "balance": -0.5, "ll": 1, "lr": 0.7071067811865475, "rl": 0, "rr": 0.7071067811865476 },
-    { "name": "three-quarter-left", "balance": -0.75, "ll": 1, "lr": 0.9238795325112867, "rl": 0, "rr": 0.38268343236508984 },
+    {
+      "name": "quarter-left",
+      "balance": -0.25,
+      "ll": 1,
+      "lr": 0.3826834323650898,
+      "rl": 0,
+      "rr": 0.9238795325112867
+    },
+    {
+      "name": "half-left",
+      "balance": -0.5,
+      "ll": 1,
+      "lr": 0.7071067811865475,
+      "rl": 0,
+      "rr": 0.7071067811865476
+    },
+    {
+      "name": "three-quarter-left",
+      "balance": -0.75,
+      "ll": 1,
+      "lr": 0.9238795325112867,
+      "rl": 0,
+      "rr": 0.38268343236508984
+    },
     { "name": "hard-left", "balance": -1, "ll": 1, "lr": 1, "rl": 0, "rr": 0 },
-    { "name": "quarter-right", "balance": 0.25, "ll": 0.9238795325112867, "lr": 0, "rl": 0.3826834323650898, "rr": 1 },
-    { "name": "half-right", "balance": 0.5, "ll": 0.7071067811865476, "lr": 0, "rl": 0.7071067811865475, "rr": 1 },
-    { "name": "three-quarter-right", "balance": 0.75, "ll": 0.38268343236508984, "lr": 0, "rl": 0.9238795325112867, "rr": 1 },
+    {
+      "name": "quarter-right",
+      "balance": 0.25,
+      "ll": 0.9238795325112867,
+      "lr": 0,
+      "rl": 0.3826834323650898,
+      "rr": 1
+    },
+    {
+      "name": "half-right",
+      "balance": 0.5,
+      "ll": 0.7071067811865476,
+      "lr": 0,
+      "rl": 0.7071067811865475,
+      "rr": 1
+    },
+    {
+      "name": "three-quarter-right",
+      "balance": 0.75,
+      "ll": 0.38268343236508984,
+      "lr": 0,
+      "rl": 0.9238795325112867,
+      "rr": 1
+    },
     { "name": "hard-right", "balance": 1, "ll": 0, "lr": 0, "rl": 1, "rr": 1 },
     { "name": "clamps-below-minus-one", "balance": -2, "ll": 1, "lr": 1, "rl": 0, "rr": 0 },
     { "name": "clamps-above-one", "balance": 2, "ll": 0, "lr": 0, "rl": 1, "rr": 1 }

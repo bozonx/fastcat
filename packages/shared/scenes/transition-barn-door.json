@@ -1,7 +1,5 @@
 {
-  "_comment": [
-    "Cross-engine parity scene: barn-door transition between two layers."
-  ],
+  "_comment": ["Cross-engine parity scene: barn-door transition between two layers."],
   "scene": {
     "width": 320,
     "height": 240,
@@ -70,8 +68,5 @@
     "audio_master_effects": []
   },
   "tolerance": 12,
-  "sample_times_sec": [
-    0.1,
-    0.5
-  ]
+  "sample_times_sec": [0.1, 0.5]
 }

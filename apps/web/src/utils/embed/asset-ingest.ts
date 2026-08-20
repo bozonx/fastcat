@@ -57,7 +57,9 @@ export async function downloadAssetToFile(options: DownloadAssetOptions): Promis
     }
 
     if (written !== totalBytes) {
-      throw new Error(`Asset ${transport.id} was truncated: expected ${totalBytes} bytes, received ${written}`);
+      throw new Error(
+        `Asset ${transport.id} was truncated: expected ${totalBytes} bytes, received ${written}`,
+      );
     }
     return written;
   } finally {

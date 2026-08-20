@@ -117,11 +117,17 @@ export function createUrlTransport(options: UrlTransportOptions): EmbedAssetTran
     },
 
     async readRange(start, endExclusive) {
-      if (!Number.isSafeInteger(start) || !Number.isSafeInteger(endExclusive) || start < 0 || endExclusive < start) {
+      if (
+        !Number.isSafeInteger(start) ||
+        !Number.isSafeInteger(endExclusive) ||
+        start < 0 ||
+        endExclusive < start
+      ) {
         throw new Error(`Invalid byte range for ${options.id}`);
       }
       if (completeResponse) {
-        if (endExclusive > completeResponse.byteLength) throw new Error(`Range exceeds ${options.id} length`);
+        if (endExclusive > completeResponse.byteLength)
+          throw new Error(`Range exceeds ${options.id} length`);
         return completeResponse.subarray(start, endExclusive);
       }
       const response = await fetchWithRefresh({
@@ -139,10 +145,12 @@ export function createUrlTransport(options: UrlTransportOptions): EmbedAssetTran
         // Keep the one full response as the streaming fallback. This prevents
         // a range-blind server from causing a full re-download per chunk.
         completeResponse = buffer;
-        if (endExclusive > buffer.byteLength) throw new Error(`Truncated response for ${options.id}`);
+        if (endExclusive > buffer.byteLength)
+          throw new Error(`Truncated response for ${options.id}`);
         return buffer.subarray(start, endExclusive);
       }
-      if (buffer.byteLength !== expectedLength) throw new Error(`Short range response for ${options.id}`);
+      if (buffer.byteLength !== expectedLength)
+        throw new Error(`Short range response for ${options.id}`);
       return buffer;
     },
 

@@ -14,4 +14,3 @@ declare module '#app' {
     $mediaProcessor: import('~/media-processor/media-processor.types').IMediaProcessor;
   }
 }
-

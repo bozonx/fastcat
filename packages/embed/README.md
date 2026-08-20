@@ -102,7 +102,7 @@ Mounts the editor iframe into `options.container`, initiates the secure handshak
 | `projectDefaults` | `EmbedProjectDefaults`            | `undefined`           | Composition dimensions, FPS, and sample rate overrides.                                  |
 | `assetTransport`  | `'url' \| 'host'`                 | `'url'`               | `'url'` streams assets via HTTP range requests; `'host'` uses in-memory transfers.       |
 | `output`          | `'blob' \| 'upload'`              | `'blob'`              | `'blob'` returns `File` in `onExportDone`; `'upload'` streams directly to presigned URL. |
-| `initialProject`  | `{ otio: string }`                 | `undefined`           | Optional previous OTIO document restored before initial assets.                            |
+| `initialProject`  | `{ otio: string }`                | `undefined`           | Optional previous OTIO document restored before initial assets.                          |
 | `preferences`     | `unknown`                         | `undefined`           | Opaque state from a previous session (`onPreferencesChanged`).                           |
 | `readyTimeoutMs`  | `number`                          | `20000`               | Timeout in milliseconds before `onUnavailable` is called.                                |
 | `sandbox`         | `string`                          | `undefined`           | Custom iframe `sandbox` attribute value if needed.                                       |
