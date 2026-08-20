@@ -4,7 +4,7 @@ import { execSync } from 'child_process';
 const data = JSON.parse(fs.readFileSync('src/locales/en-US.json'));
 
 function flatten(obj, prefix = '') {
-  let keys = {};
+  const keys = {};
   for (const [key, value] of Object.entries(obj)) {
     const fullKey = prefix ? prefix + '.' + key : key;
     if (value && typeof value === 'object' && !Array.isArray(value)) {

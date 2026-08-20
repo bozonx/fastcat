@@ -4,15 +4,16 @@ let content = fs.readFileSync(path, 'utf8');
 
 // replace props
 content = content.replace(
-`  trackKind: import('~/timeline/types').TrackKind;
+  `  trackKind: import('~/timeline/types').TrackKind;
   canEditReversed: boolean;
   isReversed: boolean;
 }`,
-`  trackKind: import('~/timeline/types').TrackKind;
+  `  trackKind: import('~/timeline/types').TrackKind;
   canEditReversed: boolean;
   isReversed: boolean;
   mediaMeta?: any;
-}`);
+}`,
+);
 
 // substitute speedPercent with speedMultiplier and crop properties
 const speedPercentEndScript = `const speedPercent = computed({
@@ -64,7 +65,7 @@ content = content.replace(speedPercentEndScript, speedMultiplierReplacement);
 // replace template
 const templateMatch = content.match(/<template>[\s\S]*<\/template>/);
 
-const newTemplate = \`<template>
+const newTemplate = `<template>
   <div
     v-if="canEditTransform || props.canEditReversed"
     class="space-y-4 bg-ui-bg-elevated p-4 rounded-lg border border-ui-border"
@@ -306,7 +307,7 @@ const newTemplate = \`<template>
       </div>
     </div>
   </div>
-</template>\`;
+</template>`;
 
 content = content.replace(templateMatch[0], newTemplate);
 fs.writeFileSync(path, content, 'utf8');
