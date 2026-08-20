@@ -403,6 +403,27 @@ config.global.stubs = {
   UContextMenu: { template: '<div><slot /></div>' },
   UIcon: { props: ['name'], template: '<span class="icon-mock" />' },
   UButton: { props: ['label'], template: '<button>{{ label }}<slot /></button>' },
+  // Stub UTabs to prevent mountSuspended from hanging on its async initialisation.
+  // Renders each item in a button, pipes the default slot through (so parent slot
+  // templates that render labels/counts work), and emits update:modelValue on click.
+  UTabs: {
+    name: 'UTabs',
+    props: ['modelValue', 'items', 'ui'],
+    emits: ['update:modelValue'],
+    template: `
+      <div class="u-tabs">
+        <button
+          v-for="item in (items || [])"
+          :key="item.value"
+          :data-state="modelValue === item.value ? 'active' : 'inactive'"
+          @click="$emit('update:modelValue', item.value)"
+        >
+          <UIcon v-if="item.icon" :name="item.icon" />
+          <slot :item="item">{{ item.label }}</slot>
+        </button>
+      </div>
+    `,
+  },
   UModal: {
     props: ['open', 'title', 'description', 'close', 'ui', 'dismissible', 'content'],
     template: `

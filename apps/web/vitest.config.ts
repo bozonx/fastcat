@@ -33,6 +33,16 @@ export default defineVitestConfig({
     globals: true,
     hookTimeout: 120_000,
     testTimeout: 60_000,
+    // Limit concurrent workers to prevent OOM/swap pressure causing worker
+    // startup timeouts ("Timeout waiting for worker to respond"). The machine
+    // has constrained available RAM, so running all 8 forks simultaneously
+    // causes heavy swapping and some workers miss their handshake window.
+    pool: 'forks',
+    poolOptions: {
+      forks: {
+        maxForks: 4,
+      },
+    },
     server: {
       deps: {
         inline: ['@nuxt/test-utils', '@nuxtjs/i18n'],

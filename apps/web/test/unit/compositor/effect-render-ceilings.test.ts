@@ -13,7 +13,7 @@ import source from '~shared/effects/render-ceilings.json';
  */
 const ceilingsJson = source as Record<string, number>;
 
-const buildRs = readFileSync(resolve(process.cwd(), 'src-tauri/build.rs'), 'utf8');
+const buildRs = readFileSync(resolve(process.cwd(), '../native/src-tauri/build.rs'), 'utf8');
 
 const EXPECTED: Record<keyof typeof ceilings, string> = {
   MAX_BLUR_RADIUS: 'maxBlurRadius',
