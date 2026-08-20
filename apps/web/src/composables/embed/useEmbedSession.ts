@@ -108,7 +108,6 @@ export function useEmbedSession() {
 
   /** Resolved once the host acknowledges it has consumed the exported file. */
   let exportAck: (() => void) | null = null;
-  let pendingExportAck: Promise<void> | null = null;
   let exportedFilename: string | null = null;
   let exportAckTimer: ReturnType<typeof setTimeout> | null = null;
   const sessionAbortController = new AbortController();
@@ -380,9 +379,7 @@ export function useEmbedSession() {
         // `File` crosses the boundary by reference to its backing store, so the
         // host streams it straight out of OPFS without the bytes ever being
         // materialised in either page's heap.
-        pendingExportAck = new Promise<void>((resolve) => {
-          exportAck = resolve;
-        });
+        exportAck = () => {};
         hasUnacknowledgedExport.value = true;
         bridge.value?.send('export:done', { file, poster, otio, meta });
         exportAckTimer = setTimeout(() => {
@@ -430,7 +427,6 @@ export function useEmbedSession() {
     exportAckTimer = null;
     exportAck?.();
     exportAck = null;
-    pendingExportAck = null;
     hasUnacknowledgedExport.value = false;
 
     if (!exportedFilename) return;

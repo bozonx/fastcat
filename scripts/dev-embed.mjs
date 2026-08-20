@@ -39,7 +39,20 @@ process.on('SIGINT', () => shutdown(0));
 process.on('SIGTERM', () => shutdown(0));
 
 run('pnpm', ['--filter', '@fastcat/web', 'exec', 'nuxt', 'dev', '--port', String(editorPort)]);
-run('node', ['scripts/embed-host-server.mjs', '--port', String(standPort), '--editor', editorUrl]);
+// embed-host-server.mjs lives in apps/web/scripts/ so that `vite` (a devDep of
+// @fastcat/web) is resolvable. `pnpm exec` runs the command with apps/web/ as
+// the working directory, which is where Node.js will look for node_modules.
+run('pnpm', [
+  '--filter',
+  '@fastcat/web',
+  'exec',
+  'node',
+  'scripts/embed-host-server.mjs',
+  '--port',
+  String(standPort),
+  '--editor',
+  editorUrl,
+]);
 
 console.log(`\nEmbed host stand:  ${standUrl}`);
 console.log(`Editor (embedded): ${editorUrl}\n`);

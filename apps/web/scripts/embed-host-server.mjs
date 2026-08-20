@@ -16,7 +16,8 @@
 import { createReadStream } from 'node:fs';
 import { readFile, stat } from 'node:fs/promises';
 import { createServer } from 'node:http';
-import { extname, join, normalize, resolve } from 'node:path';
+import { dirname, extname, join, normalize, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { transformWithOxc } from 'vite';
 
 const MIME_TYPES = {
@@ -41,7 +42,7 @@ const port = Number(parseArg('--port', '3011'));
 const editorUrl = parseArg('--editor', 'http://localhost:3008/embed');
 const standRoot = resolve(parseArg('--stand', 'dev/embed-host'));
 const mediaRoot = resolve(parseArg('--media', 'test/fixtures/media'));
-const sdkRoot = resolve('packages/embed/src');
+const sdkRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../../packages/embed/src');
 
 /** Rewrites extensionless relative imports so the browser can resolve them. */
 function addModuleExtensions(code) {
