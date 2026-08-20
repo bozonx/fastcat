@@ -19,8 +19,9 @@
     "test:unit:coverage": "node ../../scripts/clean-test-files.mjs vitest && vitest run --coverage test/unit test/components",
     "test:watch": "vitest",
     "test:integration:web": "node ../../scripts/clean-test-files.mjs vitest && vitest run test/integration test/golden-helpers",
-    "test:e2e": "node ../../scripts/run-playwright-with-preview.mjs test --project=smoke --project=e2e --project=embed --project=firefox-smoke",
-    "test:e2e:smoke": "node ../../scripts/run-playwright-with-preview.mjs test --project=smoke --project=firefox-smoke",
+    "test:e2e": "pnpm test:e2e:smoke && pnpm test:e2e:web && pnpm test:e2e:embed",
+    "test:e2e:smoke": "node ../../scripts/run-playwright-with-preview.mjs test --project=smoke && node ../../scripts/run-playwright-with-preview.mjs test --project=firefox-smoke",
+    "test:e2e:web": "node ../../scripts/run-playwright-with-preview.mjs test --project=e2e",
     "test:e2e:embed": "node ../../scripts/run-playwright-with-preview.mjs test --project=embed",
     "test:golden:web": "node ../../scripts/run-playwright-with-preview.mjs test --project=golden"
   },

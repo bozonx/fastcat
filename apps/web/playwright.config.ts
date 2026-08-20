@@ -57,7 +57,7 @@ export default defineConfig({
   // can never be pulled into two runs at once.
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 1,
+  retries: Number(process.env.E2E_RETRIES ?? (process.env.CI ? 1 : 0)),
   timeout: 60_000,
   workers: process.env.CI ? 1 : e2eWorkers,
   outputDir: playwrightOutputDir,
@@ -67,9 +67,9 @@ export default defineConfig({
 
   use: {
     baseURL,
-    trace: 'on-first-retry',
+    trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
-    video: 'retain-on-failure',
+    video: process.env.E2E_CAPTURE_VIDEO === '1' ? 'retain-on-failure' : 'off',
     locale: 'en-US',
   },
 

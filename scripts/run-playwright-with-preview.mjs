@@ -10,13 +10,16 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { createServer } from 'node:net';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 const e2eHost = process.env.E2E_HOST ?? '127.0.0.1';
 const testFilesRoot = join(process.cwd(), 'test-files');
 const playwrightFilesRoot = join(testFilesRoot, 'playwright');
 const playwrightTmpDir = join(playwrightFilesRoot, 'tmp');
 const e2eOutputDir = process.env.E2E_OUTPUT_DIR ?? join('test-files', 'playwright', 'output');
+const playwrightOutputDir = join(playwrightFilesRoot, 'results');
+const playwrightReportDir = join(playwrightFilesRoot, 'report');
 const playwrightArgs = process.argv.slice(2);
 
 // Inputs whose contents decide whether the prebuilt bundle is still valid.
@@ -25,10 +28,13 @@ const playwrightArgs = process.argv.slice(2);
 const BUILD_INPUT_DIRS = ['apps', 'packages', 'scripts'];
 const BUILD_INPUT_FILES = ['package.json', 'pnpm-lock.yaml', 'turbo.json', 'pnpm-workspace.yaml'];
 const BUILD_MANIFEST = join(e2eOutputDir, '.e2e-build-hash');
+export const E2E_BUILD_COMMAND = ['--filter', '@fastcat/web', 'build'];
 
-function cleanPlaywrightFiles() {
-  rmSync(playwrightFilesRoot, { recursive: true, force: true });
-  mkdirSync(playwrightTmpDir, { recursive: true });
+export function cleanPlaywrightFiles({ outputDir, reportDir, tmpDir } = {}) {
+  // Keep the preview bundle and manifest so the E2E build cache can be reused.
+  rmSync(outputDir ?? playwrightOutputDir, { recursive: true, force: true });
+  rmSync(reportDir ?? playwrightReportDir, { recursive: true, force: true });
+  mkdirSync(tmpDir ?? playwrightTmpDir, { recursive: true });
 }
 
 async function findAvailablePort(startPort) {
@@ -123,7 +129,9 @@ function runBuild(e2ePort) {
     }
   }
 
-  const build = spawnSync('pnpm', ['build'], {
+  // E2E requires only the Nuxt app. Avoid concurrent docs/embed builds here:
+  // their peak memory is unrelated to browser coverage.
+  const build = spawnSync('pnpm', E2E_BUILD_COMMAND, {
     cwd: process.cwd(),
     stdio: 'inherit',
     env: {
@@ -175,8 +183,8 @@ async function main() {
       E2E_TEST: '1',
       E2E_OUTPUT_DIR: e2eOutputDir,
       EMBED_HOST_PORT: String(embedHostPort),
-      PLAYWRIGHT_OUTPUT_DIR: join('test-files', 'playwright', 'results'),
-      PLAYWRIGHT_HTML_REPORT: join('test-files', 'playwright', 'report'),
+      PLAYWRIGHT_OUTPUT_DIR: playwrightOutputDir,
+      PLAYWRIGHT_HTML_REPORT: playwrightReportDir,
       TMPDIR: playwrightTmpDir,
       FASTCAT_ENABLE_IN_DEVELOPMENT_FEATURES: 'true',
     },
@@ -187,7 +195,9 @@ async function main() {
   });
 }
 
-main().catch((error) => {
-  console.error(error);
-  process.exit(1);
-});
+if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+  main().catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });
+}

@@ -574,16 +574,16 @@ the GPU-fragile ones stay out of the merge gate. Two things used to both be call
 - **golden** = cross-engine _rendered-frame_ comparison against
   `packages/shared/golden/frames.json` (GPU-dependent).
 
-| Tier                      | Location                                                                      | Command                     | CI             |
-| ------------------------- | ----------------------------------------------------------------------------- | --------------------------- | -------------- |
-| Unit                      | `apps/web/test/unit/`, `apps/web/test/components/` (incl. `*.parity.test.ts`) | `pnpm test:unit`            | gate           |
-| Integration (web)         | `apps/web/test/integration/`, `apps/web/test/golden-helpers/`                 | `pnpm test:integration:web` | gate           |
-| Integration/unit (native) | `apps/native/src-tauri/tests/`, Rust `#[test]`s (incl. logic parity)          | `pnpm test:native`          | gate           |
-| E2E — smoke               | `apps/web/test/e2e/smoke/`                                                    | `pnpm test:e2e:smoke`       | deferred (OOM) |
-| E2E — full                | `apps/web/test/e2e/web/`                                                      | `pnpm test:e2e`             | deferred (OOM) |
-| E2E — embed               | `apps/web/test/e2e/embed/`                                                    | `pnpm test:e2e:embed`       | deferred (OOM) |
-| Golden (web)              | `apps/web/test/golden/` + `apps/web/test/golden-helpers/`                     | `pnpm test:golden:web`      | manual (GPU)   |
-| Golden (native)           | `apps/native/src-tauri/tests/engine_parity.rs`                                | `pnpm test:golden:native`   | manual (GPU)   |
+| Tier                      | Location                                                                      | Command                     | CI           |
+| ------------------------- | ----------------------------------------------------------------------------- | --------------------------- | ------------ |
+| Unit                      | `apps/web/test/unit/`, `apps/web/test/components/` (incl. `*.parity.test.ts`) | `pnpm test:unit`            | gate         |
+| Integration (web)         | `apps/web/test/integration/`, `apps/web/test/golden-helpers/`                 | `pnpm test:integration:web` | gate         |
+| Integration/unit (native) | `apps/native/src-tauri/tests/`, Rust `#[test]`s (incl. logic parity)          | `pnpm test:native`          | gate         |
+| E2E — smoke               | `apps/web/test/e2e/smoke/`                                                    | `pnpm test:e2e:smoke`       | deferred     |
+| E2E — full                | `apps/web/test/e2e/web/`                                                      | `pnpm test:e2e:web`         | deferred     |
+| E2E — embed               | `apps/web/test/e2e/embed/`                                                    | `pnpm test:e2e:embed`       | deferred     |
+| Golden (web)              | `apps/web/test/golden/` + `apps/web/test/golden-helpers/`                     | `pnpm test:golden:web`      | manual (GPU) |
+| Golden (native)           | `apps/native/src-tauri/tests/engine_parity.rs`                                | `pnpm test:golden:native`   | manual (GPU) |
 
 `apps/web/test/integration/golden-registry/` holds CPU vitest checks that validate the
 golden registry integrity and scene coverage (no GPU), and runs with the web
@@ -615,16 +615,21 @@ pnpm test:e2e:install
 
 E2E tests use `127.0.0.1:3007` by default. Override it with
 `E2E_HOST=127.0.0.1 E2E_PORT=3010 pnpm test:e2e`.
-`test:e2e`, `test:e2e:smoke`, and `test:golden:web` run Playwright through
+`test:e2e`, `test:e2e:smoke`, `test:e2e:web`, `test:e2e:embed`, and `test:golden:web` run Playwright through
 `scripts/run-playwright-with-preview.mjs`, which builds the app (skipped when
-`.output/public` is already up to date — set `E2E_FORCE_BUILD=1` to force a
-rebuild) and picks a free port. Playwright's own `webServer` (see
+the E2E bundle is already up to date — set `E2E_FORCE_BUILD=1` to force a
+rebuild) and picks a free port. It builds only `@fastcat/web`; the full suite
+runs smoke, web and embed in separate Playwright processes, releasing browser
+and SwiftShader memory between tiers. Playwright's own `webServer` (see
 `playwright.config.ts`) then starts, readiness-polls and tears down
-`scripts/static-preview-server.mjs` over `.output/public` with the required
+`scripts/static-preview-server.mjs` over the E2E bundle with the required
 cross-origin isolation headers — a single source of truth for the server
 command lives in `scripts/lib/preview-server.mjs`. Locally, an already-running
 server on the target port is reused (`reuseExistingServer`), so you can iterate
 on a single spec against a warm server.
+
+On failure the runner saves a trace and screenshot. To retain a video as well,
+set `E2E_CAPTURE_VIDEO=1`; use `E2E_RETRIES=<n>` to override the retry count.
 
 ### Golden (rendered-frame) tests
 
