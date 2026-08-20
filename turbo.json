@@ -1,5 +1,18 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  "globalEnv": [
+    "NODE_ENV",
+    "PORT",
+    "FASTCAT_ENABLE_IN_DEVELOPMENT_FEATURES",
+    "FASTCAT_ENABLE_PREMIUM_FEATURES",
+    "FASTCAT_DEV_DIR"
+  ],
+  "globalPassThroughEnv": [
+    "CI",
+    "GITHUB_*",
+    "TAURI_*",
+    "PLAYWRIGHT_*"
+  ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
@@ -13,7 +26,10 @@
       "dependsOn": ["^build"]
     },
     "lint": {
-      "dependsOn": ["^build"]
+      "cache": true
+    },
+    "lint:fix": {
+      "cache": false
     },
     "test": {
       "dependsOn": ["^build"]
@@ -23,9 +39,6 @@
     },
     "test:integration:web": {
       "cache": true
-    },
-    "check": {
-      "dependsOn": ["typecheck", "lint"]
     },
     "dev": {
       "cache": false,

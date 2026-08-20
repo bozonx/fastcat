@@ -1,15 +1,13 @@
 {
-  "extends": "./.nuxt/tsconfig.json",
+  "extends": "./packages/typescript-config/node.json",
   "compilerOptions": {
     "baseUrl": ".",
-    "lib": ["ESNext", "dom", "dom.iterable", "dom.asynciterable", "webworker"],
     "paths": {
-      "~/*": ["src/*"],
-      "@/*": ["src/*"],
-      "~shared": ["shared"],
-      "~shared/*": ["shared/*"],
+      "~shared": ["packages/shared"],
+      "~shared/*": ["packages/shared/*"],
       "~embed": ["packages/embed/src"],
       "~embed/*": ["packages/embed/src/*"]
     }
-  }
+  },
+  "include": ["scripts/**/*"]
 }

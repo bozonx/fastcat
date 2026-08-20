@@ -1,7 +1,7 @@
 import withNuxt from './.nuxt/eslint.config.mjs';
-import eslintPluginPrettierRecommended from 'eslint-plugin-prettier/recommended';
+import { baseEslintConfig } from '@fastcat/eslint-config';
 
-export default withNuxt(eslintPluginPrettierRecommended)
+export default withNuxt(...baseEslintConfig)
   .append({
     ignores: [
       '.output/**',
@@ -18,18 +18,8 @@ export default withNuxt(eslintPluginPrettierRecommended)
   })
   .append({
     rules: {
-      '@typescript-eslint/no-explicit-any': 'error',
-      '@typescript-eslint/no-unsafe-function-type': 'error',
-      '@typescript-eslint/no-unused-vars': 'error',
-      '@typescript-eslint/no-extraneous-class': 'error',
-      '@typescript-eslint/no-dynamic-delete': 'error',
-      '@typescript-eslint/no-useless-constructor': 'error',
-      '@typescript-eslint/unified-signatures': 'error',
-      'no-useless-escape': 'error',
       'vue/multi-word-component-names': 'error',
       'vue/require-default-prop': 'error',
-      'no-empty': 'error',
-      'no-unsafe-finally': 'error',
       // Diagnostic logging must go through ~/utils/dev-logger (gated by env and
       // mockable in tests).
       'no-console': 'error',

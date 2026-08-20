@@ -41,6 +41,10 @@
     "clean": "rm -rf dist",
     "prepack": "pnpm run build"
   },
+  "devDependencies": {
+    "@fastcat/typescript-config": "workspace:*",
+    "typescript": "~5.9.0"
+  },
   "engines": {
     "node": ">=18.0.0"
   },
