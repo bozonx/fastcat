@@ -1,3 +1,4 @@
+import { resolveSharedPath } from 'test/fixtures/shared-path';
 /** @vitest-environment node */
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
@@ -19,7 +20,7 @@ interface ParityCase {
 }
 
 const fixture = JSON.parse(
-  readFileSync(resolve(process.cwd(), 'shared/parity/crop-inset-rect.cases.json'), 'utf8'),
+  readFileSync(resolveSharedPath('parity/crop-inset-rect.cases.json'), 'utf8'),
 ) as { cases: ParityCase[] };
 
 describe('crop inset-rect parity (shared fixture)', () => {

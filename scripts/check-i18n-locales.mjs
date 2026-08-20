@@ -2,8 +2,8 @@ import { readFile, readdir, stat } from 'node:fs/promises';
 import { join, extname } from 'node:path';
 
 const LOCALE_FILES = {
-  en: 'src/locales/en-US.json',
-  ru: 'src/locales/ru-RU.json',
+  en: 'apps/web/src/locales/en-US.json',
+  ru: 'apps/web/src/locales/ru-RU.json',
 };
 
 async function flattenObject(obj, prefix = '') {
@@ -61,10 +61,10 @@ async function check() {
     'videoEditor.settings.videoFrameCacheMbHelp',
   ]);
 
-  const srcFiles = (await getFiles('src')).filter((f) =>
+  const srcFiles = (await getFiles('apps/web/src')).filter((f) =>
     ['.vue', '.ts', '.js'].includes(extname(f)),
   );
-  const testFiles = (await getFiles('test')).filter((f) =>
+  const testFiles = (await getFiles('apps/web/test')).filter((f) =>
     ['.vue', '.ts', '.js'].includes(extname(f)),
   );
   const files = [...srcFiles, ...testFiles];

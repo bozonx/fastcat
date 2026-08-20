@@ -447,7 +447,7 @@ mod tests {
     #[test]
     fn eviction_victim_matches_shared_parity_fixture() {
         const FIXTURE: &str =
-            include_str!("../../../shared/parity/frame-cache-eviction.cases.json");
+            include_str!("../../../../../packages/shared/parity/frame-cache-eviction.cases.json");
         let parsed: serde_json::Value =
             serde_json::from_str(FIXTURE).expect("valid parity fixture json");
         let cases = parsed["cases"].as_array().expect("cases array");
@@ -477,7 +477,7 @@ mod tests {
     #[test]
     fn frame_le_matches_shared_parity_fixture() {
         const FIXTURE: &str =
-            include_str!("../../../shared/parity/frame-le-sample-hold.cases.json");
+            include_str!("../../../../../packages/shared/parity/frame-le-sample-hold.cases.json");
         let parsed: serde_json::Value =
             serde_json::from_str(FIXTURE).expect("valid parity fixture json");
         let cases = parsed["cases"].as_array().expect("cases array");

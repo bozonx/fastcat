@@ -3,14 +3,15 @@ import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { execSync } from 'node:child_process';
 
-const EMBED_PKG_DIR = resolve(process.cwd(), 'packages/embed');
+const ROOT = resolve(import.meta.dirname, '../../../../../..');
+const EMBED_PKG_DIR = resolve(ROOT, 'packages/embed');
 const DIST_DIR = resolve(EMBED_PKG_DIR, 'dist');
 const PKG_JSON_PATH = resolve(EMBED_PKG_DIR, 'package.json');
 
 describe('@fastcat/embed package build and distribution smoke test', () => {
   beforeAll(() => {
     // Ensure dist is built before running assertions
-    execSync('pnpm build:embed', { stdio: 'pipe', cwd: process.cwd() });
+    execSync('pnpm --filter @fastcat/embed build', { stdio: 'pipe', cwd: ROOT });
   });
 
   it('generates all expected dist files (.js, .d.ts, sourcemaps)', () => {

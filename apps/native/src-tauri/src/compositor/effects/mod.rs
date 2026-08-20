@@ -1091,7 +1091,7 @@ fn source_to_owned_texture(
 // The effect math lives in the shared cross-backend shader so the native
 // wgpu compositor and the web WebGPU compute runner execute identical code.
 // This is the effect plugin ABI — see the header of `effect.wgsl`.
-const EFFECT_SHADER: &str = include_str!("../../../../shared/effects/effect.wgsl");
+const EFFECT_SHADER: &str = include_str!("../../../../../../packages/shared/effects/effect.wgsl");
 
 #[cfg(test)]
 mod tests {
@@ -1112,19 +1112,21 @@ mod tests {
             ("effect.wgsl", EFFECT_SHADER),
             (
                 "crossfade.wgsl",
-                include_str!("../../../../shared/transitions/crossfade.wgsl"),
+                include_str!("../../../../../../packages/shared/transitions/crossfade.wgsl"),
             ),
             (
                 "wipe.wgsl",
-                include_str!("../../../../shared/transitions/wipe.wgsl"),
+                include_str!("../../../../../../packages/shared/transitions/wipe.wgsl"),
             ),
             (
                 "slide.wgsl",
-                include_str!("../../../../shared/transitions/slide.wgsl"),
+                include_str!("../../../../../../packages/shared/transitions/slide.wgsl"),
             ),
             (
                 "fade_through_color.wgsl",
-                include_str!("../../../../shared/transitions/fade_through_color.wgsl"),
+                include_str!(
+                    "../../../../../../packages/shared/transitions/fade_through_color.wgsl"
+                ),
             ),
         ];
         for (name, source) in shaders {
@@ -1746,7 +1748,7 @@ mod tests {
         }
 
         let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../shared/parity/transition-render-scale.cases.json");
+            .join("../../../packages/shared/parity/transition-render-scale.cases.json");
         let raw =
             std::fs::read_to_string(&path).expect("transition-render-scale.cases.json must exist");
         let fixture: ScaleFixture =
@@ -1766,7 +1768,7 @@ mod tests {
     #[test]
     fn build_passes_match_shared_parity_fixture() {
         let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../shared/parity/build-passes.cases.json");
+            .join("../../../packages/shared/parity/build-passes.cases.json");
         let raw = std::fs::read_to_string(&path).expect("build-passes.cases.json must exist");
         let fixture: ParityFixture =
             serde_json::from_str(&raw).expect("build-passes.cases.json must be valid");

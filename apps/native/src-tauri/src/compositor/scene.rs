@@ -1627,7 +1627,8 @@ mod tests {
     /// can never drift apart for non-overlapping crops.
     #[test]
     fn crop_inset_rect_matches_shared_parity_fixture() {
-        const FIXTURE: &str = include_str!("../../../shared/parity/crop-inset-rect.cases.json");
+        const FIXTURE: &str =
+            include_str!("../../../../../packages/shared/parity/crop-inset-rect.cases.json");
         let parsed: serde_json::Value =
             serde_json::from_str(FIXTURE).expect("valid parity fixture json");
         let cases = parsed["cases"].as_array().expect("cases array");
@@ -1681,7 +1682,8 @@ mod tests {
     /// `test/unit/utils/video-editor/contain-fit.parity.test.ts`.
     #[test]
     fn fit_into_matches_shared_parity_fixture() {
-        const FIXTURE: &str = include_str!("../../../shared/parity/contain-fit.cases.json");
+        const FIXTURE: &str =
+            include_str!("../../../../../packages/shared/parity/contain-fit.cases.json");
         let parsed: serde_json::Value = serde_json::from_str(FIXTURE).expect("valid fixture json");
         let cases = parsed["cases"].as_array().expect("cases array");
         assert!(!cases.is_empty());
@@ -1722,7 +1724,8 @@ mod tests {
     /// `test/unit/utils/video-editor/blend-modes.parity.test.ts`.
     #[test]
     fn blend_modes_match_shared_parity_fixture() {
-        const FIXTURE: &str = include_str!("../../../shared/parity/blend-modes.json");
+        const FIXTURE: &str =
+            include_str!("../../../../../packages/shared/parity/blend-modes.json");
         let parsed: serde_json::Value = serde_json::from_str(FIXTURE).expect("valid fixture json");
         let modes: Vec<String> = parsed["modes"]
             .as_array()

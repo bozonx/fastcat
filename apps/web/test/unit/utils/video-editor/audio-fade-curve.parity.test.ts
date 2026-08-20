@@ -1,3 +1,4 @@
+import { resolveSharedPath } from 'test/fixtures/shared-path';
 /** @vitest-environment node */
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
@@ -24,7 +25,7 @@ interface FadeCurveCase {
 }
 
 const fixture = JSON.parse(
-  readFileSync(resolve(process.cwd(), 'shared/parity/audio-fade-curve.cases.json'), 'utf8'),
+  readFileSync(resolveSharedPath('parity/audio-fade-curve.cases.json'), 'utf8'),
 ) as { epsilon: number; cases: FadeCurveCase[] };
 
 const CLIP_DURATION_S = 10;

@@ -1,3 +1,4 @@
+import { resolveSharedPath } from 'test/fixtures/shared-path';
 import { readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { DEFAULT_TOLERANCE } from './frame-hash';
@@ -26,7 +27,7 @@ export interface SceneFixture {
   color_tolerance?: number;
 }
 
-const SCENES_DIR = resolve(process.cwd(), 'shared/scenes');
+const SCENES_DIR = resolveSharedPath('scenes');
 
 /** Load a single scene fixture by filename (e.g. `solid-background.json`). */
 export function loadScene(filename: string): SceneFixture {

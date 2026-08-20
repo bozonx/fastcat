@@ -384,8 +384,9 @@ mod tests {
     /// `shared/parity/effect-bake-patch.cases.json` identically.
     #[test]
     fn patch_baked_specs_matches_shared_parity_fixture() {
-        const FIXTURE: &str =
-            include_str!("../../../../../shared/parity/effect-bake-patch.cases.json");
+        const FIXTURE: &str = include_str!(
+            "../../../../../../../packages/shared/parity/effect-bake-patch.cases.json"
+        );
         let parsed: serde_json::Value = serde_json::from_str(FIXTURE).expect("valid fixture json");
         let cases = parsed["cases"].as_array().expect("cases array");
         assert!(!cases.is_empty());
@@ -430,7 +431,7 @@ mod tests {
     #[test]
     fn eval_track_at_matches_shared_parity_fixture() {
         const FIXTURE: &str =
-            include_str!("../../../../../shared/parity/keyframe-interp.cases.json");
+            include_str!("../../../../../../../packages/shared/parity/keyframe-interp.cases.json");
         let parsed: serde_json::Value = serde_json::from_str(FIXTURE).expect("valid fixture json");
         let cases = parsed["cases"].as_array().expect("cases array");
         assert!(!cases.is_empty());

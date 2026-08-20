@@ -3,7 +3,7 @@ import {
   embedHostPort,
   embedHostUrl,
   staticPreviewServerCommand,
-} from './scripts/lib/preview-server.mjs';
+} from '../../scripts/lib/preview-server.mjs';
 
 const e2eHost = process.env.E2E_HOST ?? '127.0.0.1';
 const e2ePort = Number(process.env.E2E_PORT ?? 3007);

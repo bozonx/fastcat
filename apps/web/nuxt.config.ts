@@ -1,8 +1,6 @@
 import { defineNuxtConfig } from 'nuxt/config';
 import { resolve } from 'node:path';
 import { mkdirSync } from 'node:fs';
-import type { PreviewServer, ViteDevServer } from 'vite';
-
 const fastcatDevDir = resolve(import.meta.dirname, process.env.FASTCAT_DEV_DIR || './.dev-files');
 
 function readBooleanEnv(value: unknown, defaultValue = false): boolean {
@@ -21,7 +19,19 @@ function isEmbedRequestPath(url: string | undefined): boolean {
   return path === '/embed' || path.startsWith('/embed/');
 }
 
-function installIsolationHeaders(server: ViteDevServer | PreviewServer): void {
+interface MiddlewareServer {
+  middlewares: {
+    use: (
+      fn: (
+        req: { url?: string },
+        res: { setHeader: (name: string, value: string) => void },
+        next: () => void,
+      ) => void,
+    ) => void;
+  };
+}
+
+function installIsolationHeaders(server: MiddlewareServer): void {
   server.middlewares.use((req, res, next) => {
     // Mirror the production headers, including the embed route's opt-out — a dev
     // server that isolated `/embed` would hide every no-SharedArrayBuffer bug
@@ -80,10 +90,10 @@ export default defineNuxtConfig({
   // shader) consumed by both the web build (`~shared/...?raw`) and Rust
   // (`include_str!`).
   alias: {
-    '~shared': resolve(import.meta.dirname, 'shared'),
+    '~shared': resolve(import.meta.dirname, '../../packages/shared'),
     // The embed protocol is published as `@fastcat/embed`; the app compiles
     // against its source so host and editor can never disagree on the contract.
-    '~embed': resolve(import.meta.dirname, 'packages/embed/src'),
+    '~embed': resolve(import.meta.dirname, '../../packages/embed/src'),
   },
 
   modules: [

@@ -7,7 +7,7 @@ import worker, {
   ISOLATION_HEADERS,
   EMBED_HEADERS,
   IMMUTABLE_CACHE_CONTROL,
-} from '../../../worker/index';
+} from '../../../../worker/index';
 
 describe('Cloudflare Worker (worker/index.ts)', () => {
   describe('isEmbedRequest', () => {

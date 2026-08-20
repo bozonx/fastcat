@@ -1,3 +1,4 @@
+import { resolveSharedPath } from 'test/fixtures/shared-path';
 /** @vitest-environment node */
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
@@ -30,7 +31,7 @@ interface ParityCase {
 }
 
 const fixture = JSON.parse(
-  readFileSync(resolve(process.cwd(), 'shared/parity/text-shadow-frame.cases.json'), 'utf8'),
+  readFileSync(resolveSharedPath('parity/text-shadow-frame.cases.json'), 'utf8'),
 ) as { cases: ParityCase[] };
 
 describe('text shadow/border frame parity (shared fixture)', () => {

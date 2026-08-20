@@ -1,3 +1,4 @@
+import { resolveSharedPath } from 'test/fixtures/shared-path';
 /** @vitest-environment node */
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
@@ -21,7 +22,7 @@ interface MasterGainCase {
 }
 
 const fixture = JSON.parse(
-  readFileSync(resolve(process.cwd(), 'shared/parity/audio-master-gain.cases.json'), 'utf8'),
+  readFileSync(resolveSharedPath('parity/audio-master-gain.cases.json'), 'utf8'),
 ) as { maxMasterGain: number; cases: MasterGainCase[] };
 
 function decodeGain(gain: number | string): number {

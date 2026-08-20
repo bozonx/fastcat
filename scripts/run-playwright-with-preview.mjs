@@ -22,8 +22,8 @@ const playwrightArgs = process.argv.slice(2);
 // Inputs whose contents decide whether the prebuilt bundle is still valid.
 // Kept coarse on purpose: a superset is safe (rebuilds when it didn't strictly
 // need to); a subset would serve a stale bundle.
-const BUILD_INPUT_DIRS = ['src', 'shared', 'public', 'packages'];
-const BUILD_INPUT_FILES = ['package.json', 'pnpm-lock.yaml', 'nuxt.config.ts', 'tsconfig.json'];
+const BUILD_INPUT_DIRS = ['apps', 'packages', 'scripts'];
+const BUILD_INPUT_FILES = ['package.json', 'pnpm-lock.yaml', 'turbo.json', 'pnpm-workspace.yaml'];
 const BUILD_MANIFEST = join(e2eOutputDir, '.e2e-build-hash');
 
 function cleanPlaywrightFiles() {
@@ -161,10 +161,10 @@ async function main() {
 
   runBuild(e2ePort);
 
-  // Hand the chosen port + built bundle to Playwright and let its own
-  // `webServer` (playwright.config.ts) start, readiness-poll and tear down the
-  // static preview server. This script owns only build + port selection.
-  const playwright = spawn('pnpm', ['exec', 'playwright', ...playwrightArgs], {
+  const configArgs = playwrightArgs.some((arg) => arg.startsWith('--config'))
+    ? []
+    : ['--config', 'apps/web/playwright.config.ts'];
+  const playwright = spawn('pnpm', ['exec', 'playwright', ...configArgs, ...playwrightArgs], {
     cwd: process.cwd(),
     stdio: 'inherit',
     env: {

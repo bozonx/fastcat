@@ -13,14 +13,17 @@
  * TS manifest (family + weight + unicode-range + same-origin url) consumed by
  * `load-fonts.ts`. Runs on `postinstall`; re-run manually via `pnpm fonts:vendor`.
  */
+import { existsSync } from 'node:fs';
 import { copyFile, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const FONTSOURCE_DIR = resolve(ROOT, 'node_modules/@fontsource');
-const OUT_DIR = resolve(ROOT, 'public/fonts');
-const MANIFEST_TS = resolve(ROOT, 'src/utils/video-editor/font-manifest.ts');
+const FONTSOURCE_DIR = existsSync(resolve(ROOT, 'node_modules/@fontsource'))
+  ? resolve(ROOT, 'node_modules/@fontsource')
+  : resolve(ROOT, 'apps/web/node_modules/@fontsource');
+const OUT_DIR = resolve(ROOT, 'apps/web/public/fonts');
+const MANIFEST_TS = resolve(ROOT, 'apps/web/src/utils/video-editor/font-manifest.ts');
 
 // Editor supports en + ru → keep only these subsets to bound the payload.
 const SUBSET_ALLOWLIST = ['latin', 'latin-ext', 'cyrillic', 'cyrillic-ext'];

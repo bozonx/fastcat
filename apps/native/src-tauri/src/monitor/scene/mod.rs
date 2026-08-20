@@ -651,7 +651,8 @@ mod tests {
     /// can never drift apart on the shared algorithm.
     #[test]
     fn clip_source_pts_matches_shared_parity_fixture() {
-        const FIXTURE: &str = include_str!("../../../../shared/parity/clip-source-pts.cases.json");
+        const FIXTURE: &str =
+            include_str!("../../../../../../packages/shared/parity/clip-source-pts.cases.json");
         let parsed: Value = serde_json::from_str(FIXTURE).expect("valid parity fixture json");
         let guard = parsed["guardSec"].as_f64().expect("guardSec");
         assert!(

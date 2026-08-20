@@ -1,3 +1,4 @@
+import { resolveSharedPath } from 'test/fixtures/shared-path';
 /** @vitest-environment node */
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
@@ -19,7 +20,7 @@ interface LevelDbCase {
 }
 
 const fixture = JSON.parse(
-  readFileSync(resolve(process.cwd(), 'shared/parity/audio-level-db.cases.json'), 'utf8'),
+  readFileSync(resolveSharedPath('parity/audio-level-db.cases.json'), 'utf8'),
 ) as { epsilon: number; cases: LevelDbCase[] };
 
 describe('audio level-dB parity (shared fixture)', () => {

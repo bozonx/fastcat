@@ -61,7 +61,7 @@ function runNativeParity(): Promise<string> {
       [
         'test',
         '--manifest-path',
-        'src-tauri/Cargo.toml',
+        'apps/native/src-tauri/Cargo.toml',
         '--features',
         'test-support',
         '--test',

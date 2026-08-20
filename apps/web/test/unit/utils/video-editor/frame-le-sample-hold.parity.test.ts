@@ -1,3 +1,4 @@
+import { resolveSharedPath } from 'test/fixtures/shared-path';
 /** @vitest-environment node */
 import { describe, it, expect, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
@@ -25,7 +26,7 @@ interface ParityCase {
 }
 
 const fixture = JSON.parse(
-  readFileSync(resolve(process.cwd(), 'shared/parity/frame-le-sample-hold.cases.json'), 'utf8'),
+  readFileSync(resolveSharedPath('parity/frame-le-sample-hold.cases.json'), 'utf8'),
 ) as { cases: ParityCase[] };
 
 function makeFrame(): VideoFrame {

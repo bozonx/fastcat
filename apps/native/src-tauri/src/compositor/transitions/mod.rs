@@ -60,18 +60,20 @@ impl TransitionSpec {
             | Self::FadeThroughColor { .. } => true,
             Self::CustomWgsl { source, params } => {
                 let analytic_mask = [
-                    include_str!("../../../../shared/transitions/wipe.wgsl"),
-                    include_str!("../../../../shared/transitions/slide.wgsl"),
-                    include_str!("../../../../shared/transitions/barn_door.wgsl"),
-                    include_str!("../../../../shared/transitions/clock.wgsl"),
-                    include_str!("../../../../shared/transitions/ellipse.wgsl"),
-                    include_str!("../../../../shared/transitions/rectangle.wgsl"),
+                    include_str!("../../../../../../packages/shared/transitions/wipe.wgsl"),
+                    include_str!("../../../../../../packages/shared/transitions/slide.wgsl"),
+                    include_str!("../../../../../../packages/shared/transitions/barn_door.wgsl"),
+                    include_str!("../../../../../../packages/shared/transitions/clock.wgsl"),
+                    include_str!("../../../../../../packages/shared/transitions/ellipse.wgsl"),
+                    include_str!("../../../../../../packages/shared/transitions/rectangle.wgsl"),
                 ]
                 .contains(&source.as_str());
                 if analytic_mask {
                     return true;
                 }
-                if source != include_str!("../../../../shared/transitions/blinds.wgsl") {
+                if source
+                    != include_str!("../../../../../../packages/shared/transitions/blinds.wgsl")
+                {
                     return false;
                 }
                 let blur = params
@@ -766,16 +768,17 @@ fn get_shader_source(spec: &TransitionSpec) -> String {
     match spec {
         TransitionSpec::CustomWgsl { source, .. } => source.clone(),
         TransitionSpec::Crossfade => {
-            include_str!("../../../../shared/transitions/crossfade.wgsl").to_string()
+            include_str!("../../../../../../packages/shared/transitions/crossfade.wgsl").to_string()
         }
         TransitionSpec::Wipe { .. } => {
-            include_str!("../../../../shared/transitions/wipe.wgsl").to_string()
+            include_str!("../../../../../../packages/shared/transitions/wipe.wgsl").to_string()
         }
         TransitionSpec::Slide { .. } => {
-            include_str!("../../../../shared/transitions/slide.wgsl").to_string()
+            include_str!("../../../../../../packages/shared/transitions/slide.wgsl").to_string()
         }
         TransitionSpec::FadeThroughColor { .. } => {
-            include_str!("../../../../shared/transitions/fade_through_color.wgsl").to_string()
+            include_str!("../../../../../../packages/shared/transitions/fade_through_color.wgsl")
+                .to_string()
         }
     }
 }
@@ -843,7 +846,8 @@ mod tests {
     /// `test/unit/utils/color.parity.test.ts`.
     #[test]
     fn parse_hex_color_matches_shared_parity_fixture() {
-        const FIXTURE: &str = include_str!("../../../../shared/parity/hex-color-rgb01.cases.json");
+        const FIXTURE: &str =
+            include_str!("../../../../../../packages/shared/parity/hex-color-rgb01.cases.json");
         let parsed: serde_json::Value = serde_json::from_str(FIXTURE).expect("valid fixture json");
         let cases = parsed["cases"].as_array().expect("cases array");
         assert!(!cases.is_empty());

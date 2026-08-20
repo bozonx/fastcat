@@ -20,7 +20,7 @@ const RENDER_CEILINGS: &[(&str, &str)] = &[
 ];
 
 fn generate_render_ceilings() {
-    let json_path = "../shared/effects/render-ceilings.json";
+    let json_path = "../../../packages/shared/effects/render-ceilings.json";
     println!("cargo:rerun-if-changed={json_path}");
 
     let raw =

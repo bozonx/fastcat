@@ -962,7 +962,8 @@ fn is_gpu_render_error_rejects_encoder_errors() {
 
 #[test]
 fn native_export_options_match_shared_parity_fixture() {
-    const FIXTURE: &str = include_str!("../../../../shared/parity/export-options.cases.json");
+    const FIXTURE: &str =
+        include_str!("../../../../../../packages/shared/parity/export-options.cases.json");
     let parsed: serde_json::Value =
         serde_json::from_str(FIXTURE).expect("valid parity fixture json");
     let cases = parsed["cases"].as_array().expect("cases array");

@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs';
 import { createReadStream } from 'node:fs';
 import { access, stat } from 'node:fs/promises';
 import { createServer } from 'node:http';
@@ -25,7 +26,12 @@ function parseArg(name, fallback) {
 
 const host = parseArg('--host', '127.0.0.1');
 const port = Number(parseArg('--port', '3007'));
-const root = resolve(parseArg('--root', '.output/public'));
+const defaultRoot = existsSync('apps/web/.output/public')
+  ? 'apps/web/.output/public'
+  : existsSync('.output/public')
+    ? '.output/public'
+    : 'apps/web/.output/public';
+const root = resolve(parseArg('--root', defaultRoot));
 
 /**
  * Mirrors the production header contract from `public/_headers`, including the

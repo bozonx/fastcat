@@ -1376,8 +1376,9 @@ mod tests {
     /// (explicit width/height dominate the text-measured auto size).
     #[test]
     fn text_shadow_frame_matches_shared_parity_fixture() {
-        const FIXTURE: &str =
-            include_str!("../../../../../shared/parity/text-shadow-frame.cases.json");
+        const FIXTURE: &str = include_str!(
+            "../../../../../../../packages/shared/parity/text-shadow-frame.cases.json"
+        );
         let parsed: serde_json::Value =
             serde_json::from_str(FIXTURE).expect("valid parity fixture json");
         let cases = parsed["cases"].as_array().expect("cases array");

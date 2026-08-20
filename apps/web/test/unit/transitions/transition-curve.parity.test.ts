@@ -1,3 +1,4 @@
+import { resolveSharedPath } from 'test/fixtures/shared-path';
 /** @vitest-environment node */
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
@@ -15,7 +16,7 @@ interface CurveCase {
 }
 
 const fixture = JSON.parse(
-  readFileSync(resolve(process.cwd(), 'shared/parity/transition-curve.cases.json'), 'utf8'),
+  readFileSync(resolveSharedPath('parity/transition-curve.cases.json'), 'utf8'),
 ) as { cases: CurveCase[] };
 
 describe('transition-curve parity (shared fixture)', () => {

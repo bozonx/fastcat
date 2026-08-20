@@ -21,6 +21,13 @@ export default defineVitestConfig({
   define: {
     'import.meta.dev': true,
   },
+  resolve: {
+    alias: {
+      test: resolve(import.meta.dirname, 'test'),
+      '~shared': resolve(import.meta.dirname, '../../packages/shared'),
+      '~embed': resolve(import.meta.dirname, '../../packages/embed/src'),
+    },
+  },
   test: {
     environment: 'nuxt',
     globals: true,

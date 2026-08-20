@@ -1,3 +1,4 @@
+import { resolveSharedPath } from 'test/fixtures/shared-path';
 /** @vitest-environment node */
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
@@ -16,7 +17,7 @@ interface FitCase {
 }
 
 const fixture = JSON.parse(
-  readFileSync(resolve(process.cwd(), 'shared/parity/contain-fit.cases.json'), 'utf8'),
+  readFileSync(resolveSharedPath('parity/contain-fit.cases.json'), 'utf8'),
 ) as { cases: FitCase[] };
 
 describe('contain-fit parity (shared fixture)', () => {

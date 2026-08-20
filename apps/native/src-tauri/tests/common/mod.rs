@@ -14,7 +14,7 @@ use std::process::Command;
 /// Absolute path to `test/fixtures/media` (sibling of `src-tauri`).
 pub fn fixtures_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../test/fixtures/media")
+        .join("../../web/test/fixtures/media")
         .canonicalize()
         .expect("fixtures dir should exist (run scripts/generate-test-fixtures.sh)")
 }

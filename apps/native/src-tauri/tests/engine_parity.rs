@@ -159,8 +159,8 @@ struct GoldenRegistry {
 const PENDING_HASH: &str = "pending";
 
 fn load_golden_registry() -> GoldenRegistry {
-    let path =
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../shared/golden/frames.json");
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../../packages/shared/golden/frames.json");
     let raw = std::fs::read_to_string(&path).unwrap_or_else(|_| String::from(r#"{"entries":[]}"#));
     serde_json::from_str(&raw).expect("golden frames.json must be valid")
 }
@@ -204,7 +204,7 @@ struct SceneFixture {
 
 fn scenes_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../shared/scenes")
+        .join("../../../packages/shared/scenes")
         .canonicalize()
         .expect("shared/scenes dir should exist")
 }
@@ -333,7 +333,7 @@ fn build_parity_frame(
 #[test]
 fn frame_hash_matches_shared_parity_fixture() {
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../shared/parity/frame-hash.cases.json");
+        .join("../../../packages/shared/parity/frame-hash.cases.json");
     let raw = std::fs::read_to_string(&path).expect("frame-hash.cases.json must exist");
     let fixture: FrameHashFixture =
         serde_json::from_str(&raw).expect("frame-hash.cases.json must be valid");

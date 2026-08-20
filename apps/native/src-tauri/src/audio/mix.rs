@@ -1246,7 +1246,8 @@ mod tests {
     /// engine sanitizes it to centre, native assumes the scene DTO already did.
     #[test]
     fn stereo_pan_matrix_matches_shared_parity_fixture() {
-        const FIXTURE: &str = include_str!("../../../shared/parity/stereo-pan-matrix.cases.json");
+        const FIXTURE: &str =
+            include_str!("../../../../../packages/shared/parity/stereo-pan-matrix.cases.json");
         let parsed: serde_json::Value =
             serde_json::from_str(FIXTURE).expect("valid parity fixture json");
         let cases = parsed["cases"].as_array().expect("cases array");
@@ -1280,7 +1281,8 @@ mod tests {
     /// web `applyFadeCurve` map [0,1]-clamped progress to the same gain.
     #[test]
     fn fade_curve_matches_shared_parity_fixture() {
-        const FIXTURE: &str = include_str!("../../../shared/parity/audio-fade-curve.cases.json");
+        const FIXTURE: &str =
+            include_str!("../../../../../packages/shared/parity/audio-fade-curve.cases.json");
         let parsed: serde_json::Value =
             serde_json::from_str(FIXTURE).expect("valid parity fixture json");
         let cases = parsed["cases"].as_array().expect("cases array");
@@ -1307,7 +1309,7 @@ mod tests {
     #[test]
     fn effective_fades_matches_shared_parity_fixture() {
         const FIXTURE: &str =
-            include_str!("../../../shared/parity/audio-effective-fades.cases.json");
+            include_str!("../../../../../packages/shared/parity/audio-effective-fades.cases.json");
         let parsed: serde_json::Value =
             serde_json::from_str(FIXTURE).expect("valid parity fixture json");
         let cases = parsed["cases"].as_array().expect("cases array");
@@ -1337,7 +1339,8 @@ mod tests {
     /// monitor's web and native level meters never disagree.
     #[test]
     fn level_to_db_matches_shared_parity_fixture() {
-        const FIXTURE: &str = include_str!("../../../shared/parity/audio-level-db.cases.json");
+        const FIXTURE: &str =
+            include_str!("../../../../../packages/shared/parity/audio-level-db.cases.json");
         let parsed: serde_json::Value =
             serde_json::from_str(FIXTURE).expect("valid parity fixture json");
         let cases = parsed["cases"].as_array().expect("cases array");
@@ -1361,7 +1364,8 @@ mod tests {
     /// exports never disagree on an out-of-range master gain.
     #[test]
     fn sanitize_master_gain_matches_shared_parity_fixture() {
-        const FIXTURE: &str = include_str!("../../../shared/parity/audio-master-gain.cases.json");
+        const FIXTURE: &str =
+            include_str!("../../../../../packages/shared/parity/audio-master-gain.cases.json");
         let parsed: serde_json::Value =
             serde_json::from_str(FIXTURE).expect("valid parity fixture json");
         assert_eq!(

@@ -18,7 +18,7 @@ export TAURI_E2E_PROJECTS_ROOT="${TAURI_E2E_PROJECTS_ROOT:-$FASTCAT_DEV_DIR/home
 export TAURI_E2E_TEMP_ROOT="${TAURI_E2E_TEMP_ROOT:-$FASTCAT_DEV_DIR/tmp/fixtures}"
 export TMPDIR="${TMPDIR:-$FASTCAT_DEV_DIR/tmp/native}"
 
-BIN="src-tauri/target/release/fastcat"
+BIN="apps/native/src-tauri/target/release/fastcat"
 TAURI_DRIVER="${TAURI_DRIVER_PATH:-$HOME/.cargo/bin/tauri-driver}"
 
 echo "==> Checking prerequisites"
@@ -47,4 +47,4 @@ node scripts/clean-test-files.mjs tauri-e2e
 mkdir -p "$TAURI_E2E_TEMP_ROOT" "$TMPDIR"
 
 echo "==> Running Tauri e2e (wdio)"
-pnpm exec wdio run test/tauri-e2e/wdio.conf.ts "$@"
+pnpm exec wdio run apps/web/test/tauri-e2e/wdio.conf.ts "$@"

@@ -5,7 +5,7 @@ import {
   createEmbedNonce,
   buildEmbedUrl,
   parseEmbedHandshakeParams,
-} from '../../../../packages/embed/src/index';
+} from '~embed';
 
 describe('embed SDK iframe creation and attributes', () => {
   let container: HTMLDivElement;

@@ -1,3 +1,4 @@
+import { resolveSharedPath } from 'test/fixtures/shared-path';
 /** @vitest-environment node */
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
@@ -15,7 +16,7 @@ interface OrientationCase {
 }
 
 const fixture = JSON.parse(
-  readFileSync(resolve(process.cwd(), 'shared/parity/source-orientation-deg.cases.json'), 'utf8'),
+  readFileSync(resolveSharedPath('parity/source-orientation-deg.cases.json'), 'utf8'),
 ) as { cases: OrientationCase[] };
 
 describe('source-orientation parity (shared fixture)', () => {

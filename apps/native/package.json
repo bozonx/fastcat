@@ -1,0 +1,27 @@
+{
+  "name": "@fastcat/native",
+  "version": "0.5.2",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "tauri": "dotenv -e src-tauri/.env -- tauri",
+    "build:desktop": "dotenv -e src-tauri/.env -- tauri build",
+    "build:e2e": "dotenv -e src-tauri/.env -- tauri build --no-bundle",
+    "android:dev": "dotenv -e src-tauri/.env -- tauri android dev",
+    "android:build": "dotenv -e src-tauri/.env -- tauri android build",
+    "ios:dev": "dotenv -e src-tauri/.env -- tauri ios dev",
+    "ios:build": "dotenv -e src-tauri/.env -- tauri ios build",
+    "clippy": "cargo clippy --manifest-path src-tauri/Cargo.toml -- -D warnings",
+    "fmt": "cargo fmt --manifest-path src-tauri/Cargo.toml",
+    "fmt:check": "cargo fmt --manifest-path src-tauri/Cargo.toml -- --check",
+    "check": "pnpm clippy && pnpm fmt:check",
+    "test": "pnpm test:native",
+    "test:native": "cargo test --manifest-path src-tauri/Cargo.toml --features test-support",
+    "test:integration:native": "cargo test --manifest-path src-tauri/Cargo.toml --features test-support --test media_probe --test audio_offline --test audio_engine_realtime --test timeline_export",
+    "test:golden:native": "cargo test --manifest-path src-tauri/Cargo.toml --features test-support --test engine_parity -- --nocapture"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.11.4",
+    "dotenv-cli": "^11.0.0"
+  }
+}

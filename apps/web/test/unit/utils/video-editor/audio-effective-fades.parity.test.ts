@@ -1,3 +1,4 @@
+import { resolveSharedPath } from 'test/fixtures/shared-path';
 /** @vitest-environment node */
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
@@ -22,7 +23,7 @@ interface EffectiveFadesCase {
 }
 
 const fixture = JSON.parse(
-  readFileSync(resolve(process.cwd(), 'shared/parity/audio-effective-fades.cases.json'), 'utf8'),
+  readFileSync(resolveSharedPath('parity/audio-effective-fades.cases.json'), 'utf8'),
 ) as { epsilon: number; cases: EffectiveFadesCase[] };
 
 describe('audio effective-fades parity (shared fixture)', () => {

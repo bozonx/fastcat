@@ -566,25 +566,25 @@ Tests are organised into explicit **tiers** so each can run in its own CI job an
 the GPU-fragile ones stay out of the merge gate. Two things used to both be called
 "parity" — they are now distinct:
 
-- **parity** = pure cross-language _logic_ math pinned by `shared/parity/*.json`
+- **parity** = pure cross-language _logic_ math pinned by `packages/shared/parity/*.json`
   (CPU, deterministic). These live inside the unit/rust tiers, not a tier of
   their own — see the `*.parity.test.ts` files and the Rust `#[test]`s that read
   those fixtures.
 - **golden** = cross-engine _rendered-frame_ comparison against
-  `shared/golden/frames.json` (GPU-dependent).
+  `packages/shared/golden/frames.json` (GPU-dependent).
 
-| Tier                      | Location                                                    | Command                     | CI           |
-| ------------------------- | ----------------------------------------------------------- | --------------------------- | ------------ |
-| Unit                      | `test/unit/`, `test/components/` (incl. `*.parity.test.ts`) | `pnpm test:unit`            | gate         |
-| Integration (web)         | `test/integration/`, `test/golden-helpers/`                 | `pnpm test:integration:web` | gate         |
-| Integration/unit (native) | `src-tauri/tests/`, Rust `#[test]`s (incl. logic parity)    | `pnpm test:native`          | gate         |
-| E2E — smoke               | `test/e2e/smoke/`                                           | `pnpm test:e2e:smoke`       | gate         |
-| E2E — full                | `test/e2e/web/`                                             | `pnpm test:e2e`             | gate         |
-| E2E — embed               | `test/e2e/embed/`                                           | `pnpm test:e2e:embed`       | gate         |
-| Golden (web)              | `test/golden/` + `test/golden-helpers/`                     | `pnpm test:golden:web`      | manual (GPU) |
-| Golden (native)           | `src-tauri/tests/engine_parity.rs`                          | `pnpm test:golden:native`   | manual (GPU) |
+| Tier                      | Location                                                                          | Command                     | CI           |
+| ------------------------- | --------------------------------------------------------------------------------- | --------------------------- | ------------ |
+| Unit                      | `apps/web/test/unit/`, `apps/web/test/components/` (incl. `*.parity.test.ts`)     | `pnpm test:unit`            | gate         |
+| Integration (web)         | `apps/web/test/integration/`, `apps/web/test/golden-helpers/`                     | `pnpm test:integration:web` | gate         |
+| Integration/unit (native) | `apps/native/src-tauri/tests/`, Rust `#[test]`s (incl. logic parity)              | `pnpm test:native`          | gate         |
+| E2E — smoke               | `apps/web/test/e2e/smoke/`                                                        | `pnpm test:e2e:smoke`       | gate         |
+| E2E — full                | `apps/web/test/e2e/web/`                                                          | `pnpm test:e2e`             | gate         |
+| E2E — embed               | `apps/web/test/e2e/embed/`                                                        | `pnpm test:e2e:embed`       | gate         |
+| Golden (web)              | `apps/web/test/golden/` + `apps/web/test/golden-helpers/`                         | `pnpm test:golden:web`      | manual (GPU) |
+| Golden (native)           | `apps/native/src-tauri/tests/engine_parity.rs`                                    | `pnpm test:golden:native`   | manual (GPU) |
 
-`test/integration/golden-registry/` holds CPU vitest checks that validate the
+`apps/web/test/integration/golden-registry/` holds CPU vitest checks that validate the
 golden registry integrity and scene coverage (no GPU), and runs with the web
 integration tier. `test:integration:native` is a curated fast **subset** of
 `test:native` (the latter runs the whole Rust suite: native unit + integration +

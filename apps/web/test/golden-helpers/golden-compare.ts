@@ -1,3 +1,4 @@
+import { resolveSharedPath } from 'test/fixtures/shared-path';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { hammingDistance, colorSignatureDistance, DEFAULT_COLOR_TOLERANCE } from './frame-hash';
@@ -41,7 +42,7 @@ export function isPendingHash(hash: string): boolean {
   return hash === PENDING_HASH;
 }
 
-const GOLDEN_PATH = resolve(process.cwd(), 'shared/golden/frames.json');
+const GOLDEN_PATH = resolveSharedPath('golden/frames.json');
 
 /** Load the golden hash registry. */
 export function loadGoldenRegistry(): GoldenRegistry {

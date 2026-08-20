@@ -1,3 +1,4 @@
+import { resolveSharedPath } from 'test/fixtures/shared-path';
 /** @vitest-environment node */
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
@@ -37,7 +38,7 @@ interface ParityCase {
 }
 
 const fixture = JSON.parse(
-  readFileSync(resolve(process.cwd(), 'shared/parity/frame-hash.cases.json'), 'utf8'),
+  readFileSync(resolveSharedPath('parity/frame-hash.cases.json'), 'utf8'),
 ) as { cases: ParityCase[] };
 
 /** Rebuild an RGBA frame from its procedural description (mirrored in Rust). */

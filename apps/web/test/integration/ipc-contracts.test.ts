@@ -3,9 +3,9 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { extname, join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-const ROOT = process.cwd();
+const ROOT = resolve(import.meta.dirname, '../..');
 const SRC_DIR = resolve(ROOT, 'src');
-const RUST_LIB = resolve(ROOT, 'src-tauri/src/lib.rs');
+const RUST_LIB = resolve(ROOT, '../native/src-tauri/src/lib.rs');
 const TS_EXTENSIONS = new Set(['.ts', '.vue']);
 const REGISTERED_WITHOUT_STATIC_TS_CALL = new Set([
   'native_timeline_render_frame_to_file',

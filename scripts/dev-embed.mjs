@@ -38,7 +38,7 @@ function shutdown(code) {
 process.on('SIGINT', () => shutdown(0));
 process.on('SIGTERM', () => shutdown(0));
 
-run('pnpm', ['exec', 'nuxt', 'dev', '--port', String(editorPort)]);
+run('pnpm', ['--filter', '@fastcat/web', 'exec', 'nuxt', 'dev', '--port', String(editorPort)]);
 run('node', ['scripts/embed-host-server.mjs', '--port', String(standPort), '--editor', editorUrl]);
 
 console.log(`\nEmbed host stand:  ${standUrl}`);

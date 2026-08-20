@@ -1,13 +1,13 @@
 {
-  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "$schema": "../../../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "FastCat",
   "version": "0.5.2",
   "identifier": "com.bozonx.fastcat",
   "build": {
-    "frontendDist": "../.output/public",
+    "frontendDist": "../../web/.output/public",
     "devUrl": "http://localhost:3009",
-    "beforeDevCommand": "pnpm dev --port 3009",
-    "beforeBuildCommand": "pnpm generate"
+    "beforeDevCommand": "pnpm --filter @fastcat/web dev --port 3009",
+    "beforeBuildCommand": "pnpm --filter @fastcat/web generate"
   },
   "app": {
     "windows": [

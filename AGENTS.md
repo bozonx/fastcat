@@ -8,35 +8,40 @@
 - **Testing**: Vitest (Unit), Playwright (E2E)
 - **Linting & Formatting**: ESLint, Prettier
 
-## Specific Project Structure (`src/`)
-The project uses a custom `src/` directory. Besides the standard Nuxt folders (`components/`, `composables/`, `pages/`, `assets/`), there are specific ones:
-- `src/stores/` — Pinia stores (application state, workspace, etc.).
-- `src/utils/` — auxiliary pure functions, constants, configurations.
-- `src/workers/` — Web Workers for heavy computations (e.g., video editor core).
-- `src/timeline/` — logic and components specific to the video editor timeline.
-- `src/locales/` — localization files (i18n).
-- `src/utils/io/` — shared I/O budget and governor (`io-budget.ts`, `io-governor.ts`, `governed-blob.ts`). Main thread and workers coordinate OPFS access through a `SharedArrayBuffer` semaphore to avoid Chromium datapipe exhaustion.
+## Monorepo Structure (Turborepo + pnpm workspaces)
+The repository is organised as a Turborepo monorepo:
+- `apps/web/` — Nuxt 4 web video editor application (`@fastcat/web`).
+  - `apps/web/src/` — components, stores, utils, workers, timeline, locales, io.
+  - `apps/web/public/` — static assets and vendored fonts (`/fonts/`).
+  - `apps/web/test/` — web unit, component, integration, and e2e tests.
+- `apps/native/` — Cross-platform Tauri v2 wrapper for Desktop & Mobile (`@fastcat/native`).
+  - `apps/native/src-tauri/` — Rust compositor and media engine.
+- `apps/worker/` — Cloudflare Worker serving static assets with COOP/COEP isolation headers (`@fastcat/worker`).
+- `apps/docs/` — VitePress documentation and landing site (`@fastcat/docs`).
+- `packages/embed/` — Embed SDK (`@fastcat/embed`).
+- `packages/shared/` — Cross-backend WGSL shaders and parity/golden fixtures (`@fastcat/shared`).
+- `packages/typescript-config/` — Shared TypeScript configurations (`@fastcat/typescript-config`).
+- `packages/eslint-config/` — Shared ESLint configuration (`@fastcat/eslint-config`).
 
-## Testing Structure (`test/`)
-Tests are organised into explicit **tiers** (one CI job each). Two things used to
-both be called "parity" — keep them distinct:
-- **parity** = pure cross-language _logic_ math (`shared/parity/*.json`, CPU) — lives in the unit/rust tiers, not a tier of its own.
-- **golden** = cross-engine _rendered-frame_ comparison (`shared/golden/frames.json`, GPU) — its own tier, kept out of the merge gate.
+## Testing Structure
+Tests are organised into explicit **tiers** (one CI job each):
+- **parity** = pure cross-language _logic_ math (`packages/shared/parity/*.json`, CPU) — lives in the unit/rust tiers, not a tier of its own.
+- **golden** = cross-engine _rendered-frame_ comparison (`packages/shared/golden/frames.json`, GPU) — its own tier, kept out of the merge gate.
 
 | Tier | Directory | Command |
 | --- | --- | --- |
-| Unit | `test/unit/` (incl. `*.parity.test.ts`), `test/components/` | `pnpm test:unit` |
-| Integration (web) | `test/integration/` (incl. `golden-registry/`), `test/golden-helpers/` | `pnpm test:integration:web` |
-| Native (Rust) | `src-tauri/tests/`, Rust `#[test]`s (incl. logic parity) | `pnpm test:native` |
-| E2E — smoke | `test/e2e/smoke/` | `pnpm test:e2e:smoke` |
-| E2E — full | `test/e2e/web/` | `pnpm test:e2e` |
-| Golden (rendered) | `test/golden/`, `src-tauri/tests/engine_parity.rs` | `pnpm test:golden` |
+| Unit | `apps/web/test/unit/` (incl. `*.parity.test.ts`), `apps/web/test/components/` | `pnpm test:unit` |
+| Integration (web) | `apps/web/test/integration/` (incl. `golden-registry/`), `apps/web/test/golden-helpers/` | `pnpm test:integration:web` |
+| Native (Rust) | `apps/native/src-tauri/tests/`, Rust `#[test]`s (incl. logic parity) | `pnpm test:native` |
+| E2E — smoke | `apps/web/test/e2e/smoke/` | `pnpm test:e2e:smoke` |
+| E2E — full | `apps/web/test/e2e/web/` | `pnpm test:e2e` |
+| Golden (rendered) | `apps/web/test/golden/`, `apps/native/src-tauri/tests/engine_parity.rs` | `pnpm test:golden` |
 
 - `test:integration:native` is a curated fast **subset** of `test:native` (the latter runs the whole Rust suite incl. logic parity + golden, skipping GPU gracefully).
-- `pnpm test` runs all Vitest tiers (unit + components + integration + golden-helpers) in one pass; `pnpm check` runs everything incl. e2e/golden; `pnpm check:fast` is the quick static + unit + web-integration loop.
+- `pnpm test` runs all Vitest tiers in one pass; `pnpm check` runs everything incl. e2e/golden; `pnpm check:fast` is the quick static + unit + web-integration loop.
 - CI tiers are dispatched by `scripts/ci.sh <tier>` (blocking gate in `.github/workflows/ci.yml`; golden tiers are GPU-dependent and run manually, not in CI).
-- `test/fixtures/` — Static assets and mock data for tests.
-- `test/vitest.setup.ts` — Global configuration and mocks for Vitest.
+- `apps/web/test/fixtures/` — Static assets and mock data for tests.
+- `apps/web/test/vitest.setup.ts` — Global configuration and mocks for Vitest.
 
 ## General Principles
 - Communication with the user is conducted in Russian (including plans and reasoning).
@@ -47,9 +52,9 @@ both be called "parity" — keep them distinct:
 ## Engine Coupling Contract (web ↔ native)
 The web (Pixi/WebGPU) and native (wgpu/vello) video engines are **separate paradigms**
 with exactly two coupling surfaces:
-- `shared/*.wgsl` — the single source of effect/transition math (ABI pinned in each
+- `packages/shared/*.wgsl` — the single source of effect/transition math (ABI pinned in each
   file's header: bindings, uniform layout, mode codes);
-- `shared/parity/*.json` + `shared/golden/` — fixtures locking duplicated pure logic
+- `packages/shared/parity/*.json` + `packages/shared/golden/` — fixtures locking duplicated pure logic
   and rendered output.
 
 Rules:

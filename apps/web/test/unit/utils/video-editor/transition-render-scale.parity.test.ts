@@ -1,3 +1,4 @@
+import { resolveSharedPath } from 'test/fixtures/shared-path';
 /** @vitest-environment node */
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
@@ -17,7 +18,7 @@ interface ScaleCase {
 }
 
 const fixture = JSON.parse(
-  readFileSync(resolve(process.cwd(), 'shared/parity/transition-render-scale.cases.json'), 'utf8'),
+  readFileSync(resolveSharedPath('parity/transition-render-scale.cases.json'), 'utf8'),
 ) as { cases: ScaleCase[] };
 
 describe('transition-render-scale parity (shared fixture)', () => {

@@ -20,6 +20,9 @@ test_results.txt
 /--noEmit/
 
 
+# Turborepo
+.turbo
+
 # Nuxt
 .nuxt
 .output

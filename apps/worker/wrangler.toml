@@ -11,11 +11,11 @@
 # Preview: pnpm preview:cf        (local wrangler dev against the built assets)
 
 name = "fastcat-app"
-main = "worker/index.ts"
+main = "index.ts"
 compatibility_date = "2024-11-01"
 
 [assets]
-directory = "./.output/public"
+directory = "../web/.output/public"
 binding = "ASSETS"
 # SPA: unknown routes fall back to index.html (client-side routing, ssr:false).
 not_found_handling = "single-page-application"

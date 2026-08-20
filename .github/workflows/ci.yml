@@ -67,7 +67,7 @@ jobs:
           components: clippy, rustfmt
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: "src-tauri -> target"
+          workspaces: "apps/native/src-tauri -> target"
       - name: Install native dependencies
         run: |
           sudo apt-get update

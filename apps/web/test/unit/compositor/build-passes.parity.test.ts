@@ -1,3 +1,4 @@
+import { resolveSharedPath } from 'test/fixtures/shared-path';
 /** @vitest-environment node */
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
@@ -17,7 +18,7 @@ import type { PreviewEffectQuality } from '~/utils/preview-effect-quality';
  * `buildPasses` must be identical on both engines for the same input.
  */
 const fixture = JSON.parse(
-  readFileSync(resolve(process.cwd(), 'shared/parity/build-passes.cases.json'), 'utf8'),
+  readFileSync(resolveSharedPath('parity/build-passes.cases.json'), 'utf8'),
 ) as {
   cases: Array<{
     name: string;
