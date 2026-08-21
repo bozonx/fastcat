@@ -1,9 +1,14 @@
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { defineConfig, devices } from '@playwright/test';
 import {
   embedHostPort,
   embedHostUrl,
   staticPreviewServerCommand,
 } from '../../scripts/lib/preview-server.mjs';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const e2eHost = process.env.E2E_HOST ?? '127.0.0.1';
 const e2ePort = Number(process.env.E2E_PORT ?? 3007);
@@ -24,7 +29,7 @@ const webServerCommand = staticPreviewServerCommand({
 const standPort = embedHostPort(e2ePort);
 const standURL = embedHostUrl(e2eHost, e2ePort);
 const embedHostCommand = [
-  'node scripts/embed-host-server.mjs',
+  'node apps/web/scripts/embed-host-server.mjs',
   `--host ${e2eHost}`,
   `--port ${standPort}`,
   `--editor ${baseURL}/embed`,
@@ -134,6 +139,7 @@ export default defineConfig({
       url: baseURL,
       timeout: 120_000,
       reuseExistingServer: !process.env.CI,
+      cwd: resolve(__dirname, '../..'),
       env: {
         E2E_TEST: '1',
         E2E_HOST: e2eHost,
@@ -149,6 +155,7 @@ export default defineConfig({
       url: `${standURL}/config.json`,
       timeout: 60_000,
       reuseExistingServer: !process.env.CI,
+      cwd: resolve(__dirname, '../..'),
     },
   ],
 });

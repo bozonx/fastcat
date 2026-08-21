@@ -169,10 +169,19 @@ async function main() {
 
   runBuild(e2ePort);
 
-  const configArgs = playwrightArgs.some((arg) => arg.startsWith('--config'))
-    ? []
-    : ['--config', 'apps/web/playwright.config.ts'];
-  const playwright = spawn('pnpm', ['exec', 'playwright', ...configArgs, ...playwrightArgs], {
+  let execArgs = [];
+  if (playwrightArgs[0] === 'test') {
+    const configArgs = playwrightArgs.some((arg) => arg.startsWith('--config') || arg.startsWith('-c'))
+      ? []
+      : ['--config', 'apps/web/playwright.config.ts'];
+    execArgs = ['test', ...configArgs, ...playwrightArgs.slice(1)];
+  } else {
+    const configArgs = playwrightArgs.some((arg) => arg.startsWith('--config') || arg.startsWith('-c'))
+      ? []
+      : ['--config', 'apps/web/playwright.config.ts'];
+    execArgs = [...configArgs, ...playwrightArgs];
+  }
+  const playwright = spawn('pnpm', ['exec', 'playwright', ...execArgs], {
     cwd: process.cwd(),
     stdio: 'inherit',
     env: {

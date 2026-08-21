@@ -1,3 +1,6 @@
 src/types/generated/
+**/src/types/generated/**
+apps/native/src/types/generated/
 apps/native/src-tauri/target/
 apps/native/src-tauri/gen/
+

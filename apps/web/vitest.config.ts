@@ -37,12 +37,9 @@ export default defineVitestConfig({
     // startup timeouts ("Timeout waiting for worker to respond"). The machine
     // has constrained available RAM, so running all 8 forks simultaneously
     // causes heavy swapping and some workers miss their handshake window.
-    pool: 'forks',
-    poolOptions: {
-      forks: {
-        maxForks: 4,
-      },
-    },
+    pool: 'threads',
+    fileParallelism: false,
+    maxWorkers: 1,
     server: {
       deps: {
         inline: ['@nuxt/test-utils', '@nuxtjs/i18n'],
