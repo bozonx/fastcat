@@ -48,6 +48,7 @@ export interface EmbedAsset {
    */
   file?: File;
   kind?: EmbedAssetKind;
+  /** Display name only when `id` is supplied; it never determines storage identity. */
   filename?: string;
   /** Existing timeline track id to place the asset on. */
   track?: string;
@@ -305,7 +306,7 @@ export function isSafeEmbedFilename(value: unknown): value is string {
     !value.includes('/') &&
     !value.includes('\\') &&
     !value.includes('..') &&
-    /^[a-zA-Z0-9][a-zA-Z0-9._ -]*$/.test(value)
+    !value.includes('\0')
   );
 }
 

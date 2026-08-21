@@ -84,6 +84,39 @@ describe('embed SDK iframe creation and attributes', () => {
       hostOrigin: 'https://example.com',
     });
   });
+
+  it('becomes unavailable when the init payload cannot be sent', () => {
+    const onUnavailable = vi.fn();
+    const embed = createFastcatEmbed({
+      container,
+      editorUrl: 'https://embed.fastcat.video/v1/embed',
+      assets: [{ url: 'https://example.com/clip.mp4', filename: '../clip.mp4' }],
+      onUnavailable,
+    });
+    const nonce = parseEmbedHandshakeParams(new URL(embed.iframe.src).hash)!.nonce;
+
+    window.dispatchEvent(
+      new MessageEvent('message', {
+        origin: 'https://embed.fastcat.video',
+        source: embed.iframe.contentWindow,
+        data: createEnvelope(nonce, 'ready', {
+          version: 1,
+          capabilities: {
+            webgpu: true,
+            webcodecs: true,
+            opfs: true,
+            sharedArrayBuffer: true,
+            storageQuotaBytes: null,
+          },
+        }),
+      }),
+    );
+
+    expect(embed.state).toBe('unavailable');
+    expect(onUnavailable).toHaveBeenCalledWith(
+      'protocol-invalid-payload: Invalid payload for init',
+    );
+  });
 });
 
 describe('embed protocol runtime validation', () => {
@@ -128,5 +161,33 @@ describe('embed protocol runtime validation', () => {
 
   it('accepts an export request without optional settings', () => {
     expect(validateEmbedMessage('host', 'export:start', undefined)).toEqual({ ok: true });
+  });
+
+  it('accepts Unicode and punctuation in display filenames', () => {
+    for (const filename of [
+      'Generated Image March 26, 2026 - 8_53PM.jpg',
+      'Видео про кота.mp4',
+      'clip(1).mp4',
+      'my+video.mp4',
+    ]) {
+      expect(
+        validateEmbedMessage('host', 'init', {
+          assets: [{ url: 'https://example.com/a', filename }],
+        }),
+      ).toEqual({ ok: true });
+    }
+  });
+
+  it('still rejects traversal and NUL in filenames', () => {
+    for (const filename of ['../clip.mp4', 'dir/clip.mp4', 'dir\\clip.mp4', 'clip\0.mp4']) {
+      expect(
+        validateEmbedMessage('host', 'init', {
+          assets: [{ url: 'https://example.com/a', filename }],
+        }),
+      ).toMatchObject({
+        ok: false,
+        code: 'protocol-invalid-payload',
+      });
+    }
   });
 });

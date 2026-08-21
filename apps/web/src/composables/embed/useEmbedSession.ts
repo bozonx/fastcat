@@ -17,6 +17,7 @@ import { createEmbedBridge, type EmbedBridge } from './useEmbedBridge';
 import { setEmbedFeatures } from '~/utils/embed-features';
 import { applySyncedSettings, extractSyncedSettings } from '~/utils/embed/synced-settings';
 import { registerHostRpc, settleHostRpc } from '~/utils/embed/host-rpc';
+import { collectRestoredMediaPaths } from '~/utils/embed/restored-assets';
 import { serializeTimelineToOtio } from '~/timeline/otio-serializer';
 import {
   acquireSessionLock,
@@ -122,6 +123,7 @@ export function useEmbedSession() {
   let queuedIngestBatches = 0;
   let nextAssetSequence = 0;
   const assetIds = new Set<string>();
+  const restoredMediaPaths = new Set<string>();
 
   const isIngesting = ref(false);
   const hasUnacknowledgedExport = ref(false);
@@ -218,7 +220,7 @@ export function useEmbedSession() {
         const transport = createTransport(asset, assetId);
         const contentType = await transport.getContentType();
         const placement = resolveAssetPlacement(
-          { url: asset.url ?? '', type: asset.kind, filename: asset.filename },
+          { id: asset.id, url: asset.url ?? '', type: asset.kind, filename: asset.filename },
           contentType,
         );
         const fileHandle = await projectStore.getProjectFileHandleByRelativePath({
@@ -240,23 +242,25 @@ export function useEmbedSession() {
           transport.dispose();
         }
 
-        // Placement is sequential from the playhead, so the first asset starts
-        // at the timeline head and each later one lands after it.
-        const startTicks =
-          asset.startAt === undefined
-            ? assetCount.value === 0
-              ? 0
-              : timelineStore.duration
-            : secondsToTicksClamped(asset.startAt);
-        timelineStore.setCurrentTimeTicks(startTicks);
-        const wasAdded = await addMediaToTimeline(
-          [{ name: placement.filename, path: placement.relativePath }],
-          {
-            targetTrackId: asset.track,
-            notifyRedirect: false,
-          },
-        );
-        if (!wasAdded) throw new Error(`Cannot place ${assetId} on the timeline`);
+        if (!restoredMediaPaths.has(placement.relativePath)) {
+          // Placement is sequential from the playhead, so the first asset starts
+          // at the timeline head and each later one lands after it.
+          const startTicks =
+            asset.startAt === undefined
+              ? assetCount.value === 0
+                ? 0
+                : timelineStore.duration
+              : secondsToTicksClamped(asset.startAt);
+          timelineStore.setCurrentTimeTicks(startTicks);
+          const wasAdded = await addMediaToTimeline(
+            [{ name: placement.filename, path: placement.relativePath }],
+            {
+              targetTrackId: asset.track,
+              notifyRedirect: false,
+            },
+          );
+          if (!wasAdded) throw new Error(`Cannot place ${assetId} on the timeline`);
+        }
         assetCount.value += 1;
       } catch (e) {
         assetIds.delete(assetId);
@@ -339,6 +343,9 @@ export function useEmbedSession() {
         // visibly offline instead of being silently replaced.
         await projectStore.writeTextByPath(timelinePath, payload.initialProject.otio);
         await timelineStore.loadTimeline();
+        for (const path of collectRestoredMediaPaths(timelineStore.timelineDoc)) {
+          restoredMediaPaths.add(path);
+        }
       }
 
       await ingestAssets(payload.assets ?? []);

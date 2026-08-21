@@ -191,21 +191,25 @@ export function createFastcatEmbed(options: FastcatEmbedOptions): FastcatEmbed {
         state = 'ready';
         readyDeferred.resolve(ready.capabilities);
         safeCallback('onReady', () => options.onReady?.(ready.capabilities));
-        send('init', {
-          locale: options.locale,
-          assets: options.assets,
-          layout: options.layout,
-          features: options.features,
-          preferences: options.preferences,
-          projectDefaults: options.projectDefaults,
-          initialProject: options.initialProject,
-          assetTransport: options.assetTransport,
-          output: options.output,
-        });
         initializedTimer = window.setTimeout(
           () => unavailable('Editor initialization timed out.'),
           options.initializedTimeoutMs ?? DEFAULT_INITIALIZED_TIMEOUT_MS,
         );
+        try {
+          send('init', {
+            locale: options.locale,
+            assets: options.assets,
+            layout: options.layout,
+            features: options.features,
+            preferences: options.preferences,
+            projectDefaults: options.projectDefaults,
+            initialProject: options.initialProject,
+            assetTransport: options.assetTransport,
+            output: options.output,
+          });
+        } catch (error) {
+          unavailable(error instanceof Error ? error.message : String(error));
+        }
         return;
       }
       case 'initialized':

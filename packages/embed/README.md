@@ -125,7 +125,7 @@ Mounts the editor iframe into `options.container`, initiates the secure handshak
 | `onError`              | `(error: { code: string; message: string }) => void`                                       | Error notification from editor.                                                |
 | `onRequestClose`       | `() => void`                                                                               | User clicked the close/exit button inside the editor.                          |
 | `onResizeRequest`      | `(request: { minHeightPx: number }) => void`                                               | Advisory request for more vertical viewport space.                             |
-| `onUnavailable`        | `(reason: string) => void`                                                                 | Handshake timed out or protocol version mismatch.                              |
+| `onUnavailable`        | `(reason: string) => void`                                                                 | Handshake, initialization, or protocol validation failed.                      |
 | `onDebug`              | `(direction: 'in' \| 'out', type: string, payload: unknown) => void`                       | Low-level message logger for debugging.                                        |
 
 ---
@@ -186,9 +186,12 @@ session work. Invalid payloads, unknown messages, and protocol version mismatche
 as stable `protocol-*` errors rather than silently becoming a timeout.
 
 Asset URLs and upload URLs must use HTTP(S), filenames must be plain basenames, and initial and
-added assets are limited in count and size. Asset servers need CORS; `Range` support is strongly
-recommended, while a range-blind HTTP 200 response is consumed once as a fallback. Use short-lived
-signed URLs and refresh them through `onAssetUrlExpired`; upload endpoints must accept `PUT`.
+added assets are limited in count and size. When an asset has an `id`, the editor derives its
+stable storage path from that ID and uses `filename` only as the user-facing label. Supplying the
+same assets alongside `initialProject` materializes their bytes without duplicating restored
+clips. Asset servers need CORS; `Range` support is strongly recommended, while a range-blind HTTP
+200 response is consumed once as a fallback. Use short-lived signed URLs and refresh them through
+`onAssetUrlExpired`; upload endpoints must accept `PUT`.
 
 The SDK does not enable `sandbox` by default: an opaque sandbox origin breaks OPFS. If a host
 requires it, test `allow-scripts allow-same-origin` plus the configured permissions in target

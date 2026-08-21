@@ -29,6 +29,26 @@ const DIR_BY_TYPE = {
 
 const DEFAULT_EXTENSION = { video: 'mp4', audio: 'mp3', image: 'png' } as const;
 
+const EXTENSION_BY_CONTENT_TYPE: Record<string, string> = {
+  'video/mp4': 'mp4',
+  'video/webm': 'webm',
+  'video/quicktime': 'mov',
+  'video/x-matroska': 'mkv',
+  'audio/mpeg': 'mp3',
+  'audio/wav': 'wav',
+  'audio/x-wav': 'wav',
+  'audio/ogg': 'ogg',
+  'audio/aac': 'aac',
+  'audio/flac': 'flac',
+  'audio/opus': 'opus',
+  'audio/mp4': 'm4a',
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+  'image/gif': 'gif',
+  'image/avif': 'avif',
+};
+
 function inferType(filename: string | undefined, contentType: string | null | undefined) {
   if (contentType?.startsWith('video/')) return 'video';
   if (contentType?.startsWith('audio/')) return 'audio';
@@ -38,6 +58,18 @@ function inferType(filename: string | undefined, contentType: string | null | un
   if (EXTENSIONS_BY_TYPE.video.includes(ext)) return 'video';
   if (EXTENSIONS_BY_TYPE.audio.includes(ext)) return 'audio';
   return 'image';
+}
+
+function inferExtension(
+  type: ExternalAssetPlacement['type'],
+  contentType: string | null | undefined,
+): string {
+  const normalizedContentType = contentType?.split(';', 1)[0]?.trim().toLowerCase();
+  return (
+    (normalizedContentType?.startsWith(`${type}/`) &&
+      EXTENSION_BY_CONTENT_TYPE[normalizedContentType]) ||
+    DEFAULT_EXTENSION[type]
+  );
 }
 
 /**
@@ -60,5 +92,10 @@ export function resolveAssetPlacement(
     filename = `asset-${Date.now()}-${randomToken(7)}.${DEFAULT_EXTENSION[type]}`;
   }
 
-  return { type, filename, relativePath: `${DIR_BY_TYPE[type]}/${filename}` };
+  const storageFilename =
+    asset.id !== undefined
+      ? `${encodeURIComponent(asset.id)}.${inferExtension(type, contentType)}`
+      : filename;
+
+  return { type, filename, relativePath: `${DIR_BY_TYPE[type]}/${storageFilename}` };
 }
