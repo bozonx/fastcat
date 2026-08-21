@@ -44,7 +44,7 @@ Tests are organised into explicit **tiers** (one CI job each):
 
 - `test:integration:native` is a curated fast **subset** of `test:native` (the latter runs the whole Rust suite incl. logic parity + golden, skipping GPU gracefully).
 - `pnpm test` runs all Vitest tiers in one pass; `pnpm check` runs everything incl. e2e/golden; `pnpm check:fast` is the quick static + unit + web-integration loop.
-- CI tiers are dispatched by `scripts/ci.sh <tier>`. The current blocking gate in `.github/workflows/ci.yml` runs static, unit, web integration, and Rust tiers. Playwright tiers are intentionally deferred while their OOM issue is investigated; golden tiers are GPU-dependent and run manually.
+- CI tiers are dispatched by `scripts/ci.sh <tier>`. The current blocking gate in `.github/workflows/ci.yml` runs static, unit, and web integration tiers. Native, Playwright, and golden tiers are run manually or out of the gate.
 - `apps/web/test/fixtures/` — Static assets and mock data for tests.
 - `apps/web/test/vitest.setup.ts` — Global configuration and mocks for Vitest.
 

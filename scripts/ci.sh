@@ -9,7 +9,7 @@ set -euo pipefail
 #   static          typecheck + lint + format + i18n  (host, fast, blocking)
 #   unit            web unit + component tests        (host, fast, blocking)
 #   integration-web web integration                   (host, blocking)
-#   native          Rust unit + integration + parity   (host, blocking)
+#   native          Rust unit + integration + parity   (host, non-gate)
 #   e2e-smoke       Playwright smoke tier             (Docker, blocking)
 #   e2e             Playwright full UI e2e            (Docker, blocking)
 #   golden-web      web rendered-frame golden         (Docker, GPU, non-gate)
