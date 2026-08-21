@@ -30,6 +30,7 @@
     "lint": "eslint --max-warnings 0 . && turbo run lint",
     "lint:fix": "eslint --fix . && turbo run lint:fix",
     "clippy": "pnpm --filter @fastcat/native clippy",
+    "clippy:fix": "pnpm --filter @fastcat/native clippy:fix",
     "format": "prettier --write . && pnpm --filter @fastcat/native format",
     "format:check": "prettier --check . && pnpm --filter @fastcat/native format:check",
     "i18n:check": "node scripts/check-i18n-locales.mjs",
