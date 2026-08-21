@@ -8,7 +8,7 @@
  *
  * It serves three things:
  *   - the stand itself (`dev/embed-host/`),
- *   - `@bozonx/embed` compiled straight from `packages/embed/src`, so the stand
+ *   - `@bozonx/fastcat-embed` compiled straight from `packages/embed/src`, so the stand
  *     always exercises the same protocol source the editor compiles against,
  *   - media fixtures with CORS and byte ranges, standing in for a host's signed
  *     asset URLs.

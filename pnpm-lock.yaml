@@ -67,7 +67,7 @@ importers:
 
   apps/web:
     dependencies:
-      '@bozonx/embed':
+      '@bozonx/fastcat-embed':
         specifier: workspace:*
         version: link:../../packages/embed
       '@fastcat/shared':

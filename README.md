@@ -135,7 +135,7 @@ pnpm preview:cf
 
 Host pages embed the editor as an **isolated cross-origin iframe** pointed at the `/embed`
 route and talk to it only over `postMessage`. The protocol lives in
-`packages/embed/src/protocol.ts` and is published as `@bozonx/embed`; the app
+`packages/embed/src/protocol.ts` and is published as `@bozonx/fastcat-embed`; the app
 compiles against that same source through the `~embed` alias, so the two halves
 of the contract cannot drift.
 
@@ -278,7 +278,7 @@ The embed boundary relies on a defense-in-depth model:
 
 1. **Same-Origin Policy (SOP)**: The editor runs on a separate origin (e.g. `https://embed.fastcat.video`) from the embedding host. Browser SOP prevents the host from reading the editor's internal state/storage, and prevents the editor from accessing the host document, cookies, or credentials.
 2. **Cryptographic Nonce & Origin Pinning**: Every session mints a 128-bit cryptographic nonce passed in the URL hash. All `postMessage` calls in both directions explicitly declare the exact expected target origin (`editorOrigin` / `hostOrigin`) and enforce envelope nonces, rejecting wildcard targets and unauthorized senders.
-3. **Permissions Policy**: By default `@bozonx/embed` sets `iframe.allow`:
+3. **Permissions Policy**: By default `@bozonx/fastcat-embed` sets `iframe.allow`:
    ```html
    allow="fullscreen; clipboard-read; clipboard-write; autoplay; cross-origin-isolated"
    ```

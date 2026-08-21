@@ -1,15 +1,15 @@
-# @bozonx/embed
+# @bozonx/fastcat-embed
 
 Official JavaScript / TypeScript SDK for embedding the **FastCat Video Editor** into any web application through an isolated cross-origin iframe.
 
-[![npm version](https://img.shields.io/npm/v/@bozonx/embed.svg)](https://www.npmjs.com/package/@bozonx/embed)
+[![npm version](https://img.shields.io/npm/v/@bozonx/fastcat-embed.svg)](https://www.npmjs.com/package/@bozonx/fastcat-embed)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 ---
 
 ## Overview
 
-`@bozonx/embed` is a zero-dependency, lightweight host-side library that manages the lifecycle of the FastCat editor iframe, handles cryptographic origin and nonce verification, and provides a strictly typed message boundary between your host application and the editor.
+`@bozonx/fastcat-embed` is a zero-dependency, lightweight host-side library that manages the lifecycle of the FastCat editor iframe, handles cryptographic origin and nonce verification, and provides a strictly typed message boundary between your host application and the editor.
 
 The editor itself runs in an isolated iframe (hosted on your domain or FastCat Cloud), while your host page controls initial configuration, media feeding, export triggers, and event listening.
 
@@ -19,13 +19,13 @@ The editor itself runs in an isolated iframe (hosted on your domain or FastCat C
 
 ```bash
 # npm
-npm install @bozonx/embed
+npm install @bozonx/fastcat-embed
 
 # pnpm
-pnpm add @bozonx/embed
+pnpm add @bozonx/fastcat-embed
 
 # yarn
-yarn add @bozonx/embed
+yarn add @bozonx/fastcat-embed
 ```
 
 ---
@@ -33,7 +33,7 @@ yarn add @bozonx/embed
 ## Quick Start
 
 ```typescript
-import { createFastcatEmbed, type FastcatEmbed } from '@bozonx/embed';
+import { createFastcatEmbed, type FastcatEmbed } from '@bozonx/fastcat-embed';
 
 const container = document.getElementById('editor-container')!;
 
@@ -165,7 +165,7 @@ import {
   type EmbedCapabilities,
   type HostToEditorMessages,
   type EditorToHostMessages,
-} from '@bozonx/embed/protocol';
+} from '@bozonx/fastcat-embed/protocol';
 ```
 
 ---
@@ -173,7 +173,7 @@ import {
 ## Security & Architecture
 
 1. **Origin Verification & Cryptographic Nonce**:
-   During initialization, `@bozonx/embed` generates a 128-bit cryptographic nonce and supplies the host origin via URL hash parameters. Both the host and the editor verify each other's origins and nonce on every `postMessage` envelope.
+   During initialization, `@bozonx/fastcat-embed` generates a 128-bit cryptographic nonce and supplies the host origin via URL hash parameters. Both the host and the editor verify each other's origins and nonce on every `postMessage` envelope.
 2. **Iframe Isolation**:
    The host application does not require cross-origin isolation (COOP/COEP headers), making integration safe for host sites that load third-party scripts.
 3. **Hardware Acceleration**:

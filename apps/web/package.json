@@ -30,7 +30,7 @@
     "test:golden:web": "node ../../scripts/run-playwright-with-preview.mjs test --project=golden"
   },
   "dependencies": {
-    "@bozonx/embed": "workspace:*",
+    "@bozonx/fastcat-embed": "workspace:*",
     "@fastcat/shared": "workspace:*",
     "@fontsource/bebas-neue": "^5.3.0",
     "@fontsource/caveat": "^5.3.0",

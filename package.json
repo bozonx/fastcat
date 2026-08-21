@@ -15,7 +15,7 @@
     "dev:embed": "node scripts/dev-embed.mjs",
     "build": "turbo run build",
     "build:web": "turbo run build --filter=@fastcat/web",
-    "build:embed": "turbo run build --filter=@bozonx/embed",
+    "build:embed": "turbo run build --filter=@bozonx/fastcat-embed",
     "generate": "turbo run generate --filter=@fastcat/web",
     "preview": "node scripts/static-preview-server.mjs",
     "postinstall": "node scripts/vendor-fonts.mjs",

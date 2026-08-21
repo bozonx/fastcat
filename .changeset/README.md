@@ -25,7 +25,7 @@ Follow the interactive prompts:
 
 ## npm setup
 
-The public SDK is published as `@bozonx/embed`, which belongs to the npm account
+The public SDK is published as `@bozonx/fastcat-embed`, which belongs to the npm account
 `bozonx`. Before the first release, create an npm granular access token with
 publish access for this package and add it to the GitHub repository as the
 `NPM_TOKEN` Actions secret. No manual `npm publish` is needed: merge the
