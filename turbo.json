@@ -14,7 +14,7 @@
       ],
       "outputs": [".output/**", ".nuxt/**"]
     },
-    "@fastcat/embed#build": {
+    "@bozonx/embed#build": {
       "dependsOn": ["^build"],
       "outputs": ["dist/**"]
     },

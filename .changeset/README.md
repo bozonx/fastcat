@@ -22,3 +22,11 @@ Follow the interactive prompts:
 1. After a merged commit passes the blocking `CI` workflow, GitHub Actions automatically opens or updates a PR titled `chore(release): version packages`.
 2. When the team decides to publish a release, simply merge that `Version Packages` PR.
 3. After the merge commit passes `CI`, GitHub Actions publishes the changed packages to npm (with provenance attestations) and generates GitHub releases and git tags. Each package builds through its own `prepack` script.
+
+## npm setup
+
+The public SDK is published as `@bozonx/embed`, which belongs to the npm account
+`bozonx`. Before the first release, create an npm granular access token with
+publish access for this package and add it to the GitHub repository as the
+`NPM_TOKEN` Actions secret. No manual `npm publish` is needed: merge the
+Changesets version PR and the release workflow publishes the initial version.

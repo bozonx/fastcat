@@ -1,6 +1,6 @@
 {
-  "name": "@fastcat/embed",
-  "version": "0.1.0",
+  "name": "@bozonx/embed",
+  "version": "0.0.0",
   "description": "SDK for embedding the FastCat video editor into any web page through an isolated iframe.",
   "license": "MIT",
   "type": "module",
@@ -35,6 +35,9 @@
     "README.md",
     "LICENSE"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "lint": "eslint --max-warnings 0 .",

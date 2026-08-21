@@ -1,6 +1,6 @@
 name: CI
 
-# Blocking web checks. Native, Playwright and GPU tiers remain manual.
+# Blocking web and native checks. Playwright and GPU tiers remain manual.
 
 on:
   push:
@@ -78,3 +78,29 @@ jobs:
             ${{ runner.os }}-turbo-
       - run: pnpm install --frozen-lockfile
       - run: bash scripts/ci.sh integration-web
+
+  # ── Tier: native ── Rust unit, integration and logic-parity tests
+  native:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@1.88.0
+      - name: Setup Cargo cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            apps/native/src-tauri/target
+          key: ${{ runner.os }}-cargo-native-${{ hashFiles('apps/native/src-tauri/Cargo.lock') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-native-${{ hashFiles('apps/native/src-tauri/Cargo.lock') }}-
+      - run: pnpm install --frozen-lockfile
+      - name: Expose shared native test fixtures
+        run: ln -s ../web/test apps/native/test
+      - run: bash scripts/ci.sh native

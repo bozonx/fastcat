@@ -21,7 +21,7 @@ The repository is organised as a Turborepo monorepo:
   - `apps/native/src-tauri/` — Rust compositor and media engine.
 - `apps/worker/` — Cloudflare Worker serving static assets with COOP/COEP isolation headers (`@fastcat/worker`).
 - `apps/docs/` — VitePress documentation and landing site (`@fastcat/docs`).
-- `packages/embed/` — Embed SDK (`@fastcat/embed`).
+- `packages/embed/` — Embed SDK (`@bozonx/embed`).
 - `packages/shared/` — Cross-backend WGSL shaders and parity/golden fixtures (`@fastcat/shared`).
 - `packages/typescript-config/` — Shared TypeScript configurations (`@fastcat/typescript-config`).
 - `packages/eslint-config/` — Shared ESLint configuration (`@fastcat/eslint-config`).

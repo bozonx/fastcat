@@ -9,6 +9,7 @@ set -euo pipefail
 #   static          typecheck + lint + format + i18n  (host, fast, blocking)
 #   unit            web unit + component tests        (host, fast, blocking)
 #   integration-web web integration                   (host, blocking)
+#   native          Rust unit + integration + parity   (host, blocking)
 #   e2e-smoke       Playwright smoke tier             (Docker, blocking)
 #   e2e             Playwright full UI e2e            (Docker, blocking)
 #   golden-web      web rendered-frame golden         (Docker, GPU, non-gate)
@@ -35,6 +36,9 @@ case "$TIER" in
   integration-web)
     pnpm test:integration:web
     ;;
+  native)
+    pnpm test:native
+    ;;
   e2e-smoke)
     bash scripts/e2e-docker.sh test:e2e:smoke
     ;;
@@ -48,7 +52,7 @@ case "$TIER" in
     REQUIRE_TEST_DEPS=1 pnpm test:golden:native
     ;;
   *)
-    echo "Usage: bash scripts/ci.sh <static|unit|integration-web|e2e-smoke|e2e|golden-web|golden-native>" >&2
+    echo "Usage: bash scripts/ci.sh <static|unit|integration-web|native|e2e-smoke|e2e|golden-web|golden-native>" >&2
     exit 2
     ;;
 esac

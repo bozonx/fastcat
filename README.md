@@ -135,7 +135,7 @@ pnpm preview:cf
 
 Host pages embed the editor as an **isolated cross-origin iframe** pointed at the `/embed`
 route and talk to it only over `postMessage`. The protocol lives in
-`packages/embed/src/protocol.ts` and is published as `@fastcat/embed`; the app
+`packages/embed/src/protocol.ts` and is published as `@bozonx/embed`; the app
 compiles against that same source through the `~embed` alias, so the two halves
 of the contract cannot drift.
 
@@ -278,7 +278,7 @@ The embed boundary relies on a defense-in-depth model:
 
 1. **Same-Origin Policy (SOP)**: The editor runs on a separate origin (e.g. `https://embed.fastcat.video`) from the embedding host. Browser SOP prevents the host from reading the editor's internal state/storage, and prevents the editor from accessing the host document, cookies, or credentials.
 2. **Cryptographic Nonce & Origin Pinning**: Every session mints a 128-bit cryptographic nonce passed in the URL hash. All `postMessage` calls in both directions explicitly declare the exact expected target origin (`editorOrigin` / `hostOrigin`) and enforce envelope nonces, rejecting wildcard targets and unauthorized senders.
-3. **Permissions Policy**: By default `@fastcat/embed` sets `iframe.allow`:
+3. **Permissions Policy**: By default `@bozonx/embed` sets `iframe.allow`:
    ```html
    allow="fullscreen; clipboard-read; clipboard-write; autoplay; cross-origin-isolated"
    ```
@@ -578,7 +578,7 @@ the GPU-fragile ones stay out of the merge gate. Two things used to both be call
 | ------------------------- | ----------------------------------------------------------------------------- | --------------------------- | ------------ |
 | Unit                      | `apps/web/test/unit/`, `apps/web/test/components/` (incl. `*.parity.test.ts`) | `pnpm test:unit`            | gate         |
 | Integration (web)         | `apps/web/test/integration/`, `apps/web/test/golden-helpers/`                 | `pnpm test:integration:web` | gate         |
-| Integration/unit (native) | `apps/native/src-tauri/tests/`, Rust `#[test]`s (incl. logic parity)          | `pnpm test:native`          | local/manual |
+| Integration/unit (native) | `apps/native/src-tauri/tests/`, Rust `#[test]`s (incl. logic parity)          | `pnpm test:native`          | gate         |
 | E2E — smoke               | `apps/web/test/e2e/smoke/`                                                    | `pnpm test:e2e:smoke`       | deferred     |
 | E2E — full                | `apps/web/test/e2e/web/`                                                      | `pnpm test:e2e:web`         | deferred     |
 | E2E — embed               | `apps/web/test/e2e/embed/`                                                    | `pnpm test:e2e:embed`       | deferred     |
@@ -597,7 +597,7 @@ Handy aggregates:
 - `pnpm check:static` — TypeScript, ESLint, Prettier and i18n checks without Rust.
 - `pnpm check:fast` — quick loop: static checks + unit + web integration.
 - `pnpm check` — static checks including local Rust formatting.
-- `bash scripts/ci.sh <tier>` — CI tier entrypoint. The blocking workflow currently runs `static`, `unit`, and `integration-web`; native, Playwright and golden tiers are manual while their release/deployment pipelines are not enabled.
+- `bash scripts/ci.sh <tier>` — CI tier entrypoint. The blocking workflow runs `static`, `unit`, `integration-web`, and `native`; Playwright and golden tiers remain manual.
 
 For desktop-web Playwright scenarios, keep project creation as a dedicated UI flow
 (`test/e2e/web/project-creation.spec.ts`). Scenario tests that need an open

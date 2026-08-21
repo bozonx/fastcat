@@ -91,7 +91,7 @@ export default defineNuxtConfig({
   // (`include_str!`).
   alias: {
     '~shared': resolve(import.meta.dirname, '../../packages/shared'),
-    // The embed protocol is published as `@fastcat/embed`; the app compiles
+    // The embed protocol is published as `@bozonx/embed`; the app compiles
     // against its source so host and editor can never disagree on the contract.
     '~embed': resolve(import.meta.dirname, '../../packages/embed/src'),
   },

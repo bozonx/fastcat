@@ -1,7 +1,7 @@
 /**
  * Wire contract between an embedding host page and the FastCat editor iframe.
  *
- * This module is published as part of `@fastcat/embed` and is imported by the
+ * This module is published as part of `@bozonx/embed` and is imported by the
  * editor through the `~embed` alias, so both sides of the boundary always
  * compile against the same definitions and can never drift apart.
  */

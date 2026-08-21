@@ -16,6 +16,8 @@ permissions:
 jobs:
   validate-changeset:
     name: Validate Changeset
+    # The Changesets action removes consumed changesets in its own version PR.
+    if: github.head_ref != 'changeset-release/main'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository

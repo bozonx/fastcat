@@ -8,10 +8,10 @@ const EMBED_PKG_DIR = resolve(ROOT, 'packages/embed');
 const DIST_DIR = resolve(EMBED_PKG_DIR, 'dist');
 const PKG_JSON_PATH = resolve(EMBED_PKG_DIR, 'package.json');
 
-describe('@fastcat/embed package build and distribution smoke test', () => {
+describe('@bozonx/embed package build and distribution smoke test', () => {
   beforeAll(() => {
     // Ensure dist is built before running assertions
-    execSync('pnpm --filter @fastcat/embed build', { stdio: 'pipe', cwd: ROOT });
+    execSync('pnpm --filter @bozonx/embed build', { stdio: 'pipe', cwd: ROOT });
   });
 
   it('generates all expected dist files (.js, .d.ts, sourcemaps)', () => {
@@ -35,7 +35,7 @@ describe('@fastcat/embed package build and distribution smoke test', () => {
   it('validates package.json exports, types, files and engines fields', () => {
     const pkg = JSON.parse(readFileSync(PKG_JSON_PATH, 'utf8'));
 
-    expect(pkg.name).toBe('@fastcat/embed');
+    expect(pkg.name).toBe('@bozonx/embed');
     expect(pkg.type).toBe('module');
     expect(pkg.main).toBe('./dist/index.js');
     expect(pkg.module).toBe('./dist/index.js');
