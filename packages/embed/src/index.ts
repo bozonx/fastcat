@@ -61,6 +61,11 @@ export interface FastcatEmbedOptions {
   readyTimeoutMs?: number;
   initializedTimeoutMs?: number;
   rpcTimeoutMs?: number;
+  /**
+   * @deprecated Ignored since 0.2.1. The editor answers `export:ack` by
+   * releasing the file and sends nothing back, so there was never a reply for
+   * the host to time out on.
+   */
   exportAckTimeoutMs?: number;
   onReady?: (capabilities: EmbedCapabilities) => void;
   onInitialized?: (info: EditorToHostMessages['initialized']) => void;
@@ -93,7 +98,6 @@ export interface FastcatEmbed {
 
 const DEFAULT_READY_TIMEOUT_MS = 20_000;
 const DEFAULT_INITIALIZED_TIMEOUT_MS = 60_000;
-const DEFAULT_EXPORT_ACK_TIMEOUT_MS = 30_000;
 const DISPOSE_TIMEOUT_MS = 5_000;
 
 interface Deferred<T> {
@@ -128,7 +132,6 @@ export function createFastcatEmbed(options: FastcatEmbedOptions): FastcatEmbed {
   let state: FastcatEmbedState = 'creating';
   let disposePromise: Promise<void> | null = null;
   let onDisposed: (() => void) | null = null;
-  let exportAckTimer: number | null = null;
   const readyDeferred = deferred<EmbedCapabilities>();
   const initializedDeferred = deferred<EditorToHostMessages['initialized']>();
   const readyTimer = window.setTimeout(
@@ -292,11 +295,13 @@ export function createFastcatEmbed(options: FastcatEmbedOptions): FastcatEmbed {
         }
         // Ack is independent from dispose: calling dispose from onExportDone cannot await itself.
         if (!(['disposing', 'disposed'] as FastcatEmbedState[]).includes(state)) {
+          // `export:ack` is the last word on an export: the editor answers it by
+          // releasing the rendered file and says nothing back. Timing it out was
+          // therefore waiting for a message that does not exist, and every
+          // successful export reported a spurious `protocol-timeout` to the host
+          // thirty seconds later. The editor keeps its own timeout for the
+          // opposite case — a host that never acknowledges at all.
           send('export:ack', undefined);
-          exportAckTimer = window.setTimeout(
-            () => report('protocol-timeout', 'Export acknowledgement timed out.'),
-            options.exportAckTimeoutMs ?? DEFAULT_EXPORT_ACK_TIMEOUT_MS,
-          );
           state = 'active';
         }
         return;
@@ -359,7 +364,6 @@ export function createFastcatEmbed(options: FastcatEmbedOptions): FastcatEmbed {
         state = 'disposing';
         window.clearTimeout(readyTimer);
         if (initializedTimer) window.clearTimeout(initializedTimer);
-        if (exportAckTimer) window.clearTimeout(exportAckTimer);
         readyDeferred.reject(new Error('The embed was disposed before ready.'));
         initializedDeferred.reject(
           new Error('The embed was disposed before initialization completed.'),

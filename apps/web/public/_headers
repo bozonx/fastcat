@@ -4,21 +4,46 @@
 # every cross-origin subresource to carry CORP — the editor's fonts are vendored
 # same-origin under /fonts/ and icons are inlined into the bundle, so there are
 # no cross-origin subresources to break.
+#
+# The standalone editor is not an embeddable surface: only `/embed` is, and it
+# says so for itself below. Without `frame-ancestors` every page here could be
+# framed and clicked through by any site.
 /*
   Cross-Origin-Opener-Policy: same-origin
   Cross-Origin-Embedder-Policy: require-corp
+  Content-Security-Policy: frame-ancestors 'none'
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
 
 # The embeddable editor opts OUT of cross-origin isolation: requiring it would
 # force every host page to adopt COOP/COEP and break their own third-party
 # embeds. Cloudflare applies every matching rule in order, so these later,
 # more specific entries override the `/*` block above.
+#
+# `frame-ancestors *` is deliberate and is the one thing here that must not be
+# tightened by reflex: this route exists to be embedded, and the SDK's security
+# boundary is the handshake, not the guest list. Each frame is pinned to a
+# single host origin and a 128-bit nonce carried in the URL hash, and every
+# `postMessage` on both sides is checked against both — so a page that merely
+# frames the editor gets a session it cannot talk to. Restricting ancestors
+# here would instead mean every embedding customer needs a deploy of ours.
+#
+# The permissions the SDK asks for in the iframe's `allow` attribute only take
+# effect if this document grants them too; a delegated permission the frame
+# does not self-grant is dropped silently.
 /embed
   Cross-Origin-Opener-Policy: unsafe-none
   Cross-Origin-Embedder-Policy: unsafe-none
+  Content-Security-Policy: frame-ancestors *
+  Permissions-Policy: fullscreen=(self "*"), clipboard-read=(self), clipboard-write=(self), autoplay=(self)
+  X-Content-Type-Options: nosniff
 
 /embed/*
   Cross-Origin-Opener-Policy: unsafe-none
   Cross-Origin-Embedder-Policy: unsafe-none
+  Content-Security-Policy: frame-ancestors *
+  Permissions-Policy: fullscreen=(self "*"), clipboard-read=(self), clipboard-write=(self), autoplay=(self)
+  X-Content-Type-Options: nosniff
 
 # Hashed, immutable build assets — cache aggressively.
 /_nuxt/*
