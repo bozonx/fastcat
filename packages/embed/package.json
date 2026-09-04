@@ -1,6 +1,6 @@
 {
   "name": "@bozonx/fastcat-embed",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "SDK for embedding the FastCat video editor into any web page through an isolated iframe.",
   "license": "MIT",
   "type": "module",
