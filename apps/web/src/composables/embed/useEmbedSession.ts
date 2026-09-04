@@ -370,7 +370,15 @@ export function useEmbedSession() {
 
   async function startExport(options?: { filename?: string; uploadUrl?: string }) {
     if (phase.value !== 'ready' || hasUnacknowledgedExport.value) {
-      log.warn('Ignoring export request in phase', phase.value);
+      // Dropping this silently left the host's SDK in `exporting` for good: no
+      // progress, no result, and every later `startExport` refused with
+      // `protocol-invalid-state` for reasons the host was never told. Refusing
+      // out loud is what lets it recover.
+      const reason = hasUnacknowledgedExport.value
+        ? 'The previous export has not been acknowledged yet.'
+        : `The editor cannot export while it is ${phase.value}.`;
+      log.warn('Rejecting export request in phase', phase.value);
+      bridge.value?.send('export:error', { message: reason });
       return;
     }
 
