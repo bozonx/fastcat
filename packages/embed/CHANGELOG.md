@@ -1,5 +1,11 @@
 # @bozonx/fastcat-embed
 
+## 0.2.2
+
+### Patch Changes
+
+- 988ffcc: version
+
 ## 0.2.1
 
 ### Patch Changes
