@@ -171,12 +171,16 @@ async function main() {
 
   let execArgs = [];
   if (playwrightArgs[0] === 'test') {
-    const configArgs = playwrightArgs.some((arg) => arg.startsWith('--config') || arg.startsWith('-c'))
+    const configArgs = playwrightArgs.some(
+      (arg) => arg.startsWith('--config') || arg.startsWith('-c'),
+    )
       ? []
       : ['--config', 'apps/web/playwright.config.ts'];
     execArgs = ['test', ...configArgs, ...playwrightArgs.slice(1)];
   } else {
-    const configArgs = playwrightArgs.some((arg) => arg.startsWith('--config') || arg.startsWith('-c'))
+    const configArgs = playwrightArgs.some(
+      (arg) => arg.startsWith('--config') || arg.startsWith('-c'),
+    )
       ? []
       : ['--config', 'apps/web/playwright.config.ts'];
     execArgs = [...configArgs, ...playwrightArgs];
