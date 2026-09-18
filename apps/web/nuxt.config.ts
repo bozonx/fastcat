@@ -96,6 +96,19 @@ export default defineNuxtConfig({
     '~embed': resolve(import.meta.dirname, '../../packages/embed/src'),
   },
 
+  hooks: {
+    // `/test/*` pages serve the e2e and golden tiers, which run against a
+    // production build, so they are only dropped from the published package
+    // (`packages/fastcat/scripts/build-editor.mjs`).
+    'pages:extend'(pages) {
+      if (!readBooleanEnv(process.env.FASTCAT_EXCLUDE_TEST_PAGES)) return;
+      for (let index = pages.length - 1; index >= 0; index--) {
+        const path = pages[index]?.path ?? '';
+        if (path === '/test' || path.startsWith('/test/')) pages.splice(index, 1);
+      }
+    },
+  },
+
   modules: [
     '@nuxt/ui',
     '@pinia/nuxt',

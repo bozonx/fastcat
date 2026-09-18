@@ -22,6 +22,7 @@ The repository is organised as a Turborepo monorepo:
 - `apps/worker/` — Cloudflare Worker serving static assets with COOP/COEP isolation headers (`@fastcat/worker`).
 - `apps/docs/` — VitePress documentation and landing site (`@fastcat/docs`).
 - `packages/embed/` — Embed SDK (`@bozonx/fastcat-embed`).
+- `packages/fastcat/` — Prebuilt web editor for self-hosting plus its hosting headers (`@bozonx/fastcat`). Released in lockstep with the SDK (changesets `fixed` group); `apps/worker` takes its headers from `packages/fastcat/src/hosting.ts`.
 - `packages/shared/` — Cross-backend WGSL shaders and parity/golden fixtures (`@fastcat/shared`).
 - `packages/typescript-config/` — Shared TypeScript configurations (`@fastcat/typescript-config`).
 - `packages/eslint-config/` — Shared ESLint configuration (`@fastcat/eslint-config`).

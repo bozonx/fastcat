@@ -4,3 +4,6 @@ apps/native/src/types/generated/
 apps/native/src-tauri/target/
 apps/native/src-tauri/gen/
 
+
+# Prebuilt editor copied into the package at publish time
+packages/fastcat/editor/

@@ -18,6 +18,10 @@
       "dependsOn": ["^build"],
       "outputs": ["dist/**"]
     },
+    "@bozonx/fastcat#build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**"]
+    },
     "@fastcat/docs#build": {
       "dependsOn": ["^build"],
       "outputs": ["src/.vitepress/dist/**"]
@@ -32,7 +36,8 @@
         "FASTCAT_ENABLE_IN_DEVELOPMENT_FEATURES",
         "FASTCAT_ENABLE_PREMIUM_FEATURES",
         "E2E_TEST",
-        "E2E_OUTPUT_DIR"
+        "E2E_OUTPUT_DIR",
+        "FASTCAT_EXCLUDE_TEST_PAGES"
       ],
       "outputs": [".output/**", ".nuxt/**"]
     },

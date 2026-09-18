@@ -13,6 +13,8 @@ Official JavaScript / TypeScript SDK for embedding the **FastCat Video Editor** 
 
 The editor itself runs in an isolated iframe (hosted on your domain or FastCat Cloud), while your host page controls initial configuration, media feeding, export triggers, and event listening.
 
+To serve the editor from your own domain, deploy [`@bozonx/fastcat`](https://www.npmjs.com/package/@bozonx/fastcat) of the same version — see its `HOSTING.md`.
+
 ---
 
 ## Installation

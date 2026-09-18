@@ -1,0 +1,13 @@
+{
+  "extends": "@fastcat/typescript-config/node.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "lib": ["ES2022"]
+  },
+  "include": ["src/**/*"]
+}

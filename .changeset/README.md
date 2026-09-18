@@ -4,7 +4,7 @@ This repository uses [Changesets](https://github.com/changesets/changesets) to m
 
 ## Adding a changeset
 
-When creating a Pull Request that introduces changes to publishable packages (such as `@fastcat/embed`), add a changeset describing what was changed:
+When creating a Pull Request that introduces changes to publishable packages (`@bozonx/fastcat-embed`, `@bozonx/fastcat`), add a changeset describing what was changed:
 
 ```bash
 pnpm changeset
@@ -30,3 +30,8 @@ The public SDK is published as `@bozonx/fastcat-embed`, which belongs to the npm
 publish access for this package and add it to the GitHub repository as the
 `NPM_TOKEN` Actions secret. No manual `npm publish` is needed: merge the
 Changesets version PR and the release workflow publishes the initial version.
+
+`@bozonx/fastcat` (the prebuilt editor) is published from the same workflow and
+the token must cover it too. Its `prepack` runs `nuxt generate`, so the release
+job builds the whole web app. It shares a `fixed` group with
+`@bozonx/fastcat-embed`: a changeset for either bumps both to the same version.

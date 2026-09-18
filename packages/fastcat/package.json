@@ -1,0 +1,65 @@
+{
+  "name": "@bozonx/fastcat",
+  "version": "0.6.2",
+  "description": "Prebuilt FastCat video editor for self-hosting, with the response headers it needs.",
+  "license": "MIT",
+  "type": "module",
+  "author": "FastCat Team",
+  "homepage": "https://github.com/bozonx/fastcat#readme",
+  "bugs": {
+    "url": "https://github.com/bozonx/fastcat/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bozonx/fastcat.git",
+    "directory": "packages/fastcat"
+  },
+  "exports": {
+    "./hosting": {
+      "types": "./dist/hosting.d.ts",
+      "import": "./dist/hosting.js",
+      "default": "./dist/hosting.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "editor",
+    "HOSTING.md",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "build:editor": "node scripts/build-editor.mjs",
+    "lint": "eslint --max-warnings 0 .",
+    "lint:fix": "eslint --fix .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "check": "pnpm typecheck && pnpm lint && pnpm format:check",
+    "validate": "pnpm check",
+    "clean": "rm -rf dist editor",
+    "prepack": "pnpm run build && pnpm run build:editor"
+  },
+  "devDependencies": {
+    "@fastcat/eslint-config": "workspace:*",
+    "@fastcat/typescript-config": "workspace:*",
+    "eslint": "^10.7.0",
+    "typescript": "~5.9.0"
+  },
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "keywords": [
+    "fastcat",
+    "video-editor",
+    "embed",
+    "self-hosted",
+    "webgpu"
+  ],
+  "sideEffects": false
+}
