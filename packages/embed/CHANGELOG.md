@@ -1,5 +1,11 @@
 # @bozonx/fastcat-embed
 
+## 0.7.1
+
+### Patch Changes
+
+- 84d515e: change
+
 ## 0.7.0
 
 ### Minor Changes

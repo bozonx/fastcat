@@ -1,5 +1,11 @@
 # @fastcat/typescript-config
 
+## 0.1.2
+
+### Patch Changes
+
+- 84d515e: change
+
 ## 0.1.1
 
 ### Patch Changes

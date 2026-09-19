@@ -1,5 +1,11 @@
 # @fastcat/native
 
+## 0.5.4
+
+### Patch Changes
+
+- 84d515e: change
+
 ## 0.5.3
 
 ### Patch Changes
