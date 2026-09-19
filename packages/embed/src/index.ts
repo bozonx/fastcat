@@ -76,6 +76,11 @@ export interface FastcatEmbedOptions {
   onPreferencesChanged?: (preferences: unknown) => void;
   onSttRequest?: (payload: unknown) => Promise<unknown>;
   onLlmRequest?: (payload: unknown) => Promise<unknown>;
+  /**
+   * `file` stays readable until the returned promise settles — the SDK then
+   * acknowledges the export and the editor deletes its copy. Read or copy the
+   * bytes before returning, within `EMBED_EXPORT_ACK_TIMEOUT_MS`.
+   */
   onExportDone?: (result: FastcatEmbedExportResult) => void | Promise<void>;
   onError?: (error: { code: string; message: string }) => void;
   onRequestClose?: () => void;
@@ -229,6 +234,10 @@ export function createFastcatEmbed(options: FastcatEmbedOptions): FastcatEmbed {
           options.onAssetProgress?.(payload as EditorToHostMessages['asset:progress']),
         );
       case 'export:progress':
+        // An export the user started from the editor's own export panel never
+        // went through `startExport`; without this the SDK stayed `active` and
+        // `cancelExport` refused to stop a render that was plainly running.
+        if (state === 'active') state = 'exporting';
         return safeCallback('onExportProgress', () =>
           options.onExportProgress?.(payload as EditorToHostMessages['export:progress']),
         );
@@ -249,9 +258,11 @@ export function createFastcatEmbed(options: FastcatEmbedOptions): FastcatEmbed {
           (payload as EditorToHostMessages['error']).code,
           (payload as EditorToHostMessages['error']).message,
         );
-      case 'export:error':
+      case 'export:error': {
         state = 'active';
-        return report('export-failed', (payload as EditorToHostMessages['export:error']).message);
+        const { message, reason } = payload as EditorToHostMessages['export:error'];
+        return report(reason === 'cancelled' ? 'export-cancelled' : 'export-failed', message);
+      }
       case 'asset:url-expired': {
         if (!options.onAssetUrlExpired)
           return report(
@@ -326,7 +337,11 @@ export function createFastcatEmbed(options: FastcatEmbedOptions): FastcatEmbed {
       return;
     }
     safeCallback('onDebug', () => options.onDebug?.('in', event.data.type, event.data.payload));
-    void handle(event.data.type, event.data.payload);
+    // A reply the SDK cannot send — an RPC result that fails validation — must
+    // surface through `onError`, not as an unhandled rejection in the host page.
+    void handle(event.data.type, event.data.payload).catch((error: unknown) =>
+      report('protocol-callback-failed', `${event.data.type}: ${String(error)}`),
+    );
   }
 
   window.addEventListener('message', onMessage);

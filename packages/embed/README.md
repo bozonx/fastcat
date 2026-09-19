@@ -100,7 +100,7 @@ Mounts the editor iframe into `options.container`, initiates the secure handshak
 | `assets`          | `EmbedAsset[]`                    | `[]`                  | Initial media assets loaded into the editor session.                                     |
 | `locale`          | `string`                          | `'en'`                | Interface language code (e.g. `'en'`, `'ru'`).                                           |
 | `layout`          | `'auto' \| 'desktop' \| 'mobile'` | `'auto'`              | Preferred editor layout. `'auto'` selects automatically on first render.                 |
-| `features`        | `EmbedFeatureName[]`              | `['export']`          | Enabled feature panels: `'files'`, `'sound'`, `'export'`, `'settings'`.                  |
+| `features`        | `EmbedFeatureName[]`              | `['export']`          | Enabled feature panels: `'files'`, `'sound'`, `'export'`, `'settings'`. Unknown ignored. |
 | `projectDefaults` | `EmbedProjectDefaults`            | `undefined`           | Composition dimensions, FPS, and sample rate overrides.                                  |
 | `assetTransport`  | `'url' \| 'host'`                 | `'url'`               | `'url'` streams assets via HTTP range requests; `'host'` uses in-memory transfers.       |
 | `output`          | `'blob' \| 'upload'`              | `'blob'`              | `'blob'` returns `File` in `onExportDone`; `'upload'` streams directly to presigned URL. |
@@ -117,7 +117,8 @@ storage, credentials and the interface language. The editor therefore does not o
 be lost or would belong to the host:
 
 - **One timeline.** No new timelines, versions, "save as" copies or markdown notes, and the
-  session timeline cannot be deleted or renamed. `onChange` and `onExportDone` always describe
+  session timeline cannot be deleted. Files keep the names and places the session gave them:
+  renaming and moving are not offered. `onChange` and `onExportDone` always describe
   the timeline the host restores with `initialProject`.
 - **Export goes to the host.** The export panel's button delivers the render through
   `onExportDone`, like `startExport()`, rather than into the session's `_export/` folder.
@@ -137,7 +138,7 @@ be lost or would belong to the host:
 | `onInitialized`        | `(info: EmbedInitializedInfo) => void`                                                     | Called once initial assets and timeline are loaded.                            |
 | `onChange`             | `(change: { dirty: boolean; otio: string }) => void`                                       | Emitted when timeline edits occur. Save `otio` to preserve user draft.         |
 | `onExportProgress`     | `(progress: { phase: string \| null; progress: number }) => void`                          | Real-time rendering progress updates.                                          |
-| `onExportDone`         | `(result: FastcatEmbedExportResult) => void \| Promise<void>`                              | Export completed. Contains output `file`, `poster`, `otio`, and `meta`.        |
+| `onExportDone`         | `(result: FastcatEmbedExportResult) => void \| Promise<void>`                              | Export completed. Read `file` before the returned promise settles — see below. |
 | `onAssetProgress`      | `(progress: { assetId: string; loadedBytes: number; totalBytes: number \| null }) => void` | Asset buffering and fetch progress.                                            |
 | `onAssetUrlExpired`    | `(assetId: string) => Promise<string> \| string`                                           | Invoked when signed asset URL expires mid-session. Return fresh URL to resume. |
 | `onPreferencesChanged` | `(preferences: unknown) => void`                                                           | Opaque user settings to store in host database.                                |
@@ -205,6 +206,13 @@ Handshake and initialization failures move to `unavailable`; commands before `ac
 with a stable `protocol-invalid-state` error. `dispose()` is idempotent and cancels outstanding
 session work. Invalid payloads, unknown messages, and protocol version mismatches are reported
 as stable `protocol-*` errors rather than silently becoming a timeout.
+
+In `blob` mode the exported `file` is backed by the editor's storage. It stays readable until the
+promise returned by `onExportDone` settles; the SDK then sends `export:ack` and the editor deletes
+its copy. Copy or upload the bytes inside the callback. An export that is never acknowledged is
+released after `EMBED_EXPORT_ACK_TIMEOUT_MS` (ten minutes) with a `protocol-timeout` error.
+`cancelExport()` also stops an export the user started from the editor's own export panel. A
+stopped export reaches `onError` as `export-cancelled`, a failed one as `export-failed`.
 
 Asset URLs and upload URLs must use HTTP(S), filenames must be plain basenames, and initial and
 added assets are limited in count and size. When an asset has an `id`, the editor derives its

@@ -34,6 +34,7 @@ export async function downloadAssetToFile(options: DownloadAssetOptions): Promis
 
   const writable = await runResilientFileWrite(() => fileHandle.createWritable());
   let written = 0;
+  let completed = false;
 
   try {
     if (totalBytes === null) {
@@ -42,6 +43,7 @@ export async function downloadAssetToFile(options: DownloadAssetOptions): Promis
       await writable.write(toWritableChunk(chunk));
       written = chunk.byteLength;
       onProgress?.(written, null);
+      completed = true;
       return written;
     }
 
@@ -61,10 +63,14 @@ export async function downloadAssetToFile(options: DownloadAssetOptions): Promis
         `Asset ${transport.id} was truncated: expected ${totalBytes} bytes, received ${written}`,
       );
     }
+    completed = true;
     return written;
   } finally {
-    await writable.close().catch((e: unknown) => {
-      log.warn(`Failed to close the writable for ${transport.id}`, e);
+    // Closing commits what was written. A download that failed half way must
+    // not leave a truncated file behind for the timeline to pick up as media.
+    const finish = completed ? writable.close() : writable.abort();
+    await finish.catch((e: unknown) => {
+      log.warn(`Failed to ${completed ? 'close' : 'abort'} the writable for ${transport.id}`, e);
     });
   }
 }

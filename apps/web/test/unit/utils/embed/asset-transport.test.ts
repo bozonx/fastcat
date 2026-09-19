@@ -98,6 +98,30 @@ describe('url transport', () => {
     expect(Array.from(await transport.readRange(2, 5))).toEqual([2, 3, 4]);
   });
 
+  it('takes what is left when the size is unknown and the read runs to the end', async () => {
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 206,
+        headers: new Headers({ 'Content-Range': 'bytes 0-0/*' }),
+        arrayBuffer: async () => new Uint8Array([1]).buffer,
+        body: null,
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 206,
+        headers: new Headers(),
+        arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer,
+        body: null,
+      });
+
+    const transport = createUrlTransport({ id: 'a', url: 'https://example.com/v.mp4' });
+    expect(await transport.getSize()).toBeNull();
+    expect(await transport.readRange(0, Number.MAX_SAFE_INTEGER)).toEqual(
+      new Uint8Array([1, 2, 3]),
+    );
+  });
+
   it('surfaces a genuine failure rather than returning short data', async () => {
     mockFetch.mockResolvedValue({ ok: false, status: 500, headers: new Headers() });
 

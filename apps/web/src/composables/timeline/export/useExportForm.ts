@@ -663,11 +663,12 @@ export function useExportForm() {
     } catch (err: unknown) {
       const durationMs = Math.round(performance.now() - startTime);
       exportDurationMs.value = durationMs;
-      lastExportStatus.value = 'error';
       log.error('Export failed:', err);
       if (err instanceof Error && err.name === 'AbortError') {
+        lastExportStatus.value = 'cancelled';
         exportError.value = t('videoEditor.export.errorCancelled');
       } else {
+        lastExportStatus.value = 'error';
         exportError.value = err instanceof Error ? err.message : t('videoEditor.export.error');
         const durationText = formatRenderDuration(durationMs);
         toast.add({

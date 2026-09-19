@@ -117,6 +117,60 @@ describe('embed SDK iframe creation and attributes', () => {
       'protocol-invalid-payload: Invalid payload for init',
     );
   });
+
+  it('lets the host cancel an export the user started inside the editor', () => {
+    const onError = vi.fn();
+    const embed = createFastcatEmbed({
+      container,
+      editorUrl: 'https://embed.fastcat.video/v1/embed',
+      onError,
+    });
+    const nonce = parseEmbedHandshakeParams(new URL(embed.iframe.src).hash)!.nonce;
+    const post = vi.spyOn(embed.iframe.contentWindow!, 'postMessage');
+    const receive = (type: string, payload: unknown) =>
+      window.dispatchEvent(
+        new MessageEvent('message', {
+          origin: 'https://embed.fastcat.video',
+          source: embed.iframe.contentWindow,
+          data: createEnvelope(nonce, type, payload),
+        }),
+      );
+
+    receive('ready', {
+      version: 1,
+      capabilities: {
+        webgpu: true,
+        webcodecs: true,
+        opfs: true,
+        sharedArrayBuffer: true,
+        storageQuotaBytes: null,
+      },
+    });
+    receive('initialized', {
+      assetCount: 1,
+      durationMs: 1000,
+      layout: 'desktop',
+      reclaimedSessions: 0,
+    });
+    expect(embed.state).toBe('active');
+
+    receive('export:progress', { phase: 'encoding', progress: 0.1 });
+    expect(embed.state).toBe('exporting');
+    embed.cancelExport();
+    expect(post).toHaveBeenLastCalledWith(
+      expect.objectContaining({ type: 'export:cancel' }),
+      'https://embed.fastcat.video',
+    );
+
+    receive('export:error', { message: 'Export cancelled', reason: 'cancelled' });
+    expect(embed.state).toBe('active');
+    expect(onError).toHaveBeenLastCalledWith({
+      code: 'export-cancelled',
+      message: 'Export cancelled',
+    });
+    receive('export:error', { message: 'Encoder crashed' });
+    expect(onError).toHaveBeenLastCalledWith({ code: 'export-failed', message: 'Encoder crashed' });
+  });
 });
 
 describe('embed protocol runtime validation', () => {
@@ -178,8 +232,31 @@ describe('embed protocol runtime validation', () => {
     }
   });
 
+  it('accepts names that merely contain two dots', () => {
+    for (const filename of ['Wait...mp4', 'v1..final.mp4']) {
+      expect(validateEmbedMessage('host', 'export:start', { filename })).toEqual({ ok: true });
+    }
+  });
+
+  it('ignores feature names it does not know instead of refusing the session', () => {
+    expect(
+      validateEmbedMessage('host', 'init', { features: ['files', 'something-newer'] }),
+    ).toEqual({ ok: true });
+    expect(validateEmbedMessage('host', 'init', { features: [42] })).toMatchObject({
+      ok: false,
+      code: 'protocol-invalid-payload',
+    });
+  });
+
   it('still rejects traversal and NUL in filenames', () => {
-    for (const filename of ['../clip.mp4', 'dir/clip.mp4', 'dir\\clip.mp4', 'clip\0.mp4']) {
+    for (const filename of [
+      '..',
+      '.',
+      '../clip.mp4',
+      'dir/clip.mp4',
+      'dir\\clip.mp4',
+      'clip\0.mp4',
+    ]) {
       expect(
         validateEmbedMessage('host', 'init', {
           assets: [{ url: 'https://example.com/a', filename }],

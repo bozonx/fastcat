@@ -56,6 +56,14 @@ export async function summariseExport(file: File): Promise<EmbedExportSummary> {
     const input = new Input({ source: new BlobSource(file), formats: ALL_FORMATS });
 
     try {
+      // What the container actually is, not what the file name suggests: an
+      // OPFS `File` often carries no type at all, and an audio-only MP4 is
+      // `audio/mp4` whatever its extension. Parameters are left off so the
+      // host can compare it against an allowlist as is.
+      const containerType = await input.getMimeType().catch(() => null);
+      const essence = containerType?.split(';')[0]?.trim();
+      if (essence) meta.mimeType = essence;
+
       const durationSec = await input.computeDuration().catch(() => null);
       if (typeof durationSec === 'number' && Number.isFinite(durationSec)) {
         meta.durationMs = Math.round(durationSec * 1000);

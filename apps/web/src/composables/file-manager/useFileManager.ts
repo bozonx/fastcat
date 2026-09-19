@@ -22,6 +22,7 @@ import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 import { createFileManagerService } from '~/file-manager/application/fileManagerService';
 import { resolveDefaultTargetDir } from '~/file-manager/application/fileManagerCommands';
 import { useVfs } from '~/composables/useVfs';
+import { canReorganizeFiles, isEmbedSessionTimelineEntry } from '~/utils/embed-runtime';
 import { createUiActionRunner } from './useUiActionRunner';
 import { useFileManagerMoveSync } from './useFileManagerMoveSync';
 import { isMoveAllowed, isCopyAllowed, createFileManagerCrud } from './useFileManagerCrud';
@@ -291,6 +292,19 @@ export function useFileManager(options?: {
     getProjectSettings: () => projectStore.projectSettings,
     onMediaImported: ({ projectRelativePath }) => {
       void mediaStore.getOrFetchMetadataByPath(projectRelativePath);
+    },
+    isEntryLocked: (entry) => {
+      if (!isEmbedSessionTimelineEntry(entry, projectStore.currentTimelinePath)) return false;
+      toast.add({
+        title: t('fastcat.embed.timelineLocked'),
+        color: 'warning',
+      });
+      return true;
+    },
+    isReorganizingLocked: () => {
+      if (canReorganizeFiles()) return false;
+      toast.add({ title: t('fastcat.embed.filesLocked'), color: 'warning' });
+      return true;
     },
     onFileDeleted: async ({ path }) => {
       if (!path.toLowerCase().endsWith('.otio')) return;

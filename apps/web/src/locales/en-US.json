@@ -1277,7 +1277,9 @@
       "standaloneNotice": "This editor is meant to be embedded by a host application.",
       "preparing": "Preparing the editor…",
       "toggleLayout": "Switch layout",
-      "webGpuWarning": "WebGPU is unavailable. Editing continues with reduced rendering performance."
+      "webGpuWarning": "WebGPU is unavailable. Editing continues with reduced rendering performance.",
+      "timelineLocked": "The session's timeline cannot be deleted: it is what goes back to the application when you close the editor.",
+      "filesLocked": "Files cannot be renamed or moved here: the editor works with the files the application provided, where it put them."
     }
   },
   "timelineCreation": {

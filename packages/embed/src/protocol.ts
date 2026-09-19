@@ -11,6 +11,14 @@ export const EMBED_PROTOCOL_VERSION = 1;
 export const MAX_EMBED_ASSETS = 100;
 export const MAX_EMBED_ASSET_BYTES = 10 * 1024 * 1024 * 1024;
 export const MAX_EMBED_EXPORT_BYTES = 10 * 1024 * 1024 * 1024;
+const MAX_EMBED_FEATURES = 32;
+/**
+ * How long the editor keeps an exported file for the host after `export:done`
+ * before releasing it unacknowledged. Generous on purpose: the host reads the
+ * whole render inside `onExportDone`, and a multi-gigabyte file copied off a
+ * slow disk easily outlasts a minute.
+ */
+export const EMBED_EXPORT_ACK_TIMEOUT_MS = 10 * 60_000;
 
 /** Stable errors that may cross the host/editor boundary. */
 export type EmbedProtocolErrorCode =
@@ -183,7 +191,8 @@ export interface EditorToHostMessages {
    * so the host can offer "edit again" rather than starting over.
    */
   'export:done': { file?: File; poster: Blob | null; otio: string; meta: EmbedExportMeta };
-  'export:error': { message: string };
+  /** `reason: 'cancelled'` when the export was stopped on request rather than failing. */
+  'export:error': { message: string; reason?: 'cancelled' };
   /**
    * Cleanup finished. Sent last, after the final `change` and
    * `preferences:changed`, so a host that waits for it is guaranteed to have
@@ -298,14 +307,21 @@ function isSafeHttpUrl(value: unknown): value is string {
   }
 }
 
+/**
+ * A single path segment: no separators, no NUL, and not `.` or `..` themselves.
+ * A name merely containing two dots — `Wait...mp4`, `v1..final.mp4` — cannot
+ * climb out of anything without a separator, and refusing it dropped whole
+ * `export:done` messages over a filename the user typed.
+ */
 export function isSafeEmbedFilename(value: unknown): value is string {
   return (
     typeof value === 'string' &&
     value.length > 0 &&
     value.length <= 255 &&
+    value !== '.' &&
+    value !== '..' &&
     !value.includes('/') &&
     !value.includes('\\') &&
-    !value.includes('..') &&
     !value.includes('\0')
   );
 }
@@ -350,11 +366,12 @@ function isInitPayload(value: unknown): boolean {
       (Array.isArray(assets) && assets.length <= MAX_EMBED_ASSETS && assets.every(isAsset))) &&
     (value.layout === undefined ||
       ['auto', 'desktop', 'mobile'].includes(value.layout as string)) &&
+    // Unknown feature names pass: the editor drops them, so a host that knows
+    // a newer feature still gets a session from an editor that does not.
     (value.features === undefined ||
       (Array.isArray(value.features) &&
-        value.features.every((item) =>
-          ['files', 'sound', 'export', 'settings'].includes(item as string),
-        ))) &&
+        value.features.length <= MAX_EMBED_FEATURES &&
+        value.features.every((item) => typeof item === 'string' && item.length <= 32))) &&
     isProjectDefaults(value.projectDefaults) &&
     (value.assetTransport === undefined ||
       value.assetTransport === 'url' ||
@@ -482,7 +499,12 @@ function validPayload(type: string, payload: unknown, direction: 'host' | 'edito
       (payload.phase === null || typeof payload.phase === 'string') &&
       isFiniteNumber(payload.progress, 0, 1)
     );
-  if (type === 'export:error') return isRecord(payload) && typeof payload.message === 'string';
+  if (type === 'export:error')
+    return (
+      isRecord(payload) &&
+      typeof payload.message === 'string' &&
+      (payload.reason === undefined || payload.reason === 'cancelled')
+    );
   if (type === 'error')
     return (
       isRecord(payload) && typeof payload.code === 'string' && typeof payload.message === 'string'

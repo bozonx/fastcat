@@ -13,7 +13,11 @@ import type { HotkeyCommandId } from '~/utils/hotkeys/defaultHotkeys';
 import type { createHotkeyHoldRunner } from '~/utils/hotkeys/holdRunner';
 import { DEFAULT_TIMELINE_ZOOM_POSITION, stepTimelineZoomPosition } from '~/utils/zoom';
 import { FILE_BROWSER_GRID_SIZES } from '~/composables/file-manager/useFileBrowserViewSettings';
-import { canManageProjectDocuments, isEmbedRuntime } from '~/utils/embed-runtime';
+import {
+  canManageProjectDocuments,
+  canReorganizeFiles,
+  isEmbedRuntime,
+} from '~/utils/embed-runtime';
 import { isFeatureAvailable } from '~/utils/embed-features';
 import type { FsEntry } from '~/types/fs';
 import type { TimelineClipItem } from '~/timeline/types';
@@ -245,7 +249,7 @@ export function useGeneralHotkeys(
 
     'general.rename': () => {
       const selected = selectionStore.selectedEntity;
-      if (selected?.source === 'fileManager') {
+      if (selected?.source === 'fileManager' && canReorganizeFiles()) {
         if (selected.kind === 'file' || selected.kind === 'directory') {
           uiStore.pendingFsEntryRename = selected.entry;
           return true;
@@ -314,7 +318,7 @@ export function useGeneralHotkeys(
     },
 
     'general.cut': () => {
-      if (!isFileManagerFocus()) return false;
+      if (!isFileManagerFocus() || !canReorganizeFiles()) return false;
 
       const entries = getSelectedFsEntries();
       if (entries.length === 0) return false;

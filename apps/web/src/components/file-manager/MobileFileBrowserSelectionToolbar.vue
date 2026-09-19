@@ -8,6 +8,7 @@ import { useProxyStore } from '~/stores/proxy.store';
 import { normalizeMediaCachePath } from '~/utils/path';
 import { canCopyBloggerDogEntry, canCutBloggerDogEntry } from '~/utils/bloggerdog-file-manager';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
+import { canReorganizeFiles } from '~/utils/embed-runtime';
 
 const props = defineProps<{
   selectedEntries: FsEntry[];
@@ -56,6 +57,7 @@ const canCopySelection = computed(
 
 const canCutSelection = computed(
   () =>
+    canReorganizeFiles() &&
     props.selectedEntries.length > 0 &&
     props.selectedEntries.every((entry) => canCutBloggerDogEntry(entry)),
 );

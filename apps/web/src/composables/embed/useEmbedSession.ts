@@ -30,7 +30,7 @@ import {
   startSessionHeartbeat,
 } from '~/utils/embed/session-lifecycle';
 import { getLayoutModeOverride } from '~/composables/layout/useLayoutMode';
-import { EMBED_PROTOCOL_VERSION } from '~embed';
+import { EMBED_EXPORT_ACK_TIMEOUT_MS, EMBED_PROTOCOL_VERSION } from '~embed';
 import type {
   EmbedAsset,
   EmbedCapabilities,
@@ -61,7 +61,12 @@ const PREFERENCES_DEBOUNCE_MS = 5_000;
  * signal, not a save button, so it trades latency for far fewer messages.
  */
 const CHANGE_DEBOUNCE_MS = 10_000;
-const EXPORT_ACK_TIMEOUT_MS = 30_000;
+/**
+ * How long a download waits for the host to answer `asset:url-expired`. A host
+ * that fails to mint a new link sends nothing back, and an unbounded wait left
+ * the ingest queue — and with it every export — stuck for the whole session.
+ */
+const URL_REFRESH_TIMEOUT_MS = 60_000;
 
 export type EmbedSessionPhase =
   'standalone' | 'handshake' | 'loading' | 'ready' | 'exporting' | 'error';
@@ -160,7 +165,26 @@ export function useEmbedSession() {
         reject(new Error('No host to ask for a fresh URL'));
         return;
       }
-      pendingUrlRefreshes.set(assetId, resolve);
+      const signal = sessionAbortController.signal;
+      const settle = () => {
+        clearTimeout(timer);
+        signal.removeEventListener('abort', onAbort);
+        if (pendingUrlRefreshes.get(assetId) === onUrl) pendingUrlRefreshes.delete(assetId);
+      };
+      const onUrl = (url: string) => {
+        settle();
+        resolve(url);
+      };
+      const onAbort = () => {
+        settle();
+        reject(new Error('The session ended while waiting for a fresh URL'));
+      };
+      const timer = setTimeout(() => {
+        settle();
+        reject(new Error(`The host did not supply a fresh URL for asset ${assetId}`));
+      }, URL_REFRESH_TIMEOUT_MS);
+      signal.addEventListener('abort', onAbort, { once: true });
+      pendingUrlRefreshes.set(assetId, onUrl);
       bridge.value.send('asset:url-expired', { assetId });
     });
   }
@@ -219,6 +243,7 @@ export function useEmbedSession() {
         continue;
       }
       assetIds.add(assetId);
+      let createdPath: string | null = null;
       try {
         const transport = createTransport(asset, assetId);
         const contentType = await transport.getContentType();
@@ -231,6 +256,7 @@ export function useEmbedSession() {
           create: true,
         });
         if (!fileHandle) throw new Error(`Cannot create ${placement.relativePath}`);
+        createdPath = placement.relativePath;
 
         try {
           await downloadAssetToFile({
@@ -268,6 +294,13 @@ export function useEmbedSession() {
       } catch (e) {
         assetIds.delete(assetId);
         log.error(`Failed to import asset ${assetId}`, e);
+        // The empty file made for the download would otherwise sit in the
+        // file manager looking like media.
+        if (createdPath) {
+          await projectStore.deleteByPath(createdPath).catch((error: unknown) => {
+            log.warn(`Failed to remove the partial file of ${assetId}`, error);
+          });
+        }
         bridge.value?.send('error', {
           code: 'asset-failed',
           message: e instanceof Error ? e.message : String(e),
@@ -399,11 +432,13 @@ export function useEmbedSession() {
     // that same panel keeps up to date.
     const target = form ?? exportForm;
     activeExportForm.value = target;
+    let delivered = false;
     try {
       if (!form) await exportForm.initializeExportForm();
       if (options?.filename) target.outputFilename.value = options.filename;
 
       await target.handleStartExport(async (file: File) => {
+        delivered = true;
         exportedFilename = file.name;
 
         // Described from the finished file rather than the export settings, so
@@ -434,11 +469,24 @@ export function useEmbedSession() {
             message: 'The host did not acknowledge the exported file in time.',
           });
           void acknowledgeExport();
-        }, EXPORT_ACK_TIMEOUT_MS);
+        }, EMBED_EXPORT_ACK_TIMEOUT_MS);
       });
 
+      if (target.lastExportStatus.value === 'cancelled') {
+        bridge.value?.send('export:error', {
+          message: target.exportError.value ?? 'The export was cancelled.',
+          reason: 'cancelled',
+        });
+        return;
+      }
       if (target.exportError.value) {
         throw new Error(target.exportError.value);
+      }
+      // The form refuses to start over a filename it will not write — taken,
+      // empty, or with characters the file system rejects — and only says so
+      // in its own field. A host-started export has no such field on screen.
+      if (!delivered) {
+        throw new Error(target.filenameError.value || 'The export did not produce a file.');
       }
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
@@ -540,10 +588,7 @@ export function useEmbedSession() {
     bridge.value = created;
     created.on('init', (payload) => void initSession(payload));
     created.on('export:start', (payload) => void startExport(payload));
-    created.on('asset:url', ({ assetId, url }) => {
-      pendingUrlRefreshes.get(assetId)?.(url);
-      pendingUrlRefreshes.delete(assetId);
-    });
+    created.on('asset:url', ({ assetId, url }) => pendingUrlRefreshes.get(assetId)?.(url));
     created.on('rpc:result', ({ requestId, result, error }) =>
       settleHostRpc(requestId, { result, error }),
     );

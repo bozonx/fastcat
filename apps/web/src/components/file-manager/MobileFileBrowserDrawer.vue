@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, toRefs } from 'vue';
+import { canReorganizeFiles } from '~/utils/embed-runtime';
 import { useSelectionStore } from '~/stores/selection.store';
 import FileProperties from '~/components/properties/FileProperties.vue';
 import MultiFileProperties from '~/components/properties/MultiFileProperties.vue';
@@ -109,7 +110,7 @@ const selectedEntriesList = computed(() => {
 });
 
 const canRename = computed(() => {
-  if (selectedEntriesList.value.length !== 1) return false;
+  if (selectedEntriesList.value.length !== 1 || !canReorganizeFiles()) return false;
   return (
     !isProjectRoot.value &&
     !isCommonRoot.value &&
@@ -217,8 +218,9 @@ const canCopySelection = computed(() =>
   canTransferSelection(selectedEntriesList.value, canCopyBloggerDogEntry),
 );
 
-const canCutSelection = computed(() =>
-  canTransferSelection(selectedEntriesList.value, canCutBloggerDogEntry),
+const canCutSelection = computed(
+  () =>
+    canReorganizeFiles() && canTransferSelection(selectedEntriesList.value, canCutBloggerDogEntry),
 );
 
 const canPasteIntoSelection = computed(() => {

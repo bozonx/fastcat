@@ -7,7 +7,7 @@ import {
   canPasteIntoBloggerDogEntry,
 } from '~/utils/bloggerdog-file-manager';
 import { useHotkeyLabel } from '~/composables/useHotkeyLabel';
-import { canManageProjectDocuments } from '~/utils/embed-runtime';
+import { canManageProjectDocuments, canReorganizeFiles } from '~/utils/embed-runtime';
 
 export type FileAction =
   | 'createFolder'
@@ -80,6 +80,7 @@ export function useFileContextMenu(
   const { t } = useI18n();
   const { getHotkeyKbds } = useHotkeyLabel();
   const canCreateDocuments = canManageProjectDocuments();
+  const canReorganize = canReorganizeFiles();
 
   function buildManagementItems(entry: FsEntry): ContextMenuItem[] {
     const isProjectRoot = entry.kind === 'directory' && (entry.path === '' || entry.path === '/');
@@ -114,6 +115,7 @@ export function useFileContextMenu(
     }
 
     const canCut =
+      canReorganize &&
       !isProjectRoot &&
       !isCommonRoot &&
       !isBdVirtual &&
@@ -146,21 +148,21 @@ export function useFileContextMenu(
     }
 
     if (!isProjectRoot && !isCommonRoot && !isBdVirtual && !isBdProject && !isBdText) {
-      items.push(
-        {
+      if (canReorganize) {
+        items.push({
           label: t('common.rename'),
           icon: 'i-heroicons-pencil',
           kbds: getHotkeyKbds('general.rename'),
           onSelect: () => onAction('rename', entry),
-        },
-        {
-          label: t('common.delete'),
-          icon: 'i-heroicons-trash',
-          color: 'error',
-          kbds: getHotkeyKbds('general.delete'),
-          onSelect: () => onAction('delete', entry),
-        },
-      );
+        });
+      }
+      items.push({
+        label: t('common.delete'),
+        icon: 'i-heroicons-trash',
+        color: 'error',
+        kbds: getHotkeyKbds('general.delete'),
+        onSelect: () => onAction('delete', entry),
+      });
     }
 
     return items;
@@ -370,7 +372,10 @@ export function useFileContextMenu(
       });
     }
 
-    if (selectedEntries.every((selectedEntry) => canCutBloggerDogEntry(selectedEntry))) {
+    if (
+      canReorganize &&
+      selectedEntries.every((selectedEntry) => canCutBloggerDogEntry(selectedEntry))
+    ) {
       managementItems.push({
         label: t('common.cut'),
         icon: 'i-heroicons-scissors',

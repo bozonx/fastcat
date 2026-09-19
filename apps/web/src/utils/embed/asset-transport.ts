@@ -149,7 +149,10 @@ export function createUrlTransport(options: UrlTransportOptions): EmbedAssetTran
           throw new Error(`Truncated response for ${options.id}`);
         return buffer.subarray(start, endExclusive);
       }
-      if (buffer.byteLength !== expectedLength)
+      // With no known size the caller asks for "everything from here", and a
+      // correct server answers with what is left — shorter than asked, not short.
+      const isOpenEnded = cachedSize === null && buffer.byteLength < expectedLength;
+      if (buffer.byteLength !== expectedLength && !isOpenEnded)
         throw new Error(`Short range response for ${options.id}`);
       return buffer;
     },

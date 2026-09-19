@@ -85,6 +85,7 @@ export function createFileManagerCrud(ctx: FileManagerContext) {
   }
 
   async function deleteEntry(target: FsEntry, options: CrudMutationOptions = {}) {
+    if (deps.isEntryLocked?.(target)) return;
     const deleted = await runWithUiFeedback({
       action: async () => {
         const deletedFilePaths = await deleteEntryCommand(target, {
@@ -156,6 +157,7 @@ export function createFileManagerCrud(ctx: FileManagerContext) {
   }
 
   async function renameEntry(target: FsEntry, newName: string) {
+    if (deps.isReorganizingLocked?.()) return;
     const oldPath = target.path;
     const parentPath = getParentPath(oldPath);
     const textWrapperRenameResult = isBloggerDogTextWrapper(target)
@@ -203,6 +205,7 @@ export function createFileManagerCrud(ctx: FileManagerContext) {
     params: { source: FsEntry; targetDirPath: string },
     options: CrudMutationOptions = {},
   ) {
+    if (deps.isReorganizingLocked?.()) return;
     const projectName = deps.getProjectName();
     if (!projectName) return;
 

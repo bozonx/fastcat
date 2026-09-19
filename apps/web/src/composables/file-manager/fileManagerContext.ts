@@ -26,6 +26,16 @@ export interface FileManagerCreateDeps {
   getProjectSettings?: () => FastCatProjectSettings;
   onMediaImported: (params: { projectRelativePath: string }) => void;
   onFileDeleted?: (params: { path: string }) => void | Promise<void>;
+  /**
+   * Entries that must not be deleted. Answering `true` is also expected to
+   * tell the user why.
+   */
+  isEntryLocked?: (entry: FsEntry) => boolean;
+  /**
+   * Whether renaming and moving are off for this workspace. Answering `true` is
+   * also expected to tell the user why.
+   */
+  isReorganizingLocked?: () => boolean;
   mediaCache: import('~/media-cache/application/proxyThumbnailService').ProxyThumbnailService;
   mediaStore: {
     removeMediaCache: (path: string) => Promise<void>;

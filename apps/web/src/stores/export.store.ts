@@ -8,7 +8,7 @@ export const useExportStore = defineStore('export', () => {
   const exportPhase = ref<'preparing' | 'encoding-audio' | 'encoding' | 'finalizing' | null>(null);
   const exportWarnings = ref<string[]>([]);
   const exportDurationMs = ref<number | null>(null);
-  const lastExportStatus = ref<'success' | 'error' | null>(null);
+  const lastExportStatus = ref<'success' | 'error' | 'cancelled' | null>(null);
   const cancelRequested = ref(false);
   const activeExportTaskId = ref<string | null>(null);
 

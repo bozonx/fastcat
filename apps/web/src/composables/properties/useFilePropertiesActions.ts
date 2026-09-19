@@ -1,5 +1,5 @@
 import { computed, type Ref } from 'vue';
-import { canManageProjectDocuments } from '~/utils/embed-runtime';
+import { canManageProjectDocuments, canReorganizeFiles } from '~/utils/embed-runtime';
 
 export interface EntryAction {
   id: string;
@@ -105,7 +105,8 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
         options.isRemoteRoot.value ||
         options.isBloggerDogProject.value ||
         options.isVirtualAll?.value ||
-        options.isPersonalLibrary?.value,
+        options.isPersonalLibrary?.value ||
+        !canReorganizeFiles(),
       onClick: options.onRename,
     },
     {
@@ -127,7 +128,8 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
         !(options.canCut?.value ?? options.canCopyOrCut.value) ||
         options.isVirtualAll?.value ||
         options.isPersonalLibrary?.value ||
-        options.isBloggerDogProject.value,
+        options.isBloggerDogProject.value ||
+        !canReorganizeFiles(),
       onClick: options.onCut,
     },
     {
@@ -241,7 +243,8 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
       id: 'rename',
       title: options.t('common.rename'),
       icon: 'i-heroicons-pencil',
-      hidden: false, // Root project or common root are already checked by isCommonDir for folders
+      // Root project or common root are already checked by isCommonDir for folders
+      hidden: !canReorganizeFiles(),
       onClick: options.onRename,
     },
     {
@@ -255,7 +258,7 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
       id: 'cut',
       title: options.t('common.cut'),
       icon: 'i-heroicons-scissors',
-      hidden: !(options.canCut?.value ?? options.canCopyOrCut.value),
+      hidden: !(options.canCut?.value ?? options.canCopyOrCut.value) || !canReorganizeFiles(),
       onClick: options.onCut,
     },
   ]);
