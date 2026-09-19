@@ -1,5 +1,11 @@
 # @fastcat/native
 
+## 0.5.6
+
+### Patch Changes
+
+- 13c7a43: changes
+
 ## 0.5.5
 
 ### Patch Changes
