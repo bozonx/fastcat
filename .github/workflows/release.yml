@@ -56,3 +56,9 @@ jobs:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_CONFIG_PROVENANCE: true
+
+      # `changeset publish` creates the release tags only in this checkout, and
+      # changesets/action does not recognise the @changesets/cli 3 output, so it
+      # never pushes them. Tags that already exist on origin are skipped.
+      - name: Push release tags
+        run: git push origin --tags
