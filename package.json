@@ -17,6 +17,7 @@
     "dev": "turbo run dev --filter=@fastcat/web",
     "dev:all": "turbo run dev",
     "dev:embed": "node scripts/dev-embed.mjs",
+    "dev:embed:isolated": "FASTCAT_DEV_EMBED_COEP=credentialless turbo run dev --filter=@fastcat/web",
     "build": "turbo run build",
     "build:web": "turbo run build --filter=@fastcat/web",
     "build:embed": "turbo run build --filter=@bozonx/fastcat-embed",

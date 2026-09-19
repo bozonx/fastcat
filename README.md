@@ -315,11 +315,12 @@ there, and the iframe stays blank. Serve the route the way `@bozonx/fastcat` doe
 — `COEP: credentialless` plus `CORP: cross-origin` — with:
 
 ```bash
-FASTCAT_DEV_EMBED_COEP=credentialless pnpm dev
+pnpm dev:embed:isolated          # = FASTCAT_DEV_EMBED_COEP=credentialless pnpm dev
 ```
 
-`require-corp` is accepted too; the default is `unsafe-none`. The variable only
-affects the dev server — production hosting keeps its headers in
+`require-corp` is accepted too; the default is `unsafe-none`, which mirrors the
+hosting default (`EmbedIsolation` is `'none'` unless a host opts in). The variable
+only affects the dev server — production hosting keeps its headers in
 `packages/fastcat/src/hosting.ts`.
 
 ## Setup
