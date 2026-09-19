@@ -1,5 +1,11 @@
 # @fastcat/eslint-config
 
+## 0.1.4
+
+### Patch Changes
+
+- 13c7a43: changes
+
 ## 0.1.3
 
 ### Patch Changes

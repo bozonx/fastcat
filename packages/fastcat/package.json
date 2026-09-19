@@ -1,6 +1,6 @@
 {
   "name": "@bozonx/fastcat",
-  "version": "0.7.2",
+  "version": "0.7.3",
   "description": "Prebuilt FastCat video editor for self-hosting, with the response headers it needs.",
   "license": "MIT",
   "type": "module",
