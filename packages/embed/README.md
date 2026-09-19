@@ -93,22 +93,22 @@ Mounts the editor iframe into `options.container`, initiates the secure handshak
 
 #### `FastcatEmbedOptions`
 
-| Option            | Type                              | Default               | Description                                                                              |
-| :---------------- | :-------------------------------- | :-------------------- | :--------------------------------------------------------------------------------------- |
-| `container`       | `HTMLElement`                     | _required_            | The DOM element where the iframe is appended.                                            |
-| `editorUrl`       | `string`                          | _required_            | Absolute URL of the editor embed route (e.g. `https://embed.fastcat.video/embed`).       |
-| `assets`          | `EmbedAsset[]`                    | `[]`                  | Initial media assets loaded into the editor session.                                     |
-| `locale`          | `string`                          | `'en'`                | Interface language code (e.g. `'en'`, `'ru'`).                                           |
-| `layout`          | `'auto' \| 'desktop' \| 'mobile'` | `'auto'`              | Preferred editor layout. `'auto'` selects automatically on first render.                 |
-| `features`        | `EmbedFeatureName[]`              | `['export']`          | Enabled feature panels: `'files'`, `'sound'`, `'export'`, `'settings'`. Unknown ignored. |
-| `projectDefaults` | `EmbedProjectDefaults`            | `undefined`           | Composition dimensions, FPS, and sample rate overrides.                                  |
-| `assetTransport`  | `'url' \| 'host'`                 | `'url'`               | `'url'` streams assets via HTTP range requests; `'host'` uses in-memory transfers.       |
-| `output`          | `'blob' \| 'upload'`              | `'blob'`              | `'blob'` returns `File` in `onExportDone`; `'upload'` streams directly to presigned URL. |
-| `initialProject`  | `{ otio: string }`                | `undefined`           | Optional previous OTIO document restored before initial assets.                          |
-| `preferences`     | `unknown`                         | `undefined`           | Opaque state from a previous session (`onPreferencesChanged`).                           |
-| `readyTimeoutMs`  | `number`                          | `20000`               | Timeout in milliseconds before `onUnavailable` is called.                                |
-| `sandbox`         | `string`                          | `undefined`           | Custom iframe `sandbox` attribute value if needed.                                       |
-| `allow`           | `string`                          | `DEFAULT_EMBED_ALLOW` | Iframe feature policy (`fullscreen; clipboard-write; autoplay; ...`).                    |
+| Option            | Type                              | Default               | Description                                                                                                    |
+| :---------------- | :-------------------------------- | :-------------------- | :------------------------------------------------------------------------------------------------------------- |
+| `container`       | `HTMLElement`                     | _required_            | The DOM element where the iframe is appended.                                                                  |
+| `editorUrl`       | `string`                          | _required_            | Absolute URL of the editor embed route (e.g. `https://embed.fastcat.video/embed`).                             |
+| `assets`          | `EmbedAsset[]`                    | `[]`                  | Initial media assets loaded into the editor session.                                                           |
+| `locale`          | `string`                          | `'en'`                | Interface language code (e.g. `'en'`, `'ru'`).                                                                 |
+| `layout`          | `'auto' \| 'desktop' \| 'mobile'` | `'auto'`              | Preferred editor layout. `'auto'` selects automatically on first render.                                       |
+| `features`        | `EmbedFeatureName[]`              | `['export']`          | Optional views: `'files'`, `'sound'`, `'settings'`; `'export'` adds advanced export settings. Unknown ignored. |
+| `projectDefaults` | `EmbedProjectDefaults`            | `undefined`           | Output format. Omitted: taken from the first video; if there is none, the user is asked.                       |
+| `assetTransport`  | `'url' \| 'host'`                 | `'url'`               | `'url'` streams assets via HTTP range requests; `'host'` uses in-memory transfers.                             |
+| `output`          | `'blob' \| 'upload'`              | `'blob'`              | `'blob'` returns `File` in `onExportDone`; `'upload'` streams directly to presigned URL.                       |
+| `initialProject`  | `{ otio: string }`                | `undefined`           | Optional previous OTIO document restored before initial assets.                                                |
+| `preferences`     | `unknown`                         | `undefined`           | Opaque state from a previous session (`onPreferencesChanged`).                                                 |
+| `readyTimeoutMs`  | `number`                          | `20000`               | Timeout in milliseconds before `onUnavailable` is called.                                                      |
+| `sandbox`         | `string`                          | `undefined`           | Custom iframe `sandbox` attribute value if needed.                                                             |
+| `allow`           | `string`                          | `DEFAULT_EMBED_ALLOW` | Iframe feature policy (`fullscreen; clipboard-write; autoplay; ...`).                                          |
 
 #### What an embedded session leaves out
 

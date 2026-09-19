@@ -3,8 +3,10 @@ import { describe, it, expect, vi } from 'vitest';
 import {
   DEFAULT_TIMELINE_FORMAT,
   normalizeTimelineFormat,
+  createManualTimelineFormat,
   createTimelineFormatFromProjectDefaults,
   getTimelineFormat,
+  isTimelineGeometryUnresolved,
   setTimelineFormat,
   setTimelineTimebaseFps,
 } from '~/timeline/format';
@@ -184,5 +186,37 @@ describe('setTimelineTimebaseFps', () => {
   it('returns the same document when the timebase is already current', () => {
     const doc: any = { id: 'doc-1', timebase: { num: 30_000, den: 1_001 } };
     expect(setTimelineTimebaseFps(doc, 29.97)).toBe(doc);
+  });
+});
+
+describe('createManualTimelineFormat', () => {
+  it('applies the patch and ends auto-detection', () => {
+    const format = createManualTimelineFormat(DEFAULT_TIMELINE_FORMAT, {
+      width: 1080,
+      height: 1920,
+    });
+
+    expect(format).toMatchObject({
+      width: 1080,
+      height: 1920,
+      fps: DEFAULT_TIMELINE_FORMAT.fps,
+      isAutoSettings: false,
+      geometryResolved: true,
+      sampleRateResolved: true,
+      settingsSource: 'manual',
+      useProjectSettings: false,
+    });
+  });
+});
+
+describe('isTimelineGeometryUnresolved', () => {
+  it('is true only for an auto format whose geometry no clip has set', () => {
+    expect(isTimelineGeometryUnresolved(DEFAULT_TIMELINE_FORMAT)).toBe(true);
+    expect(
+      isTimelineGeometryUnresolved({ ...DEFAULT_TIMELINE_FORMAT, geometryResolved: true }),
+    ).toBe(false);
+    expect(
+      isTimelineGeometryUnresolved({ ...DEFAULT_TIMELINE_FORMAT, isAutoSettings: false }),
+    ).toBe(false);
   });
 });

@@ -191,11 +191,14 @@ test.describe('Embed: host integration', () => {
     await openStand(page);
 
     const frame = page.frameLocator('iframe');
-    // The default profile is the timeline plus an export; nothing else.
-    await expect(frame.getByTestId('embed-view-cut')).toBeVisible();
-    await expect(frame.getByTestId('embed-view-export')).toBeVisible();
+    // The default profile is the timeline plus an export; nothing else. One
+    // view is no choice, so there is no switcher, and export is an action.
+    await expect(frame.getByTestId('embed-view-cut')).toHaveCount(0);
+    await expect(frame.getByTestId('embed-view-export')).toHaveCount(0);
     await expect(frame.getByTestId('embed-view-files')).toHaveCount(0);
     await expect(frame.getByTestId('embed-view-sound')).toHaveCount(0);
+    await expect(frame.getByTestId('embed-export')).toBeVisible();
+    await expect(frame.getByTestId('embed-format')).toBeVisible();
 
     // The embedded workspace is owned by the host, so it must not expose its
     // transient file browser or backups. Editing tabs remain available.

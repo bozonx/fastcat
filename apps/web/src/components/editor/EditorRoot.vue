@@ -19,12 +19,15 @@ const props = withDefaults(
     /** `auto` decides once from the container's first measured size. */
     layout?: LayoutModePreference;
     mobileTabs?: MobileShellTab[];
+    /** The embed switches views from its own toolbar, so it hides the bottom bar. */
+    showMobileNav?: boolean;
     navMode?: 'routed' | 'embedded';
     embedded?: boolean;
   }>(),
   {
     layout: 'auto',
     mobileTabs: () => ['files', 'edit', 'export', 'settings'],
+    showMobileNav: true,
     navMode: 'embedded',
     embedded: false,
   },
@@ -43,6 +46,11 @@ defineExpose({ mode, isResolved, toggle });
     :data-layout-mode="mode ?? 'pending'"
   >
     <DesktopShell v-if="mode === 'desktop'" :embedded="embedded" />
-    <MobileShell v-else-if="mode === 'mobile'" :tabs="mobileTabs" :nav-mode="navMode" />
+    <MobileShell
+      v-else-if="mode === 'mobile'"
+      :tabs="mobileTabs"
+      :show-bottom-nav="showMobileNav"
+      :nav-mode="navMode"
+    />
   </div>
 </template>

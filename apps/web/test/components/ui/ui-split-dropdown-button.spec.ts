@@ -91,4 +91,33 @@ describe('UiSplitDropdownButton', () => {
 
     expect(component.emitted('click')).toBeFalsy();
   });
+
+  it('renders a label and test id on the main button', async () => {
+    const component = await mountSuspended(UiSplitDropdownButton, {
+      props: {
+        ariaLabel: 'Main Action',
+        label: 'Export',
+        mainTestId: 'main',
+        items: dummyItems,
+      },
+    });
+
+    const mainButton = component.find('[data-testid="main"]');
+    expect(mainButton.exists()).toBe(true);
+    expect(mainButton.text()).toContain('Export');
+  });
+
+  it('does not emit click event while loading', async () => {
+    const component = await mountSuspended(UiSplitDropdownButton, {
+      props: {
+        ariaLabel: 'Main Action',
+        loading: true,
+        items: dummyItems,
+      },
+    });
+
+    await component.findAll('button')[0].trigger('click');
+
+    expect(component.emitted('click')).toBeFalsy();
+  });
 });

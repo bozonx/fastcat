@@ -403,6 +403,15 @@ describe('TimelineProperties', () => {
       expect(vm.timelineQuickActions).toEqual([]);
     });
 
+    it('offers no reset to project defaults the user never saw', async () => {
+      const standalone = await mountSuspended(TimelineProperties);
+      expect(standalone.html()).toContain('videoEditor.timeline.setFromProjectDefaults');
+
+      embedRuntime.active = true;
+      const embedded = await mountSuspended(TimelineProperties);
+      expect(embedded.html()).not.toContain('videoEditor.timeline.setFromProjectDefaults');
+    });
+
     it('points at the file manager only when the host switched it on', async () => {
       embedRuntime.active = true;
       setEmbedFeatures(['export']);

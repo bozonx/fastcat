@@ -123,6 +123,34 @@ export function createTimelineFormatFromProjectDefaults(project: TimelineFormatI
   });
 }
 
+/**
+ * The format a user picked by hand. It stops following the project and ends
+ * auto-detection, so no clip added later can quietly re-decide it.
+ */
+export function createManualTimelineFormat(
+  current: TimelineFormat,
+  patch: TimelineFormatInput,
+): TimelineFormatInput {
+  return {
+    ...current,
+    ...patch,
+    isAutoSettings: false,
+    geometryResolved: true,
+    sampleRateResolved: true,
+    settingsSource: 'manual',
+    useProjectSettings: false,
+  };
+}
+
+/**
+ * True while an auto timeline has not met a clip that could set its geometry.
+ * Images and audio carry no frame rate, so a timeline holding only those is
+ * still composing at the built-in default rather than anything the user chose.
+ */
+export function isTimelineGeometryUnresolved(format: TimelineFormat): boolean {
+  return format.isAutoSettings && !format.geometryResolved;
+}
+
 /** Geometry/audio fields a timeline inherits from the project when following it. */
 export interface ProjectFormatSource {
   width: number;

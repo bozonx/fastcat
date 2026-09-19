@@ -109,8 +109,10 @@ vi.mock('~/components/file-manager/FileConversionAudioSettings.vue', () => ({
 const mockNotifyFileManagerUpdate = vi.fn();
 const mockReloadDirectory = vi.fn().mockResolvedValue(undefined);
 
+const mockProjectStore = vi.hoisted(() => ({ currentView: 'export' }));
+
 vi.mock('~/stores/project.store', () => ({
-  useProjectStore: () => ({ currentView: 'export' }),
+  useProjectStore: () => mockProjectStore,
 }));
 vi.mock('~/stores/timeline.store', () => ({
   useTimelineStore: () => ({ duration: 5_000_000 }),
@@ -132,6 +134,7 @@ interface ExportFormMock {
   selectedExportRangeId: { value: string };
   resetAllSettings: ReturnType<typeof vi.fn>;
   cancelExport: ReturnType<typeof vi.fn>;
+  initializeExportForm: ReturnType<typeof vi.fn>;
 }
 
 function formMock(): ExportFormMock {
@@ -145,6 +148,7 @@ describe('ExportForm.vue', () => {
     m.isExporting.value = false;
     m.isSettingsDirty.value = false;
     m.selectedExportRangeId.value = 'timeline';
+    mockProjectStore.currentView = 'export';
   });
 
   it('renders one button per selectable export range', async () => {
@@ -200,6 +204,30 @@ describe('ExportForm.vue', () => {
 
     await cancel.trigger('click');
     expect(formMock().cancelExport).toHaveBeenCalledTimes(1);
+  });
+
+  describe('detached into a dialog', () => {
+    it('prepares itself on mount without the export view being open', async () => {
+      mockProjectStore.currentView = 'cut';
+      await mountWithNuxt(ExportForm, { props: { detached: true } });
+
+      expect(formMock().initializeExportForm).toHaveBeenCalledTimes(1);
+    });
+
+    it('stays idle outside the export view when it is not detached', async () => {
+      mockProjectStore.currentView = 'cut';
+      await mountWithNuxt(ExportForm);
+
+      expect(formMock().initializeExportForm).not.toHaveBeenCalled();
+    });
+
+    it('leaves the heading to the dialog', async () => {
+      const inView = await mountWithNuxt(ExportForm);
+      expect(inView.find('h2').exists()).toBe(true);
+
+      const detached = await mountWithNuxt(ExportForm, { props: { detached: true } });
+      expect(detached.find('h2').exists()).toBe(false);
+    });
   });
 
   describe('inside an embedded session', () => {

@@ -13,7 +13,7 @@ import { normalizeWorkspaceFilePath } from '~/utils/workspace-common';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { useFileManagerStore } from '~/stores/file-manager.store';
-import { canManageProjectDocuments } from '~/utils/embed-runtime';
+import { canManageProjectDocuments, isEmbedRuntime } from '~/utils/embed-runtime';
 import { isFeatureAvailable } from '~/utils/embed-features';
 import PropertySection from '~/components/properties/PropertySection.vue';
 import PropertyRow from '~/components/properties/PropertyRow.vue';
@@ -38,6 +38,7 @@ import { useFileTimelineUsage } from '~/composables/properties/useFileTimelineUs
 import FileTimelineUsageSection from '~/components/properties/file/FileTimelineUsageSection.vue';
 import MediaResolutionSettings from '~/components/media/MediaResolutionSettings.vue';
 import {
+  createManualTimelineFormat,
   createTimelineFormatFromProjectDefaults,
   type TimelineFormatInput,
 } from '~/timeline/format';
@@ -382,15 +383,9 @@ const masterAudioEffects = computed(() =>
 const isAudioEffectsEnabled = computed(() => workspaceStore.inDevelopmentFeaturesEnabled);
 
 function updateFormat(patch: TimelineFormatInput) {
-  void timelineStore.updateTimelineFormat({
-    ...timelineStore.timelineFormat,
-    ...patch,
-    isAutoSettings: false,
-    geometryResolved: true,
-    sampleRateResolved: true,
-    settingsSource: 'manual',
-    useProjectSettings: false,
-  });
+  void timelineStore.updateTimelineFormat(
+    createManualTimelineFormat(timelineStore.timelineFormat, patch),
+  );
 }
 
 const timelineFormatSource = computed(() => {
@@ -406,6 +401,9 @@ const timelineFormatSource = computed(() => {
   }
   return t('videoEditor.timeline.formatSourceCustom');
 });
+
+// An embedded session has no project the user knows of to take defaults from.
+const canResetFormatToProjectDefaults = !isEmbedRuntime();
 
 function resetTimelineFormatToProjectDefaults() {
   const project = projectStore.projectSettings?.project;
@@ -571,6 +569,7 @@ const addTrackActions = computed(() => [
           </span>
         </div>
         <UButton
+          v-if="canResetFormatToProjectDefaults"
           size="xs"
           color="neutral"
           variant="ghost"

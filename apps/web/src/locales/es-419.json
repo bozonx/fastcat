@@ -1279,7 +1279,24 @@
       "toggleLayout": "Cambiar disposición",
       "webGpuWarning": "WebGPU no está disponible. La edición continúa con un rendimiento de renderizado reducido.",
       "timelineLocked": "La línea de tiempo de la sesión no se puede eliminar: es lo que vuelve a la aplicación al cerrar el editor.",
-      "filesLocked": "Aquí no se pueden renombrar ni mover archivos: el editor trabaja con los archivos que entregó la aplicación, donde están."
+      "filesLocked": "Aquí no se pueden renombrar ni mover archivos: el editor trabaja con los archivos que entregó la aplicación, donde están.",
+      "closeEditor": "Cerrar editor",
+      "exportMenu": "Opciones de exportación",
+      "advancedExport": "Ajustes avanzados de exportación…",
+      "exportSettingsTitle": "Ajustes de exportación",
+      "format": {
+        "badgeTitle": "Formato de salida: {source}. Haz clic para cambiarlo.",
+        "unresolved": "Formato sin definir",
+        "sourceUnresolved": "no detectado — se usa el valor predeterminado",
+        "sourceFirstClip": "tomado del primer video",
+        "sourceProjectDefaults": "definido por la aplicación",
+        "sourceManual": "elegido por ti",
+        "dialogTitle": "Formato de video",
+        "dialogUnresolved": "No se pudo tomar el formato del material: las imágenes y el audio no tienen resolución ni velocidad de fotogramas. Elige cómo debe ser el video.",
+        "dialogResolved": "Resolución y velocidad de fotogramas del video final. Los clips se ajustan a este cuadro.",
+        "apply": "Aplicar",
+        "applyAndExport": "Aplicar y exportar"
+      }
     }
   },
   "timelineCreation": {

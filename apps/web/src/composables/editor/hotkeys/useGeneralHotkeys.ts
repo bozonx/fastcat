@@ -19,6 +19,7 @@ import {
   isEmbedRuntime,
 } from '~/utils/embed-runtime';
 import { isFeatureAvailable } from '~/utils/embed-features';
+import { openEmbedExportSettings } from '~/utils/embed/embed-export';
 import type { FsEntry } from '~/types/fs';
 import type { TimelineClipItem } from '~/timeline/types';
 
@@ -502,6 +503,11 @@ export function useGeneralHotkeys(
     },
     'general.switchViewExport': () => {
       if (!isFeatureAvailable('export')) return false;
+      // The embed has no export view: its settings open over the editor.
+      if (isEmbedRuntime()) {
+        openEmbedExportSettings();
+        return true;
+      }
       projectStore.setView('export');
       return true;
     },

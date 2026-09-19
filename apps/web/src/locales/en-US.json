@@ -1279,7 +1279,24 @@
       "toggleLayout": "Switch layout",
       "webGpuWarning": "WebGPU is unavailable. Editing continues with reduced rendering performance.",
       "timelineLocked": "The session's timeline cannot be deleted: it is what goes back to the application when you close the editor.",
-      "filesLocked": "Files cannot be renamed or moved here: the editor works with the files the application provided, where it put them."
+      "filesLocked": "Files cannot be renamed or moved here: the editor works with the files the application provided, where it put them.",
+      "closeEditor": "Close editor",
+      "exportMenu": "Export options",
+      "advancedExport": "Advanced export settings…",
+      "exportSettingsTitle": "Export settings",
+      "format": {
+        "badgeTitle": "Output format: {source}. Click to change.",
+        "unresolved": "Format not set",
+        "sourceUnresolved": "not detected — the default is used",
+        "sourceFirstClip": "taken from the first video",
+        "sourceProjectDefaults": "set by the application",
+        "sourceManual": "chosen by you",
+        "dialogTitle": "Video format",
+        "dialogUnresolved": "The format could not be taken from the footage — images and audio carry no resolution or frame rate. Choose what the video should be.",
+        "dialogResolved": "Resolution and frame rate of the finished video. Clips are fitted into this frame.",
+        "apply": "Apply",
+        "applyAndExport": "Apply and export"
+      }
     }
   },
   "timelineCreation": {

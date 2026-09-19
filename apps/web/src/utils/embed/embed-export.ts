@@ -1,4 +1,4 @@
-import type { ComputedRef, InjectionKey } from 'vue';
+import { ref, type ComputedRef, type InjectionKey } from 'vue';
 import type { useExportForm } from '~/composables/timeline/export/useExportForm';
 
 export type ExportFormInstance = ReturnType<typeof useExportForm>;
@@ -17,3 +17,16 @@ export interface EmbedExportDelegate {
 }
 
 export const EMBED_EXPORT_KEY: InjectionKey<EmbedExportDelegate> = Symbol('embed-export');
+
+/**
+ * The embed's own dialogs. An export is an action there rather than a view, so
+ * its settings open over the editor; the state is module-level so a shortcut can
+ * open them without reaching into the shell.
+ */
+export type EmbedDialog = 'export-settings' | 'format' | null;
+
+export const embedDialog = ref<EmbedDialog>(null);
+
+export function openEmbedExportSettings(): void {
+  embedDialog.value = 'export-settings';
+}

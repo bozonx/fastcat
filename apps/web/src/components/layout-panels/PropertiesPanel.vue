@@ -11,6 +11,8 @@ import { isEditableTarget } from '~/utils/hotkeys/hotkeyUtils';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useComputerVfs } from '~/composables/file-manager/useComputerVfs';
 import { normalizeMediaCachePath } from '~/utils/path';
+import { isEmbedRuntime } from '~/utils/embed-runtime';
+import { isFeatureAvailable } from '~/utils/embed-features';
 
 import ClipProperties from '~/components/properties/ClipProperties.vue';
 import TrackProperties from '~/components/properties/TrackProperties.vue';
@@ -141,6 +143,15 @@ const selectedMarkerIds = computed<string[] | null>(() => {
   return null;
 });
 
+/**
+ * An embed without a media bin works on its one timeline and nothing else.
+ * File selections left over from the workspace — its root folder, say — offer
+ * uploads and new documents the session would silently lose, and an empty
+ * panel hides the settings that matter there, so both fall back to the
+ * timeline.
+ */
+const isEmbedTimelineOnly = computed(() => isEmbedRuntime() && !isFeatureAvailable('files'));
+
 const activeEntity = computed(() => {
   return props.entity !== undefined ? props.entity : selectionStore.selectedEntity;
 });
@@ -215,6 +226,7 @@ const displayMode = computed<
   if (entity?.source === 'project' && entity.kind === 'library-item') return 'project-library-item';
   if (entity?.source === 'timeline' && entity.kind === 'marker') return 'marker';
   if (entity?.source === 'timeline' && entity.kind === 'markers') return 'markers';
+  if (isEmbedTimelineOnly.value) return 'timeline';
   if (entity?.source === 'fileManager' && (entity.kind === 'file' || entity.kind === 'directory'))
     return 'file';
   if (entity?.source === 'fileManager' && entity.kind === 'multiple') return 'files';
@@ -224,6 +236,8 @@ const displayMode = computed<
 });
 
 const selectedFsEntry = computed(() => {
+  // The session's timeline file is an implementation detail of the embed.
+  if (isEmbedTimelineOnly.value) return null;
   const entity = props.entity !== undefined ? props.entity : selectionStore.selectedEntity;
 
   if (entity?.source === 'fileManager' && (entity.kind === 'file' || entity.kind === 'directory')) {
@@ -409,7 +423,7 @@ const headerTitle = computed(() => {
       >
         {{ headerTitle }}
       </span>
-      <div v-if="displayMode !== 'empty'" class="flex gap-1 shrink-0 ml-2">
+      <div v-if="displayMode !== 'empty' && activeEntity" class="flex gap-1 shrink-0 ml-2">
         <UiButtonGroup
           v-if="displayMode === 'file' && hasProxy"
           v-model="previewMode"

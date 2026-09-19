@@ -21,6 +21,12 @@ import { EMBED_EXPORT_KEY } from '~/utils/embed/embed-export';
 
 const props = defineProps<{
   disableFocusFrame?: boolean;
+  /**
+   * Shown in a dialog rather than as the export view: the form prepares itself
+   * when it mounts instead of when the view opens, has no panel focus frame, and
+   * leaves the heading to the dialog around it.
+   */
+  detached?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -230,15 +236,19 @@ function getIconStyles(option: ExportRangeOption) {
   return {};
 }
 
+const hasFocusFrame = computed(() => !props.disableFocusFrame && !props.detached);
+
 function focusExportForm() {
-  if (props.disableFocusFrame) return;
+  if (!hasFocusFrame.value) return;
   focusStore.setPanelFocus('exportForm');
 }
 
+const isActive = computed(() => props.detached || projectStore.currentView === 'export');
+
 watch(
-  () => projectStore.currentView,
-  async (val) => {
-    if (val !== 'export') return;
+  isActive,
+  async (active) => {
+    if (!active) return;
     await initializeExportForm();
   },
   { immediate: true },
@@ -250,7 +260,7 @@ watch(outputFormat, (fmt) => {
 });
 
 watch(outputFilename, async () => {
-  if (projectStore.currentView !== 'export') return;
+  if (!isActive.value) return;
   try {
     await validateFilename();
   } catch {
@@ -286,14 +296,13 @@ const filenamePlaceholder = computed(() =>
   <div
     class="flex flex-col h-full bg-ui-bg-elevated relative overflow-hidden"
     :class="{
-      'panel-focus-frame': !props.disableFocusFrame,
-      'panel-focus-frame--active':
-        !props.disableFocusFrame && focusStore.isPanelFocused('exportForm'),
+      'panel-focus-frame': hasFocusFrame,
+      'panel-focus-frame--active': hasFocusFrame && focusStore.isPanelFocused('exportForm'),
     }"
     @pointerdown.capture="focusExportForm"
   >
     <div class="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-6 flex flex-col min-h-0">
-      <div class="mb-6 flex items-center justify-between shrink-0">
+      <div v-if="!props.detached" class="mb-6 flex items-center justify-between shrink-0">
         <h2 class="text-xl font-semibold text-ui-text">
           {{ t('videoEditor.export.title') }}
         </h2>

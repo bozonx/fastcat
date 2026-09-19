@@ -17,6 +17,12 @@ const props = withDefaults(
     caretButtonClass?: string;
     disabled?: boolean;
     icon?: string;
+    /** Text on the main button; without it the button is icon-only. */
+    label?: string;
+    /** Spinner on the main button; the menu stays reachable. */
+    loading?: boolean;
+    /** `data-testid` of the main button, which the root's attributes do not reach. */
+    mainTestId?: string;
     caretIconClass?: string;
     items: DropdownActionItem[][];
     size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
@@ -31,6 +37,9 @@ const props = withDefaults(
     caretIconClass: 'size-3',
     disabled: false,
     icon: undefined,
+    label: undefined,
+    loading: false,
+    mainTestId: undefined,
     size: 'sm',
     variant: 'ghost',
     title: undefined,
@@ -42,7 +51,7 @@ const emit = defineEmits<{
 }>();
 
 function onMainClick() {
-  if (props.disabled) return;
+  if (props.disabled || props.loading) return;
   emit('click');
 }
 
@@ -61,6 +70,9 @@ function onMainButtonClick(event: MouseEvent) {
       :variant="variant"
       :color="color"
       :icon="icon"
+      :label="label"
+      :loading="loading"
+      :data-testid="mainTestId"
       :aria-label="ariaLabel"
       :title="title"
       :disabled="disabled"

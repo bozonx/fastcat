@@ -5,6 +5,14 @@ import { createPinia, setActivePinia } from 'pinia';
 
 import PropertiesPanel from '~/components/layout-panels/PropertiesPanel.vue';
 import { useFocusStore } from '~/stores/focus.store';
+import { setEmbedFeatures } from '~/utils/embed-features';
+
+const embedRuntime = vi.hoisted(() => ({ active: false }));
+
+vi.mock('~/utils/embed-runtime', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('~/utils/embed-runtime')>()),
+  isEmbedRuntime: () => embedRuntime.active,
+}));
 
 vi.mock('vue-i18n', () => ({
   useI18n: vi.fn(() => ({
@@ -114,6 +122,8 @@ describe('PropertiesPanel', () => {
     selectionStore.selectedEntity = null;
     projectStore.currentTimelinePath = null;
     proxyStore.existingProxies.clear();
+    embedRuntime.active = false;
+    setEmbedFeatures(undefined);
   });
 
   it('uses the provided focus id for active state', async () => {
@@ -327,5 +337,60 @@ describe('PropertiesPanel', () => {
     await nextTick();
 
     expect(clipPropsEl.attributes('data-disabled')).toBe('true');
+  });
+
+  describe('inside an embedded session without a media bin', () => {
+    const stubs = {
+      UiButtonGroup: true,
+      FileDeleteConfirmModal: true,
+      UIcon: true,
+      FileProperties: { name: 'FileProperties', template: '<div data-testid="file-props" />' },
+      TimelineProperties: {
+        name: 'TimelineProperties',
+        props: ['fsEntry'],
+        template: '<div data-testid="timeline-props" :data-has-entry="!!fsEntry" />',
+      },
+    };
+
+    it('shows the timeline instead of the workspace folder', async () => {
+      embedRuntime.active = true;
+      setEmbedFeatures(['export']);
+      selectionStore.selectedEntity = {
+        source: 'fileManager',
+        kind: 'directory',
+        entry: { name: 'session', path: '', kind: 'directory' },
+      };
+
+      const wrapper = await mountSuspended(PropertiesPanel, { global: { stubs } });
+
+      expect(wrapper.find('[data-testid="file-props"]').exists()).toBe(false);
+      const timeline = wrapper.find('[data-testid="timeline-props"]');
+      expect(timeline.exists()).toBe(true);
+      expect(timeline.attributes('data-has-entry')).toBe('false');
+      expect(wrapper.find('.ml-2.text-xs').text()).toBe('fastcat.timeline.properties.title');
+    });
+
+    it('shows the timeline when nothing is selected', async () => {
+      embedRuntime.active = true;
+      setEmbedFeatures(['export']);
+
+      const wrapper = await mountSuspended(PropertiesPanel, { global: { stubs } });
+
+      expect(wrapper.find('[data-testid="timeline-props"]').exists()).toBe(true);
+    });
+
+    it('keeps file selections when the host switched the media bin on', async () => {
+      embedRuntime.active = true;
+      setEmbedFeatures(['export', 'files']);
+      selectionStore.selectedEntity = {
+        source: 'fileManager',
+        kind: 'file',
+        entry: { name: 'clip.mp4', path: 'video/clip.mp4', kind: 'file' },
+      };
+
+      const wrapper = await mountSuspended(PropertiesPanel, { global: { stubs } });
+
+      expect(wrapper.find('[data-testid="file-props"]').exists()).toBe(true);
+    });
   });
 });
