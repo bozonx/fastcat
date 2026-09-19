@@ -20,6 +20,7 @@ import { useUiStore } from '~/stores/ui.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useClipboardStore } from '~/stores/clipboard.store';
 import { useHistoryStore } from '~/stores/history.store';
+import { setEmbedFeatures } from '~/utils/embed-features';
 
 const mockWorkspaceStore = {
   userSettings: reactive({
@@ -1034,6 +1035,46 @@ describe('useEditorHotkeys', () => {
       }),
     );
     expect(uiStore.isEditorSettingsOpen).toBe(true);
+  });
+
+  it('leaves out of an embedded session what its shell does not have', () => {
+    window.history.replaceState(null, '', '/embed');
+    setEmbedFeatures(['export']);
+    try {
+      wrapper = mount(HotkeysHarness);
+      const uiStore = useUiStore();
+      const projectStore = useProjectStore();
+      projectStore.setView('cut');
+      useFocusStore().setPanelFocus('project');
+
+      const press = (key: string, code: string, shiftKey = false) => {
+        const event = new KeyboardEvent('keydown', {
+          key,
+          code,
+          shiftKey,
+          bubbles: true,
+          cancelable: true,
+        });
+        window.dispatchEvent(event);
+        return event;
+      };
+
+      // A view the host did not switch on stays shut, and the key is not eaten.
+      expect(press('1', 'Digit1').defaultPrevented).toBe(false);
+      expect(projectStore.currentView).toBe('cut');
+
+      press('U', 'KeyU', true);
+      press('I', 'KeyI', true);
+      expect(uiStore.isProjectSettingsOpen).toBe(false);
+      expect(uiStore.isEditorSettingsOpen).toBe(false);
+
+      setEmbedFeatures(['files', 'export']);
+      press('1', 'Digit1');
+      expect(projectStore.currentView).toBe('files');
+    } finally {
+      setEmbedFeatures(undefined);
+      window.history.replaceState(null, '', '/');
+    }
   });
 
   it('runs global ripple delete by selected clip bounds with Shift+Z', async () => {

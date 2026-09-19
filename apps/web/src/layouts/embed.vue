@@ -4,6 +4,11 @@
  * surrounding UI, so this layout contributes nothing but a full-bleed root.
  */
 import 'splitpanes/dist/splitpanes.css';
+import { useEditorHotkeys } from '~/composables/editor/useEditorHotkeys';
+
+// The default layout registers these too; without them here the embedded
+// editor answered no shortcut at all.
+useEditorHotkeys();
 </script>
 
 <template>
