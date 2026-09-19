@@ -306,6 +306,22 @@ crossing the boundary in both directions.
 Opening `/embed` directly in a browser is not an error — the page reports that it
 expects to be embedded and opens no channel at all.
 
+#### Developing against a cross-origin-isolated host
+
+The dev server serves `/embed` without isolation headers, the way a host page
+reaches it in production. A host page that is itself cross-origin isolated is the
+exception: a browser refuses to frame a document without `Cross-Origin-Embedder-Policy`
+there, and the iframe stays blank. Serve the route the way `@bozonx/fastcat` does
+— `COEP: credentialless` plus `CORP: cross-origin` — with:
+
+```bash
+FASTCAT_DEV_EMBED_COEP=credentialless pnpm dev
+```
+
+`require-corp` is accepted too; the default is `unsafe-none`. The variable only
+affects the dev server — production hosting keeps its headers in
+`packages/fastcat/src/hosting.ts`.
+
 ## Setup
 
 ```bash

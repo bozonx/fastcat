@@ -19,6 +19,43 @@ function isEmbedRequestPath(url: string | undefined): boolean {
   return path === '/embed' || path.startsWith('/embed/');
 }
 
+const EMBED_COEP_VALUES = ['unsafe-none', 'credentialless', 'require-corp'] as const;
+type EmbedCoep = (typeof EMBED_COEP_VALUES)[number];
+
+function readEmbedCoepEnv(value: string | undefined): EmbedCoep {
+  if (value == null || value === '') return 'unsafe-none';
+  const normalized = value.trim().toLowerCase();
+  if (!(EMBED_COEP_VALUES as readonly string[]).includes(normalized)) {
+    throw new Error(
+      `FASTCAT_DEV_EMBED_COEP must be one of ${EMBED_COEP_VALUES.join(', ')}, got ${value}`,
+    );
+  }
+  return normalized as EmbedCoep;
+}
+
+/**
+ * The `Cross-Origin-Embedder-Policy` the dev server serves `/embed` with.
+ *
+ * The default keeps the route unisolated, the way a host page reaches it in
+ * production. A host page that is itself cross-origin isolated is the exception:
+ * a browser refuses to frame a document without COEP there, so developing the
+ * editor inside one needs the opt-in, matching what `@bozonx/fastcat` serves:
+ *
+ *   FASTCAT_DEV_EMBED_COEP=credentialless pnpm dev
+ *
+ * Dev-only. Production hosting keeps its headers in `packages/fastcat`.
+ */
+const devEmbedCoep = readEmbedCoepEnv(process.env.FASTCAT_DEV_EMBED_COEP);
+
+/** COOP stays `unsafe-none`: the embedded document never owns its browsing
+ *  context group. A framed document carrying COEP is only loaded when it also
+ *  allows being read cross-origin, so CORP comes with the opt-in. */
+const embedIsolationHeaders: Record<string, string> = {
+  'Cross-Origin-Opener-Policy': 'unsafe-none',
+  'Cross-Origin-Embedder-Policy': devEmbedCoep,
+  ...(devEmbedCoep === 'unsafe-none' ? {} : { 'Cross-Origin-Resource-Policy': 'cross-origin' }),
+};
+
 interface MiddlewareServer {
   middlewares: {
     use: (
@@ -37,8 +74,7 @@ function installIsolationHeaders(server: MiddlewareServer): void {
     // server that isolated `/embed` would hide every no-SharedArrayBuffer bug
     // until the bundle reached a real host page.
     if (isEmbedRequestPath(req.url)) {
-      res.setHeader('Cross-Origin-Opener-Policy', 'unsafe-none');
-      res.setHeader('Cross-Origin-Embedder-Policy', 'unsafe-none');
+      for (const [name, value] of Object.entries(embedIsolationHeaders)) res.setHeader(name, value);
       next();
       return;
     }
@@ -179,10 +215,7 @@ export default defineNuxtConfig({
       },
     },
     '/embed': {
-      headers: {
-        'Cross-Origin-Opener-Policy': 'unsafe-none',
-        'Cross-Origin-Embedder-Policy': 'unsafe-none',
-      },
+      headers: embedIsolationHeaders,
     },
   },
 

@@ -90,7 +90,8 @@
         "PORT",
         "FASTCAT_ENABLE_IN_DEVELOPMENT_FEATURES",
         "FASTCAT_ENABLE_PREMIUM_FEATURES",
-        "FASTCAT_DEV_DIR"
+        "FASTCAT_DEV_DIR",
+        "FASTCAT_DEV_EMBED_COEP"
       ]
     },
     "clean": {
