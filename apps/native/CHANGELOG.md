@@ -1,5 +1,11 @@
 # @fastcat/native
 
+## 0.5.5
+
+### Patch Changes
+
+- 0b3a758: fix release
+
 ## 0.5.4
 
 ### Patch Changes

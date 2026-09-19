@@ -1,5 +1,14 @@
 # @fastcat/web
 
+## 0.6.5
+
+### Patch Changes
+
+- 0b3a758: fix release
+- Updated dependencies [0b3a758]
+  - @bozonx/fastcat-embed@0.7.2
+  - @fastcat/shared@0.1.3
+
 ## 0.6.4
 
 ### Patch Changes

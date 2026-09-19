@@ -1,5 +1,11 @@
 # @fastcat/docs
 
+## 0.1.3
+
+### Patch Changes
+
+- 0b3a758: fix release
+
 ## 0.1.2
 
 ### Patch Changes

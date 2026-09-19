@@ -1,5 +1,11 @@
 # @bozonx/fastcat
 
+## 0.7.2
+
+### Patch Changes
+
+- 0b3a758: fix release
+
 ## 0.7.1
 
 ### Patch Changes
