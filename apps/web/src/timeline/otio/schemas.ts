@@ -457,7 +457,9 @@ export const TimelineDocFastCatMetaSchema = z
             isAutoSettings: z.boolean().optional(),
             geometryResolved: z.boolean().optional(),
             sampleRateResolved: z.boolean().optional(),
-            settingsSource: z.enum(['projectDefaults', 'firstClip', 'manual']).optional(),
+            settingsSource: z
+              .enum(['projectDefaults', 'imageOrientation', 'firstClip', 'manual'])
+              .optional(),
             useProjectSettings: z.boolean().optional(),
           })
           .optional(),

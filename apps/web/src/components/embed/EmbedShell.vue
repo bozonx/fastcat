@@ -5,6 +5,7 @@ import type { MobileShellTab } from '~/components/editor/MobileShell.vue';
 import EmbedExportDialog from '~/components/embed/EmbedExportDialog.vue';
 import EmbedFormatBadge from '~/components/embed/EmbedFormatBadge.vue';
 import EmbedFormatDialog from '~/components/embed/EmbedFormatDialog.vue';
+import EmbedSettingsDialog from '~/components/embed/EmbedSettingsDialog.vue';
 import UiProgressSpinner from '~/components/ui/UiProgressSpinner.vue';
 import UiSplitDropdownButton from '~/components/ui/UiSplitDropdownButton.vue';
 import { useEmbedSession } from '~/composables/embed/useEmbedSession';
@@ -43,8 +44,8 @@ type EmbedViewId = 'files' | 'cut' | 'sound' | 'settings';
 /**
  * Views the host switched on, in the order the toolbar shows them. Export is
  * not among them: it is an action on the toolbar, with its settings in a
- * dialog. The touch shell has no sound view, and the desktop one has no
- * settings view.
+ * dialog. The touch shell has no sound view; the desktop one has no settings
+ * view either, so there the preferences open as a dialog from the toolbar.
  */
 const viewTabs = computed(() => {
   const views: { id: EmbedViewId; labelKey: string; icon: string }[] = [];
@@ -91,6 +92,16 @@ const isExportSettingsOpen = computed({
   get: () => embedDialog.value === 'export-settings',
   set: (open: boolean) => {
     embedDialog.value = open ? 'export-settings' : null;
+  },
+});
+
+/** The touch shell reaches its settings through a view tab instead. */
+const showSettingsButton = computed(() => isDesktopLayout.value && isEnabled('settings'));
+
+const isSettingsOpen = computed({
+  get: () => embedDialog.value === 'settings',
+  set: (open: boolean) => {
+    embedDialog.value = open ? 'settings' : null;
   },
 });
 
@@ -246,6 +257,18 @@ onMounted(() => {
           @click="editorRoot?.toggle()"
         />
 
+        <UButton
+          v-if="showSettingsButton"
+          size="sm"
+          color="neutral"
+          variant="ghost"
+          icon="lucide:settings"
+          :aria-label="t('common.settings')"
+          :title="t('common.settings')"
+          data-testid="embed-settings"
+          @click="embedDialog = 'settings'"
+        />
+
         <EmbedFormatBadge
           :summary="formatSummary"
           :compact="!isDesktopLayout"
@@ -310,6 +333,7 @@ onMounted(() => {
         @applied="onFormatApplied"
       />
       <EmbedExportDialog v-model:open="isExportSettingsOpen" :is-exporting="isExporting" />
+      <EmbedSettingsDialog v-model:open="isSettingsOpen" />
     </template>
   </div>
 </template>

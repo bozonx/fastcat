@@ -44,6 +44,13 @@ export interface TimelineMediaMetadata {
     sampleRate: number;
     canDecode?: boolean;
   };
+  /** Still images: dimensions only, and even those may be missing on a format
+   * the worker could not parse. */
+  image?: {
+    width?: number;
+    height?: number;
+    canDisplay?: boolean;
+  };
   /** True when previous metadata extraction failed and we cached the failure state. */
   error?: boolean;
 }
@@ -430,7 +437,7 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
       });
     }
 
-    if (!input.pseudo && metadata && (metadata.video || metadata.audio)) {
+    if (!input.pseudo && metadata && (metadata.video || metadata.audio || metadata.image)) {
       const doc = deps.getTimelineDoc();
       const timelineFormat = getTimelineFormat(doc);
       const project = deps.getProjectSettings().project;
@@ -450,6 +457,7 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
           settingsSource: 'firstClip',
         };
         let shouldUpdateTimelineFormat = false;
+        let orientationApplied = false;
 
         if (metadata.video && !timelineFormat.geometryResolved) {
           const rotation = metadata.video.rotation ?? 0;
@@ -472,10 +480,52 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
           shouldUpdateTimelineFormat = true;
         }
 
+        // An image carries no frame rate and no authority over resolution, so it
+        // cannot settle geometry. What it can say is whether the composition is
+        // portrait or landscape — enough to stop a set of vertical photos being
+        // pillarboxed into a 16:9 timeline. The default resolution is kept and
+        // merely turned to match, geometry stays unresolved so a video added
+        // later still overrides it, and only the first image gets to decide so
+        // that a mixed set does not flip the canvas on every drop.
+        else if (
+          metadata.image &&
+          !timelineFormat.geometryResolved &&
+          timelineFormat.settingsSource !== 'imageOrientation'
+        ) {
+          const imageWidth = metadata.image.width ?? 0;
+          const imageHeight = metadata.image.height ?? 0;
+
+          if (imageWidth > 0 && imageHeight > 0) {
+            const longSide = Math.max(timelineFormat.width, timelineFormat.height);
+            const shortSide = Math.min(timelineFormat.width, timelineFormat.height);
+            const isPortraitImage = imageHeight > imageWidth;
+
+            Object.assign(
+              patch,
+              applyResolutionPreset({
+                width: isPortraitImage ? shortSide : longSide,
+                height: isPortraitImage ? longSide : shortSide,
+              }),
+            );
+            orientationApplied = true;
+            shouldUpdateTimelineFormat = true;
+          }
+        }
+
         if (metadata.audio && !timelineFormat.sampleRateResolved) {
           patch.sampleRate = metadata.audio.sampleRate;
           patch.sampleRateResolved = true;
           shouldUpdateTimelineFormat = true;
+        }
+
+        // Audio resolving alongside an image must not promote the format to the
+        // stronger `firstClip` source: that would let the next image re-decide
+        // the orientation this one just set.
+        if (
+          orientationApplied ||
+          (!geometryApplied && timelineFormat.settingsSource === 'imageOrientation')
+        ) {
+          patch.settingsSource = 'imageOrientation';
         }
 
         if (shouldUpdateTimelineFormat) {

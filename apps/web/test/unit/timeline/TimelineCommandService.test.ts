@@ -6,6 +6,35 @@ describe('TimelineCommandService', () => {
   let deps: any;
   let service: ReturnType<typeof createTimelineCommandService>;
 
+  /** A fresh 1920x1080@30 timeline that has not met a clip yet. */
+  function createAutoTimelineFormat() {
+    return {
+      width: 1920,
+      height: 1080,
+      fps: 30,
+      orientation: 'landscape',
+      sampleRate: 48000,
+      isAutoSettings: true,
+      geometryResolved: false,
+      sampleRateResolved: false,
+      settingsSource: 'projectDefaults',
+      useProjectSettings: false,
+    };
+  }
+
+  /** Points the doc and the project settings at one mutable format object. */
+  function mockAutoTimeline(format: ReturnType<typeof createAutoTimelineFormat>) {
+    deps.getTimelineDoc.mockImplementation(() => ({
+      timebase: { fps: format.fps },
+      tracks: [
+        { id: 'v1', kind: 'video', items: [] },
+        { id: 'a1', kind: 'audio', items: [] },
+      ],
+      metadata: { fastcat: { format } },
+    }));
+    deps.getProjectSettings.mockReturnValue({ project: { ...format } });
+  }
+
   beforeEach(() => {
     deps = {
       getTimelineDoc: vi.fn(() => ({
@@ -458,6 +487,157 @@ describe('TimelineCommandService', () => {
 
       expect(deps.updateTimelineFormat).not.toHaveBeenCalled();
       expect(deps.updateProjectFormat).not.toHaveBeenCalled();
+    });
+
+    it('turns the canvas to portrait for the first vertical image without resolving geometry', async () => {
+      const timelineFormat = createAutoTimelineFormat();
+      mockAutoTimeline(timelineFormat);
+
+      deps.getOrFetchMetadataByPath.mockResolvedValue({
+        image: { width: 3000, height: 4000 },
+      });
+      deps.getFileByPath.mockResolvedValue(new File([], 'photo.jpg'));
+
+      await service.addClipToTimelineFromPath({
+        trackId: 'v1',
+        name: 'Photo',
+        path: 'images/photo.jpg',
+      });
+
+      expect(deps.updateTimelineFormat).toHaveBeenCalledWith(
+        expect.objectContaining({
+          width: 1080,
+          height: 1920,
+          orientation: 'portrait',
+          // The default frame rate is untouched: an image cannot say what it is.
+          fps: 30,
+          geometryResolved: false,
+          settingsSource: 'imageOrientation',
+        }),
+      );
+    });
+
+    it('leaves a landscape default alone for a landscape image', async () => {
+      const timelineFormat = createAutoTimelineFormat();
+      mockAutoTimeline(timelineFormat);
+
+      deps.getOrFetchMetadataByPath.mockResolvedValue({
+        image: { width: 4000, height: 3000 },
+      });
+      deps.getFileByPath.mockResolvedValue(new File([], 'photo.jpg'));
+
+      await service.addClipToTimelineFromPath({
+        trackId: 'v1',
+        name: 'Photo',
+        path: 'images/photo.jpg',
+      });
+
+      expect(deps.updateTimelineFormat).toHaveBeenCalledWith(
+        expect.objectContaining({ width: 1920, height: 1080, orientation: 'landscape' }),
+      );
+    });
+
+    it('does not let a second image flip the canvas back', async () => {
+      const timelineFormat = createAutoTimelineFormat();
+      mockAutoTimeline(timelineFormat);
+      deps.updateTimelineFormat.mockImplementation((patch: Partial<typeof timelineFormat>) => {
+        Object.assign(timelineFormat, patch);
+      });
+
+      deps.getOrFetchMetadataByPath.mockResolvedValueOnce({ image: { width: 3000, height: 4000 } });
+      deps.getFileByPath.mockResolvedValueOnce(new File([], 'portrait.jpg'));
+      await service.addClipToTimelineFromPath({
+        trackId: 'v1',
+        name: 'Portrait',
+        path: 'images/portrait.jpg',
+      });
+      expect(timelineFormat.orientation).toBe('portrait');
+
+      deps.updateTimelineFormat.mockClear();
+      deps.getOrFetchMetadataByPath.mockResolvedValueOnce({ image: { width: 4000, height: 3000 } });
+      deps.getFileByPath.mockResolvedValueOnce(new File([], 'landscape.jpg'));
+      await service.addClipToTimelineFromPath({
+        trackId: 'v1',
+        name: 'Landscape',
+        path: 'images/landscape.jpg',
+      });
+
+      expect(deps.updateTimelineFormat).not.toHaveBeenCalled();
+      expect(timelineFormat.orientation).toBe('portrait');
+    });
+
+    it('lets a video added after an image override the orientation it guessed', async () => {
+      const timelineFormat = createAutoTimelineFormat();
+      mockAutoTimeline(timelineFormat);
+      deps.updateTimelineFormat.mockImplementation((patch: Partial<typeof timelineFormat>) => {
+        Object.assign(timelineFormat, patch);
+      });
+
+      deps.getOrFetchMetadataByPath.mockResolvedValueOnce({ image: { width: 3000, height: 4000 } });
+      deps.getFileByPath.mockResolvedValueOnce(new File([], 'photo.jpg'));
+      await service.addClipToTimelineFromPath({
+        trackId: 'v1',
+        name: 'Photo',
+        path: 'images/photo.jpg',
+      });
+
+      deps.getOrFetchMetadataByPath.mockResolvedValueOnce({
+        duration: 5,
+        video: { width: 1280, height: 720, fps: 60, canDecode: true },
+      });
+      deps.getFileByPath.mockResolvedValueOnce(new File([], 'clip.mp4'));
+      await service.addClipToTimelineFromPath({
+        trackId: 'v1',
+        name: 'Clip',
+        path: 'video/clip.mp4',
+      });
+
+      expect(deps.updateTimelineFormat).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          width: 1280,
+          height: 720,
+          fps: 60,
+          geometryResolved: true,
+          settingsSource: 'firstClip',
+        }),
+      );
+    });
+
+    it('keeps the image orientation when audio arrives alongside it', async () => {
+      const timelineFormat = createAutoTimelineFormat();
+      mockAutoTimeline(timelineFormat);
+      deps.updateTimelineFormat.mockImplementation((patch: Partial<typeof timelineFormat>) => {
+        Object.assign(timelineFormat, patch);
+      });
+
+      deps.getOrFetchMetadataByPath.mockResolvedValueOnce({ image: { width: 3000, height: 4000 } });
+      deps.getFileByPath.mockResolvedValueOnce(new File([], 'photo.jpg'));
+      await service.addClipToTimelineFromPath({
+        trackId: 'v1',
+        name: 'Photo',
+        path: 'images/photo.jpg',
+      });
+
+      deps.getOrFetchMetadataByPath.mockResolvedValueOnce({
+        duration: 10,
+        audio: { sampleRate: 44100 },
+      });
+      deps.getFileByPath.mockResolvedValueOnce(new File([], 'music.mp3'));
+      await service.addClipToTimelineFromPath({
+        trackId: 'a1',
+        name: 'Music',
+        path: 'audio/music.mp3',
+      });
+
+      // Audio must not promote the format to `firstClip`, or the next image
+      // would be free to re-decide the orientation.
+      expect(deps.updateTimelineFormat).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          sampleRate: 44100,
+          sampleRateResolved: true,
+          settingsSource: 'imageOrientation',
+        }),
+      );
     });
   });
 

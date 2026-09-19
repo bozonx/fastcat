@@ -16,13 +16,18 @@ export interface EmbedFormatSummary {
  *
  * `projectDefaults` in a session means the host chose the format at handshake;
  * `unresolved` means nobody did — only images or audio have arrived so far, and
- * the render would silently use the built-in default.
+ * the render would silently use the built-in default. An image that turned the
+ * canvas to portrait still counts as unresolved: it settled the orientation,
+ * not the resolution or the frame rate.
  */
 export function summarizeEmbedFormat(format: TimelineFormat): EmbedFormatSummary {
   return {
     width: format.width,
     height: format.height,
     fps: format.fps,
-    source: isTimelineGeometryUnresolved(format) ? 'unresolved' : format.settingsSource,
+    source:
+      isTimelineGeometryUnresolved(format) || format.settingsSource === 'imageOrientation'
+        ? 'unresolved'
+        : format.settingsSource,
   };
 }

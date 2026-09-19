@@ -23,7 +23,7 @@ export const EMBED_EXPORT_KEY: InjectionKey<EmbedExportDelegate> = Symbol('embed
  * its settings open over the editor; the state is module-level so a shortcut can
  * open them without reaching into the shell.
  */
-export type EmbedDialog = 'export-settings' | 'format' | null;
+export type EmbedDialog = 'export-settings' | 'format' | 'settings' | null;
 
 export const embedDialog = ref<EmbedDialog>(null);
 

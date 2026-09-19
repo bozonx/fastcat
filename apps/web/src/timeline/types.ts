@@ -9,7 +9,13 @@ export interface TimelineTimebase extends Partial<FrameRate> {
   fps?: number;
 }
 
-export type TimelineFormatSettingsSource = 'projectDefaults' | 'firstClip' | 'manual';
+/**
+ * `imageOrientation` is a weaker source than `firstClip`: an image can only say
+ * whether the composition is portrait or landscape, never its resolution or
+ * frame rate, so geometry stays unresolved and the first video still wins.
+ */
+export type TimelineFormatSettingsSource =
+  'projectDefaults' | 'imageOrientation' | 'firstClip' | 'manual';
 
 export interface TimelineFormat {
   width: number;

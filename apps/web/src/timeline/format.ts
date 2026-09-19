@@ -67,7 +67,9 @@ export function normalizeTimelineFormat(
       ? input.orientation
       : (preset.orientation as 'landscape' | 'portrait');
   const settingsSource =
-    input?.settingsSource === 'manual' || input?.settingsSource === 'firstClip'
+    input?.settingsSource === 'manual' ||
+    input?.settingsSource === 'firstClip' ||
+    input?.settingsSource === 'imageOrientation'
       ? input.settingsSource
       : 'projectDefaults';
   const isAutoSettings =
