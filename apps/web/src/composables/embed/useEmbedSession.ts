@@ -135,6 +135,12 @@ export function useEmbedSession() {
 
   const isIngesting = ref(false);
   const hasUnacknowledgedExport = ref(false);
+  /**
+   * Set once the running export has been handed to the host. The export form
+   * still resets its phase after that, and reporting it would reach the host
+   * after `export:done` as progress of an export that has already ended.
+   */
+  let hasDeliveredExport = false;
 
   /**
    * Rendering reads every participating source end to end, so an asset that is
@@ -427,6 +433,7 @@ export function useEmbedSession() {
     }
 
     phase.value = 'exporting';
+    hasDeliveredExport = false;
     // The export panel hands over the form the user has just filled in. A
     // host-started export has none and starts from the saved settings, which
     // that same panel keeps up to date.
@@ -452,6 +459,7 @@ export function useEmbedSession() {
           // Streams straight out of storage to the host's endpoint, so a render
           // too large to hand across the channel never enters it.
           await uploadExport(file, options.uploadUrl);
+          hasDeliveredExport = true;
           bridge.value?.send('export:done', { poster, otio, meta });
           await acknowledgeExport();
           return;
@@ -462,6 +470,7 @@ export function useEmbedSession() {
         // materialised in either page's heap.
         exportAck = () => {};
         hasUnacknowledgedExport.value = true;
+        hasDeliveredExport = true;
         bridge.value?.send('export:done', { file, poster, otio, meta });
         exportAckTimer = setTimeout(() => {
           bridge.value?.send('error', {
@@ -670,7 +679,7 @@ export function useEmbedSession() {
         activeExportForm.value.exportProgress.value,
       ] as const,
     ([exportPhase, progress]) => {
-      if (phase.value !== 'exporting') return;
+      if (phase.value !== 'exporting' || hasDeliveredExport) return;
       bridge.value?.send('export:progress', { phase: exportPhase, progress });
     },
   );
