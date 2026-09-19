@@ -17,6 +17,7 @@ import { useUiStore } from '~/stores/ui.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { resolveExternalServiceConfig } from '~/utils/external-integrations';
 import { useVfs } from '~/composables/useVfs';
+import { isEmbedRuntime } from '~/utils/embed-runtime';
 import type { FsEntry } from '~/types/fs';
 import type { SelectedEntity } from '~/stores/selection.store';
 
@@ -56,6 +57,11 @@ function setFilesPageActiveTab(tab: 'computer' | 'bloggerdog' | 'fastcat') {
 }
 
 provide('fileManagerStore', mainStore);
+
+// An embedded session is one project in a throwaway workspace: browsing the rest
+// of that workspace shows its internals, and the remote library would ask for
+// credentials the host already holds.
+const showSidebar = !isEmbedRuntime();
 
 const isBloggerDogConfigured = computed(() => {
   const bloggerDogApiUrl =
@@ -138,6 +144,7 @@ function onBrowserResized(event: { panes: Array<{ size: number }> }) {
   <Splitpanes class="editor-splitpanes h-full w-full" @resized="onOuterResized">
     <!-- Left Sidebar: Computer | BloggerDog -->
     <Pane
+      v-if="showSidebar"
       :size="25"
       min-size="10"
       class="border-r border-ui-border flex flex-col min-w-0 overflow-hidden"
@@ -234,7 +241,7 @@ function onBrowserResized(event: { panes: Array<{ size: number }> }) {
     </Pane>
 
     <!-- Main Project Panels -->
-    <Pane :size="75">
+    <Pane :size="showSidebar ? 75 : 100">
       <Splitpanes class="editor-splitpanes h-full" @resized="onMainResized">
         <!-- File Manager (Tree + Browser) -->
         <Pane :size="sizes?.[0] ?? 80" min-size="20">

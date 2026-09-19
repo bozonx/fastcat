@@ -1,8 +1,21 @@
 /** @vitest-environment node */
-import { describe, it, expect, afterEach } from 'vitest';
-import { isEmbedFeatureEnabled, setEmbedFeatures } from '~/utils/embed-features';
+import { describe, it, expect, afterEach, vi } from 'vitest';
+import {
+  isEmbedFeatureEnabled,
+  isFeatureAvailable,
+  setEmbedFeatures,
+} from '~/utils/embed-features';
+import { isEmbedRuntime } from '~/utils/embed-runtime';
 
-afterEach(() => setEmbedFeatures(undefined));
+vi.mock('~/utils/embed-runtime', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('~/utils/embed-runtime')>()),
+  isEmbedRuntime: vi.fn(() => false),
+}));
+
+afterEach(() => {
+  setEmbedFeatures(undefined);
+  vi.mocked(isEmbedRuntime).mockReturnValue(false);
+});
 
 describe('embed feature profile', () => {
   it('offers only the timeline and an export by default', () => {
@@ -29,5 +42,19 @@ describe('embed feature profile', () => {
   it('treats an empty list as "nothing beyond the timeline"', () => {
     setEmbedFeatures([]);
     expect(isEmbedFeatureEnabled('export')).toBe(false);
+  });
+});
+
+describe('feature availability', () => {
+  it('offers every view outside an embed, whatever the profile says', () => {
+    setEmbedFeatures([]);
+    expect(isFeatureAvailable('files')).toBe(true);
+  });
+
+  it('offers inside an embed only what the host switched on', () => {
+    vi.mocked(isEmbedRuntime).mockReturnValue(true);
+    setEmbedFeatures(['sound']);
+    expect(isFeatureAvailable('sound')).toBe(true);
+    expect(isFeatureAvailable('files')).toBe(false);
   });
 });

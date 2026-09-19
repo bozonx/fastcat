@@ -1,8 +1,16 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
 import { reactive, nextTick, ref } from 'vue';
 import SettingsGeneral from '~/components/settings/SettingsGeneral.vue';
 import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
+
+const embedRuntime = vi.hoisted(() => ({ active: false }));
+
+vi.mock('~/utils/embed-runtime', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('~/utils/embed-runtime')>()),
+  isEmbedRuntime: () => embedRuntime.active,
+  canManageProjectDocuments: () => !embedRuntime.active,
+}));
 
 const isMobileLayout = ref(false);
 
@@ -163,5 +171,32 @@ describe('SettingsGeneral', () => {
     await nextTick();
 
     expect(mockWorkspaceStore.userSettings.locale).toBe('es-419');
+  });
+
+  describe('inside an embedded session', () => {
+    afterEach(() => {
+      embedRuntime.active = false;
+    });
+
+    it('leaves the language to the host', async () => {
+      embedRuntime.active = true;
+      const wrapper = await mountSuspended(SettingsGeneral);
+      expect(wrapper.text()).not.toContain('videoEditor.settings.uiLanguage');
+    });
+
+    it('does not turn backups back on when resetting defaults', async () => {
+      embedRuntime.active = true;
+      mockWorkspaceStore.userSettings.backup.enabled = false;
+      const wrapper = await mountSuspended(SettingsGeneral);
+
+      const resetButton = wrapper
+        .findAll('button')
+        .find((b) => b.text().includes('videoEditor.settings.resetDefaults'));
+      await resetButton?.trigger('click');
+      await nextTick();
+      await wrapper.findComponent({ name: 'UiConfirmModal' }).vm.$emit('confirm');
+
+      expect(mockWorkspaceStore.userSettings.backup.enabled).toBe(false);
+    });
   });
 });

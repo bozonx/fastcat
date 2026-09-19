@@ -6,6 +6,7 @@ import { formatBytes, formatFps } from '~/utils/format';
 import { useProjectSettingsStore } from '~/stores/project-settings.store';
 import { useUiStore } from '~/stores/ui.store';
 import type { DirectoryStats } from '~/utils/fs';
+import { isEmbedRuntime } from '~/utils/embed-runtime';
 
 const props = defineProps<{
   isProjectRootDir: boolean;
@@ -23,6 +24,10 @@ const projectParams = computed(() => {
   const resolution = p.isCustomResolution ? `${p.width}x${p.height}` : p.resolutionFormat;
   return `${resolution}, ${formatFps(p.fps)}FPS, ${Math.round(p.sampleRate / 1000)}kHz`;
 });
+
+// The embed renders none of the application's modals, the project settings
+// dialog included.
+const canOpenProjectSettings = !isEmbedRuntime();
 
 function openProjectSettings() {
   uiStore.isProjectSettingsOpen = true;
@@ -44,6 +49,7 @@ function openProjectSettings() {
       <div class="flex items-center gap-2">
         <span>{{ projectParams }}</span>
         <UButton
+          v-if="canOpenProjectSettings"
           icon="i-heroicons-pencil"
           color="gray"
           variant="ghost"

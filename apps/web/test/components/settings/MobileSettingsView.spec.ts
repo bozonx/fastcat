@@ -1,7 +1,15 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { reactive } from 'vue';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
 import MobileSettingsView from '~/components/settings/MobileSettingsView.vue';
+
+const embedRuntime = vi.hoisted(() => ({ active: false }));
+
+vi.mock('~/utils/embed-runtime', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('~/utils/embed-runtime')>()),
+  isEmbedRuntime: () => embedRuntime.active,
+  canManageProjectDocuments: () => !embedRuntime.active,
+}));
 
 const mockProjectStore = reactive({
   currentProjectName: 'Project A',
@@ -91,5 +99,21 @@ describe('MobileSettingsView', () => {
     const wrapper = await mountSuspended(MobileSettingsView, { global: globalOptions });
     await wrapper.find('[data-value="app"]').trigger('click');
     expect(wrapper.find('.app-settings-panel').exists()).toBe(true);
+  });
+
+  describe('inside an embedded session', () => {
+    afterEach(() => {
+      embedRuntime.active = false;
+    });
+
+    it('leaves out the storage and backups the session deletes on close', async () => {
+      embedRuntime.active = true;
+      mockProjectStore.currentProjectName = 'Project A';
+      const wrapper = await mountSuspended(MobileSettingsView, { global: globalOptions });
+      const values = wrapper.findAll('.tab').map((tab) => tab.attributes('data-value'));
+      expect(values).not.toContain('backups');
+      expect(wrapper.find('.resolution-settings').exists()).toBe(true);
+      expect(wrapper.find('.storage-settings').exists()).toBe(false);
+    });
   });
 });

@@ -13,6 +13,8 @@ import { normalizeWorkspaceFilePath } from '~/utils/workspace-common';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { useFileManagerStore } from '~/stores/file-manager.store';
+import { canManageProjectDocuments } from '~/utils/embed-runtime';
+import { isFeatureAvailable } from '~/utils/embed-features';
 import PropertySection from '~/components/properties/PropertySection.vue';
 import PropertyRow from '~/components/properties/PropertyRow.vue';
 import PropertyActionsBlock from '~/components/properties/PropertyActionsBlock.vue';
@@ -252,7 +254,7 @@ async function handleSelectInFileManager() {
 }
 
 const timelineQuickActions = computed(() => {
-  if (!props.fsEntry || props.isMobile) return [];
+  if (!props.fsEntry || props.isMobile || !canManageProjectDocuments()) return [];
   return [
     {
       id: 'delete',
@@ -271,13 +273,15 @@ const timelineQuickActions = computed(() => {
 
 const timelineAdditionalActions = computed(() => {
   const list = [...addTrackActions.value];
-  if (props.fsEntry) {
+  if (props.fsEntry && isFeatureAvailable('files')) {
     list.unshift({
       id: 'showInFileManager',
       label: t('fastcat.clip.showInFileManager'),
       icon: 'i-heroicons-folder-open',
       onClick: handleSelectInFileManager,
     });
+  }
+  if (props.fsEntry && canManageProjectDocuments()) {
     list.unshift({
       id: 'createOtioVersion',
       label: t('fastcat.timeline.createVersion'),

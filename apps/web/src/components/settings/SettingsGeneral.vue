@@ -8,6 +8,7 @@ import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
 import UiAccordion from '~/components/ui/UiAccordion.vue';
 import { isTauriRuntime } from '~/utils/runtime';
+import { isEmbedRuntime } from '~/utils/embed-runtime';
 import { useMobileLayout } from '~/composables/useMobileLayout';
 
 const { t } = useI18n();
@@ -17,6 +18,9 @@ const { isMobileLayout } = useMobileLayout();
 // Undo depth is only user-configurable on desktop; the web build pins it and the
 // snapshot memory budget is an internal cap on both (see history.store.ts).
 const isDesktop = isTauriRuntime();
+// An embedded session takes its language from the host, and it switches off
+// backups for itself (`useEmbedSession`); a reset must not turn them back on.
+const isEmbed = isEmbedRuntime();
 
 const isResetConfirmOpen = ref(false);
 
@@ -43,7 +47,7 @@ function resetGeneralDefaults() {
   workspaceStore.userSettings.deleteWithoutConfirmation =
     DEFAULT_USER_SETTINGS.deleteWithoutConfirmation;
   workspaceStore.userSettings.history.maxEntries = DEFAULT_USER_SETTINGS.history.maxEntries;
-  workspaceStore.userSettings.backup = { ...DEFAULT_USER_SETTINGS.backup };
+  if (!isEmbed) workspaceStore.userSettings.backup = { ...DEFAULT_USER_SETTINGS.backup };
   workspaceStore.userSettings.autosave = { ...DEFAULT_USER_SETTINGS.autosave };
 
   isResetConfirmOpen.value = false;
@@ -86,7 +90,7 @@ const stopFramesQualityOptions = [
       </UButton>
     </div>
 
-    <UiFormField :label="t('videoEditor.settings.uiLanguage')">
+    <UiFormField v-if="!isEmbed" :label="t('videoEditor.settings.uiLanguage')">
       <UiSelect
         v-model="workspaceStore.userSettings.locale"
         :items="[

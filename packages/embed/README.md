@@ -110,6 +110,25 @@ Mounts the editor iframe into `options.container`, initiates the secure handshak
 | `sandbox`         | `string`                          | `undefined`           | Custom iframe `sandbox` attribute value if needed.                                       |
 | `allow`           | `string`                          | `DEFAULT_EMBED_ALLOW` | Iframe feature policy (`fullscreen; clipboard-write; autoplay; ...`).                    |
 
+#### What an embedded session leaves out
+
+A session is one timeline in a workspace that is deleted when it closes, and the host owns
+storage, credentials and the interface language. The editor therefore does not offer what would
+be lost or would belong to the host:
+
+- **One timeline.** No new timelines, versions, "save as" copies or markdown notes, and the
+  session timeline cannot be deleted or renamed. `onChange` and `onExportDone` always describe
+  the timeline the host restores with `initialProject`.
+- **Export goes to the host.** The export panel's button delivers the render through
+  `onExportDone`, like `startExport()`, rather than into the session's `_export/` folder.
+- **`files` shows the session project only.** There is no workspace browser and no remote
+  content library.
+- **`settings` is limited to preferences the host can keep** (`onPreferencesChanged`): general
+  and interface options, snapping and the session's project format. The settings view is part
+  of the mobile layout only. Language, storage,
+  integrations, proxies, engine tuning and backups are not shown; the language comes from
+  `locale`.
+
 #### Event Callbacks
 
 | Callback               | Signature                                                                                  | Description                                                                    |

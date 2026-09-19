@@ -1,4 +1,5 @@
 import { computed, ref, type ComputedRef } from 'vue';
+import { isEmbedRuntime } from '~/utils/embed-runtime';
 
 /**
  * Optional capabilities a host can switch on for an embedded session.
@@ -36,6 +37,15 @@ export function setEmbedFeatures(features: readonly unknown[] | undefined): void
 
 export function isEmbedFeatureEnabled(feature: EmbedFeature): boolean {
   return enabledFeatures.value.has(feature);
+}
+
+/**
+ * Whether a view the host can switch off is there to use: always outside an
+ * embed, and inside one only when the host asked for it. Anything that leads to
+ * such a view — a shortcut, a "show in" action — should check this first.
+ */
+export function isFeatureAvailable(feature: EmbedFeature): boolean {
+  return !isEmbedRuntime() || isEmbedFeatureEnabled(feature);
 }
 
 export function useEmbedFeatures(): {

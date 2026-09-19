@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, watch } from 'vue';
+import { computed, inject, watch } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useFocusStore } from '~/stores/focus.store';
@@ -17,6 +17,7 @@ import UiButtonGroup from '~/components/ui/UiButtonGroup.vue';
 import { formatFps, middleEllipsis, formatRenderDuration } from '~/utils/format';
 import { ticksToSeconds } from '~/utils/time';
 import { useExportForm, type ExportRangeOption } from '~/composables/timeline/export/useExportForm';
+import { EMBED_EXPORT_KEY } from '~/utils/embed/embed-export';
 
 const props = defineProps<{
   disableFocusFrame?: boolean;
@@ -32,6 +33,10 @@ const timelineStore = useTimelineStore();
 const uiStore = useUiStore();
 const focusStore = useFocusStore();
 const fileManager = useFileManager();
+
+const exportFormState = useExportForm();
+// Present only inside an embedded session, where the render belongs to the host.
+const embedExport = inject(EMBED_EXPORT_KEY, null);
 
 const {
   isExporting,
@@ -87,7 +92,7 @@ const {
   resetAllSettings,
   resetField,
   isFieldDirty,
-} = useExportForm();
+} = exportFormState;
 
 const tabOptions = computed(() => [
   { label: t('videoEditor.export.videoTab'), value: 'video' },
@@ -261,6 +266,10 @@ const videoAudioCodec = computed<'aac' | 'opus' | 'flac' | 'pcm' | 'mp3'>({
 });
 
 async function onConfirm() {
+  if (embedExport) {
+    await embedExport.start(exportFormState);
+    return;
+  }
   await handleStartExport(async (file: File) => {
     await fileManager.reloadDirectory('_export');
     uiStore.notifyFileManagerUpdate();
@@ -361,7 +370,7 @@ const filenamePlaceholder = computed(() =>
           <UiFormField
             :label="t('videoEditor.export.filename')"
             :error="filenameError ?? undefined"
-            :help="!isTauri ? t('videoEditor.export.saveLocationNote') : undefined"
+            :help="!isTauri && !embedExport ? t('videoEditor.export.saveLocationNote') : undefined"
           >
             <UiTextInput
               v-model="outputFilename"
@@ -645,7 +654,12 @@ const filenamePlaceholder = computed(() =>
               isExporting ? t('videoEditor.export.exporting') : t('videoEditor.export.startExport')
             "
             :loading="isExporting"
-            :disabled="isExporting || !!filenameError || !outputFilename.trim()"
+            :disabled="
+              isExporting ||
+              !!filenameError ||
+              !outputFilename.trim() ||
+              (embedExport !== null && !embedExport.canExport.value)
+            "
             @click="onConfirm"
           />
         </div>

@@ -31,6 +31,7 @@ import UiEntityCreationModal from '~/components/ui/UiEntityCreationModal.vue';
 import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useHotkeyLabel } from '~/composables/useHotkeyLabel';
+import { canManageProjectDocuments } from '~/utils/embed-runtime';
 
 const fileManagerStore = useFileManagerStore();
 const selectionStore = useSelectionStore();
@@ -325,13 +326,17 @@ const menuItems = computed<ContextMenuItem[][]>(() => [
       icon: 'i-heroicons-folder-plus',
       onSelect: handleCreateFolderRequest,
     },
-    {
-      label: t('videoEditor.fileManager.actions.createMarkdown'),
-      icon: 'i-heroicons-document-text',
-      onSelect: () => {
-        void onCreateTextFile();
-      },
-    },
+    ...(canManageProjectDocuments()
+      ? [
+          {
+            label: t('videoEditor.fileManager.actions.createMarkdown'),
+            icon: 'i-heroicons-document-text',
+            onSelect: () => {
+              void onCreateTextFile();
+            },
+          },
+        ]
+      : []),
   ],
   [...sortItems.value],
   [

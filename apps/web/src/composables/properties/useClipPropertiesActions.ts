@@ -18,6 +18,7 @@ import {
   clipSupportsReverseControls,
 } from '~/utils/timeline/clip-capabilities';
 import { useMediaStore, resolveMediaMetadata } from '~/stores/media.store';
+import { isFeatureAvailable } from '~/utils/embed-features';
 
 interface TimelineStoreActions {
   timelineDoc: TimelineDocument | null;
@@ -512,7 +513,7 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
     }
 
     // 8. Show in file manager
-    if (clip.clipType === 'media') {
+    if (clip.clipType === 'media' && isFeatureAvailable('files')) {
       list.push({
         id: 'showInFileManager',
         label: t('fastcat.clip.showInFileManager'),

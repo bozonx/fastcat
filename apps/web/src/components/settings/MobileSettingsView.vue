@@ -9,6 +9,7 @@ import ProjectBackups from '~/components/project/ProjectBackups.vue';
 import SettingsSnap from './SettingsSnap.vue';
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
+import { isEmbedRuntime } from '~/utils/embed-runtime';
 
 const props = defineProps<{
   hideTitle?: boolean;
@@ -18,13 +19,16 @@ const { t } = useI18n();
 const projectStore = useProjectStore();
 const workspaceStore = useWorkspaceStore();
 const activeTab = ref(projectStore.currentProjectName ? 'project' : 'app');
+// An embedded session's project lives in storage the session deletes on close;
+// its folders and backups are nothing the user can keep.
+const isEmbed = isEmbedRuntime();
 
 const tabOptions = computed(() => {
   const options = [];
   if (projectStore.currentProjectName) {
     options.push({ value: 'project', label: t('videoEditor.settings.project') });
     options.push({ value: 'snap', label: t('videoEditor.settings.snappingTitle') });
-    if (workspaceStore.inDevelopmentFeaturesEnabled) {
+    if (workspaceStore.inDevelopmentFeaturesEnabled && !isEmbed) {
       options.push({ value: 'backups', label: t('videoEditor.settings.backups') });
     }
   }
@@ -64,8 +68,10 @@ const tabOptions = computed(() => {
         <AdvancedSettings />
         <div class="h-px bg-ui-border"></div>
         <MetadataSettings />
-        <div class="h-px bg-ui-border"></div>
-        <StorageSettings />
+        <template v-if="!isEmbed">
+          <div class="h-px bg-ui-border"></div>
+          <StorageSettings />
+        </template>
       </div>
       <div v-else class="flex flex-col items-center justify-center py-20 text-ui-text-muted gap-3">
         <UIcon name="lucide:folder-off" class="w-10 h-10 opacity-20" />
@@ -75,7 +81,7 @@ const tabOptions = computed(() => {
 
     <!-- Backups -->
     <div
-      v-else-if="activeTab === 'backups' && workspaceStore.inDevelopmentFeaturesEnabled"
+      v-else-if="activeTab === 'backups' && workspaceStore.inDevelopmentFeaturesEnabled && !isEmbed"
       class="flex-1 overflow-y-auto bg-ui-bg animate-in fade-in duration-200"
     >
       <ProjectBackups class="h-full" />

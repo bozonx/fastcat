@@ -1,4 +1,5 @@
 import { computed, type Ref } from 'vue';
+import { canManageProjectDocuments } from '~/utils/embed-runtime';
 
 export interface EntryAction {
   id: string;
@@ -167,14 +168,15 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
       id: 'createTimeline',
       label: options.t('videoEditor.fileManager.actions.createTimeline'),
       icon: 'i-heroicons-document-plus',
-      hidden: options.isExternal?.value || isBloggerDogEntity.value,
+      hidden: options.isExternal?.value || isBloggerDogEntity.value || !canManageProjectDocuments(),
       onClick: options.createTimelineInFolder,
     },
     {
       id: 'createMarkdown',
       label: options.t('videoEditor.fileManager.actions.createMarkdown'),
       icon: 'i-heroicons-document-text',
-      hidden: options.isRemoteMode?.value || options.isVirtualAll?.value,
+      hidden:
+        options.isRemoteMode?.value || options.isVirtualAll?.value || !canManageProjectDocuments(),
       onClick: options.createMarkdownInFolder,
     },
     {
@@ -357,7 +359,7 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
       id: 'createOtioVersion',
       label: options.t('fastcat.timeline.createVersion'),
       icon: 'i-heroicons-document-duplicate',
-      hidden: !options.isOtio.value || options.isExternal?.value,
+      hidden: !options.isOtio.value || options.isExternal?.value || !canManageProjectDocuments(),
       onClick: options.createOtioVersion,
     },
     {

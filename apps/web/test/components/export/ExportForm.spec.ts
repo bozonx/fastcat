@@ -1,6 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { computed } from 'vue';
+import { mountSuspended } from '@nuxt/test-utils/runtime';
 import { mountWithNuxt } from '../../utils/mount';
+import { setupTestPinia } from '../../utils/pinia';
 import ExportForm from '~/components/export/ExportForm.vue';
+import { EMBED_EXPORT_KEY, type EmbedExportDelegate } from '~/utils/embed/embed-export';
 
 /**
  * Component-level coverage for ExportForm.vue: the presentational/interaction
@@ -123,6 +127,7 @@ vi.mock('~/composables/file-manager/useFileManager', () => ({
 
 interface ExportFormMock {
   isExporting: { value: boolean };
+  handleStartExport: ReturnType<typeof vi.fn>;
   isSettingsDirty: { value: boolean };
   selectedExportRangeId: { value: string };
   resetAllSettings: ReturnType<typeof vi.fn>;
@@ -195,5 +200,38 @@ describe('ExportForm.vue', () => {
 
     await cancel.trigger('click');
     expect(formMock().cancelExport).toHaveBeenCalledTimes(1);
+  });
+
+  describe('inside an embedded session', () => {
+    async function mountEmbedded(delegate: EmbedExportDelegate) {
+      setupTestPinia();
+      return await mountSuspended(ExportForm, {
+        global: { provide: { [EMBED_EXPORT_KEY as symbol]: delegate } },
+      });
+    }
+
+    it('hands its own form to the host rather than rendering into _export/', async () => {
+      const start = vi.fn().mockResolvedValue(undefined);
+      const wrapper = await mountEmbedded({ canExport: computed(() => true), start });
+
+      await wrapper.find('[data-testid="export-start"]').trigger('click');
+
+      expect(start).toHaveBeenCalledWith(formMock());
+      expect(formMock().handleStartExport).not.toHaveBeenCalled();
+      expect(mockReloadDirectory).not.toHaveBeenCalled();
+    });
+
+    it('does not promise a project folder the session deletes', async () => {
+      const standalone = await mountWithNuxt(ExportForm);
+      expect(standalone.html()).toContain('videoEditor.export.saveLocationNote');
+
+      const embedded = await mountEmbedded({ canExport: computed(() => true), start: vi.fn() });
+      expect(embedded.html()).not.toContain('videoEditor.export.saveLocationNote');
+    });
+
+    it('keeps start disabled while the session cannot export', async () => {
+      const wrapper = await mountEmbedded({ canExport: computed(() => false), start: vi.fn() });
+      expect(wrapper.find('[data-testid="export-start"]').attributes('disabled')).toBeDefined();
+    });
   });
 });

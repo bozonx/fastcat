@@ -18,6 +18,8 @@ import { setEmbedFeatures } from '~/utils/embed-features';
 import { applySyncedSettings, extractSyncedSettings } from '~/utils/embed/synced-settings';
 import { registerHostRpc, settleHostRpc } from '~/utils/embed/host-rpc';
 import { collectRestoredMediaPaths } from '~/utils/embed/restored-assets';
+import type { ExportFormInstance } from '~/utils/embed/embed-export';
+import { normalizeLocale } from '~/utils/settings/normalizers/shared';
 import { serializeTimelineToOtio } from '~/timeline/otio-serializer';
 import {
   acquireSessionLock,
@@ -97,7 +99,8 @@ export function useEmbedSession() {
   const { openProject, resetProjectState } = useProjectActions();
   const { addMediaToTimeline } = useAddMediaToTimeline();
   const exportForm = useExportForm();
-  const { locale } = useI18n();
+  /** The form the running export reads: the session's own, or the export panel's. */
+  const activeExportForm = shallowRef<ExportFormInstance>(exportForm);
 
   const phase = ref<EmbedSessionPhase>('handshake');
   const errorMessage = ref<string | null>(null);
@@ -283,7 +286,6 @@ export function useEmbedSession() {
 
     phase.value = 'loading';
     try {
-      if (payload.locale) locale.value = payload.locale;
       layoutPreference.value = payload.layout ?? 'auto';
       outputMode.value = payload.output ?? 'blob';
       assetTransport.value = payload.assetTransport ?? 'url';
@@ -317,6 +319,12 @@ export function useEmbedSession() {
       // values win, and before the project opens so hotkeys and snapping are
       // already the user's by the time anything is on screen.
       applySyncedSettings(workspaceStore.userSettings, payload.preferences);
+      // The interface language follows the user's settings (`plugins/i18n.client.ts`),
+      // which the workspace has just loaded with its default. Setting the i18n
+      // locale directly lost to that default the moment loading finished.
+      if (payload.locale) {
+        workspaceStore.userSettings.locale = normalizeLocale({ locale: payload.locale });
+      }
 
       // The host usually knows the target format before the first clip does —
       // a story is 9:16 whatever the source footage happens to be.
@@ -368,7 +376,10 @@ export function useEmbedSession() {
     if (!response.ok) throw new Error(`Upload rejected with HTTP ${response.status}`);
   }
 
-  async function startExport(options?: { filename?: string; uploadUrl?: string }) {
+  async function startExport(
+    options?: { filename?: string; uploadUrl?: string },
+    form?: ExportFormInstance,
+  ) {
     if (phase.value !== 'ready' || hasUnacknowledgedExport.value) {
       // Dropping this silently left the host's SDK in `exporting` for good: no
       // progress, no result, and every later `startExport` refused with
@@ -383,11 +394,16 @@ export function useEmbedSession() {
     }
 
     phase.value = 'exporting';
+    // The export panel hands over the form the user has just filled in. A
+    // host-started export has none and starts from the saved settings, which
+    // that same panel keeps up to date.
+    const target = form ?? exportForm;
+    activeExportForm.value = target;
     try {
-      await exportForm.initializeExportForm();
-      if (options?.filename) exportForm.outputFilename.value = options.filename;
+      if (!form) await exportForm.initializeExportForm();
+      if (options?.filename) target.outputFilename.value = options.filename;
 
-      await exportForm.handleStartExport(async (file: File) => {
+      await target.handleStartExport(async (file: File) => {
         exportedFilename = file.name;
 
         // Described from the finished file rather than the export settings, so
@@ -421,8 +437,8 @@ export function useEmbedSession() {
         }, EXPORT_ACK_TIMEOUT_MS);
       });
 
-      if (exportForm.exportError.value) {
-        throw new Error(exportForm.exportError.value);
+      if (target.exportError.value) {
+        throw new Error(target.exportError.value);
       }
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
@@ -533,7 +549,7 @@ export function useEmbedSession() {
     );
     created.on('save:request', () => emitChange());
     created.on('asset:add', ({ assets }) => void ingestAssets(assets));
-    created.on('export:cancel', () => void exportForm.cancelExport());
+    created.on('export:cancel', () => void activeExportForm.value.cancelExport());
     created.on('export:ack', () => void acknowledgeExport());
     created.on('dispose', () => void dispose());
 
@@ -603,7 +619,11 @@ export function useEmbedSession() {
   );
 
   watch(
-    () => [exportForm.exportPhase.value, exportForm.exportProgress.value] as const,
+    () =>
+      [
+        activeExportForm.value.exportPhase.value,
+        activeExportForm.value.exportProgress.value,
+      ] as const,
     ([exportPhase, progress]) => {
       if (phase.value !== 'exporting') return;
       bridge.value?.send('export:progress', { phase: exportPhase, progress });

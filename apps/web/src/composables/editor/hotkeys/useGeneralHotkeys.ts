@@ -13,18 +13,10 @@ import type { HotkeyCommandId } from '~/utils/hotkeys/defaultHotkeys';
 import type { createHotkeyHoldRunner } from '~/utils/hotkeys/holdRunner';
 import { DEFAULT_TIMELINE_ZOOM_POSITION, stepTimelineZoomPosition } from '~/utils/zoom';
 import { FILE_BROWSER_GRID_SIZES } from '~/composables/file-manager/useFileBrowserViewSettings';
-import { isEmbedRuntime } from '~/utils/embed-runtime';
-import { isEmbedFeatureEnabled, type EmbedFeature } from '~/utils/embed-features';
+import { canManageProjectDocuments, isEmbedRuntime } from '~/utils/embed-runtime';
+import { isFeatureAvailable } from '~/utils/embed-features';
 import type { FsEntry } from '~/types/fs';
 import type { TimelineClipItem } from '~/timeline/types';
-
-/**
- * Views an embedded session only has when the host switched them on. Consuming
- * the key for a view that is not there would swallow it for nothing.
- */
-function isAvailableInEmbed(feature: EmbedFeature): boolean {
-  return !isEmbedRuntime() || isEmbedFeatureEnabled(feature);
-}
 
 export function useGeneralHotkeys(
   zoomHoldRunner: ReturnType<typeof createHotkeyHoldRunner>,
@@ -487,7 +479,7 @@ export function useGeneralHotkeys(
       return true;
     },
     'general.switchViewFiles': () => {
-      if (!isAvailableInEmbed('files')) return false;
+      if (!isFeatureAvailable('files')) return false;
       projectStore.setView('files');
       return true;
     },
@@ -500,12 +492,12 @@ export function useGeneralHotkeys(
       return true;
     },
     'general.switchViewSound': () => {
-      if (!isAvailableInEmbed('sound')) return false;
+      if (!isFeatureAvailable('sound')) return false;
       projectStore.setView('sound');
       return true;
     },
     'general.switchViewExport': () => {
-      if (!isAvailableInEmbed('export')) return false;
+      if (!isFeatureAvailable('export')) return false;
       projectStore.setView('export');
       return true;
     },
@@ -565,6 +557,7 @@ export function useGeneralHotkeys(
       return false;
     },
     'general.newTimeline': () => {
+      if (!canManageProjectDocuments()) return false;
       if (createNewTimeline.value) {
         void createNewTimeline.value();
         return true;

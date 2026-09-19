@@ -13,3 +13,16 @@ export function isEmbedRuntime(): boolean {
   const path = window.location.pathname.replace(/\/+$/, '');
   return path === EMBED_ROUTE_PATH || path.endsWith(EMBED_ROUTE_PATH);
 }
+
+/**
+ * Whether the editor may offer to create or remove whole project documents —
+ * another timeline, a version of one, a markdown note.
+ *
+ * An embedded session hands its host exactly one timeline and deletes the rest
+ * of its workspace on close. A second timeline or a note made there is work the
+ * user loses without being told, and removing the one timeline leaves nothing
+ * to hand back.
+ */
+export function canManageProjectDocuments(): boolean {
+  return !isEmbedRuntime();
+}

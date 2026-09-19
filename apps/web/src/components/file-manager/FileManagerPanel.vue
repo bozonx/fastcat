@@ -25,6 +25,7 @@ import { useFileManagerStore } from '~/stores/file-manager.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import UiTooltip from '~/components/ui/UiTooltip.vue';
 import { useHotkeyLabel } from '~/composables/useHotkeyLabel';
+import { canManageProjectDocuments } from '~/utils/embed-runtime';
 
 const props = defineProps<{
   foldersOnly?: boolean;
@@ -188,6 +189,8 @@ const rootEntry: FsEntry = {
   source: 'local',
 };
 
+const canCreateDocuments = canManageProjectDocuments();
+
 const rootContextMenuItems = computed(() => {
   if (!projectStore.currentProjectName || props.hideActions) return [];
 
@@ -206,16 +209,20 @@ const rootContextMenuItems = computed(() => {
         icon: 'i-heroicons-folder-plus',
         onSelect: () => onFileAction('createFolder', rootEntry),
       },
-      {
-        label: t('videoEditor.fileManager.actions.createTimeline'),
-        icon: 'i-heroicons-document-plus',
-        onSelect: () => onFileAction('createTimeline', rootEntry),
-      },
-      {
-        label: t('videoEditor.fileManager.actions.createMarkdown'),
-        icon: 'i-heroicons-document-text',
-        onSelect: () => onFileAction('createMarkdown', rootEntry),
-      },
+      ...(canCreateDocuments
+        ? [
+            {
+              label: t('videoEditor.fileManager.actions.createTimeline'),
+              icon: 'i-heroicons-document-plus',
+              onSelect: () => onFileAction('createTimeline', rootEntry),
+            },
+            {
+              label: t('videoEditor.fileManager.actions.createMarkdown'),
+              icon: 'i-heroicons-document-text',
+              onSelect: () => onFileAction('createMarkdown', rootEntry),
+            },
+          ]
+        : []),
     ],
     [
       {
@@ -547,6 +554,7 @@ useFileManagerPanelBootstrap({
         class="flex items-center gap-1 px-2 py-1 bg-ui-bg-accent/30 border-b border-ui-border/50"
       >
         <UiTooltip
+          v-if="canCreateDocuments"
           :text="
             getHotkeyTitle(
               `${t('videoEditor.fileManager.actions.createTimeline')} (In _timelines folder)`,
@@ -563,6 +571,7 @@ useFileManagerPanelBootstrap({
           />
         </UiTooltip>
         <UiTooltip
+          v-if="canCreateDocuments"
           :text="`${t('videoEditor.fileManager.actions.createMarkdown')} (In _documents folder)`"
         >
           <UiActionButton

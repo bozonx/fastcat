@@ -9,6 +9,7 @@ import SettingsIntegrations from './SettingsIntegrations.vue';
 import SettingsStorage from './SettingsStorage.vue';
 import SettingsUi from './SettingsUi.vue';
 import { useUiStore } from '~/stores/ui.store';
+import { isEmbedRuntime } from '~/utils/embed-runtime';
 
 type SettingsSection =
   | 'user.general'
@@ -32,8 +33,15 @@ const SETTINGS_SECTIONS: readonly SettingsSection[] = [
   'workspace.storage',
 ];
 
+// An embedded session keeps only what it hands its host
+// (`utils/embed/synced-settings.ts`). Storage and integrations belong to the
+// host, and engine tuning would quietly reset with every session.
+const EMBED_SETTINGS_SECTIONS: readonly SettingsSection[] = ['user.general', 'user.ui'];
+
+const availableSections = isEmbedRuntime() ? EMBED_SETTINGS_SECTIONS : SETTINGS_SECTIONS;
+
 function isSettingsSection(value: string | undefined): value is SettingsSection {
-  return value !== undefined && (SETTINGS_SECTIONS as readonly string[]).includes(value);
+  return value !== undefined && (availableSections as readonly string[]).includes(value);
 }
 
 const savedSection = uiStore.editorSettingsActiveSection;
@@ -47,15 +55,19 @@ watch(activeSection, (section) => {
   uiStore.editorSettingsActiveSection = section;
 });
 
-const sections = computed(() => [
-  { value: 'user.general', label: t('videoEditor.settings.userGeneral') },
-  { value: 'user.ui', label: t('videoEditor.settings.userUi') },
-  { value: 'user.proxy', label: t('videoEditor.settings.userProxy') },
-  { value: 'user.video', label: t('videoEditor.settings.userVideo') },
-  { value: 'user.audio', label: t('videoEditor.settings.userAudio') },
-  { value: 'user.integrations', label: t('videoEditor.settings.userIntegrations') },
-  { value: 'workspace.storage', label: t('videoEditor.settings.workspaceStorage') },
-]);
+const SECTION_LABEL_KEYS: Record<SettingsSection, string> = {
+  'user.general': 'videoEditor.settings.userGeneral',
+  'user.ui': 'videoEditor.settings.userUi',
+  'user.proxy': 'videoEditor.settings.userProxy',
+  'user.video': 'videoEditor.settings.userVideo',
+  'user.audio': 'videoEditor.settings.userAudio',
+  'user.integrations': 'videoEditor.settings.userIntegrations',
+  'workspace.storage': 'videoEditor.settings.workspaceStorage',
+};
+
+const sections = computed(() =>
+  availableSections.map((value) => ({ value, label: t(SECTION_LABEL_KEYS[value]) })),
+);
 
 onBeforeUnmount(() => {
   workspaceStore.flushSettingsSaves();

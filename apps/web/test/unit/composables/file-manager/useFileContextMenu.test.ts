@@ -1,5 +1,5 @@
 /** @vitest-environment node */
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useFileContextMenu } from '~/composables/file-manager/useFileContextMenu';
 import type { FsEntry } from '~/types/fs';
@@ -14,6 +14,14 @@ vi.mock('~/composables/useHotkeyLabel', () => ({
     getHotkeyLabel: () => null,
     getHotkeyTitle: (title: string) => title,
   }),
+}));
+
+const embedRuntime = vi.hoisted(() => ({ active: false }));
+
+vi.mock('~/utils/embed-runtime', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('~/utils/embed-runtime')>()),
+  isEmbedRuntime: () => embedRuntime.active,
+  canManageProjectDocuments: () => !embedRuntime.active,
 }));
 
 function flattenLabels(items: any[][]): string[] {
@@ -407,5 +415,56 @@ describe('useFileContextMenu', () => {
 
     const labels = flattenLabels(getContextMenuItems(videoEntry));
     expect(labels).not.toContain('videoEditor.fileManager.actions.downloadFile');
+  });
+
+  describe('inside an embedded session', () => {
+    const projectDeps = {
+      isGeneratingProxyInDirectory: () => false,
+      folderHasVideos: () => false,
+      isOpenableMediaFile: () => false,
+      isConvertibleMediaFile: () => false,
+      isVideo: () => false,
+      getEntryMeta: () => ({ hasProxy: false, generatingProxy: false }),
+      isFilesPage: true,
+    };
+    const documentActions = [
+      'videoEditor.fileManager.actions.createTimeline',
+      'videoEditor.fileManager.actions.createMarkdown',
+      'fastcat.timeline.createVersion',
+    ];
+
+    afterEach(() => {
+      embedRuntime.active = false;
+    });
+
+    it('offers no second timeline, version or note to lose on close', () => {
+      embedRuntime.active = true;
+      const { getContextMenuItems } = useFileContextMenu(projectDeps, vi.fn());
+
+      const folder: FsEntry = { kind: 'directory', name: '_video', path: '_video' };
+      const timeline: FsEntry = {
+        kind: 'file',
+        name: 'session.otio',
+        path: '_timelines/session.otio',
+      };
+      const labels = [
+        ...flattenLabels(getContextMenuItems(folder)),
+        ...flattenLabels(getContextMenuItems(timeline)),
+      ];
+
+      for (const action of documentActions) expect(labels).not.toContain(action);
+      expect(labels).toContain('videoEditor.fileManager.actions.createFolder');
+      expect(labels).toContain('videoEditor.fileManager.actions.uploadToThisFolder');
+    });
+
+    it('still offers them in the standalone editor', () => {
+      const { getContextMenuItems } = useFileContextMenu(projectDeps, vi.fn());
+
+      const folder: FsEntry = { kind: 'directory', name: '_video', path: '_video' };
+      const labels = flattenLabels(getContextMenuItems(folder));
+
+      expect(labels).toContain('videoEditor.fileManager.actions.createTimeline');
+      expect(labels).toContain('videoEditor.fileManager.actions.createMarkdown');
+    });
   });
 });

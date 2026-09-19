@@ -1,7 +1,15 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { reactive } from 'vue';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
 import MobileAppSettingsPanel from '~/components/settings/MobileAppSettingsPanel.vue';
+
+const embedRuntime = vi.hoisted(() => ({ active: false }));
+
+vi.mock('~/utils/embed-runtime', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('~/utils/embed-runtime')>()),
+  isEmbedRuntime: () => embedRuntime.active,
+  canManageProjectDocuments: () => !embedRuntime.active,
+}));
 
 const flushSettingsSavesMock = vi.fn();
 
@@ -70,5 +78,27 @@ describe('MobileAppSettingsPanel', () => {
   it('does not show export presets as a mobile settings tab', async () => {
     const wrapper = await mountSuspended(MobileAppSettingsPanel, { global: globalOptions });
     expect(wrapper.find('[data-value="user.export"]').exists()).toBe(false);
+  });
+
+  describe('inside an embedded session', () => {
+    afterEach(() => {
+      embedRuntime.active = false;
+    });
+
+    it('offers only what the session hands back to its host', async () => {
+      embedRuntime.active = true;
+      mockUiStore.editorSettingsActiveSection = 'user.general';
+      const wrapper = await mountSuspended(MobileAppSettingsPanel, { global: globalOptions });
+      const values = wrapper.findAll('.tab').map((tab) => tab.attributes('data-value'));
+      expect(values).toEqual(['user.general', 'user.ui']);
+    });
+
+    it('falls back to general when the remembered section is not offered', async () => {
+      embedRuntime.active = true;
+      mockUiStore.editorSettingsActiveSection = 'user.integrations';
+      const wrapper = await mountSuspended(MobileAppSettingsPanel, { global: globalOptions });
+      expect(wrapper.find('.settings-general').exists()).toBe(true);
+      expect(wrapper.find('.settings-integrations').exists()).toBe(false);
+    });
   });
 });

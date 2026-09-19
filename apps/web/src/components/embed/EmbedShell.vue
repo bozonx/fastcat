@@ -1,16 +1,22 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, provide, ref, watch } from 'vue';
 import EditorRoot from '~/components/editor/EditorRoot.vue';
 import type { MobileShellTab } from '~/components/editor/MobileShell.vue';
 import UiProgressSpinner from '~/components/ui/UiProgressSpinner.vue';
 import { useEmbedSession } from '~/composables/embed/useEmbedSession';
 import { useEmbedFeatures } from '~/utils/embed-features';
+import { EMBED_EXPORT_KEY } from '~/utils/embed/embed-export';
 import { useProjectStore } from '~/stores/project.store';
 
 const { t } = useI18n();
 const session = useEmbedSession();
 const projectStore = useProjectStore();
 const { isEnabled } = useEmbedFeatures();
+
+provide(EMBED_EXPORT_KEY, {
+  canExport: session.canExport,
+  start: (form) => session.startExport(undefined, form),
+});
 
 const editorRoot = ref<InstanceType<typeof EditorRoot> | null>(null);
 const hasWebGpu = typeof navigator !== 'undefined' && !!navigator.gpu;

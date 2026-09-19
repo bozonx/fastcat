@@ -23,6 +23,7 @@ import { useFileManagerSelection } from '~/composables/file-manager/useFileManag
 import type { RemoteFsEntry } from '~/utils/remote-vfs';
 import { FILE_MANAGER_ROOT_SPACER_HEIGHT, DOCUMENTS_DIR_NAME } from '~/utils/constants';
 import { useHotkeyLabel } from '~/composables/useHotkeyLabel';
+import { canManageProjectDocuments } from '~/utils/embed-runtime';
 
 const props = defineProps<{
   editingEntryPath?: string | null;
@@ -432,22 +433,26 @@ const rootContextMenuItems = computed(() => {
         icon: 'i-heroicons-folder-plus',
         onSelect: async () => emit('action', 'createFolder', rootEntry),
       },
-      {
-        label: t('videoEditor.fileManager.actions.createTimeline'),
-        icon: 'i-heroicons-document-plus',
-        onSelect: async () => emit('action', 'createTimeline', rootEntry),
-      },
-      {
-        label: t('videoEditor.fileManager.actions.createMarkdown'),
-        icon: 'i-heroicons-document-text',
-        onSelect: async () =>
-          emit('action', 'createMarkdown', {
-            kind: 'directory',
-            name: DOCUMENTS_DIR_NAME,
-            path: DOCUMENTS_DIR_NAME,
-            source: 'local',
-          } as FsEntry),
-      },
+      ...(canManageProjectDocuments()
+        ? [
+            {
+              label: t('videoEditor.fileManager.actions.createTimeline'),
+              icon: 'i-heroicons-document-plus',
+              onSelect: async () => emit('action', 'createTimeline', rootEntry),
+            },
+            {
+              label: t('videoEditor.fileManager.actions.createMarkdown'),
+              icon: 'i-heroicons-document-text',
+              onSelect: async () =>
+                emit('action', 'createMarkdown', {
+                  kind: 'directory',
+                  name: DOCUMENTS_DIR_NAME,
+                  path: DOCUMENTS_DIR_NAME,
+                  source: 'local',
+                } as FsEntry),
+            },
+          ]
+        : []),
     ],
     [
       {

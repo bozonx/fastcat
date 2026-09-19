@@ -1,9 +1,18 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { reactive, ref, computed } from 'vue';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
 import TimelineProperties from '~/components/properties/TimelineProperties.vue';
+import { setEmbedFeatures } from '~/utils/embed-features';
 
 vi.stubGlobal('useDevice', () => ({ isMobile: false }));
+
+const embedRuntime = vi.hoisted(() => ({ active: false }));
+
+vi.mock('~/utils/embed-runtime', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('~/utils/embed-runtime')>()),
+  isEmbedRuntime: () => embedRuntime.active,
+  canManageProjectDocuments: () => !embedRuntime.active,
+}));
 
 vi.mock('~/components/ui/UiRenameModal.vue', () => ({
   default: {
@@ -363,5 +372,54 @@ describe('TimelineProperties', () => {
       .findAllComponents({ name: 'ClipEffectsEditor' })
       .find((c) => c.props('target') === 'audio');
     expect(audioEffectsEditor).toBeUndefined();
+  });
+
+  describe('inside an embedded session', () => {
+    const sessionTimeline = {
+      kind: 'file',
+      name: 'session_001.otio',
+      path: '_timelines/session_001.otio',
+      parentPath: '_timelines',
+      lastModified: Date.now(),
+      size: 100,
+      source: 'project',
+    };
+
+    afterEach(() => {
+      embedRuntime.active = false;
+      setEmbedFeatures(undefined);
+    });
+
+    it('keeps the one timeline the host gets back: no copies, no delete, no rename', async () => {
+      embedRuntime.active = true;
+      const wrapper = await mountSuspended(TimelineProperties, {
+        props: { fsEntry: sessionTimeline },
+      });
+
+      const vm = wrapper.vm as any;
+      const ids = vm.timelineAdditionalActions.map((a: any) => a.id);
+      expect(ids).not.toContain('saveTimelineAs');
+      expect(ids).not.toContain('createOtioVersion');
+      expect(vm.timelineQuickActions).toEqual([]);
+    });
+
+    it('points at the file manager only when the host switched it on', async () => {
+      embedRuntime.active = true;
+      setEmbedFeatures(['export']);
+      const without = await mountSuspended(TimelineProperties, {
+        props: { fsEntry: sessionTimeline },
+      });
+      expect((without.vm as any).timelineAdditionalActions.map((a: any) => a.id)).not.toContain(
+        'showInFileManager',
+      );
+
+      setEmbedFeatures(['export', 'files']);
+      const withFiles = await mountSuspended(TimelineProperties, {
+        props: { fsEntry: sessionTimeline },
+      });
+      expect((withFiles.vm as any).timelineAdditionalActions.map((a: any) => a.id)).toContain(
+        'showInFileManager',
+      );
+    });
   });
 });

@@ -7,6 +7,7 @@ import {
   canPasteIntoBloggerDogEntry,
 } from '~/utils/bloggerdog-file-manager';
 import { useHotkeyLabel } from '~/composables/useHotkeyLabel';
+import { canManageProjectDocuments } from '~/utils/embed-runtime';
 
 export type FileAction =
   | 'createFolder'
@@ -78,6 +79,7 @@ export function useFileContextMenu(
 ) {
   const { t } = useI18n();
   const { getHotkeyKbds } = useHotkeyLabel();
+  const canCreateDocuments = canManageProjectDocuments();
 
   function buildManagementItems(entry: FsEntry): ContextMenuItem[] {
     const isProjectRoot = entry.kind === 'directory' && (entry.path === '' || entry.path === '/');
@@ -177,19 +179,19 @@ export function useFileContextMenu(
       const dirActions: ContextMenuItem[] = [];
 
       if (!isBdVirtual) {
-        dirActions.push(
-          {
-            label: t('videoEditor.fileManager.actions.createFolder'),
-            icon: 'i-heroicons-folder-plus',
-            kbds: getHotkeyKbds('general.createFolder'),
-            onSelect: () => onAction('createFolder', entry),
-          },
-          {
+        dirActions.push({
+          label: t('videoEditor.fileManager.actions.createFolder'),
+          icon: 'i-heroicons-folder-plus',
+          kbds: getHotkeyKbds('general.createFolder'),
+          onSelect: () => onAction('createFolder', entry),
+        });
+        if (canCreateDocuments) {
+          dirActions.push({
             label: t('videoEditor.fileManager.actions.createMarkdown'),
             icon: 'i-heroicons-document-text',
             onSelect: () => onAction('createMarkdown', entry),
-          },
-        );
+          });
+        }
       }
 
       if (dirActions.length > 0) {
@@ -272,7 +274,7 @@ export function useFileContextMenu(
           ]);
         }
 
-        if (isOtioFile) {
+        if (isOtioFile && canCreateDocuments) {
           items.push([
             {
               label: t('fastcat.timeline.createVersion'),
@@ -441,25 +443,27 @@ export function useFileContextMenu(
       ];
 
       if (!isComputer) {
-        dirItems.push(
-          {
-            label: t('videoEditor.fileManager.actions.uploadToThisFolder'),
-            icon: 'i-heroicons-arrow-up-tray',
-            onSelect: () => onAction('upload', entry),
-          },
-          {
+        dirItems.push({
+          label: t('videoEditor.fileManager.actions.uploadToThisFolder'),
+          icon: 'i-heroicons-arrow-up-tray',
+          onSelect: () => onAction('upload', entry),
+        });
+        if (canCreateDocuments) {
+          dirItems.push({
             label: t('videoEditor.fileManager.actions.createTimeline'),
             icon: 'i-heroicons-document-plus',
             onSelect: () => onAction('createTimeline', entry),
-          },
-        );
+          });
+        }
       }
 
-      dirItems.push({
-        label: t('videoEditor.fileManager.actions.createMarkdown'),
-        icon: 'i-heroicons-document-text',
-        onSelect: () => onAction('createMarkdown', entry),
-      });
+      if (canCreateDocuments) {
+        dirItems.push({
+          label: t('videoEditor.fileManager.actions.createMarkdown'),
+          icon: 'i-heroicons-document-text',
+          onSelect: () => onAction('createMarkdown', entry),
+        });
+      }
 
       items.push(dirItems);
 
@@ -576,7 +580,12 @@ export function useFileContextMenu(
       ]);
     }
 
-    if (entry.kind === 'file' && entry.name.toLowerCase().endsWith('.otio') && !isComputer) {
+    if (
+      entry.kind === 'file' &&
+      entry.name.toLowerCase().endsWith('.otio') &&
+      !isComputer &&
+      canCreateDocuments
+    ) {
       items.push([
         {
           label: t('fastcat.timeline.createVersion'),
