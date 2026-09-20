@@ -72,6 +72,14 @@ vi.mock('~/components/embed/EmbedExportDialog.vue', () => ({
   }),
 }));
 
+vi.mock('~/components/embed/EmbedSettingsDialog.vue', () => ({
+  default: defineComponent({
+    name: 'EmbedSettingsDialog',
+    props: ['open'],
+    template: '<div v-if="open" data-testid="settings-dialog" />',
+  }),
+}));
+
 function sessionState() {
   return (globalThis as Record<string, unknown>).__embedSessionState as {
     phase: { value: string };
@@ -146,6 +154,33 @@ describe('EmbedShell', () => {
       'edit',
       'settings',
     ]);
+  });
+
+  it('opens the settings dialog from the toolbar on the desktop layout', async () => {
+    setEmbedFeatures(['settings']);
+    const wrapper = await mountShell();
+
+    // The desktop shell has no settings view, so the toolbar carries a button.
+    expect(wrapper.find('[data-testid="embed-view-settings"]').exists()).toBe(false);
+
+    await wrapper.find('[data-testid="embed-settings"]').trigger('click');
+    expect(embedDialog.value).toBe('settings');
+    expect(wrapper.find('[data-testid="settings-dialog"]').exists()).toBe(true);
+  });
+
+  it('keeps the settings button out of a session the host did not enable it for', async () => {
+    const wrapper = await mountShell();
+
+    expect(wrapper.find('[data-testid="embed-settings"]').exists()).toBe(false);
+  });
+
+  it('leaves the settings to the view tab on the touch layout', async () => {
+    layout.mode = 'mobile';
+    setEmbedFeatures(['settings']);
+    const wrapper = await mountShell();
+
+    expect(wrapper.find('[data-testid="embed-settings"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="embed-view-settings"]').exists()).toBe(true);
   });
 
   it('exports straight away once the format is known', async () => {
